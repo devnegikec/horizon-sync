@@ -9,7 +9,6 @@ module.exports = {
       '{src,pages,components,app}/**/*!(*.stories|*.spec).{ts,tsx,html}',
     ),
     ...createGlobPatternsForDependencies(__dirname),
-    join(__dirname, '../../libs/shared/ui/src/**/*.{ts,tsx}'),
   ],
   theme: {
     extend: {},
