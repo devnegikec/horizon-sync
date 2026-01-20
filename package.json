@@ -2,7 +2,22 @@
   "name": "@horizon-sync/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "dev:platform": "nx serve platform",
+    "dev:inventory": "nx serve platform --devRemotes=inventory",
+    "build:platform": "nx build platform",
+    "build:inventory": "nx build inventory",
+    "test:platform": "nx test platform",
+    "test:inventory": "nx test inventory",
+    "lint:platform": "nx lint platform",
+    "lint:inventory": "nx lint inventory",
+    "format:platform": "nx format:write platform",
+    "format:inventory": "nx format:write inventory",
+    "format:check:platform": "nx format:check platform",
+    "format:check:inventory": "nx format:check inventory",
+    "format:check:all": "nx format:check",
+    "format:write:all": "nx format:write"
+  },
   "private": true,
   "devDependencies": {
     "@babel/core": "^7.14.5",
