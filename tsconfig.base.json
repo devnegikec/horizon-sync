@@ -17,6 +17,7 @@
     "paths": {
       "inventory/Module": ["apps/inventory/src/remote-entry.ts"],
       "@horizon-sync/ui": ["libs/shared/ui/src/index.ts"],
+      "@horizon-sync/ui/*": ["libs/shared/ui/src/*"],
       "@/components/ui/*": ["libs/shared/ui/src/components/ui/*"],
       "@/lib/*": ["libs/shared/ui/src/lib/*"]
     }

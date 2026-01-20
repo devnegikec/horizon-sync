@@ -1,6 +1,7 @@
 import * as React from 'react';
 import NxWelcome from './nx-welcome';
 import { Link, Route, Routes } from 'react-router-dom';
+import '@horizon-sync/ui/styles/globals.css';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 
