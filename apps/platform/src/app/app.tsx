@@ -2,6 +2,8 @@ import * as React from 'react';
 import NxWelcome from './nx-welcome';
 import { Link, Route, Routes } from 'react-router-dom';
 import '@horizon-sync/ui/styles/globals.css';
+import { Button } from '@horizon-sync/ui/components/ui/button';
+
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 
@@ -14,6 +16,7 @@ export function App() {
         </li>
         <li>
           <Link to="/inventory">Inventory</Link>
+          <Button>Click me</Button>
         </li>
       </ul>
       <Routes>

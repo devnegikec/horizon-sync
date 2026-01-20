@@ -18,7 +18,11 @@
       "inventory/Module": ["apps/inventory/src/remote-entry.ts"],
       "@horizon-sync/ui": ["libs/shared/ui/src/index.ts"],
       "@horizon-sync/ui/*": ["libs/shared/ui/src/*"],
-      "@/components/ui/*": ["libs/shared/ui/src/components/ui/*"],
+      "@horizon-sync/ui/components/*": ["libs/shared/ui/src/components/*"],
+      "@horizon-sync/ui/lib": ["libs/shared/ui/src/lib/index.ts"],
+      "@horizon-sync/ui/lib/*": ["libs/shared/ui/src/lib/*"],
+      "@horizon-sync/ui/hooks/*": ["libs/shared/ui/src/hooks/*"],
+      "@/components/*": ["libs/shared/ui/src/components/*"],
       "@/lib/*": ["libs/shared/ui/src/lib/*"]
     }
   },
