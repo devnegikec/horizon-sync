@@ -15,10 +15,10 @@ import {
   CardTitle,
 } from '@horizon-sync/ui/components/ui/card';
 import { AuthService } from '../services/auth.service';
-import { registerSchema, RegisterFormData } from '../utility/validationSchema';
+import { loginSchema, LoginFormData } from '../utility/validationSchema';
 import logo from '../../assets/ciphercode_logo.png';
 
-export function RegistrationForm() {
+export function LoginForm() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [successMessage, setSuccessMessage] = React.useState('');
@@ -28,23 +28,26 @@ export function RegistrationForm() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (data: RegisterFormData) => {
+  const onSubmit = async (data: LoginFormData) => {
     setIsSubmitting(true);
     setErrorMessage('');
     setSuccessMessage('');
 
     try {
-      const response = await AuthService.register(data);
-      setSuccessMessage(response.message || 'Registration successful!');
+      const response = await AuthService.login(data);
+      setSuccessMessage('Login successful!');
       
-      // Redirect to login or dashboard after 2 seconds
+      // Store token (you might want to use a more secure method)
+      localStorage.setItem('access_token', response.access_token);
+      
+      // Redirect to dashboard after 1 second
       setTimeout(() => {
         navigate('/');
-      }, 2000);
+      }, 1000);
     } catch (error) {
       if (error instanceof Error) {
         setErrorMessage(error.message);
@@ -68,78 +71,23 @@ export function RegistrationForm() {
             Horizon Sync
           </span>
         </div>
-        <CardTitle className="text-2xl">Create your account</CardTitle>
+        <CardTitle className="text-2xl">Welcome back</CardTitle>
         <CardDescription>
-          Enter your details below to create your account and get started
+          Sign in to your account to continue
         </CardDescription>
       </CardHeader>
 
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Organization Name */}
-          <div className="space-y-2">
-            <Label htmlFor="organization_name">
-              Organization Name <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="organization_name"
-              placeholder="Acme Corporation"
-              {...register('organization_name')}
-              className={errors.organization_name ? 'border-destructive' : ''}
-            />
-            {errors.organization_name && (
-              <p className="text-sm text-destructive">
-                {errors.organization_name.message}
-              </p>
-            )}
-          </div>
-
-          {/* First Name and Last Name - Same Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="first_name">
-                First Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="first_name"
-                placeholder="John"
-                {...register('first_name')}
-                className={errors.first_name ? 'border-destructive' : ''}
-              />
-              {errors.first_name && (
-                <p className="text-sm text-destructive">
-                  {errors.first_name.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="last_name">
-                Last Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="last_name"
-                placeholder="Doe"
-                {...register('last_name')}
-                className={errors.last_name ? 'border-destructive' : ''}
-              />
-              {errors.last_name && (
-                <p className="text-sm text-destructive">
-                  {errors.last_name.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Email */}
+          {/* Work Email */}
           <div className="space-y-2">
             <Label htmlFor="email">
-              Email <span className="text-destructive">*</span>
+              Work Email <span className="text-destructive">*</span>
             </Label>
             <Input
               id="email"
               type="email"
-              placeholder="john.doe@example.com"
+              placeholder="john.doe@company.com"
               {...register('email')}
               className={errors.email ? 'border-destructive' : ''}
             />
@@ -150,9 +98,17 @@ export function RegistrationForm() {
 
           {/* Password */}
           <div className="space-y-2">
-            <Label htmlFor="password">
-              Password <span className="text-destructive">*</span>
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">
+                Password <span className="text-destructive">*</span>
+              </Label>
+              <a
+                href="/forgot-password"
+                className="text-sm text-[#3058EE] hover:opacity-80 font-medium underline-offset-4 hover:underline"
+              >
+                Forgot Password?
+              </a>
+            </div>
             <Input
               id="password"
               type="password"
@@ -165,9 +121,6 @@ export function RegistrationForm() {
                 {errors.password.message}
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Must contain 8+ characters, uppercase, lowercase, number & special character
-            </p>
           </div>
 
           {/* Success Message */}
@@ -194,23 +147,44 @@ export function RegistrationForm() {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating account...
+                Signing in...
               </>
             ) : (
-              'Create Account'
+              'Sign In'
             )}
           </Button>
         </form>
       </CardContent>
 
       <CardFooter className="flex flex-col space-y-4">
+        {/* Copyright */}
+        <div className="text-xs text-center text-muted-foreground space-y-1">
+          <p>Copyright © 2025 Ciphercode. All rights reserved</p>
+          <div className="flex items-center justify-center gap-2">
+            <a
+              href="/terms"
+              className="hover:text-foreground underline-offset-4 hover:underline"
+            >
+              Terms & Conditions
+            </a>
+            <span>and</span>
+            <a
+              href="/privacy"
+              className="hover:text-foreground underline-offset-4 hover:underline"
+            >
+              Privacy Policy
+            </a>
+          </div>
+        </div>
+
+        {/* Sign up link */}
         <div className="text-sm text-center text-muted-foreground">
-          Already have an account?{' '}
+          Don't have an account?{' '}
           <a
-            href="/login"
+            href="/register"
             className="text-[#3058EE] hover:opacity-80 font-medium underline-offset-4 hover:underline"
           >
-            Sign in
+            Sign up
           </a>
         </div>
       </CardFooter>

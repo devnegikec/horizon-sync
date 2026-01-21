@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom';
 import '@horizon-sync/ui/styles/globals.css';
 import { DashboardLayout, DashboardHome } from './components';
 import { RegisterPage } from './pages/register';
+import { LoginPage } from './pages/login';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 
@@ -20,6 +21,7 @@ export function App() {
     >
       <Routes>
         {/* Public routes without dashboard layout */}
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
         {/* Protected routes with dashboard layout */}
