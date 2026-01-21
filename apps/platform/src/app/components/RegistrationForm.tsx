@@ -59,10 +59,10 @@ export function RegistrationForm() {
     <Card className="w-full max-w-md border-none shadow-2xl">
       <CardHeader className="space-y-1 pb-6">
         <div className="flex items-center gap-2 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#3058EE] to-[#7D97F6]">
             <Zap className="h-6 w-6 text-white" />
           </div>
-          <span className="font-bold text-2xl tracking-tight bg-gradient-to-r from-blue-600 to-fuchsia-600 dark:from-blue-400 dark:to-fuchsia-400 bg-clip-text text-transparent">
+          <span className="font-bold text-2xl tracking-tight bg-gradient-to-r from-[#3058EE] to-[#7D97F6] bg-clip-text text-transparent">
             Horizon Sync
           </span>
         </div>
@@ -186,7 +186,7 @@ export function RegistrationForm() {
           {/* Submit Button */}
           <Button
             type="submit"
-            className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/25"
+            className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -206,7 +206,7 @@ export function RegistrationForm() {
           Already have an account?{' '}
           <a
             href="/"
-            className="text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 font-medium underline-offset-4 hover:underline"
+            className="text-[#3058EE] hover:opacity-80 font-medium underline-offset-4 hover:underline"
           >
             Sign in
           </a>
