@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Route, Routes } from 'react-router-dom';
 import '@horizon-sync/ui/styles/globals.css';
 import { DashboardLayout, DashboardHome } from './components';
+import { RegisterPage } from './pages/register';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 
@@ -17,57 +18,68 @@ export function App() {
         </div>
       }
     >
-      <DashboardLayout>
-        <Routes>
-          <Route path="/" element={<DashboardHome />} />
-          <Route path="/inventory" element={<Inventory />} />
-          <Route
-            path="/analytics"
-            element={
-              <PlaceholderPage
-                title="Analytics"
-                description="View detailed analytics and insights"
-              />
-            }
-          />
-          <Route
-            path="/users"
-            element={
-              <PlaceholderPage
-                title="Users"
-                description="Manage platform users and permissions"
-              />
-            }
-          />
-          <Route
-            path="/reports"
-            element={
-              <PlaceholderPage
-                title="Reports"
-                description="Generate and view reports"
-              />
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <PlaceholderPage
-                title="Settings"
-                description="Configure your platform settings"
-              />
-            }
-          />
-          <Route
-            path="/help"
-            element={
-              <PlaceholderPage
-                title="Help Center"
-                description="Get help and support"
-              />
-            }
-          />
-        </Routes>
-      </DashboardLayout>
+      <Routes>
+        {/* Public routes without dashboard layout */}
+        <Route path="/register" element={<RegisterPage />} />
+
+        {/* Protected routes with dashboard layout */}
+        <Route
+          path="/*"
+          element={
+            <DashboardLayout>
+              <Routes>
+                <Route path="/" element={<DashboardHome />} />
+                <Route path="/inventory" element={<Inventory />} />
+                <Route
+                  path="/analytics"
+                  element={
+                    <PlaceholderPage
+                      title="Analytics"
+                      description="View detailed analytics and insights"
+                    />
+                  }
+                />
+                <Route
+                  path="/users"
+                  element={
+                    <PlaceholderPage
+                      title="Users"
+                      description="Manage platform users and permissions"
+                    />
+                  }
+                />
+                <Route
+                  path="/reports"
+                  element={
+                    <PlaceholderPage
+                      title="Reports"
+                      description="Generate and view reports"
+                    />
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <PlaceholderPage
+                      title="Settings"
+                      description="Configure your platform settings"
+                    />
+                  }
+                />
+                <Route
+                  path="/help"
+                  element={
+                    <PlaceholderPage
+                      title="Help Center"
+                      description="Get help and support"
+                    />
+                  }
+                />
+              </Routes>
+            </DashboardLayout>
+          }
+        />
+      </Routes>
     </React.Suspense>
   );
 }
