@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { mockUsers } from './data/users';
+import { mockSubscriptions } from './data/subscriptions';
 import { UsersResponse, InviteUserResponse } from '../services/user.service';
 
 const API_BASE_URL = process.env['NX_API_BASE_URL'] || 'http://localhost:8001/api/v1';
@@ -54,6 +55,36 @@ export const handlers = [
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     return HttpResponse.json(response, { status: 201 });
+  }),
+
+  // GET /api/v1/subscriptions/current - Get current subscriptions
+  http.get(`${API_BASE_URL}/subscriptions/current`, () => {
+    console.log('🔵 MSW: GET /subscriptions/current');
+    return HttpResponse.json(mockSubscriptions, { status: 200 });
+  }),
+
+  // POST /api/v1/subscriptions - Create new subscription
+  http.post(`${API_BASE_URL}/subscriptions`, async ({ request }) => {
+    const body = await request.json();
+    console.log('🔵 MSW: POST /subscriptions', body);
+    
+    // Create a new subscription based on the request
+    const newSubscription = {
+      ...mockSubscriptions[0],
+      id: crypto.randomUUID(),
+      status: 'active',
+      plan: {
+        id: crypto.randomUUID(),
+        name: (body as any).plan_code === 'pro' ? 'Professional Plan' : 'Basic Plan',
+        code: (body as any).plan_code,
+        plan_type: (body as any).plan_code,
+      },
+      billing_cycle: (body as any).billing_cycle,
+      starts_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    };
+    
+    return HttpResponse.json(newSubscription, { status: 201 });
   }),
 
   // POST /api/v1/auth/login - Login endpoint

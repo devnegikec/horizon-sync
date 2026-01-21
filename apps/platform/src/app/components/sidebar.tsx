@@ -9,6 +9,7 @@ import {
   FileText,
   HelpCircle,
   Zap,
+  CreditCard,
 } from 'lucide-react';
 import { cn } from '@horizon-sync/ui/lib';
 import {
@@ -27,6 +28,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard },
   { title: 'Inventory', href: '/inventory', icon: Package },
+  { title: 'Subscriptions', href: '/subscriptions', icon: CreditCard },
   { title: 'Analytics', href: '/analytics', icon: BarChart3 },
   { title: 'Users', href: '/users', icon: Users },
   { title: 'Reports', href: '/reports', icon: FileText },
