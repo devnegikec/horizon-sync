@@ -16,7 +16,11 @@
         "baseHref": "/",
         "main": "apps/platform/src/main.ts",
         "tsConfig": "apps/platform/tsconfig.app.json",
-        "assets": ["apps/platform/src/favicon.ico", "apps/platform/src/assets"],
+        "assets": [
+          "apps/platform/src/favicon.ico",
+          "apps/platform/src/assets",
+          "apps/platform/src/mockServiceWorker.js"
+        ],
         "styles": ["apps/platform/src/styles.css"],
         "scripts": [],
         "webpackConfig": "apps/platform/webpack.config.ts",
