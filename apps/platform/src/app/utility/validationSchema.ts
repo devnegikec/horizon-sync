@@ -1,5 +1,31 @@
 import * as z from 'zod';
 
+// Work email validation - must be a valid email from a company domain (not free email providers)
+const workEmailValidation = z
+  .string()
+  .email('Please enter a valid email address')
+  .refine(
+    (email) => {
+      const freeEmailDomains = [
+        'gmail.com',
+        'yahoo.com',
+        'hotmail.com',
+        'outlook.com',
+        'aol.com',
+        'icloud.com',
+        'mail.com',
+        'protonmail.com',
+        'zoho.com',
+        'yandex.com',
+      ];
+      const domain = email.split('@')[1]?.toLowerCase();
+      return domain && !freeEmailDomains.includes(domain);
+    },
+    {
+      message: 'Please use your work email address, not a personal email',
+    }
+  );
+
 export const registerSchema = z.object({
   organization_name: z
     .string()
@@ -23,4 +49,10 @@ export const registerSchema = z.object({
     ),
 });
 
+export const loginSchema = z.object({
+  email: workEmailValidation,
+  password: z.string().min(1, 'Password is required'),
+});
+
 export type RegisterFormData = z.infer<typeof registerSchema>;
+export type LoginFormData = z.infer<typeof loginSchema>;

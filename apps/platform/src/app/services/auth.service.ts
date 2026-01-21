@@ -13,6 +13,20 @@ export interface RegisterResponse {
   message: string;
 }
 
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  user_id: string;
+  email: string;
+  organization_id: string;
+  message?: string;
+}
+
 export interface ApiError {
   message: string;
   details?: unknown;
@@ -45,6 +59,33 @@ export class AuthService {
         throw error;
       }
       throw new Error('An unexpected error occurred during registration');
+    }
+  }
+
+  static async login(payload: LoginPayload): Promise<LoginResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Login failed',
+        }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data: LoginResponse = await response.json();
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred during login');
     }
   }
 }

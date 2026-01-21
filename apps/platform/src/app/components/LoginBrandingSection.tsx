@@ -1,0 +1,74 @@
+import * as React from 'react';
+import { CheckCircle2, Shield, TrendingUp, Zap } from 'lucide-react';
+import whiteLogo from '../../assets/White_Ciphercode.webp';
+
+export function LoginBrandingSection() {
+  return (
+    <div className="hidden lg:flex lg:flex-1 items-center justify-center p-12 bg-gradient-to-br from-[#3058EE] to-[#7D97F6] relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-1/4 -right-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-1/4 -left-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse [animation-delay:700ms]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-white/5 rounded-full blur-2xl" />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 text-center text-white space-y-8 max-w-lg">
+        {/* Logo */}
+        <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center rounded-2xl backdrop-blur-sm">
+            <img src={whiteLogo} alt="Logo" className="h-18 w-18 object-contain" />
+          </div>
+        </div>
+
+        {/* Title */}
+        <div className="space-y-3">
+          <h1 className="text-5xl font-bold tracking-tight">
+            Access Your Workspace
+          </h1>
+          <p className="text-xl text-white/90">
+            Sign in to continue managing your projects and collaborating with your team
+          </p>
+        </div>
+
+        {/* Features */}
+        <div className="space-y-4 pt-8">
+          {[
+            {
+              icon: Zap,
+              text: 'Lightning-fast performance',
+            },
+            {
+              icon: Shield,
+              text: 'Bank-level security',
+            },
+            {
+              icon: TrendingUp,
+              text: 'Real-time analytics',
+            },
+            {
+              icon: CheckCircle2,
+              text: 'Seamless integration',
+            },
+          ].map((feature, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg p-4 animate-in slide-in-from-right duration-500"
+              style={{ animationDelay: `${index * 150}ms` }}
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20">
+                <feature.icon className="h-5 w-5 text-white" />
+              </div>
+              <p className="text-lg font-medium">{feature.text}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Additional Info */}
+        <div className="pt-8 text-white/70 text-sm">
+          <p>Trusted by 10,000+ companies worldwide</p>
+        </div>
+      </div>
+    </div>
+  );
+}
