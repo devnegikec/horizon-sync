@@ -19,4 +19,17 @@ export default composePlugins(
   withNx(),
   withReact(),
   withModuleFederation(config, { dts: false }),
+  (config) => {
+    // Inject environment variables using DefinePlugin
+    const webpack = require('webpack');
+    config.plugins = config.plugins || [];
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        'process.env.NX_API_BASE_URL': JSON.stringify(
+          process.env.NX_API_BASE_URL
+        ),
+      })
+    );
+    return config;
+  }
 );
