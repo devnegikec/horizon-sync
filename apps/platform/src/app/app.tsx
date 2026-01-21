@@ -2,6 +2,8 @@ import * as React from 'react';
 import { Route, Routes } from 'react-router-dom';
 import '@horizon-sync/ui/styles/globals.css';
 import { DashboardLayout, DashboardHome } from './components';
+import { AuthGuard } from './components/AuthGuard';
+import { PublicRoute } from './components/PublicRoute';
 import { RegisterPage } from './pages/register';
 import { LoginPage } from './pages/login';
 
@@ -21,64 +23,80 @@ export function App() {
     >
       <Routes>
         {/* Public routes without dashboard layout */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <RegisterPage />
+            </PublicRoute>
+          }
+        />
 
         {/* Protected routes with dashboard layout */}
         <Route
           path="/*"
           element={
-            <DashboardLayout>
-              <Routes>
-                <Route path="/" element={<DashboardHome />} />
-                <Route path="/inventory" element={<Inventory />} />
-                <Route
-                  path="/analytics"
-                  element={
-                    <PlaceholderPage
-                      title="Analytics"
-                      description="View detailed analytics and insights"
-                    />
-                  }
-                />
-                <Route
-                  path="/users"
-                  element={
-                    <PlaceholderPage
-                      title="Users"
-                      description="Manage platform users and permissions"
-                    />
-                  }
-                />
-                <Route
-                  path="/reports"
-                  element={
-                    <PlaceholderPage
-                      title="Reports"
-                      description="Generate and view reports"
-                    />
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <PlaceholderPage
-                      title="Settings"
-                      description="Configure your platform settings"
-                    />
-                  }
-                />
-                <Route
-                  path="/help"
-                  element={
-                    <PlaceholderPage
-                      title="Help Center"
-                      description="Get help and support"
-                    />
-                  }
-                />
-              </Routes>
-            </DashboardLayout>
+            <AuthGuard>
+              <DashboardLayout>
+                <Routes>
+                  <Route path="/" element={<DashboardHome />} />
+                  <Route path="/inventory" element={<Inventory />} />
+                  <Route
+                    path="/analytics"
+                    element={
+                      <PlaceholderPage
+                        title="Analytics"
+                        description="View detailed analytics and insights"
+                      />
+                    }
+                  />
+                  <Route
+                    path="/users"
+                    element={
+                      <PlaceholderPage
+                        title="Users"
+                        description="Manage platform users and permissions"
+                      />
+                    }
+                  />
+                  <Route
+                    path="/reports"
+                    element={
+                      <PlaceholderPage
+                        title="Reports"
+                        description="Generate and view reports"
+                      />
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <PlaceholderPage
+                        title="Settings"
+                        description="Configure your platform settings"
+                      />
+                    }
+                  />
+                  <Route
+                    path="/help"
+                    element={
+                      <PlaceholderPage
+                        title="Help Center"
+                        description="Get help and support"
+                      />
+                    }
+                  />
+                </Routes>
+              </DashboardLayout>
+            </AuthGuard>
           }
         />
       </Routes>

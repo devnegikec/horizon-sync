@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, Loader2 } from 'lucide-react';
@@ -16,10 +16,13 @@ import {
 } from '@horizon-sync/ui/components/ui/card';
 import { AuthService } from '../services/auth.service';
 import { loginSchema, LoginFormData } from '../utility/validationSchema';
+import { useAuth } from '../hooks';
 import logo from '../../assets/ciphercode_logo.png';
 
 export function LoginForm() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [successMessage, setSuccessMessage] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
@@ -41,12 +44,17 @@ export function LoginForm() {
       const response = await AuthService.login(data);
       setSuccessMessage('Login successful!');
       
-      // Store token (you might want to use a more secure method)
-      localStorage.setItem('access_token', response.access_token);
+      // Store authentication state
+      login(response.access_token, {
+        user_id: response.user_id,
+        email: response.email,
+        organization_id: response.organization_id,
+      });
       
-      // Redirect to dashboard after 1 second
+      // Redirect to the page they were trying to access, or dashboard
+      const from = (location.state as any)?.from?.pathname || '/';
       setTimeout(() => {
-        navigate('/');
+        navigate(from, { replace: true });
       }, 1000);
     } catch (error) {
       if (error instanceof Error) {
