@@ -1,10 +1,12 @@
 import * as React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Bell,
   Menu,
   PanelLeftClose,
   PanelLeft,
+  LogOut,
 } from 'lucide-react';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
@@ -26,6 +28,7 @@ import {
   TooltipTrigger,
 } from '@horizon-sync/ui/components/ui/tooltip';
 import { ThemeToggle } from '@horizon-sync/ui/components/theme-toggle';
+import { useAuth } from '../hooks';
 
 interface TopbarProps {
   sidebarCollapsed: boolean;
@@ -33,6 +36,24 @@ interface TopbarProps {
 }
 
 export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  // Get user initials for avatar fallback
+  const userInitials = user?.email
+    ? user.email
+        .split('@')[0]
+        .split('.')
+        .map((part) => part[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : 'U';
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm px-4 gap-4">
       {/* Left Section */}
@@ -97,9 +118,9 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
               className="relative h-9 w-9 rounded-full ring-2 ring-transparent hover:ring-violet-500/20 transition-all"
             >
               <Avatar className="h-9 w-9">
-                <AvatarImage src="https://github.com/shadcn.png" alt="User" />
-                <AvatarFallback className="bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white text-sm font-medium">
-                  JD
+                <AvatarImage src="" alt="User" />
+                <AvatarFallback className="bg-gradient-to-br from-[#3058EE] to-[#7D97F6] text-white text-sm font-medium">
+                  {userInitials}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -107,9 +128,11 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">John Doe</p>
+                <p className="text-sm font-medium">
+                  {user?.email?.split('@')[0] || 'User'}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  john@horizonsync.io
+                  {user?.email || 'user@example.com'}
                 </p>
               </div>
             </DropdownMenuLabel>
@@ -118,7 +141,11 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
             <DropdownMenuItem>Billing</DropdownMenuItem>
             <DropdownMenuItem>Team</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive cursor-pointer"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
