@@ -1,3 +1,5 @@
+import { environment } from '../../environments/environment';
+
 export interface RegisterPayload {
   email: string;
   password: string;
@@ -32,7 +34,7 @@ export interface ApiError {
   details?: unknown;
 }
 
-const API_BASE_URL = 'http://192.168.68.102:8001/api/v1';
+const API_BASE_URL = environment.apiBaseUrl;
 
 export class AuthService {
   static async register(payload: RegisterPayload): Promise<RegisterResponse> {
