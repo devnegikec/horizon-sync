@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Zap, CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
@@ -16,6 +16,7 @@ import {
 } from '@horizon-sync/ui/components/ui/card';
 import { AuthService } from '../services/auth.service';
 import { registerSchema, RegisterFormData } from '../utility/validationSchema';
+import logo from '../../assets/ciphercode_logo.png';
 
 export function RegistrationForm() {
   const navigate = useNavigate();
@@ -59,10 +60,11 @@ export function RegistrationForm() {
     <Card className="w-full max-w-md border-none shadow-2xl">
       <CardHeader className="space-y-1 pb-6">
         <div className="flex items-center gap-2 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#3058EE] to-[#7D97F6]">
-            <Zap className="h-6 w-6 text-white" />
+          {/* Logo */}
+          <div className="flex h-20 w-20 items-center justify-center rounded-lg">
+            <img src={logo} alt="Logo" className="h-15 w-15 object-contain" />
           </div>
-          <span className="font-bold text-2xl tracking-tight bg-gradient-to-r from-[#3058EE] to-[#7D97F6] bg-clip-text text-transparent">
+          <span className="font-bold text-4xl tracking-tight bg-gradient-to-r from-[#3058EE] to-[#7D97F6] bg-clip-text text-transparent">
             Horizon Sync
           </span>
         </div>

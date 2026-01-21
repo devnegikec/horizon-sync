@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { Zap, CheckCircle2, Shield, Users } from 'lucide-react';
+import { CheckCircle2, Shield, Users } from 'lucide-react';
+import whiteLogo from '../../assets/White_Ciphercode.webp';
 
 export function BrandingSection() {
   return (
@@ -15,8 +16,8 @@ export function BrandingSection() {
       <div className="relative z-10 text-center text-white space-y-8 max-w-lg">
         {/* Logo */}
         <div className="flex items-center justify-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm shadow-2xl">
-            <Zap className="h-12 w-12 text-white" />
+          <div className="flex items-center justify-center rounded-2xl backdrop-blur-sm">
+            <img src={whiteLogo} alt="Logo" className="h-18 w-18 object-contain" />
           </div>
         </div>
 
