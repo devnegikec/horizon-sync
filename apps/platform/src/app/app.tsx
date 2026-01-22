@@ -4,8 +4,7 @@ import '@horizon-sync/ui/styles/globals.css';
 import { DashboardLayout, DashboardHome } from './components';
 import { AuthGuard } from './components/AuthGuard';
 import { PublicRoute } from './components/PublicRoute';
-import { RegisterPage } from './pages/register';
-import { LoginPage } from './pages/login';
+import { RegisterPage, LoginPage, UserManagementPage } from './pages';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 
@@ -47,26 +46,18 @@ export function App() {
             <AuthGuard>
               <DashboardLayout>
                 <Routes>
-                  <Route path="/" element={<DashboardHome />} />
-                  <Route path="/inventory" element={<Inventory />} />
-                  <Route
-                    path="/analytics"
-                    element={
-                      <PlaceholderPage
-                        title="Analytics"
-                        description="View detailed analytics and insights"
-                      />
-                    }
-                  />
-                  <Route
-                    path="/users"
-                    element={
-                      <PlaceholderPage
-                        title="Users"
-                        description="Manage platform users and permissions"
-                      />
-                    }
-                  />
+                <Route path="/" element={<DashboardHome />} />
+        <Route path="/inventory" element={<Inventory />} />
+                <Route
+                  path="/analytics"
+                  element={
+                    <PlaceholderPage
+                      title="Analytics"
+                      description="View detailed analytics and insights"
+                    />
+                  }
+                />
+                <Route path="/users" element={<UserManagementPage />} />
                   <Route
                     path="/reports"
                     element={
