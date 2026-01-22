@@ -4,7 +4,7 @@ import '@horizon-sync/ui/styles/globals.css';
 import { DashboardLayout, DashboardHome } from './components';
 import { AuthGuard } from './components/AuthGuard';
 import { PublicRoute } from './components/PublicRoute';
-import { RegisterPage, LoginPage, UserManagementPage } from './pages';
+import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage } from './pages';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 
@@ -47,7 +47,8 @@ export function App() {
               <DashboardLayout>
                 <Routes>
                 <Route path="/" element={<DashboardHome />} />
-        <Route path="/inventory" element={<Inventory />} />
+                <Route path="/inventory" element={<Inventory />} />
+                <Route path="/subscriptions" element={<SubscriptionManagementPage />} />
                 <Route
                   path="/analytics"
                   element={
