@@ -2,17 +2,32 @@ import { environment } from '../../environments/environment';
 
 export interface RegisterPayload {
   email: string;
-  password: string;
   first_name: string;
   last_name: string;
-  organization_name: string;
+  phone: string;
+  password: string;
+}
+
+export interface UserType {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  id: string;
+  display_name: string;
+  user_type: string;
+  status: string;
+  email_verified: boolean;
+  last_login_at: string | null;
+  created_at: string;
 }
 
 export interface RegisterResponse {
-  user_id: string;
-  email: string;
-  organization_id: string;
-  message: string;
+  user: UserType;
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
 }
 
 export interface LoginPayload {

@@ -16,10 +16,12 @@ import {
 } from '@horizon-sync/ui/components/ui/card';
 import { AuthService } from '../services/auth.service';
 import { registerSchema, RegisterFormData } from '../utility/validationSchema';
+import { useAuth } from '../hooks';
 import logo from '../../assets/ciphercode_logo.png';
 
 export function RegistrationForm() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [successMessage, setSuccessMessage] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
@@ -39,9 +41,16 @@ export function RegistrationForm() {
 
     try {
       const response = await AuthService.register(data);
-      setSuccessMessage(response.message || 'Registration successful!');
+      setSuccessMessage('Registration successful!');
       
-      // Redirect to login or dashboard after 2 seconds
+      // Store authentication state and log in
+      login(response.access_token, response.refresh_token, {
+        user_id: response.user.id,
+        email: response.user.email,
+        organization_id: '', // Organization is no longer part of registration
+      });
+      
+      // Redirect to dashboard after 2 seconds
       setTimeout(() => {
         navigate('/');
       }, 2000);
@@ -76,21 +85,20 @@ export function RegistrationForm() {
 
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Organization Name */}
+          {/* Email */}
           <div className="space-y-2">
-            <Label htmlFor="organization_name">
-              Organization Name <span className="text-destructive">*</span>
+            <Label htmlFor="email">
+              Email <span className="text-destructive">*</span>
             </Label>
             <Input
-              id="organization_name"
-              placeholder="Acme Corporation"
-              {...register('organization_name')}
-              className={errors.organization_name ? 'border-destructive' : ''}
+              id="email"
+              type="email"
+              placeholder="john.doe@example.com"
+              {...register('email')}
+              className={errors.email ? 'border-destructive' : ''}
             />
-            {errors.organization_name && (
-              <p className="text-sm text-destructive">
-                {errors.organization_name.message}
-              </p>
+            {errors.email && (
+              <p className="text-sm text-destructive">{errors.email.message}</p>
             )}
           </div>
 
@@ -131,20 +139,19 @@ export function RegistrationForm() {
             </div>
           </div>
 
-          {/* Email */}
+          {/* Phone */}
           <div className="space-y-2">
-            <Label htmlFor="email">
-              Email <span className="text-destructive">*</span>
+            <Label htmlFor="phone">
+              Phone <span className="text-destructive">*</span>
             </Label>
             <Input
-              id="email"
-              type="email"
-              placeholder="john.doe@example.com"
-              {...register('email')}
-              className={errors.email ? 'border-destructive' : ''}
+              id="phone"
+              placeholder="9008750493"
+              {...register('phone')}
+              className={errors.phone ? 'border-destructive' : ''}
             />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
+            {errors.phone && (
+              <p className="text-sm text-destructive">{errors.phone.message}</p>
             )}
           </div>
 
@@ -165,9 +172,25 @@ export function RegistrationForm() {
                 {errors.password.message}
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Must contain 8+ characters, uppercase, lowercase, number & special character
-            </p>
+          </div>
+
+          {/* Confirm Password */}
+          <div className="space-y-2">
+            <Label htmlFor="confirm_password">
+              Confirm Password <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="confirm_password"
+              type="password"
+              placeholder="••••••••"
+              {...register('confirm_password')}
+              className={errors.confirm_password ? 'border-destructive' : ''}
+            />
+            {errors.confirm_password && (
+              <p className="text-sm text-destructive">
+                {errors.confirm_password.message}
+              </p>
+            )}
           </div>
 
           {/* Success Message */}
