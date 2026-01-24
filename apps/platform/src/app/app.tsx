@@ -4,7 +4,14 @@ import '@horizon-sync/ui/styles/globals.css';
 import { DashboardLayout, DashboardHome } from './components';
 import { AuthGuard } from './components/AuthGuard';
 import { PublicRoute } from './components/PublicRoute';
-import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage } from './pages';
+import {
+  RegisterPage,
+  LoginPage,
+  UserManagementPage,
+  SubscriptionManagementPage,
+  ForgotPasswordPage,
+  ResetPasswordPage,
+} from './pages';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 
@@ -35,6 +42,22 @@ export function App() {
           element={
             <PublicRoute>
               <RegisterPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicRoute>
+              <ForgotPasswordPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <PublicRoute>
+              <ResetPasswordPage />
             </PublicRoute>
           }
         />

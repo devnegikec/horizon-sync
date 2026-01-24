@@ -49,6 +49,15 @@ export interface LogoutPayload {
   refresh_token: string;
 }
 
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  token: string;
+  new_password: string;
+}
+
 export interface ApiError {
   message: string;
   details?: unknown;
@@ -132,6 +141,54 @@ export class AuthService {
         throw error;
       }
       throw new Error('An unexpected error occurred during logout');
+    }
+  }
+
+  static async forgotPassword(payload: ForgotPasswordPayload): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/identity/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Failed to send reset email',
+        }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred during forgot password request');
+    }
+  }
+
+  static async resetPassword(payload: ResetPasswordPayload): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/identity/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Failed to reset password',
+        }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred during password reset');
     }
   }
 }
