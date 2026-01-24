@@ -3,13 +3,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { LoginForm } from './LoginForm';
-import { AuthService } from '../services/auth.service';
-import { useAuth } from '../hooks';
+import { LoginForm } from '@platform/app/components/LoginForm';
+import { AuthService } from '@platform/app/services/auth.service';
+import { useAuth } from '@platform/app/hooks';
 
-jest.mock('../services/auth.service');
-jest.mock('../hooks');
-jest.mock('../../assets/ciphercode_logo.png', () => 'mock-logo.png');
+jest.mock('@platform/app/services/auth.service');
+jest.mock('@platform/app/hooks');
+jest.mock('../../../assets/ciphercode_logo.png', () => 'mock-logo.png');
 
 describe('LoginForm', () => {
   const mockLogin = jest.fn();
