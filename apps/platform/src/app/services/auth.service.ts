@@ -39,7 +39,7 @@ const API_BASE_URL = environment.apiBaseUrl;
 export class AuthService {
   static async register(payload: RegisterPayload): Promise<RegisterResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      const response = await fetch(`${API_BASE_URL}/identity/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ export class AuthService {
 
   static async login(payload: LoginPayload): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/identity/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

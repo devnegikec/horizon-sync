@@ -3,7 +3,7 @@ import { mockUsers } from './data/users';
 import { mockSubscriptions } from './data/subscriptions';
 import { UsersResponse, InviteUserResponse } from '../services/user.service';
 
-const API_BASE_URL = process.env['NX_API_BASE_URL'] || 'http://localhost:8001/api/v1';
+const API_BASE_URL = process.env['NX_API_BASE_URL'] || 'http://localhost:8000/api/v1';
 
 export const handlers = [
   // GET /api/v1/users - Get paginated users
@@ -67,7 +67,7 @@ export const handlers = [
   http.post(`${API_BASE_URL}/subscriptions`, async ({ request }) => {
     const body = await request.json();
     console.log('🔵 MSW: POST /subscriptions', body);
-    
+
     // Create a new subscription based on the request
     const newSubscription = {
       ...mockSubscriptions[0],
@@ -83,7 +83,7 @@ export const handlers = [
       starts_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
     };
-    
+
     return HttpResponse.json(newSubscription, { status: 201 });
   }),
 
