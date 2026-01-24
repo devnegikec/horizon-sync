@@ -45,7 +45,7 @@ export function LoginForm() {
       setSuccessMessage('Login successful!');
       
       // Store authentication state
-      login(response.access_token, {
+      login(response.access_token, response.refresh_token, {
         user_id: response.user_id,
         email: response.email,
         organization_id: response.organization_id,

@@ -22,11 +22,16 @@ export interface LoginPayload {
 
 export interface LoginResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
   user_id: string;
   email: string;
   organization_id: string;
   message?: string;
+}
+
+export interface LogoutPayload {
+  refresh_token: string;
 }
 
 export interface ApiError {
@@ -88,6 +93,30 @@ export class AuthService {
         throw error;
       }
       throw new Error('An unexpected error occurred during login');
+    }
+  }
+
+  static async logout(payload: LogoutPayload): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/identity/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Logout failed',
+        }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred during logout');
     }
   }
 }
