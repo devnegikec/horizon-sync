@@ -21,10 +21,12 @@ import logo from '../../assets/ciphercode_logo.png';
 export function ResetPasswordForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [successMessage, setSuccessMessage] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
+  
+  // Check token once at mount to avoid re-checking on every render
+  const [initialToken] = React.useState(() => searchParams.get('token'));
 
   const {
     register,
@@ -35,6 +37,7 @@ export function ResetPasswordForm() {
   });
 
   const onSubmit = async (data: ResetPasswordFormData) => {
+    const token = searchParams.get('token');
     if (!token) {
       setErrorMessage('Reset token is missing. Please request a new password reset link.');
       return;
@@ -64,7 +67,7 @@ export function ResetPasswordForm() {
     }
   };
 
-  if (!token) {
+  if (!initialToken) {
     return (
       <Card className="w-full max-w-md border-none shadow-2xl">
         <CardHeader>
@@ -100,7 +103,7 @@ export function ResetPasswordForm() {
       </CardHeader>
 
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="password">
               New Password <span className="text-destructive">*</span>
