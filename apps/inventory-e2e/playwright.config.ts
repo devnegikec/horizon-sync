@@ -1,6 +1,5 @@
-import { defineConfig, devices } from '@playwright/test';
 import { nxE2EPreset } from '@nx/playwright/preset';
-import { workspaceRoot } from '@nx/devkit';
+import { defineConfig, devices } from '@playwright/test';
 
 // For CI, you may want to set BASE_URL to the deployed application.
 const baseURL = process.env['BASE_URL'] || 'http://localhost:4201';
@@ -27,7 +26,6 @@ export default defineConfig({
     command: 'npx nx run inventory:serve-static',
     url: 'http://localhost:4201',
     reuseExistingServer: true,
-    cwd: workspaceRoot,
   },
   projects: [
     {

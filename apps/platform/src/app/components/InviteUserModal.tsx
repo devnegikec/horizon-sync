@@ -1,8 +1,12 @@
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { UserPlus, Send, Package, CreditCard, Users2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+
+import { Button } from '@horizon-sync/ui/components/ui/button';
+import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@horizon-sync/ui/components/ui/dialog';
-import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import {
@@ -21,9 +24,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
-import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
-import { UserService, InviteUserPayload } from '../services/user.service';
+
 import { useAuth } from '../hooks';
+import { UserService, InviteUserPayload } from '../services/user.service';
 
 const inviteUserSchema = z.object({
   email: z.string().email('Please enter a valid email address'),

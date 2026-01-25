@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import {
   Search,
   Bell,
@@ -8,12 +8,15 @@ import {
   PanelLeft,
   LogOut,
 } from 'lucide-react';
-import { Button } from '@horizon-sync/ui/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+
+import { ThemeToggle } from '@horizon-sync/ui/components/theme-toggle';
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from '@horizon-sync/ui/components/ui/avatar';
+import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +30,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@horizon-sync/ui/components/ui/tooltip';
-import { ThemeToggle } from '@horizon-sync/ui/components/theme-toggle';
+
+
 import { useAuth } from '../hooks';
 
 interface TopbarProps {

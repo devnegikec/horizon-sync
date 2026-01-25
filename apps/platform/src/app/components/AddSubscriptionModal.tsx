@@ -1,4 +1,8 @@
 import * as React from 'react';
+
+import { Plus } from 'lucide-react';
+
+import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,7 +12,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@horizon-sync/ui/components/ui/dialog';
-import { Button } from '@horizon-sync/ui/components/ui/button';
+import { Label } from '@horizon-sync/ui/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -16,10 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
-import { Label } from '@horizon-sync/ui/components/ui/label';
-import { Plus } from 'lucide-react';
-import { SubscriptionService } from '../services/subscription.service';
+
 import { useAuth } from '../hooks';
+import { SubscriptionService } from '../services/subscription.service';
 
 interface AddSubscriptionModalProps {
   onSuccess?: () => void;

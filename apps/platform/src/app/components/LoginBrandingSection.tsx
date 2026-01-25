@@ -1,5 +1,7 @@
 import * as React from 'react';
+
 import { CheckCircle2, Shield, TrendingUp, Zap } from 'lucide-react';
+
 import whiteLogo from '../../assets/White_Ciphercode.webp';
 
 export function LoginBrandingSection() {

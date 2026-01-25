@@ -1,11 +1,11 @@
 import * as React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { useNavigate, useLocation } from 'react-router-dom';
+
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Input } from '@horizon-sync/ui/components/ui/input';
-import { Label } from '@horizon-sync/ui/components/ui/label';
 import {
   Card,
   CardContent,
@@ -14,10 +14,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@horizon-sync/ui/components/ui/card';
+import { Input } from '@horizon-sync/ui/components/ui/input';
+import { Label } from '@horizon-sync/ui/components/ui/label';
+
+import logo from '../../assets/ciphercode_logo.png';
+import { useAuth } from '../hooks';
 import { AuthService } from '../services/auth.service';
 import { loginSchema, LoginFormData } from '../utility/validationSchema';
-import { useAuth } from '../hooks';
-import logo from '../../assets/ciphercode_logo.png';
 
 export function LoginForm() {
   const navigate = useNavigate();
@@ -52,7 +55,7 @@ export function LoginForm() {
       });
       
       // Redirect to the page they were trying to access, or dashboard
-      const from = (location.state as any)?.from?.pathname || '/';
+      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
       setTimeout(() => {
         navigate(from, { replace: true });
       }, 1000);
@@ -187,7 +190,7 @@ export function LoginForm() {
 
         {/* Sign up link */}
         <div className="text-sm text-center text-muted-foreground">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <a
             href="/register"
             className="text-[#3058EE] hover:opacity-80 font-medium underline-offset-4 hover:underline"

@@ -1,7 +1,9 @@
 import { http, HttpResponse } from 'msw';
-import { mockUsers } from './data/users';
-import { mockSubscriptions } from './data/subscriptions';
+
 import { UsersResponse, InviteUserResponse } from '../services/user.service';
+
+import { mockSubscriptions } from './data/subscriptions';
+import { mockUsers } from './data/users';
 
 const API_BASE_URL = process.env['NX_API_BASE_URL'] || 'http://localhost:8000/api/v1';
 
@@ -40,13 +42,13 @@ export const handlers = [
 
   // POST /api/v1/users/invite - Invite a new user
   http.post(`${API_BASE_URL}/users/invite`, async ({ request }) => {
-    const body = await request.json();
+    const body = (await request.json()) as { email: string };
     console.log('🔵 MSW: POST /users/invite', body);
 
     // Simulate invitation response
     const response: InviteUserResponse = {
       invitation_id: crypto.randomUUID(),
-      email: (body as any).email,
+      email: body.email,
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
       invitation_url: `https://app.horizonsync.com/accept-invitation?token=${crypto.randomUUID()}`,
     };
@@ -65,7 +67,7 @@ export const handlers = [
 
   // POST /api/v1/subscriptions - Create new subscription
   http.post(`${API_BASE_URL}/subscriptions`, async ({ request }) => {
-    const body = await request.json();
+    const body = (await request.json()) as { plan_code: string; billing_cycle: string };
     console.log('🔵 MSW: POST /subscriptions', body);
 
     // Create a new subscription based on the request
@@ -75,11 +77,11 @@ export const handlers = [
       status: 'active',
       plan: {
         id: crypto.randomUUID(),
-        name: (body as any).plan_code === 'pro' ? 'Professional Plan' : 'Basic Plan',
-        code: (body as any).plan_code,
-        plan_type: (body as any).plan_code,
+        name: body.plan_code === 'pro' ? 'Professional Plan' : 'Basic Plan',
+        code: body.plan_code,
+        plan_type: body.plan_code,
       },
-      billing_cycle: (body as any).billing_cycle,
+      billing_cycle: body.billing_cycle,
       starts_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
     };
@@ -89,14 +91,14 @@ export const handlers = [
 
   // POST /api/v1/auth/login - Login endpoint
   http.post(`${API_BASE_URL}/auth/login`, async ({ request }) => {
-    const body = await request.json();
+    const body = (await request.json()) as { email: string };
     console.log('🔵 MSW: POST /auth/login', body);
 
     const response = {
       access_token: 'mock_access_token_' + Date.now(),
       token_type: 'Bearer',
       user_id: mockUsers[0].id,
-      email: (body as any).email,
+      email: body.email,
       organization_id: '550e8400-e29b-41d4-a716-446655440000',
       message: 'Login successful',
     };
@@ -108,12 +110,12 @@ export const handlers = [
 
   // POST /api/v1/auth/register - Register endpoint
   http.post(`${API_BASE_URL}/auth/register`, async ({ request }) => {
-    const body = await request.json();
+    const body = (await request.json()) as { email: string };
     console.log('🔵 MSW: POST /auth/register', body);
 
     const response = {
       user_id: crypto.randomUUID(),
-      email: (body as any).email,
+      email: body.email,
       organization_id: crypto.randomUUID(),
       message: 'User registered successfully',
     };

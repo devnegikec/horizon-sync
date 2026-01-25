@@ -1,11 +1,11 @@
 import * as React from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Input } from '@horizon-sync/ui/components/ui/input';
-import { Label } from '@horizon-sync/ui/components/ui/label';
 import {
   Card,
   CardContent,
@@ -14,9 +14,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@horizon-sync/ui/components/ui/card';
+import { Input } from '@horizon-sync/ui/components/ui/input';
+import { Label } from '@horizon-sync/ui/components/ui/label';
+
+import logo from '../../assets/ciphercode_logo.png';
 import { AuthService } from '../services/auth.service';
 import { resetPasswordSchema, ResetPasswordFormData } from '../utility/validationSchema';
-import logo from '../../assets/ciphercode_logo.png';
 
 export function ResetPasswordForm() {
   const navigate = useNavigate();

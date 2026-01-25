@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -9,9 +10,10 @@ import {
   TrendingUp,
   Calendar,
 } from 'lucide-react';
-import { cn } from '@horizon-sync/ui/lib';
+
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
+import { cn } from '@horizon-sync/ui/lib';
 
 interface StatCardProps {
   title: string;
@@ -154,7 +156,7 @@ export function DashboardHome() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground mt-1">
-            Welcome back! Here's an overview of your platform.
+            Welcome back! Here&apos;s an overview of your platform.
           </p>
         </div>
         <div className="flex items-center gap-3">

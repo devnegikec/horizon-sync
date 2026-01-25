@@ -1,8 +1,8 @@
 import * as React from 'react';
+
 import {
   CreditCard,
   Users,
-  HardDrive,
   Activity,
   Calendar,
   DollarSign,
@@ -10,9 +10,11 @@ import {
   TrendingUp,
   Download,
 } from 'lucide-react';
+
+import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
-import { Badge } from '@horizon-sync/ui/components/ui/badge';
+import { Input } from '@horizon-sync/ui/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -20,12 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
-import { Input } from '@horizon-sync/ui/components/ui/input';
-import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { cn } from '@horizon-sync/ui/lib';
-import { SubscriptionService, Subscription } from '../services/subscription.service';
-import { useAuth } from '../hooks';
+
 import { AddSubscriptionModal } from '../components/AddSubscriptionModal';
+import { useAuth } from '../hooks';
+import { SubscriptionService, Subscription } from '../services/subscription.service';
 
 interface StatCardProps {
   title: string;

@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import {
   Users,
   UserCheck,
@@ -11,7 +12,21 @@ import {
   MoreHorizontal,
   Clock,
 } from 'lucide-react';
+
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from '@horizon-sync/ui/components/ui/avatar';
+import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
+import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@horizon-sync/ui/components/ui/dropdown-menu';
 import {
   Table,
   TableBody,
@@ -20,23 +35,11 @@ import {
   TableHeader,
   TableRow,
 } from '@horizon-sync/ui/components/ui/table';
-import { Badge } from '@horizon-sync/ui/components/ui/badge';
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '@horizon-sync/ui/components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@horizon-sync/ui/components/ui/dropdown-menu';
-import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { cn } from '@horizon-sync/ui/lib';
-import { UserService, User } from '../services/user.service';
-import { useAuth } from '../hooks';
+
 import { InviteUserModal } from '../components/InviteUserModal';
+import { useAuth } from '../hooks';
+import { UserService, User } from '../services/user.service';
 
 interface StatCardProps {
   title: string;

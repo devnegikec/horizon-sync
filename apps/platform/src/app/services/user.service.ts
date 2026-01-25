@@ -50,8 +50,8 @@ const API_BASE_URL = environment.apiBaseUrl;
 
 export class UserService {
   static async getUsers(
-    page: number = 1,
-    pageSize: number = 20,
+    page = 1,
+    pageSize = 20,
     token: string
   ): Promise<UsersResponse> {
     try {

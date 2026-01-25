@@ -1,11 +1,13 @@
 import * as React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+
+import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
+
 import { RegistrationForm } from '@platform/app/components/RegistrationForm';
-import { AuthService } from '@platform/app/services/auth.service';
 import { useAuth } from '@platform/app/hooks';
+import { AuthService } from '@platform/app/services/auth.service';
 
 // Mock dependencies
 jest.mock('@platform/app/services/auth.service');

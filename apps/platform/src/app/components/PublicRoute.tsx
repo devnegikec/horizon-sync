@@ -1,5 +1,7 @@
 import * as React from 'react';
+
 import { Navigate } from 'react-router-dom';
+
 import { useAuth } from '../hooks';
 
 interface PublicRouteProps {
@@ -19,5 +21,5 @@ export function PublicRoute({ children }: PublicRouteProps) {
   }
 
   // User is not authenticated, render the public page (login/register)
-  return <>{children}</>;
+  return children as React.ReactElement;
 }

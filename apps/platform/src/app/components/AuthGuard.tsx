@@ -1,5 +1,7 @@
 import * as React from 'react';
+
 import { Navigate, useLocation } from 'react-router-dom';
+
 import { useAuth } from '../hooks';
 
 interface AuthGuardProps {
@@ -17,5 +19,5 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   // User is authenticated, render the protected content
-  return <>{children}</>;
+  return children as React.ReactElement;
 }
