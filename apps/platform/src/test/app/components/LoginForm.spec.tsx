@@ -1,11 +1,13 @@
 import * as React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
 import { LoginForm } from '@platform/app/components/LoginForm';
-import { AuthService } from '@platform/app/services/auth.service';
 import { useAuth } from '@platform/app/hooks';
+import { AuthService } from '@platform/app/services/auth.service';
 
 jest.mock('@platform/app/services/auth.service');
 jest.mock('@platform/app/hooks');
@@ -13,7 +15,6 @@ jest.mock('../../../assets/ciphercode_logo.png', () => 'mock-logo.png');
 
 describe('LoginForm', () => {
   const mockLogin = jest.fn();
-  const mockNavigate = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();

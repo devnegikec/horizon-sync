@@ -1,8 +1,10 @@
 import * as React from 'react';
+
+import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
+import { TooltipProvider } from '@horizon-sync/ui/components/ui/tooltip';
+
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
-import { TooltipProvider } from '@horizon-sync/ui/components/ui/tooltip';
-import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;

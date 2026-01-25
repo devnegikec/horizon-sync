@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+
 import {
   LayoutDashboard,
   Package,
@@ -11,13 +11,16 @@ import {
   Zap,
   CreditCard,
 } from 'lucide-react';
-import { cn } from '@horizon-sync/ui/lib';
+import { Link, useLocation } from 'react-router-dom';
+
+import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@horizon-sync/ui/components/ui/tooltip';
-import { Separator } from '@horizon-sync/ui/components/ui/separator';
+import { cn } from '@horizon-sync/ui/lib';
+
 
 interface NavItem {
   title: string;
@@ -40,11 +43,10 @@ const bottomNavItems: NavItem[] = [
 ];
 
 interface SidebarProps {
-  collapsed?: boolean;
-  onToggle?: () => void;
+  collapsed?: boolean
 }
 
-export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed = false }: SidebarProps) {
   const location = useLocation();
 
   return (

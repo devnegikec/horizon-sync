@@ -25,6 +25,29 @@ export default [
         'error',
         {
           groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+          pathGroups: [
+            {
+              pattern: 'react',
+              group: 'builtin',
+              position: 'before',
+            },
+            {
+              pattern: '@horizon-sync/**',
+              group: 'internal',
+              position: 'before',
+            },
+            {
+              pattern: '@platform/**',
+              group: 'internal',
+              position: 'before',
+            },
+            {
+              pattern: '@inventory/**',
+              group: 'internal',
+              position: 'before',
+            },
+          ],
+          pathGroupsExcludedImportTypes: ['react'],
           'newlines-between': 'always',
           alphabetize: { order: 'asc', caseInsensitive: true },
         },

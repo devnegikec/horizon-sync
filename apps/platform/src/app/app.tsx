@@ -1,5 +1,7 @@
 import * as React from 'react';
+
 import { Route, Routes } from 'react-router-dom';
+
 import '@horizon-sync/ui/styles/globals.css';
 import { DashboardLayout, DashboardHome } from './components';
 import { AuthGuard } from './components/AuthGuard';

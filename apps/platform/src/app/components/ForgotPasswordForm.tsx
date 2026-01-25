@@ -1,11 +1,11 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, Loader2, ArrowLeft } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
+
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Input } from '@horizon-sync/ui/components/ui/input';
-import { Label } from '@horizon-sync/ui/components/ui/label';
 import {
   Card,
   CardContent,
@@ -14,9 +14,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@horizon-sync/ui/components/ui/card';
+import { Input } from '@horizon-sync/ui/components/ui/input';
+import { Label } from '@horizon-sync/ui/components/ui/label';
+
+import logo from '../../assets/ciphercode_logo.png';
 import { AuthService } from '../services/auth.service';
 import { forgotPasswordSchema, ForgotPasswordFormData } from '../utility/validationSchema';
-import logo from '../../assets/ciphercode_logo.png';
 
 export function ForgotPasswordForm() {
   const navigate = useNavigate();
@@ -64,7 +67,7 @@ export function ForgotPasswordForm() {
         </div>
         <CardTitle className="text-2xl">Forgot Password</CardTitle>
         <CardDescription>
-          Enter your email address and we'll send you a link to reset your password
+          Enter your email address and we&apos;ll send you a link to reset your password
         </CardDescription>
       </CardHeader>
 

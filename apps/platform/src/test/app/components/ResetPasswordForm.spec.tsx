@@ -1,8 +1,10 @@
 import * as React from 'react';
+
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, useSearchParams } from 'react-router-dom';
+
 import { ResetPasswordForm } from '@platform/app/components/ResetPasswordForm';
 import { AuthService } from '@platform/app/services/auth.service';
 
@@ -11,7 +13,6 @@ jest.mock('@platform/app/services/auth.service');
 jest.mock('../../../assets/ciphercode_logo.png', () => 'mock-logo.png');
 
 const mockNavigate = jest.fn();
-const mockSearchParams = new URLSearchParams();
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => mockNavigate,
@@ -173,7 +174,7 @@ describe('ResetPasswordForm', () => {
       toString: jest.fn(),
     };
     
-    (useSearchParams as jest.Mock).mockReturnValue([mockSearchParams as any, jest.fn()]);
+    (useSearchParams as jest.Mock).mockReturnValue([mockSearchParams as unknown as URLSearchParams, jest.fn()]);
     
     renderForm();
     
