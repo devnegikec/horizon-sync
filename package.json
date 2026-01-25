@@ -16,7 +16,17 @@
     "format:check:platform": "nx format:check platform",
     "format:check:inventory": "nx format:check inventory",
     "format:check:all": "nx format:check",
-    "format:write:all": "nx format:write"
+    "format:write:all": "nx format:write",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,ts,jsx,tsx,json,css,scss}": [
+      "prettier --write"
+    ],
+    "*.{js,ts,jsx,tsx}": [
+      "eslint --fix",
+      "nx affected:test --files"
+    ]
   },
   "private": true,
   "devDependencies": {
@@ -64,11 +74,13 @@
     "eslint-plugin-playwright": "^1.6.2",
     "eslint-plugin-react": "7.35.0",
     "eslint-plugin-react-hooks": "5.0.0",
+    "husky": "^9.1.7",
     "jest": "^30.0.2",
     "jest-environment-jsdom": "^30.0.2",
     "jest-util": "^30.0.2",
     "jiti": "2.4.2",
     "jsdom": "~22.1.0",
+    "lint-staged": "^16.2.7",
     "msw": "^2.12.7",
     "nx": "22.3.3",
     "postcss": "^8.4.38",
