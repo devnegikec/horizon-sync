@@ -2,17 +2,32 @@ import { environment } from '../../environments/environment';
 
 export interface RegisterPayload {
   email: string;
-  password: string;
   first_name: string;
   last_name: string;
-  organization_name: string;
+  phone: string;
+  password: string;
+}
+
+export interface UserType {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  id: string;
+  display_name: string;
+  user_type: string;
+  status: string;
+  email_verified: boolean;
+  last_login_at: string | null;
+  created_at: string;
 }
 
 export interface RegisterResponse {
-  user_id: string;
-  email: string;
-  organization_id: string;
-  message: string;
+  user: UserType;
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
 }
 
 export interface LoginPayload {
@@ -22,11 +37,25 @@ export interface LoginPayload {
 
 export interface LoginResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
   user_id: string;
   email: string;
   organization_id: string;
   message?: string;
+}
+
+export interface LogoutPayload {
+  refresh_token: string;
+}
+
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  token: string;
+  new_password: string;
 }
 
 export interface ApiError {
@@ -39,7 +68,7 @@ const API_BASE_URL = environment.apiBaseUrl;
 export class AuthService {
   static async register(payload: RegisterPayload): Promise<RegisterResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      const response = await fetch(`${API_BASE_URL}/identity/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,7 +95,7 @@ export class AuthService {
 
   static async login(payload: LoginPayload): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/identity/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -88,6 +117,78 @@ export class AuthService {
         throw error;
       }
       throw new Error('An unexpected error occurred during login');
+    }
+  }
+
+  static async logout(payload: LogoutPayload): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/identity/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Logout failed',
+        }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred during logout');
+    }
+  }
+
+  static async forgotPassword(payload: ForgotPasswordPayload): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/identity/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Failed to send reset email',
+        }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred during forgot password request');
+    }
+  }
+
+  static async resetPassword(payload: ResetPasswordPayload): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/identity/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Failed to reset password',
+        }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred during password reset');
     }
   }
 }
