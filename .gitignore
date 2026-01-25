@@ -12,6 +12,7 @@ node_modules
 /.idea
 .project
 .classpath
+.kombai
 .c9/
 *.launch
 .settings/
