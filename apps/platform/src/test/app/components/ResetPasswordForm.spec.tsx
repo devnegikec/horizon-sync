@@ -53,8 +53,8 @@ describe('ResetPasswordForm', () => {
 
   it('2. should render reset password form when token is present', () => {
     renderForm();
-    expect(screen.getByRole('heading', { name: /reset password/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/new password/i)).toBeInTheDocument();
+    expect(screen.getByText('Reset Password', { selector: 'div' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/^new password/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/confirm new password/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /reset password/i })).toBeInTheDocument();
   });

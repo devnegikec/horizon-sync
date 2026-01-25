@@ -43,11 +43,11 @@ describe('ForgotPasswordForm', () => {
   });
 
   it('2. should show validation error for invalid email', async () => {
+    const user = userEvent.setup();
     renderForm();
     
-    const emailInput = screen.getByLabelText(/email address/i);
-    fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
-    fireEvent.click(screen.getByRole('button', { name: /send reset link/i }));
+    await user.type(screen.getByLabelText(/email address/i), 'invalid-email');
+    await user.click(screen.getByRole('button', { name: /send reset link/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/please enter a valid email address/i)).toBeInTheDocument();
