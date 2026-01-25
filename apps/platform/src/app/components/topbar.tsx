@@ -1,21 +1,10 @@
 import * as React from 'react';
 
-import {
-  Search,
-  Bell,
-  Menu,
-  PanelLeftClose,
-  PanelLeft,
-  LogOut,
-} from 'lucide-react';
+import { Search, Bell, Menu, PanelLeftClose, PanelLeft, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { ThemeToggle } from '@horizon-sync/ui/components/theme-toggle';
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '@horizon-sync/ui/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@horizon-sync/ui/components/ui/avatar';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
   DropdownMenu,
@@ -25,21 +14,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@horizon-sync/ui/components/ui/tooltip';
-
+import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 
 import { useAuth } from '../hooks';
 
 interface TopbarProps {
   sidebarCollapsed: boolean;
+  sidebarOpen: boolean;
+  isMobile: boolean;
   onToggleSidebar: () => void;
 }
 
-export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
+export function Topbar({ sidebarCollapsed, sidebarOpen, isMobile, onToggleSidebar }: TopbarProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -62,6 +48,7 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
     <header className="flex h-16 items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm px-4 gap-4">
       {/* Left Section */}
       <div className="flex items-center gap-3">
+        {/* Desktop Toggle */}
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <Button
@@ -82,7 +69,8 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
           </TooltipContent>
         </Tooltip>
 
-        <Button variant="ghost" size="icon" className="md:hidden">
+        {/* Mobile Toggle */}
+        <Button variant="ghost" size="icon" className="md:hidden" onClick={onToggleSidebar}>
           <Menu className="h-5 w-5" />
         </Button>
 
@@ -132,12 +120,8 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">
-                  {user?.email?.split('@')[0] || 'User'}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {user?.email || 'user@example.com'}
-                </p>
+                <p className="text-sm font-medium">{user?.email?.split('@')[0] || 'User'}</p>
+                <p className="text-xs text-muted-foreground">{user?.email || 'user@example.com'}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
