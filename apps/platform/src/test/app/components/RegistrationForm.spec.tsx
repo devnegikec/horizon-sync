@@ -8,10 +8,16 @@ import { BrowserRouter } from 'react-router-dom';
 import { RegistrationForm } from '@platform/app/components/RegistrationForm';
 import { useAuth } from '@platform/app/hooks';
 import { AuthService } from '@platform/app/services/auth.service';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 // Mock dependencies
 jest.mock('@platform/app/services/auth.service');
-jest.mock('@platform/app/hooks');
+jest.mock('@platform/app/hooks', () => ({
+  useAuth: jest.fn(),
+}));
+jest.mock('@horizon-sync/ui/hooks/use-toast', () => ({
+  useToast: jest.fn(),
+}));
 jest.mock('../../../assets/ciphercode_logo.png', () => 'mock-logo.png');
 
 const mockNavigate = jest.fn();
@@ -22,11 +28,13 @@ jest.mock('react-router-dom', () => ({
 
 describe('RegistrationForm', () => {
   const mockLogin = jest.fn();
+  const mockToast = jest.fn();
 
   beforeEach(() => {
+    jest.useFakeTimers();
     jest.clearAllMocks();
     (useAuth as jest.Mock).mockReturnValue({ login: mockLogin });
-    jest.useFakeTimers();
+    (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
   });
 
   afterEach(() => {
@@ -114,7 +122,10 @@ describe('RegistrationForm', () => {
         email: 'john@example.com',
         organization_id: '',
       });
-      expect(screen.getByText('Registration successful!')).toBeInTheDocument();
+      expect(mockToast).toHaveBeenCalledWith({
+        title: 'Registration successful!',
+        description: 'Your account has been created successfully.',
+      });
     });
   });
 
@@ -128,7 +139,11 @@ describe('RegistrationForm', () => {
     await user.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(errorMessage)).toBeInTheDocument();
+      expect(mockToast).toHaveBeenCalledWith({
+        variant: 'destructive',
+        title: 'Registration failed',
+        description: errorMessage,
+      });
     });
   });
 });
