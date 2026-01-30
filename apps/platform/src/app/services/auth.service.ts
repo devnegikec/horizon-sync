@@ -83,7 +83,14 @@ async function handleApiError(response: Response): Promise<never> {
     const errorData: ApiErrorResponse = await response.json();
     const message = errorData?.detail?.message || `HTTP error! status: ${response.status}`;
     throw new Error(message);
-  } catch {
+  } catch (parseError) {
+    // If the error is already an Error (from the throw above), re-throw it
+    if (
+      parseError instanceof Error &&
+      parseError.message !== `HTTP error! status: ${response.status}`
+    ) {
+      throw parseError;
+    }
     // If JSON parsing fails, throw a generic error
     throw new Error(`HTTP error! status: ${response.status}`);
   }
