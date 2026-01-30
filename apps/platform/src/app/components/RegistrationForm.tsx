@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,6 +16,7 @@ import {
 } from '@horizon-sync/ui/components/ui/card';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import logo from '../../assets/ciphercode_logo.png';
 import { useAuth } from '../hooks';
@@ -25,9 +26,8 @@ import { registerSchema, RegisterFormData } from '../utility/validationSchema';
 export function RegistrationForm() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [successMessage, setSuccessMessage] = React.useState('');
-  const [errorMessage, setErrorMessage] = React.useState('');
 
   const {
     register,
@@ -39,12 +39,14 @@ export function RegistrationForm() {
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsSubmitting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
 
     try {
       const response = await AuthService.register(data);
-      setSuccessMessage('Registration successful!');
+      
+      toast({
+        title: 'Registration successful!',
+        description: 'Your account has been created successfully.',
+      });
 
       // Store authentication state and log in
       login(response.access_token, response.refresh_token, {
@@ -58,11 +60,11 @@ export function RegistrationForm() {
         navigate('/login');
       }, 2000);
     } catch (error) {
-      if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('An unexpected error occurred. Please try again.');
-      }
+      toast({
+        variant: 'destructive',
+        title: 'Registration failed',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -189,24 +191,6 @@ export function RegistrationForm() {
               <p className="text-sm text-destructive">{errors.confirm_password.message}</p>
             )}
           </div>
-
-          {/* Success Message */}
-          {successMessage && (
-            <div
-              data-testid="registration-success-message"
-              className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-            >
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <p className="text-sm">{successMessage}</p>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {errorMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
-              <p className="text-sm">{errorMessage}</p>
-            </div>
-          )}
 
           {/* Submit Button */}
           <Button

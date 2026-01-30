@@ -1,4 +1,4 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { Page, Locator } from '@playwright/test';
 
 export class RegistrationPage {
   readonly page: Page;
@@ -20,7 +20,7 @@ export class RegistrationPage {
     this.passwordInput = page.getByTestId('registration-password');
     this.confirmPasswordInput = page.getByTestId('registration-confirm-password');
     this.submitButton = page.getByTestId('registration-submit-button');
-    this.successMessage = page.getByTestId('registration-success-message');
+    this.successMessage = page.getByTestId('toast-title').filter({ hasText: 'Registration successful!' });
   }
 
   async goto() {
