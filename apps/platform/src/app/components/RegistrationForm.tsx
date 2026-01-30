@@ -45,17 +45,17 @@ export function RegistrationForm() {
     try {
       const response = await AuthService.register(data);
       setSuccessMessage('Registration successful!');
-      
+
       // Store authentication state and log in
       login(response.access_token, response.refresh_token, {
         user_id: response.user.id,
         email: response.user.email,
         organization_id: '', // Organization is no longer part of registration
       });
-      
-      // Redirect to dashboard after 2 seconds
+
+      // Redirect to login after 2 seconds
       setTimeout(() => {
-        navigate('/');
+        navigate('/login');
       }, 2000);
     } catch (error) {
       if (error instanceof Error) {
@@ -99,10 +99,9 @@ export function RegistrationForm() {
               placeholder="john.doe@example.com"
               {...register('email')}
               className={errors.email ? 'border-destructive' : ''}
+              data-testid="registration-email"
             />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
+            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
 
           {/* First Name and Last Name - Same Row */}
@@ -116,11 +115,10 @@ export function RegistrationForm() {
                 placeholder="John"
                 {...register('first_name')}
                 className={errors.first_name ? 'border-destructive' : ''}
+                data-testid="registration-first-name"
               />
               {errors.first_name && (
-                <p className="text-sm text-destructive">
-                  {errors.first_name.message}
-                </p>
+                <p className="text-sm text-destructive">{errors.first_name.message}</p>
               )}
             </div>
 
@@ -133,11 +131,10 @@ export function RegistrationForm() {
                 placeholder="Doe"
                 {...register('last_name')}
                 className={errors.last_name ? 'border-destructive' : ''}
+                data-testid="registration-last-name"
               />
               {errors.last_name && (
-                <p className="text-sm text-destructive">
-                  {errors.last_name.message}
-                </p>
+                <p className="text-sm text-destructive">{errors.last_name.message}</p>
               )}
             </div>
           </div>
@@ -152,10 +149,9 @@ export function RegistrationForm() {
               placeholder="9008750493"
               {...register('phone')}
               className={errors.phone ? 'border-destructive' : ''}
+              data-testid="registration-phone"
             />
-            {errors.phone && (
-              <p className="text-sm text-destructive">{errors.phone.message}</p>
-            )}
+            {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
           </div>
 
           {/* Password */}
@@ -169,11 +165,10 @@ export function RegistrationForm() {
               placeholder="••••••••"
               {...register('password')}
               className={errors.password ? 'border-destructive' : ''}
+              data-testid="registration-password"
             />
             {errors.password && (
-              <p className="text-sm text-destructive">
-                {errors.password.message}
-              </p>
+              <p className="text-sm text-destructive">{errors.password.message}</p>
             )}
           </div>
 
@@ -188,17 +183,19 @@ export function RegistrationForm() {
               placeholder="••••••••"
               {...register('confirm_password')}
               className={errors.confirm_password ? 'border-destructive' : ''}
+              data-testid="registration-confirm-password"
             />
             {errors.confirm_password && (
-              <p className="text-sm text-destructive">
-                {errors.confirm_password.message}
-              </p>
+              <p className="text-sm text-destructive">{errors.confirm_password.message}</p>
             )}
           </div>
 
           {/* Success Message */}
           {successMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+            <div
+              data-testid="registration-success-message"
+              className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+            >
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <p className="text-sm">{successMessage}</p>
             </div>
@@ -216,6 +213,7 @@ export function RegistrationForm() {
             type="submit"
             className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
             disabled={isSubmitting}
+            data-testid="registration-submit-button"
           >
             {isSubmitting ? (
               <>

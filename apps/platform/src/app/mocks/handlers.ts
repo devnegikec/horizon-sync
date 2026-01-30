@@ -7,6 +7,8 @@ import { mockUsers } from './data/users';
 
 const API_BASE_URL = process.env['NX_API_BASE_URL'] || 'http://localhost:8000/api/v1';
 
+console.log('🔵 MSW: Using API_BASE_URL =', process.env['NX_NODE_ENV']);
+
 export const handlers = [
   // GET /api/v1/users - Get paginated users
   http.get(`${API_BASE_URL}/users`, ({ request }) => {

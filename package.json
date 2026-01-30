@@ -20,15 +20,6 @@
     "lint:fix:all": "nx run-many -t lint --fix",
     "prepare": "husky"
   },
-  "lint-staged": {
-    "*.{js,ts,jsx,tsx,json,css,scss}": [
-      "prettier --write"
-    ],
-    "*.{js,ts,jsx,tsx}": [
-      "eslint --fix",
-      "nx affected:test --files"
-    ]
-  },
   "private": true,
   "devDependencies": {
     "@babel/core": "^7.14.5",
