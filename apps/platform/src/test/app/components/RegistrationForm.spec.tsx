@@ -12,12 +12,8 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 // Mock dependencies
 jest.mock('@platform/app/services/auth.service');
-jest.mock('@platform/app/hooks', () => ({
-  useAuth: jest.fn(),
-}));
-jest.mock('@horizon-sync/ui/hooks/use-toast', () => ({
-  useToast: jest.fn(),
-}));
+jest.mock('@platform/app/hooks');
+jest.mock('@horizon-sync/ui/hooks/use-toast');
 jest.mock('../../../assets/ciphercode_logo.png', () => 'mock-logo.png');
 
 const mockNavigate = jest.fn();
@@ -33,8 +29,8 @@ describe('RegistrationForm', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
-    (useAuth as jest.Mock).mockReturnValue({ login: mockLogin });
-    (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
+    (useAuth as jest.Mock).mockReturnValue({ login: mockLogin } as any);
+    (useToast as jest.Mock).mockReturnValue({ toast: mockToast } as any);
   });
 
   afterEach(() => {
