@@ -63,7 +63,31 @@ export interface ApiError {
   details?: unknown;
 }
 
+export interface ApiErrorResponse {
+  detail: {
+    message: string;
+    status_code: number;
+    code: string;
+  };
+}
+
 const API_BASE_URL = environment.apiBaseUrl;
+
+/**
+ * Utility function to handle API errors consistently
+ * @param response - The fetch response object
+ * @returns Promise that throws an error with the server message
+ */
+async function handleApiError(response: Response): Promise<never> {
+  try {
+    const errorData: ApiErrorResponse = await response.json();
+    const message = errorData?.detail?.message || `HTTP error! status: ${response.status}`;
+    throw new Error(message);
+  } catch {
+    // If JSON parsing fails, throw a generic error
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+}
 
 export class AuthService {
   static async register(payload: RegisterPayload): Promise<RegisterResponse> {
@@ -77,10 +101,7 @@ export class AuthService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'Registration failed',
-        }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        await handleApiError(response);
       }
 
       const data: RegisterResponse = await response.json();
@@ -104,10 +125,7 @@ export class AuthService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'Login failed',
-        }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        await handleApiError(response);
       }
 
       const data: LoginResponse = await response.json();
@@ -131,10 +149,7 @@ export class AuthService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'Logout failed',
-        }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        await handleApiError(response);
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -155,10 +170,7 @@ export class AuthService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'Failed to send reset email',
-        }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        await handleApiError(response);
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -179,10 +191,7 @@ export class AuthService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'Failed to reset password',
-        }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        await handleApiError(response);
       }
     } catch (error) {
       if (error instanceof Error) {

@@ -22,6 +22,11 @@ export default [
       ...jsxA11y.flatConfigs.recommended.rules,
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
+      "max-lines": ["warn", { "max": 300, "skipBlankLines": true, "skipComments": true }],
+      "max-lines-per-function": ["warn", { "max": 50, "skipBlankLines": true }],
+      "complexity": ["error", 10],
+      "react/destructuring-assignment": "error",
+      "@typescript-eslint/no-explicit-any": "error",
       'import/order': [
         'error',
         {
