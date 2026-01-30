@@ -5,14 +5,11 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 
-import { RegistrationForm } from '@platform/app/components/RegistrationForm';
-import { useAuth } from '@platform/app/hooks';
-import { AuthService } from '@platform/app/services/auth.service';
-import { useToast } from '@horizon-sync/ui/hooks/use-toast';
+import { RegistrationForm } from '../../../app/components/RegistrationForm';
+import { AuthService } from '../../../app/services/auth.service';
 
 // Mock dependencies
 jest.mock('@platform/app/services/auth.service');
-jest.mock('@platform/app/hooks');
 jest.mock('@horizon-sync/ui/hooks/use-toast');
 jest.mock('../../../assets/ciphercode_logo.png', () => 'mock-logo.png');
 
@@ -22,15 +19,20 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
-describe('RegistrationForm', () => {
-  const mockLogin = jest.fn();
-  const mockToast = jest.fn();
+const mockLogin = jest.fn();
+jest.mock('@platform/app/hooks', () => ({
+  useAuth: jest.fn(() => ({ login: mockLogin })),
+}));
 
+const mockToast = jest.fn();
+jest.mock('@horizon-sync/ui/hooks/use-toast', () => ({
+  useToast: jest.fn(() => ({ toast: mockToast })),
+}));
+
+describe('RegistrationForm', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
-    (useAuth as jest.Mock).mockReturnValue({ login: mockLogin } as any);
-    (useToast as jest.Mock).mockReturnValue({ toast: mockToast } as any);
   });
 
   afterEach(() => {
@@ -47,7 +49,7 @@ describe('RegistrationForm', () => {
         }}
       >
         <RegistrationForm />
-      </BrowserRouter>
+      </BrowserRouter>,
     );
   };
 
@@ -75,7 +77,7 @@ describe('RegistrationForm', () => {
   it('2. should show validation errors when submitting an empty form', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     renderForm();
-    
+
     await user.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
@@ -103,7 +105,7 @@ describe('RegistrationForm', () => {
     const mockResponse = {
       access_token: 'fake-access-token',
       refresh_token: 'fake-refresh-token',
-      user: { id: 'user-123', email: 'john@example.com' }
+      user: { id: 'user-123', email: 'john@example.com' },
     };
     (AuthService.register as jest.Mock).mockResolvedValue(mockResponse);
 
