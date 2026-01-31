@@ -50,9 +50,11 @@ export function RegistrationForm() {
 
       // Store authentication state and log in
       login(response.access_token, response.refresh_token, {
-        user_id: response.user.id,
+        id: response.user.id,
         email: response.user.email,
-        organization_id: '', // Organization is no longer part of registration
+        first_name: response.user.first_name,
+        last_name: response.user.last_name,
+        phone: response.user.phone,
       });
 
       // Redirect to login after 2 seconds

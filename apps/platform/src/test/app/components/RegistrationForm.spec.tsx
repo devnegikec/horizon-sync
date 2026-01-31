@@ -105,7 +105,13 @@ describe('RegistrationForm', () => {
     const mockResponse = {
       access_token: 'fake-access-token',
       refresh_token: 'fake-refresh-token',
-      user: { id: 'user-123', email: 'john@example.com' },
+      user: {
+        id: 'user-123',
+        email: 'john@example.com',
+        first_name: 'John',
+        last_name: 'Doe',
+        phone: '9008750493',
+      },
     };
     (AuthService.register as jest.Mock).mockResolvedValue(mockResponse);
 
@@ -116,9 +122,11 @@ describe('RegistrationForm', () => {
     await waitFor(() => {
       expect(AuthService.register).toHaveBeenCalled();
       expect(mockLogin).toHaveBeenCalledWith('fake-access-token', 'fake-refresh-token', {
-        user_id: 'user-123',
+        id: 'user-123',
         email: 'john@example.com',
-        organization_id: '',
+        first_name: 'John',
+        last_name: 'Doe',
+        phone: '9008750493',
       });
       expect(mockToast).toHaveBeenCalledWith({
         title: 'Registration successful!',

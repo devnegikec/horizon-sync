@@ -23,6 +23,8 @@
       "@horizon-sync/ui/lib": ["libs/shared/ui/src/lib/index.ts"],
       "@horizon-sync/ui/lib/*": ["libs/shared/ui/src/lib/*"],
       "@horizon-sync/ui/hooks/*": ["libs/shared/ui/src/hooks/*"],
+      "@horizon-sync/store": ["libs/shared/store/src/index.ts"],
+      "@horizon-sync/store/*": ["libs/shared/store/src/*"],
       "@/components/*": ["libs/shared/ui/src/components/*"],
       "@/lib/*": ["libs/shared/ui/src/lib/*"]
     }

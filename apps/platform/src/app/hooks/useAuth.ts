@@ -1,66 +1,41 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { useUserStore } from '@horizon-sync/store';
 
 import { AuthService } from '../services/auth.service';
 
-interface User {
-  user_id: string;
-  email: string;
-  organization_id: string;
-}
-
-interface AuthState {
-  user: User | null;
-  accessToken: string | null;
-  refreshToken: string | null;
-  isAuthenticated: boolean;
-  login: (token: string, refreshToken: string, user: User) => void;
-  logout: () => Promise<void>;
-  setUser: (user: User) => void;
-}
-
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      accessToken: null,
-      refreshToken: null,
-      isAuthenticated: false,
-      login: (token: string, refreshToken: string, user: User) => {
-        set({
-          accessToken: token,
-          refreshToken,
-          user,
-          isAuthenticated: true,
-        });
-      },
-      logout: async () => {
-        const { refreshToken } = get();
-        try {
-          if (refreshToken) {
-            await AuthService.logout({ refresh_token: refreshToken });
-          }
-        } catch (error) {
-          console.error('Logout service failed:', error);
-        } finally {
-          set({
-            accessToken: null,
-            refreshToken: null,
-            user: null,
-            isAuthenticated: false,
-          });
-        }
-      },
-      setUser: (user: User) => {
-        set({ user });
-      },
-    }),
-    {
-      name: 'horizon-auth',
-    }
-  )
-);
-
 export function useAuth() {
-  return useAuthStore();
+  const { user, accessToken, refreshToken, setAuth, updateUser, clearAuth } = useUserStore();
+
+  const login = (token: string, refresh: string, userData: { id: string; email: string; first_name?: string; last_name?: string; phone?: string }) => {
+    setAuth(
+      {
+        id: userData.id,
+        email: userData.email,
+        first_name: userData.first_name ?? '',
+        last_name: userData.last_name ?? '',
+        phone: userData.phone ?? '',
+      },
+      token,
+      refresh
+    );
+  };
+
+  const logout = async () => {
+    try {
+      if (refreshToken) await AuthService.logout({ refresh_token: refreshToken });
+    } catch (error) {
+      console.error('Logout service failed:', error);
+    } finally {
+      clearAuth();
+    }
+  };
+
+  return {
+    user,
+    accessToken,
+    refreshToken,
+    isAuthenticated: !!accessToken && !!user,
+    login,
+    logout,
+    updateUser,
+  };
 }

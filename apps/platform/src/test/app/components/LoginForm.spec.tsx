@@ -200,9 +200,8 @@ describe('LoginForm', () => {
 
       await waitFor(() => {
         expect(mockLogin).toHaveBeenCalledWith('test-token', 'test-refresh-token', {
-          user_id: 'user-123',
+          id: 'user-123',
           email: 'test@example.com',
-          organization_id: 'org-123',
         });
       });
     });
