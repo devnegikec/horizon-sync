@@ -1,6 +1,7 @@
 async function prepare() {
   // Enable MSW in development mode
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'development1') {
+    console.log('🔵 MSW: Starting Mock Service Worker in development mode');
     const { worker } = await import('./app/mocks');
     await worker.start({
       onUnhandledRequest: 'bypass', // Don't warn about unhandled requests

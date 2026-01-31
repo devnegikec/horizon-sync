@@ -1,7 +1,6 @@
 import * as React from 'react';
 
-import { ForgotPasswordForm } from '../components/ForgotPasswordForm';
-import { LoginBrandingSection } from '../components/LoginBrandingSection';
+import { ForgotPasswordForm, LoginBrandingSection } from '../components';
 
 export function ForgotPasswordPage() {
   return (

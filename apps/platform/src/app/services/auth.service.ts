@@ -1,194 +1,81 @@
 import { environment } from '../../environments/environment';
-
-export interface RegisterPayload {
-  email: string;
-  first_name: string;
-  last_name: string;
-  phone: string;
-  password: string;
-}
-
-export interface UserType {
-  email: string;
-  first_name: string;
-  last_name: string;
-  phone: string;
-  id: string;
-  display_name: string;
-  user_type: string;
-  status: string;
-  email_verified: boolean;
-  last_login_at: string | null;
-  created_at: string;
-}
-
-export interface RegisterResponse {
-  user: UserType;
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  expires_in: number;
-}
-
-export interface LoginPayload {
-  email: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  user_id: string;
-  email: string;
-  organization_id: string;
-  message?: string;
-}
-
-export interface LogoutPayload {
-  refresh_token: string;
-}
-
-export interface ForgotPasswordPayload {
-  email: string;
-}
-
-export interface ResetPasswordPayload {
-  token: string;
-  new_password: string;
-}
-
-export interface ApiError {
-  message: string;
-  details?: unknown;
-}
+import {
+  RegisterPayload,
+  RegisterResponse,
+  LoginPayload,
+  LoginResponse,
+  LogoutPayload,
+  ForgotPasswordPayload,
+  ResetPasswordPayload,
+  ApiErrorResponse,
+} from './auth.types';
 
 const API_BASE_URL = environment.apiBaseUrl;
 
+/**
+ * Utility function to handle API errors consistently
+ */
+async function handleApiError(response: Response): Promise<never> {
+  let message = `HTTP error! status: ${response.status}`;
+  try {
+    const errorData: ApiErrorResponse = await response.json();
+    message = errorData?.detail?.message || message;
+  } catch {
+    // Fallback to default message if JSON parsing fails
+  }
+  throw new Error(message);
+}
+
+/**
+ * Generic request helper to reduce boilerplate
+ */
+async function apiRequest<T>(
+  endpoint: string,
+  method: string,
+  body?: unknown
+): Promise<T> {
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+      await handleApiError(response);
+    }
+
+    if (response.status === 204) {
+      return {} as T;
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error('An unexpected error occurred');
+  }
+}
+
 export class AuthService {
   static async register(payload: RegisterPayload): Promise<RegisterResponse> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/identity/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'Registration failed',
-        }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-
-      const data: RegisterResponse = await response.json();
-      return data;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('An unexpected error occurred during registration');
-    }
+    return apiRequest<RegisterResponse>('/identity/register', 'POST', payload);
   }
 
   static async login(payload: LoginPayload): Promise<LoginResponse> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/identity/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'Login failed',
-        }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-
-      const data: LoginResponse = await response.json();
-      return data;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('An unexpected error occurred during login');
-    }
+    return apiRequest<LoginResponse>('/identity/login', 'POST', payload);
   }
 
   static async logout(payload: LogoutPayload): Promise<void> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/identity/logout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'Logout failed',
-        }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('An unexpected error occurred during logout');
-    }
+    return apiRequest<void>('/identity/logout', 'POST', payload);
   }
 
   static async forgotPassword(payload: ForgotPasswordPayload): Promise<void> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/identity/forgot-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'Failed to send reset email',
-        }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('An unexpected error occurred during forgot password request');
-    }
+    return apiRequest<void>('/identity/forgot-password', 'POST', payload);
   }
 
   static async resetPassword(payload: ResetPasswordPayload): Promise<void> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/identity/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'Failed to reset password',
-        }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('An unexpected error occurred during password reset');
-    }
+    return apiRequest<void>('/identity/reset-password', 'POST', payload);
   }
 }

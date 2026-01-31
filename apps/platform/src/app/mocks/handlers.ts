@@ -7,6 +7,8 @@ import { mockUsers } from './data/users';
 
 const API_BASE_URL = process.env['NX_API_BASE_URL'] || 'http://localhost:8000/api/v1';
 
+console.log('🔵 MSW: Using API_BASE_URL =', process.env['NX_NODE_ENV']);
+
 export const handlers = [
   // GET /api/v1/users - Get paginated users
   http.get(`${API_BASE_URL}/users`, ({ request }) => {
@@ -90,7 +92,7 @@ export const handlers = [
   }),
 
   // POST /api/v1/auth/login - Login endpoint
-  http.post(`${API_BASE_URL}/auth/login`, async ({ request }) => {
+  http.post(`${API_BASE_URL}/identity/login`, async ({ request }) => {
     const body = (await request.json()) as { email: string };
     console.log('🔵 MSW: POST /auth/login', body);
 
@@ -109,15 +111,28 @@ export const handlers = [
   }),
 
   // POST /api/v1/auth/register - Register endpoint
-  http.post(`${API_BASE_URL}/auth/register`, async ({ request }) => {
-    const body = (await request.json()) as { email: string };
+  http.post(`${API_BASE_URL}/identity/register`, async ({ request }) => {
+    const body = (await request.json()) as { email: string; first_name: string; last_name: string };
     console.log('🔵 MSW: POST /auth/register', body);
 
     const response = {
-      user_id: crypto.randomUUID(),
-      email: body.email,
-      organization_id: crypto.randomUUID(),
-      message: 'User registered successfully',
+      user: {
+        id: crypto.randomUUID(),
+        email: body.email,
+        first_name: body.first_name || 'Mock',
+        last_name: body.last_name || 'User',
+        phone: '1234567890',
+        display_name: `${body.first_name || 'Mock'} ${body.last_name || 'User'}`,
+        user_type: 'individual',
+        status: 'active',
+        email_verified: true,
+        last_login_at: null,
+        created_at: new Date().toISOString(),
+      },
+      access_token: 'mock_access_token_' + Date.now(),
+      refresh_token: 'mock_refresh_token_' + Date.now(),
+      token_type: 'Bearer',
+      expires_in: 3600,
     };
 
     await new Promise((resolve) => setTimeout(resolve, 500));

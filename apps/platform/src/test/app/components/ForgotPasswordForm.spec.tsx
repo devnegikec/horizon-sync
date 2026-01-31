@@ -5,7 +5,7 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 
-import { ForgotPasswordForm } from '@platform/app/components/ForgotPasswordForm';
+import { ForgotPasswordForm } from '@platform/app/components';
 import { AuthService } from '@platform/app/services/auth.service';
 
 // Mock dependencies

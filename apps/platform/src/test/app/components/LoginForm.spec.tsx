@@ -5,7 +5,7 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
-import { LoginForm } from '@platform/app/components/LoginForm';
+import { LoginForm } from '@platform/app/components';
 import { useAuth } from '@platform/app/hooks';
 import { AuthService } from '@platform/app/services/auth.service';
 
@@ -235,7 +235,7 @@ describe('LoginForm', () => {
   });
 
   describe('Error Handling', () => {
-    it('should display error message when login fails', async () => {
+    it('should display "Invalid email or password" error message when server responds with 401', async () => {
       const user = userEvent.setup();
       const errorMessage = 'Invalid email or password';
       (AuthService.login as jest.Mock).mockRejectedValue(new Error(errorMessage));
@@ -247,6 +247,27 @@ describe('LoginForm', () => {
 
       await user.type(emailInput, 'test@example.com');
       await user.type(passwordInput, 'WrongPassword');
+
+      const signInButton = screen.getByRole('button', { name: /sign in/i });
+      await user.click(signInButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(errorMessage)).toBeInTheDocument();
+      });
+    });
+
+    it('should display "Account locked" error message when server responds with 423', async () => {
+      const user = userEvent.setup();
+      const errorMessage = 'Account has been locked due to multiple failed login attempts. Please try again later or contact support.';
+      (AuthService.login as jest.Mock).mockRejectedValue(new Error(errorMessage));
+
+      renderLoginForm();
+
+      const emailInput = screen.getByPlaceholderText('john.doe@company.com');
+      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+
+      await user.type(emailInput, 'locked@example.com');
+      await user.type(passwordInput, 'Password123');
 
       const signInButton = screen.getByRole('button', { name: /sign in/i });
       await user.click(signInButton);

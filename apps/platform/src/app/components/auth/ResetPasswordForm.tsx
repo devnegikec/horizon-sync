@@ -17,9 +17,9 @@ import {
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 
-import logo from '../../assets/ciphercode_logo.png';
-import { AuthService } from '../services/auth.service';
-import { resetPasswordSchema, ResetPasswordFormData } from '../utility/validationSchema';
+import logo from '../../../assets/ciphercode_logo.png';
+import { AuthService } from '../../services/auth.service';
+import { resetPasswordSchema, ResetPasswordFormData } from '../../utility/validationSchema';
 
 export function ResetPasswordForm() {
   const navigate = useNavigate();

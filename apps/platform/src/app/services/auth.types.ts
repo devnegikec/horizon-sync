@@ -1,0 +1,70 @@
+export interface RegisterPayload {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  password: string;
+}
+
+export interface UserType {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  id: string;
+  display_name: string;
+  user_type: string;
+  status: string;
+  email_verified: boolean;
+  last_login_at: string | null;
+  created_at: string;
+}
+
+export interface RegisterResponse {
+  user: UserType;
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  user_id: string;
+  email: string;
+  organization_id: string;
+  message?: string;
+}
+
+export interface LogoutPayload {
+  refresh_token: string;
+}
+
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  token: string;
+  new_password: string;
+}
+
+export interface ApiError {
+  message: string;
+  details?: unknown;
+}
+
+export interface ApiErrorResponse {
+  detail: {
+    message: string;
+    status_code: number;
+    code: string;
+  };
+}

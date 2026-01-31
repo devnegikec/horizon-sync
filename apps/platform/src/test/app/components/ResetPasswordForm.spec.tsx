@@ -5,7 +5,7 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, useSearchParams } from 'react-router-dom';
 
-import { ResetPasswordForm } from '@platform/app/components/ResetPasswordForm';
+import { ResetPasswordForm } from '@platform/app/components';
 import { AuthService } from '@platform/app/services/auth.service';
 
 // Mock dependencies

@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,18 +16,18 @@ import {
 } from '@horizon-sync/ui/components/ui/card';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
-import logo from '../../assets/ciphercode_logo.png';
-import { useAuth } from '../hooks';
-import { AuthService } from '../services/auth.service';
-import { registerSchema, RegisterFormData } from '../utility/validationSchema';
+import logo from '../../../assets/ciphercode_logo.png';
+import { useAuth } from '../../hooks';
+import { AuthService } from '../../services/auth.service';
+import { registerSchema, RegisterFormData } from '../../utility/validationSchema';
 
 export function RegistrationForm() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [successMessage, setSuccessMessage] = React.useState('');
-  const [errorMessage, setErrorMessage] = React.useState('');
 
   const {
     register,
@@ -39,30 +39,32 @@ export function RegistrationForm() {
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsSubmitting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
 
     try {
       const response = await AuthService.register(data);
-      setSuccessMessage('Registration successful!');
       
+      toast({
+        title: 'Registration successful!',
+        description: 'Your account has been created successfully.',
+      });
+
       // Store authentication state and log in
       login(response.access_token, response.refresh_token, {
         user_id: response.user.id,
         email: response.user.email,
         organization_id: '', // Organization is no longer part of registration
       });
-      
-      // Redirect to dashboard after 2 seconds
+
+      // Redirect to login after 2 seconds
       setTimeout(() => {
-        navigate('/');
+        navigate('/login');
       }, 2000);
     } catch (error) {
-      if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('An unexpected error occurred. Please try again.');
-      }
+      toast({
+        variant: 'destructive',
+        title: 'Registration failed',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -99,10 +101,9 @@ export function RegistrationForm() {
               placeholder="john.doe@example.com"
               {...register('email')}
               className={errors.email ? 'border-destructive' : ''}
+              data-testid="registration-email"
             />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
+            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
 
           {/* First Name and Last Name - Same Row */}
@@ -116,11 +117,10 @@ export function RegistrationForm() {
                 placeholder="John"
                 {...register('first_name')}
                 className={errors.first_name ? 'border-destructive' : ''}
+                data-testid="registration-first-name"
               />
               {errors.first_name && (
-                <p className="text-sm text-destructive">
-                  {errors.first_name.message}
-                </p>
+                <p className="text-sm text-destructive">{errors.first_name.message}</p>
               )}
             </div>
 
@@ -133,11 +133,10 @@ export function RegistrationForm() {
                 placeholder="Doe"
                 {...register('last_name')}
                 className={errors.last_name ? 'border-destructive' : ''}
+                data-testid="registration-last-name"
               />
               {errors.last_name && (
-                <p className="text-sm text-destructive">
-                  {errors.last_name.message}
-                </p>
+                <p className="text-sm text-destructive">{errors.last_name.message}</p>
               )}
             </div>
           </div>
@@ -152,10 +151,9 @@ export function RegistrationForm() {
               placeholder="9008750493"
               {...register('phone')}
               className={errors.phone ? 'border-destructive' : ''}
+              data-testid="registration-phone"
             />
-            {errors.phone && (
-              <p className="text-sm text-destructive">{errors.phone.message}</p>
-            )}
+            {errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}
           </div>
 
           {/* Password */}
@@ -169,11 +167,10 @@ export function RegistrationForm() {
               placeholder="••••••••"
               {...register('password')}
               className={errors.password ? 'border-destructive' : ''}
+              data-testid="registration-password"
             />
             {errors.password && (
-              <p className="text-sm text-destructive">
-                {errors.password.message}
-              </p>
+              <p className="text-sm text-destructive">{errors.password.message}</p>
             )}
           </div>
 
@@ -188,34 +185,19 @@ export function RegistrationForm() {
               placeholder="••••••••"
               {...register('confirm_password')}
               className={errors.confirm_password ? 'border-destructive' : ''}
+              data-testid="registration-confirm-password"
             />
             {errors.confirm_password && (
-              <p className="text-sm text-destructive">
-                {errors.confirm_password.message}
-              </p>
+              <p className="text-sm text-destructive">{errors.confirm_password.message}</p>
             )}
           </div>
-
-          {/* Success Message */}
-          {successMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <p className="text-sm">{successMessage}</p>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {errorMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
-              <p className="text-sm">{errorMessage}</p>
-            </div>
-          )}
 
           {/* Submit Button */}
           <Button
             type="submit"
             className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
             disabled={isSubmitting}
+            data-testid="registration-submit-button"
           >
             {isSubmitting ? (
               <>

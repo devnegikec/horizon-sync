@@ -3,9 +3,9 @@ import * as React from 'react';
 import { Route, Routes } from 'react-router-dom';
 
 import '@horizon-sync/ui/styles/globals.css';
-import { DashboardLayout, DashboardHome } from './components';
-import { AuthGuard } from './components/AuthGuard';
-import { PublicRoute } from './components/PublicRoute';
+import { Toaster } from '@horizon-sync/ui/components/ui/toaster';
+
+import { DashboardLayout, DashboardHome, AuthGuard, PublicRoute } from './components';
 import {
   RegisterPage,
   LoginPage,
@@ -117,6 +117,7 @@ export function App() {
           }
         />
       </Routes>
+      <Toaster />
     </React.Suspense>
   );
 }

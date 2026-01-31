@@ -17,9 +17,9 @@ import {
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 
-import logo from '../../assets/ciphercode_logo.png';
-import { AuthService } from '../services/auth.service';
-import { forgotPasswordSchema, ForgotPasswordFormData } from '../utility/validationSchema';
+import logo from '../../../assets/ciphercode_logo.png';
+import { AuthService } from '../../services/auth.service';
+import { forgotPasswordSchema, ForgotPasswordFormData } from '../../utility/validationSchema';
 
 export function ForgotPasswordForm() {
   const navigate = useNavigate();

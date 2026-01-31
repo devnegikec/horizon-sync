@@ -5,13 +5,12 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 
-import { RegistrationForm } from '@platform/app/components/RegistrationForm';
-import { useAuth } from '@platform/app/hooks';
+import { RegistrationForm } from '@platform/app/components';
 import { AuthService } from '@platform/app/services/auth.service';
 
 // Mock dependencies
 jest.mock('@platform/app/services/auth.service');
-jest.mock('@platform/app/hooks');
+jest.mock('@horizon-sync/ui/hooks/use-toast');
 jest.mock('../../../assets/ciphercode_logo.png', () => 'mock-logo.png');
 
 const mockNavigate = jest.fn();
@@ -20,13 +19,20 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
-describe('RegistrationForm', () => {
-  const mockLogin = jest.fn();
+const mockLogin = jest.fn();
+jest.mock('@platform/app/hooks', () => ({
+  useAuth: jest.fn(() => ({ login: mockLogin })),
+}));
 
+const mockToast = jest.fn();
+jest.mock('@horizon-sync/ui/hooks/use-toast', () => ({
+  useToast: jest.fn(() => ({ toast: mockToast })),
+}));
+
+describe('RegistrationForm', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    (useAuth as jest.Mock).mockReturnValue({ login: mockLogin });
     jest.useFakeTimers();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -43,7 +49,7 @@ describe('RegistrationForm', () => {
         }}
       >
         <RegistrationForm />
-      </BrowserRouter>
+      </BrowserRouter>,
     );
   };
 
@@ -71,7 +77,7 @@ describe('RegistrationForm', () => {
   it('2. should show validation errors when submitting an empty form', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     renderForm();
-    
+
     await user.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
@@ -99,7 +105,7 @@ describe('RegistrationForm', () => {
     const mockResponse = {
       access_token: 'fake-access-token',
       refresh_token: 'fake-refresh-token',
-      user: { id: 'user-123', email: 'john@example.com' }
+      user: { id: 'user-123', email: 'john@example.com' },
     };
     (AuthService.register as jest.Mock).mockResolvedValue(mockResponse);
 
@@ -114,7 +120,10 @@ describe('RegistrationForm', () => {
         email: 'john@example.com',
         organization_id: '',
       });
-      expect(screen.getByText('Registration successful!')).toBeInTheDocument();
+      expect(mockToast).toHaveBeenCalledWith({
+        title: 'Registration successful!',
+        description: 'Your account has been created successfully.',
+      });
     });
   });
 
@@ -128,7 +137,11 @@ describe('RegistrationForm', () => {
     await user.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(errorMessage)).toBeInTheDocument();
+      expect(mockToast).toHaveBeenCalledWith({
+        variant: 'destructive',
+        title: 'Registration failed',
+        description: errorMessage,
+      });
     });
   });
 });

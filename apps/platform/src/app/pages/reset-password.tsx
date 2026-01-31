@@ -1,7 +1,6 @@
 import * as React from 'react';
 
-import { LoginBrandingSection } from '../components/LoginBrandingSection';
-import { ResetPasswordForm } from '../components/ResetPasswordForm';
+import { LoginBrandingSection, ResetPasswordForm } from '../components';
 
 export function ResetPasswordPage() {
   return (
