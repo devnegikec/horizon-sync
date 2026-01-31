@@ -105,4 +105,17 @@ export default [
     // Override or add rules here
     rules: {},
   },
+  {
+    files: [
+      '**/*.spec.ts',
+      '**/*.spec.tsx',
+      '**/*.test.ts',
+      '**/*.test.tsx'
+    ],
+    rules: {
+      'max-lines': 'off',
+      'max-lines-per-function': 'off',
+      'complexity': 'off'
+    },
+  },
 ];
