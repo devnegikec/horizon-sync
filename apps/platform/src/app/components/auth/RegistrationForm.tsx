@@ -18,10 +18,10 @@ import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
-import logo from '../../assets/ciphercode_logo.png';
-import { useAuth } from '../hooks';
-import { AuthService } from '../services/auth.service';
-import { registerSchema, RegisterFormData } from '../utility/validationSchema';
+import logo from '../../../assets/ciphercode_logo.png';
+import { useAuth } from '../../hooks';
+import { AuthService } from '../../services/auth.service';
+import { registerSchema, RegisterFormData } from '../../utility/validationSchema';
 
 export function RegistrationForm() {
   const navigate = useNavigate();

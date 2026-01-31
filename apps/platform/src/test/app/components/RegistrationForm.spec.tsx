@@ -5,8 +5,8 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 
-import { RegistrationForm } from '../../../app/components/RegistrationForm';
-import { AuthService } from '../../../app/services/auth.service';
+import { RegistrationForm } from '@platform/app/components';
+import { AuthService } from '@platform/app/services/auth.service';
 
 // Mock dependencies
 jest.mock('@platform/app/services/auth.service');

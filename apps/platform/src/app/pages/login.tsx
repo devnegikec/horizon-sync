@@ -1,7 +1,6 @@
 import * as React from 'react';
 
-import { LoginBrandingSection } from '../components/LoginBrandingSection';
-import { LoginForm } from '../components/LoginForm';
+import { LoginBrandingSection, LoginForm } from '../components';
 
 export function LoginPage() {
   return (

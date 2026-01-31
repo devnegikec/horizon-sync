@@ -5,7 +5,7 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
-import { LoginForm } from '@platform/app/components/LoginForm';
+import { LoginForm } from '@platform/app/components';
 import { useAuth } from '@platform/app/hooks';
 import { AuthService } from '@platform/app/services/auth.service';
 
