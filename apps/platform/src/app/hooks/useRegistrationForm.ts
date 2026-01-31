@@ -38,7 +38,7 @@ export function useRegistrationForm() {
         phone: response.user.phone,
       });
 
-      setTimeout(() => navigate('/login'), 2000);
+      setTimeout(() => navigate('/onboarding'), 2000);
     } catch (error) {
       toast({
         variant: 'destructive',

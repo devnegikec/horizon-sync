@@ -202,6 +202,7 @@ describe('LoginForm', () => {
         expect(mockLogin).toHaveBeenCalledWith('test-token', 'test-refresh-token', {
           id: 'user-123',
           email: 'test@example.com',
+          organization_id: 'org-123',
         });
       });
     });
