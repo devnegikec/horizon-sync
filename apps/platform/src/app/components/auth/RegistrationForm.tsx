@@ -15,6 +15,29 @@ import { RegistrationHeader } from './RegistrationHeader';
 
 export function RegistrationForm() {
   const { register, handleSubmit, errors, isSubmitting } = useRegistrationForm();
+      // Store authentication state and log in
+      login(response.access_token, response.refresh_token, {
+        id: response.user.id,
+        email: response.user.email,
+        first_name: response.user.first_name,
+        last_name: response.user.last_name,
+        phone: response.user.phone,
+      });
+
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Registration failed',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Card className="w-full max-w-md border-none shadow-2xl">

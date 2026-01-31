@@ -26,9 +26,10 @@ export function useLoginForm() {
       const res = await AuthService.login(data);
       setStatus((s) => ({ ...s, success: 'Login successful!' }));
       login(res.access_token, res.refresh_token, {
-        user_id: res.user_id,
         email: res.email,
         organization_id: res.organization_id,
+        id: res.user_id,
+        email: res.email,
       });
 
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';

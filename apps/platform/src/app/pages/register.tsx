@@ -1,6 +1,7 @@
 import * as React from 'react';
 
-import { BrandingSection, RegistrationForm } from '../components';
+import { RegistrationForm } from '../components';
+import { BrandingSection } from '../components/BrandingSection';
 
 export function RegisterPage() {
   return (
