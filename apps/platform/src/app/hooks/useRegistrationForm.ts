@@ -31,9 +31,11 @@ export function useRegistrationForm() {
       });
 
       login(response.access_token, response.refresh_token, {
-        user_id: response.user.id,
+        id: response.user.id,
         email: response.user.email,
-        organization_id: '',
+        first_name: response.user.first_name,
+        last_name: response.user.last_name,
+        phone: response.user.phone,
       });
 
       setTimeout(() => navigate('/login'), 2000);

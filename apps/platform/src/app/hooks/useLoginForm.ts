@@ -29,7 +29,6 @@ export function useLoginForm() {
         email: res.email,
         organization_id: res.organization_id,
         id: res.user_id,
-        email: res.email,
       });
 
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';

@@ -3,15 +3,15 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
-  display_name: string;
+  display_name?: string;
   phone: string;
-  avatar_url: string | null;
-  user_type: string
-  status: string;
-  email_verified: boolean;
-  timezone: string;
-  lenguage: string;
-  organization_id: string | null;
+  avatar_url?: string | null;
+  user_type?: string
+  status?: string;
+  email_verified?: boolean;
+  timezone?: string;
+  language?: string;
+  organization_id?: string | null;
 }
 
 export interface UserState {
