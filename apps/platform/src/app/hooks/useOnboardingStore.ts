@@ -10,10 +10,12 @@ interface OnboardingData {
   timezone: string;
   avatarUrl: string;
   // Organization Step
-  orgName: string;
-  orgWebsite: string;
-  orgSize: string;
-  orgIndustry: string;
+  organizationName: string;
+  industry: string;
+  companySize: string;
+  organizationDescription: string;
+  websiteUrl: string;
+  logoUrl: string;
 }
 
 interface OnboardingState {
@@ -35,10 +37,12 @@ const initialData: OnboardingData = {
   bio: '',
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   avatarUrl: '',
-  orgName: '',
-  orgWebsite: '',
-  orgSize: '',
-  orgIndustry: '',
+  organizationName: '',
+  industry: '',
+  companySize: '',
+  organizationDescription: '',
+  websiteUrl: '',
+  logoUrl: '',
 };
 
 export const useOnboardingStore = create<OnboardingState>((set) => ({
