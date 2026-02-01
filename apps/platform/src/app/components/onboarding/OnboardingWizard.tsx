@@ -7,7 +7,7 @@ import { User, Building, Users, Check } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 
 // import { useOnboarding } from "@/lib/onboarding-context"
-// import { PersonalDetailsStep } from "./personal-details-step"
+import { PersonalDetailsStep } from "./"
 // import { OrganizationStep } from "./organization-step"
 // import { InviteTeamStep } from "./invite-team-step"
 // import { OnboardingComplete } from "./onboarding-complete"
@@ -35,7 +35,9 @@ const steps = [
 ];
 
 export function OnboardingWizard() {
-  const { currentStep, isComplete } = useOnboarding();
+    const [currentStep, setCurrentStep] = React.useState(1)
+     const [isComplete, setIsComplete] = React.useState(false)
+//   const { currentStep, isComplete } = useOnboarding();
 
   if (isComplete) {
     return (
@@ -106,11 +108,11 @@ export function OnboardingWizard() {
         </div>
       </CardHeader>
 
-      {/* <CardContent>
+      <CardContent>
         {currentStep === 1 && <PersonalDetailsStep />}
-        {currentStep === 2 && <OrganizationStep />}
-        {currentStep === 3 && <InviteTeamStep />}
-      </CardContent> */}
+        {/* {currentStep === 2 && <OrganizationStep />}
+        {currentStep === 3 && <InviteTeamStep />} */}
+      </CardContent>
     </Card>
   );
 }
