@@ -46,9 +46,53 @@ export interface InviteUserResponse {
   invitation_url: string;
 }
 
+export interface UpdateUserPayload {
+  first_name?: string;
+  last_name?: string;
+  display_name?: string;
+  phone?: string;
+  preferences?: Record<string, unknown>;
+  extra_data?: Record<string, unknown>;
+  timezone?: string;
+  language?: string;
+  avatar_url?: string;
+}
+
 const API_BASE_URL = environment.apiBaseUrl;
 
 export class UserService {
+  static async updateMe(
+    payload: UpdateUserPayload,
+    token: string
+  ): Promise<User> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/identity/users/me`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Failed to update user profile',
+        }));
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred while updating user profile');
+    }
+  }
+
   static async getUsers(
     page = 1,
     pageSize = 20,

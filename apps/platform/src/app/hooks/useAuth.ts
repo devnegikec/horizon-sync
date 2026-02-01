@@ -5,7 +5,7 @@ import { AuthService } from '../services/auth.service';
 export function useAuth() {
   const { user, accessToken, refreshToken, setAuth, updateUser, clearAuth } = useUserStore();
 
-  const login = (token: string, refresh: string, userData: { id: string; email: string; first_name?: string; last_name?: string; phone?: string }) => {
+  const login = (token: string, refresh: string, userData: { id: string; email: string; first_name?: string; last_name?: string; phone?: string; organization_id?: string | null }) => {
     setAuth(
       {
         id: userData.id,
