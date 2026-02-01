@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Building, Globe, Users, FileText, ImagePlus, ArrowLeft } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, UseFormRegister, FieldErrors, UseFormSetValue } from 'react-hook-form';
 import * as z from 'zod';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -50,6 +50,157 @@ const companySizes = [
   { value: '501-1000', label: '501-1000 employees' },
   { value: '1001+', label: '1000+ employees' },
 ];
+
+/**
+ * Helper Components
+ */
+
+const LogoUpload = ({ logoPreview, onLogoChange }: { logoPreview: string; onLogoChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
+  <div className="flex flex-col items-center gap-4 pb-4">
+    <label
+      htmlFor="logo-upload"
+      className="group relative flex h-28 w-28 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+    >
+      {logoPreview ? (
+        <img src={logoPreview} alt="Organization logo" className="h-full w-full object-contain rounded-xl p-2" />
+      ) : (
+        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+          <ImagePlus className="h-8 w-8" />
+          <span className="text-xs">Upload Logo</span>
+        </div>
+      )}
+      <input id="logo-upload" type="file" accept="image/*" onChange={onLogoChange} className="sr-only" />
+    </label>
+    <p className="text-sm text-muted-foreground">Add your organization logo</p>
+  </div>
+);
+
+const OrganizationNameField = ({
+  register,
+  errors,
+}: {
+  register: UseFormRegister<OrganizationFormData>;
+  errors: FieldErrors<OrganizationFormData>;
+}) => (
+  <div className="space-y-2">
+    <Label htmlFor="organizationName">
+      Organization Name <span className="text-destructive">*</span>
+    </Label>
+    <div className="relative">
+      <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        id="organizationName"
+        placeholder="Acme Inc."
+        {...register('organizationName')}
+        className={`pl-10 ${errors.organizationName ? 'border-destructive' : ''}`}
+      />
+    </div>
+    {errors.organizationName && <p className="text-sm text-destructive">{errors.organizationName.message}</p>}
+  </div>
+);
+
+const IndustryAndSizeFields = ({
+  data,
+  setValue,
+  errors,
+}: {
+  data: any;
+  setValue: UseFormSetValue<OrganizationFormData>;
+  errors: FieldErrors<OrganizationFormData>;
+}) => (
+  <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-2">
+      <Label htmlFor="industry">
+        Industry <span className="text-destructive">*</span>
+      </Label>
+      <Select defaultValue={data.industry} onValueChange={(value) => setValue('industry', value)}>
+        <SelectTrigger className={errors.industry ? 'border-destructive' : ''}>
+          <SelectValue placeholder="Select industry" />
+        </SelectTrigger>
+        <SelectContent>
+          {industries.map((industry) => (
+            <SelectItem key={industry} value={industry}>
+              {industry}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {errors.industry && <p className="text-sm text-destructive">{errors.industry.message}</p>}
+    </div>
+
+    <div className="space-y-2">
+      <Label htmlFor="companySize">
+        Company Size <span className="text-destructive">*</span>
+      </Label>
+      <Select defaultValue={data.companySize} onValueChange={(value) => setValue('companySize', value)}>
+        <SelectTrigger className={errors.companySize ? 'border-destructive' : ''}>
+          <Users className="h-4 w-4 text-muted-foreground mr-2" />
+          <SelectValue placeholder="Select size" />
+        </SelectTrigger>
+        <SelectContent>
+          {companySizes.map((size) => (
+            <SelectItem key={size.value} value={size.value}>
+              {size.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {errors.companySize && <p className="text-sm text-destructive">{errors.companySize.message}</p>}
+    </div>
+  </div>
+);
+
+const WebsiteField = ({ register, errors }: { register: UseFormRegister<OrganizationFormData>; errors: FieldErrors<OrganizationFormData> }) => (
+  <div className="space-y-2">
+    <Label htmlFor="websiteUrl">Website URL</Label>
+    <div className="relative">
+      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        id="websiteUrl"
+        type="url"
+        placeholder="https://www.example.com"
+        {...register('websiteUrl')}
+        className={`pl-10 ${errors.websiteUrl ? 'border-destructive' : ''}`}
+      />
+    </div>
+    {errors.websiteUrl && <p className="text-sm text-destructive">{errors.websiteUrl.message}</p>}
+  </div>
+);
+
+const DescriptionField = ({ register, charCount }: { register: UseFormRegister<OrganizationFormData>; charCount: number }) => (
+  <div className="space-y-2">
+    <Label htmlFor="organizationDescription">Organization Description</Label>
+    <div className="relative">
+      <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+      <Textarea id="organizationDescription"
+      placeholder="Tell us about your organization..."
+      {...register('organizationDescription')}
+        className="pl-10 min-h-[100px] resize-none"
+      />
+    </div>
+    <p className="text-xs text-muted-foreground text-right">{charCount}/1000 characters</p>
+  </div>
+);
+
+const ActionButtons = ({ onBack, isSubmitting }: { onBack: () => void; isSubmitting: boolean }) => (
+  <div className="flex gap-3">
+    <Button type="button" variant="outline" onClick={onBack} className="flex-1">
+      <ArrowLeft className="mr-2 h-4 w-4" />
+      Back
+    </Button>
+    <Button
+      type="submit"
+      className="flex-1 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
+      disabled={isSubmitting}
+    >
+      {isSubmitting ? 'Creating...' : 'Continue to Invitations'}
+    </Button>
+  </div>
+);
+
+/**
+ * Main Component
+ */
 
 export function OrganizationStep() {
   const { user, accessToken } = useAuth();
@@ -129,123 +280,17 @@ export function OrganizationStep() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {/* Logo Upload */}
-      <div className="flex flex-col items-center gap-4 pb-4">
-        <label
-          htmlFor="logo-upload"
-          className="group relative flex h-28 w-28 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
-        >
-          {logoPreview ? (
-            <img src={logoPreview} alt="Organization logo" className="h-full w-full object-contain rounded-xl p-2" />
-          ) : (
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <ImagePlus className="h-8 w-8" />
-              <span className="text-xs">Upload Logo</span>
-            </div>
-          )}
-          <input id="logo-upload" type="file" accept="image/*" onChange={handleLogoChange} className="sr-only" />
-        </label>
-        <p className="text-sm text-muted-foreground">Add your organization logo</p>
-      </div>
+      <LogoUpload logoPreview={logoPreview} onLogoChange={handleLogoChange} />
 
-      {/* Organization Name */}
-      <div className="space-y-2">
-        <Label htmlFor="organizationName">
-          Organization Name <span className="text-destructive">*</span>
-        </Label>
-        <div className="relative">
-          <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            id="organizationName"
-            placeholder="Acme Inc."
-            {...register('organizationName')}
-            className={`pl-10 ${errors.organizationName ? 'border-destructive' : ''}`}
-          />
-        </div>
-        {errors.organizationName && <p className="text-sm text-destructive">{errors.organizationName.message}</p>}
-      </div>
+      <OrganizationNameField register={register} errors={errors} />
 
-      {/* Industry & Company Size */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="industry">
-            Industry <span className="text-destructive">*</span>
-          </Label>
-          <Select defaultValue={data.industry} onValueChange={(value) => setValue('industry', value)}>
-            <SelectTrigger className={errors.industry ? 'border-destructive' : ''}>
-              <SelectValue placeholder="Select industry" />
-            </SelectTrigger>
-            <SelectContent>
-              {industries.map((industry) => (
-                <SelectItem key={industry} value={industry}>
-                  {industry}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.industry && <p className="text-sm text-destructive">{errors.industry.message}</p>}
-        </div>
+      <IndustryAndSizeFields data={data} setValue={setValue} errors={errors} />
 
-        <div className="space-y-2">
-          <Label htmlFor="companySize">
-            Company Size <span className="text-destructive">*</span>
-          </Label>
-          <Select defaultValue={data.companySize} onValueChange={(value) => setValue('companySize', value)}>
-            <SelectTrigger className={errors.companySize ? 'border-destructive' : ''}>
-              <Users className="h-4 w-4 text-muted-foreground mr-2" />
-              <SelectValue placeholder="Select size" />
-            </SelectTrigger>
-            <SelectContent>
-              {companySizes.map((size) => (
-                <SelectItem key={size.value} value={size.value}>
-                  {size.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.companySize && <p className="text-sm text-destructive">{errors.companySize.message}</p>}
-        </div>
-      </div>
+      <WebsiteField register={register} errors={errors} />
 
-      {/* Website URL */}
-      <div className="space-y-2">
-        <Label htmlFor="websiteUrl">Website URL</Label>
-        <div className="relative">
-          <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input id="websiteUrl" type="url" placeholder="https://www.example.com" {...register('websiteUrl')} className={`pl-10 ${errors.websiteUrl ? 'border-destructive' : ''}`} />
-        </div>
-        {errors.websiteUrl && <p className="text-sm text-destructive">{errors.websiteUrl.message}</p>}
-      </div>
+      <DescriptionField register={register} charCount={watch('organizationDescription')?.length || 0} />
 
-      {/* Description */}
-      <div className="space-y-2">
-        <Label htmlFor="organizationDescription">Organization Description</Label>
-        <div className="relative">
-          <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Textarea
-            id="organizationDescription"
-            placeholder="Tell us about your organization..."
-            {...register('organizationDescription')}
-            className="pl-10 min-h-[100px] resize-none"
-          />
-        </div>
-        <p className="text-xs text-muted-foreground text-right">{watch('organizationDescription')?.length || 0}/1000 characters</p>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex gap-3">
-        <Button type="button" variant="outline" onClick={() => setCurrentStep(1)} className="flex-1">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <Button
-          type="submit"
-          className="flex-1 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Creating...' : 'Continue to Invitations'}
-        </Button>
-      </div>
+      <ActionButtons onBack={() => setCurrentStep(1)} isSubmitting={isSubmitting} />
     </form>
   );
 }
