@@ -16,7 +16,7 @@ export function AppRoutes() {
       <Route path="/register" element={<PublicRouteWrapper element={<RegisterPage />} />} />
       <Route path="/forgot-password" element={<PublicRouteWrapper element={<ForgotPasswordPage />} />} />
       <Route path="/reset-password" element={<PublicRouteWrapper element={<ResetPasswordPage />} />} />
-      <Route path="/onboarding" element={<PublicRouteWrapper element={<OnBoarding />} />} />
+      <Route path="/onboarding" element={<AuthGuard><OnBoarding /></AuthGuard>} />
 
       {/* Protected routes */}
       <Route path="/*" element={<ProtectedRouteWrapper />} />
