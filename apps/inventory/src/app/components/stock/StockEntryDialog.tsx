@@ -24,7 +24,7 @@ import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
 import { useStockEntryMutations } from '../../hooks/useStock';
 import type { ApiItem } from '../../types/items-api.types';
-import type { StockEntry, StockEntryItem } from '../../types/stock.types';
+import type { StockEntry, StockEntryItem, StockEntryStatus } from '../../types/stock.types';
 import type { Warehouse } from '../../types/warehouse.types';
 
 interface StockEntryDialogProps {
@@ -153,7 +153,7 @@ export function StockEntryDialog({
     from_warehouse_id: '',
     to_warehouse_id: '',
     posting_date: new Date().toISOString().split('T')[0],
-    status: 'draft' as const,
+    status: 'draft' as StockEntryStatus,
     remarks: '',
   });
   const [lineItems, setLineItems] = React.useState<Partial<StockEntryItem>[]>([
@@ -171,7 +171,7 @@ export function StockEntryDialog({
         from_warehouse_id: entry.from_warehouse_id || '',
         to_warehouse_id: entry.to_warehouse_id || '',
         posting_date: entry.posting_date.split('T')[0],
-        status: (entry.status as 'draft' | 'submitted' | 'cancelled') || 'draft',
+        status: (entry.status as StockEntryStatus) || 'draft',
         remarks: entry.remarks || '',
       });
       setLineItems(
@@ -210,11 +210,19 @@ export function StockEntryDialog({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitError(null);
+  const getPayload = () => {
+    const items = lineItems
+      .filter((item): item is StockEntryItem => !!item.item_id)
+      .map((item) => ({
+        item_id: item.item_id,
+        source_warehouse_id: item.source_warehouse_id || undefined,
+        target_warehouse_id: item.target_warehouse_id || undefined,
+        qty: item.qty || 0,
+        basic_rate: item.basic_rate || 0,
+        uom: item.uom,
+      }));
 
-    const payload = {
+    return {
       stock_entry_no: formData.stock_entry_no || undefined,
       stock_entry_type: formData.stock_entry_type,
       from_warehouse_id: formData.from_warehouse_id || undefined,
@@ -222,17 +230,15 @@ export function StockEntryDialog({
       posting_date: new Date(formData.posting_date).toISOString(),
       status: formData.status,
       remarks: formData.remarks || undefined,
-      items: lineItems
-        .filter((item) => item.item_id)
-        .map((item) => ({
-          item_id: item.item_id!,
-          source_warehouse_id: item.source_warehouse_id || undefined,
-          target_warehouse_id: item.target_warehouse_id || undefined,
-          qty: item.qty || 0,
-          basic_rate: item.basic_rate || 0,
-          uom: item.uom,
-        })),
+      items,
     };
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitError(null);
+
+    const payload = getPayload();
 
     try {
       if (isEditing && entry) {
