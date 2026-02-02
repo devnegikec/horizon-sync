@@ -1,8 +1,8 @@
 import { renderHook, act } from '@testing-library/react';
 
-import { usePersonalDetailsForm } from '../../../app/hooks/usePersonalDetailsForm';
 import { useAuth } from '../../../app/hooks/useAuth';
 import { useOnboardingStore } from '../../../app/hooks/useOnboardingStore';
+import { usePersonalDetailsForm } from '../../../app/hooks/usePersonalDetailsForm';
 import { UserService } from '../../../app/services/user.service';
 
 // Mock dependencies

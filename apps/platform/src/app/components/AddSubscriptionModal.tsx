@@ -73,12 +73,10 @@ export function AddSubscriptionModal({ onSuccess }: AddSubscriptionModalProps) {
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="plan">Plan</Label>
-            <Select
-              value={formData.plan_code}
+            <Select value={formData.plan_code}
               onValueChange={(value) =>
                 setFormData({ ...formData, plan_code: value })
-              }
-            >
+              }>
               <SelectTrigger>
                 <SelectValue placeholder="Select a plan" />
               </SelectTrigger>
@@ -91,12 +89,10 @@ export function AddSubscriptionModal({ onSuccess }: AddSubscriptionModalProps) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="billing">Billing Cycle</Label>
-            <Select
-              value={formData.billing_cycle}
+            <Select value={formData.billing_cycle}
               onValueChange={(value) =>
                 setFormData({ ...formData, billing_cycle: value as 'monthly' | 'yearly' })
-              }
-            >
+              }>
               <SelectTrigger>
                 <SelectValue placeholder="Select billing cycle" />
               </SelectTrigger>
@@ -107,12 +103,10 @@ export function AddSubscriptionModal({ onSuccess }: AddSubscriptionModalProps) {
             </Select>
           </div>
           <DialogFooter>
-            <Button
-              type="button"
+            <Button type="button"
               variant="outline"
               onClick={() => setOpen(false)}
-              disabled={isLoading}
-            >
+              disabled={isLoading}>
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading || !formData.plan_code}>

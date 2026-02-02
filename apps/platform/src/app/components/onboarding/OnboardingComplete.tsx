@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+
 import { CheckCircle2 } from "lucide-react";
-import { Button } from "@horizon-sync/ui/components/ui/button";
 import { useNavigate } from "react-router-dom";
+
+import { Button } from "@horizon-sync/ui/components/ui/button";
 
 export function OnboardingComplete() {
   const navigate = useNavigate();
@@ -19,10 +21,8 @@ export function OnboardingComplete() {
           Your account is ready. You can now start using Horizon Sync.
         </p>
       </div>
-      <Button 
-        onClick={() => navigate("/dashboard")} 
-        className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] text-white"
-      >
+      <Button onClick={() => navigate("/dashboard")} 
+        className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] text-white">
         Go to Dashboard
       </Button>
     </div>

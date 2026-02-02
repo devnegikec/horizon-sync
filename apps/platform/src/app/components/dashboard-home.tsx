@@ -44,23 +44,19 @@ function StatCard({
             ) : (
               <ArrowDownRight className="h-4 w-4 text-red-500" />
             )}
-            <span
-              className={cn(
+            <span className={cn(
                 'text-sm font-medium',
                 changeType === 'positive' ? 'text-emerald-500' : 'text-red-500'
-              )}
-            >
+              )}>
               {change}
             </span>
             <span className="text-sm text-muted-foreground">vs last month</span>
           </div>
         </div>
-        <div
-          className={cn(
+        <div className={cn(
             'flex h-12 w-12 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110',
             iconBg
-          )}
-        >
+          )}>
           <Icon className="h-6 w-6 text-white" />
         </div>
       </div>
@@ -175,11 +171,9 @@ export function DashboardHome() {
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, index) => (
-          <div
-            key={stat.title}
+          <div key={stat.title}
             className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-            style={{ animationDelay: `${index * 100}ms` }}
-          >
+            style={{ animationDelay: `${index * 100}ms` }}>
             <StatCard {...stat} />
           </div>
         ))}
@@ -200,11 +194,9 @@ export function DashboardHome() {
               <Button variant="ghost" size="sm" className="text-xs">
                 Week
               </Button>
-              <Button
-                variant="ghost"
+              <Button variant="ghost"
                 size="sm"
-                className="text-xs bg-accent"
-              >
+                className="text-xs bg-accent">
                 Month
               </Button>
               <Button variant="ghost" size="sm" className="text-xs">
@@ -217,11 +209,9 @@ export function DashboardHome() {
           <div className="h-[300px] flex items-end justify-between gap-2 px-4">
             {[40, 65, 45, 80, 55, 70, 85, 60, 75, 90, 70, 95].map(
               (height, index) => (
-                <div
-                  key={index}
+                <div key={index}
                   className="flex-1 bg-gradient-to-t from-violet-500 to-fuchsia-500 rounded-t-md opacity-80 hover:opacity-100 transition-all duration-300 cursor-pointer hover:scale-y-105 origin-bottom"
-                  style={{ height: `${height}%` }}
-                />
+                  style={{ height: `${height}%` }}/>
               )
             )}
           </div>
@@ -282,11 +272,9 @@ export function DashboardHome() {
             { label: 'View Reports', icon: TrendingUp },
             { label: 'System Settings', icon: Activity },
           ].map((action) => (
-            <Button
-              key={action.label}
+            <Button key={action.label}
               variant="outline"
-              className="h-auto py-4 flex-col gap-2 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all"
-            >
+              className="h-auto py-4 flex-col gap-2 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all">
               <action.icon className="h-5 w-5 text-violet-500" />
               <span>{action.label}</span>
             </Button>
