@@ -52,8 +52,8 @@ export function App() {
 
         {/* Main Content */}
         <main className="container px-4 py-8">
-          {/* {activeView === 'items' && <ItemManagement />} */}
-          {/* {activeView === 'customers' && <CustomerManagement />} */}
+          {activeView === 'items' && <ItemManagement />}
+          {activeView === 'customers' && <CustomerManagement />}
         </main>
       </div>
     </ThemeProvider>
