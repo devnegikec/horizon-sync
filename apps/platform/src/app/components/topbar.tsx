@@ -51,12 +51,10 @@ export function Topbar({ sidebarCollapsed, sidebarOpen, isMobile, onToggleSideba
         {/* Desktop Toggle */}
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
+            <Button variant="ghost"
               size="icon"
               onClick={onToggleSidebar}
-              className="hidden md:flex"
-            >
+              className="hidden md:flex">
               {sidebarCollapsed ? (
                 <PanelLeft className="h-5 w-5" />
               ) : (
@@ -77,11 +75,9 @@ export function Topbar({ sidebarCollapsed, sidebarOpen, isMobile, onToggleSideba
         {/* Search */}
         <div className="hidden sm:flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-muted-foreground transition-colors focus-within:bg-muted">
           <Search className="h-4 w-4" />
-          <input
-            type="text"
+          <input type="text"
             placeholder="Search anything..."
-            className="bg-transparent text-sm outline-none w-[200px] lg:w-[300px] placeholder:text-muted-foreground"
-          />
+            className="bg-transparent text-sm outline-none w-[200px] lg:w-[300px] placeholder:text-muted-foreground"/>
           <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border bg-background px-1.5 text-[10px] font-medium text-muted-foreground">
             ⌘K
           </kbd>
@@ -105,10 +101,8 @@ export function Topbar({ sidebarCollapsed, sidebarOpen, isMobile, onToggleSideba
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="relative h-9 w-9 rounded-full ring-2 ring-transparent hover:ring-violet-500/20 transition-all"
-            >
+            <Button variant="ghost"
+              className="relative h-9 w-9 rounded-full ring-2 ring-transparent hover:ring-violet-500/20 transition-all">
               <Avatar className="h-9 w-9">
                 <AvatarImage src="" alt="User" />
                 <AvatarFallback className="bg-gradient-to-br from-[#3058EE] to-[#7D97F6] text-white text-sm font-medium">
@@ -129,10 +123,8 @@ export function Topbar({ sidebarCollapsed, sidebarOpen, isMobile, onToggleSideba
             <DropdownMenuItem>Billing</DropdownMenuItem>
             <DropdownMenuItem>Team</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive cursor-pointer"
-              onClick={handleLogout}
-            >
+            <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer"
+              onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Log out
             </DropdownMenuItem>

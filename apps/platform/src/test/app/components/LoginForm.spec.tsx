@@ -23,12 +23,10 @@ describe('LoginForm', () => {
 
   const renderLoginForm = () => {
     return render(
-      <BrowserRouter
-        future={{
+      <BrowserRouter future={{
           v7_startTransition: true,
           v7_relativeSplatPath: true,
-        }}
-      >
+        }}>
         <Routes>
           <Route path="/" element={<LoginForm />} />
           <Route path="/forgot-password" element={<div>Forgot Password Page</div>} />
@@ -200,7 +198,7 @@ describe('LoginForm', () => {
 
       await waitFor(() => {
         expect(mockLogin).toHaveBeenCalledWith('test-token', 'test-refresh-token', {
-          user_id: 'user-123',
+          id: 'user-123',
           email: 'test@example.com',
           organization_id: 'org-123',
         });

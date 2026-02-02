@@ -188,13 +188,11 @@ export function InviteUserModal({
             <Label htmlFor="email">
               Email Address <span className="text-destructive">*</span>
             </Label>
-            <Input
-              id="email"
+            <Input id="email"
               type="email"
               placeholder="user@example.com"
               {...register('email')}
-              className={errors.email ? 'border-destructive' : ''}
-            />
+              className={errors.email ? 'border-destructive' : ''}/>
             {errors.email && (
               <p className="text-sm text-destructive">{errors.email.message}</p>
             )}
@@ -209,12 +207,10 @@ export function InviteUserModal({
               <Label htmlFor="first_name">
                 First Name <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="first_name"
+              <Input id="first_name"
                 placeholder="John"
                 {...register('first_name')}
-                className={errors.first_name ? 'border-destructive' : ''}
-              />
+                className={errors.first_name ? 'border-destructive' : ''}/>
               {errors.first_name && (
                 <p className="text-sm text-destructive">
                   {errors.first_name.message}
@@ -226,12 +222,10 @@ export function InviteUserModal({
               <Label htmlFor="last_name">
                 Last Name <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="last_name"
+              <Input id="last_name"
                 placeholder="Doe"
                 {...register('last_name')}
-                className={errors.last_name ? 'border-destructive' : ''}
-              />
+                className={errors.last_name ? 'border-destructive' : ''}/>
               {errors.last_name && (
                 <p className="text-sm text-destructive">
                   {errors.last_name.message}
@@ -272,31 +266,23 @@ export function InviteUserModal({
 
             <div className="space-y-4">
               {permissionGroups.map((group, groupIndex) => (
-                <div
-                  key={group.title}
-                  className="rounded-lg border border-border p-4"
-                >
+                <div key={group.title}
+                  className="rounded-lg border border-border p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <group.icon className="h-5 w-5 text-muted-foreground" />
                     <h4 className="font-semibold text-sm">{group.title}</h4>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     {group.permissions.map((permission, permissionIndex) => (
-                      <div
-                        key={permission.id}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={permission.id}
+                      <div key={permission.id}
+                        className="flex items-center space-x-2">
+                        <Checkbox id={permission.id}
                           checked={permission.checked}
                           onCheckedChange={() =>
                             togglePermission(groupIndex, permissionIndex)
-                          }
-                        />
-                        <label
-                          htmlFor={permission.id}
-                          className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                        >
+                          }/>
+                        <label htmlFor={permission.id}
+                          className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
                           {permission.label}
                         </label>
                       </div>
@@ -315,19 +301,15 @@ export function InviteUserModal({
           )}
 
           <DialogFooter>
-            <Button
-              type="button"
+            <Button type="button"
               variant="outline"
               onClick={handleClose}
-              disabled={isSubmitting}
-            >
+              disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button
-              type="submit"
+            <Button type="submit"
               disabled={isSubmitting}
-              className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white"
-            >
+              className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white">
               {isSubmitting ? (
                 <>Sending...</>
               ) : (
