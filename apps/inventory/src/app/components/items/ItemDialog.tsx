@@ -1,7 +1,8 @@
 import * as React from 'react';
 
-import { Package } from 'lucide-react';
+import { Loader2, Package } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
   Dialog,
@@ -22,14 +23,21 @@ import {
 } from '@horizon-sync/ui/components/ui/select';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
-import type { Item, ItemGroup } from '../../types/item.types';
+import { environment } from '../../../environments/environment';
+import type { ApiItemGroup } from '../../types/item-groups.types';
+import type { Item } from '../../types/item.types';
+import type { CreateItemPayload } from '../../types/items-api.types';
+
+
+const ITEMS_URL = `${environment.apiCoreUrl}/items`;
 
 interface ItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item?: Item | null;
-  itemGroups: ItemGroup[];
+  itemGroups: ApiItemGroup[];
   onSave: (item: Partial<Item>) => void;
+  onCreated?: () => void;
 }
 
 const unitOfMeasureOptions = [
@@ -43,13 +51,61 @@ const unitOfMeasureOptions = [
   'Set',
 ];
 
+function buildCreatePayload(formData: {
+  itemCode: string;
+  name: string;
+  description: string;
+  unitOfMeasure: string;
+  defaultPrice: string;
+  itemGroupId: string;
+}): CreateItemPayload {
+  const standardRate = parseFloat(formData.defaultPrice) || 0;
+  return {
+    item_code: formData.itemCode,
+    item_name: formData.name,
+    description: formData.description,
+    item_group_id: formData.itemGroupId,
+    item_type: 'stock',
+    uom: formData.unitOfMeasure,
+    maintain_stock: true,
+    valuation_method: 'fifo',
+    allow_negative_stock: false,
+    has_variants: false,
+    variant_of: null,
+    variant_attributes: {},
+    has_batch_no: false,
+    has_serial_no: false,
+    batch_number_series: '',
+    serial_number_series: '',
+    standard_rate: standardRate,
+    valuation_rate: 0,
+    enable_auto_reorder: false,
+    reorder_level: 0,
+    reorder_qty: 0,
+    min_order_qty: 1,
+    max_order_qty: 0,
+    weight_per_unit: 0,
+    weight_uom: '',
+    inspection_required_before_purchase: false,
+    inspection_required_before_delivery: false,
+    barcode: '',
+    status: 'ACTIVE',
+    image_url: '',
+    images: [],
+    tags: [],
+    custom_fields: {},
+  };
+}
+
 export function ItemDialog({
   open,
   onOpenChange,
   item,
   itemGroups,
   onSave,
+  onCreated,
 }: ItemDialogProps) {
+  const accessToken = useUserStore((s) => s.accessToken);
   const [formData, setFormData] = React.useState({
     itemCode: '',
     name: '',
@@ -57,7 +113,10 @@ export function ItemDialog({
     unitOfMeasure: 'Piece',
     defaultPrice: '',
     itemGroupId: '',
+    itemGroupName: '',
   });
+  const [submitting, setSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
 
   const isEditing = !!item;
 
@@ -70,6 +129,7 @@ export function ItemDialog({
         unitOfMeasure: item.unitOfMeasure,
         defaultPrice: item.defaultPrice.toString(),
         itemGroupId: item.itemGroupId,
+        itemGroupName: item.itemGroupName,
       });
     } else {
       setFormData({
@@ -79,18 +139,59 @@ export function ItemDialog({
         unitOfMeasure: 'Piece',
         defaultPrice: '',
         itemGroupId: '',
+        itemGroupName: '',
       });
     }
+    setSubmitError(null);
   }, [item, open]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEditSubmit = () => {
     onSave({
       ...formData,
       defaultPrice: parseFloat(formData.defaultPrice) || 0,
       itemGroupName: itemGroups.find((g) => g.id === formData.itemGroupId)?.name || '',
     });
     onOpenChange(false);
+  };
+
+  const handleCreateSubmit = async () => {
+    if (!accessToken) {
+      setSubmitError('Not authenticated');
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const payload = buildCreatePayload(formData);
+      const res = await fetch(ITEMS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      onCreated?.();
+      onOpenChange(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to create item');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitError(null);
+    if (isEditing) {
+      handleEditSubmit();
+    } else {
+      handleCreateSubmit();
+    }
   };
 
   return (
@@ -197,14 +298,24 @@ export function ItemDialog({
               </div>
             </div>
           </div>
+          {submitError && (
+            <p className="text-sm text-destructive">{submitError}</p>
+          )}
           <DialogFooter>
             <Button type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}>
+              onClick={() => onOpenChange(false)}
+              disabled={submitting}>
               Cancel
             </Button>
-            <Button type="submit">
-              {isEditing ? 'Save Changes' : 'Create Item'}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</>
+              ) : isEditing ? (
+                'Save Changes'
+              ) : (
+                'Create Item'
+              )}
             </Button>
           </DialogFooter>
         </form>

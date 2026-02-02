@@ -43,13 +43,15 @@ import {
 } from '@horizon-sync/ui/components/ui/table';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { mockItemGroups } from '../../data/items.mock';
+import { useItemGroups } from '../../hooks/useItemGroups';
 import { useItems } from '../../hooks/useItems';
 import type { Item, ItemFilters } from '../../types/item.types';
 import type { ApiItem } from '../../types/items-api.types';
+import { formatDate } from '../../utility/formatDate';
 
 import { ItemDetailDialog } from './ItemDetailDialog';
 import { ItemDialog } from './ItemDialog';
+
 
 function apiItemToItem(api: ApiItem): Item {
   return {
@@ -60,7 +62,7 @@ function apiItemToItem(api: ApiItem): Item {
     unitOfMeasure: api.uom ?? '',
     defaultPrice: api.standard_rate != null ? parseFloat(api.standard_rate) : 0,
     itemGroupId: api.item_group_id ?? '',
-    itemGroupName: '',
+    itemGroupName: api.item_group_name ?? '',
     currentStock: 0,
     status: (api.status === 'active' || api.status === 'inactive' ? api.status : 'active') as Item['status'],
     createdAt: api.created_at ?? '',
@@ -111,15 +113,14 @@ function ItemRow(props: ItemRowProps) {
       <TableCell>
         <code className="text-sm bg-muted px-2 py-1 rounded">{item.item_code ?? ''}</code>
       </TableCell>
-      <TableCell>{item.item_group_id ?? ''}</TableCell>
+      <TableCell>{item.item_group_name ?? ''}</TableCell>
       <TableCell>{item.uom ?? ''}</TableCell>
       <TableCell>{item.standard_rate ?? ''}</TableCell>
       <TableCell>
         <Badge variant={isActive ? 'success' : 'secondary'}>{item.status ?? ''}</Badge>
       </TableCell>
       <TableCell>{maintainStockText}</TableCell>
-      <TableCell>{item.barcode ?? ''}</TableCell>
-      <TableCell>{item.created_at ?? ''}</TableCell>
+      <TableCell>{formatDate(item.created_at ?? '', 'DD-MMM-YY')}</TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -180,6 +181,7 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 // eslint-disable-next-line complexity -- filters, stats, dialogs, table states
 export function ItemManagement() {
   const { items, pagination, loading, error, refetch } = useItems(1, 20);
+  const { itemGroups } = useItemGroups();
   const [filters, setFilters] = React.useState<ItemFilters>({
     search: '',
     groupId: 'all',
@@ -288,7 +290,7 @@ export function ItemManagement() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Groups</SelectItem>
-              {mockItemGroups.map((group) => (
+              {itemGroups.map((group) => (
                 <SelectItem key={group.id} value={group.id}>
                   {group.name}
                 </SelectItem>
@@ -329,7 +331,6 @@ export function ItemManagement() {
                 <TableHead>Standard Rate</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Maintain Stock</TableHead>
-                <TableHead>Barcode</TableHead>
                 <TableHead>Created At</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -378,7 +379,7 @@ export function ItemManagement() {
       </Card>
 
       {/* Dialogs */}
-      <ItemDialog open={itemDialogOpen} onOpenChange={setItemDialogOpen} item={selectedItemAsItem} itemGroups={mockItemGroups} onSave={handleSaveItem} />
+      <ItemDialog open={itemDialogOpen} onOpenChange={setItemDialogOpen} item={selectedItemAsItem} itemGroups={itemGroups} onSave={handleSaveItem} onCreated={refetch} />
       <ItemDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} item={selectedItemAsItem} />
     </div>
   );
