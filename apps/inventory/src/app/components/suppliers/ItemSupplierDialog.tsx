@@ -23,8 +23,8 @@ import {
 } from '@horizon-sync/ui/components/ui/select';
 
 import { useItemSupplierMutations } from '../../hooks/useItemSuppliers';
-import type { ItemSupplier, CreateItemSupplierPayload } from '../../types/supplier.types';
 import type { ApiItem } from '../../types/items-api.types';
+import type { ItemSupplier, CreateItemSupplierPayload } from '../../types/supplier.types';
 
 // Mock supplier data - in a real app this would come from a suppliers API
 interface Supplier {
@@ -137,10 +137,8 @@ export function ItemSupplierDialog({
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="item_id">Item</Label>
-              <Select
-                value={formData.item_id}
-                onValueChange={(value) => setFormData({ ...formData, item_id: value })}
-              >
+              <Select value={formData.item_id}
+                onValueChange={(value) => setFormData({ ...formData, item_id: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select item" />
                 </SelectTrigger>
@@ -156,10 +154,8 @@ export function ItemSupplierDialog({
 
             <div className="space-y-2">
               <Label htmlFor="supplier_id">Supplier</Label>
-              <Select
-                value={formData.supplier_id}
-                onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
-              >
+              <Select value={formData.supplier_id}
+                onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select supplier" />
                 </SelectTrigger>
@@ -176,38 +172,32 @@ export function ItemSupplierDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="supplier_part_no">Supplier Part No.</Label>
-                <Input
-                  id="supplier_part_no"
+                <Input id="supplier_part_no"
                   value={formData.supplier_part_no}
                   onChange={(e) =>
                     setFormData({ ...formData, supplier_part_no: e.target.value })
                   }
-                  placeholder="e.g., SUP-001"
-                />
+                  placeholder="e.g., SUP-001"/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lead_time_days">Lead Time (Days)</Label>
-                <Input
-                  id="lead_time_days"
+                <Input id="lead_time_days"
                   type="number"
                   min="0"
                   value={formData.lead_time_days}
                   onChange={(e) =>
                     setFormData({ ...formData, lead_time_days: e.target.value })
                   }
-                  placeholder="0"
-                />
+                  placeholder="0"/>
               </div>
             </div>
 
             <div className="flex items-center space-x-2">
-              <Checkbox
-                id="is_default"
+              <Checkbox id="is_default"
                 checked={formData.is_default}
                 onCheckedChange={(checked) =>
                   setFormData({ ...formData, is_default: checked === true })
-                }
-              />
+                }/>
               <Label htmlFor="is_default" className="text-sm font-normal">
                 Set as default supplier for this item
               </Label>
@@ -217,12 +207,10 @@ export function ItemSupplierDialog({
           {submitError && <p className="text-sm text-destructive mb-4">{submitError}</p>}
 
           <DialogFooter>
-            <Button
-              type="button"
+            <Button type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
+              disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>

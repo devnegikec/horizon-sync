@@ -23,9 +23,9 @@ import {
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
 import { useStockEntryMutations } from '../../hooks/useStock';
-import type { Warehouse } from '../../types/warehouse.types';
 import type { ApiItem } from '../../types/items-api.types';
 import type { StockEntry, StockEntryItem } from '../../types/stock.types';
+import type { Warehouse } from '../../types/warehouse.types';
 
 interface StockEntryDialogProps {
   open: boolean;
@@ -59,10 +59,8 @@ function ItemLine({ item, index, warehouses, items, onChange, onRemove }: ItemLi
     <div className="grid grid-cols-12 gap-2 items-end border-b pb-3">
       <div className="col-span-3 space-y-1">
         <Label className="text-xs">Item</Label>
-        <Select
-          value={item.item_id || ''}
-          onValueChange={(value) => onChange(index, 'item_id', value)}
-        >
+        <Select value={item.item_id || ''}
+          onValueChange={(value) => onChange(index, 'item_id', value)}>
           <SelectTrigger className="h-8 text-xs">
             <SelectValue placeholder="Select" />
           </SelectTrigger>
@@ -77,10 +75,8 @@ function ItemLine({ item, index, warehouses, items, onChange, onRemove }: ItemLi
       </div>
       <div className="col-span-2 space-y-1">
         <Label className="text-xs">Source WH</Label>
-        <Select
-          value={item.source_warehouse_id || 'none'}
-          onValueChange={(value) => onChange(index, 'source_warehouse_id', value === 'none' ? '' : value)}
-        >
+        <Select value={item.source_warehouse_id || 'none'}
+          onValueChange={(value) => onChange(index, 'source_warehouse_id', value === 'none' ? '' : value)}>
           <SelectTrigger className="h-8 text-xs">
             <SelectValue placeholder="Select" />
           </SelectTrigger>
@@ -96,10 +92,8 @@ function ItemLine({ item, index, warehouses, items, onChange, onRemove }: ItemLi
       </div>
       <div className="col-span-2 space-y-1">
         <Label className="text-xs">Target WH</Label>
-        <Select
-          value={item.target_warehouse_id || 'none'}
-          onValueChange={(value) => onChange(index, 'target_warehouse_id', value === 'none' ? '' : value)}
-        >
+        <Select value={item.target_warehouse_id || 'none'}
+          onValueChange={(value) => onChange(index, 'target_warehouse_id', value === 'none' ? '' : value)}>
           <SelectTrigger className="h-8 text-xs">
             <SelectValue placeholder="Select" />
           </SelectTrigger>
@@ -115,33 +109,27 @@ function ItemLine({ item, index, warehouses, items, onChange, onRemove }: ItemLi
       </div>
       <div className="col-span-2 space-y-1">
         <Label className="text-xs">Qty</Label>
-        <Input
-          type="number"
+        <Input type="number"
           className="h-8 text-xs"
           value={item.qty || ''}
           onChange={(e) => onChange(index, 'qty', parseFloat(e.target.value) || 0)}
-          placeholder="0"
-        />
+          placeholder="0"/>
       </div>
       <div className="col-span-2 space-y-1">
         <Label className="text-xs">Rate</Label>
-        <Input
-          type="number"
+        <Input type="number"
           step="0.01"
           className="h-8 text-xs"
           value={item.basic_rate || ''}
           onChange={(e) => onChange(index, 'basic_rate', parseFloat(e.target.value) || 0)}
-          placeholder="0.00"
-        />
+          placeholder="0.00"/>
       </div>
       <div className="col-span-1">
-        <Button
-          type="button"
+        <Button type="button"
           variant="ghost"
           size="icon"
           className="h-8 w-8"
-          onClick={() => onRemove(index)}
-        >
+          onClick={() => onRemove(index)}>
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </div>
@@ -283,21 +271,17 @@ export function StockEntryDialog({
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="stock_entry_no">Entry No.</Label>
-                <Input
-                  id="stock_entry_no"
+                <Input id="stock_entry_no"
                   value={formData.stock_entry_no}
                   onChange={(e) => setFormData({ ...formData, stock_entry_no: e.target.value })}
-                  placeholder="Auto-generated"
-                />
+                  placeholder="Auto-generated"/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="stock_entry_type">Entry Type</Label>
-                <Select
-                  value={formData.stock_entry_type}
+                <Select value={formData.stock_entry_type}
                   onValueChange={(value) =>
                     setFormData({ ...formData, stock_entry_type: value })
-                  }
-                >
+                  }>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -312,25 +296,21 @@ export function StockEntryDialog({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="posting_date">Posting Date</Label>
-                <Input
-                  id="posting_date"
+                <Input id="posting_date"
                   type="date"
                   value={formData.posting_date}
                   onChange={(e) => setFormData({ ...formData, posting_date: e.target.value })}
-                  required
-                />
+                  required/>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="from_warehouse_id">From Warehouse</Label>
-                <Select
-                  value={formData.from_warehouse_id || 'none'}
+                <Select value={formData.from_warehouse_id || 'none'}
                   onValueChange={(value) =>
                     setFormData({ ...formData, from_warehouse_id: value === 'none' ? '' : value })
-                  }
-                >
+                  }>
                   <SelectTrigger>
                     <SelectValue placeholder="Select warehouse" />
                   </SelectTrigger>
@@ -346,12 +326,10 @@ export function StockEntryDialog({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="to_warehouse_id">To Warehouse</Label>
-                <Select
-                  value={formData.to_warehouse_id || 'none'}
+                <Select value={formData.to_warehouse_id || 'none'}
                   onValueChange={(value) =>
                     setFormData({ ...formData, to_warehouse_id: value === 'none' ? '' : value })
-                  }
-                >
+                  }>
                   <SelectTrigger>
                     <SelectValue placeholder="Select warehouse" />
                   </SelectTrigger>
@@ -369,13 +347,11 @@ export function StockEntryDialog({
 
             <div className="space-y-2">
               <Label htmlFor="remarks">Remarks</Label>
-              <Textarea
-                id="remarks"
+              <Textarea id="remarks"
                 value={formData.remarks}
                 onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                 placeholder="Additional remarks..."
-                rows={2}
-              />
+                rows={2}/>
             </div>
 
             {/* Line Items */}
@@ -389,15 +365,13 @@ export function StockEntryDialog({
               </div>
               <div className="space-y-3">
                 {lineItems.map((item, index) => (
-                  <ItemLine
-                    key={index}
+                  <ItemLine key={index}
                     item={item}
                     index={index}
                     warehouses={warehouses}
                     items={items}
                     onChange={handleItemChange}
-                    onRemove={handleRemoveItem}
-                  />
+                    onRemove={handleRemoveItem}/>
                 ))}
               </div>
             </div>

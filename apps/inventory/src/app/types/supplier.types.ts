@@ -27,7 +27,7 @@ export interface CreateItemSupplierPayload {
   extra_data?: Record<string, unknown>;
 }
 
-export interface UpdateItemSupplierPayload extends Partial<CreateItemSupplierPayload> {}
+export type UpdateItemSupplierPayload = Partial<CreateItemSupplierPayload>
 
 export interface ItemSuppliersResponse {
   item_suppliers: ItemSupplier[];

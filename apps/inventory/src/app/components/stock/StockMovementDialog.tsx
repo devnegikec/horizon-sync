@@ -23,8 +23,8 @@ import {
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
 import { useStockMovementMutations } from '../../hooks/useStock';
-import type { Warehouse } from '../../types/warehouse.types';
 import type { ApiItem } from '../../types/items-api.types';
+import type { Warehouse } from '../../types/warehouse.types';
 
 interface StockMovementDialogProps {
   open: boolean;
@@ -121,10 +121,8 @@ export function StockMovementDialog({
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="item_id">Item</Label>
-              <Select
-                value={formData.item_id}
-                onValueChange={(value) => setFormData({ ...formData, item_id: value })}
-              >
+              <Select value={formData.item_id}
+                onValueChange={(value) => setFormData({ ...formData, item_id: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select item" />
                 </SelectTrigger>
@@ -140,10 +138,8 @@ export function StockMovementDialog({
 
             <div className="space-y-2">
               <Label htmlFor="warehouse_id">Warehouse</Label>
-              <Select
-                value={formData.warehouse_id}
-                onValueChange={(value) => setFormData({ ...formData, warehouse_id: value })}
-              >
+              <Select value={formData.warehouse_id}
+                onValueChange={(value) => setFormData({ ...formData, warehouse_id: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select warehouse" />
                 </SelectTrigger>
@@ -160,10 +156,8 @@ export function StockMovementDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="movement_type">Movement Type</Label>
-                <Select
-                  value={formData.movement_type}
-                  onValueChange={(value) => setFormData({ ...formData, movement_type: value })}
-                >
+                <Select value={formData.movement_type}
+                  onValueChange={(value) => setFormData({ ...formData, movement_type: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -178,49 +172,41 @@ export function StockMovementDialog({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="quantity">Quantity</Label>
-                <Input
-                  id="quantity"
+                <Input id="quantity"
                   type="number"
                   value={formData.quantity}
                   onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                   placeholder="0"
-                  required
-                />
+                  required/>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="unit_cost">Unit Cost</Label>
-                <Input
-                  id="unit_cost"
+                <Input id="unit_cost"
                   type="number"
                   step="0.01"
                   value={formData.unit_cost}
                   onChange={(e) => setFormData({ ...formData, unit_cost: e.target.value })}
-                  placeholder="0.00"
-                />
+                  placeholder="0.00"/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="reference_type">Reference Type</Label>
-                <Input
-                  id="reference_type"
+                <Input id="reference_type"
                   value={formData.reference_type}
                   onChange={(e) => setFormData({ ...formData, reference_type: e.target.value })}
-                  placeholder="e.g., PO, SO"
-                />
+                  placeholder="e.g., PO, SO"/>
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
+              <Textarea id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Additional notes..."
-                rows={2}
-              />
+                rows={2}/>
             </div>
           </div>
 

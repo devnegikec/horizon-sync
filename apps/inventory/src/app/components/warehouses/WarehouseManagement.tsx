@@ -185,10 +185,8 @@ function WarehouseRow({ warehouse, onView, onEdit, onDelete }: WarehouseRowProps
                 Activate
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem
-              onClick={() => onDelete(warehouse)}
-              className="text-destructive focus:text-destructive"
-            >
+            <DropdownMenuItem onClick={() => onDelete(warehouse)}
+              className="text-destructive focus:text-destructive">
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </DropdownMenuItem>
@@ -280,10 +278,8 @@ export function WarehouseManagement() {
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button
-            onClick={handleCreateWarehouse}
-            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg"
-          >
+          <Button onClick={handleCreateWarehouse}
+            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
             <Plus className="h-4 w-4" />
             Add Warehouse
           </Button>
@@ -292,48 +288,36 @@ export function WarehouseManagement() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Locations"
+        <StatCard title="Total Locations"
           value={stats.total}
           icon={WarehouseIcon}
           iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"
-        />
-        <StatCard
-          title="Active Locations"
+          iconColor="text-slate-600 dark:text-slate-400"/>
+        <StatCard title="Active Locations"
           value={stats.active}
           icon={Building2}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"
-        />
-        <StatCard
-          title="Warehouses"
+          iconColor="text-emerald-600 dark:text-emerald-400"/>
+        <StatCard title="Warehouses"
           value={stats.warehouseCount}
           icon={Building2}
           iconBg="bg-blue-100 dark:bg-blue-900/20"
-          iconColor="text-blue-600 dark:text-blue-400"
-        />
-        <StatCard
-          title="Stores"
+          iconColor="text-blue-600 dark:text-blue-400"/>
+        <StatCard title="Stores"
           value={stats.storeCount}
           icon={Store}
           iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"
-        />
+          iconColor="text-amber-600 dark:text-amber-400"/>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <SearchInput
-          className="sm:w-80"
+        <SearchInput className="sm:w-80"
           placeholder="Search by name, code, or city..."
-          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
-        />
+          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
         <div className="flex gap-3">
-          <Select
-            value={filters.warehouseType}
-            onValueChange={(value) => setFilters((prev) => ({ ...prev, warehouseType: value }))}
-          >
+          <Select value={filters.warehouseType}
+            onValueChange={(value) => setFilters((prev) => ({ ...prev, warehouseType: value }))}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
@@ -344,10 +328,8 @@ export function WarehouseManagement() {
               <SelectItem value="transit">Transit</SelectItem>
             </SelectContent>
           </Select>
-          <Select
-            value={filters.status}
-            onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
-          >
+          <Select value={filters.status}
+            onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
@@ -387,8 +369,7 @@ export function WarehouseManagement() {
               ) : filteredWarehouses.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8}>
-                    <EmptyState
-                      icon={<WarehouseIcon className="h-12 w-12" />}
+                    <EmptyState icon={<WarehouseIcon className="h-12 w-12" />}
                       title="No warehouses found"
                       description={
                         filters.search ||
@@ -406,19 +387,16 @@ export function WarehouseManagement() {
                             Add Warehouse
                           </Button>
                         )
-                      }
-                    />
+                      }/>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredWarehouses.map((warehouse) => (
-                  <WarehouseRow
-                    key={warehouse.id}
+                  <WarehouseRow key={warehouse.id}
                     warehouse={warehouse}
                     onView={handleViewWarehouse}
                     onEdit={handleEditWarehouse}
-                    onDelete={handleDeleteWarehouse}
-                  />
+                    onDelete={handleDeleteWarehouse}/>
                 ))
               )}
             </TableBody>
@@ -427,19 +405,15 @@ export function WarehouseManagement() {
       </Card>
 
       {/* Dialogs */}
-      <WarehouseDialog
-        open={warehouseDialogOpen}
+      <WarehouseDialog open={warehouseDialogOpen}
         onOpenChange={setWarehouseDialogOpen}
         warehouse={selectedWarehouse}
         warehouses={warehouses}
         onCreated={refetch}
-        onUpdated={refetch}
-      />
-      <WarehouseDetailDialog
-        open={detailDialogOpen}
+        onUpdated={refetch}/>
+      <WarehouseDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        warehouse={selectedWarehouse}
-      />
+        warehouse={selectedWarehouse}/>
     </div>
   );
 }

@@ -165,10 +165,8 @@ function ItemSupplierRow({
               Edit Link
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => onDelete(itemSupplier)}
-              className="text-destructive focus:text-destructive"
-            >
+            <DropdownMenuItem onClick={() => onDelete(itemSupplier)}
+              className="text-destructive focus:text-destructive">
               <Trash2 className="mr-2 h-4 w-4" />
               Remove Link
             </DropdownMenuItem>
@@ -275,10 +273,8 @@ export function SupplierManagement() {
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button
-            onClick={handleCreateLink}
-            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg"
-          >
+          <Button onClick={handleCreateLink}
+            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
             <Plus className="h-4 w-4" />
             Link Item to Supplier
           </Button>
@@ -287,48 +283,36 @@ export function SupplierManagement() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Links"
+        <StatCard title="Total Links"
           value={stats.total}
           icon={Link2}
           iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"
-        />
-        <StatCard
-          title="Default Suppliers"
+          iconColor="text-slate-600 dark:text-slate-400"/>
+        <StatCard title="Default Suppliers"
           value={stats.defaultSuppliers}
           icon={Star}
           iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"
-        />
-        <StatCard
-          title="Items with Suppliers"
+          iconColor="text-amber-600 dark:text-amber-400"/>
+        <StatCard title="Items with Suppliers"
           value={stats.uniqueItems}
           icon={Package}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"
-        />
-        <StatCard
-          title="Active Suppliers"
+          iconColor="text-emerald-600 dark:text-emerald-400"/>
+        <StatCard title="Active Suppliers"
           value={stats.uniqueSuppliers}
           icon={Truck}
           iconBg="bg-blue-100 dark:bg-blue-900/20"
-          iconColor="text-blue-600 dark:text-blue-400"
-        />
+          iconColor="text-blue-600 dark:text-blue-400"/>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <SearchInput
-          className="sm:w-80"
+        <SearchInput className="sm:w-80"
           placeholder="Search by item, supplier, or part no..."
-          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
-        />
+          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
         <div className="flex gap-3">
-          <Select
-            value={filters.supplierId}
-            onValueChange={(value) => setFilters((prev) => ({ ...prev, supplierId: value }))}
-          >
+          <Select value={filters.supplierId}
+            onValueChange={(value) => setFilters((prev) => ({ ...prev, supplierId: value }))}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="All Suppliers" />
             </SelectTrigger>
@@ -341,10 +325,8 @@ export function SupplierManagement() {
               ))}
             </SelectContent>
           </Select>
-          <Select
-            value={filters.itemId}
-            onValueChange={(value) => setFilters((prev) => ({ ...prev, itemId: value }))}
-          >
+          <Select value={filters.itemId}
+            onValueChange={(value) => setFilters((prev) => ({ ...prev, itemId: value }))}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="All Items" />
             </SelectTrigger>
@@ -386,8 +368,7 @@ export function SupplierManagement() {
               ) : filteredItemSuppliers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7}>
-                    <EmptyState
-                      icon={<Link2 className="h-12 w-12" />}
+                    <EmptyState icon={<Link2 className="h-12 w-12" />}
                       title="No item-supplier links found"
                       description={
                         filters.search ||
@@ -405,20 +386,17 @@ export function SupplierManagement() {
                             Link Item to Supplier
                           </Button>
                         )
-                      }
-                    />
+                      }/>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredItemSuppliers.map((itemSupplier) => (
-                  <ItemSupplierRow
-                    key={itemSupplier.id}
+                  <ItemSupplierRow key={itemSupplier.id}
                     itemSupplier={itemSupplier}
                     itemName={itemMap.get(itemSupplier.item_id) || 'Unknown Item'}
                     supplierName={supplierMap.get(itemSupplier.supplier_id) || 'Unknown Supplier'}
                     onEdit={handleEditLink}
-                    onDelete={handleDeleteLink}
-                  />
+                    onDelete={handleDeleteLink}/>
                 ))
               )}
             </TableBody>
@@ -427,15 +405,13 @@ export function SupplierManagement() {
       </Card>
 
       {/* Dialog */}
-      <ItemSupplierDialog
-        open={dialogOpen}
+      <ItemSupplierDialog open={dialogOpen}
         onOpenChange={setDialogOpen}
         itemSupplier={selectedItemSupplier}
         items={items}
         suppliers={mockSuppliers}
         onCreated={refetch}
-        onUpdated={refetch}
-      />
+        onUpdated={refetch}/>
     </div>
   );
 }

@@ -187,22 +187,18 @@ export function WarehouseDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="code">Warehouse Code</Label>
-                <Input
-                  id="code"
+                <Input id="code"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   placeholder="e.g., WH-MAIN"
-                  required
-                />
+                  required/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="warehouse_type">Type</Label>
-                <Select
-                  value={formData.warehouse_type}
+                <Select value={formData.warehouse_type}
                   onValueChange={(value) =>
                     setFormData({ ...formData, warehouse_type: value as WarehouseType })
-                  }
-                >
+                  }>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -219,34 +215,28 @@ export function WarehouseDialog({
 
             <div className="space-y-2">
               <Label htmlFor="name">Warehouse Name</Label>
-              <Input
-                id="name"
+              <Input id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Enter warehouse name"
-                required
-              />
+                required/>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
+              <Textarea id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Enter warehouse description"
-                rows={2}
-              />
+                rows={2}/>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="parent_warehouse_id">Parent Warehouse</Label>
-              <Select
-                value={formData.parent_warehouse_id || 'none'}
+              <Select value={formData.parent_warehouse_id || 'none'}
                 onValueChange={(value) =>
                   setFormData({ ...formData, parent_warehouse_id: value === 'none' ? '' : value })
-                }
-              >
+                }>
                 <SelectTrigger>
                   <SelectValue placeholder="Select parent warehouse" />
                 </SelectTrigger>
@@ -267,60 +257,48 @@ export function WarehouseDialog({
               <div className="grid gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="address_line1">Address Line 1</Label>
-                  <Input
-                    id="address_line1"
+                  <Input id="address_line1"
                     value={formData.address_line1}
                     onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
-                    placeholder="Street address"
-                  />
+                    placeholder="Street address"/>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="address_line2">Address Line 2</Label>
-                  <Input
-                    id="address_line2"
+                  <Input id="address_line2"
                     value={formData.address_line2}
                     onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
-                    placeholder="Apt, suite, unit, etc."
-                  />
+                    placeholder="Apt, suite, unit, etc."/>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
+                    <Input id="city"
                       value={formData.city}
                       onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      placeholder="City"
-                    />
+                      placeholder="City"/>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="state">State</Label>
-                    <Input
-                      id="state"
+                    <Input id="state"
                       value={formData.state}
                       onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                      placeholder="State"
-                    />
+                      placeholder="State"/>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="postal_code">Postal Code</Label>
-                    <Input
-                      id="postal_code"
+                    <Input id="postal_code"
                       value={formData.postal_code}
                       onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-                      placeholder="Postal code"
-                    />
+                      placeholder="Postal code"/>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="country">Country</Label>
-                    <Input
-                      id="country"
+                    <Input id="country"
                       value={formData.country}
                       onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                      placeholder="Country"
-                    />
+                      placeholder="Country"/>
                   </div>
                 </div>
               </div>
@@ -332,32 +310,26 @@ export function WarehouseDialog({
               <div className="grid gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="contact_name">Contact Name</Label>
-                  <Input
-                    id="contact_name"
+                  <Input id="contact_name"
                     value={formData.contact_name}
                     onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
-                    placeholder="Contact person name"
-                  />
+                    placeholder="Contact person name"/>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="contact_phone">Phone</Label>
-                    <Input
-                      id="contact_phone"
+                    <Input id="contact_phone"
                       value={formData.contact_phone}
                       onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                      placeholder="Phone number"
-                    />
+                      placeholder="Phone number"/>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="contact_email">Email</Label>
-                    <Input
-                      id="contact_email"
+                    <Input id="contact_email"
                       type="email"
                       value={formData.contact_email}
                       onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                      placeholder="Email address"
-                    />
+                      placeholder="Email address"/>
                   </div>
                 </div>
               </div>
@@ -369,22 +341,18 @@ export function WarehouseDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="total_capacity">Total Capacity</Label>
-                  <Input
-                    id="total_capacity"
+                  <Input id="total_capacity"
                     type="number"
                     value={formData.total_capacity}
                     onChange={(e) => setFormData({ ...formData, total_capacity: e.target.value })}
-                    placeholder="0"
-                  />
+                    placeholder="0"/>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="capacity_uom">Unit of Measure</Label>
-                  <Input
-                    id="capacity_uom"
+                  <Input id="capacity_uom"
                     value={formData.capacity_uom}
                     onChange={(e) => setFormData({ ...formData, capacity_uom: e.target.value })}
-                    placeholder="e.g., sqft, pallets"
-                  />
+                    placeholder="e.g., sqft, pallets"/>
                 </div>
               </div>
             </div>

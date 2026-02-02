@@ -112,11 +112,9 @@ export function WarehouseDetailDialog({
             <>
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold">Parent Warehouse</h4>
-                <DetailRow
-                  icon={Building2}
+                <DetailRow icon={Building2}
                   label="Parent"
-                  value={`${warehouse.parent.name} (${warehouse.parent.code})`}
-                />
+                  value={`${warehouse.parent.name} (${warehouse.parent.code})`}/>
               </div>
               <Separator />
             </>
@@ -126,8 +124,7 @@ export function WarehouseDetailDialog({
             <>
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold">Address</h4>
-                <DetailRow
-                  icon={MapPin}
+                <DetailRow icon={MapPin}
                   label="Location"
                   value={
                     <span className="whitespace-pre-line">
@@ -141,8 +138,7 @@ export function WarehouseDetailDialog({
                         .filter(Boolean)
                         .join('\n')}
                     </span>
-                  }
-                />
+                  }/>
               </div>
               <Separator />
             </>
@@ -172,15 +168,13 @@ export function WarehouseDetailDialog({
             <>
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold">Capacity</h4>
-                <DetailRow
-                  icon={Boxes}
+                <DetailRow icon={Boxes}
                   label="Total Capacity"
                   value={
                     warehouse.total_capacity
                       ? `${warehouse.total_capacity.toLocaleString()} ${warehouse.capacity_uom || ''}`
                       : '—'
-                  }
-                />
+                  }/>
               </div>
               <Separator />
             </>
@@ -189,17 +183,13 @@ export function WarehouseDetailDialog({
           <div className="space-y-3">
             <h4 className="text-sm font-semibold">Timestamps</h4>
             <div className="grid gap-3">
-              <DetailRow
-                icon={Calendar}
+              <DetailRow icon={Calendar}
                 label="Created At"
-                value={formatDate(warehouse.created_at, 'DD-MMM-YY', true)}
-              />
+                value={formatDate(warehouse.created_at, 'DD-MMM-YY', true)}/>
               {warehouse.updated_at && (
-                <DetailRow
-                  icon={Calendar}
+                <DetailRow icon={Calendar}
                   label="Updated At"
-                  value={formatDate(warehouse.updated_at, 'DD-MMM-YY', true)}
-                />
+                  value={formatDate(warehouse.updated_at, 'DD-MMM-YY', true)}/>
               )}
             </div>
           </div>

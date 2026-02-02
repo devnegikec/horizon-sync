@@ -62,7 +62,7 @@ export interface CreateWarehousePayload {
   extra_data?: Record<string, unknown>;
 }
 
-export interface UpdateWarehousePayload extends Partial<CreateWarehousePayload> {}
+export type UpdateWarehousePayload = Partial<CreateWarehousePayload>
 
 export interface WarehousesResponse {
   warehouses: Warehouse[];

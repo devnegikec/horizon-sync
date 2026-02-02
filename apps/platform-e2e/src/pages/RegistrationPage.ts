@@ -27,7 +27,7 @@ export class RegistrationPage {
     await this.page.goto('/register');
   }
 
-  async register(data: any) {
+  async register(data) {
     await this.emailInput.fill(data.email);
     await this.firstNameInput.fill(data.firstName);
     await this.lastNameInput.fill(data.lastName);

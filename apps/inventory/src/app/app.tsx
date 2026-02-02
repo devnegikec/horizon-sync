@@ -8,9 +8,9 @@ import { cn } from '@horizon-sync/ui/lib';
 
 import { CustomerManagement } from './components/customers';
 import { ItemManagement } from './components/items';
-import { WarehouseManagement } from './components/warehouses';
 import { StockManagement } from './components/stock';
 import { SupplierManagement } from './components/suppliers';
+import { WarehouseManagement } from './components/warehouses';
 
 type ActiveView = 'items' | 'customers' | 'warehouses' | 'stock' | 'suppliers';
 
