@@ -9,7 +9,6 @@ import {
   Edit,
   Power,
   PowerOff,
-  Archive,
   Boxes,
   DollarSign,
   AlertTriangle,
@@ -44,11 +43,113 @@ import {
 } from '@horizon-sync/ui/components/ui/table';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { mockItems, mockItemGroups } from '../../data/items.mock';
+import { mockItemGroups } from '../../data/items.mock';
+import { useItems } from '../../hooks/useItems';
 import type { Item, ItemFilters } from '../../types/item.types';
+import type { ApiItem } from '../../types/items-api.types';
 
 import { ItemDetailDialog } from './ItemDetailDialog';
 import { ItemDialog } from './ItemDialog';
+
+function apiItemToItem(api: ApiItem): Item {
+  return {
+    id: api.id,
+    itemCode: api.item_code,
+    name: api.item_name,
+    description: '',
+    unitOfMeasure: api.uom ?? '',
+    defaultPrice: api.standard_rate != null ? parseFloat(api.standard_rate) : 0,
+    itemGroupId: api.item_group_id ?? '',
+    itemGroupName: '',
+    currentStock: 0,
+    status: (api.status === 'active' || api.status === 'inactive' ? api.status : 'active') as Item['status'],
+    createdAt: api.created_at ?? '',
+    updatedAt: '',
+  };
+}
+
+function itemMatchesSearch(item: ApiItem, search: string): boolean {
+  if (!search) return true;
+  const s = search.toLowerCase();
+  const name = (item.item_name || '').toLowerCase();
+  const code = (item.item_code || '').toLowerCase();
+  const groupId = (item.item_group_id || '').toLowerCase();
+  return name.includes(s) || code.includes(s) || groupId.includes(s);
+}
+
+function itemMatchesFilters(item: ApiItem, filters: ItemFilters): boolean {
+  if (!itemMatchesSearch(item, filters.search)) return false;
+  if (filters.groupId !== 'all' && (item.item_group_id ?? '') !== filters.groupId) return false;
+  if (filters.status !== 'all' && (item.status ?? '') !== filters.status) return false;
+  return true;
+}
+
+interface ItemRowProps {
+  item: ApiItem;
+  onView: (item: ApiItem) => void;
+  onEdit: (item: ApiItem) => void;
+  onToggleStatus: (item: ApiItem) => void;
+}
+
+// eslint-disable-next-line complexity -- table row has many cells and menu branches
+function ItemRow(props: ItemRowProps) {
+  const { item, onView, onEdit, onToggleStatus } = props;
+  const maintainStockText = item.maintain_stock == null ? '' : item.maintain_stock ? 'Yes' : 'No';
+  const isActive = item.status === 'active';
+  return (
+    <TableRow>
+      <TableCell>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <Package className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <p className="font-medium">{item.item_name ?? ''}</p>
+          </div>
+        </div>
+      </TableCell>
+      <TableCell>
+        <code className="text-sm bg-muted px-2 py-1 rounded">{item.item_code ?? ''}</code>
+      </TableCell>
+      <TableCell>{item.item_group_id ?? ''}</TableCell>
+      <TableCell>{item.uom ?? ''}</TableCell>
+      <TableCell>{item.standard_rate ?? ''}</TableCell>
+      <TableCell>
+        <Badge variant={isActive ? 'success' : 'secondary'}>{item.status ?? ''}</Badge>
+      </TableCell>
+      <TableCell>{maintainStockText}</TableCell>
+      <TableCell>{item.barcode ?? ''}</TableCell>
+      <TableCell>{item.created_at ?? ''}</TableCell>
+      <TableCell className="text-right">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onView(item)}>
+              <Eye className="mr-2 h-4 w-4" />
+              View Details
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEdit(item)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Item
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onToggleStatus(item)}>
+              {isActive ? (
+                <><PowerOff className="mr-2 h-4 w-4" />Deactivate</>
+              ) : (
+                <><Power className="mr-2 h-4 w-4" />Activate</>
+              )}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  );
+}
 
 interface StatCardProps {
   title: string;
@@ -76,8 +177,9 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
   );
 }
 
+// eslint-disable-next-line complexity -- filters, stats, dialogs, table states
 export function ItemManagement() {
-  const [items, setItems] = React.useState<Item[]>(mockItems);
+  const { items, pagination, loading, error, refetch } = useItems(1, 20);
   const [filters, setFilters] = React.useState<ItemFilters>({
     search: '',
     groupId: 'all',
@@ -85,90 +187,44 @@ export function ItemManagement() {
   });
   const [itemDialogOpen, setItemDialogOpen] = React.useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
-  const [selectedItem, setSelectedItem] = React.useState<Item | null>(null);
+  const [selectedItem, setSelectedItem] = React.useState<ApiItem | null>(null);
 
-  const filteredItems = React.useMemo(() => {
-    return items.filter((item) => {
-      const matchesSearch =
-        filters.search === '' ||
-        item.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-        item.itemCode.toLowerCase().includes(filters.search.toLowerCase()) ||
-        item.itemGroupName.toLowerCase().includes(filters.search.toLowerCase());
-
-      const matchesGroup =
-        filters.groupId === 'all' || item.itemGroupId === filters.groupId;
-
-      const matchesStatus =
-        filters.status === 'all' || item.status === filters.status;
-
-      return matchesSearch && matchesGroup && matchesStatus;
-    });
-  }, [items, filters]);
+  const filteredItems = React.useMemo(
+    () => items.filter((item) => itemMatchesFilters(item, filters)),
+    [items, filters]
+  );
 
   const stats = React.useMemo(() => {
-    const totalItems = items.length;
+    const totalItems = pagination?.total_items ?? items.length;
     const activeItems = items.filter((i) => i.status === 'active').length;
-    const totalValue = items.reduce(
-      (sum, i) => sum + i.defaultPrice * i.currentStock,
-      0
-    );
-    const lowStockItems = items.filter((i) => i.currentStock < 30 && i.currentStock > 0).length;
-
-    return { totalItems, activeItems, totalValue, lowStockItems };
-  }, [items]);
+    return { totalItems, activeItems };
+  }, [items, pagination]);
 
   const handleCreateItem = () => {
     setSelectedItem(null);
     setItemDialogOpen(true);
   };
 
-  const handleEditItem = (item: Item) => {
+  const handleEditItem = (item: ApiItem) => {
     setSelectedItem(item);
     setItemDialogOpen(true);
   };
 
-  const handleViewItem = (item: Item) => {
+  const handleViewItem = (item: ApiItem) => {
     setSelectedItem(item);
     setDetailDialogOpen(true);
   };
 
-  const handleToggleStatus = (item: Item) => {
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === item.id
-          ? { ...i, status: i.status === 'active' ? 'inactive' : 'active' }
-          : i
-      )
-    );
+  const handleToggleStatus = (_item: ApiItem) => {
+    // TODO: call API when backend supports status toggle
+    refetch();
   };
 
-  const handleSaveItem = (itemData: Partial<Item>) => {
-    if (selectedItem) {
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === selectedItem.id
-            ? { ...i, ...itemData, updatedAt: new Date().toISOString() }
-            : i
-        )
-      );
-    } else {
-      const newItem: Item = {
-        id: Date.now().toString(),
-        itemCode: itemData.itemCode || '',
-        name: itemData.name || '',
-        description: itemData.description || '',
-        unitOfMeasure: itemData.unitOfMeasure || 'Piece',
-        defaultPrice: itemData.defaultPrice || 0,
-        itemGroupId: itemData.itemGroupId || '',
-        itemGroupName: itemData.itemGroupName || '',
-        currentStock: 0,
-        status: 'active',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setItems((prev) => [newItem, ...prev]);
-    }
+  const handleSaveItem = (_itemData: Partial<Item>) => {
+    refetch();
   };
+
+  const selectedItemAsItem = selectedItem ? apiItemToItem(selectedItem) : null;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -206,12 +262,12 @@ export function ItemManagement() {
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
           iconColor="text-emerald-600 dark:text-emerald-400"/>
         <StatCard title="Inventory Value"
-          value={`$${stats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+          value="—"
           icon={DollarSign}
           iconBg="bg-blue-100 dark:bg-blue-900/20"
           iconColor="text-blue-600 dark:text-blue-400"/>
         <StatCard title="Low Stock Alerts"
-          value={stats.lowStockItems}
+          value="—"
           icon={AlertTriangle}
           iconBg="bg-amber-100 dark:bg-amber-900/20"
           iconColor="text-amber-600 dark:text-amber-400"/>
@@ -258,22 +314,36 @@ export function ItemManagement() {
       {/* Items Table */}
       <Card>
         <CardContent className="p-0">
+          {error && (
+            <div className="p-4 text-destructive text-sm border-b">
+              {error}
+            </div>
+          )}
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Item</TableHead>
                 <TableHead>Code</TableHead>
                 <TableHead>Group</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead>Price</TableHead>
+                <TableHead>UOM</TableHead>
+                <TableHead>Standard Rate</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Maintain Stock</TableHead>
+                <TableHead>Barcode</TableHead>
+                <TableHead>Created At</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredItems.length === 0 ? (
+              {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    Loading…
+                  </TableCell>
+                </TableRow>
+              ) : filteredItems.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={10}>
                     <EmptyState icon={<Package className="h-12 w-12" />}
                       title="No items found"
                       description={
@@ -295,91 +365,11 @@ export function ItemManagement() {
                 </TableRow>
               ) : (
                 filteredItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                          <Package className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-sm text-muted-foreground line-clamp-1 max-w-[200px]">
-                            {item.description}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <code className="text-sm bg-muted px-2 py-1 rounded">
-                        {item.itemCode}
-                      </code>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{item.itemGroupName}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Archive className={cn(
-                            'h-4 w-4',
-                            item.currentStock > 50
-                              ? 'text-emerald-500'
-                              : item.currentStock > 0
-                              ? 'text-amber-500'
-                              : 'text-destructive'
-                          )}/>
-                        <span className={cn(
-                            'font-medium',
-                            item.currentStock === 0 && 'text-destructive'
-                          )}>
-                          {item.currentStock}
-                        </span>
-                        <span className="text-muted-foreground text-sm">
-                          {item.unitOfMeasure}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      ${item.defaultPrice.toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={item.status === 'active' ? 'success' : 'secondary'}>
-                        {item.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleViewItem(item)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditItem(item)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Item
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleToggleStatus(item)}>
-                            {item.status === 'active' ? (
-                              <>
-                                <PowerOff className="mr-2 h-4 w-4" />
-                                Deactivate
-                              </>
-                            ) : (
-                              <>
-                                <Power className="mr-2 h-4 w-4" />
-                                Activate
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                  <ItemRow key={item.id}
+                    item={item}
+                    onView={handleViewItem}
+                    onEdit={handleEditItem}
+                    onToggleStatus={handleToggleStatus} />
                 ))
               )}
             </TableBody>
@@ -388,14 +378,8 @@ export function ItemManagement() {
       </Card>
 
       {/* Dialogs */}
-      <ItemDialog open={itemDialogOpen}
-        onOpenChange={setItemDialogOpen}
-        item={selectedItem}
-        itemGroups={mockItemGroups}
-        onSave={handleSaveItem}/>
-      <ItemDetailDialog open={detailDialogOpen}
-        onOpenChange={setDetailDialogOpen}
-        item={selectedItem}/>
+      <ItemDialog open={itemDialogOpen} onOpenChange={setItemDialogOpen} item={selectedItemAsItem} itemGroups={mockItemGroups} onSave={handleSaveItem} />
+      <ItemDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} item={selectedItemAsItem} />
     </div>
   );
 }
