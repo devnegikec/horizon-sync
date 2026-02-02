@@ -379,7 +379,7 @@ export function ItemManagement() {
       </Card>
 
       {/* Dialogs */}
-      <ItemDialog open={itemDialogOpen} onOpenChange={setItemDialogOpen} item={selectedItemAsItem} itemGroups={itemGroups} onSave={handleSaveItem} onCreated={refetch} />
+      <ItemDialog open={itemDialogOpen} onOpenChange={setItemDialogOpen} item={selectedItemAsItem} itemGroups={itemGroups} onSave={handleSaveItem} onCreated={refetch} onUpdated={refetch} />
       <ItemDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} item={selectedItemAsItem} />
     </div>
   );

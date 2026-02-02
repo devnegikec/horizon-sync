@@ -65,3 +65,49 @@ export interface CreateItemPayload {
   tags: string[];
   custom_fields: Record<string, unknown>;
 }
+
+/** Item group snippet in update payload */
+export interface UpdateItemGroupRef {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** Payload for PUT /items/:id (update item) */
+export interface UpdateItemPayload {
+  organization_id?: string;
+  item_code: string;
+  item_name: string;
+  description: string;
+  item_group_id: string;
+  item_group: UpdateItemGroupRef;
+  item_type: string;
+  uom: string;
+  maintain_stock: boolean;
+  valuation_method: string;
+  allow_negative_stock: boolean;
+  has_variants: boolean;
+  variant_of: string | null;
+  variant_attributes: Record<string, unknown>;
+  has_batch_no: boolean;
+  has_serial_no: boolean;
+  batch_number_series: string;
+  serial_number_series: string;
+  standard_rate: string;
+  valuation_rate: string;
+  enable_auto_reorder: boolean;
+  reorder_level: number;
+  reorder_qty: number;
+  min_order_qty: number;
+  max_order_qty: number;
+  weight_per_unit: string;
+  weight_uom: string;
+  inspection_required_before_purchase: boolean;
+  inspection_required_before_delivery: boolean;
+  barcode: string;
+  status: string;
+  image_url: string;
+  images: string[];
+  tags: string[];
+  custom_fields: Record<string, unknown>;
+}

@@ -24,9 +24,10 @@ import {
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
 import { environment } from '../../../environments/environment';
+import { useUpdateItem } from '../../hooks/useUpdateItem';
 import type { ApiItemGroup } from '../../types/item-groups.types';
 import type { Item } from '../../types/item.types';
-import type { CreateItemPayload } from '../../types/items-api.types';
+import type { CreateItemPayload, UpdateItemPayload } from '../../types/items-api.types';
 
 
 const ITEMS_URL = `${environment.apiCoreUrl}/items`;
@@ -38,6 +39,7 @@ interface ItemDialogProps {
   itemGroups: ApiItemGroup[];
   onSave: (item: Partial<Item>) => void;
   onCreated?: () => void;
+  onUpdated?: () => void;
 }
 
 const unitOfMeasureOptions = [
@@ -50,6 +52,7 @@ const unitOfMeasureOptions = [
   'Meter',
   'Set',
 ];
+
 
 function buildCreatePayload(formData: {
   itemCode: string;
@@ -97,6 +100,61 @@ function buildCreatePayload(formData: {
   };
 }
 
+function buildUpdatePayload(
+  formData: {
+    itemCode: string;
+    name: string;
+    description: string;
+    unitOfMeasure: string;
+    defaultPrice: string;
+    itemGroupId: string;
+  },
+  itemGroup: ApiItemGroup | undefined
+): UpdateItemPayload {
+  const standardRate = parseFloat(formData.defaultPrice) || 0;
+  const group = itemGroup ?? {
+    id: formData.itemGroupId,
+    code: '',
+    name: '',
+  } as ApiItemGroup;
+  return {
+    item_code: formData.itemCode,
+    item_name: formData.name,
+    description: formData.description,
+    item_group_id: formData.itemGroupId,
+    item_group: { id: group.id, code: group.code, name: group.name },
+    item_type: 'stock',
+    uom: formData.unitOfMeasure,
+    maintain_stock: true,
+    valuation_method: 'fifo',
+    allow_negative_stock: false,
+    has_variants: false,
+    variant_of: null,
+    variant_attributes: {},
+    has_batch_no: false,
+    has_serial_no: false,
+    batch_number_series: '',
+    serial_number_series: '',
+    standard_rate: String(standardRate.toFixed(2)),
+    valuation_rate: '0.00',
+    enable_auto_reorder: false,
+    reorder_level: 0,
+    reorder_qty: 0,
+    min_order_qty: 1,
+    max_order_qty: 0,
+    weight_per_unit: '0.000',
+    weight_uom: '',
+    inspection_required_before_purchase: false,
+    inspection_required_before_delivery: false,
+    barcode: '',
+    status: 'active',
+    image_url: '',
+    images: [],
+    tags: [],
+    custom_fields: {},
+  };
+}
+
 export function ItemDialog({
   open,
   onOpenChange,
@@ -104,8 +162,10 @@ export function ItemDialog({
   itemGroups,
   onSave,
   onCreated,
+  onUpdated,
 }: ItemDialogProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const { updateItem, loading: updateLoading } = useUpdateItem();
   const [formData, setFormData] = React.useState({
     itemCode: '',
     name: '',
@@ -117,6 +177,7 @@ export function ItemDialog({
   });
   const [submitting, setSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const submittingOrUpdating = submitting || updateLoading;
 
   const isEditing = !!item;
 
@@ -145,13 +206,22 @@ export function ItemDialog({
     setSubmitError(null);
   }, [item, open]);
 
-  const handleEditSubmit = () => {
-    onSave({
-      ...formData,
-      defaultPrice: parseFloat(formData.defaultPrice) || 0,
-      itemGroupName: itemGroups.find((g) => g.id === formData.itemGroupId)?.name || '',
-    });
-    onOpenChange(false);
+  const handleEditSubmit = async () => {
+    if (!item?.id) return;
+    if (!accessToken) {
+      setSubmitError('Not authenticated');
+      return;
+    }
+    setSubmitError(null);
+    try {
+      const selectedGroup = itemGroups.find((g) => g.id === formData.itemGroupId);
+      const payload = buildUpdatePayload(formData, selectedGroup);
+      await updateItem(item.id, payload);
+      onUpdated?.();
+      onOpenChange(false);
+    } catch {
+      setSubmitError('Failed to update item');
+    }
   };
 
   const handleCreateSubmit = async () => {
@@ -305,12 +375,12 @@ export function ItemDialog({
             <Button type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={submitting}>
+              disabled={submittingOrUpdating}>
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</>
+            <Button type="submit" disabled={submittingOrUpdating}>
+              {submittingOrUpdating ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditing ? 'Saving…' : 'Creating…'}</>
               ) : isEditing ? (
                 'Save Changes'
               ) : (
