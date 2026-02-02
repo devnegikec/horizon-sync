@@ -1,4 +1,5 @@
 import { CardDescription, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
+
 import logo from '../../../assets/ciphercode_logo.png';
 
 export function LoginHeader() {

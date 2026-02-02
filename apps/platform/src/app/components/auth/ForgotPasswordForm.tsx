@@ -72,22 +72,18 @@ export function ForgotPasswordForm() {
       </CardHeader>
 
       <CardContent>
-        <form 
-          onSubmit={handleSubmit(onSubmit)} 
+        <form onSubmit={handleSubmit(onSubmit)} 
           noValidate
-          className="space-y-4"
-        >
+          className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">
               Email Address <span className="text-destructive">*</span>
             </Label>
-            <Input
-              id="email"
+            <Input id="email"
               type="email"
               placeholder="john.doe@example.com"
               {...register('email')}
-              className={errors.email ? 'border-destructive' : ''}
-            />
+              className={errors.email ? 'border-destructive' : ''}/>
             {errors.email && (
               <p className="text-sm text-destructive">{errors.email.message}</p>
             )}
@@ -106,11 +102,9 @@ export function ForgotPasswordForm() {
             </div>
           )}
 
-          <Button
-            type="submit"
+          <Button type="submit"
             className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
-            disabled={isSubmitting}
-          >
+            disabled={isSubmitting}>
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -125,10 +119,8 @@ export function ForgotPasswordForm() {
 
       <CardFooter className="flex flex-col space-y-4">
         <div className="text-sm text-center text-muted-foreground">
-          <button
-            onClick={() => navigate('/login')}
-            className="flex items-center justify-center gap-2 text-[#3058EE] hover:opacity-80 font-medium w-full"
-          >
+          <button onClick={() => navigate('/login')}
+            className="flex items-center justify-center gap-2 text-[#3058EE] hover:opacity-80 font-medium w-full">
             <ArrowLeft className="h-4 w-4" />
             Back to login
           </button>

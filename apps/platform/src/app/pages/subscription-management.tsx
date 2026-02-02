@@ -145,10 +145,8 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
               <span className="font-medium">{subscription.current_usage.users} / {subscription.limits.max_users}</span>
             </div>
             <div className="h-2 bg-secondary rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-violet-600 rounded-full"
-                style={{ width: `${(subscription.current_usage.users / subscription.limits.max_users) * 100}%` }}
-              />
+              <div className="h-full bg-violet-600 rounded-full"
+                style={{ width: `${(subscription.current_usage.users / subscription.limits.max_users) * 100}%` }}/>
             </div>
           </div>
 
@@ -160,10 +158,8 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
               </span>
             </div>
             <div className="h-2 bg-secondary rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-blue-600 rounded-full"
-                style={{ width: `${(subscription.current_usage.storage_mb / 1024 / subscription.limits.max_storage_gb) * 100}%` }}
-              />
+              <div className="h-full bg-blue-600 rounded-full"
+                style={{ width: `${(subscription.current_usage.storage_mb / 1024 / subscription.limits.max_storage_gb) * 100}%` }}/>
             </div>
           </div>
           
@@ -175,10 +171,8 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
               </span>
             </div>
             <div className="h-2 bg-secondary rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-emerald-600 rounded-full"
-                style={{ width: `${(subscription.current_usage.teams / subscription.limits.max_teams) * 100}%` }}
-              />
+              <div className="h-full bg-emerald-600 rounded-full"
+                style={{ width: `${(subscription.current_usage.teams / subscription.limits.max_teams) * 100}%` }}/>
             </div>
           </div>
         </div>
@@ -246,42 +240,32 @@ export function SubscriptionManagementPage() {
 
       {/* Stats Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Revenue"
+        <StatCard title="Total Revenue"
           value="$28,450"
           icon={DollarSign}
           iconColor="text-emerald-600"
-          trend={{ value: '12.5%', isPositive: true }}
-        />
-        <StatCard
-          title="Active Subscriptions"
+          trend={{ value: '12.5%', isPositive: true }}/>
+        <StatCard title="Active Subscriptions"
           value={subscriptions.filter(s => s.status === 'active').length.toString()}
           icon={Users}
           iconColor="text-blue-600"
-          trend={{ value: '8', isPositive: true }}
-        />
-        <StatCard
-          title="Failed Payments"
+          trend={{ value: '8', isPositive: true }}/>
+        <StatCard title="Failed Payments"
           value="1"
           icon={AlertCircle}
           iconColor="text-red-600"
-          trend={{ value: '3', isPositive: false }}
-        />
-        <StatCard
-          title="Avg Usage Rate"
+          trend={{ value: '3', isPositive: false }}/>
+        <StatCard title="Avg Usage Rate"
           value="68%"
           icon={Activity}
           iconColor="text-violet-600"
-          trend={{ value: '5.2%', isPositive: true }}
-        />
+          trend={{ value: '5.2%', isPositive: true }}/>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 p-4 bg-card rounded-lg border border-border">
-        <Input 
-          placeholder="Search organizations..." 
-          className="sm:w-[300px]"
-        />
+        <Input placeholder="Search organizations..." 
+          className="sm:w-[300px]"/>
         <Select defaultValue="all-plans">
           <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="All Plans" />
