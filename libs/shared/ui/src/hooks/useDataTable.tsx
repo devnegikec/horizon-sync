@@ -37,6 +37,8 @@ export function useDataTable<TData, TValue>({
   columns,
   config = {},
 }: UseDataTableProps<TData, TValue>) {
+  const safeData = React.useMemo(() => data ?? [], [data]);
+  const safeColumns = React.useMemo(() => columns ?? [], [columns]);
   const {
     showSerialNumber = false,
     showPagination = true,
@@ -45,7 +47,7 @@ export function useDataTable<TData, TValue>({
     enableSorting = true,
     enableFiltering = true,
     initialPageSize = 10,
-  } = config;
+  } = config ?? {};
 
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -95,7 +97,7 @@ export function useDataTable<TData, TValue>({
   );
 
   const finalColumns = React.useMemo(() => {
-    let cols = [...columns];
+    let cols = [...safeColumns];
     if (showSerialNumber) {
       cols = [serialNumberColumn, ...cols];
     }
@@ -103,10 +105,10 @@ export function useDataTable<TData, TValue>({
       cols = [selectionColumn, ...cols];
     }
     return cols;
-  }, [columns, showSerialNumber, enableRowSelection, serialNumberColumn, selectionColumn]);
+  }, [safeColumns, showSerialNumber, enableRowSelection, serialNumberColumn, selectionColumn]);
 
   const table = useReactTable({
-    data,
+    data: safeData,
     columns: finalColumns,
     state: {
       sorting: enableSorting ? sorting : undefined,
@@ -130,10 +132,10 @@ export function useDataTable<TData, TValue>({
     enableSorting,
   });
 
-  const selectedRows = React.useMemo(
-    () => table.getFilteredSelectedRowModel().rows.map((row) => row.original),
-    [table, rowSelection]
-  );
+  const selectedRows = React.useMemo(() => {
+    const rows = table.getFilteredSelectedRowModel().rows;
+    return Array.isArray(rows) ? rows.map((row) => row.original) : [];
+  }, [table, rowSelection]);
 
   const resetSelection = React.useCallback(() => {
     setRowSelection({});
