@@ -43,8 +43,8 @@ export function DataTableExample() {
               status === 'active'
                 ? 'bg-green-100 text-green-700'
                 : status === 'inactive'
-                ? 'bg-red-100 text-red-700'
-                : 'bg-yellow-100 text-yellow-700'
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-yellow-100 text-yellow-700'
             }`}
           >
             {status}
@@ -85,22 +85,12 @@ export function DataTableExample() {
       filterPlaceholder="Search users..."
       renderBulkActions={(selectedRows) => (
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            {selectedRows.length} selected
-          </span>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => handleBulkDelete(selectedRows)}
-          >
+          <span className="text-sm text-muted-foreground">{selectedRows.length} selected</span>
+          <Button variant="destructive" size="sm" onClick={() => handleBulkDelete(selectedRows)}>
             <Trash2 className="mr-2 h-4 w-4" />
             Delete
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleBulkExport(selectedRows)}
-          >
+          <Button variant="outline" size="sm" onClick={() => handleBulkExport(selectedRows)}>
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>

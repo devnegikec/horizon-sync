@@ -32,11 +32,7 @@ function getStatusBadge(status: Customer['status']) {
   }
 }
 
-export function createCustomerColumns({
-  onViewCustomer,
-  onEditCustomer,
-  onToggleStatus,
-}: CustomerColumnsProps): ColumnDef<Customer>[] {
+export function createCustomerColumns({ onViewCustomer, onEditCustomer, onToggleStatus }: CustomerColumnsProps): ColumnDef<Customer>[] {
   return [
     {
       accessorKey: 'customer_name',
@@ -50,9 +46,7 @@ export function createCustomerColumns({
             </div>
             <div>
               <p className="font-medium">{customer.customer_name}</p>
-              <code className="text-xs text-muted-foreground">
-                {customer.customer_code}
-              </code>
+              <code className="text-xs text-muted-foreground">{customer.customer_code}</code>
             </div>
           </div>
         );
@@ -79,11 +73,7 @@ export function createCustomerColumns({
         return (
           <div className="text-sm">
             <p>{customer.city}</p>
-            {customer.address && (
-              <p className="text-muted-foreground text-xs line-clamp-1">
-                {customer.address}
-              </p>
-            )}
+            {customer.address && <p className="text-muted-foreground text-xs line-clamp-1">{customer.address}</p>}
           </div>
         );
       },
@@ -93,11 +83,7 @@ export function createCustomerColumns({
       header: 'Credit Limit',
       cell: ({ row }) => {
         const creditLimit = parseFloat(row.original.credit_limit);
-        return (
-          <span className="font-medium">
-            ${creditLimit.toLocaleString()}
-          </span>
-        );
+        return <span className="font-medium">${creditLimit.toLocaleString()}</span>;
       },
     },
     {
@@ -112,27 +98,18 @@ export function createCustomerColumns({
         return (
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className={cn(
-                'font-medium',
-                creditUtilization > 90 && 'text-destructive'
-              )}>
-                ${balance.toLocaleString()}
-              </span>
-              {creditUtilization > 90 && (
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-              )}
+              <span className={cn('font-medium', creditUtilization > 90 && 'text-destructive')}>${balance.toLocaleString()}</span>
+              {creditUtilization > 90 && <AlertTriangle className="h-4 w-4 text-destructive" />}
             </div>
             {creditLimit > 0 && (
               <div className="h-1.5 w-24 rounded-full bg-muted overflow-hidden">
-                <div className={cn(
-                  'h-full rounded-full',
-                  creditUtilization > 90
-                    ? 'bg-destructive'
-                    : creditUtilization > 70
-                    ? 'bg-amber-500'
-                    : 'bg-emerald-500'
-                )}
-                style={{ width: `${Math.min(creditUtilization, 100)}%` }}/>
+                <div
+                  className={cn(
+                    'h-full rounded-full',
+                    creditUtilization > 90 ? 'bg-destructive' : creditUtilization > 70 ? 'bg-amber-500' : 'bg-emerald-500',
+                  )}
+                  style={{ width: `${Math.min(creditUtilization, 100)}%` }}
+                />
               </div>
             )}
           </div>
@@ -145,9 +122,7 @@ export function createCustomerColumns({
       cell: ({ row }) => {
         const taxNumber = row.original.tax_number;
         return taxNumber ? (
-          <code className="text-sm bg-muted px-2 py-1 rounded">
-            {taxNumber}
-          </code>
+          <code className="text-sm bg-muted px-2 py-1 rounded">{taxNumber}</code>
         ) : (
           <span className="text-muted-foreground text-sm">—</span>
         );

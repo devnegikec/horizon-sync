@@ -4,23 +4,10 @@ import { Loader2, Package } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@horizon-sync/ui/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
 import { environment } from '../../../environments/environment';
@@ -28,7 +15,6 @@ import { useUpdateItem } from '../../hooks/useUpdateItem';
 import type { ApiItemGroup } from '../../types/item-groups.types';
 import type { Item } from '../../types/item.types';
 import type { CreateItemPayload, UpdateItemPayload } from '../../types/items-api.types';
-
 
 const ITEMS_URL = `${environment.apiCoreUrl}/items`;
 
@@ -42,17 +28,7 @@ interface ItemDialogProps {
   onUpdated?: () => void;
 }
 
-const unitOfMeasureOptions = [
-  'Piece',
-  'Box',
-  'Ream',
-  'Sheet',
-  'Kilogram',
-  'Liter',
-  'Meter',
-  'Set',
-];
-
+const unitOfMeasureOptions = ['Piece', 'Box', 'Ream', 'Sheet', 'Kilogram', 'Liter', 'Meter', 'Set'];
 
 function buildCreatePayload(formData: {
   itemCode: string;
@@ -109,14 +85,16 @@ function buildUpdatePayload(
     defaultPrice: string;
     itemGroupId: string;
   },
-  itemGroup: ApiItemGroup | undefined
+  itemGroup: ApiItemGroup | undefined,
 ): UpdateItemPayload {
   const standardRate = parseFloat(formData.defaultPrice) || 0;
-  const group = itemGroup ?? {
-    id: formData.itemGroupId,
-    code: '',
-    name: '',
-  } as ApiItemGroup;
+  const group =
+    itemGroup ??
+    ({
+      id: formData.itemGroupId,
+      code: '',
+      name: '',
+    } as ApiItemGroup);
   return {
     item_code: formData.itemCode,
     item_name: formData.name,
@@ -155,15 +133,7 @@ function buildUpdatePayload(
   };
 }
 
-export function ItemDialog({
-  open,
-  onOpenChange,
-  item,
-  itemGroups,
-  onSave,
-  onCreated,
-  onUpdated,
-}: ItemDialogProps) {
+export function ItemDialog({ open, onOpenChange, item, itemGroups, onSave, onCreated, onUpdated }: ItemDialogProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const { updateItem, loading: updateLoading } = useUpdateItem();
   const [formData, setFormData] = React.useState({
@@ -274,11 +244,7 @@ export function ItemDialog({
             </div>
             <div>
               <DialogTitle>{isEditing ? 'Edit Item' : 'Create New Item'}</DialogTitle>
-              <DialogDescription>
-                {isEditing
-                  ? 'Update the item details below'
-                  : 'Add a new item to your inventory catalog'}
-              </DialogDescription>
+              <DialogDescription>{isEditing ? 'Update the item details below' : 'Add a new item to your inventory catalog'}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -287,20 +253,17 @@ export function ItemDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="itemCode">Item Code</Label>
-                <Input id="itemCode"
+                <Input
+                  id="itemCode"
                   value={formData.itemCode}
-                  onChange={(e) =>
-                    setFormData({ ...formData, itemCode: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, itemCode: e.target.value })}
                   placeholder="e.g., ELEC-001"
-                  required/>
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="unitOfMeasure">Unit of Measure</Label>
-                <Select value={formData.unitOfMeasure}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, unitOfMeasure: value })
-                  }>
+                <Select value={formData.unitOfMeasure} onValueChange={(value) => setFormData({ ...formData, unitOfMeasure: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select unit" />
                   </SelectTrigger>
@@ -316,31 +279,28 @@ export function ItemDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="name">Item Name</Label>
-              <Input id="name"
+              <Input
+                id="name"
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Enter item name"
-                required/>
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea id="description"
+              <Textarea
+                id="description"
                 value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Enter item description"
-                rows={3}/>
+                rows={3}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="itemGroup">Item Group</Label>
-                <Select value={formData.itemGroupId}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, itemGroupId: value })
-                  }>
+                <Select value={formData.itemGroupId} onValueChange={(value) => setFormData({ ...formData, itemGroupId: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select group" />
                   </SelectTrigger>
@@ -355,32 +315,30 @@ export function ItemDialog({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="defaultPrice">Default Price</Label>
-                <Input id="defaultPrice"
+                <Input
+                  id="defaultPrice"
                   type="number"
                   step="0.01"
                   min="0"
                   value={formData.defaultPrice}
-                  onChange={(e) =>
-                    setFormData({ ...formData, defaultPrice: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, defaultPrice: e.target.value })}
                   placeholder="0.00"
-                  required/>
+                  required
+                />
               </div>
             </div>
           </div>
-          {submitError && (
-            <p className="text-sm text-destructive">{submitError}</p>
-          )}
+          {submitError && <p className="text-sm text-destructive">{submitError}</p>}
           <DialogFooter>
-            <Button type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={submittingOrUpdating}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submittingOrUpdating}>
               Cancel
             </Button>
             <Button type="submit" disabled={submittingOrUpdating}>
               {submittingOrUpdating ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditing ? 'Saving…' : 'Creating…'}</>
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isEditing ? 'Saving…' : 'Creating…'}
+                </>
               ) : isEditing ? (
                 'Save Changes'
               ) : (

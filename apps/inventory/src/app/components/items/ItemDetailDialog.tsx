@@ -1,40 +1,11 @@
 import * as React from 'react';
 
-import {
-  Package,
-  TrendingUp,
-  TrendingDown,
-  RotateCcw,
-  Truck,
-  Calendar,
-  Hash,
-  Ruler,
-  DollarSign,
-  Layers,
-  Archive,
-} from 'lucide-react';
+import { Package, TrendingUp, TrendingDown, RotateCcw, Truck, Calendar, Hash, Ruler, DollarSign, Layers, Archive } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@horizon-sync/ui/components/ui/table';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@horizon-sync/ui/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { mockPriceLevels, mockTransactions, mockSuppliers } from '../../data/items.mock';
@@ -46,15 +17,7 @@ interface ItemDetailDialogProps {
   item: Item | null;
 }
 
-function InfoRow({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: React.ReactNode;
-}) {
+function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 py-2">
       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
@@ -79,11 +42,7 @@ function TransactionIcon({ type }: { type: ItemTransaction['type'] }) {
   }
 }
 
-export function ItemDetailDialog({
-  open,
-  onOpenChange,
-  item,
-}: ItemDetailDialogProps) {
+export function ItemDetailDialog({ open, onOpenChange, item }: ItemDetailDialogProps) {
   if (!item) return null;
 
   const priceLevels = mockPriceLevels.filter((pl) => pl.itemId === item.id);
@@ -101,9 +60,7 @@ export function ItemDetailDialog({
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <DialogTitle className="text-xl">{item.name}</DialogTitle>
-                <Badge variant={item.status === 'active' ? 'success' : 'secondary'}>
-                  {item.status}
-                </Badge>
+                <Badge variant={item.status === 'active' ? 'success' : 'secondary'}>{item.status}</Badge>
               </div>
               <p className="text-sm text-muted-foreground mt-1">{item.itemCode}</p>
             </div>
@@ -116,10 +73,18 @@ export function ItemDetailDialog({
 
         <Tabs defaultValue="overview" className="mt-4">
           <TabsList className="w-full">
-            <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
-            <TabsTrigger value="pricing" className="flex-1">Pricing</TabsTrigger>
-            <TabsTrigger value="transactions" className="flex-1">Transactions</TabsTrigger>
-            <TabsTrigger value="suppliers" className="flex-1">Suppliers</TabsTrigger>
+            <TabsTrigger value="overview" className="flex-1">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="pricing" className="flex-1">
+              Pricing
+            </TabsTrigger>
+            <TabsTrigger value="transactions" className="flex-1">
+              Transactions
+            </TabsTrigger>
+            <TabsTrigger value="suppliers" className="flex-1">
+              Suppliers
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-4 space-y-4">
@@ -130,37 +95,29 @@ export function ItemDetailDialog({
                 <InfoRow icon={Hash} label="Item Code" value={item.itemCode} />
                 <InfoRow icon={Ruler} label="Unit of Measure" value={item.unitOfMeasure} />
                 <InfoRow icon={Layers} label="Item Group" value={item.itemGroupName} />
-                <InfoRow icon={Calendar}
-                  label="Last Updated"
-                  value={new Date(item.updatedAt).toLocaleDateString()}/>
+                <InfoRow icon={Calendar} label="Last Updated" value={new Date(item.updatedAt).toLocaleDateString()} />
               </div>
             </div>
 
             <div className="rounded-lg border p-4">
               <h4 className="text-sm font-semibold mb-3">Stock Information</h4>
               <div className="flex items-center gap-4">
-                <div className={cn(
+                <div
+                  className={cn(
                     'flex h-16 w-16 items-center justify-center rounded-xl',
-                    item.currentStock > 50
-                      ? 'bg-emerald-500/10'
-                      : item.currentStock > 0
-                      ? 'bg-amber-500/10'
-                      : 'bg-destructive/10'
-                  )}>
-                  <Archive className={cn(
+                    item.currentStock > 50 ? 'bg-emerald-500/10' : item.currentStock > 0 ? 'bg-amber-500/10' : 'bg-destructive/10',
+                  )}
+                >
+                  <Archive
+                    className={cn(
                       'h-8 w-8',
-                      item.currentStock > 50
-                        ? 'text-emerald-500'
-                        : item.currentStock > 0
-                        ? 'text-amber-500'
-                        : 'text-destructive'
-                    )}/>
+                      item.currentStock > 50 ? 'text-emerald-500' : item.currentStock > 0 ? 'text-amber-500' : 'text-destructive',
+                    )}
+                  />
                 </div>
                 <div>
                   <p className="text-3xl font-bold">{item.currentStock}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {item.unitOfMeasure}s in stock
-                  </p>
+                  <p className="text-sm text-muted-foreground">{item.unitOfMeasure}s in stock</p>
                 </div>
               </div>
             </div>
@@ -183,27 +140,19 @@ export function ItemDetailDialog({
                       <TableCell colSpan={4} className="text-center py-8">
                         <div className="flex flex-col items-center gap-2">
                           <DollarSign className="h-8 w-8 text-muted-foreground/50" />
-                          <p className="text-sm text-muted-foreground">
-                            No special pricing configured
-                          </p>
+                          <p className="text-sm text-muted-foreground">No special pricing configured</p>
                         </div>
                       </TableCell>
                     </TableRow>
                   ) : (
                     priceLevels.map((pl) => (
                       <TableRow key={pl.id}>
-                        <TableCell>
-                          {pl.customerName || (
-                            <span className="text-muted-foreground">All Customers</span>
-                          )}
-                        </TableCell>
+                        <TableCell>{pl.customerName || <span className="text-muted-foreground">All Customers</span>}</TableCell>
                         <TableCell>
                           {pl.minQuantity}
                           {pl.maxQuantity ? ` - ${pl.maxQuantity}` : '+'} units
                         </TableCell>
-                        <TableCell className="font-medium">
-                          ${pl.price.toFixed(2)}
-                        </TableCell>
+                        <TableCell className="font-medium">${pl.price.toFixed(2)}</TableCell>
                         <TableCell>
                           {pl.effectiveFrom}
                           {pl.effectiveTo ? ` to ${pl.effectiveTo}` : ' onwards'}
@@ -234,9 +183,7 @@ export function ItemDetailDialog({
                       <TableCell colSpan={5} className="text-center py-8">
                         <div className="flex flex-col items-center gap-2">
                           <RotateCcw className="h-8 w-8 text-muted-foreground/50" />
-                          <p className="text-sm text-muted-foreground">
-                            No recent transactions
-                          </p>
+                          <p className="text-sm text-muted-foreground">No recent transactions</p>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -249,9 +196,7 @@ export function ItemDetailDialog({
                             <span className="capitalize">{t.type}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {t.reference}
-                        </TableCell>
+                        <TableCell className="font-mono text-sm">{t.reference}</TableCell>
                         <TableCell>{t.quantity}</TableCell>
                         <TableCell>${t.unitPrice.toFixed(2)}</TableCell>
                         <TableCell>{t.date}</TableCell>

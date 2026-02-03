@@ -30,11 +30,7 @@ async function handleApiError(response: Response): Promise<never> {
 /**
  * Generic request helper to reduce boilerplate
  */
-async function apiRequest<T>(
-  endpoint: string,
-  method: string,
-  body?: unknown
-): Promise<T> {
+async function apiRequest<T>(endpoint: string, method: string, body?: unknown): Promise<T> {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method,

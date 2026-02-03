@@ -25,11 +25,7 @@ interface DataTableFacetedFilterProps<TData, TValue> {
   }[];
 }
 
-export function DataTableFacetedFilter<TData, TValue>({
-  column,
-  title,
-  options,
-}: DataTableFacetedFilterProps<TData, TValue>) {
+export function DataTableFacetedFilter<TData, TValue>({ column, title, options }: DataTableFacetedFilterProps<TData, TValue>) {
   const facets = column?.getFacetedUniqueValues();
   const selectedValues = new Set(column?.getFilterValue() as string[]);
 
@@ -54,11 +50,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                   options
                     .filter((option) => selectedValues.has(option.value))
                     .map((option) => (
-                      <Badge
-                        variant="secondary"
-                        key={option.value}
-                        className="rounded-sm px-1 font-normal"
-                      >
+                      <Badge variant="secondary" key={option.value} className="rounded-sm px-1 font-normal">
                         {option.label}
                       </Badge>
                     ))
@@ -90,9 +82,7 @@ export function DataTableFacetedFilter<TData, TValue>({
               {option.icon && <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
               <span>{option.label}</span>
               {facets?.get(option.value) && (
-                <span className="ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs">
-                  {facets.get(option.value)}
-                </span>
+                <span className="ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs">{facets.get(option.value)}</span>
               )}
             </DropdownMenuCheckboxItem>
           );

@@ -1,14 +1,7 @@
 import * as React from 'react';
 import { type ColumnDef, flexRender } from '@tanstack/react-table';
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@horizon-sync/ui/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
 import { useDataTable, type DataTableConfig } from '@horizon-sync/ui/hooks/useDataTable';
 import { DataTablePagination } from './DataTablePagination';
 import { DataTableToolbar } from './DataTableToolbar';
@@ -55,10 +48,7 @@ export function DataTable<TData, TValue>({
         {config?.enableColumnVisibility && <DataTableViewOptions table={table} />}
       </div>
       <div className={fixedHeader ? `rounded-md border` : 'rounded-md border'}>
-        <div
-          className={fixedHeader ? 'overflow-auto' : undefined}
-          style={fixedHeader ? { maxHeight } : undefined}
-        >
+        <div className={fixedHeader ? 'overflow-auto' : undefined} style={fixedHeader ? { maxHeight } : undefined}>
           <Table>
             <TableHeader className={fixedHeader ? 'sticky top-0 bg-background z-10' : ''}>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -66,9 +56,7 @@ export function DataTable<TData, TValue>({
                   {headerGroup.headers.map((header) => {
                     return (
                       <TableHead key={header.id}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                       </TableHead>
                     );
                   })}
@@ -78,14 +66,9 @@ export function DataTable<TData, TValue>({
             <TableBody>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && 'selected'}
-                  >
+                  <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
+                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
                   </TableRow>
                 ))

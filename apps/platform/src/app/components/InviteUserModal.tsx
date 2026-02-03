@@ -7,23 +7,10 @@ import * as z from 'zod';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@horizon-sync/ui/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 
 import { useAuth } from '../hooks';
 import { UserService, InviteUserPayload } from '../services/user.service';
@@ -56,11 +43,7 @@ interface PermissionGroup {
   permissions: Permission[];
 }
 
-export function InviteUserModal({
-  open,
-  onOpenChange,
-  onSuccess,
-}: InviteUserModalProps) {
+export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserModalProps) {
   const { accessToken } = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
@@ -75,9 +58,7 @@ export function InviteUserModal({
     resolver: zodResolver(inviteUserSchema),
   });
 
-  const [permissionGroups, setPermissionGroups] = React.useState<
-    PermissionGroup[]
-  >([
+  const [permissionGroups, setPermissionGroups] = React.useState<PermissionGroup[]>([
     {
       title: 'CRM & Sales',
       icon: Users2,
@@ -112,8 +93,7 @@ export function InviteUserModal({
   const togglePermission = (groupIndex: number, permissionIndex: number) => {
     setPermissionGroups((prev) => {
       const newGroups = [...prev];
-      newGroups[groupIndex].permissions[permissionIndex].checked =
-        !newGroups[groupIndex].permissions[permissionIndex].checked;
+      newGroups[groupIndex].permissions[permissionIndex].checked = !newGroups[groupIndex].permissions[permissionIndex].checked;
       return newGroups;
     });
   };
@@ -144,7 +124,7 @@ export function InviteUserModal({
         prev.map((group) => ({
           ...group,
           permissions: group.permissions.map((p) => ({ ...p, checked: false })),
-        }))
+        })),
       );
       onOpenChange(false);
       onSuccess?.();
@@ -175,9 +155,7 @@ export function InviteUserModal({
             </div>
             <div>
               <DialogTitle className="text-xl">Invite New User</DialogTitle>
-              <DialogDescription>
-                Send invitation with role and permissions
-              </DialogDescription>
+              <DialogDescription>Send invitation with role and permissions</DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -188,17 +166,15 @@ export function InviteUserModal({
             <Label htmlFor="email">
               Email Address <span className="text-destructive">*</span>
             </Label>
-            <Input id="email"
+            <Input
+              id="email"
               type="email"
               placeholder="user@example.com"
               {...register('email')}
-              className={errors.email ? 'border-destructive' : ''}/>
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Invitation will be sent to this email
-            </p>
+              className={errors.email ? 'border-destructive' : ''}
+            />
+            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+            <p className="text-xs text-muted-foreground">Invitation will be sent to this email</p>
           </div>
 
           {/* First Name and Last Name */}
@@ -207,30 +183,16 @@ export function InviteUserModal({
               <Label htmlFor="first_name">
                 First Name <span className="text-destructive">*</span>
               </Label>
-              <Input id="first_name"
-                placeholder="John"
-                {...register('first_name')}
-                className={errors.first_name ? 'border-destructive' : ''}/>
-              {errors.first_name && (
-                <p className="text-sm text-destructive">
-                  {errors.first_name.message}
-                </p>
-              )}
+              <Input id="first_name" placeholder="John" {...register('first_name')} className={errors.first_name ? 'border-destructive' : ''} />
+              {errors.first_name && <p className="text-sm text-destructive">{errors.first_name.message}</p>}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="last_name">
                 Last Name <span className="text-destructive">*</span>
               </Label>
-              <Input id="last_name"
-                placeholder="Doe"
-                {...register('last_name')}
-                className={errors.last_name ? 'border-destructive' : ''}/>
-              {errors.last_name && (
-                <p className="text-sm text-destructive">
-                  {errors.last_name.message}
-                </p>
-              )}
+              <Input id="last_name" placeholder="Doe" {...register('last_name')} className={errors.last_name ? 'border-destructive' : ''} />
+              {errors.last_name && <p className="text-sm text-destructive">{errors.last_name.message}</p>}
             </div>
           </div>
 
@@ -250,39 +212,35 @@ export function InviteUserModal({
                 <SelectItem value="quality">Quality</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Select primary role for this user
-            </p>
+            <p className="text-xs text-muted-foreground">Select primary role for this user</p>
           </div>
 
           {/* Custom Permissions */}
           <div className="space-y-4">
             <div>
               <h3 className="font-semibold text-sm">Custom Permissions</h3>
-              <p className="text-xs text-muted-foreground">
-                Override role permissions with custom access
-              </p>
+              <p className="text-xs text-muted-foreground">Override role permissions with custom access</p>
             </div>
 
             <div className="space-y-4">
               {permissionGroups.map((group, groupIndex) => (
-                <div key={group.title}
-                  className="rounded-lg border border-border p-4">
+                <div key={group.title} className="rounded-lg border border-border p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <group.icon className="h-5 w-5 text-muted-foreground" />
                     <h4 className="font-semibold text-sm">{group.title}</h4>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     {group.permissions.map((permission, permissionIndex) => (
-                      <div key={permission.id}
-                        className="flex items-center space-x-2">
-                        <Checkbox id={permission.id}
+                      <div key={permission.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={permission.id}
                           checked={permission.checked}
-                          onCheckedChange={() =>
-                            togglePermission(groupIndex, permissionIndex)
-                          }/>
-                        <label htmlFor={permission.id}
-                          className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                          onCheckedChange={() => togglePermission(groupIndex, permissionIndex)}
+                        />
+                        <label
+                          htmlFor={permission.id}
+                          className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
                           {permission.label}
                         </label>
                       </div>
@@ -301,15 +259,10 @@ export function InviteUserModal({
           )}
 
           <DialogFooter>
-            <Button type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isSubmitting}>
+            <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit"
-              disabled={isSubmitting}
-              className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white">
+            <Button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white">
               {isSubmitting ? (
                 <>Sending...</>
               ) : (

@@ -32,11 +32,7 @@ export interface UseDataTableProps<TData, TValue> {
   config?: DataTableConfig;
 }
 
-export function useDataTable<TData, TValue>({
-  data,
-  columns,
-  config = {},
-}: UseDataTableProps<TData, TValue>) {
+export function useDataTable<TData, TValue>({ data, columns, config = {} }: UseDataTableProps<TData, TValue>) {
   const safeData = React.useMemo(() => data ?? [], [data]);
   const safeColumns = React.useMemo(() => columns ?? [], [columns]);
   const {
@@ -70,7 +66,7 @@ export function useDataTable<TData, TValue>({
       enableSorting: false,
       enableHiding: false,
     }),
-    [pagination.pageIndex, pagination.pageSize]
+    [pagination.pageIndex, pagination.pageSize],
   );
 
   const selectionColumn: ColumnDef<TData, TValue> = React.useMemo(
@@ -84,16 +80,12 @@ export function useDataTable<TData, TValue>({
         />
       ),
       cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(checked) => row.toggleSelected(!!checked)}
-          aria-label="Select row"
-        />
+        <Checkbox checked={row.getIsSelected()} onCheckedChange={(checked) => row.toggleSelected(!!checked)} aria-label="Select row" />
       ),
       enableSorting: false,
       enableHiding: false,
     }),
-    []
+    [],
   );
 
   const finalColumns = React.useMemo(() => {

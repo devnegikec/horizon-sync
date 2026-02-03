@@ -54,24 +54,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex h-screen overflow-hidden bg-background">
           {/* Backdrop for mobile */}
           {isMobile && sidebarOpen && (
-            <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity"
-              onClick={handleCloseSidebar}
-              aria-hidden="true"/>
+            <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity" onClick={handleCloseSidebar} aria-hidden="true" />
           )}
 
           {/* Sidebar */}
-          <Sidebar open={sidebarOpen}
-            collapsed={sidebarCollapsed}
-            isMobile={isMobile}
-            onToggle={handleToggleSidebar}
-            onClose={handleCloseSidebar}/>
+          <Sidebar open={sidebarOpen} collapsed={sidebarCollapsed} isMobile={isMobile} onToggle={handleToggleSidebar} onClose={handleCloseSidebar} />
 
           {/* Main Content Area */}
           <div className="flex flex-1 flex-col overflow-hidden">
-            <Topbar sidebarCollapsed={sidebarCollapsed}
-              sidebarOpen={sidebarOpen}
-              isMobile={isMobile}
-              onToggleSidebar={handleToggleSidebar}/>
+            <Topbar sidebarCollapsed={sidebarCollapsed} sidebarOpen={sidebarOpen} isMobile={isMobile} onToggleSidebar={handleToggleSidebar} />
 
             {/* Page Content */}
             <main className="flex-1 overflow-y-auto">

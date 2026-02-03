@@ -26,14 +26,7 @@ const API_BASE_URL = environment.apiCoreUrl;
 
 export function useCustomers(params: UseCustomersParams = {}): UseCustomersReturn {
   const accessToken = useUserStore((s) => s.accessToken);
-  const {
-    page = 1,
-    pageSize = 20,
-    sortBy = 'created_at',
-    sortOrder = 'desc',
-    search = '',
-    status = '',
-  } = params;
+  const { page = 1, pageSize = 20, sortBy = 'created_at', sortOrder = 'desc', search = '', status = '' } = params;
 
   const [customers, setCustomers] = React.useState<Customer[]>([]);
   const [pagination, setPagination] = React.useState<CustomerResponse['pagination'] | null>(null);
@@ -65,7 +58,7 @@ export function useCustomers(params: UseCustomersParams = {}): UseCustomersRetur
           Authorization: `Bearer ${accessToken}`,
         },
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch customers: ${response.statusText}`);
       }

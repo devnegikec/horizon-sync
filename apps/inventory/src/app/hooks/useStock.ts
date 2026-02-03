@@ -15,12 +15,7 @@ import type {
   CreateStockEntryPayload,
   CreateStockReconciliationPayload,
 } from '../types/stock.types';
-import {
-  stockLevelApi,
-  stockMovementApi,
-  stockEntryApi,
-  stockReconciliationApi,
-} from '../utility/api';
+import { stockLevelApi, stockMovementApi, stockEntryApi, stockReconciliationApi } from '../utility/api';
 
 // Stock Levels Hook
 interface UseStockLevelsResult {
@@ -31,11 +26,7 @@ interface UseStockLevelsResult {
   refetch: () => Promise<void>;
 }
 
-export function useStockLevels(
-  page = 1,
-  pageSize = 20,
-  filters?: { warehouseId?: string; itemId?: string }
-): UseStockLevelsResult {
+export function useStockLevels(page = 1, pageSize = 20, filters?: { warehouseId?: string; itemId?: string }): UseStockLevelsResult {
   const accessToken = useUserStore((s) => s.accessToken);
   const [stockLevels, setStockLevels] = React.useState<StockLevel[]>([]);
   const [pagination, setPagination] = React.useState<StockLevelsResponse['pagination'] | null>(null);
@@ -89,11 +80,7 @@ interface UseStockMovementsResult {
   refetch: () => Promise<void>;
 }
 
-export function useStockMovements(
-  page = 1,
-  pageSize = 20,
-  filters?: { warehouseId?: string; itemId?: string }
-): UseStockMovementsResult {
+export function useStockMovements(page = 1, pageSize = 20, filters?: { warehouseId?: string; itemId?: string }): UseStockMovementsResult {
   const accessToken = useUserStore((s) => s.accessToken);
   const [stockMovements, setStockMovements] = React.useState<StockMovement[]>([]);
   const [pagination, setPagination] = React.useState<StockMovementsResponse['pagination'] | null>(null);
@@ -166,7 +153,7 @@ export function useStockMovementMutations(): UseStockMovementMutationsResult {
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   return { createMovement, loading, error };
@@ -181,11 +168,7 @@ interface UseStockEntriesResult {
   refetch: () => Promise<void>;
 }
 
-export function useStockEntries(
-  page = 1,
-  pageSize = 20,
-  filters?: { entryType?: string; status?: string }
-): UseStockEntriesResult {
+export function useStockEntries(page = 1, pageSize = 20, filters?: { entryType?: string; status?: string }): UseStockEntriesResult {
   const accessToken = useUserStore((s) => s.accessToken);
   const [stockEntries, setStockEntries] = React.useState<StockEntry[]>([]);
   const [pagination, setPagination] = React.useState<StockEntriesResponse['pagination'] | null>(null);
@@ -260,7 +243,7 @@ export function useStockEntryMutations(): UseStockEntryMutationsResult {
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   const updateEntry = React.useCallback(
@@ -279,7 +262,7 @@ export function useStockEntryMutations(): UseStockEntryMutationsResult {
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   const deleteEntry = React.useCallback(
@@ -297,7 +280,7 @@ export function useStockEntryMutations(): UseStockEntryMutationsResult {
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   return { createEntry, updateEntry, deleteEntry, loading, error };
@@ -312,11 +295,7 @@ interface UseStockReconciliationsResult {
   refetch: () => Promise<void>;
 }
 
-export function useStockReconciliations(
-  page = 1,
-  pageSize = 20,
-  filters?: { status?: string }
-): UseStockReconciliationsResult {
+export function useStockReconciliations(page = 1, pageSize = 20, filters?: { status?: string }): UseStockReconciliationsResult {
   const accessToken = useUserStore((s) => s.accessToken);
   const [reconciliations, setReconciliations] = React.useState<StockReconciliation[]>([]);
   const [pagination, setPagination] = React.useState<StockReconciliationsResponse['pagination'] | null>(null);
@@ -388,7 +367,7 @@ export function useStockReconciliationMutations(): UseStockReconciliationMutatio
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   const updateReconciliation = React.useCallback(
@@ -407,7 +386,7 @@ export function useStockReconciliationMutations(): UseStockReconciliationMutatio
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   const deleteReconciliation = React.useCallback(
@@ -425,7 +404,7 @@ export function useStockReconciliationMutations(): UseStockReconciliationMutatio
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   return { createReconciliation, updateReconciliation, deleteReconciliation, loading, error };

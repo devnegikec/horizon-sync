@@ -1,12 +1,20 @@
 import * as React from 'react';
 
-import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components/ui/dialog';
+  Mail,
+  Phone,
+  MapPin,
+  Building2,
+  Hash,
+  CreditCard,
+  Wallet,
+  Calendar,
+  Tag as TagIcon,
+} from 'lucide-react';
+
+import { Badge } from '@horizon-sync/ui/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
+import { Separator } from '@horizon-sync/ui/components/ui/separator';
 
 import type { Customer } from '../../types/customer.types';
 
@@ -27,11 +35,7 @@ function getStatusBadge(status: Customer['status']) {
   }
 }
 
-export function CustomerDetailDialog({
-  open,
-  onOpenChange,
-  customer,
-}: CustomerDetailDialogProps) {
+export function CustomerDetailDialog({ open, onOpenChange, customer }: CustomerDetailDialogProps) {
   if (!customer) return null;
 
   const creditLimit = parseFloat(customer.credit_limit);
@@ -41,97 +45,169 @@ export function CustomerDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogHeader className="flex flex-row items-center justify-between space-y-0 p-8 pb-6">
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <DialogTitle className="text-xl">{customer.customer_name}</DialogTitle>
-              <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
+              <DialogTitle className="text-2xl font-bold">{customer.customer_name}</DialogTitle>
+              <Badge variant={statusBadge.variant} className="px-3 py-1 text-xs font-semibold uppercase tracking-wider">
+                {statusBadge.label}
+              </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">{customer.customer_code}</p>
+            <p className="text-sm text-muted-foreground mt-1.5 flex items-center gap-1.5 font-medium">
+              <Hash className="h-3.5 w-3.5" />
+              {customer.customer_code}
+            </p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold">${outstandingBalance.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">Outstanding Balance</p>
+            <p className="text-3xl font-bold tracking-tight">${outstandingBalance.toLocaleString()}</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-1">Outstanding Balance</p>
           </div>
         </DialogHeader>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Contact Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Contact Information</h3>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm font-medium">Email</p>
-                <p className="text-sm text-muted-foreground">{customer.email}</p>
+        <Separator />
+
+        <div className="p-8">
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Contact Information */}
+            <div className="flex-1 space-y-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Building2 className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-bold">Contact Information</h3>
               </div>
-              <div>
-                <p className="text-sm font-medium">Phone</p>
-                <p className="text-sm text-muted-foreground">{customer.phone}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium">City</p>
-                <p className="text-sm text-muted-foreground">{customer.city}</p>
-              </div>
-              {customer.address && (
-                <div>
-                  <p className="text-sm font-medium">Address</p>
-                  <p className="text-sm text-muted-foreground">{customer.address}</p>
+              <div className="grid gap-5">
+                <div className="flex gap-3">
+                  <div className="mt-1 bg-primary/10 p-2 rounded-lg">
+                    <Mail className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email</p>
+                    <p className="text-sm font-medium mt-0.5">{customer.email}</p>
+                  </div>
                 </div>
-              )}
-              {customer.tax_number && (
-                <div>
-                  <p className="text-sm font-medium">Tax Number</p>
-                  <p className="text-sm text-muted-foreground">{customer.tax_number}</p>
+                <div className="flex gap-3">
+                  <div className="mt-1 bg-primary/10 p-2 rounded-lg">
+                    <Phone className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Phone</p>
+                    <p className="text-sm font-medium mt-0.5">{customer.phone}</p>
+                  </div>
                 </div>
-              )}
+                <div className="flex gap-3">
+                  <div className="mt-1 bg-primary/10 p-2 rounded-lg">
+                    <MapPin className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">City</p>
+                    <p className="text-sm font-medium mt-0.5">{customer.city}</p>
+                  </div>
+                </div>
+                {customer.address && (
+                  <div className="flex gap-3">
+                    <div className="mt-1 bg-primary/10 p-2 rounded-lg">
+                      <MapPin className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Address</p>
+                      <p className="text-sm font-medium mt-0.5">{customer.address}</p>
+                    </div>
+                  </div>
+                )}
+                {customer.tax_number && (
+                  <div className="flex gap-3">
+                    <div className="mt-1 bg-primary/10 p-2 rounded-lg">
+                      <Hash className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Tax Number</p>
+                      <p className="text-sm font-medium mt-0.5">{customer.tax_number}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Separator orientation="vertical" className="hidden md:block h-auto self-stretch" />
+            <Separator orientation="horizontal" className="md:hidden" />
+
+            {/* Financial Information */}
+            <div className="flex-1 space-y-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Wallet className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-bold">Financial Information</h3>
+              </div>
+              <div className="grid gap-5">
+                <div className="flex gap-3">
+                  <div className="mt-1 bg-primary/10 p-2 rounded-lg">
+                    <CreditCard className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Credit Limit</p>
+                    <p className="text-sm font-medium mt-0.5">${creditLimit.toLocaleString()}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="mt-1 bg-primary/10 p-2 rounded-lg">
+                    <Wallet className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Outstanding Balance</p>
+                    <p className="text-sm font-medium mt-0.5">${outstandingBalance.toLocaleString()}</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    <span>Credit Utilization</span>
+                    <span>{creditUtilization.toFixed(1)}% used</span>
+                  </div>
+                  <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-500 ${
+                        creditUtilization > 90 ? 'bg-destructive' : creditUtilization > 70 ? 'bg-amber-500' : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${Math.min(creditUtilization, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground font-medium">${(creditLimit - outstandingBalance).toLocaleString()} available credit</p>
+                </div>
+                <div className="flex gap-3">
+                  <div className="mt-1 bg-primary/10 p-2 rounded-lg">
+                    <Calendar className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Member Since</p>
+                    <p className="text-sm font-medium mt-0.5">
+                      {new Date(customer.created_at).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Financial Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Financial Information</h3>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm font-medium">Credit Limit</p>
-                <p className="text-sm text-muted-foreground">${creditLimit.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium">Outstanding Balance</p>
-                <p className="text-sm text-muted-foreground">${outstandingBalance.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium">Credit Utilization</p>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {creditUtilization.toFixed(1)}% used
-                    </span>
-                    <span className="text-muted-foreground">
-                      ${(creditLimit - outstandingBalance).toLocaleString()} available
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
-                    <div className={`h-full rounded-full ${creditUtilization > 90 ? 'bg-destructive' : creditUtilization > 70 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(creditUtilization, 100)}%` }} />
-                  </div>
+          {customer.tags && (
+            <>
+              <Separator className="my-8" />
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <TagIcon className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-bold">Tags</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {customer.tags.map((tag) => (
+                    <Badge key={tag} variant="outline" className="px-3 py-1 text-xs font-medium bg-muted/50">
+                      {tag.trim()}
+                    </Badge>
+                  ))}
                 </div>
               </div>
-              <div>
-                <p className="text-sm font-medium">Created</p>
-                <p className="text-sm text-muted-foreground">
-                  {new Date(customer.created_at).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
-
-        {customer.tags && (
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold">Tags</h3>
-            <p className="text-sm text-muted-foreground">{customer.tags}</p>
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   );

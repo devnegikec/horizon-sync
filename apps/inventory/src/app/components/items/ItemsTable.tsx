@@ -3,10 +3,7 @@ import * as React from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Package, Plus, MoreHorizontal, Eye, Edit, Power, PowerOff } from 'lucide-react';
 
-import {
-  DataTable,
-  DataTableColumnHeader,
-} from '@horizon-sync/ui/components/data-table';
+import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
@@ -33,16 +30,7 @@ export interface ItemsTableProps {
   onCreateItem: () => void;
 }
 
-export function ItemsTable({
-  items,
-  loading,
-  error,
-  hasActiveFilters,
-  onView,
-  onEdit,
-  onToggleStatus,
-  onCreateItem,
-}: ItemsTableProps) {
+export function ItemsTable({ items, loading, error, hasActiveFilters, onView, onEdit, onToggleStatus, onCreateItem }: ItemsTableProps) {
   const columns: ColumnDef<ApiItem, unknown>[] = React.useMemo(
     () => [
       {
@@ -60,11 +48,7 @@ export function ItemsTable({
       {
         accessorKey: 'item_code',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Code" />,
-        cell: ({ row }) => (
-          <code className="text-sm bg-muted px-2 py-1 rounded">
-            {row.original.item_code ?? ''}
-          </code>
-        ),
+        cell: ({ row }) => <code className="text-sm bg-muted px-2 py-1 rounded">{row.original.item_code ?? ''}</code>,
       },
       {
         accessorKey: 'item_group_name',
@@ -78,9 +62,7 @@ export function ItemsTable({
       },
       {
         accessorKey: 'standard_rate',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Standard Rate" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Standard Rate" />,
         cell: ({ row }) => row.original.standard_rate ?? '',
       },
       {
@@ -89,16 +71,12 @@ export function ItemsTable({
         cell: ({ row }) => {
           const status = row.original.status ?? '';
           const isActive = status === 'active';
-          return (
-            <Badge variant={isActive ? 'success' : 'secondary'}>{status}</Badge>
-          );
+          return <Badge variant={isActive ? 'success' : 'secondary'}>{status}</Badge>;
         },
       },
       {
         accessorKey: 'maintain_stock',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Maintain Stock" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Maintain Stock" />,
         cell: ({ row }) => {
           const v = row.original.maintain_stock;
           return v == null ? '' : v ? 'Yes' : 'No';
@@ -106,11 +84,8 @@ export function ItemsTable({
       },
       {
         accessorKey: 'created_at',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Created At" />
-        ),
-        cell: ({ row }) =>
-          formatDate(row.original.created_at ?? '', 'DD-MMM-YY'),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Created At" />,
+        cell: ({ row }) => formatDate(row.original.created_at ?? '', 'DD-MMM-YY'),
       },
       {
         id: 'actions',
@@ -138,9 +113,15 @@ export function ItemsTable({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => onToggleStatus(item)}>
                     {isActive ? (
-                      <><PowerOff className="mr-2 h-4 w-4" />Deactivate</>
+                      <>
+                        <PowerOff className="mr-2 h-4 w-4" />
+                        Deactivate
+                      </>
                     ) : (
-                      <><Power className="mr-2 h-4 w-4" />Activate</>
+                      <>
+                        <Power className="mr-2 h-4 w-4" />
+                        Activate
+                      </>
                     )}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -151,7 +132,7 @@ export function ItemsTable({
         enableSorting: false,
       },
     ],
-    [onView, onEdit, onToggleStatus]
+    [onView, onEdit, onToggleStatus],
   );
 
   if (error) {
@@ -168,9 +149,7 @@ export function ItemsTable({
     return (
       <Card>
         <CardContent className="p-0">
-          <div className="py-12 text-center text-muted-foreground">
-            Loading…
-          </div>
+          <div className="py-12 text-center text-muted-foreground">Loading…</div>
         </CardContent>
       </Card>
     );
@@ -184,11 +163,7 @@ export function ItemsTable({
             <EmptyState
               icon={<Package className="h-12 w-12" />}
               title="No items found"
-              description={
-                hasActiveFilters
-                  ? 'Try adjusting your search or filters'
-                  : 'Get started by adding your first item'
-              }
+              description={hasActiveFilters ? 'Try adjusting your search or filters' : 'Get started by adding your first item'}
               action={
                 !hasActiveFilters ? (
                   <Button onClick={onCreateItem} className="gap-2">

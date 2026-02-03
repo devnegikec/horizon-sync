@@ -18,39 +18,16 @@ import {
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@horizon-sync/ui/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@horizon-sync/ui/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@horizon-sync/ui/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useItems } from '../../hooks/useItems';
-import {
-  useStockLevels,
-  useStockMovements,
-  useStockEntries,
-  useStockReconciliations,
-} from '../../hooks/useStock';
+import { useStockLevels, useStockMovements, useStockEntries, useStockReconciliations } from '../../hooks/useStock';
 import { useWarehouses } from '../../hooks/useWarehouses';
 import type { StockLevel, StockMovement, StockEntry, StockReconciliation } from '../../types/stock.types';
 import { formatDate } from '../../utility/formatDate';
@@ -127,20 +104,29 @@ export function StockManagement() {
 
   const { warehouses } = useWarehouses(1, 100);
   const { items } = useItems(1, 100);
-  const { stockLevels, loading: levelsLoading, error: levelsError, refetch: refetchLevels } = useStockLevels(
-    1,
-    50,
-    { warehouseId: filters.warehouseId !== 'all' ? filters.warehouseId : undefined }
-  );
-  const { stockMovements, loading: movementsLoading, error: movementsError, refetch: refetchMovements } =
-    useStockMovements(1, 50, {
-      warehouseId: filters.warehouseId !== 'all' ? filters.warehouseId : undefined,
-    });
-  const { stockEntries, loading: entriesLoading, error: entriesError, refetch: refetchEntries } =
-    useStockEntries(1, 50, {
-      entryType: filters.entryType !== 'all' ? filters.entryType : undefined,
-      status: filters.status !== 'all' ? filters.status : undefined,
-    });
+  const {
+    stockLevels,
+    loading: levelsLoading,
+    error: levelsError,
+    refetch: refetchLevels,
+  } = useStockLevels(1, 50, { warehouseId: filters.warehouseId !== 'all' ? filters.warehouseId : undefined });
+  const {
+    stockMovements,
+    loading: movementsLoading,
+    error: movementsError,
+    refetch: refetchMovements,
+  } = useStockMovements(1, 50, {
+    warehouseId: filters.warehouseId !== 'all' ? filters.warehouseId : undefined,
+  });
+  const {
+    stockEntries,
+    loading: entriesLoading,
+    error: entriesError,
+    refetch: refetchEntries,
+  } = useStockEntries(1, 50, {
+    entryType: filters.entryType !== 'all' ? filters.entryType : undefined,
+    status: filters.status !== 'all' ? filters.status : undefined,
+  });
   const {
     reconciliations,
     loading: reconciliationsLoading,
@@ -185,9 +171,7 @@ export function StockManagement() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Stock Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Monitor stock levels, movements, and maintain accurate records
-          </p>
+          <p className="text-muted-foreground mt-1">Monitor stock levels, movements, and maintain accurate records</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="gap-2">
@@ -217,26 +201,34 @@ export function StockManagement() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total On Hand"
+        <StatCard
+          title="Total On Hand"
           value={stats.totalOnHand.toLocaleString()}
           icon={Boxes}
           iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"/>
-        <StatCard title="Available"
+          iconColor="text-slate-600 dark:text-slate-400"
+        />
+        <StatCard
+          title="Available"
           value={stats.totalAvailable.toLocaleString()}
           icon={Package}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"/>
-        <StatCard title="Reserved"
+          iconColor="text-emerald-600 dark:text-emerald-400"
+        />
+        <StatCard
+          title="Reserved"
           value={stats.totalReserved.toLocaleString()}
           icon={ClipboardCheck}
           iconBg="bg-blue-100 dark:bg-blue-900/20"
-          iconColor="text-blue-600 dark:text-blue-400"/>
-        <StatCard title="Low Stock Items"
+          iconColor="text-blue-600 dark:text-blue-400"
+        />
+        <StatCard
+          title="Low Stock Items"
           value={stats.lowStockCount}
           icon={AlertTriangle}
           iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"/>
+          iconColor="text-amber-600 dark:text-amber-400"
+        />
       </div>
 
       {/* Tabs */}
@@ -249,11 +241,8 @@ export function StockManagement() {
             <TabsTrigger value="reconciliations">Reconciliations</TabsTrigger>
           </TabsList>
           <div className="flex gap-3">
-            <SearchInput className="w-64"
-              placeholder="Search..."
-              onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
-            <Select value={filters.warehouseId}
-              onValueChange={(value) => setFilters((prev) => ({ ...prev, warehouseId: value }))}>
+            <SearchInput className="w-64" placeholder="Search..." onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))} />
+            <Select value={filters.warehouseId} onValueChange={(value) => setFilters((prev) => ({ ...prev, warehouseId: value }))}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="All Warehouses" />
               </SelectTrigger>
@@ -273,9 +262,7 @@ export function StockManagement() {
         <TabsContent value="levels" className="mt-4">
           <Card>
             <CardContent className="p-0">
-              {levelsError && (
-                <div className="p-4 text-destructive text-sm border-b">{levelsError}</div>
-              )}
+              {levelsError && <div className="p-4 text-destructive text-sm border-b">{levelsError}</div>}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -298,43 +285,30 @@ export function StockManagement() {
                   ) : stockLevels.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7}>
-                        <EmptyState icon={<Boxes className="h-12 w-12" />}
+                        <EmptyState
+                          icon={<Boxes className="h-12 w-12" />}
                           title="No stock levels found"
-                          description="Stock levels will appear here once items are added to warehouses"/>
+                          description="Stock levels will appear here once items are added to warehouses"
+                        />
                       </TableCell>
                     </TableRow>
                   ) : (
                     stockLevels.map((level: StockLevel) => (
                       <TableRow key={level.id}>
                         <TableCell>
-                          <code className="text-xs bg-muted px-2 py-0.5 rounded">
-                            {level.product_id.slice(0, 8)}...
-                          </code>
+                          <code className="text-xs bg-muted px-2 py-0.5 rounded">{level.product_id.slice(0, 8)}...</code>
                         </TableCell>
                         <TableCell>
-                          <code className="text-xs bg-muted px-2 py-0.5 rounded">
-                            {level.warehouse_id.slice(0, 8)}...
-                          </code>
+                          <code className="text-xs bg-muted px-2 py-0.5 rounded">{level.warehouse_id.slice(0, 8)}...</code>
                         </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {level.quantity_on_hand?.toLocaleString() || 0}
-                        </TableCell>
+                        <TableCell className="text-right font-medium">{level.quantity_on_hand?.toLocaleString() || 0}</TableCell>
+                        <TableCell className="text-right">{level.quantity_reserved?.toLocaleString() || 0}</TableCell>
                         <TableCell className="text-right">
-                          {level.quantity_reserved?.toLocaleString() || 0}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className={cn(
-                              'font-medium',
-                              (level.quantity_available || 0) < 10 && 'text-destructive'
-                            )}>
+                          <span className={cn('font-medium', (level.quantity_available || 0) < 10 && 'text-destructive')}>
                             {level.quantity_available?.toLocaleString() || 0}
                           </span>
                         </TableCell>
-                        <TableCell>
-                          {level.last_counted_at
-                            ? formatDate(level.last_counted_at, 'DD-MMM-YY')
-                            : '—'}
-                        </TableCell>
+                        <TableCell>{level.last_counted_at ? formatDate(level.last_counted_at, 'DD-MMM-YY') : '—'}</TableCell>
                         <TableCell>{formatDate(level.updated_at, 'DD-MMM-YY')}</TableCell>
                       </TableRow>
                     ))
@@ -356,9 +330,7 @@ export function StockManagement() {
               </Button>
             </CardHeader>
             <CardContent className="p-0">
-              {movementsError && (
-                <div className="p-4 text-destructive text-sm border-b">{movementsError}</div>
-              )}
+              {movementsError && <div className="p-4 text-destructive text-sm border-b">{movementsError}</div>}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -380,7 +352,8 @@ export function StockManagement() {
                   ) : stockMovements.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6}>
-                        <EmptyState icon={<ArrowRightLeft className="h-12 w-12" />}
+                        <EmptyState
+                          icon={<ArrowRightLeft className="h-12 w-12" />}
                           title="No movements found"
                           description="Stock movements will appear here as they are recorded"
                           action={
@@ -388,7 +361,8 @@ export function StockManagement() {
                               <Plus className="h-4 w-4" />
                               Record Movement
                             </Button>
-                          }/>
+                          }
+                        />
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -400,21 +374,13 @@ export function StockManagement() {
                             <Badge variant={typeBadge.variant}>{typeBadge.label}</Badge>
                           </TableCell>
                           <TableCell>
-                            <code className="text-xs bg-muted px-2 py-0.5 rounded">
-                              {movement.product_id.slice(0, 8)}...
-                            </code>
+                            <code className="text-xs bg-muted px-2 py-0.5 rounded">{movement.product_id.slice(0, 8)}...</code>
                           </TableCell>
                           <TableCell>
-                            <code className="text-xs bg-muted px-2 py-0.5 rounded">
-                              {movement.warehouse_id.slice(0, 8)}...
-                            </code>
+                            <code className="text-xs bg-muted px-2 py-0.5 rounded">{movement.warehouse_id.slice(0, 8)}...</code>
                           </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {movement.quantity.toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            {formatDate(movement.performed_at, 'DD-MMM-YY', true)}
-                          </TableCell>
+                          <TableCell className="text-right font-medium">{movement.quantity.toLocaleString()}</TableCell>
+                          <TableCell>{formatDate(movement.performed_at, 'DD-MMM-YY', true)}</TableCell>
                           <TableCell className="text-right">
                             <Button variant="ghost" size="icon">
                               <Eye className="h-4 w-4" />
@@ -441,9 +407,7 @@ export function StockManagement() {
               </Button>
             </CardHeader>
             <CardContent className="p-0">
-              {entriesError && (
-                <div className="p-4 text-destructive text-sm border-b">{entriesError}</div>
-              )}
+              {entriesError && <div className="p-4 text-destructive text-sm border-b">{entriesError}</div>}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -466,7 +430,8 @@ export function StockManagement() {
                   ) : stockEntries.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7}>
-                        <EmptyState icon={<FileText className="h-12 w-12" />}
+                        <EmptyState
+                          icon={<FileText className="h-12 w-12" />}
                           title="No stock entries found"
                           description="Create stock entries for material receipts, issues, or transfers"
                           action={
@@ -474,7 +439,8 @@ export function StockManagement() {
                               <Plus className="h-4 w-4" />
                               New Entry
                             </Button>
-                          }/>
+                          }
+                        />
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -483,27 +449,19 @@ export function StockManagement() {
                       return (
                         <TableRow key={entry.id}>
                           <TableCell>
-                            <code className="text-sm bg-muted px-2 py-0.5 rounded">
-                              {entry.stock_entry_no}
-                            </code>
+                            <code className="text-sm bg-muted px-2 py-0.5 rounded">{entry.stock_entry_no}</code>
                           </TableCell>
-                          <TableCell className="capitalize">
-                            {entry.stock_entry_type.replace(/_/g, ' ')}
-                          </TableCell>
+                          <TableCell className="capitalize">{entry.stock_entry_type.replace(/_/g, ' ')}</TableCell>
                           <TableCell>
                             {entry.from_warehouse_id ? (
-                              <code className="text-xs bg-muted px-2 py-0.5 rounded">
-                                {entry.from_warehouse_id.slice(0, 8)}...
-                              </code>
+                              <code className="text-xs bg-muted px-2 py-0.5 rounded">{entry.from_warehouse_id.slice(0, 8)}...</code>
                             ) : (
                               '—'
                             )}
                           </TableCell>
                           <TableCell>
                             {entry.to_warehouse_id ? (
-                              <code className="text-xs bg-muted px-2 py-0.5 rounded">
-                                {entry.to_warehouse_id.slice(0, 8)}...
-                              </code>
+                              <code className="text-xs bg-muted px-2 py-0.5 rounded">{entry.to_warehouse_id.slice(0, 8)}...</code>
                             ) : (
                               '—'
                             )}
@@ -544,9 +502,7 @@ export function StockManagement() {
               <CardTitle className="text-base">Stock Reconciliations</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {reconciliationsError && (
-                <div className="p-4 text-destructive text-sm border-b">{reconciliationsError}</div>
-              )}
+              {reconciliationsError && <div className="p-4 text-destructive text-sm border-b">{reconciliationsError}</div>}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -568,9 +524,11 @@ export function StockManagement() {
                   ) : reconciliations.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6}>
-                        <EmptyState icon={<ClipboardCheck className="h-12 w-12" />}
+                        <EmptyState
+                          icon={<ClipboardCheck className="h-12 w-12" />}
                           title="No reconciliations found"
-                          description="Stock reconciliations help compare physical counts with system records"/>
+                          description="Stock reconciliations help compare physical counts with system records"
+                        />
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -579,9 +537,7 @@ export function StockManagement() {
                       return (
                         <TableRow key={recon.id}>
                           <TableCell>
-                            <code className="text-sm bg-muted px-2 py-0.5 rounded">
-                              {recon.reconciliation_no}
-                            </code>
+                            <code className="text-sm bg-muted px-2 py-0.5 rounded">{recon.reconciliation_no}</code>
                           </TableCell>
                           <TableCell>{recon.purpose}</TableCell>
                           <TableCell>{formatDate(recon.posting_date, 'DD-MMM-YY')}</TableCell>
@@ -606,21 +562,25 @@ export function StockManagement() {
       </Tabs>
 
       {/* Dialogs */}
-      <StockMovementDialog open={movementDialogOpen}
+      <StockMovementDialog
+        open={movementDialogOpen}
         onOpenChange={setMovementDialogOpen}
         warehouses={warehouses}
         items={items}
         onCreated={() => {
           refetchMovements();
           refetchLevels();
-        }}/>
-      <StockEntryDialog open={entryDialogOpen}
+        }}
+      />
+      <StockEntryDialog
+        open={entryDialogOpen}
         onOpenChange={setEntryDialogOpen}
         entry={selectedEntry}
         warehouses={warehouses}
         items={items}
         onCreated={refetchEntries}
-        onUpdated={refetchEntries}/>
+        onUpdated={refetchEntries}
+      />
     </div>
   );
 }

@@ -25,12 +25,8 @@ export function BrandingSection() {
 
         {/* Title */}
         <div className="space-y-3">
-          <h1 className="text-5xl font-bold tracking-tight">
-            Welcome to Horizon Sync
-          </h1>
-          <p className="text-xl text-white/90">
-            The modern platform for seamless collaboration and management
-          </p>
+          <h1 className="text-5xl font-bold tracking-tight">Welcome to Horizon Sync</h1>
+          <p className="text-xl text-white/90">The modern platform for seamless collaboration and management</p>
         </div>
 
         {/* Features */}
@@ -49,9 +45,11 @@ export function BrandingSection() {
               text: 'Powerful integrations',
             },
           ].map((feature, index) => (
-            <div key={index}
+            <div
+              key={index}
               className="flex items-center gap-4 bg-white/10 backdrop-blur-sm rounded-lg p-4 animate-in slide-in-from-right duration-500"
-              style={{ animationDelay: `${index * 150}ms` }}>
+              style={{ animationDelay: `${index * 150}ms` }}
+            >
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20">
                 <feature.icon className="h-5 w-5 text-white" />
               </div>

@@ -4,22 +4,10 @@ import { X } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@horizon-sync/ui/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
 import type { Customer } from '../../types/customer.types';
@@ -51,13 +39,7 @@ interface FormData {
   tags: string[];
 }
 
-export function CustomerDialog({
-  open,
-  onOpenChange,
-  customer,
-  onSave,
-  saving = false,
-}: CustomerDialogProps) {
+export function CustomerDialog({ open, onOpenChange, customer, onSave, saving = false }: CustomerDialogProps) {
   const [formData, setFormData] = React.useState<FormData>({
     customer_code: '',
     customer_name: '',
@@ -140,23 +122,23 @@ export function CustomerDialog({
   };
 
   const handleInputChange = (field: keyof FormData, value: string | string[]) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleAddTag = () => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        tags: [...prev.tags, newTag.trim()]
+        tags: [...prev.tags, newTag.trim()],
       }));
       setNewTag('');
     }
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
+      tags: prev.tags.filter((tag) => tag !== tagToRemove),
     }));
   };
 
@@ -171,9 +153,7 @@ export function CustomerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {customer ? 'Edit Customer' : 'Add New Customer'}
-          </DialogTitle>
+          <DialogTitle>{customer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -266,22 +246,11 @@ export function CustomerDialog({
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="city">City *</Label>
-                <Input
-                  id="city"
-                  value={formData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  placeholder="Bangalore"
-                  required
-                />
+                <Input id="city" value={formData.city} onChange={(e) => handleInputChange('city', e.target.value)} placeholder="Bangalore" required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="state">State</Label>
-                <Input
-                  id="state"
-                  value={formData.state}
-                  onChange={(e) => handleInputChange('state', e.target.value)}
-                  placeholder="Karnataka"
-                />
+                <Input id="state" value={formData.state} onChange={(e) => handleInputChange('state', e.target.value)} placeholder="Karnataka" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="postal_code">Postal Code</Label>
@@ -296,10 +265,7 @@ export function CustomerDialog({
 
             <div className="space-y-2">
               <Label htmlFor="country">Country</Label>
-              <Select
-                value={formData.country}
-                onValueChange={(value) => handleInputChange('country', value)}
-              >
+              <Select value={formData.country} onValueChange={(value) => handleInputChange('country', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -333,10 +299,7 @@ export function CustomerDialog({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: Customer['status']) => handleInputChange('status', value)}
-                >
+                <Select value={formData.status} onValueChange={(value: Customer['status']) => handleInputChange('status', value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -399,10 +362,7 @@ export function CustomerDialog({
                   {formData.tags.map((tag, index) => (
                     <Badge key={index} variant="secondary" className="flex items-center gap-1">
                       {tag}
-                      <X
-                        className="h-3 w-3 cursor-pointer hover:text-destructive"
-                        onClick={() => handleRemoveTag(tag)}
-                      />
+                      <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => handleRemoveTag(tag)} />
                     </Badge>
                   ))}
                 </div>
