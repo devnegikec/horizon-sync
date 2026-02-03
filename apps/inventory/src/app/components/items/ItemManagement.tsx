@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 
+import { type Table } from '@tanstack/react-table';
 import { Package, Plus, Download, Boxes, DollarSign, AlertTriangle } from 'lucide-react';
 
+import { DataTableViewOptions } from '@horizon-sync/ui/components/data-table/DataTableViewOptions';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
@@ -122,6 +124,8 @@ export function ItemManagement() {
 
   const selectedItemAsItem = selectedItem ? apiItemToItem(selectedItem) : null;
 
+  const renderViewOptions = (table: Table<ApiItem>) => <DataTableViewOptions table={table} />;
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
@@ -144,92 +148,49 @@ export function ItemManagement() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Items"
-          value={stats.totalItems}
-          icon={Package}
-          iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"
-        />
-        <StatCard
-          title="Active Items"
-          value={stats.activeItems}
-          icon={Boxes}
-          iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"
-        />
-        <StatCard
-          title="Inventory Value"
-          value="—"
-          icon={DollarSign}
-          iconBg="bg-blue-100 dark:bg-blue-900/20"
-          iconColor="text-blue-600 dark:text-blue-400"
-        />
-        <StatCard
-          title="Low Stock Alerts"
-          value="—"
-          icon={AlertTriangle}
-          iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"
-        />
+        <StatCard title="Total Items" value={stats.totalItems} icon={Package} iconBg="bg-slate-100 dark:bg-slate-800" iconColor="text-slate-600 dark:text-slate-400" />
+        <StatCard title="Active Items" value={stats.activeItems} icon={Boxes} iconBg="bg-emerald-100 dark:bg-emerald-900/20" iconColor="text-emerald-600 dark:text-emerald-400" />
+        <StatCard title="Inventory Value" value="—" icon={DollarSign} iconBg="bg-blue-100 dark:bg-blue-900/20" iconColor="text-blue-600 dark:text-blue-400" />
+        <StatCard title="Low Stock Alerts" value="—" icon={AlertTriangle} iconBg="bg-amber-100 dark:bg-amber-900/20" iconColor="text-amber-600 dark:text-amber-400" />
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <SearchInput
-          className="sm:w-80"
-          placeholder="Search by code, name, or group..."
-          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
-        />
-        <div className="flex gap-3">
-          <Select value={filters.groupId} onValueChange={(value) => setFilters((prev) => ({ ...prev, groupId: value }))}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Groups" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Groups</SelectItem>
-              {itemGroups.map((group) => (
-                <SelectItem key={group.id} value={group.id}>
-                  {group.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filters.status} onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <SearchInput className="sm:w-80" placeholder="Search by code, name, or group..." onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))} />
+          <div className="flex gap-3">
+            <Select value={filters.groupId} onValueChange={(value) => setFilters((prev) => ({ ...prev, groupId: value }))}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Groups" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Groups</SelectItem>
+                {itemGroups.map((group) => (
+                  <SelectItem key={group.id} value={group.id}>
+                    {group.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filters.status} onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
       {/* Items Table */}
-      <ItemsTable
-        items={filteredItems}
-        loading={loading}
-        error={error}
-        hasActiveFilters={!!filters.search || filters.groupId !== 'all' || filters.status !== 'all'}
-        onView={handleViewItem}
-        onEdit={handleEditItem}
-        onToggleStatus={handleToggleStatus}
-        onCreateItem={handleCreateItem}
-      />
+      <ItemsTable items={filteredItems} loading={loading} error={error} hasActiveFilters={!!filters.search || filters.groupId !== 'all' || filters.status !== 'all'} onView={handleViewItem} onEdit={handleEditItem} onToggleStatus={handleToggleStatus} onCreateItem={handleCreateItem} renderViewOptions={renderViewOptions} />
 
       {/* Dialogs */}
-      <ItemDialog
-        open={itemDialogOpen}
-        onOpenChange={setItemDialogOpen}
-        item={selectedItemAsItem}
-        itemGroups={itemGroups}
-        onSave={handleSaveItem}
-        onCreated={refetch}
-        onUpdated={refetch}
-      />
+      <ItemDialog open={itemDialogOpen} onOpenChange={setItemDialogOpen} item={selectedItemAsItem} itemGroups={itemGroups} onSave={handleSaveItem} onCreated={refetch} onUpdated={refetch} />
       <ItemDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} item={selectedItemAsItem} />
     </div>
   );
