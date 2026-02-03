@@ -27,12 +27,14 @@ export function LoginForm() {
       <LoginHeader />
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">
-          <FormInput id="email"
+          <FormInput
+            id="email"
             label="Work Email"
             type="email"
             placeholder="john.doe@company.com"
             register={register('email')}
-            error={errors.email?.message}/>
+            error={errors.email?.message}
+          />
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -43,11 +45,13 @@ export function LoginForm() {
                 Forgot Password?
               </a>
             </div>
-            <Input id="password"
+            <Input
+              id="password"
               type="password"
               placeholder="••••••••"
               {...register('password')}
-              className={errors.password ? 'border-destructive' : ''}/>
+              className={errors.password ? 'border-destructive' : ''}
+            />
             {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
           </div>
 

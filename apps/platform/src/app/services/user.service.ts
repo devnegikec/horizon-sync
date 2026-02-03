@@ -61,10 +61,7 @@ export interface UpdateUserPayload {
 const API_BASE_URL = environment.apiBaseUrl;
 
 export class UserService {
-  static async updateMe(
-    payload: UpdateUserPayload,
-    token: string
-  ): Promise<User> {
+  static async updateMe(payload: UpdateUserPayload, token: string): Promise<User> {
     try {
       const response = await fetch(`${API_BASE_URL}/identity/users/me`, {
         method: 'PATCH',
@@ -79,9 +76,7 @@ export class UserService {
         const errorData = await response.json().catch(() => ({
           message: 'Failed to update user profile',
         }));
-        throw new Error(
-          errorData.message || `HTTP error! status: ${response.status}`
-        );
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       return await response.json();
@@ -93,30 +88,21 @@ export class UserService {
     }
   }
 
-  static async getUsers(
-    page = 1,
-    pageSize = 20,
-    token: string
-  ): Promise<UsersResponse> {
+  static async getUsers(page = 1, pageSize = 20, token: string): Promise<UsersResponse> {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/users?page=${page}&page_size=${pageSize}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/users?page=${page}&page_size=${pageSize}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({
           message: 'Failed to fetch users',
         }));
-        throw new Error(
-          errorData.message || `HTTP error! status: ${response.status}`
-        );
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       const data: UsersResponse = await response.json();
@@ -129,10 +115,7 @@ export class UserService {
     }
   }
 
-  static async inviteUser(
-    payload: InviteUserPayload,
-    token: string
-  ): Promise<InviteUserResponse> {
+  static async inviteUser(payload: InviteUserPayload, token: string): Promise<InviteUserResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/users/invite`, {
         method: 'POST',
@@ -147,9 +130,7 @@ export class UserService {
         const errorData = await response.json().catch(() => ({
           message: 'Failed to invite user',
         }));
-        throw new Error(
-          errorData.message || `HTTP error! status: ${response.status}`
-        );
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       const data: InviteUserResponse = await response.json();

@@ -28,21 +28,8 @@ import {
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@horizon-sync/ui/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@horizon-sync/ui/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useWarehouses, useWarehouseMutations } from '../../hooks/useWarehouses';
@@ -142,20 +129,12 @@ function WarehouseRow({ warehouse, onView, onEdit, onDelete }: WarehouseRowProps
         )}
       </TableCell>
       <TableCell>
-        {warehouse.parent ? (
-          <span className="text-sm">{warehouse.parent.name}</span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        )}
+        {warehouse.parent ? <span className="text-sm">{warehouse.parent.name}</span> : <span className="text-muted-foreground">—</span>}
       </TableCell>
       <TableCell>
-        <Badge variant={warehouse.is_active ? 'success' : 'secondary'}>
-          {warehouse.is_active ? 'Active' : 'Inactive'}
-        </Badge>
+        <Badge variant={warehouse.is_active ? 'success' : 'secondary'}>{warehouse.is_active ? 'Active' : 'Inactive'}</Badge>
       </TableCell>
-      <TableCell>
-        {warehouse.is_default && <Badge variant="outline">Default</Badge>}
-      </TableCell>
+      <TableCell>{warehouse.is_default && <Badge variant="outline">Default</Badge>}</TableCell>
       <TableCell>{formatDate(warehouse.created_at, 'DD-MMM-YY')}</TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
@@ -185,8 +164,7 @@ function WarehouseRow({ warehouse, onView, onEdit, onDelete }: WarehouseRowProps
                 Activate
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem onClick={() => onDelete(warehouse)}
-              className="text-destructive focus:text-destructive">
+            <DropdownMenuItem onClick={() => onDelete(warehouse)} className="text-destructive focus:text-destructive">
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </DropdownMenuItem>
@@ -217,13 +195,10 @@ export function WarehouseManagement() {
         warehouse.code.toLowerCase().includes(filters.search.toLowerCase()) ||
         (warehouse.city || '').toLowerCase().includes(filters.search.toLowerCase());
 
-      const matchesType =
-        filters.warehouseType === 'all' || warehouse.warehouse_type === filters.warehouseType;
+      const matchesType = filters.warehouseType === 'all' || warehouse.warehouse_type === filters.warehouseType;
 
       const matchesStatus =
-        filters.status === 'all' ||
-        (filters.status === 'active' && warehouse.is_active) ||
-        (filters.status === 'inactive' && !warehouse.is_active);
+        filters.status === 'all' || (filters.status === 'active' && warehouse.is_active) || (filters.status === 'inactive' && !warehouse.is_active);
 
       return matchesSearch && matchesType && matchesStatus;
     });
@@ -269,17 +244,14 @@ export function WarehouseManagement() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Warehouse Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Organize inventory across multiple locations and bins
-          </p>
+          <p className="text-muted-foreground mt-1">Organize inventory across multiple locations and bins</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="gap-2">
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button onClick={handleCreateWarehouse}
-            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
+          <Button onClick={handleCreateWarehouse} className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
             <Plus className="h-4 w-4" />
             Add Warehouse
           </Button>
@@ -288,36 +260,45 @@ export function WarehouseManagement() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Locations"
+        <StatCard
+          title="Total Locations"
           value={stats.total}
           icon={WarehouseIcon}
           iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"/>
-        <StatCard title="Active Locations"
+          iconColor="text-slate-600 dark:text-slate-400"
+        />
+        <StatCard
+          title="Active Locations"
           value={stats.active}
           icon={Building2}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"/>
-        <StatCard title="Warehouses"
+          iconColor="text-emerald-600 dark:text-emerald-400"
+        />
+        <StatCard
+          title="Warehouses"
           value={stats.warehouseCount}
           icon={Building2}
           iconBg="bg-blue-100 dark:bg-blue-900/20"
-          iconColor="text-blue-600 dark:text-blue-400"/>
-        <StatCard title="Stores"
+          iconColor="text-blue-600 dark:text-blue-400"
+        />
+        <StatCard
+          title="Stores"
           value={stats.storeCount}
           icon={Store}
           iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"/>
+          iconColor="text-amber-600 dark:text-amber-400"
+        />
       </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <SearchInput className="sm:w-80"
+        <SearchInput
+          className="sm:w-80"
           placeholder="Search by name, code, or city..."
-          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
+          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
+        />
         <div className="flex gap-3">
-          <Select value={filters.warehouseType}
-            onValueChange={(value) => setFilters((prev) => ({ ...prev, warehouseType: value }))}>
+          <Select value={filters.warehouseType} onValueChange={(value) => setFilters((prev) => ({ ...prev, warehouseType: value }))}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
@@ -328,8 +309,7 @@ export function WarehouseManagement() {
               <SelectItem value="transit">Transit</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={filters.status}
-            onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
+          <Select value={filters.status} onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
@@ -369,12 +349,11 @@ export function WarehouseManagement() {
               ) : filteredWarehouses.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8}>
-                    <EmptyState icon={<WarehouseIcon className="h-12 w-12" />}
+                    <EmptyState
+                      icon={<WarehouseIcon className="h-12 w-12" />}
                       title="No warehouses found"
                       description={
-                        filters.search ||
-                        filters.warehouseType !== 'all' ||
-                        filters.status !== 'all'
+                        filters.search || filters.warehouseType !== 'all' || filters.status !== 'all'
                           ? 'Try adjusting your search or filters'
                           : 'Get started by adding your first warehouse'
                       }
@@ -387,16 +366,19 @@ export function WarehouseManagement() {
                             Add Warehouse
                           </Button>
                         )
-                      }/>
+                      }
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredWarehouses.map((warehouse) => (
-                  <WarehouseRow key={warehouse.id}
+                  <WarehouseRow
+                    key={warehouse.id}
                     warehouse={warehouse}
                     onView={handleViewWarehouse}
                     onEdit={handleEditWarehouse}
-                    onDelete={handleDeleteWarehouse}/>
+                    onDelete={handleDeleteWarehouse}
+                  />
                 ))
               )}
             </TableBody>
@@ -405,15 +387,15 @@ export function WarehouseManagement() {
       </Card>
 
       {/* Dialogs */}
-      <WarehouseDialog open={warehouseDialogOpen}
+      <WarehouseDialog
+        open={warehouseDialogOpen}
         onOpenChange={setWarehouseDialogOpen}
         warehouse={selectedWarehouse}
         warehouses={warehouses}
         onCreated={refetch}
-        onUpdated={refetch}/>
-      <WarehouseDetailDialog open={detailDialogOpen}
-        onOpenChange={setDetailDialogOpen}
-        warehouse={selectedWarehouse}/>
+        onUpdated={refetch}
+      />
+      <WarehouseDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} warehouse={selectedWarehouse} />
     </div>
   );
 }

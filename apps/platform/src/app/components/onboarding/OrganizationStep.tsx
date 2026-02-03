@@ -57,8 +57,10 @@ const companySizes = [
 
 const LogoUpload = ({ logoPreview, onLogoChange }: { logoPreview: string; onLogoChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
   <div className="flex flex-col items-center gap-4 pb-4">
-    <label htmlFor="logo-upload"
-      className="group relative flex h-28 w-28 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/50 hover:bg-muted cursor-pointer transition-colors">
+    <label
+      htmlFor="logo-upload"
+      className="group relative flex h-28 w-28 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+    >
       {logoPreview ? (
         <img src={logoPreview} alt="Organization logo" className="h-full w-full object-contain rounded-xl p-2" />
       ) : (
@@ -86,10 +88,12 @@ const OrganizationNameField = ({
     </Label>
     <div className="relative">
       <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-      <Input id="organizationName"
+      <Input
+        id="organizationName"
         placeholder="Acme Inc."
         {...register('organizationName')}
-        className={`pl-10 ${errors.organizationName ? 'border-destructive' : ''}`}/>
+        className={`pl-10 ${errors.organizationName ? 'border-destructive' : ''}`}
+      />
     </div>
     {errors.organizationName && <p className="text-sm text-destructive">{errors.organizationName.message}</p>}
   </div>
@@ -151,11 +155,13 @@ const WebsiteField = ({ register, errors }: { register: UseFormRegister<Organiza
     <Label htmlFor="websiteUrl">Website URL</Label>
     <div className="relative">
       <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-      <Input id="websiteUrl"
+      <Input
+        id="websiteUrl"
         type="url"
         placeholder="https://www.example.com"
         {...register('websiteUrl')}
-        className={`pl-10 ${errors.websiteUrl ? 'border-destructive' : ''}`}/>
+        className={`pl-10 ${errors.websiteUrl ? 'border-destructive' : ''}`}
+      />
     </div>
     {errors.websiteUrl && <p className="text-sm text-destructive">{errors.websiteUrl.message}</p>}
   </div>
@@ -166,10 +172,12 @@ const DescriptionField = ({ register, charCount }: { register: UseFormRegister<O
     <Label htmlFor="organizationDescription">Organization Description</Label>
     <div className="relative">
       <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-      <Textarea id="organizationDescription"
-      placeholder="Tell us about your organization..."
-      {...register('organizationDescription')}
-        className="pl-10 min-h-[100px] resize-none"/>
+      <Textarea
+        id="organizationDescription"
+        placeholder="Tell us about your organization..."
+        {...register('organizationDescription')}
+        className="pl-10 min-h-[100px] resize-none"
+      />
     </div>
     <p className="text-xs text-muted-foreground text-right">{charCount}/1000 characters</p>
   </div>
@@ -181,9 +189,11 @@ const ActionButtons = ({ onBack, isSubmitting }: { onBack: () => void; isSubmitt
       <ArrowLeft className="mr-2 h-4 w-4" />
       Back
     </Button>
-    <Button type="submit"
+    <Button
+      type="submit"
       className="flex-1 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
-      disabled={isSubmitting}>
+      disabled={isSubmitting}
+    >
       {isSubmitting ? 'Creating...' : 'Continue to Invitations'}
     </Button>
   </div>

@@ -25,12 +25,14 @@ describe('ForgotPasswordForm', () => {
 
   const renderForm = () => {
     return render(
-      <BrowserRouter future={{
+      <BrowserRouter
+        future={{
           v7_startTransition: true,
           v7_relativeSplatPath: true,
-        }}>
+        }}
+      >
         <ForgotPasswordForm />
-      </BrowserRouter>
+      </BrowserRouter>,
     );
   };
 
@@ -45,7 +47,7 @@ describe('ForgotPasswordForm', () => {
   it('2. should show validation error for invalid email', async () => {
     const user = userEvent.setup();
     renderForm();
-    
+
     await user.type(screen.getByLabelText(/email address/i), 'invalid-email');
     await user.click(screen.getByRole('button', { name: /send reset link/i }));
 
@@ -85,7 +87,7 @@ describe('ForgotPasswordForm', () => {
   it('5. should navigate to login page when "Back to login" is clicked', async () => {
     const user = userEvent.setup();
     renderForm();
-    
+
     await user.click(screen.getByRole('button', { name: /back to login/i }));
     expect(mockNavigate).toHaveBeenCalledWith('/login');
   });

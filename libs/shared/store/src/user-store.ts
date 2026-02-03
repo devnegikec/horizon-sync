@@ -14,14 +14,13 @@ export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
       ...initialState,
-      setAuth: (user, accessToken, refreshToken) =>
-        set({ user, accessToken, refreshToken, isAuthenticated: true }),
+      setAuth: (user, accessToken, refreshToken) => set({ user, accessToken, refreshToken, isAuthenticated: true }),
       updateUser: (partial) =>
         set((state) => ({
           user: state.user ? { ...state.user, ...partial } : null,
         })),
       clearAuth: () => set(initialState),
     }),
-    { name: 'horizon-user' }
-  )
+    { name: 'horizon-user' },
+  ),
 );

@@ -23,15 +23,17 @@ describe('LoginForm', () => {
 
   const renderLoginForm = () => {
     return render(
-      <BrowserRouter future={{
+      <BrowserRouter
+        future={{
           v7_startTransition: true,
           v7_relativeSplatPath: true,
-        }}>
+        }}
+      >
         <Routes>
           <Route path="/" element={<LoginForm />} />
           <Route path="/forgot-password" element={<div>Forgot Password Page</div>} />
         </Routes>
-      </BrowserRouter>
+      </BrowserRouter>,
     );
   };
 
@@ -297,15 +299,13 @@ describe('LoginForm', () => {
 
     it('should clear previous error messages when resubmitting form', async () => {
       const user = userEvent.setup();
-      (AuthService.login as jest.Mock)
-        .mockRejectedValueOnce(new Error('Login failed'))
-        .mockResolvedValueOnce({
-          access_token: 'test-token',
-          refresh_token: 'test-refresh-token',
-          user_id: 'user-123',
-          email: 'test@example.com',
-          organization_id: 'org-123',
-        });
+      (AuthService.login as jest.Mock).mockRejectedValueOnce(new Error('Login failed')).mockResolvedValueOnce({
+        access_token: 'test-token',
+        refresh_token: 'test-refresh-token',
+        user_id: 'user-123',
+        email: 'test@example.com',
+        organization_id: 'org-123',
+      });
 
       renderLoginForm();
 
@@ -340,9 +340,7 @@ describe('LoginForm', () => {
   describe('UI Behavior', () => {
     it('should disable sign in button while submitting', async () => {
       const user = userEvent.setup();
-      (AuthService.login as jest.Mock).mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 1000))
-      );
+      (AuthService.login as jest.Mock).mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 1000)));
 
       renderLoginForm();
 
@@ -360,9 +358,7 @@ describe('LoginForm', () => {
 
     it('should show loading state with spinner while submitting', async () => {
       const user = userEvent.setup();
-      (AuthService.login as jest.Mock).mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 500))
-      );
+      (AuthService.login as jest.Mock).mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 500)));
 
       renderLoginForm();
 

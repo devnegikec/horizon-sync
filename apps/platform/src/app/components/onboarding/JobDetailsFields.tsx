@@ -39,10 +39,12 @@ export function JobDetailsFields({ register, errors, setValue, watch }: JobDetai
         </Label>
         <div className="relative">
           <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input id="jobTitle"
+          <Input
+            id="jobTitle"
             placeholder="Product Manager"
             {...register('jobTitle')}
-            className={`pl-10 ${errors.jobTitle ? 'border-destructive' : ''}`}/>
+            className={`pl-10 ${errors.jobTitle ? 'border-destructive' : ''}`}
+          />
         </div>
         {errors.jobTitle && <p className="text-sm text-destructive">{errors.jobTitle.message}</p>}
       </div>

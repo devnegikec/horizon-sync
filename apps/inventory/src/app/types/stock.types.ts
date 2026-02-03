@@ -35,14 +35,7 @@ export interface StockLevelsResponse {
 }
 
 // Stock Movements
-export type MovementType =
-  | 'receipt'
-  | 'issue'
-  | 'transfer'
-  | 'adjustment'
-  | 'return'
-  | 'purchase_receipt'
-  | 'sales_issue';
+export type MovementType = 'receipt' | 'issue' | 'transfer' | 'adjustment' | 'return' | 'purchase_receipt' | 'sales_issue';
 
 export interface StockMovement {
   id: string;
@@ -79,12 +72,7 @@ export interface StockMovementsResponse {
 }
 
 // Stock Entries
-export type StockEntryType =
-  | 'material_receipt'
-  | 'material_issue'
-  | 'material_transfer'
-  | 'manufacture'
-  | 'repack';
+export type StockEntryType = 'material_receipt' | 'material_issue' | 'material_transfer' | 'manufacture' | 'repack';
 
 export type StockEntryStatus = 'draft' | 'submitted' | 'cancelled';
 

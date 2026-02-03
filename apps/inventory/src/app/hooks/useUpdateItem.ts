@@ -47,7 +47,7 @@ export function useUpdateItem(): UseUpdateItemResult {
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   return { updateItem, loading, error };

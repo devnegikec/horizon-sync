@@ -1,40 +1,13 @@
 import * as React from 'react';
 
-import {
-  Users,
-  UserCheck,
-  UserLockIcon,
-  Shield,
-  Download,
-  UserPlus,
-  Key,
-  Mail,
-  MoreHorizontal,
-  Clock,
-} from 'lucide-react';
+import { Users, UserCheck, UserLockIcon, Shield, Download, UserPlus, Key, Mail, MoreHorizontal, Clock } from 'lucide-react';
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '@horizon-sync/ui/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@horizon-sync/ui/components/ui/avatar';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@horizon-sync/ui/components/ui/dropdown-menu';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@horizon-sync/ui/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@horizon-sync/ui/components/ui/dropdown-menu';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { InviteUserModal } from '../components/InviteUserModal';
@@ -53,14 +26,7 @@ interface StatCardProps {
   };
 }
 
-function StatCard({
-  title,
-  value,
-  icon: Icon,
-  iconBg,
-  iconColor,
-  badge,
-}: StatCardProps) {
+function StatCard({ title, value, icon: Icon, iconBg, iconColor, badge }: StatCardProps) {
   return (
     <Card className="border-border hover:shadow-md transition-shadow">
       <CardContent className="p-6">
@@ -192,17 +158,17 @@ export function UserManagementPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage team members, roles, and access permissions
-          </p>
+          <p className="text-muted-foreground mt-1">Manage team members, roles, and access permissions</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="gap-2">
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button onClick={() => setInviteModalOpen(true)}
-            className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
+          <Button
+            onClick={() => setInviteModalOpen(true)}
+            className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
+          >
             <UserPlus className="h-4 w-4" />
             Invite User
           </Button>
@@ -211,27 +177,29 @@ export function UserManagementPage() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Users"
+        <StatCard
+          title="Total Users"
           value={stats.total}
           icon={Users}
           iconBg="bg-slate-100 dark:bg-slate-800"
           iconColor="text-slate-600 dark:text-slate-400"
-          badge={{ text: '+12%', variant: 'success' }}/>
-        <StatCard title="Active Users"
+          badge={{ text: '+12%', variant: 'success' }}
+        />
+        <StatCard
+          title="Active Users"
           value={stats.active}
           icon={UserCheck}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"/>
-        <StatCard title="Pending Invites"
+          iconColor="text-emerald-600 dark:text-emerald-400"
+        />
+        <StatCard
+          title="Pending Invites"
           value={stats.pending}
           icon={UserLockIcon}
           iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"/>
-        <StatCard title="MFA Enabled"
-          value={stats.mfaEnabled}
-          icon={Shield}
-          iconBg="bg-[#3058EE]/10"
-          iconColor="text-[#3058EE]"/>
+          iconColor="text-amber-600 dark:text-amber-400"
+        />
+        <StatCard title="MFA Enabled" value={stats.mfaEnabled} icon={Shield} iconBg="bg-[#3058EE]/10" iconColor="text-[#3058EE]" />
       </div>
 
       {/* Error Message */}
@@ -260,9 +228,7 @@ export function UserManagementPage() {
                   <TableCell colSpan={5} className="text-center py-12">
                     <div className="flex flex-col items-center gap-2">
                       <Users className="h-12 w-12 text-muted-foreground/50" />
-                      <p className="text-sm text-muted-foreground">
-                        No users found
-                      </p>
+                      <p className="text-sm text-muted-foreground">No users found</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -283,9 +249,7 @@ export function UserManagementPage() {
                             <span className="font-medium">
                               {user.first_name} {user.last_name}
                             </span>
-                            <span className="text-sm text-muted-foreground">
-                              {user.email}
-                            </span>
+                            <span className="text-sm text-muted-foreground">{user.email}</span>
                           </div>
                         </div>
                       </TableCell>
@@ -295,9 +259,7 @@ export function UserManagementPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={statusBadge.variant}>
-                          {statusBadge.label}
-                        </Badge>
+                        <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -338,9 +300,7 @@ export function UserManagementPage() {
       </Card>
 
       {/* Invite User Modal */}
-      <InviteUserModal open={inviteModalOpen}
-        onOpenChange={setInviteModalOpen}
-        onSuccess={handleInviteSuccess}/>
+      <InviteUserModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} onSuccess={handleInviteSuccess} />
     </div>
   );
 }

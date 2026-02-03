@@ -1,24 +1,11 @@
 import { useMemo, useState } from 'react';
 
-import {
-  Package,
-  Plus,
-  Download,
-  Boxes,
-  DollarSign,
-  AlertTriangle,
-} from 'lucide-react';
+import { Package, Plus, Download, Boxes, DollarSign, AlertTriangle } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@horizon-sync/ui/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useItemGroups } from '../../hooks/useItemGroups';
@@ -29,7 +16,6 @@ import type { ApiItem } from '../../types/items-api.types';
 import { ItemDetailDialog } from './ItemDetailDialog';
 import { ItemDialog } from './ItemDialog';
 import { ItemsTable } from './ItemsTable';
-
 
 function apiItemToItem(api: ApiItem): Item {
   return {
@@ -102,10 +88,7 @@ export function ItemManagement() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ApiItem | null>(null);
 
-  const filteredItems = useMemo(
-    () => items.filter((item) => itemMatchesFilters(item, filters)),
-    [items, filters]
-  );
+  const filteredItems = useMemo(() => items.filter((item) => itemMatchesFilters(item, filters)), [items, filters]);
 
   const stats = useMemo(() => {
     const totalItems = pagination?.total_items ?? items.length;
@@ -145,17 +128,14 @@ export function ItemManagement() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Item Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your product catalog, pricing, and inventory levels
-          </p>
+          <p className="text-muted-foreground mt-1">Manage your product catalog, pricing, and inventory levels</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="gap-2">
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button onClick={handleCreateItem}
-            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
+          <Button onClick={handleCreateItem} className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
             <Plus className="h-4 w-4" />
             Add Item
           </Button>
@@ -164,38 +144,45 @@ export function ItemManagement() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Items"
+        <StatCard
+          title="Total Items"
           value={stats.totalItems}
           icon={Package}
           iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"/>
-        <StatCard title="Active Items"
+          iconColor="text-slate-600 dark:text-slate-400"
+        />
+        <StatCard
+          title="Active Items"
           value={stats.activeItems}
           icon={Boxes}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"/>
-        <StatCard title="Inventory Value"
+          iconColor="text-emerald-600 dark:text-emerald-400"
+        />
+        <StatCard
+          title="Inventory Value"
           value="—"
           icon={DollarSign}
           iconBg="bg-blue-100 dark:bg-blue-900/20"
-          iconColor="text-blue-600 dark:text-blue-400"/>
-        <StatCard title="Low Stock Alerts"
+          iconColor="text-blue-600 dark:text-blue-400"
+        />
+        <StatCard
+          title="Low Stock Alerts"
           value="—"
           icon={AlertTriangle}
           iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"/>
+          iconColor="text-amber-600 dark:text-amber-400"
+        />
       </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <SearchInput className="sm:w-80"
+        <SearchInput
+          className="sm:w-80"
           placeholder="Search by code, name, or group..."
-          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
+          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
+        />
         <div className="flex gap-3">
-          <Select value={filters.groupId}
-            onValueChange={(value) =>
-              setFilters((prev) => ({ ...prev, groupId: value }))
-            }>
+          <Select value={filters.groupId} onValueChange={(value) => setFilters((prev) => ({ ...prev, groupId: value }))}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="All Groups" />
             </SelectTrigger>
@@ -208,10 +195,7 @@ export function ItemManagement() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={filters.status}
-            onValueChange={(value) =>
-              setFilters((prev) => ({ ...prev, status: value }))
-            }>
+          <Select value={filters.status} onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
@@ -225,17 +209,27 @@ export function ItemManagement() {
       </div>
 
       {/* Items Table */}
-      <ItemsTable items={filteredItems}
+      <ItemsTable
+        items={filteredItems}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.groupId !== 'all' || filters.status !== 'all'}
         onView={handleViewItem}
         onEdit={handleEditItem}
         onToggleStatus={handleToggleStatus}
-        onCreateItem={handleCreateItem} />
+        onCreateItem={handleCreateItem}
+      />
 
       {/* Dialogs */}
-      <ItemDialog open={itemDialogOpen} onOpenChange={setItemDialogOpen} item={selectedItemAsItem} itemGroups={itemGroups} onSave={handleSaveItem} onCreated={refetch} onUpdated={refetch} />
+      <ItemDialog
+        open={itemDialogOpen}
+        onOpenChange={setItemDialogOpen}
+        item={selectedItemAsItem}
+        itemGroups={itemGroups}
+        onSave={handleSaveItem}
+        onCreated={refetch}
+        onUpdated={refetch}
+      />
       <ItemDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} item={selectedItemAsItem} />
     </div>
   );

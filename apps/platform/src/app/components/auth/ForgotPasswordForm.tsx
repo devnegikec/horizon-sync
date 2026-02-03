@@ -6,14 +6,7 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@horizon-sync/ui/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 
@@ -66,27 +59,23 @@ export function ForgotPasswordForm() {
           </span>
         </div>
         <CardTitle className="text-2xl">Forgot Password</CardTitle>
-        <CardDescription>
-          Enter your email address and we&apos;ll send you a link to reset your password
-        </CardDescription>
+        <CardDescription>Enter your email address and we&apos;ll send you a link to reset your password</CardDescription>
       </CardHeader>
 
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} 
-          noValidate
-          className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">
               Email Address <span className="text-destructive">*</span>
             </Label>
-            <Input id="email"
+            <Input
+              id="email"
               type="email"
               placeholder="john.doe@example.com"
               {...register('email')}
-              className={errors.email ? 'border-destructive' : ''}/>
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
+              className={errors.email ? 'border-destructive' : ''}
+            />
+            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
 
           {successMessage && (
@@ -102,9 +91,11 @@ export function ForgotPasswordForm() {
             </div>
           )}
 
-          <Button type="submit"
+          <Button
+            type="submit"
             className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
-            disabled={isSubmitting}>
+            disabled={isSubmitting}
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -119,8 +110,10 @@ export function ForgotPasswordForm() {
 
       <CardFooter className="flex flex-col space-y-4">
         <div className="text-sm text-center text-muted-foreground">
-          <button onClick={() => navigate('/login')}
-            className="flex items-center justify-center gap-2 text-[#3058EE] hover:opacity-80 font-medium w-full">
+          <button
+            onClick={() => navigate('/login')}
+            className="flex items-center justify-center gap-2 text-[#3058EE] hover:opacity-80 font-medium w-full"
+          >
             <ArrowLeft className="h-4 w-4" />
             Back to login
           </button>

@@ -2,12 +2,7 @@ import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
 
-import type {
-  ItemSupplier,
-  ItemSuppliersResponse,
-  CreateItemSupplierPayload,
-  UpdateItemSupplierPayload,
-} from '../types/supplier.types';
+import type { ItemSupplier, ItemSuppliersResponse, CreateItemSupplierPayload, UpdateItemSupplierPayload } from '../types/supplier.types';
 import { itemSupplierApi } from '../utility/api';
 
 interface UseItemSuppliersResult {
@@ -18,11 +13,7 @@ interface UseItemSuppliersResult {
   refetch: () => Promise<void>;
 }
 
-export function useItemSuppliers(
-  page = 1,
-  pageSize = 20,
-  filters?: { itemId?: string; supplierId?: string }
-): UseItemSuppliersResult {
+export function useItemSuppliers(page = 1, pageSize = 20, filters?: { itemId?: string; supplierId?: string }): UseItemSuppliersResult {
   const accessToken = useUserStore((s) => s.accessToken);
   const [itemSuppliers, setItemSuppliers] = React.useState<ItemSupplier[]>([]);
   const [pagination, setPagination] = React.useState<ItemSuppliersResponse['pagination'] | null>(null);
@@ -96,7 +87,7 @@ export function useItemSupplierMutations(): UseItemSupplierMutationsResult {
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   const updateItemSupplier = React.useCallback(
@@ -115,7 +106,7 @@ export function useItemSupplierMutations(): UseItemSupplierMutationsResult {
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   const deleteItemSupplier = React.useCallback(
@@ -133,7 +124,7 @@ export function useItemSupplierMutations(): UseItemSupplierMutationsResult {
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   return { createItemSupplier, updateItemSupplier, deleteItemSupplier, loading, error };

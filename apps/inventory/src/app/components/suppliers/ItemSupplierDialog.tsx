@@ -4,23 +4,10 @@ import { Loader2, Link2 } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@horizon-sync/ui/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 
 import { useItemSupplierMutations } from '../../hooks/useItemSuppliers';
 import type { ApiItem } from '../../types/items-api.types';
@@ -43,15 +30,7 @@ interface ItemSupplierDialogProps {
   onUpdated?: () => void;
 }
 
-export function ItemSupplierDialog({
-  open,
-  onOpenChange,
-  itemSupplier,
-  items,
-  suppliers,
-  onCreated,
-  onUpdated,
-}: ItemSupplierDialogProps) {
+export function ItemSupplierDialog({ open, onOpenChange, itemSupplier, items, suppliers, onCreated, onUpdated }: ItemSupplierDialogProps) {
   const { createItemSupplier, updateItemSupplier, loading } = useItemSupplierMutations();
   const [formData, setFormData] = React.useState({
     item_id: '',
@@ -93,9 +72,7 @@ export function ItemSupplierDialog({
       item_id: formData.item_id,
       supplier_id: formData.supplier_id,
       supplier_part_no: formData.supplier_part_no || undefined,
-      lead_time_days: formData.lead_time_days
-        ? parseInt(formData.lead_time_days, 10)
-        : undefined,
+      lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days, 10) : undefined,
       is_default: formData.is_default,
     };
 
@@ -122,14 +99,8 @@ export function ItemSupplierDialog({
               <Link2 className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <DialogTitle>
-                {isEditing ? 'Edit Item-Supplier Link' : 'Link Item to Supplier'}
-              </DialogTitle>
-              <DialogDescription>
-                {isEditing
-                  ? 'Update the item-supplier relationship'
-                  : 'Create a new item-supplier relationship'}
-              </DialogDescription>
+              <DialogTitle>{isEditing ? 'Edit Item-Supplier Link' : 'Link Item to Supplier'}</DialogTitle>
+              <DialogDescription>{isEditing ? 'Update the item-supplier relationship' : 'Create a new item-supplier relationship'}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -137,8 +108,7 @@ export function ItemSupplierDialog({
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="item_id">Item</Label>
-              <Select value={formData.item_id}
-                onValueChange={(value) => setFormData({ ...formData, item_id: value })}>
+              <Select value={formData.item_id} onValueChange={(value) => setFormData({ ...formData, item_id: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select item" />
                 </SelectTrigger>
@@ -154,8 +124,7 @@ export function ItemSupplierDialog({
 
             <div className="space-y-2">
               <Label htmlFor="supplier_id">Supplier</Label>
-              <Select value={formData.supplier_id}
-                onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}>
+              <Select value={formData.supplier_id} onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select supplier" />
                 </SelectTrigger>
@@ -172,32 +141,32 @@ export function ItemSupplierDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="supplier_part_no">Supplier Part No.</Label>
-                <Input id="supplier_part_no"
+                <Input
+                  id="supplier_part_no"
                   value={formData.supplier_part_no}
-                  onChange={(e) =>
-                    setFormData({ ...formData, supplier_part_no: e.target.value })
-                  }
-                  placeholder="e.g., SUP-001"/>
+                  onChange={(e) => setFormData({ ...formData, supplier_part_no: e.target.value })}
+                  placeholder="e.g., SUP-001"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lead_time_days">Lead Time (Days)</Label>
-                <Input id="lead_time_days"
+                <Input
+                  id="lead_time_days"
                   type="number"
                   min="0"
                   value={formData.lead_time_days}
-                  onChange={(e) =>
-                    setFormData({ ...formData, lead_time_days: e.target.value })
-                  }
-                  placeholder="0"/>
+                  onChange={(e) => setFormData({ ...formData, lead_time_days: e.target.value })}
+                  placeholder="0"
+                />
               </div>
             </div>
 
             <div className="flex items-center space-x-2">
-              <Checkbox id="is_default"
+              <Checkbox
+                id="is_default"
                 checked={formData.is_default}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, is_default: checked === true })
-                }/>
+                onCheckedChange={(checked) => setFormData({ ...formData, is_default: checked === true })}
+              />
               <Label htmlFor="is_default" className="text-sm font-normal">
                 Set as default supplier for this item
               </Label>
@@ -207,10 +176,7 @@ export function ItemSupplierDialog({
           {submitError && <p className="text-sm text-destructive mb-4">{submitError}</p>}
 
           <DialogFooter>
-            <Button type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>

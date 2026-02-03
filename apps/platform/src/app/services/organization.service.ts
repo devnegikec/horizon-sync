@@ -18,10 +18,7 @@ export interface CreateOrganizationPayload {
 const API_BASE_URL = environment.apiBaseUrl;
 
 export class OrganizationService {
-  static async createOrganization(
-    payload: CreateOrganizationPayload,
-    token: string
-  ): Promise<any> {
+  static async createOrganization(payload: CreateOrganizationPayload, token: string): Promise<any> {
     try {
       const response = await fetch(`${API_BASE_URL}/identity/organizations`, {
         method: 'POST',
@@ -36,9 +33,7 @@ export class OrganizationService {
         const errorData = await response.json().catch(() => ({
           message: 'Failed to create organization',
         }));
-        throw new Error(
-          errorData.message || `HTTP error! status: ${response.status}`
-        );
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       return await response.json();

@@ -1,18 +1,6 @@
 import * as React from 'react';
 
-import {
-  Truck,
-  Plus,
-  Download,
-  MoreHorizontal,
-  Eye,
-  Edit,
-  Trash2,
-  Link2,
-  Package,
-  Clock,
-  Star,
-} from 'lucide-react';
+import { Truck, Plus, Download, MoreHorizontal, Eye, Edit, Trash2, Link2, Package, Clock, Star } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -26,21 +14,8 @@ import {
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@horizon-sync/ui/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@horizon-sync/ui/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useItems } from '../../hooks/useItems';
@@ -92,13 +67,7 @@ interface ItemSupplierRowProps {
   onDelete: (itemSupplier: ItemSupplier) => void;
 }
 
-function ItemSupplierRow({
-  itemSupplier,
-  supplierName,
-  itemName,
-  onEdit,
-  onDelete,
-}: ItemSupplierRowProps) {
+function ItemSupplierRow({ itemSupplier, supplierName, itemName, onEdit, onDelete }: ItemSupplierRowProps) {
   return (
     <TableRow>
       <TableCell>
@@ -108,25 +77,19 @@ function ItemSupplierRow({
           </div>
           <div>
             <p className="font-medium">{itemName}</p>
-            <code className="text-xs text-muted-foreground">
-              {itemSupplier.item_id.slice(0, 8)}...
-            </code>
+            <code className="text-xs text-muted-foreground">{itemSupplier.item_id.slice(0, 8)}...</code>
           </div>
         </div>
       </TableCell>
       <TableCell>
         <div>
           <p className="font-medium">{supplierName}</p>
-          <code className="text-xs text-muted-foreground">
-            {itemSupplier.supplier_id.slice(0, 8)}...
-          </code>
+          <code className="text-xs text-muted-foreground">{itemSupplier.supplier_id.slice(0, 8)}...</code>
         </div>
       </TableCell>
       <TableCell>
         {itemSupplier.supplier_part_no ? (
-          <code className="text-sm bg-muted px-2 py-0.5 rounded">
-            {itemSupplier.supplier_part_no}
-          </code>
+          <code className="text-sm bg-muted px-2 py-0.5 rounded">{itemSupplier.supplier_part_no}</code>
         ) : (
           <span className="text-muted-foreground">—</span>
         )}
@@ -165,8 +128,7 @@ function ItemSupplierRow({
               Edit Link
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onDelete(itemSupplier)}
-              className="text-destructive focus:text-destructive">
+            <DropdownMenuItem onClick={() => onDelete(itemSupplier)} className="text-destructive focus:text-destructive">
               <Trash2 className="mr-2 h-4 w-4" />
               Remove Link
             </DropdownMenuItem>
@@ -213,8 +175,7 @@ export function SupplierManagement() {
         supplierName.toLowerCase().includes(filters.search.toLowerCase()) ||
         (is.supplier_part_no || '').toLowerCase().includes(filters.search.toLowerCase());
 
-      const matchesSupplier =
-        filters.supplierId === 'all' || is.supplier_id === filters.supplierId;
+      const matchesSupplier = filters.supplierId === 'all' || is.supplier_id === filters.supplierId;
 
       const matchesItem = filters.itemId === 'all' || is.item_id === filters.itemId;
 
@@ -244,11 +205,7 @@ export function SupplierManagement() {
     const itemName = itemMap.get(itemSupplier.item_id) || 'this item';
     const supplierName = supplierMap.get(itemSupplier.supplier_id) || 'this supplier';
 
-    if (
-      window.confirm(
-        `Are you sure you want to remove the link between "${itemName}" and "${supplierName}"?`
-      )
-    ) {
+    if (window.confirm(`Are you sure you want to remove the link between "${itemName}" and "${supplierName}"?`)) {
       try {
         await deleteItemSupplier(itemSupplier.id);
         refetch();
@@ -264,17 +221,14 @@ export function SupplierManagement() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Supplier Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage item-supplier relationships, lead times, and preferred suppliers
-          </p>
+          <p className="text-muted-foreground mt-1">Manage item-supplier relationships, lead times, and preferred suppliers</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="gap-2">
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button onClick={handleCreateLink}
-            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
+          <Button onClick={handleCreateLink} className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
             <Plus className="h-4 w-4" />
             Link Item to Supplier
           </Button>
@@ -283,36 +237,45 @@ export function SupplierManagement() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Links"
+        <StatCard
+          title="Total Links"
           value={stats.total}
           icon={Link2}
           iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"/>
-        <StatCard title="Default Suppliers"
+          iconColor="text-slate-600 dark:text-slate-400"
+        />
+        <StatCard
+          title="Default Suppliers"
           value={stats.defaultSuppliers}
           icon={Star}
           iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"/>
-        <StatCard title="Items with Suppliers"
+          iconColor="text-amber-600 dark:text-amber-400"
+        />
+        <StatCard
+          title="Items with Suppliers"
           value={stats.uniqueItems}
           icon={Package}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"/>
-        <StatCard title="Active Suppliers"
+          iconColor="text-emerald-600 dark:text-emerald-400"
+        />
+        <StatCard
+          title="Active Suppliers"
           value={stats.uniqueSuppliers}
           icon={Truck}
           iconBg="bg-blue-100 dark:bg-blue-900/20"
-          iconColor="text-blue-600 dark:text-blue-400"/>
+          iconColor="text-blue-600 dark:text-blue-400"
+        />
       </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <SearchInput className="sm:w-80"
+        <SearchInput
+          className="sm:w-80"
           placeholder="Search by item, supplier, or part no..."
-          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
+          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
+        />
         <div className="flex gap-3">
-          <Select value={filters.supplierId}
-            onValueChange={(value) => setFilters((prev) => ({ ...prev, supplierId: value }))}>
+          <Select value={filters.supplierId} onValueChange={(value) => setFilters((prev) => ({ ...prev, supplierId: value }))}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="All Suppliers" />
             </SelectTrigger>
@@ -325,8 +288,7 @@ export function SupplierManagement() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={filters.itemId}
-            onValueChange={(value) => setFilters((prev) => ({ ...prev, itemId: value }))}>
+          <Select value={filters.itemId} onValueChange={(value) => setFilters((prev) => ({ ...prev, itemId: value }))}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="All Items" />
             </SelectTrigger>
@@ -368,12 +330,11 @@ export function SupplierManagement() {
               ) : filteredItemSuppliers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7}>
-                    <EmptyState icon={<Link2 className="h-12 w-12" />}
+                    <EmptyState
+                      icon={<Link2 className="h-12 w-12" />}
                       title="No item-supplier links found"
                       description={
-                        filters.search ||
-                        filters.supplierId !== 'all' ||
-                        filters.itemId !== 'all'
+                        filters.search || filters.supplierId !== 'all' || filters.itemId !== 'all'
                           ? 'Try adjusting your search or filters'
                           : 'Link items to suppliers to manage procurement'
                       }
@@ -386,17 +347,20 @@ export function SupplierManagement() {
                             Link Item to Supplier
                           </Button>
                         )
-                      }/>
+                      }
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredItemSuppliers.map((itemSupplier) => (
-                  <ItemSupplierRow key={itemSupplier.id}
+                  <ItemSupplierRow
+                    key={itemSupplier.id}
                     itemSupplier={itemSupplier}
                     itemName={itemMap.get(itemSupplier.item_id) || 'Unknown Item'}
                     supplierName={supplierMap.get(itemSupplier.supplier_id) || 'Unknown Supplier'}
                     onEdit={handleEditLink}
-                    onDelete={handleDeleteLink}/>
+                    onDelete={handleDeleteLink}
+                  />
                 ))
               )}
             </TableBody>
@@ -405,13 +369,15 @@ export function SupplierManagement() {
       </Card>
 
       {/* Dialog */}
-      <ItemSupplierDialog open={dialogOpen}
+      <ItemSupplierDialog
+        open={dialogOpen}
         onOpenChange={setDialogOpen}
         itemSupplier={selectedItemSupplier}
         items={items}
         suppliers={mockSuppliers}
         onCreated={refetch}
-        onUpdated={refetch}/>
+        onUpdated={refetch}
+      />
     </div>
   );
 }

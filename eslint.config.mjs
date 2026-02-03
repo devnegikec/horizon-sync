@@ -24,12 +24,12 @@ export default [
       'react/prop-types': 'off',
       // "max-lines": ["warn", { "max": 300, "skipBlankLines": true, "skipComments": true }],
       // "max-lines-per-function": ["warn", { "max": 50, "skipBlankLines": true }],
-      "complexity": ["error", 10],
-      "react/destructuring-assignment": "error",
-      "react/jsx-max-props-per-line": ["error", { "maximum": { "single": 10, "multi": 1 } }],
-      "react/jsx-first-prop-new-line": ["error", "never"],
-      "react/jsx-closing-bracket-location": ["error", "after-props"],
-      "@typescript-eslint/no-explicit-any": "error",
+      complexity: ['error', 10],
+      'react/destructuring-assignment': 'error',
+      'react/jsx-max-props-per-line': ['error', { maximum: { single: 10, multi: 1 } }],
+      'react/jsx-first-prop-new-line': ['error', 'never'],
+      'react/jsx-closing-bracket-location': ['error', 'after-props'],
+      '@typescript-eslint/no-explicit-any': 'error',
       'import/order': [
         'error',
         {
@@ -69,12 +69,7 @@ export default [
     },
   },
   {
-    ignores: [
-      '**/dist',
-      '**/out-tsc',
-      '**/vite.config.*.timestamp*',
-      '**/vitest.config.*.timestamp*',
-    ],
+    ignores: ['**/dist', '**/out-tsc', '**/vite.config.*.timestamp*', '**/vitest.config.*.timestamp*'],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
@@ -95,30 +90,16 @@ export default [
     },
   },
   {
-    files: [
-      '**/*.ts',
-      '**/*.tsx',
-      '**/*.cts',
-      '**/*.mts',
-      '**/*.js',
-      '**/*.jsx',
-      '**/*.cjs',
-      '**/*.mjs',
-    ],
+    files: ['**/*.ts', '**/*.tsx', '**/*.cts', '**/*.mts', '**/*.js', '**/*.jsx', '**/*.cjs', '**/*.mjs'],
     // Override or add rules here
     rules: {},
   },
   {
-    files: [
-      '**/*.spec.ts',
-      '**/*.spec.tsx',
-      '**/*.test.ts',
-      '**/*.test.tsx'
-    ],
+    files: ['**/*.spec.ts', '**/*.spec.tsx', '**/*.test.ts', '**/*.test.tsx'],
     rules: {
       'max-lines': 'off',
       'max-lines-per-function': 'off',
-      'complexity': 'off'
+      complexity: 'off',
     },
   },
 ];

@@ -2,12 +2,7 @@ import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
 
-import type {
-  Warehouse,
-  WarehousesResponse,
-  CreateWarehousePayload,
-  UpdateWarehousePayload,
-} from '../types/warehouse.types';
+import type { Warehouse, WarehousesResponse, CreateWarehousePayload, UpdateWarehousePayload } from '../types/warehouse.types';
 import { warehouseApi } from '../utility/api';
 
 interface UseWarehousesResult {
@@ -85,7 +80,7 @@ export function useWarehouseMutations(): UseWarehouseMutationsResult {
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   const updateWarehouse = React.useCallback(
@@ -104,7 +99,7 @@ export function useWarehouseMutations(): UseWarehouseMutationsResult {
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   const deleteWarehouse = React.useCallback(
@@ -122,7 +117,7 @@ export function useWarehouseMutations(): UseWarehouseMutationsResult {
         setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
   return { createWarehouse, updateWarehouse, deleteWarehouse, loading, error };

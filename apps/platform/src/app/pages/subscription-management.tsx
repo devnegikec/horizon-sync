@@ -1,27 +1,12 @@
 import * as React from 'react';
 
-import {
-  CreditCard,
-  Users,
-  Activity,
-  Calendar,
-  DollarSign,
-  AlertCircle,
-  TrendingUp,
-  Download,
-} from 'lucide-react';
+import { CreditCard, Users, Activity, Calendar, DollarSign, AlertCircle, TrendingUp, Download } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { Input } from '@horizon-sync/ui/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@horizon-sync/ui/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { AddSubscriptionModal } from '../components/AddSubscriptionModal';
@@ -44,13 +29,11 @@ function StatCard({ title, value, icon: Icon, trend, iconColor }: StatCardProps)
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-2">
-          <Icon className={cn("h-5 w-5", iconColor || "text-muted-foreground")} />
+          <Icon className={cn('h-5 w-5', iconColor || 'text-muted-foreground')} />
           {trend && (
-            <span className={cn(
-              "text-xs font-medium flex items-center",
-              trend.isPositive ? "text-emerald-600" : "text-red-600"
-            )}>
-              {trend.isPositive ? '+' : ''}{trend.value}
+            <span className={cn('text-xs font-medium flex items-center', trend.isPositive ? 'text-emerald-600' : 'text-red-600')}>
+              {trend.isPositive ? '+' : ''}
+              {trend.value}
             </span>
           )}
         </div>
@@ -99,12 +82,12 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
             </div>
             <div className="text-sm text-muted-foreground space-y-1">
               <p>Tenant ID: {subscription.id.split('-')[0].toUpperCase()}</p>
-              <p>Billing Cycle: <span className="capitalize">{subscription.billing_cycle}</span></p>
+              <p>
+                Billing Cycle: <span className="capitalize">{subscription.billing_cycle}</span>
+              </p>
             </div>
           </div>
-          <Badge className={cn("self-start capitalize", getStatusColor(subscription.status))}>
-            {subscription.status}
-          </Badge>
+          <Badge className={cn('self-start capitalize', getStatusColor(subscription.status))}>{subscription.status}</Badge>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg mb-6">
@@ -142,11 +125,15 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Users</span>
-              <span className="font-medium">{subscription.current_usage.users} / {subscription.limits.max_users}</span>
+              <span className="font-medium">
+                {subscription.current_usage.users} / {subscription.limits.max_users}
+              </span>
             </div>
             <div className="h-2 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-violet-600 rounded-full"
-                style={{ width: `${(subscription.current_usage.users / subscription.limits.max_users) * 100}%` }}/>
+              <div
+                className="h-full bg-violet-600 rounded-full"
+                style={{ width: `${(subscription.current_usage.users / subscription.limits.max_users) * 100}%` }}
+              />
             </div>
           </div>
 
@@ -158,11 +145,13 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
               </span>
             </div>
             <div className="h-2 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-blue-600 rounded-full"
-                style={{ width: `${(subscription.current_usage.storage_mb / 1024 / subscription.limits.max_storage_gb) * 100}%` }}/>
+              <div
+                className="h-full bg-blue-600 rounded-full"
+                style={{ width: `${(subscription.current_usage.storage_mb / 1024 / subscription.limits.max_storage_gb) * 100}%` }}
+              />
             </div>
           </div>
-          
+
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Teams</span>
@@ -171,8 +160,10 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
               </span>
             </div>
             <div className="h-2 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-600 rounded-full"
-                style={{ width: `${(subscription.current_usage.teams / subscription.limits.max_teams) * 100}%` }}/>
+              <div
+                className="h-full bg-emerald-600 rounded-full"
+                style={{ width: `${(subscription.current_usage.teams / subscription.limits.max_teams) * 100}%` }}
+              />
             </div>
           </div>
         </div>
@@ -222,9 +213,7 @@ export function SubscriptionManagementPage() {
     <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">
-            Subscription Management
-          </h1>
+          <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">Subscription Management</h1>
           <p className="text-muted-foreground mt-1">
             Manage tenant subscriptions, billing cycles, and usage tracking with integrated payment processing
           </p>
@@ -240,32 +229,21 @@ export function SubscriptionManagementPage() {
 
       {/* Stats Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Revenue"
-          value="$28,450"
-          icon={DollarSign}
-          iconColor="text-emerald-600"
-          trend={{ value: '12.5%', isPositive: true }}/>
-        <StatCard title="Active Subscriptions"
-          value={subscriptions.filter(s => s.status === 'active').length.toString()}
+        <StatCard title="Total Revenue" value="$28,450" icon={DollarSign} iconColor="text-emerald-600" trend={{ value: '12.5%', isPositive: true }} />
+        <StatCard
+          title="Active Subscriptions"
+          value={subscriptions.filter((s) => s.status === 'active').length.toString()}
           icon={Users}
           iconColor="text-blue-600"
-          trend={{ value: '8', isPositive: true }}/>
-        <StatCard title="Failed Payments"
-          value="1"
-          icon={AlertCircle}
-          iconColor="text-red-600"
-          trend={{ value: '3', isPositive: false }}/>
-        <StatCard title="Avg Usage Rate"
-          value="68%"
-          icon={Activity}
-          iconColor="text-violet-600"
-          trend={{ value: '5.2%', isPositive: true }}/>
+          trend={{ value: '8', isPositive: true }}
+        />
+        <StatCard title="Failed Payments" value="1" icon={AlertCircle} iconColor="text-red-600" trend={{ value: '3', isPositive: false }} />
+        <StatCard title="Avg Usage Rate" value="68%" icon={Activity} iconColor="text-violet-600" trend={{ value: '5.2%', isPositive: true }} />
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 p-4 bg-card rounded-lg border border-border">
-        <Input placeholder="Search organizations..." 
-          className="sm:w-[300px]"/>
+        <Input placeholder="Search organizations..." className="sm:w-[300px]" />
         <Select defaultValue="all-plans">
           <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="All Plans" />
@@ -295,13 +273,9 @@ export function SubscriptionManagementPage() {
       {/* Subscriptions List */}
       <div className="space-y-4">
         {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">
-            Loading subscriptions...
-          </div>
+          <div className="text-center py-12 text-muted-foreground">Loading subscriptions...</div>
         ) : (
-          subscriptions.map((subscription) => (
-            <SubscriptionCard key={subscription.id} subscription={subscription} />
-          ))
+          subscriptions.map((subscription) => <SubscriptionCard key={subscription.id} subscription={subscription} />)
         )}
       </div>
     </div>

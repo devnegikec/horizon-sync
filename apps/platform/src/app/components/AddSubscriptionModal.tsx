@@ -13,13 +13,7 @@ import {
   DialogDescription,
 } from '@horizon-sync/ui/components/ui/dialog';
 import { Label } from '@horizon-sync/ui/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@horizon-sync/ui/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 
 import { useAuth } from '../hooks';
 import { SubscriptionService } from '../services/subscription.service';
@@ -32,7 +26,7 @@ export function AddSubscriptionModal({ onSuccess }: AddSubscriptionModalProps) {
   const [open, setOpen] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const { accessToken } = useAuth();
-  
+
   const [formData, setFormData] = React.useState({
     plan_code: '',
     billing_cycle: 'monthly' as 'monthly' | 'yearly',
@@ -66,17 +60,12 @@ export function AddSubscriptionModal({ onSuccess }: AddSubscriptionModalProps) {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New Subscription</DialogTitle>
-          <DialogDescription>
-            Select a plan and billing cycle for the new subscription.
-          </DialogDescription>
+          <DialogDescription>Select a plan and billing cycle for the new subscription.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="plan">Plan</Label>
-            <Select value={formData.plan_code}
-              onValueChange={(value) =>
-                setFormData({ ...formData, plan_code: value })
-              }>
+            <Select value={formData.plan_code} onValueChange={(value) => setFormData({ ...formData, plan_code: value })}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a plan" />
               </SelectTrigger>
@@ -89,10 +78,10 @@ export function AddSubscriptionModal({ onSuccess }: AddSubscriptionModalProps) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="billing">Billing Cycle</Label>
-            <Select value={formData.billing_cycle}
-              onValueChange={(value) =>
-                setFormData({ ...formData, billing_cycle: value as 'monthly' | 'yearly' })
-              }>
+            <Select
+              value={formData.billing_cycle}
+              onValueChange={(value) => setFormData({ ...formData, billing_cycle: value as 'monthly' | 'yearly' })}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select billing cycle" />
               </SelectTrigger>
@@ -103,10 +92,7 @@ export function AddSubscriptionModal({ onSuccess }: AddSubscriptionModalProps) {
             </Select>
           </div>
           <DialogFooter>
-            <Button type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isLoading}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading || !formData.plan_code}>

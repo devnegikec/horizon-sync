@@ -46,9 +46,11 @@ export function PersonalDetailsStep() {
 
       <AdditionalDetailsFields register={register} errors={errors} setValue={setValue} watch={watch} />
 
-      <Button type="submit"
+      <Button
+        type="submit"
         className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
-        disabled={isSubmitting}>
+        disabled={isSubmitting}
+      >
         Continue to Organization Setup
       </Button>
     </form>
