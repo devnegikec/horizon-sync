@@ -174,16 +174,7 @@ export function WarehouseManagement() {
       </div>
 
       {/* Warehouses Table */}
-      <WarehousesTable
-        warehouses={filteredWarehouses}
-        loading={loading}
-        error={error}
-        hasActiveFilters={!!filters.search || filters.warehouseType !== 'all' || filters.status !== 'all'}
-        onView={handleViewWarehouse}
-        onEdit={handleEditWarehouse}
-        onDelete={handleDeleteWarehouse}
-        onCreateWarehouse={handleCreateWarehouse}
-      />
+      <WarehousesTable warehouses={filteredWarehouses} loading={loading} error={error} hasActiveFilters={!!filters.search || filters.warehouseType !== 'all' || filters.status !== 'all'} onView={handleViewWarehouse} onEdit={handleEditWarehouse} onDelete={handleDeleteWarehouse} onCreateWarehouse={handleCreateWarehouse} />
 
       {/* Dialogs */}
       <WarehouseDialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen} warehouse={selectedWarehouse} warehouses={warehouses} onCreated={refetch} onUpdated={refetch} />
