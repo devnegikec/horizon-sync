@@ -10,6 +10,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { DataTable } from '@horizon-sync/ui/components/data-table/DataTable';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
@@ -20,10 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useCustomers } from '../../hooks/useCustomers';
 import type { Customer } from '../../types/customer.types';
+import { customerApi } from '../../utility/api';
 
 import { createCustomerColumns } from './CustomerColumns';
 import { CustomerDetailDialog } from './CustomerDetailDialog';
@@ -56,6 +59,9 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 }
 
 export function CustomerManagement() {
+  const { toast } = useToast();
+  const accessToken = useUserStore((s) => s.accessToken);
+  
   const [filters, setFilters] = React.useState({
     search: '',
     status: 'all',
@@ -73,6 +79,7 @@ export function CustomerManagement() {
   const [customerDialogOpen, setCustomerDialogOpen] = React.useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
+  const [saving, setSaving] = React.useState(false);
 
   const stats = React.useMemo(() => {
     if (!pagination) {
@@ -116,11 +123,46 @@ export function CustomerManagement() {
   }, [refetch]);
 
   const handleSaveCustomer = async (customerData: Partial<Customer>) => {
-    // TODO: Implement API call to create/update customer
-    console.log('Save customer:', customerData);
-    // After successful API call, refetch data
-    refetch();
-    setCustomerDialogOpen(false);
+    if (!accessToken) {
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (selectedCustomer) {
+        // Update existing customer
+        await customerApi.update(accessToken, selectedCustomer.id, customerData);
+        toast({
+          title: "Success",
+          description: "Customer updated successfully",
+        });
+      } else {
+        // Create new customer
+        await customerApi.create(accessToken, customerData);
+        toast({
+          title: "Success",
+          description: "Customer created successfully",
+        });
+      }
+      
+      // Refresh the table data
+      refetch();
+      setCustomerDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving customer:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save customer",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleStatusFilter = React.useCallback((status: string) => {
@@ -200,8 +242,18 @@ export function CustomerManagement() {
       <DataTable columns={columns} data={customers} filterPlaceholder="Search by name, code, email, or phone..." renderFilters={renderFilters} config={{ enableRowSelection: false, enableColumnVisibility: true, enableSorting: true, enableFiltering: true, initialPageSize: 20 }} />
 
       {/* Dialogs */}
-      <CustomerDialog open={customerDialogOpen} onOpenChange={setCustomerDialogOpen} customer={selectedCustomer} onSave={handleSaveCustomer} />
-      <CustomerDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} customer={selectedCustomer} />
+      <CustomerDialog
+        open={customerDialogOpen}
+        onOpenChange={setCustomerDialogOpen}
+        customer={selectedCustomer}
+        onSave={handleSaveCustomer}
+        saving={saving}
+      />
+      <CustomerDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        customer={selectedCustomer}
+      />
     </div>
   );
 }

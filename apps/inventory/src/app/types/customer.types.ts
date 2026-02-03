@@ -5,10 +5,15 @@ export interface Customer {
   email: string;
   phone: string;
   address: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
   city: string;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
   tax_number: string | null;
   status: 'active' | 'inactive' | 'on-hold';
-  tags: string | null;
+  tags: string[] | null;
   credit_limit: string;
   outstanding_balance: string;
   custom_fields: any | null;
