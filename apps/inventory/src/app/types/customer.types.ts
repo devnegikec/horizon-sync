@@ -12,7 +12,7 @@ export interface Customer {
   postal_code?: string | null;
   country?: string | null;
   tax_number: string | null;
-  status: 'active' | 'inactive' | 'on-hold';
+  status: 'active' | 'inactive' | 'blocked';
   tags: string[] | null;
   credit_limit: string;
   outstanding_balance: string;

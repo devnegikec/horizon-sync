@@ -11,6 +11,7 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useCustomers } from '../../hooks/useCustomers';
+import { useCustomerActions } from '../../hooks/useCustomerActions';
 import type { Customer } from '../../types/customer.types';
 import { customerApi } from '../../utility/api';
 
@@ -62,6 +63,8 @@ export function CustomerManagement() {
     status: filters.status,
   });
 
+  const { updateStatus, loading: updatingStatus } = useCustomerActions();
+
   const [customerDialogOpen, setCustomerDialogOpen] = React.useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
@@ -101,12 +104,9 @@ export function CustomerManagement() {
 
   const handleToggleStatus = React.useCallback(
     async (customer: Customer, newStatus: Customer['status']) => {
-      // TODO: Implement API call to update customer status
-      console.log('Toggle status:', customer.id, newStatus);
-      // After successful API call, refetch data
-      refetch();
+      await updateStatus(customer, newStatus, refetch);
     },
-    [refetch],
+    [updateStatus, refetch]
   );
 
   const handleSaveCustomer = async (customerData: Partial<Customer>) => {
@@ -175,7 +175,7 @@ export function CustomerManagement() {
         <SelectItem value="all">All Status</SelectItem>
         <SelectItem value="active">Active</SelectItem>
         <SelectItem value="inactive">Inactive</SelectItem>
-        <SelectItem value="on-hold">On Hold</SelectItem>
+        <SelectItem value="blocked">Blocked</SelectItem>
       </SelectContent>
     </Select>
   );

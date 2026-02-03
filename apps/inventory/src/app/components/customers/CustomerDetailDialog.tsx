@@ -30,8 +30,8 @@ function getStatusBadge(status: Customer['status']) {
       return { variant: 'success' as const, label: 'Active' };
     case 'inactive':
       return { variant: 'secondary' as const, label: 'Inactive' };
-    case 'on-hold':
-      return { variant: 'warning' as const, label: 'On Hold' };
+    case 'blocked':
+      return { variant: 'warning' as const, label: 'Blocked' };
   }
 }
 

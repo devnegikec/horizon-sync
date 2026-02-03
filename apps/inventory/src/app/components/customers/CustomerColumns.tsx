@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { type ColumnDef } from '@tanstack/react-table';
 import { MoreHorizontal, Eye, Edit, Power, PowerOff, Pause, Building2, AlertTriangle } from 'lucide-react';
 
@@ -27,8 +28,8 @@ function getStatusBadge(status: Customer['status']) {
       return { variant: 'success' as const, label: 'Active' };
     case 'inactive':
       return { variant: 'secondary' as const, label: 'Inactive' };
-    case 'on-hold':
-      return { variant: 'warning' as const, label: 'On Hold' };
+    case 'blocked':
+      return { variant: 'warning' as const, label: 'Blocked' };
   }
 }
 
@@ -162,9 +163,9 @@ export function createCustomerColumns({ onViewCustomer, onEditCustomer, onToggle
               <DropdownMenuSeparator />
               {customer.status === 'active' && (
                 <>
-                  <DropdownMenuItem onClick={() => onToggleStatus(customer, 'on-hold')}>
+                  <DropdownMenuItem onClick={() => onToggleStatus(customer, 'blocked')}>
                     <Pause className="mr-2 h-4 w-4" />
-                    Put On Hold
+                    Block Customer
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onToggleStatus(customer, 'inactive')}>
                     <PowerOff className="mr-2 h-4 w-4" />
@@ -178,7 +179,7 @@ export function createCustomerColumns({ onViewCustomer, onEditCustomer, onToggle
                   Activate
                 </DropdownMenuItem>
               )}
-              {customer.status === 'on-hold' && (
+              {customer.status === 'blocked' && (
                 <DropdownMenuItem onClick={() => onToggleStatus(customer, 'active')}>
                   <Power className="mr-2 h-4 w-4" />
                   Remove Hold
