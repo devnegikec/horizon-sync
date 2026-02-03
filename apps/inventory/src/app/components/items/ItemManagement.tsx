@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   Package,
@@ -93,21 +93,21 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 export function ItemManagement() {
   const { items, pagination, loading, error, refetch } = useItems(1, 20);
   const { itemGroups } = useItemGroups();
-  const [filters, setFilters] = React.useState<ItemFilters>({
+  const [filters, setFilters] = useState<ItemFilters>({
     search: '',
     groupId: 'all',
     status: 'all',
   });
-  const [itemDialogOpen, setItemDialogOpen] = React.useState(false);
-  const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
-  const [selectedItem, setSelectedItem] = React.useState<ApiItem | null>(null);
+  const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<ApiItem | null>(null);
 
-  const filteredItems = React.useMemo(
+  const filteredItems = useMemo(
     () => items.filter((item) => itemMatchesFilters(item, filters)),
     [items, filters]
   );
 
-  const stats = React.useMemo(() => {
+  const stats = useMemo(() => {
     const totalItems = pagination?.total_items ?? items.length;
     const activeItems = items.filter((i) => i.status === 'active').length;
     return { totalItems, activeItems };

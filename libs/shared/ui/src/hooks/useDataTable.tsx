@@ -114,7 +114,7 @@ export function useDataTable<TData, TValue>({
       sorting: enableSorting ? sorting : undefined,
       columnFilters: enableFiltering ? columnFilters : undefined,
       columnVisibility: enableColumnVisibility ? columnVisibility : undefined,
-      rowSelection: enableRowSelection ? rowSelection : undefined,
+      rowSelection: enableRowSelection ? rowSelection : {},
       globalFilter: enableFiltering ? globalFilter : undefined,
       pagination: showPagination ? pagination : undefined,
     },
@@ -133,9 +133,15 @@ export function useDataTable<TData, TValue>({
   });
 
   const selectedRows = React.useMemo(() => {
-    const rows = table.getFilteredSelectedRowModel().rows;
-    return Array.isArray(rows) ? rows.map((row) => row.original) : [];
-  }, [table, rowSelection]);
+    if (!enableRowSelection) return [];
+    try {
+      const rowModel = table.getFilteredSelectedRowModel();
+      const rows = rowModel?.rows;
+      return Array.isArray(rows) ? rows.map((row) => row.original) : [];
+    } catch {
+      return [];
+    }
+  }, [table, rowSelection, enableRowSelection]);
 
   const resetSelection = React.useCallback(() => {
     setRowSelection({});
