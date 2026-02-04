@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import { type Table } from '@tanstack/react-table';
 import {
   Warehouse as WarehouseIcon,
   Plus,
@@ -8,6 +9,7 @@ import {
   Store,
 } from 'lucide-react';
 
+import { DataTableViewOptions } from '@horizon-sync/ui/components/data-table/DataTableViewOptions';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
@@ -58,6 +60,7 @@ export function WarehouseManagement() {
   const [warehouseDialogOpen, setWarehouseDialogOpen] = React.useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = React.useState<Warehouse | null>(null);
+  const [tableInstance, setTableInstance] = React.useState<Table<Warehouse> | null>(null);
 
   const filteredWarehouses = React.useMemo(() => {
     return warehouses.filter((warehouse) => {
@@ -117,6 +120,10 @@ export function WarehouseManagement() {
     }
   };
 
+  const handleTableReady = (table: Table<Warehouse>) => {
+    setTableInstance(table);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
@@ -146,35 +153,40 @@ export function WarehouseManagement() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <SearchInput className="sm:w-80" placeholder="Search by name, code, or city..." onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))} />
-        <div className="flex gap-3">
-          <Select value={filters.warehouseType} onValueChange={(value) => setFilters((prev) => ({ ...prev, warehouseType: value }))}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="warehouse">Warehouse</SelectItem>
-              <SelectItem value="store">Store</SelectItem>
-              <SelectItem value="transit">Transit</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filters.status} onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <SearchInput className="sm:w-80" placeholder="Search by name, code, or city..." onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))} />
+          <div className="flex gap-3">
+            <Select value={filters.warehouseType} onValueChange={(value) => setFilters((prev) => ({ ...prev, warehouseType: value }))}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="warehouse">Warehouse</SelectItem>
+                <SelectItem value="store">Store</SelectItem>
+                <SelectItem value="transit">Transit</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filters.status} onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex items-center">
+          {tableInstance && <DataTableViewOptions table={tableInstance} />}
         </div>
       </div>
 
       {/* Warehouses Table */}
-      <WarehousesTable warehouses={filteredWarehouses} loading={loading} error={error} hasActiveFilters={!!filters.search || filters.warehouseType !== 'all' || filters.status !== 'all'} onView={handleViewWarehouse} onEdit={handleEditWarehouse} onDelete={handleDeleteWarehouse} onCreateWarehouse={handleCreateWarehouse} />
+      <WarehousesTable warehouses={filteredWarehouses} loading={loading} error={error} hasActiveFilters={!!filters.search || filters.warehouseType !== 'all' || filters.status !== 'all'} onView={handleViewWarehouse} onEdit={handleEditWarehouse} onDelete={handleDeleteWarehouse} onCreateWarehouse={handleCreateWarehouse} onTableReady={handleTableReady} />
 
       {/* Dialogs */}
       <WarehouseDialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen} warehouse={selectedWarehouse} warehouses={warehouses} onCreated={refetch} onUpdated={refetch} />

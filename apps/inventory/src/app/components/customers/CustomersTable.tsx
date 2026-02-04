@@ -1,12 +1,12 @@
 import * as React from 'react';
 
+import { type Table } from '@tanstack/react-table';
 import { Users, Plus } from 'lucide-react';
 
 import { DataTable } from '@horizon-sync/ui/components/data-table/DataTable';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 
 import type { Customer } from '../../types/customer.types';
 
@@ -17,14 +17,11 @@ export interface CustomersTableProps {
   loading: boolean;
   error: string | null;
   hasActiveFilters: boolean;
-  filters: {
-    status: string;
-  };
   onView: (customer: Customer) => void;
   onEdit: (customer: Customer) => void;
   onToggleStatus: (customer: Customer, newStatus: Customer['status']) => Promise<void>;
   onCreateCustomer: () => void;
-  onStatusFilter: (status: string) => void;
+  onTableReady?: (table: Table<Customer>) => void;
 }
 
 export function CustomersTable({
@@ -32,13 +29,21 @@ export function CustomersTable({
   loading,
   error,
   hasActiveFilters,
-  filters,
   onView,
   onEdit,
   onToggleStatus,
   onCreateCustomer,
-  onStatusFilter,
+  onTableReady,
 }: CustomersTableProps) {
+  const [tableInstance, setTableInstance] = React.useState<Table<Customer> | null>(null);
+
+  // Call onTableReady when table instance changes
+  React.useEffect(() => {
+    if (tableInstance && onTableReady) {
+      onTableReady(tableInstance);
+    }
+  }, [tableInstance, onTableReady]);
+
   const columns = React.useMemo(
     () =>
       createCustomerColumns({
@@ -49,19 +54,13 @@ export function CustomersTable({
     [onView, onEdit, onToggleStatus],
   );
 
-  const renderFilters = () => (
-    <Select value={filters.status} onValueChange={onStatusFilter}>
-      <SelectTrigger className="w-[160px]">
-        <SelectValue placeholder="All Status" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Status</SelectItem>
-        <SelectItem value="active">Active</SelectItem>
-        <SelectItem value="inactive">Inactive</SelectItem>
-        <SelectItem value="blocked">Blocked</SelectItem>
-      </SelectContent>
-    </Select>
-  );
+  const renderViewOptions = (table: Table<Customer>) => {
+    // Set table instance in state, which will trigger useEffect
+    if (table !== tableInstance) {
+      setTableInstance(table);
+    }
+    return null; // Don't render anything in the table
+  };
 
   if (error) {
     return (
@@ -98,7 +97,23 @@ export function CustomersTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable columns={columns} data={customers} filterPlaceholder="Search by name, code, email, or phone..." renderFilters={renderFilters} config={{ enableRowSelection: false, enableColumnVisibility: true, enableSorting: true, enableFiltering: true, initialPageSize: 20 }} />
+        <DataTable<Customer, unknown> 
+          columns={columns} 
+          data={customers} 
+          config={{ 
+            showSerialNumber: true, 
+            showPagination: true, 
+            enableRowSelection: false, 
+            enableColumnVisibility: true, 
+            enableSorting: true, 
+            enableFiltering: true, 
+            initialPageSize: 20 
+          }} 
+          filterPlaceholder="Search by name, code, email, or phone..." 
+          renderViewOptions={renderViewOptions}
+          fixedHeader 
+          maxHeight="600px" 
+        />
       </CardContent>
     </Card>
   );

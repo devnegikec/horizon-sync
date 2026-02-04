@@ -13,14 +13,20 @@ interface UseItemsResult {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  setPage: (page: number) => void;
+  setPageSize: (pageSize: number) => void;
+  currentPage: number;
+  currentPageSize: number;
 }
 
-export function useItems(page = 1, pageSize = 20): UseItemsResult {
+export function useItems(initialPage = 1, initialPageSize = 20, filters?: { search?: string; groupId?: string; status?: string }): UseItemsResult {
   const accessToken = useUserStore((s) => s.accessToken);
   const [items, setItems] = React.useState<ApiItem[]>([]);
   const [pagination, setPagination] = React.useState<ItemsPagination | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [currentPage, setCurrentPage] = React.useState(initialPage);
+  const [currentPageSize, setCurrentPageSize] = React.useState(initialPageSize);
 
   const fetchItems = React.useCallback(async () => {
     if (!accessToken) {
@@ -34,11 +40,23 @@ export function useItems(page = 1, pageSize = 20): UseItemsResult {
     setError(null);
     try {
       const params = new URLSearchParams({
-        page: String(page),
-        page_size: String(pageSize),
+        page: String(currentPage),
+        page_size: String(currentPageSize),
         sort_by: 'created_at',
         sort_order: 'desc',
       });
+      
+      // Add filters to API params if provided
+      if (filters?.search) {
+        params.append('search', filters.search);
+      }
+      if (filters?.groupId && filters.groupId !== 'all') {
+        params.append('item_group_id', filters.groupId);
+      }
+      if (filters?.status && filters.status !== 'all') {
+        params.append('status', filters.status);
+      }
+      
       const res = await fetch(`${ITEMS_URL}?${params}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -58,11 +76,21 @@ export function useItems(page = 1, pageSize = 20): UseItemsResult {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, page, pageSize]);
+  }, [accessToken, currentPage, currentPageSize, filters]);
 
   React.useEffect(() => {
     fetchItems();
   }, [fetchItems]);
 
-  return { items, pagination, loading, error, refetch: fetchItems };
+  return { 
+    items, 
+    pagination, 
+    loading, 
+    error, 
+    refetch: fetchItems,
+    setPage: setCurrentPage,
+    setPageSize: setCurrentPageSize,
+    currentPage,
+    currentPageSize,
+  };
 }

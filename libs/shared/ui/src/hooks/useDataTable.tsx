@@ -16,6 +16,13 @@ import {
 
 import { Checkbox } from '../components/ui/checkbox';
 
+export interface ServerPaginationConfig {
+  totalItems: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number, pageSize: number) => void;
+}
+
 export interface DataTableConfig {
   showSerialNumber?: boolean;
   showPagination?: boolean;
@@ -24,6 +31,7 @@ export interface DataTableConfig {
   enableSorting?: boolean;
   enableFiltering?: boolean;
   initialPageSize?: number;
+  serverPagination?: ServerPaginationConfig;
 }
 
 export interface UseDataTableProps<TData, TValue> {
@@ -32,6 +40,7 @@ export interface UseDataTableProps<TData, TValue> {
   config?: DataTableConfig;
 }
 
+// eslint-disable-next-line complexity
 export function useDataTable<TData, TValue>({ data, columns, config = {} }: UseDataTableProps<TData, TValue>) {
   const safeData = React.useMemo(() => data ?? [], [data]);
   const safeColumns = React.useMemo(() => columns ?? [], [columns]);
@@ -43,41 +52,68 @@ export function useDataTable<TData, TValue>({ data, columns, config = {} }: UseD
     enableSorting = true,
     enableFiltering = true,
     initialPageSize = 10,
+    serverPagination,
   } = config ?? {};
+
+  const isServerPagination = !!serverPagination;
 
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
-  const [pagination, setPagination] = React.useState<PaginationState>({
+  
+  // For server pagination, use server state; for client pagination, use local state
+  const [clientPagination, setClientPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: initialPageSize,
   });
+
+  const pagination = React.useMemo(() => {
+    if (isServerPagination) {
+      return {
+        pageIndex: serverPagination.currentPage - 1, // Convert 1-based to 0-based
+        pageSize: serverPagination.pageSize,
+      };
+    }
+    return clientPagination;
+  }, [isServerPagination, serverPagination, clientPagination]);
+
+  // Handle pagination changes
+  const handlePaginationChange = React.useCallback((updater: ((old: PaginationState) => PaginationState) | PaginationState) => {
+    if (isServerPagination) {
+      const newPagination = typeof updater === 'function' ? updater(pagination) : updater;
+      const newPage = newPagination.pageIndex + 1; // Convert 0-based to 1-based
+      serverPagination.onPageChange(newPage, newPagination.pageSize);
+    } else {
+      setClientPagination(updater);
+    }
+  }, [isServerPagination, serverPagination, pagination]);
 
   const serialNumberColumn: ColumnDef<TData, TValue> = React.useMemo(
     () => ({
       id: 'serial',
       header: 'S.No.',
       cell: ({ row }) => {
-        const serialNumber = pagination.pageIndex * pagination.pageSize + row.index + 1;
+        const baseNumber = isServerPagination 
+          ? (serverPagination.currentPage - 1) * serverPagination.pageSize
+          : pagination.pageIndex * pagination.pageSize;
+        const serialNumber = baseNumber + row.index + 1;
         return <div className="w-12 text-center font-medium">{serialNumber}</div>;
       },
       enableSorting: false,
       enableHiding: false,
     }),
-    [pagination.pageIndex, pagination.pageSize],
+    [pagination.pageIndex, pagination.pageSize, isServerPagination, serverPagination],
   );
 
   const selectionColumn: ColumnDef<TData, TValue> = React.useMemo(
     () => ({
       id: 'select',
       header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
+        <Checkbox checked={table.getIsAllPageRowsSelected()}
           onCheckedChange={(checked) => table.toggleAllPageRowsSelected(!!checked)}
-          aria-label="Select all"
-        />
+          aria-label="Select all"/>
       ),
       cell: ({ row }) => (
         <Checkbox checked={row.getIsSelected()} onCheckedChange={(checked) => row.toggleSelected(!!checked)} aria-label="Select row" />
@@ -115,13 +151,16 @@ export function useDataTable<TData, TValue>({ data, columns, config = {} }: UseD
     onColumnVisibilityChange: enableColumnVisibility ? setColumnVisibility : undefined,
     onRowSelectionChange: enableRowSelection ? setRowSelection : undefined,
     onGlobalFilterChange: enableFiltering ? setGlobalFilter : undefined,
-    onPaginationChange: showPagination ? setPagination : undefined,
+    onPaginationChange: showPagination ? handlePaginationChange : undefined,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: enableSorting ? getSortedRowModel() : undefined,
     getFilteredRowModel: enableFiltering ? getFilteredRowModel() : undefined,
-    getPaginationRowModel: showPagination ? getPaginationRowModel() : undefined,
+    getPaginationRowModel: showPagination && !isServerPagination ? getPaginationRowModel() : undefined,
     enableRowSelection,
     enableSorting,
+    // Server-side pagination configuration
+    manualPagination: isServerPagination,
+    pageCount: isServerPagination ? Math.ceil(serverPagination.totalItems / serverPagination.pageSize) : undefined,
   });
 
   const selectedRows = React.useMemo(() => {
@@ -133,7 +172,7 @@ export function useDataTable<TData, TValue>({ data, columns, config = {} }: UseD
     } catch {
       return [];
     }
-  }, [table, rowSelection, enableRowSelection]);
+  }, [table, enableRowSelection]);
 
   const resetSelection = React.useCallback(() => {
     setRowSelection({});
