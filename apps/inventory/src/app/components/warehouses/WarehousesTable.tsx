@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { type ColumnDef } from '@tanstack/react-table';
+import { type ColumnDef, type Table } from '@tanstack/react-table';
 import {
   Warehouse as WarehouseIcon,
   Plus,
@@ -67,6 +67,7 @@ export interface WarehousesTableProps {
   onEdit: (warehouse: Warehouse) => void;
   onDelete: (warehouse: Warehouse) => void;
   onCreateWarehouse: () => void;
+  onTableReady?: (table: Table<Warehouse>) => void;
 }
 
 export function WarehousesTable({
@@ -78,6 +79,7 @@ export function WarehousesTable({
   onEdit,
   onDelete,
   onCreateWarehouse,
+  onTableReady,
 }: WarehousesTableProps) {
   const columns: ColumnDef<Warehouse, unknown>[] = React.useMemo(
     () => [
@@ -209,6 +211,11 @@ export function WarehousesTable({
     [onView, onEdit, onDelete],
   );
 
+  const renderViewOptions = onTableReady ? (table: Table<Warehouse>) => {
+    onTableReady(table);
+    return null; // Don't render anything in the table
+  } : undefined;
+
   if (error) {
     return (
       <Card>
@@ -249,7 +256,23 @@ export function WarehousesTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable<Warehouse, unknown> columns={columns} data={warehouses} config={{ showSerialNumber: true, showPagination: true, enableRowSelection: false, enableColumnVisibility: true, enableSorting: true, enableFiltering: true, initialPageSize: 20 }} filterPlaceholder="Search by name, code, or city..." fixedHeader maxHeight="600px" />
+        <DataTable<Warehouse, unknown> 
+          columns={columns} 
+          data={warehouses} 
+          config={{ 
+            showSerialNumber: true, 
+            showPagination: true, 
+            enableRowSelection: false, 
+            enableColumnVisibility: true, 
+            enableSorting: true, 
+            enableFiltering: true, 
+            initialPageSize: 20 
+          }} 
+          filterPlaceholder="Search by name, code, or city..." 
+          renderViewOptions={renderViewOptions}
+          fixedHeader 
+          maxHeight="600px" 
+        />
       </CardContent>
     </Card>
   );

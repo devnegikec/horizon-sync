@@ -1,10 +1,14 @@
 import * as React from 'react';
 
+import { type Table } from '@tanstack/react-table';
 import { Users, Plus, Download, CreditCard, AlertTriangle, UserCheck, RefreshCw } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
+import { DataTableViewOptions } from '@horizon-sync/ui/components/data-table/DataTableViewOptions';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
+import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { cn } from '@horizon-sync/ui/lib';
 
@@ -67,6 +71,7 @@ export function CustomerManagement() {
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [tableInstance, setTableInstance] = React.useState<Table<Customer> | null>(null);
 
   const stats = React.useMemo(() => {
     if (!pagination) {
@@ -154,6 +159,10 @@ export function CustomerManagement() {
     setFilters((prev) => ({ ...prev, status, page: 1 }));
   }, []);
 
+  const handleTableReady = (table: Table<Customer>) => {
+    setTableInstance(table);
+  };
+
   const filteredCustomers = React.useMemo(() => {
     return customers; // Filtering is handled by the API based on filters
   }, [customers]);
@@ -204,8 +213,35 @@ export function CustomerManagement() {
         <StatCard title="Credit Alerts" value={stats.creditAlerts} icon={AlertTriangle} iconBg="bg-amber-100 dark:bg-amber-900/20" iconColor="text-amber-600 dark:text-amber-400" />
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <SearchInput 
+            className="sm:w-80" 
+            placeholder="Search by name, code, email, or phone..." 
+            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))} 
+          />
+          <div className="flex gap-3">
+            <Select value={filters.status} onValueChange={handleStatusFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="blocked">Blocked</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex items-center">
+          {tableInstance && <DataTableViewOptions table={tableInstance} />}
+        </div>
+      </div>
+
       {/* Customers Table */}
-      <CustomersTable customers={filteredCustomers} loading={loading} error={error} hasActiveFilters={hasActiveFilters} filters={filters} onView={handleViewCustomer} onEdit={handleEditCustomer} onToggleStatus={handleToggleStatus} onCreateCustomer={handleCreateCustomer} onStatusFilter={handleStatusFilter} />
+      <CustomersTable customers={filteredCustomers} loading={loading} error={error} hasActiveFilters={hasActiveFilters} onView={handleViewCustomer} onEdit={handleEditCustomer} onToggleStatus={handleToggleStatus} onCreateCustomer={handleCreateCustomer} onTableReady={handleTableReady} />
 
       {/* Dialogs */}
       <CustomerDialog open={customerDialogOpen} onOpenChange={setCustomerDialogOpen} customer={selectedCustomer} onSave={handleSaveCustomer} saving={saving} />
