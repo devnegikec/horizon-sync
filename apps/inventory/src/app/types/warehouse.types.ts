@@ -67,6 +67,15 @@ export type UpdateWarehousePayload = Partial<CreateWarehousePayload>;
 export interface WarehousesResponse {
   warehouses: Warehouse[];
   pagination: Pagination;
+  status_counts?: {
+    active: number;
+    inactive: number;
+  };
+  type_counts?: {
+    warehouse: number;
+    store: number;
+    transit: number;
+  };
 }
 
 export interface Pagination {

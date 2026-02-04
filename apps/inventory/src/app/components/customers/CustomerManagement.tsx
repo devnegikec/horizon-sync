@@ -3,21 +3,19 @@ import * as React from 'react';
 import { Users, Plus, Download, CreditCard, AlertTriangle, UserCheck, RefreshCw } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { DataTable } from '@horizon-sync/ui/components/data-table/DataTable';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { useCustomers } from '../../hooks/useCustomers';
 import { useCustomerActions } from '../../hooks/useCustomerActions';
+import { useCustomers } from '../../hooks/useCustomers';
 import type { Customer } from '../../types/customer.types';
 import { customerApi } from '../../utility/api';
 
-import { createCustomerColumns } from './CustomerColumns';
 import { CustomerDetailDialog } from './CustomerDetailDialog';
 import { CustomerDialog } from './CustomerDialog';
+import { CustomersTable } from './CustomersTable';
 
 interface StatCardProps {
   title: string;
@@ -63,7 +61,7 @@ export function CustomerManagement() {
     status: filters.status,
   });
 
-  const { updateStatus, loading: updatingStatus } = useCustomerActions();
+  const { updateStatus } = useCustomerActions();
 
   const [customerDialogOpen, setCustomerDialogOpen] = React.useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
@@ -156,29 +154,11 @@ export function CustomerManagement() {
     setFilters((prev) => ({ ...prev, status, page: 1 }));
   }, []);
 
-  const columns = React.useMemo(
-    () =>
-      createCustomerColumns({
-        onViewCustomer: handleViewCustomer,
-        onEditCustomer: handleEditCustomer,
-        onToggleStatus: handleToggleStatus,
-      }),
-    [handleViewCustomer, handleEditCustomer, handleToggleStatus],
-  );
+  const filteredCustomers = React.useMemo(() => {
+    return customers; // Filtering is handled by the API based on filters
+  }, [customers]);
 
-  const renderFilters = () => (
-    <Select value={filters.status} onValueChange={handleStatusFilter}>
-      <SelectTrigger className="w-[160px]">
-        <SelectValue placeholder="All Status" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Status</SelectItem>
-        <SelectItem value="active">Active</SelectItem>
-        <SelectItem value="inactive">Inactive</SelectItem>
-        <SelectItem value="blocked">Blocked</SelectItem>
-      </SelectContent>
-    </Select>
-  );
+  const hasActiveFilters = filters.search !== '' || filters.status !== 'all';
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -218,53 +198,17 @@ export function CustomerManagement() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Customers"
-          value={stats.totalCustomers}
-          icon={Users}
-          iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"
-        />
-        <StatCard
-          title="Active Customers"
-          value={stats.activeCustomers}
-          icon={UserCheck}
-          iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"
-        />
-        <StatCard
-          title="Total Credit Extended"
-          value={`$${stats.totalCredit.toLocaleString()}`}
-          icon={CreditCard}
-          iconBg="bg-blue-100 dark:bg-blue-900/20"
-          iconColor="text-blue-600 dark:text-blue-400"
-        />
-        <StatCard
-          title="Credit Alerts"
-          value={stats.creditAlerts}
-          icon={AlertTriangle}
-          iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"
-        />
+        <StatCard title="Total Customers" value={stats.totalCustomers} icon={Users} iconBg="bg-slate-100 dark:bg-slate-800" iconColor="text-slate-600 dark:text-slate-400" />
+        <StatCard title="Active Customers" value={stats.activeCustomers} icon={UserCheck} iconBg="bg-emerald-100 dark:bg-emerald-900/20" iconColor="text-emerald-600 dark:text-emerald-400" />
+        <StatCard title="Total Credit Extended" value={`$${stats.totalCredit.toLocaleString()}`} icon={CreditCard} iconBg="bg-blue-100 dark:bg-blue-900/20" iconColor="text-blue-600 dark:text-blue-400" />
+        <StatCard title="Credit Alerts" value={stats.creditAlerts} icon={AlertTriangle} iconBg="bg-amber-100 dark:bg-amber-900/20" iconColor="text-amber-600 dark:text-amber-400" />
       </div>
 
-      {/* Data Table */}
-      <DataTable
-        columns={columns}
-        data={customers}
-        filterPlaceholder="Search by name, code, email, or phone..."
-        renderFilters={renderFilters}
-        config={{ enableRowSelection: false, enableColumnVisibility: true, enableSorting: true, enableFiltering: true, initialPageSize: 20 }}
-      />
+      {/* Customers Table */}
+      <CustomersTable customers={filteredCustomers} loading={loading} error={error} hasActiveFilters={hasActiveFilters} filters={filters} onView={handleViewCustomer} onEdit={handleEditCustomer} onToggleStatus={handleToggleStatus} onCreateCustomer={handleCreateCustomer} onStatusFilter={handleStatusFilter} />
 
       {/* Dialogs */}
-      <CustomerDialog
-        open={customerDialogOpen}
-        onOpenChange={setCustomerDialogOpen}
-        customer={selectedCustomer}
-        onSave={handleSaveCustomer}
-        saving={saving}
-      />
+      <CustomerDialog open={customerDialogOpen} onOpenChange={setCustomerDialogOpen} customer={selectedCustomer} onSave={handleSaveCustomer} saving={saving} />
       <CustomerDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} customer={selectedCustomer} />
     </div>
   );

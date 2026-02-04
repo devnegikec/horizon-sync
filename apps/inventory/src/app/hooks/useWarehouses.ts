@@ -8,6 +8,8 @@ import { warehouseApi } from '../utility/api';
 interface UseWarehousesResult {
   warehouses: Warehouse[];
   pagination: WarehousesResponse['pagination'] | null;
+  statusCounts: WarehousesResponse['status_counts'] | null;
+  typeCounts: WarehousesResponse['type_counts'] | null;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -17,6 +19,8 @@ export function useWarehouses(page = 1, pageSize = 20): UseWarehousesResult {
   const accessToken = useUserStore((s) => s.accessToken);
   const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
   const [pagination, setPagination] = React.useState<WarehousesResponse['pagination'] | null>(null);
+  const [statusCounts, setStatusCounts] = React.useState<WarehousesResponse['status_counts'] | null>(null);
+  const [typeCounts, setTypeCounts] = React.useState<WarehousesResponse['type_counts'] | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -24,6 +28,8 @@ export function useWarehouses(page = 1, pageSize = 20): UseWarehousesResult {
     if (!accessToken) {
       setWarehouses([]);
       setPagination(null);
+      setStatusCounts(null);
+      setTypeCounts(null);
       setLoading(false);
       setError('Not authenticated');
       return;
@@ -34,11 +40,15 @@ export function useWarehouses(page = 1, pageSize = 20): UseWarehousesResult {
       const data = (await warehouseApi.list(accessToken, page, pageSize)) as WarehousesResponse;
       setWarehouses(data.warehouses ?? []);
       setPagination(data.pagination ?? null);
+      setStatusCounts(data.status_counts ?? null);
+      setTypeCounts(data.type_counts ?? null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load warehouses';
       setError(message);
       setWarehouses([]);
       setPagination(null);
+      setStatusCounts(null);
+      setTypeCounts(null);
     } finally {
       setLoading(false);
     }
@@ -48,7 +58,7 @@ export function useWarehouses(page = 1, pageSize = 20): UseWarehousesResult {
     fetchWarehouses();
   }, [fetchWarehouses]);
 
-  return { warehouses, pagination, loading, error, refetch: fetchWarehouses };
+  return { warehouses, pagination, statusCounts, typeCounts, loading, error, refetch: fetchWarehouses };
 }
 
 interface UseWarehouseMutationsResult {

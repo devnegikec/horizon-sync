@@ -1,8 +1,10 @@
 import * as React from 'react';
-import { type ColumnDef, flexRender } from '@tanstack/react-table';
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
-import { useDataTable, type DataTableConfig } from '@horizon-sync/ui/hooks/useDataTable';
+import { type ColumnDef, flexRender, type Table } from '@tanstack/react-table';
+
+import { useDataTable, type DataTableConfig } from '../../hooks/useDataTable';
+import { Table as TableComponent, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+
 import { DataTablePagination } from './DataTablePagination';
 import { DataTableToolbar } from './DataTableToolbar';
 import { DataTableViewOptions } from './DataTableViewOptions';
@@ -14,6 +16,7 @@ export interface DataTableProps<TData, TValue> {
   filterPlaceholder?: string;
   renderBulkActions?: (selectedRows: TData[]) => React.ReactNode;
   renderFilters?: () => React.ReactNode;
+  renderViewOptions?: (table: Table<TData>) => React.ReactNode;
   fixedHeader?: boolean;
   maxHeight?: string;
 }
@@ -25,6 +28,7 @@ export function DataTable<TData, TValue>({
   filterPlaceholder,
   renderBulkActions,
   renderFilters,
+  renderViewOptions,
   fixedHeader = false,
   maxHeight = '600px',
 }: DataTableProps<TData, TValue>) {
@@ -37,19 +41,13 @@ export function DataTable<TData, TValue>({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <DataTableToolbar
-          table={table}
-          globalFilter={globalFilter}
-          onGlobalFilterChange={setGlobalFilter}
-          filterPlaceholder={filterPlaceholder}
-          renderBulkActions={renderBulkActions}
-          renderFilters={renderFilters}
-        />
-        {config?.enableColumnVisibility && <DataTableViewOptions table={table} />}
+        <DataTableToolbar table={table} globalFilter={globalFilter} onGlobalFilterChange={setGlobalFilter} filterPlaceholder={filterPlaceholder} renderBulkActions={renderBulkActions} renderFilters={renderFilters} />
+        {config?.enableColumnVisibility && !renderViewOptions && <DataTableViewOptions table={table} />}
+        {renderViewOptions && renderViewOptions(table)}
       </div>
       <div className={fixedHeader ? `rounded-md border` : 'rounded-md border'}>
         <div className={fixedHeader ? 'overflow-auto' : undefined} style={fixedHeader ? { maxHeight } : undefined}>
-          <Table>
+          <TableComponent>
             <TableHeader className={fixedHeader ? 'sticky top-0 bg-background z-10' : ''}>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -80,7 +78,7 @@ export function DataTable<TData, TValue>({
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+          </TableComponent>
         </div>
       </div>
       {config?.showPagination !== false && <DataTablePagination table={table} />}

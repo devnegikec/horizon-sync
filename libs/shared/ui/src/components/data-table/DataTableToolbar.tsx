@@ -33,12 +33,6 @@ export function DataTableToolbar<TData>({
           renderBulkActions(selectedRows)
         ) : (
           <>
-            <Input
-              placeholder={filterPlaceholder}
-              value={globalFilter ?? ''}
-              onChange={(event) => onGlobalFilterChange(event.target.value)}
-              className="h-8 w-[150px] lg:w-[250px]"
-            />
             {renderFilters && renderFilters()}
             {isFiltered && (
               <Button

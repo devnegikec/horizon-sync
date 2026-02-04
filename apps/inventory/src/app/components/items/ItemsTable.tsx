@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { type ColumnDef } from '@tanstack/react-table';
+import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { Package, Plus, MoreHorizontal, Eye, Edit, Power, PowerOff } from 'lucide-react';
 
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -28,9 +28,10 @@ export interface ItemsTableProps {
   onEdit: (item: ApiItem) => void;
   onToggleStatus: (item: ApiItem) => void;
   onCreateItem: () => void;
+  onTableReady?: (table: Table<ApiItem>) => void;
 }
 
-export function ItemsTable({ items, loading, error, hasActiveFilters, onView, onEdit, onToggleStatus, onCreateItem }: ItemsTableProps) {
+export function ItemsTable({ items, loading, error, hasActiveFilters, onView, onEdit, onToggleStatus, onCreateItem, onTableReady }: ItemsTableProps) {
   const columns: ColumnDef<ApiItem, unknown>[] = React.useMemo(
     () => [
       {
@@ -135,6 +136,11 @@ export function ItemsTable({ items, loading, error, hasActiveFilters, onView, on
     [onView, onEdit, onToggleStatus],
   );
 
+  const renderViewOptions = onTableReady ? (table: Table<ApiItem>) => {
+    onTableReady(table);
+    return null; // Don't render anything in the table
+  } : undefined;
+
   if (error) {
     return (
       <Card>
@@ -160,19 +166,7 @@ export function ItemsTable({ items, loading, error, hasActiveFilters, onView, on
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState
-              icon={<Package className="h-12 w-12" />}
-              title="No items found"
-              description={hasActiveFilters ? 'Try adjusting your search or filters' : 'Get started by adding your first item'}
-              action={
-                !hasActiveFilters ? (
-                  <Button onClick={onCreateItem} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Item
-                  </Button>
-                ) : undefined
-              }
-            />
+            <EmptyState icon={<Package className="h-12 w-12" />} title="No items found" description={hasActiveFilters ? 'Try adjusting your search or filters' : 'Get started by adding your first item'} action={!hasActiveFilters ? <Button onClick={onCreateItem} className="gap-2"><Plus className="h-4 w-4" />Add Item</Button> : undefined} />
           </div>
         </CardContent>
       </Card>
@@ -182,22 +176,7 @@ export function ItemsTable({ items, loading, error, hasActiveFilters, onView, on
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable<ApiItem, unknown>
-          columns={columns}
-          data={items}
-          config={{
-            showSerialNumber: true,
-            showPagination: true,
-            enableRowSelection: false,
-            enableColumnVisibility: true,
-            enableSorting: true,
-            enableFiltering: true,
-            initialPageSize: 20,
-          }}
-          filterPlaceholder="Search by code, name, or group..."
-          fixedHeader
-          maxHeight="600px"
-        />
+        <DataTable<ApiItem, unknown> columns={columns} data={items} config={{ showSerialNumber: true, showPagination: true, enableRowSelection: false, enableColumnVisibility: true, enableSorting: true, enableFiltering: true, initialPageSize: 20 }} filterPlaceholder="Search by code, name, or group..." renderViewOptions={renderViewOptions} fixedHeader maxHeight="600px" />
       </CardContent>
     </Card>
   );
