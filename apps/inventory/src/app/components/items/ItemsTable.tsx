@@ -28,10 +28,10 @@ export interface ItemsTableProps {
   onEdit: (item: ApiItem) => void;
   onToggleStatus: (item: ApiItem) => void;
   onCreateItem: () => void;
-  renderViewOptions?: (table: Table<ApiItem>) => React.ReactNode;
+  onTableReady?: (table: Table<ApiItem>) => void;
 }
 
-export function ItemsTable({ items, loading, error, hasActiveFilters, onView, onEdit, onToggleStatus, onCreateItem, renderViewOptions }: ItemsTableProps) {
+export function ItemsTable({ items, loading, error, hasActiveFilters, onView, onEdit, onToggleStatus, onCreateItem, onTableReady }: ItemsTableProps) {
   const columns: ColumnDef<ApiItem, unknown>[] = React.useMemo(
     () => [
       {
@@ -135,6 +135,11 @@ export function ItemsTable({ items, loading, error, hasActiveFilters, onView, on
     ],
     [onView, onEdit, onToggleStatus],
   );
+
+  const renderViewOptions = onTableReady ? (table: Table<ApiItem>) => {
+    onTableReady(table);
+    return null; // Don't render anything in the table
+  } : undefined;
 
   if (error) {
     return (

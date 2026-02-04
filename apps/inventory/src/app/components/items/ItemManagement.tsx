@@ -89,6 +89,7 @@ export function ItemManagement() {
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ApiItem | null>(null);
+  const [tableInstance, setTableInstance] = useState<Table<ApiItem> | null>(null);
 
   const filteredItems = useMemo(() => items.filter((item) => itemMatchesFilters(item, filters)), [items, filters]);
 
@@ -124,7 +125,10 @@ export function ItemManagement() {
 
   const selectedItemAsItem = selectedItem ? apiItemToItem(selectedItem) : null;
 
-  const renderViewOptions = (table: Table<ApiItem>) => <DataTableViewOptions table={table} />;
+  // Use table instance callback instead
+  const handleTableReady = (table: Table<ApiItem>) => {
+    setTableInstance(table);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -184,10 +188,13 @@ export function ItemManagement() {
             </Select>
           </div>
         </div>
+        <div className="flex items-center">
+          {tableInstance && <DataTableViewOptions table={tableInstance} />}
+        </div>
       </div>
 
       {/* Items Table */}
-      <ItemsTable items={filteredItems} loading={loading} error={error} hasActiveFilters={!!filters.search || filters.groupId !== 'all' || filters.status !== 'all'} onView={handleViewItem} onEdit={handleEditItem} onToggleStatus={handleToggleStatus} onCreateItem={handleCreateItem} renderViewOptions={renderViewOptions} />
+      <ItemsTable items={filteredItems} loading={loading} error={error} hasActiveFilters={!!filters.search || filters.groupId !== 'all' || filters.status !== 'all'} onView={handleViewItem} onEdit={handleEditItem} onToggleStatus={handleToggleStatus} onCreateItem={handleCreateItem} onTableReady={handleTableReady} />
 
       {/* Dialogs */}
       <ItemDialog open={itemDialogOpen} onOpenChange={setItemDialogOpen} item={selectedItemAsItem} itemGroups={itemGroups} onSave={handleSaveItem} onCreated={refetch} onUpdated={refetch} />
