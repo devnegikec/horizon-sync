@@ -2,8 +2,10 @@ import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
 
+import { environment } from '../../environments/environment';
 import type { Warehouse, WarehousesResponse, CreateWarehousePayload, UpdateWarehousePayload } from '../types/warehouse.types';
-import { warehouseApi } from '../utility/api';
+import { warehouseApi } from '../utility';
+const WAREHOUSE_URL = `${environment.apiCoreUrl}/warehouses`;
 
 interface UseWarehousesResult {
   warehouses: Warehouse[];
@@ -13,9 +15,13 @@ interface UseWarehousesResult {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  setPage: (page: number) => void;
+  setPageSize: (pageSize: number) => void;
+  currentPage: number;
+  currentPageSize: number;
 }
 
-export function useWarehouses(page = 1, pageSize = 20): UseWarehousesResult {
+export function useWarehouses(initialPage = 1, initialPageSize = 20, filters?: { search?: string; warehouseType?: string; status?: string}): UseWarehousesResult {
   const accessToken = useUserStore((s) => s.accessToken);
   const [warehouses, setWarehouses] = React.useState<Warehouse[]>([]);
   const [pagination, setPagination] = React.useState<WarehousesResponse['pagination'] | null>(null);
@@ -23,6 +29,8 @@ export function useWarehouses(page = 1, pageSize = 20): UseWarehousesResult {
   const [typeCounts, setTypeCounts] = React.useState<WarehousesResponse['type_counts'] | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [currentPage, setCurrentPage] = React.useState(initialPage);
+  const [currentPageSize, setCurrentPageSize] = React.useState(initialPageSize);
 
   const fetchWarehouses = React.useCallback(async () => {
     if (!accessToken) {
@@ -37,7 +45,32 @@ export function useWarehouses(page = 1, pageSize = 20): UseWarehousesResult {
     setLoading(true);
     setError(null);
     try {
-      const data = (await warehouseApi.list(accessToken, page, pageSize)) as WarehousesResponse;
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        page_size: String(currentPageSize),
+        sort_by: 'created-at',
+        sort_order: 'desc',
+      })
+      // Add filters to API params if provided
+      if (filters?.search) {
+        params.append('search', filters.search);
+      }
+      if (filters?.warehouseType && filters.warehouseType !== 'all') {
+        params.append('warehouse_type', filters.warehouseType);
+      }
+
+      const res = await fetch(`${WAREHOUSE_URL}?${params}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!res.ok) {
+        const message = `Error ${res.status}: ${res.statusText}`;
+        throw new Error(message);
+      }
+
+      const data = await res.json() as WarehousesResponse;
       setWarehouses(data.warehouses ?? []);
       setPagination(data.pagination ?? null);
       setStatusCounts(data.status_counts ?? null);
@@ -52,13 +85,13 @@ export function useWarehouses(page = 1, pageSize = 20): UseWarehousesResult {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, page, pageSize]);
+  }, [accessToken, currentPage, currentPageSize, filters]);
 
   React.useEffect(() => {
     fetchWarehouses();
   }, [fetchWarehouses]);
 
-  return { warehouses, pagination, statusCounts, typeCounts, loading, error, refetch: fetchWarehouses };
+  return { warehouses, pagination, statusCounts, typeCounts, loading, error, refetch: fetchWarehouses, setPage: setCurrentPage, setPageSize: setCurrentPageSize, currentPage, currentPageSize };
 }
 
 interface UseWarehouseMutationsResult {

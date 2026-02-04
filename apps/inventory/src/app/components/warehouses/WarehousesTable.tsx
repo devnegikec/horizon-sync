@@ -16,10 +16,8 @@ import {
   MapPin,
 } from 'lucide-react';
 
+import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
-import { Badge } from '@horizon-sync/ui/components/ui/badge';
-import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,6 +66,12 @@ export interface WarehousesTableProps {
   onDelete: (warehouse: Warehouse) => void;
   onCreateWarehouse: () => void;
   onTableReady?: (table: Table<Warehouse>) => void;
+  serverPagination?: {
+    pageIndex: number;
+    pageSize: number;
+    totalItems: number;
+    onPaginationChange: (pageIndex: number, pageSize: number) => void;
+  };
 }
 
 export function WarehousesTable({
@@ -80,6 +84,7 @@ export function WarehousesTable({
   onDelete,
   onCreateWarehouse,
   onTableReady,
+  serverPagination
 }: WarehousesTableProps) {
   const [tableInstance, setTableInstance] = React.useState<Table<Warehouse> | null>(null);
 
@@ -89,6 +94,20 @@ export function WarehousesTable({
       onTableReady(tableInstance);
     }
   }, [tableInstance, onTableReady]);
+
+  // Create server pagination config for DataTable
+    const serverPaginationConfig = React.useMemo(() => {
+      if (!serverPagination) return undefined;
+
+      return {
+        totalItems: serverPagination.totalItems,
+        currentPage: serverPagination.pageIndex + 1, // Convert 0-based to 1-based
+        pageSize: serverPagination.pageSize,
+        onPageChange: (page: number, pageSize: number) => {
+          serverPagination.onPaginationChange(page - 1, pageSize); // Convert 1-based to 0-based
+        },
+      };
+    }, [serverPagination]);
 
   const columns: ColumnDef<Warehouse, unknown>[] = React.useMemo(
     () => [
@@ -242,7 +261,7 @@ export function WarehousesTable({
     return (
       <Card>
         <CardContent className="p-0">
-          <div className="py-12 text-center text-muted-foreground">Loading…</div>
+          <TableSkeleton columns={6} rows={10} showHeader={true} />
         </CardContent>
       </Card>
     );
@@ -253,8 +272,7 @@ export function WarehousesTable({
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState
-              icon={<WarehouseIcon className="h-12 w-12" />}
+            <EmptyState icon={<WarehouseIcon className="h-12 w-12" />}
               title="No warehouses found"
               description={hasActiveFilters ? 'Try adjusting your search or filters' : 'Get started by adding your first warehouse'}
               action={!hasActiveFilters ? <Button onClick={onCreateWarehouse} className="gap-2"><Plus className="h-4 w-4" />Add Warehouse</Button> : undefined}
@@ -268,23 +286,22 @@ export function WarehousesTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable<Warehouse, unknown> 
-          columns={columns} 
-          data={warehouses} 
-          config={{ 
-            showSerialNumber: true, 
-            showPagination: true, 
-            enableRowSelection: false, 
-            enableColumnVisibility: true, 
-            enableSorting: true, 
-            enableFiltering: true, 
-            initialPageSize: 20 
-          }} 
-          filterPlaceholder="Search by name, code, or city..." 
+        <DataTable columns={columns}
+          data={warehouses}
+          config={{
+            showSerialNumber: true,
+            showPagination: true,
+            enableRowSelection: false,
+            enableColumnVisibility: true,
+            enableSorting: true,
+            enableFiltering: false,
+            initialPageSize: serverPagination?.pageSize ?? 20,
+            serverPagination: serverPaginationConfig,
+          }}
+          filterPlaceholder="Search by name, code, or city..."
           renderViewOptions={renderViewOptions}
-          fixedHeader 
-          maxHeight="600px" 
-        />
+          fixedHeader
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );
