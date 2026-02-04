@@ -35,6 +35,15 @@ export function CustomersTable({
   onCreateCustomer,
   onTableReady,
 }: CustomersTableProps) {
+  const [tableInstance, setTableInstance] = React.useState<Table<Customer> | null>(null);
+
+  // Call onTableReady when table instance changes
+  React.useEffect(() => {
+    if (tableInstance && onTableReady) {
+      onTableReady(tableInstance);
+    }
+  }, [tableInstance, onTableReady]);
+
   const columns = React.useMemo(
     () =>
       createCustomerColumns({
@@ -45,10 +54,13 @@ export function CustomersTable({
     [onView, onEdit, onToggleStatus],
   );
 
-  const renderViewOptions = onTableReady ? (table: Table<Customer>) => {
-    onTableReady(table);
+  const renderViewOptions = (table: Table<Customer>) => {
+    // Set table instance in state, which will trigger useEffect
+    if (table !== tableInstance) {
+      setTableInstance(table);
+    }
     return null; // Don't render anything in the table
-  } : undefined;
+  };
 
   if (error) {
     return (

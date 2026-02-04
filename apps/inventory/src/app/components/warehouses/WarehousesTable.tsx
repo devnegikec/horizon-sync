@@ -81,6 +81,15 @@ export function WarehousesTable({
   onCreateWarehouse,
   onTableReady,
 }: WarehousesTableProps) {
+  const [tableInstance, setTableInstance] = React.useState<Table<Warehouse> | null>(null);
+
+  // Call onTableReady when table instance changes
+  React.useEffect(() => {
+    if (tableInstance && onTableReady) {
+      onTableReady(tableInstance);
+    }
+  }, [tableInstance, onTableReady]);
+
   const columns: ColumnDef<Warehouse, unknown>[] = React.useMemo(
     () => [
       {
@@ -211,10 +220,13 @@ export function WarehousesTable({
     [onView, onEdit, onDelete],
   );
 
-  const renderViewOptions = onTableReady ? (table: Table<Warehouse>) => {
-    onTableReady(table);
+  const renderViewOptions = (table: Table<Warehouse>) => {
+    // Set table instance in state, which will trigger useEffect
+    if (table !== tableInstance) {
+      setTableInstance(table);
+    }
     return null; // Don't render anything in the table
-  } : undefined;
+  };
 
   if (error) {
     return (

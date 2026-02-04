@@ -32,6 +32,15 @@ export interface ItemsTableProps {
 }
 
 export function ItemsTable({ items, loading, error, hasActiveFilters, onView, onEdit, onToggleStatus, onCreateItem, onTableReady }: ItemsTableProps) {
+  const [tableInstance, setTableInstance] = React.useState<Table<ApiItem> | null>(null);
+
+  // Call onTableReady when table instance changes
+  React.useEffect(() => {
+    if (tableInstance && onTableReady) {
+      onTableReady(tableInstance);
+    }
+  }, [tableInstance, onTableReady]);
+
   const columns: ColumnDef<ApiItem, unknown>[] = React.useMemo(
     () => [
       {
@@ -136,10 +145,13 @@ export function ItemsTable({ items, loading, error, hasActiveFilters, onView, on
     [onView, onEdit, onToggleStatus],
   );
 
-  const renderViewOptions = onTableReady ? (table: Table<ApiItem>) => {
-    onTableReady(table);
+  const renderViewOptions = (table: Table<ApiItem>) => {
+    // Set table instance in state, which will trigger useEffect
+    if (table !== tableInstance) {
+      setTableInstance(table);
+    }
     return null; // Don't render anything in the table
-  } : undefined;
+  };
 
   if (error) {
     return (
