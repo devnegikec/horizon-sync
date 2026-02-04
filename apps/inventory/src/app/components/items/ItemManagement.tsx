@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 import { type Table } from '@tanstack/react-table';
 import { Package, Plus, Download, Boxes, DollarSign, AlertTriangle } from 'lucide-react';
@@ -36,22 +36,6 @@ function apiItemToItem(api: ApiItem): Item {
   };
 }
 
-function itemMatchesSearch(item: ApiItem, search: string): boolean {
-  if (!search) return true;
-  const s = search.toLowerCase();
-  const name = (item.item_name || '').toLowerCase();
-  const code = (item.item_code || '').toLowerCase();
-  const groupId = (item.item_group_id || '').toLowerCase();
-  return name.includes(s) || code.includes(s) || groupId.includes(s);
-}
-
-function itemMatchesFilters(item: ApiItem, filters: ItemFilters): boolean {
-  if (!itemMatchesSearch(item, filters.search)) return false;
-  if (filters.groupId !== 'all' && (item.item_group_id ?? '') !== filters.groupId) return false;
-  if (filters.status !== 'all' && (item.status ?? '') !== filters.status) return false;
-  return true;
-}
-
 interface StatCardProps {
   title: string;
   value: string | number;
@@ -79,25 +63,31 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 }
 
 export function ItemManagement() {
-  const { items, pagination, loading, error, refetch } = useItems(1, 20);
-  const { itemGroups } = useItemGroups();
   const [filters, setFilters] = useState<ItemFilters>({
     search: '',
     groupId: 'all',
     status: 'all',
   });
+  
+  // Use server-side pagination and filtering
+  const { items, pagination, loading, error, refetch, setPage, setPageSize, currentPage, currentPageSize } = useItems(1, 20, filters);
+  const { itemGroups } = useItemGroups();
+  
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ApiItem | null>(null);
   const [tableInstance, setTableInstance] = useState<Table<ApiItem> | null>(null);
 
-  const filteredItems = useMemo(() => items.filter((item) => itemMatchesFilters(item, filters)), [items, filters]);
+  // Reset to first page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filters, setPage]);
 
   const stats = useMemo(() => {
-    const totalItems = pagination?.total_items ?? items.length;
-    const activeItems = items.filter((i) => i.status === 'active').length;
+    const totalItems = pagination?.total_items ?? 0;
+    const activeItems = pagination?.total_items ?? 0; // API should provide this separately
     return { totalItems, activeItems };
-  }, [items, pagination]);
+  }, [pagination]);
 
   const handleCreateItem = () => {
     setSelectedItem(null);
@@ -125,10 +115,21 @@ export function ItemManagement() {
 
   const selectedItemAsItem = selectedItem ? apiItemToItem(selectedItem) : null;
 
-  // Use table instance callback instead
+  // Use table instance callback
   const handleTableReady = (table: Table<ApiItem>) => {
     setTableInstance(table);
   };
+
+  // Memoize server pagination config to prevent unnecessary re-renders
+  const serverPaginationConfig = useMemo(() => ({
+    pageIndex: currentPage - 1, // DataTable uses 0-based indexing
+    pageSize: currentPageSize,
+    totalItems: pagination?.total_items ?? 0,
+    onPaginationChange: (pageIndex: number, newPageSize: number) => {
+      setPage(pageIndex + 1); // Convert back to 1-based for API
+      setPageSize(newPageSize);
+    }
+  }), [currentPage, currentPageSize, pagination?.total_items, setPage, setPageSize]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -194,7 +195,16 @@ export function ItemManagement() {
       </div>
 
       {/* Items Table */}
-      <ItemsTable items={filteredItems} loading={loading} error={error} hasActiveFilters={!!filters.search || filters.groupId !== 'all' || filters.status !== 'all'} onView={handleViewItem} onEdit={handleEditItem} onToggleStatus={handleToggleStatus} onCreateItem={handleCreateItem} onTableReady={handleTableReady} />
+      <ItemsTable items={items} 
+        loading={loading} 
+        error={error} 
+        hasActiveFilters={!!filters.search || filters.groupId !== 'all' || filters.status !== 'all'} 
+        onView={handleViewItem} 
+        onEdit={handleEditItem} 
+        onToggleStatus={handleToggleStatus} 
+        onCreateItem={handleCreateItem} 
+        onTableReady={handleTableReady}
+        serverPagination={serverPaginationConfig}/>
 
       {/* Dialogs */}
       <ItemDialog open={itemDialogOpen} onOpenChange={setItemDialogOpen} item={selectedItemAsItem} itemGroups={itemGroups} onSave={handleSaveItem} onCreated={refetch} onUpdated={refetch} />

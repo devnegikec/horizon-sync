@@ -22,7 +22,7 @@ export function DataTableToolbar<TData>({
   renderBulkActions,
   renderFilters,
 }: DataTableToolbarProps<TData>) {
-  const isFiltered = table.getState().columnFilters.length > 0 || globalFilter !== '';
+  const isFiltered = table.getState().columnFilters?.length > 0 || globalFilter !== '';
   const selectedRows = table.getFilteredSelectedRowModel().rows.map((row) => row.original);
   const hasSelection = selectedRows.length > 0;
 

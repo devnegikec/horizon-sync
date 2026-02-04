@@ -29,17 +29,35 @@ export interface ItemsTableProps {
   onToggleStatus: (item: ApiItem) => void;
   onCreateItem: () => void;
   onTableReady?: (table: Table<ApiItem>) => void;
+  serverPagination?: {
+    pageIndex: number;
+    pageSize: number;
+    totalItems: number;
+    onPaginationChange: (pageIndex: number, pageSize: number) => void;
+  };
 }
 
-export function ItemsTable({ items, loading, error, hasActiveFilters, onView, onEdit, onToggleStatus, onCreateItem, onTableReady }: ItemsTableProps) {
-  const [tableInstance, setTableInstance] = React.useState<Table<ApiItem> | null>(null);
-
-  // Call onTableReady when table instance changes
+export function ItemsTable({ items, loading, error, hasActiveFilters, onView, onEdit, onToggleStatus, onCreateItem, onTableReady, serverPagination }: ItemsTableProps) {
+  const tableReadyRef = React.useRef<((table: Table<ApiItem>) => void) | undefined>(onTableReady);
+  
+  // Update ref when onTableReady changes
   React.useEffect(() => {
-    if (tableInstance && onTableReady) {
-      onTableReady(tableInstance);
-    }
-  }, [tableInstance, onTableReady]);
+    tableReadyRef.current = onTableReady;
+  }, [onTableReady]);
+
+  // Create server pagination config for DataTable
+  const serverPaginationConfig = React.useMemo(() => {
+    if (!serverPagination) return undefined;
+    
+    return {
+      totalItems: serverPagination.totalItems,
+      currentPage: serverPagination.pageIndex + 1, // Convert 0-based to 1-based
+      pageSize: serverPagination.pageSize,
+      onPageChange: (page: number, pageSize: number) => {
+        serverPagination.onPaginationChange(page - 1, pageSize); // Convert 1-based to 0-based
+      },
+    };
+  }, [serverPagination]);
 
   const columns: ColumnDef<ApiItem, unknown>[] = React.useMemo(
     () => [
@@ -145,13 +163,13 @@ export function ItemsTable({ items, loading, error, hasActiveFilters, onView, on
     [onView, onEdit, onToggleStatus],
   );
 
-  const renderViewOptions = (table: Table<ApiItem>) => {
-    // Set table instance in state, which will trigger useEffect
-    if (table !== tableInstance) {
-      setTableInstance(table);
+  const renderViewOptions = React.useCallback((table: Table<ApiItem>) => {
+    // Call onTableReady callback if provided
+    if (tableReadyRef.current) {
+      tableReadyRef.current(table);
     }
     return null; // Don't render anything in the table
-  };
+  }, []);
 
   if (error) {
     return (
@@ -188,7 +206,21 @@ export function ItemsTable({ items, loading, error, hasActiveFilters, onView, on
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable<ApiItem, unknown> columns={columns} data={items} config={{ showSerialNumber: true, showPagination: true, enableRowSelection: false, enableColumnVisibility: true, enableSorting: true, enableFiltering: true, initialPageSize: 20 }} filterPlaceholder="Search by code, name, or group..." renderViewOptions={renderViewOptions} fixedHeader maxHeight="600px" />
+        <DataTable columns={columns}
+          data={items}
+          config={{
+            showSerialNumber: true,
+            showPagination: true,
+            enableRowSelection: false,
+            enableColumnVisibility: true,
+            enableSorting: true,
+            enableFiltering: false, // Disable DataTable filtering since parent handles it
+            initialPageSize: serverPagination?.pageSize ?? 20,
+            serverPagination: serverPaginationConfig,
+          }}
+          renderViewOptions={renderViewOptions}
+          fixedHeader
+          maxHeight="600px"/>
       </CardContent>
     </Card>
   );
