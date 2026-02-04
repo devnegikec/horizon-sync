@@ -4,9 +4,10 @@ import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { Package, Plus, MoreHorizontal, Eye, Edit, Power, PowerOff } from 'lucide-react';
 
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
-import { Badge } from '@horizon-sync/ui/components/ui/badge';
-import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
+import { TableSkeleton, Badge, Button, Card, CardContent } from '@horizon-sync/ui/components'
+// import { Badge } from '@horizon-sync/ui/components/ui/badge';
+// import { Button } from '@horizon-sync/ui/components/ui/button';
+// import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -185,7 +186,7 @@ export function ItemsTable({ items, loading, error, hasActiveFilters, onView, on
     return (
       <Card>
         <CardContent className="p-0">
-          <div className="py-12 text-center text-muted-foreground">Loading…</div>
+          <TableSkeleton columns={6} rows={10} showHeader={true} />
         </CardContent>
       </Card>
     );
