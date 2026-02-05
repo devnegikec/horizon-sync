@@ -165,8 +165,7 @@ export function CustomerDetailDialog({ open, onOpenChange, customer }: CustomerD
                     <div className={`h-full rounded-full transition-all duration-500 ${
                         creditUtilization > 90 ? 'bg-destructive' : creditUtilization > 70 ? 'bg-amber-500' : 'bg-emerald-500'
                       }`}
-                      style={{ width: `${Math.min(creditUtilization, 100)}%` }}
-                    />
+                      style={{ width: `${Math.min(creditUtilization, 100)}%` }}/>
                   </div>
                   <p className="text-xs text-muted-foreground font-medium">${(creditLimit - outstandingBalance).toLocaleString()} available credit</p>
                 </div>

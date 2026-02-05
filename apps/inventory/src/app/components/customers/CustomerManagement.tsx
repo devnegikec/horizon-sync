@@ -216,11 +216,9 @@ export function CustomerManagement() {
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <SearchInput 
-            className="sm:w-80" 
-            placeholder="Search by name, code, email, or phone..." 
-            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))} 
-          />
+          <SearchInput className="sm:w-80"
+            placeholder="Search by name, code, email, or phone..."
+            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
           <div className="flex gap-3">
             <Select value={filters.status} onValueChange={handleStatusFilter}>
               <SelectTrigger className="w-[160px]">

@@ -11,14 +11,14 @@ export interface CreateOrganizationPayload {
   organization_type: string;
   industry: string;
   status: string;
-  settings?: Record<string, any>;
-  extra_data?: Record<string, any>;
+  settings?: Record<string, unknown>;
+  extra_data?: Record<string, unknown>;
 }
 
 const API_BASE_URL = environment.apiBaseUrl;
 
 export class OrganizationService {
-  static async createOrganization(payload: CreateOrganizationPayload, token: string): Promise<any> {
+  static async createOrganization(payload: CreateOrganizationPayload, token: string): Promise<unknown> {
     try {
       const response = await fetch(`${API_BASE_URL}/identity/organizations`, {
         method: 'POST',

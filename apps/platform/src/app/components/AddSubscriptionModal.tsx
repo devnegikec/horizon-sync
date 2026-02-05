@@ -78,10 +78,8 @@ export function AddSubscriptionModal({ onSuccess }: AddSubscriptionModalProps) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="billing">Billing Cycle</Label>
-            <Select
-              value={formData.billing_cycle}
-              onValueChange={(value) => setFormData({ ...formData, billing_cycle: value as 'monthly' | 'yearly' })}
-            >
+            <Select value={formData.billing_cycle}
+              onValueChange={(value) => setFormData({ ...formData, billing_cycle: value as 'monthly' | 'yearly' })}>
               <SelectTrigger>
                 <SelectValue placeholder="Select billing cycle" />
               </SelectTrigger>

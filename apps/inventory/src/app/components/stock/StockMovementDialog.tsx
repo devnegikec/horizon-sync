@@ -148,49 +148,41 @@ export function StockMovementDialog({ open, onOpenChange, warehouses, items, onC
               </div>
               <div className="space-y-2">
                 <Label htmlFor="quantity">Quantity</Label>
-                <Input
-                  id="quantity"
+                <Input id="quantity"
                   type="number"
                   value={formData.quantity}
                   onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                   placeholder="0"
-                  required
-                />
+                  required/>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="unit_cost">Unit Cost</Label>
-                <Input
-                  id="unit_cost"
+                <Input id="unit_cost"
                   type="number"
                   step="0.01"
                   value={formData.unit_cost}
                   onChange={(e) => setFormData({ ...formData, unit_cost: e.target.value })}
-                  placeholder="0.00"
-                />
+                  placeholder="0.00"/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="reference_type">Reference Type</Label>
-                <Input
-                  id="reference_type"
+                <Input id="reference_type"
                   value={formData.reference_type}
                   onChange={(e) => setFormData({ ...formData, reference_type: e.target.value })}
-                  placeholder="e.g., PO, SO"
-                />
+                  placeholder="e.g., PO, SO"/>
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
+              <Textarea id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Additional notes..."
-                rows={2}
-              />
+                rows={2}/>
             </div>
           </div>
 

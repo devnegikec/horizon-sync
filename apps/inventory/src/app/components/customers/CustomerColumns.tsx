@@ -104,13 +104,11 @@ export function createCustomerColumns({ onViewCustomer, onEditCustomer, onToggle
             </div>
             {creditLimit > 0 && (
               <div className="h-1.5 w-24 rounded-full bg-muted overflow-hidden">
-                <div
-                  className={cn(
+                <div className={cn(
                     'h-full rounded-full',
                     creditUtilization > 90 ? 'bg-destructive' : creditUtilization > 70 ? 'bg-amber-500' : 'bg-emerald-500',
                   )}
-                  style={{ width: `${Math.min(creditUtilization, 100)}%` }}
-                />
+                  style={{ width: `${Math.min(creditUtilization, 100)}%` }}/>
               </div>
             )}
           </div>

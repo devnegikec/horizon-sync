@@ -275,8 +275,7 @@ export function WarehousesTable({
             <EmptyState icon={<WarehouseIcon className="h-12 w-12" />}
               title="No warehouses found"
               description={hasActiveFilters ? 'Try adjusting your search or filters' : 'Get started by adding your first warehouse'}
-              action={!hasActiveFilters ? <Button onClick={onCreateWarehouse} className="gap-2"><Plus className="h-4 w-4" />Add Warehouse</Button> : undefined}
-            />
+              action={!hasActiveFilters ? <Button onClick={onCreateWarehouse} className="gap-2"><Plus className="h-4 w-4" />Add Warehouse</Button> : undefined}/>
           </div>
         </CardContent>
       </Card>

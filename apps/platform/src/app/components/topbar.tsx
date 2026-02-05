@@ -66,11 +66,9 @@ export function Topbar({ sidebarCollapsed, sidebarOpen, isMobile, onToggleSideba
         {/* Search */}
         <div className="hidden sm:flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-muted-foreground transition-colors focus-within:bg-muted">
           <Search className="h-4 w-4" />
-          <input
-            type="text"
+          <input type="text"
             placeholder="Search anything..."
-            className="bg-transparent text-sm outline-none w-[200px] lg:w-[300px] placeholder:text-muted-foreground"
-          />
+            className="bg-transparent text-sm outline-none w-[200px] lg:w-[300px] placeholder:text-muted-foreground"/>
           <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border bg-background px-1.5 text-[10px] font-medium text-muted-foreground">
             ⌘K
           </kbd>
