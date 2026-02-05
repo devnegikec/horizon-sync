@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { Package, Plus, MoreHorizontal, Eye, Edit, Power, PowerOff } from 'lucide-react';
+import { Package, Plus, MoreHorizontal, Eye, Edit, Power, PowerOff, Building2, Upload } from 'lucide-react';
 
 import { TableSkeleton, Badge, Button, Card, CardContent } from '@horizon-sync/ui/components'
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -26,6 +26,8 @@ export interface ItemsTableProps {
   onEdit: (item: ApiItem) => void;
   onToggleStatus: (item: ApiItem) => void;
   onCreateItem: () => void;
+  onBulkUpload?: () => void;
+  onCreateOrganization?: () => void;
   onTableReady?: (table: Table<ApiItem>) => void;
   serverPagination?: {
     pageIndex: number;
@@ -35,7 +37,20 @@ export interface ItemsTableProps {
   };
 }
 
-export function ItemsTable({ items, loading, error, hasActiveFilters, onView, onEdit, onToggleStatus, onCreateItem, onTableReady, serverPagination }: ItemsTableProps) {
+export function ItemsTable({ 
+  items, 
+  loading, 
+  error, 
+  hasActiveFilters, 
+  onView, 
+  onEdit, 
+  onToggleStatus, 
+  onCreateItem, 
+  onBulkUpload,
+  onCreateOrganization,
+  onTableReady, 
+  serverPagination 
+}: ItemsTableProps) {
   const tableReadyRef = React.useRef<((table: Table<ApiItem>) => void) | undefined>(onTableReady);
 
   // Update ref when onTableReady changes
@@ -169,7 +184,14 @@ export function ItemsTable({ items, loading, error, hasActiveFilters, onView, on
     return null; // Don't render anything in the table
   }, []);
 
-  if (error) {
+  // Check if error is related to organization
+  const isOrganizationError = error && (
+    error.includes('Unable to determine user organization') ||
+    error.includes('organization') ||
+    error.includes('Organization not found')
+  );
+
+  if (error && !isOrganizationError) {
     return (
       <Card>
         <CardContent className="p-0">
@@ -189,12 +211,54 @@ export function ItemsTable({ items, loading, error, hasActiveFilters, onView, on
     );
   }
 
-  if (items.length === 0) {
+  // Show organization error or empty state
+  if (isOrganizationError || items.length === 0) {
+    const isOrgError = isOrganizationError;
+    
     return (
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState icon={<Package className="h-12 w-12" />} title="No items found" description={hasActiveFilters ? 'Try adjusting your search or filters' : 'Get started by adding your first item'} action={!hasActiveFilters ? <Button onClick={onCreateItem} className="gap-2"><Plus className="h-4 w-4" />Add Item</Button> : undefined} />
+            <EmptyState 
+              icon={<Package className="h-12 w-12" />} 
+              title={isOrgError ? "Organization Required" : "No items found"} 
+              description={
+                isOrgError 
+                  ? "You need to create an organization before you can manage inventory items."
+                  : hasActiveFilters 
+                    ? 'Try adjusting your search or filters' 
+                    : 'Get started by adding your first item'
+              } 
+              action={
+                isOrgError ? (
+                  <div className="flex flex-col gap-3 items-center">
+                    <div className="flex gap-3">
+                      <Button onClick={onCreateItem} variant="outline" className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Create Item
+                      </Button>
+                      {onBulkUpload && (
+                        <Button onClick={onBulkUpload} variant="outline" className="gap-2">
+                          <Upload className="h-4 w-4" />
+                          Bulk Upload
+                        </Button>
+                      )}
+                    </div>
+                    {onCreateOrganization && (
+                      <Button onClick={onCreateOrganization} className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
+                        <Building2 className="h-4 w-4" />
+                        Create Organization
+                      </Button>
+                    )}
+                  </div>
+                ) : !hasActiveFilters ? (
+                  <Button onClick={onCreateItem} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Item
+                  </Button>
+                ) : undefined
+              } 
+            />
           </div>
         </CardContent>
       </Card>

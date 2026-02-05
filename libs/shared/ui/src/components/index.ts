@@ -20,3 +20,4 @@ export * from './ui/toast';
 export * from './ui/toaster';
 export * from './ui/tooltip';
 export * from './data-table';
+export * from './organization';
