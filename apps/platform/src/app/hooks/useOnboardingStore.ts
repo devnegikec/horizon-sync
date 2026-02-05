@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-interface OnboardingData {
+export interface OnboardingData {
   firstName: string;
   lastName: string;
   phoneNumber: string;

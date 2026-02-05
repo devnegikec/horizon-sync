@@ -8,13 +8,33 @@ export interface User {
   avatar_url?: string | null;
   user_type?: string;
   status?: string;
+  is_active?: boolean;
   email_verified?: boolean;
+  email_verified_at?: string | null;
+  last_login_at?: string | null;
+  last_login_ip?: string | null;
   timezone?: string;
   language?: string;
   organization_id?: string | null;
   job_title?: string;
   department?: string;
   bio?: string;
+  preferences?: Record<string, unknown> | null;
+  extra_data?: Record<string, unknown> | null;
+}
+
+export interface UserPreferences {
+  theme?: 'light' | 'dark' | 'system';
+  notifications?: {
+    email?: boolean;
+    push?: boolean;
+    sms?: boolean;
+  };
+  dashboard?: {
+    layout?: string;
+    widgets?: string[];
+  };
+  [key: string]: unknown;
 }
 
 export interface UserState {
@@ -24,5 +44,12 @@ export interface UserState {
   isAuthenticated: boolean;
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   updateUser: (partial: Partial<User>) => void;
+  updatePreferences: (preferences: Partial<UserPreferences>) => void;
   clearAuth: () => void;
+}
+
+export interface PreferencesState {
+  preferences: UserPreferences;
+  setPreferences: (preferences: Partial<UserPreferences>) => void;
+  resetPreferences: () => void;
 }
