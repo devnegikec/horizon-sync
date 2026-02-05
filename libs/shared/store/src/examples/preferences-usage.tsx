@@ -3,6 +3,7 @@ import React from 'react';
 
 import { usePreferences } from '../use-preferences';
 import { useUserStore } from '../user-store';
+import { DevToolsStatus } from '../components/DevToolsStatus';
 
 export function PreferencesExample() {
   const { user } = useUserStore();
@@ -16,7 +17,10 @@ export function PreferencesExample() {
 
   return (
     <div className="p-4 space-y-4">
-      <h2 className="text-xl font-bold">User Preferences</h2>
+      <h2 className="text-xl font-bold">User Preferences & DevTools</h2>
+      
+      {/* DevTools Status */}
+      <DevToolsStatus />
       
       {/* Current user info */}
       <div className="bg-gray-100 p-3 rounded">
