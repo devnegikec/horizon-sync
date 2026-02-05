@@ -51,13 +51,30 @@ export function useRegistrationForm() {
         description: 'Your account has been created successfully.',
       });
 
-      // Login the user with the response data
+      // Login the user with the complete response data
       login(response.access_token, response.refresh_token, {
         id: response.user.id,
         email: response.user.email,
         first_name: response.user.first_name,
         last_name: response.user.last_name,
+        display_name: response.user.display_name,
         phone: response.user.phone,
+        avatar_url: response.user.avatar_url,
+        user_type: response.user.user_type,
+        status: response.user.status,
+        is_active: response.user.is_active,
+        email_verified: response.user.email_verified,
+        email_verified_at: response.user.email_verified_at,
+        last_login_at: response.user.last_login_at,
+        last_login_ip: response.user.last_login_ip,
+        timezone: response.user.timezone,
+        language: response.user.language,
+        organization_id: response.user.organization_id,
+        job_title: response.user.job_title,
+        department: response.user.department,
+        bio: response.user.bio,
+        preferences: response.user.preferences,
+        extra_data: response.user.extra_data,
       });
 
       // Navigate to onboarding after a short delay

@@ -25,6 +25,8 @@ export function useLoginForm() {
     try {
       const res = await AuthService.login(data);
       setStatus((s) => ({ ...s, success: 'Login successful!' }));
+      
+      // Login with basic user data from login response
       login(res.access_token, res.refresh_token, {
         email: res.email,
         organization_id: res.organization_id,

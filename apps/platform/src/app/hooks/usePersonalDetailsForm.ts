@@ -28,6 +28,9 @@ const getInitialValues = (data: OnboardingData, user: User | null) => ({
   firstName: data.firstName || user?.first_name || '',
   lastName: data.lastName || user?.last_name || '',
   phoneNumber: data.phoneNumber || user?.phone || '',
+  jobTitle: data.jobTitle || user?.job_title || '',
+  department: data.department || user?.department || '',
+  bio: data.bio || user?.bio || '',
   timezone: data.timezone || user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
   avatarUrl: data.avatarUrl || user?.avatar_url || '',
 });

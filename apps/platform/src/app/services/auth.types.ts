@@ -7,16 +7,28 @@ export interface RegisterPayload {
 }
 
 export interface UserType {
+  id: string;
   email: string;
   first_name: string;
   last_name: string;
-  phone: string;
-  id: string;
   display_name: string;
+  phone: string;
+  avatar_url: string | null;
   user_type: string;
   status: string;
+  is_active: boolean;
   email_verified: boolean;
+  email_verified_at: string | null;
   last_login_at: string | null;
+  last_login_ip: string | null;
+  timezone: string;
+  language: string;
+  organization_id: string | null;
+  job_title?: string;
+  department?: string;
+  bio?: string;
+  preferences?: Record<string, unknown> | null;
+  extra_data?: Record<string, unknown> | null;
   created_at: string;
 }
 

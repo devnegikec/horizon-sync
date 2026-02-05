@@ -9,6 +9,7 @@ import {
   ForgotPasswordPayload,
   ResetPasswordPayload,
   ApiErrorResponse,
+  UserType,
 } from './auth.types';
 
 const API_BASE_URL = environment.apiBaseUrl;
@@ -66,7 +67,7 @@ async function handleApiError(response: Response): Promise<never> {
 /**
  * Generic request helper to reduce boilerplate
  */
-async function apiRequest<T>(endpoint: string, method: string, body?: unknown): Promise<T> {
+async function apiRequest<T>(endpoint: string, method: string, body?: unknown, token?: string): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   
   console.log(`Making ${method} request to:`, url);
@@ -74,12 +75,18 @@ async function apiRequest<T>(endpoint: string, method: string, body?: unknown): 
     console.log('Request body:', body);
   }
   
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   try {
     const response = await fetch(url, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
 
@@ -123,5 +130,9 @@ export class AuthService {
 
   static async resetPassword(payload: ResetPasswordPayload): Promise<void> {
     return apiRequest<void>('/identity/reset-password', 'POST', payload);
+  }
+
+  static async getUserProfile(token: string): Promise<UserType> {
+    return apiRequest<UserType>('/identity/profile', 'GET', undefined, token);
   }
 }
