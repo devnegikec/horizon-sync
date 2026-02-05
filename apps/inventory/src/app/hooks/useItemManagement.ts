@@ -27,7 +27,7 @@ export function useItemManagement() {
     currentPageSize 
   } = useItems(1, 20, filters);
   
-  const { itemGroups } = useItemGroups();
+  const { itemGroups, refetch: refetchItemGroups } = useItemGroups();
 
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -88,6 +88,7 @@ export function useItemManagement() {
     setFilters,
     items,
     itemGroups,
+    refetchItemGroups,
     loading,
     error,
     refetch,

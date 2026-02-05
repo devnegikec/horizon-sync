@@ -23,6 +23,7 @@ export function ItemManagement() {
     setFilters,
     items,
     itemGroups,
+    refetchItemGroups,
     loading,
     error,
     refetch,
@@ -140,7 +141,8 @@ export function ItemManagement() {
         itemGroups={itemGroups} 
         onSave={handleSaveItem} 
         onCreated={refetch} 
-        onUpdated={refetch}/>
+        onUpdated={refetch}
+        onItemGroupsRefresh={refetchItemGroups}/>
       
       <ItemDetailDialog open={detailDialogOpen} 
         onOpenChange={setDetailDialogOpen} 

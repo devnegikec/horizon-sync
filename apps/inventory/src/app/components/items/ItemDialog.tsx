@@ -19,9 +19,19 @@ interface ItemDialogProps {
   onSave: (item: Partial<Item>) => void;
   onCreated?: () => void;
   onUpdated?: () => void;
+  onItemGroupsRefresh?: () => void;
 }
 
-export function ItemDialog({ open, onOpenChange, item, itemGroups, onSave, onCreated, onUpdated }: ItemDialogProps) {
+export function ItemDialog({ 
+  open, 
+  onOpenChange, 
+  item, 
+  itemGroups, 
+  onSave, 
+  onCreated, 
+  onUpdated, 
+  onItemGroupsRefresh 
+}: ItemDialogProps) {
   const isEditing = !!item;
 
   const { formData, setFormData } = useItemForm({ item, open });
@@ -53,7 +63,12 @@ export function ItemDialog({ open, onOpenChange, item, itemGroups, onSave, onCre
         <ItemDialogHeader isEditing={isEditing} />
 
         <form onSubmit={handleFormSubmit}>
-          <ItemFormFields formData={formData} setFormData={setFormData} itemGroups={itemGroups} />
+          <ItemFormFields 
+            formData={formData} 
+            setFormData={setFormData} 
+            itemGroups={itemGroups}
+            onItemGroupsRefresh={onItemGroupsRefresh}
+          />
 
           <ItemDialogFooter isEditing={isEditing} isLoading={isLoading} onCancel={handleCancel} submitError={error} />
         </form>
