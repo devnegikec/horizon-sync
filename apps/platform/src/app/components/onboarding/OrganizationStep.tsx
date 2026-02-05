@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
 import { useAuth } from '../../hooks/useAuth';
-import { useOnboardingStore } from '../../hooks/useOnboardingStore';
+import { useOnboardingStore, type OnboardingData } from '../../hooks/useOnboardingStore';
 import { OrganizationService } from '../../services/organization.service';
 
 const organizationSchema = z.object({
@@ -100,7 +100,7 @@ const IndustryAndSizeFields = ({
   setValue,
   errors,
 }: {
-  data: any;
+  data: OnboardingData;
   setValue: UseFormSetValue<OrganizationFormData>;
   errors: FieldErrors<OrganizationFormData>;
 }) => (
