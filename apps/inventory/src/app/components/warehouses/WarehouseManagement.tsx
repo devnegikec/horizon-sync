@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 import { type Table } from '@tanstack/react-table';
 import {
@@ -9,11 +9,7 @@ import {
   Store,
 } from 'lucide-react';
 
-import { DataTableViewOptions } from '@horizon-sync/ui/components/data-table/DataTableViewOptions';
-import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
-import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
+import { Card, CardContent, Button, DataTableViewOptions, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useWarehouses, useWarehouseMutations } from '../../hooks/useWarehouses';
@@ -50,49 +46,55 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 }
 
 export function WarehouseManagement() {
-  const { warehouses, pagination, statusCounts, typeCounts, loading, error, refetch } = useWarehouses(1, 50);
-  const { deleteWarehouse } = useWarehouseMutations();
-  const [filters, setFilters] = React.useState<WarehouseFilters>({
+  const [filters, setFilters] = useState<WarehouseFilters>({
     search: '',
     warehouseType: 'all',
     status: 'all',
   });
-  const [warehouseDialogOpen, setWarehouseDialogOpen] = React.useState(false);
-  const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
-  const [selectedWarehouse, setSelectedWarehouse] = React.useState<Warehouse | null>(null);
-  const [tableInstance, setTableInstance] = React.useState<Table<Warehouse> | null>(null);
 
-  const filteredWarehouses = React.useMemo(() => {
-    return warehouses.filter((warehouse) => {
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const matchesSearch = 
-          warehouse.name.toLowerCase().includes(searchLower) ||
-          warehouse.code.toLowerCase().includes(searchLower) ||
-          (warehouse.city || '').toLowerCase().includes(searchLower);
-        if (!matchesSearch) return false;
-      }
+  const { warehouses, pagination, statusCounts, typeCounts, loading, error, refetch, setPage, setPageSize, currentPage, currentPageSize } = useWarehouses(1, 20, filters);
+  const { deleteWarehouse } = useWarehouseMutations();
+  const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
+  const [tableInstance, setTableInstance] = useState<Table<Warehouse> | null>(null);
 
-      if (filters.warehouseType !== 'all' && warehouse.warehouse_type !== filters.warehouseType) {
-        return false;
-      }
+  // Reset to first page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filters, setPage]);
 
-      if (filters.status !== 'all') {
-        const isActive = filters.status === 'active';
-        if (warehouse.is_active !== isActive) return false;
-      }
+  // const filteredWarehouses = useMemo(() => {
+  //   return warehouses.filter((warehouse) => {
+  //     if (filters.search) {
+  //       const searchLower = filters.search.toLowerCase();
+  //       const matchesSearch =
+  //         warehouse.name.toLowerCase().includes(searchLower) ||
+  //         warehouse.code.toLowerCase().includes(searchLower) ||
+  //         (warehouse.city || '').toLowerCase().includes(searchLower);
+  //       if (!matchesSearch) return false;
+  //     }
 
-      return true;
-    });
-  }, [warehouses, filters]);
+  //     if (filters.warehouseType !== 'all' && warehouse.warehouse_type !== filters.warehouseType) {
+  //       return false;
+  //     }
 
-  const stats = React.useMemo(() => {
-    const total = pagination?.total_items ?? warehouses.length;
-    const active = statusCounts?.active ?? warehouses.filter((w) => w.is_active).length;
-    const warehouseCount = typeCounts?.warehouse ?? warehouses.filter((w) => w.warehouse_type === 'warehouse').length;
-    const storeCount = typeCounts?.store ?? warehouses.filter((w) => w.warehouse_type === 'store').length;
+  //     if (filters.status !== 'all') {
+  //       const isActive = filters.status === 'active';
+  //       if (warehouse.is_active !== isActive) return false;
+  //     }
+
+  //     return true;
+  //   });
+  // }, [warehouses, filters]);
+
+  const stats = useMemo(() => {
+    const total = pagination?.total_items ?? 0;
+    const active = statusCounts?.active ?? 0;
+    const warehouseCount = typeCounts?.warehouse ?? 0;
+    const storeCount = typeCounts?.store ?? 0;
     return { total, active, warehouseCount, storeCount };
-  }, [warehouses, pagination, statusCounts, typeCounts]);
+  }, [pagination, statusCounts, typeCounts]);
 
   const handleCreateWarehouse = () => {
     setSelectedWarehouse(null);
@@ -123,6 +125,15 @@ export function WarehouseManagement() {
   const handleTableReady = (table: Table<Warehouse>) => {
     setTableInstance(table);
   };
+  const serverPaginationConfig = useMemo(() => ({
+      pageIndex: currentPage - 1, // DataTable uses 0-based indexing
+      pageSize: currentPageSize,
+      totalItems: pagination?.total_items ?? 0,
+      onPaginationChange: (pageIndex: number, newPageSize: number) => {
+        setPage(pageIndex + 1); // Convert back to 1-based for API
+        setPageSize(newPageSize);
+      }
+    }), [currentPage, currentPageSize, pagination?.total_items, setPage, setPageSize]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -186,7 +197,7 @@ export function WarehouseManagement() {
       </div>
 
       {/* Warehouses Table */}
-      <WarehousesTable warehouses={filteredWarehouses} loading={loading} error={error} hasActiveFilters={!!filters.search || filters.warehouseType !== 'all' || filters.status !== 'all'} onView={handleViewWarehouse} onEdit={handleEditWarehouse} onDelete={handleDeleteWarehouse} onCreateWarehouse={handleCreateWarehouse} onTableReady={handleTableReady} />
+      <WarehousesTable warehouses={warehouses} loading={loading} error={error} hasActiveFilters={!!filters.search || filters.warehouseType !== 'all' || filters.status !== 'all'} onView={handleViewWarehouse} onEdit={handleEditWarehouse} onDelete={handleDeleteWarehouse} onCreateWarehouse={handleCreateWarehouse} onTableReady={handleTableReady} serverPagination={serverPaginationConfig}/>
 
       {/* Dialogs */}
       <WarehouseDialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen} warehouse={selectedWarehouse} warehouses={warehouses} onCreated={refetch} onUpdated={refetch} />

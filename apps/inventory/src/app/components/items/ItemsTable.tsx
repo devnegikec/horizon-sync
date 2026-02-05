@@ -3,11 +3,8 @@ import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { Package, Plus, MoreHorizontal, Eye, Edit, Power, PowerOff } from 'lucide-react';
 
-import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import { TableSkeleton, Badge, Button, Card, CardContent } from '@horizon-sync/ui/components'
-// import { Badge } from '@horizon-sync/ui/components/ui/badge';
-// import { Button } from '@horizon-sync/ui/components/ui/button';
-// import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
+import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +37,7 @@ export interface ItemsTableProps {
 
 export function ItemsTable({ items, loading, error, hasActiveFilters, onView, onEdit, onToggleStatus, onCreateItem, onTableReady, serverPagination }: ItemsTableProps) {
   const tableReadyRef = React.useRef<((table: Table<ApiItem>) => void) | undefined>(onTableReady);
-  
+
   // Update ref when onTableReady changes
   React.useEffect(() => {
     tableReadyRef.current = onTableReady;
@@ -49,7 +46,7 @@ export function ItemsTable({ items, loading, error, hasActiveFilters, onView, on
   // Create server pagination config for DataTable
   const serverPaginationConfig = React.useMemo(() => {
     if (!serverPagination) return undefined;
-    
+
     return {
       totalItems: serverPagination.totalItems,
       currentPage: serverPagination.pageIndex + 1, // Convert 0-based to 1-based
