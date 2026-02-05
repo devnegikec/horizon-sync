@@ -102,18 +102,14 @@ export function ItemDetailDialog({ open, onOpenChange, item }: ItemDetailDialogP
             <div className="rounded-lg border p-4">
               <h4 className="text-sm font-semibold mb-3">Stock Information</h4>
               <div className="flex items-center gap-4">
-                <div
-                  className={cn(
+                <div className={cn(
                     'flex h-16 w-16 items-center justify-center rounded-xl',
                     item.currentStock > 50 ? 'bg-emerald-500/10' : item.currentStock > 0 ? 'bg-amber-500/10' : 'bg-destructive/10',
-                  )}
-                >
-                  <Archive
-                    className={cn(
+                  )}>
+                  <Archive className={cn(
                       'h-8 w-8',
                       item.currentStock > 50 ? 'text-emerald-500' : item.currentStock > 0 ? 'text-amber-500' : 'text-destructive',
-                    )}
-                  />
+                    )}/>
                 </div>
                 <div>
                   <p className="text-3xl font-bold">{item.currentStock}</p>

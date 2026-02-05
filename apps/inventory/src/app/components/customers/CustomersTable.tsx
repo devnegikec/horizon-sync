@@ -97,8 +97,7 @@ export function CustomersTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable<Customer, unknown> 
-          columns={columns} 
+        <DataTable columns={columns} 
           data={customers} 
           config={{ 
             showSerialNumber: true, 
@@ -112,8 +111,7 @@ export function CustomersTable({
           filterPlaceholder="Search by name, code, email, or phone..." 
           renderViewOptions={renderViewOptions}
           fixedHeader 
-          maxHeight="600px" 
-        />
+          maxHeight="600px"/>
       </CardContent>
     </Card>
   );

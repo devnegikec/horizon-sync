@@ -74,16 +74,14 @@ export function OnboardingWizard() {
             return (
               <React.Fragment key={step.id}>
                 <div className="flex flex-col items-center gap-2">
-                  <div
-                    className={cn(
+                  <div className={cn(
                       'h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300',
                       isCompleted
                         ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white'
                         : isActive
                           ? 'bg-gradient-to-br from-[#3058EE] to-[#7D97F6] text-white shadow-lg shadow-[#3058EE]/25'
                           : 'bg-muted text-muted-foreground',
-                    )}
-                  >
+                    )}>
                     {isCompleted ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
                   </div>
                   <div className="text-center">
@@ -91,12 +89,10 @@ export function OnboardingWizard() {
                   </div>
                 </div>
                 {index < steps.length - 1 && (
-                  <div
-                    className={cn(
+                  <div className={cn(
                       'flex-1 h-0.5 mx-2 mb-6 transition-all duration-300',
                       currentStep > step.id ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' : 'bg-border',
-                    )}
-                  />
+                    )}/>
                 )}
               </React.Fragment>
             );

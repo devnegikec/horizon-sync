@@ -100,13 +100,11 @@ export function ResetPasswordForm() {
             <Label htmlFor="password">
               New Password <span className="text-destructive">*</span>
             </Label>
-            <Input
-              id="password"
+            <Input id="password"
               type="password"
               placeholder="••••••••"
               {...register('password')}
-              className={errors.password ? 'border-destructive' : ''}
-            />
+              className={errors.password ? 'border-destructive' : ''}/>
             {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
           </div>
 
@@ -114,13 +112,11 @@ export function ResetPasswordForm() {
             <Label htmlFor="confirm_password">
               Confirm New Password <span className="text-destructive">*</span>
             </Label>
-            <Input
-              id="confirm_password"
+            <Input id="confirm_password"
               type="password"
               placeholder="••••••••"
               {...register('confirm_password')}
-              className={errors.confirm_password ? 'border-destructive' : ''}
-            />
+              className={errors.confirm_password ? 'border-destructive' : ''}/>
             {errors.confirm_password && <p className="text-sm text-destructive">{errors.confirm_password.message}</p>}
           </div>
 
@@ -137,11 +133,9 @@ export function ResetPasswordForm() {
             </div>
           )}
 
-          <Button
-            type="submit"
+          <Button type="submit"
             className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
-            disabled={isSubmitting}
-          >
+            disabled={isSubmitting}>
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -8,12 +8,10 @@ import App from './app/app';
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
   <StrictMode>
-    <BrowserRouter
-      future={{
+    <BrowserRouter future={{
         v7_startTransition: true,
         v7_relativeSplatPath: true,
-      }}
-    >
+      }}>
       <App />
     </BrowserRouter>
   </StrictMode>,

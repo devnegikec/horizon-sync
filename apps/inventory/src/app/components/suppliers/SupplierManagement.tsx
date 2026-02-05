@@ -237,43 +237,33 @@ export function SupplierManagement() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Links"
+        <StatCard title="Total Links"
           value={stats.total}
           icon={Link2}
           iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"
-        />
-        <StatCard
-          title="Default Suppliers"
+          iconColor="text-slate-600 dark:text-slate-400"/>
+        <StatCard title="Default Suppliers"
           value={stats.defaultSuppliers}
           icon={Star}
           iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"
-        />
-        <StatCard
-          title="Items with Suppliers"
+          iconColor="text-amber-600 dark:text-amber-400"/>
+        <StatCard title="Items with Suppliers"
           value={stats.uniqueItems}
           icon={Package}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"
-        />
-        <StatCard
-          title="Active Suppliers"
+          iconColor="text-emerald-600 dark:text-emerald-400"/>
+        <StatCard title="Active Suppliers"
           value={stats.uniqueSuppliers}
           icon={Truck}
           iconBg="bg-blue-100 dark:bg-blue-900/20"
-          iconColor="text-blue-600 dark:text-blue-400"
-        />
+          iconColor="text-blue-600 dark:text-blue-400"/>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <SearchInput
-          className="sm:w-80"
+        <SearchInput className="sm:w-80"
           placeholder="Search by item, supplier, or part no..."
-          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
-        />
+          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
         <div className="flex gap-3">
           <Select value={filters.supplierId} onValueChange={(value) => setFilters((prev) => ({ ...prev, supplierId: value }))}>
             <SelectTrigger className="w-[180px]">
@@ -330,8 +320,7 @@ export function SupplierManagement() {
               ) : filteredItemSuppliers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7}>
-                    <EmptyState
-                      icon={<Link2 className="h-12 w-12" />}
+                    <EmptyState icon={<Link2 className="h-12 w-12" />}
                       title="No item-supplier links found"
                       description={
                         filters.search || filters.supplierId !== 'all' || filters.itemId !== 'all'
@@ -347,20 +336,17 @@ export function SupplierManagement() {
                             Link Item to Supplier
                           </Button>
                         )
-                      }
-                    />
+                      }/>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredItemSuppliers.map((itemSupplier) => (
-                  <ItemSupplierRow
-                    key={itemSupplier.id}
+                  <ItemSupplierRow key={itemSupplier.id}
                     itemSupplier={itemSupplier}
                     itemName={itemMap.get(itemSupplier.item_id) || 'Unknown Item'}
                     supplierName={supplierMap.get(itemSupplier.supplier_id) || 'Unknown Supplier'}
                     onEdit={handleEditLink}
-                    onDelete={handleDeleteLink}
-                  />
+                    onDelete={handleDeleteLink}/>
                 ))
               )}
             </TableBody>
@@ -369,15 +355,13 @@ export function SupplierManagement() {
       </Card>
 
       {/* Dialog */}
-      <ItemSupplierDialog
-        open={dialogOpen}
+      <ItemSupplierDialog open={dialogOpen}
         onOpenChange={setDialogOpen}
         itemSupplier={selectedItemSupplier}
         items={items}
         suppliers={mockSuppliers}
         onCreated={refetch}
-        onUpdated={refetch}
-      />
+        onUpdated={refetch}/>
     </div>
   );
 }

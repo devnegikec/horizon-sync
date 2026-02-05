@@ -253,13 +253,11 @@ export function ItemDialog({ open, onOpenChange, item, itemGroups, onSave, onCre
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="itemCode">Item Code</Label>
-                <Input
-                  id="itemCode"
+                <Input id="itemCode"
                   value={formData.itemCode}
                   onChange={(e) => setFormData({ ...formData, itemCode: e.target.value })}
                   placeholder="e.g., ELEC-001"
-                  required
-                />
+                  required/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="unitOfMeasure">Unit of Measure</Label>
@@ -279,23 +277,19 @@ export function ItemDialog({ open, onOpenChange, item, itemGroups, onSave, onCre
             </div>
             <div className="space-y-2">
               <Label htmlFor="name">Item Name</Label>
-              <Input
-                id="name"
+              <Input id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Enter item name"
-                required
-              />
+                required/>
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
+              <Textarea id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Enter item description"
-                rows={3}
-              />
+                rows={3}/>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -315,16 +309,14 @@ export function ItemDialog({ open, onOpenChange, item, itemGroups, onSave, onCre
               </div>
               <div className="space-y-2">
                 <Label htmlFor="defaultPrice">Default Price</Label>
-                <Input
-                  id="defaultPrice"
+                <Input id="defaultPrice"
                   type="number"
                   step="0.01"
                   min="0"
                   value={formData.defaultPrice}
                   onChange={(e) => setFormData({ ...formData, defaultPrice: e.target.value })}
                   placeholder="0.00"
-                  required
-                />
+                  required/>
               </div>
             </div>
           </div>

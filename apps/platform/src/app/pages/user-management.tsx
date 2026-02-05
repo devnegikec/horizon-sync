@@ -165,10 +165,8 @@ export function UserManagementPage() {
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button
-            onClick={() => setInviteModalOpen(true)}
-            className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
-          >
+          <Button onClick={() => setInviteModalOpen(true)}
+            className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
             <UserPlus className="h-4 w-4" />
             Invite User
           </Button>
@@ -177,28 +175,22 @@ export function UserManagementPage() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Users"
+        <StatCard title="Total Users"
           value={stats.total}
           icon={Users}
           iconBg="bg-slate-100 dark:bg-slate-800"
           iconColor="text-slate-600 dark:text-slate-400"
-          badge={{ text: '+12%', variant: 'success' }}
-        />
-        <StatCard
-          title="Active Users"
+          badge={{ text: '+12%', variant: 'success' }}/>
+        <StatCard title="Active Users"
           value={stats.active}
           icon={UserCheck}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"
-        />
-        <StatCard
-          title="Pending Invites"
+          iconColor="text-emerald-600 dark:text-emerald-400"/>
+        <StatCard title="Pending Invites"
           value={stats.pending}
           icon={UserLockIcon}
           iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"
-        />
+          iconColor="text-amber-600 dark:text-amber-400"/>
         <StatCard title="MFA Enabled" value={stats.mfaEnabled} icon={Shield} iconBg="bg-[#3058EE]/10" iconColor="text-[#3058EE]" />
       </div>
 

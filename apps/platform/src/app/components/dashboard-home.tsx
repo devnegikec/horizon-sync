@@ -172,11 +172,9 @@ export function DashboardHome() {
           {/* Placeholder Chart */}
           <div className="h-[300px] flex items-end justify-between gap-2 px-4">
             {[40, 65, 45, 80, 55, 70, 85, 60, 75, 90, 70, 95].map((height, index) => (
-              <div
-                key={index}
+              <div key={index}
                 className="flex-1 bg-gradient-to-t from-violet-500 to-fuchsia-500 rounded-t-md opacity-80 hover:opacity-100 transition-all duration-300 cursor-pointer hover:scale-y-105 origin-bottom"
-                style={{ height: `${height}%` }}
-              />
+                style={{ height: `${height}%` }}/>
             ))}
           </div>
           <div className="flex justify-between mt-4 px-4 text-xs text-muted-foreground">
@@ -228,11 +226,9 @@ export function DashboardHome() {
             { label: 'View Reports', icon: TrendingUp },
             { label: 'System Settings', icon: Activity },
           ].map((action) => (
-            <Button
-              key={action.label}
+            <Button key={action.label}
               variant="outline"
-              className="h-auto py-4 flex-col gap-2 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all"
-            >
+              className="h-auto py-4 flex-col gap-2 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all">
               <action.icon className="h-5 w-5 text-violet-500" />
               <span>{action.label}</span>
             </Button>

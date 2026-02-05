@@ -94,8 +94,7 @@ export function WarehouseDetailDialog({ open, onOpenChange, warehouse }: Warehou
             <>
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold">Address</h4>
-                <DetailRow
-                  icon={MapPin}
+                <DetailRow icon={MapPin}
                   label="Location"
                   value={
                     <span className="whitespace-pre-line">
@@ -109,8 +108,7 @@ export function WarehouseDetailDialog({ open, onOpenChange, warehouse }: Warehou
                         .filter(Boolean)
                         .join('\n')}
                     </span>
-                  }
-                />
+                  }/>
               </div>
               <Separator />
             </>
@@ -134,11 +132,9 @@ export function WarehouseDetailDialog({ open, onOpenChange, warehouse }: Warehou
             <>
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold">Capacity</h4>
-                <DetailRow
-                  icon={Boxes}
+                <DetailRow icon={Boxes}
                   label="Total Capacity"
-                  value={warehouse.total_capacity ? `${warehouse.total_capacity.toLocaleString()} ${warehouse.capacity_uom || ''}` : '—'}
-                />
+                  value={warehouse.total_capacity ? `${warehouse.total_capacity.toLocaleString()} ${warehouse.capacity_uom || ''}` : '—'}/>
               </div>
               <Separator />
             </>

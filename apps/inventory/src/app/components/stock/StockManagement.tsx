@@ -201,34 +201,26 @@ export function StockManagement() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total On Hand"
+        <StatCard title="Total On Hand"
           value={stats.totalOnHand.toLocaleString()}
           icon={Boxes}
           iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"
-        />
-        <StatCard
-          title="Available"
+          iconColor="text-slate-600 dark:text-slate-400"/>
+        <StatCard title="Available"
           value={stats.totalAvailable.toLocaleString()}
           icon={Package}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"
-        />
-        <StatCard
-          title="Reserved"
+          iconColor="text-emerald-600 dark:text-emerald-400"/>
+        <StatCard title="Reserved"
           value={stats.totalReserved.toLocaleString()}
           icon={ClipboardCheck}
           iconBg="bg-blue-100 dark:bg-blue-900/20"
-          iconColor="text-blue-600 dark:text-blue-400"
-        />
-        <StatCard
-          title="Low Stock Items"
+          iconColor="text-blue-600 dark:text-blue-400"/>
+        <StatCard title="Low Stock Items"
           value={stats.lowStockCount}
           icon={AlertTriangle}
           iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"
-        />
+          iconColor="text-amber-600 dark:text-amber-400"/>
       </div>
 
       {/* Tabs */}
@@ -285,11 +277,9 @@ export function StockManagement() {
                   ) : stockLevels.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7}>
-                        <EmptyState
-                          icon={<Boxes className="h-12 w-12" />}
+                        <EmptyState icon={<Boxes className="h-12 w-12" />}
                           title="No stock levels found"
-                          description="Stock levels will appear here once items are added to warehouses"
-                        />
+                          description="Stock levels will appear here once items are added to warehouses"/>
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -352,8 +342,7 @@ export function StockManagement() {
                   ) : stockMovements.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6}>
-                        <EmptyState
-                          icon={<ArrowRightLeft className="h-12 w-12" />}
+                        <EmptyState icon={<ArrowRightLeft className="h-12 w-12" />}
                           title="No movements found"
                           description="Stock movements will appear here as they are recorded"
                           action={
@@ -361,8 +350,7 @@ export function StockManagement() {
                               <Plus className="h-4 w-4" />
                               Record Movement
                             </Button>
-                          }
-                        />
+                          }/>
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -430,8 +418,7 @@ export function StockManagement() {
                   ) : stockEntries.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7}>
-                        <EmptyState
-                          icon={<FileText className="h-12 w-12" />}
+                        <EmptyState icon={<FileText className="h-12 w-12" />}
                           title="No stock entries found"
                           description="Create stock entries for material receipts, issues, or transfers"
                           action={
@@ -439,8 +426,7 @@ export function StockManagement() {
                               <Plus className="h-4 w-4" />
                               New Entry
                             </Button>
-                          }
-                        />
+                          }/>
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -524,11 +510,9 @@ export function StockManagement() {
                   ) : reconciliations.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6}>
-                        <EmptyState
-                          icon={<ClipboardCheck className="h-12 w-12" />}
+                        <EmptyState icon={<ClipboardCheck className="h-12 w-12" />}
                           title="No reconciliations found"
-                          description="Stock reconciliations help compare physical counts with system records"
-                        />
+                          description="Stock reconciliations help compare physical counts with system records"/>
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -562,25 +546,21 @@ export function StockManagement() {
       </Tabs>
 
       {/* Dialogs */}
-      <StockMovementDialog
-        open={movementDialogOpen}
+      <StockMovementDialog open={movementDialogOpen}
         onOpenChange={setMovementDialogOpen}
         warehouses={warehouses}
         items={items}
         onCreated={() => {
           refetchMovements();
           refetchLevels();
-        }}
-      />
-      <StockEntryDialog
-        open={entryDialogOpen}
+        }}/>
+      <StockEntryDialog open={entryDialogOpen}
         onOpenChange={setEntryDialogOpen}
         entry={selectedEntry}
         warehouses={warehouses}
         items={items}
         onCreated={refetchEntries}
-        onUpdated={refetchEntries}
-      />
+        onUpdated={refetchEntries}/>
     </div>
   );
 }

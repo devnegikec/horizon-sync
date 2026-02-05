@@ -23,11 +23,9 @@ interface NavItemProps {
 
 function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
   return (
-    <Button
-      variant={isActive ? 'default' : 'ghost'}
+    <Button variant={isActive ? 'default' : 'ghost'}
       className={cn('gap-2 justify-start', isActive && 'bg-primary text-primary-foreground')}
-      onClick={onClick}
-    >
+      onClick={onClick}>
       <Icon className="h-4 w-4" />
       {label}
     </Button>

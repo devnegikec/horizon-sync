@@ -166,13 +166,11 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
             <Label htmlFor="email">
               Email Address <span className="text-destructive">*</span>
             </Label>
-            <Input
-              id="email"
+            <Input id="email"
               type="email"
               placeholder="user@example.com"
               {...register('email')}
-              className={errors.email ? 'border-destructive' : ''}
-            />
+              className={errors.email ? 'border-destructive' : ''}/>
             {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             <p className="text-xs text-muted-foreground">Invitation will be sent to this email</p>
           </div>
@@ -232,15 +230,11 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
                   <div className="grid grid-cols-2 gap-3">
                     {group.permissions.map((permission, permissionIndex) => (
                       <div key={permission.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={permission.id}
+                        <Checkbox id={permission.id}
                           checked={permission.checked}
-                          onCheckedChange={() => togglePermission(groupIndex, permissionIndex)}
-                        />
-                        <label
-                          htmlFor={permission.id}
-                          className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                        >
+                          onCheckedChange={() => togglePermission(groupIndex, permissionIndex)}/>
+                        <label htmlFor={permission.id}
+                          className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
                           {permission.label}
                         </label>
                       </div>
