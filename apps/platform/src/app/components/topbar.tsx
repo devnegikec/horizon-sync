@@ -20,12 +20,12 @@ import { useAuth } from '../hooks';
 
 interface TopbarProps {
   sidebarCollapsed: boolean;
-  sidebarOpen: boolean;
-  isMobile: boolean;
+  // sidebarOpen: boolean;
+  // isMobile: boolean;
   onToggleSidebar: () => void;
 }
 
-export function Topbar({ sidebarCollapsed, sidebarOpen, isMobile, onToggleSidebar }: TopbarProps) {
+export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -109,7 +109,7 @@ export function Topbar({ sidebarCollapsed, sidebarOpen, isMobile, onToggleSideba
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/profile')}>Profile</DropdownMenuItem>
             <DropdownMenuItem>Billing</DropdownMenuItem>
             <DropdownMenuItem>Team</DropdownMenuItem>
             <DropdownMenuSeparator />

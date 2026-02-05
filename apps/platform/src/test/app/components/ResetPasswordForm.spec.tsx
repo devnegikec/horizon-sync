@@ -5,11 +5,11 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, useSearchParams } from 'react-router-dom';
 
-import { ResetPasswordForm } from '@platform/app/components';
-import { AuthService } from '@platform/app/services/auth.service';
+import { ResetPasswordForm } from '../../../app/components/auth/ResetPasswordForm';
+import { AuthService } from '../../../app/services/auth.service';
 
 // Mock dependencies
-jest.mock('@platform/app/services/auth.service');
+jest.mock('../../../app/services/auth.service');
 jest.mock('../../../assets/ciphercode_logo.png', () => 'mock-logo.png');
 
 const mockNavigate = jest.fn();
