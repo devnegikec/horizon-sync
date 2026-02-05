@@ -18,18 +18,40 @@ export function useRegistrationForm() {
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    defaultValues: {
+      email: '',
+      first_name: '',
+      last_name: '',
+      phone: '',
+      password: '',
+      confirm_password: '',
+    },
   });
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsSubmitting(true);
     try {
-      const response = await AuthService.register(data);
+      // Prepare payload for API (exclude confirm_password)
+      const payload = {
+        email: data.email,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: data.phone,
+        password: data.password,
+      };
+
+      console.log('Registration payload:', payload);
+      
+      const response = await AuthService.register(payload);
+      
+      console.log('Registration response:', response);
 
       toast({
         title: 'Registration successful!',
         description: 'Your account has been created successfully.',
       });
 
+      // Login the user with the response data
       login(response.access_token, response.refresh_token, {
         id: response.user.id,
         email: response.user.email,
@@ -38,12 +60,15 @@ export function useRegistrationForm() {
         phone: response.user.phone,
       });
 
-      setTimeout(() => navigate('/onboarding'), 2000);
+      // Navigate to onboarding after a short delay
+      setTimeout(() => navigate('/'), 200);
     } catch (error) {
+      console.error('Registration error:', error);
+      
       toast({
         variant: 'destructive',
         title: 'Registration failed',
-        description: error instanceof Error ? error.message : 'An unexpected error occurred.',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.',
       });
     } finally {
       setIsSubmitting(false);
@@ -55,5 +80,7 @@ export function useRegistrationForm() {
     handleSubmit: form.handleSubmit(onSubmit),
     errors: form.formState.errors,
     isSubmitting,
+    reset: form.reset,
+    watch: form.watch,
   };
 }
