@@ -5,11 +5,11 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 
-import { RegistrationForm } from '@platform/app/components';
-import { AuthService } from '@platform/app/services/auth.service';
+import { RegistrationForm } from '../../../app/components/auth/RegistrationForm';
+import { AuthService } from '../../../app/services/auth.service';
 
 // Mock dependencies
-jest.mock('@platform/app/services/auth.service');
+jest.mock('../../../app/services/auth.service');
 jest.mock('@horizon-sync/ui/hooks/use-toast');
 jest.mock('../../../assets/ciphercode_logo.png', () => 'mock-logo.png');
 
@@ -20,7 +20,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockLogin = jest.fn();
-jest.mock('@platform/app/hooks', () => ({
+jest.mock('../../../app/hooks', () => ({
   useAuth: jest.fn(() => ({ login: mockLogin })),
 }));
 

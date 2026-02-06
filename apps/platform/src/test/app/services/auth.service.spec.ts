@@ -1,4 +1,4 @@
-import { AuthService } from '@platform/app/services/auth.service';
+import { AuthService } from '../../../app/services/auth.service';
 
 describe('AuthService', () => {
   const originalFetch = global.fetch;

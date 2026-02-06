@@ -23,14 +23,33 @@ export function useLoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     setStatus({ loading: true, error: '', success: '' });
     try {
-      const res = await AuthService.login(data);
+      const response = await AuthService.login(data);
       setStatus((s) => ({ ...s, success: 'Login successful!' }));
-      
+
       // Login with basic user data from login response
-      login(res.access_token, res.refresh_token, {
-        email: res.email,
-        organization_id: res.organization_id,
-        id: res.user_id,
+      login(response.access_token, response.refresh_token, {
+        id: response.user.id,
+        email: response.user.email,
+        first_name: response.user.first_name,
+        last_name: response.user.last_name,
+        display_name: response.user.display_name,
+        phone: response.user.phone,
+        avatar_url: response.user.avatar_url,
+        user_type: response.user.user_type,
+        status: response.user.status,
+        is_active: response.user.is_active,
+        email_verified: response.user.email_verified,
+        email_verified_at: response.user.email_verified_at,
+        last_login_at: response.user.last_login_at,
+        last_login_ip: response.user.last_login_ip,
+        timezone: response.user.timezone,
+        language: response.user.language,
+        organization_id: response.user.organization_id,
+        job_title: response.user.job_title,
+        department: response.user.department,
+        bio: response.user.bio,
+        preferences: response.user.preferences,
+        extra_data: response.user.extra_data,
       });
 
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';

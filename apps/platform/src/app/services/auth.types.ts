@@ -46,6 +46,7 @@ export interface LoginPayload {
 }
 
 export interface LoginResponse {
+  user: UserType;
   access_token: string;
   refresh_token: string;
   token_type: string;

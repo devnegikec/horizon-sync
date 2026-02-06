@@ -62,7 +62,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
           {/* Main Content Area */}
           <div className="flex flex-1 flex-col overflow-hidden">
-            <Topbar sidebarCollapsed={sidebarCollapsed} sidebarOpen={sidebarOpen} isMobile={isMobile} onToggleSidebar={handleToggleSidebar} />
+            <Topbar sidebarCollapsed={sidebarCollapsed} onToggleSidebar={handleToggleSidebar} />
 
             {/* Page Content */}
             <main className="flex-1 overflow-y-auto">
