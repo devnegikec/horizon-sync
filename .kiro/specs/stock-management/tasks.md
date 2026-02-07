@@ -203,7 +203,7 @@ This implementation plan breaks down the Stock Management feature into increment
   - **Property 9: Status-based action button rendering**
   - **Validates: Requirements 4.8, 4.9**
 
-- [ ] 11. Implement main StockManagement component
+- [-] 11. Implement main StockManagement component
   - Create `StockManagement.tsx` main container component
   - Implement tab navigation (Stock Levels, Stock Movements, Stock Entries, Stock Reconciliations)
   - Manage active tab state
@@ -213,7 +213,7 @@ This implementation plan breaks down the Stock Management feature into increment
   - Ensure filter state resets when switching tabs
   - _Requirements: 6.1, 8.4, 8.5_
 
-- [ ] 11.1 Write unit tests for StockManagement component
+- [x] 11.1 Write unit tests for StockManagement component
   - Test all tabs render correctly
   - Test tab switching works
   - Test active tab state management
