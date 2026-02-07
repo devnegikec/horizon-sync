@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { type Table } from '@tanstack/react-table';
 import { Users, UserCheck, UserLockIcon, Shield, Download, UserPlus } from 'lucide-react';
@@ -51,6 +52,7 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 }
 
 export function UserManagement() {
+  const navigate = useNavigate();
   const { accessToken } = useAuth();
   const [filters, setFilters] = useState<UserFilters>({
     search: '',
@@ -121,6 +123,10 @@ export function UserManagement() {
           <p className="text-muted-foreground mt-1">Manage team members, roles, and access permissions</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="outline" className="gap-2" onClick={() => navigate('/users/roles')}>
+            <Shield className="h-4 w-4" />
+            Manage Roles
+          </Button>
           <Button variant="outline" className="gap-2">
             <Download className="h-4 w-4" />
             Export

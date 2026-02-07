@@ -4,7 +4,7 @@ import { Route, Routes } from 'react-router-dom';
 
 import { DashboardLayout, DashboardHome, AuthGuard, PublicRoute } from './components';
 import { PlaceholderPage } from './components/PlaceholderPage';
-import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage } from './pages';
+import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage } from './pages';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 
@@ -44,6 +44,7 @@ function ProtectedRouteWrapper() {
           <Route path="/subscriptions" element={<SubscriptionManagementPage />} />
           <Route path="/analytics" element={<AnalyticsPlaceholder />} />
           <Route path="/users" element={<UserManagementPage />} />
+          <Route path="/users/roles" element={<RoleManagementPage />} />
           <Route path="/reports" element={<ReportsPlaceholder />} />
           <Route path="/settings" element={<SettingsPlaceholder />} />
           <Route path="/help" element={<HelpPlaceholder />} />

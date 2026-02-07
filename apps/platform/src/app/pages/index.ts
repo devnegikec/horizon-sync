@@ -6,3 +6,4 @@ export * from './forgot-password';
 export * from './reset-password';
 export * from './onboarding';
 export * from './profile';
+export * from './RoleManagementPage';
