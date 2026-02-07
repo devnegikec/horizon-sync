@@ -166,7 +166,7 @@ This implementation plan breaks down the Stock Management feature into increment
   - **Property 9: Status-based action button rendering**
   - **Validates: Requirements 3.8, 3.9**
 
-- [ ] 9. Implement Stock Reconciliations custom hook
+- [x] 9. Implement Stock Reconciliations custom hook
   - Create `useStockReconciliations.ts` hook with pagination, filtering, and search support
   - Implement API call to GET /api/v1/stock-reconciliations with query parameters
   - Handle loading, error, and success states
@@ -175,11 +175,11 @@ This implementation plan breaks down the Stock Management feature into increment
   - Implement refetch function
   - _Requirements: 4.2, 4.4, 4.5, 4.6, 4.7, 5.4, 5.5, 5.6, 5.7_
 
-- [ ] 9.1 Write property tests for useStockReconciliations hook
+- [x] 9.1 Write property tests for useStockReconciliations hook
   - Reuse pagination, filtering, search, stats, loading, and error property tests
   - **Validates: Requirements 4.2, 4.4, 4.5, 4.7, 9.4**
 
-- [ ] 10. Implement StockReconciliationsTable component
+- [x] 10. Implement StockReconciliationsTable component
   - Create `StockReconciliationsTable.tsx` component
   - Define column configuration with proper formatting (badges for status)
   - Integrate with useStockReconciliations hook
@@ -193,13 +193,13 @@ This implementation plan breaks down the Stock Management feature into increment
   - Add "Create New Reconciliation" button
   - _Requirements: 4.1, 4.3, 4.6, 4.8, 4.9, 4.10, 6.1, 6.4, 6.7, 7.3, 7.7_
 
-- [ ] 10.1 Write unit tests for StockReconciliationsTable component
+- [x] 10.1 Write unit tests for StockReconciliationsTable component
   - Test component renders with data
   - Test action buttons display correctly based on status
   - Test create button is present
   - Test filter controls work
 
-- [ ] 10.2 Write property test for status-based action button rendering
+- [x] 10.2 Write property test for status-based action button rendering
   - **Property 9: Status-based action button rendering**
   - **Validates: Requirements 4.8, 4.9**
 
