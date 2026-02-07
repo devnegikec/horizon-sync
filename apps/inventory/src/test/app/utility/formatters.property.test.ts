@@ -72,7 +72,7 @@ describe('Stock Management - Property 11: Date and time formatting consistency',
   it('should format any valid date string consistently', () => {
     fc.assert(
       fc.property(
-        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }),
+        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter(d => !isNaN(d.getTime())),
         (date) => {
           const formatted = formatDate(date, 'DD-MMM-YY');
 
