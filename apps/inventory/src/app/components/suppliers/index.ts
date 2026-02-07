@@ -1,2 +1,3 @@
-export { SupplierManagement } from './SupplierManagement';
-export { ItemSupplierDialog } from './ItemSupplierDialog';
+export * from './SupplierManagement';
+export * from './SuppliersTable';
+export * from './ItemSupplierDialog';
