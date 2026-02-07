@@ -91,7 +91,7 @@ This implementation plan breaks down the Stock Management feature into increment
   - **Property 8: Empty state header preservation**
   - **Validates: Requirements 6.7**
 
-- [ ] 4. Implement Stock Movements custom hook
+- [x] 4. Implement Stock Movements custom hook
   - Create `useStockMovements.ts` hook with pagination, filtering, and search support
   - Implement API call to GET /api/v1/stock-movements with query parameters
   - Handle loading, error, and success states
@@ -100,11 +100,11 @@ This implementation plan breaks down the Stock Management feature into increment
   - Implement refetch function
   - _Requirements: 2.2, 2.4, 2.5, 2.6, 2.7, 5.2, 5.5, 5.6, 5.7_
 
-- [ ] 4.1 Write property tests for useStockMovements hook
+- [x] 4.1 Write property tests for useStockMovements hook
   - Reuse pagination, filtering, search, stats, loading, and error property tests
   - **Validates: Requirements 2.2, 2.4, 2.5, 2.7, 9.2**
 
-- [ ] 5. Implement StockMovementsTable component
+- [x] 5. Implement StockMovementsTable component
   - Create `StockMovementsTable.tsx` component
   - Define column configuration with proper formatting (badges for movement type)
   - Integrate with useStockMovements hook
@@ -116,20 +116,20 @@ This implementation plan breaks down the Stock Management feature into increment
   - Render stats cards at the top
   - _Requirements: 2.1, 2.3, 2.6, 6.1, 6.4, 6.7, 7.3, 7.7_
 
-- [ ] 5.1 Write unit tests for StockMovementsTable component
+- [x] 5.1 Write unit tests for StockMovementsTable component
   - Test component renders with data
   - Test empty state displays with headers
   - Test movement type badges display correctly
   - Test filter controls work
 
-- [ ] 6. Checkpoint - Ensure Stock Levels and Stock Movements tabs work
+- [x] 6. Checkpoint - Ensure Stock Levels and Stock Movements tabs work
   - Verify both tabs display data correctly
   - Verify pagination works on both tabs
   - Verify filters work on both tabs
   - Verify stats cards display correctly
   - Ensure all tests pass, ask the user if questions arise
 
-- [ ] 7. Implement Stock Entries custom hook
+- [x] 7. Implement Stock Entries custom hook
   - Create `useStockEntries.ts` hook with pagination, filtering, and search support
   - Implement API call to GET /api/v1/stock-entries with query parameters
   - Handle loading, error, and success states
@@ -138,7 +138,7 @@ This implementation plan breaks down the Stock Management feature into increment
   - Implement refetch function
   - _Requirements: 3.2, 3.4, 3.5, 3.6, 3.7, 5.3, 5.5, 5.6, 5.7_
 
-- [ ] 7.1 Write property tests for useStockEntries hook
+- [x] 7.1 Write property tests for useStockEntries hook
   - Reuse pagination, filtering, search, stats, loading, and error property tests
   - **Validates: Requirements 3.2, 3.4, 3.5, 3.7, 9.3**
 
