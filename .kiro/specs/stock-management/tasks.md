@@ -142,7 +142,7 @@ This implementation plan breaks down the Stock Management feature into increment
   - Reuse pagination, filtering, search, stats, loading, and error property tests
   - **Validates: Requirements 3.2, 3.4, 3.5, 3.7, 9.3**
 
-- [ ] 8. Implement StockEntriesTable component
+- [x] 8. Implement StockEntriesTable component
   - Create `StockEntriesTable.tsx` component
   - Define column configuration with proper formatting (badges for type and status)
   - Integrate with useStockEntries hook
@@ -156,13 +156,13 @@ This implementation plan breaks down the Stock Management feature into increment
   - Add "Create New Entry" button
   - _Requirements: 3.1, 3.3, 3.6, 3.8, 3.9, 3.10, 6.1, 6.4, 6.7, 7.3, 7.7_
 
-- [ ] 8.1 Write unit tests for StockEntriesTable component
+- [x] 8.1 Write unit tests for StockEntriesTable component
   - Test component renders with data
   - Test action buttons display correctly based on status
   - Test create button is present
   - Test filter controls work
 
-- [ ] 8.2 Write property test for status-based action button rendering
+- [x] 8.2 Write property test for status-based action button rendering
   - **Property 9: Status-based action button rendering**
   - **Validates: Requirements 3.8, 3.9**
 
