@@ -67,7 +67,7 @@ This implementation plan breaks down the Stock Management feature into increment
   - **Property 7: Error handling and display**
   - **Validates: Requirements 5.5, 10.1, 10.2, 10.3, 10.4, 10.7**
 
-- [ ] 3. Implement StockLevelsTable component
+- [x] 3. Implement StockLevelsTable component
   - Create `StockLevelsTable.tsx` component
   - Define column configuration with proper formatting
   - Integrate with useStockLevels hook
@@ -79,7 +79,7 @@ This implementation plan breaks down the Stock Management feature into increment
   - Render stats cards at the top
   - _Requirements: 1.1, 1.3, 1.6, 6.1, 6.4, 6.7, 7.1, 7.3, 7.7_
 
-- [ ] 3.1 Write unit tests for StockLevelsTable component
+- [x] 3.1 Write unit tests for StockLevelsTable component
   - Test component renders with data
   - Test empty state displays with headers
   - Test loading state displays
@@ -87,7 +87,7 @@ This implementation plan breaks down the Stock Management feature into increment
   - Test filter controls update state
   - Test pagination controls work
 
-- [ ] 3.2 Write property test for empty state header preservation
+- [x] 3.2 Write property test for empty state header preservation
   - **Property 8: Empty state header preservation**
   - **Validates: Requirements 6.7**
 
