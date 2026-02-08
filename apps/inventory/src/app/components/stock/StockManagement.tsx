@@ -317,8 +317,6 @@ export function StockManagement() {
       {/* Stock Entry Dialog */}
       <StockEntryDialog open={stockEntryDialogOpen}
         onOpenChange={setStockEntryDialogOpen}
-        warehouses={[]}
-        items={[]}
         onCreated={() => {
           setStockEntryDialogOpen(false);
           refetchEntries();
