@@ -13,6 +13,7 @@ interface UseRoleActionsResult {
 
 export function useRoleActions(
   accessToken?: string | null,
+  organizationId?: string | null,
   onSuccess?: () => void
 ): UseRoleActionsResult {
   const [loading, setLoading] = React.useState(false);
@@ -28,7 +29,7 @@ export function useRoleActions(
       setError(null);
 
       try {
-        const role = await RoleService.createRole(data, accessToken);
+        const role = await RoleService.createRole(data, accessToken, organizationId);
         onSuccess?.();
         return role;
       } catch (err) {
@@ -39,7 +40,7 @@ export function useRoleActions(
         setLoading(false);
       }
     },
-    [accessToken, onSuccess]
+    [accessToken, organizationId, onSuccess]
   );
 
   const updateRole = React.useCallback(

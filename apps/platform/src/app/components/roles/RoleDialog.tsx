@@ -20,9 +20,9 @@ interface RoleDialogProps {
 }
 
 export function RoleDialog({ mode, role, isOpen, onClose, onSuccess }: RoleDialogProps) {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const { toast } = useToast();
-  const { createRole, updateRole, loading } = useRoleActions(accessToken, onSuccess);
+  const { createRole, updateRole, loading } = useRoleActions(accessToken, user?.organization_id, onSuccess);
   const { permissions, loading: permissionsLoading } = usePermissions(accessToken);
 
   const [formData, setFormData] = useState<RoleFormData>({

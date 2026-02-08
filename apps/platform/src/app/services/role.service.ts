@@ -147,21 +147,71 @@ export class RoleService {
   }
 
   /**
+   * Helper method to convert permission codes to IDs
+   */
+  private static async getPermissionIds(codes: string[], token: string): Promise<string[]> {
+    const allPermissionsResponse = await fetch(`${API_BASE_URL}/identity/permissions/grouped`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!allPermissionsResponse.ok) {
+      throw allPermissionsResponse;
+    }
+
+    const permissionsData = await allPermissionsResponse.json();
+
+    // Build a map of permission codes to IDs
+    const codeToIdMap: Record<string, string> = {};
+    if (permissionsData.categories && Array.isArray(permissionsData.categories)) {
+      permissionsData.categories.forEach((category: { permissions: Permission[] }) => {
+        category.permissions.forEach((perm: Permission) => {
+          codeToIdMap[perm.code] = perm.id;
+        });
+      });
+    }
+
+    // Convert permission codes to IDs
+    return codes.map((code) => codeToIdMap[code]).filter((id) => id !== undefined);
+  }
+
+  /**
    * Create a new role
    */
-  static async createRole(data: RoleFormData, token: string): Promise<Role> {
+  static async createRole(data: RoleFormData, token: string, organizationId?: string | null): Promise<Role> {
     try {
+      // Convert permission codes to permission IDs
+      const permissionIds = await this.getPermissionIds(data.permissions, token);
+
+      // Generate a code from the name (lowercase, replace spaces with underscores)
+      const code = data.name.toLowerCase().replace(/\s+/g, '_');
+
+      const payload: Record<string, unknown> = {
+        name: data.name,
+        code: code,
+        description: data.description || '',
+        is_system: false,
+        is_default: false,
+        hierarchy_level: 0,
+        is_active: true,
+        extra_data: {},
+        permission_ids: permissionIds,
+      };
+
+      // Add organization_id if provided
+      if (organizationId) {
+        payload.organization_id = organizationId;
+      }
+
       const response = await fetch(`${API_BASE_URL}/identity/roles`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: data.name,
-          description: data.description,
-          permissions: data.permissions,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -179,13 +229,29 @@ export class RoleService {
    */
   static async updateRole(roleId: string, data: Partial<RoleFormData>, token: string): Promise<Role> {
     try {
+      const payload: Record<string, unknown> = {};
+
+      if (data.name) {
+        payload.name = data.name;
+        payload.code = data.name.toLowerCase().replace(/\s+/g, '_');
+      }
+
+      if (data.description !== undefined) {
+        payload.description = data.description;
+      }
+
+      // If permissions are being updated, convert codes to IDs
+      if (data.permissions && data.permissions.length > 0) {
+        payload.permission_ids = await this.getPermissionIds(data.permissions, token);
+      }
+
       const response = await fetch(`${API_BASE_URL}/identity/roles/${roleId}`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
