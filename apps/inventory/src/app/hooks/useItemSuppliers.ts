@@ -11,14 +11,24 @@ interface UseItemSuppliersResult {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  setPage: (page: number) => void;
+  setPageSize: (pageSize: number) => void;
+  currentPage: number;
+  currentPageSize: number;
 }
 
-export function useItemSuppliers(page = 1, pageSize = 20, filters?: { itemId?: string; supplierId?: string }): UseItemSuppliersResult {
+export function useItemSuppliers(
+  initialPage = 1,
+  initialPageSize = 20,
+  filters?: { search?: string; itemId?: string; supplierId?: string }
+): UseItemSuppliersResult {
   const accessToken = useUserStore((s) => s.accessToken);
   const [itemSuppliers, setItemSuppliers] = React.useState<ItemSupplier[]>([]);
   const [pagination, setPagination] = React.useState<ItemSuppliersResponse['pagination'] | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [currentPage, setCurrentPage] = React.useState(initialPage);
+  const [currentPageSize, setCurrentPageSize] = React.useState(initialPageSize);
 
   const fetchItemSuppliers = React.useCallback(async () => {
     if (!accessToken) {
@@ -31,14 +41,17 @@ export function useItemSuppliers(page = 1, pageSize = 20, filters?: { itemId?: s
     setLoading(true);
     setError(null);
     try {
-      const apiFilters: { item_id?: string; supplier_id?: string } = {};
+      const apiFilters: { item_id?: string; supplier_id?: string; search?: string } = {};
       if (filters?.itemId && filters.itemId !== 'all') {
         apiFilters.item_id = filters.itemId;
       }
       if (filters?.supplierId && filters.supplierId !== 'all') {
         apiFilters.supplier_id = filters.supplierId;
       }
-      const data = (await itemSupplierApi.list(accessToken, page, pageSize, apiFilters)) as ItemSuppliersResponse;
+      if (filters?.search) {
+        apiFilters.search = filters.search;
+      }
+      const data = (await itemSupplierApi.list(accessToken, currentPage, currentPageSize, apiFilters)) as ItemSuppliersResponse;
       setItemSuppliers(data.item_suppliers ?? []);
       setPagination(data.pagination ?? null);
     } catch (err) {
@@ -49,13 +62,23 @@ export function useItemSuppliers(page = 1, pageSize = 20, filters?: { itemId?: s
     } finally {
       setLoading(false);
     }
-  }, [accessToken, page, pageSize, filters?.itemId, filters?.supplierId]);
+  }, [accessToken, currentPage, currentPageSize, filters]);
 
   React.useEffect(() => {
     fetchItemSuppliers();
   }, [fetchItemSuppliers]);
 
-  return { itemSuppliers, pagination, loading, error, refetch: fetchItemSuppliers };
+  return {
+    itemSuppliers,
+    pagination,
+    loading,
+    error,
+    refetch: fetchItemSuppliers,
+    setPage: setCurrentPage,
+    setPageSize: setCurrentPageSize,
+    currentPage,
+    currentPageSize,
+  };
 }
 
 interface UseItemSupplierMutationsResult {
