@@ -11,7 +11,7 @@ import type {
 import { buildUrl, buildPaginationParams } from '../utility';
 
 interface UseStockReconciliationsResult {
-  stockReconciliations: StockReconciliation[];
+  data: StockReconciliation[];
   pagination: StockReconciliationsResponse['pagination'] | null;
   stats: StockReconciliationStats | null;
   loading: boolean;
@@ -23,11 +23,12 @@ interface UseStockReconciliationsResult {
   currentPageSize: number;
 }
 
-export function useStockReconciliations(
-  initialPage = 1,
-  initialPageSize = 20,
-  filters?: Partial<StockReconciliationFilters>
-): UseStockReconciliationsResult {
+export function useStockReconciliations(options: {
+  page?: number;
+  pageSize?: number;
+  filters?: Partial<StockReconciliationFilters>;
+} = {}): UseStockReconciliationsResult {
+  const { page: initialPage = 1, pageSize: initialPageSize = 20, filters } = options;
   const accessToken = useUserStore((s) => s.accessToken);
   const [stockReconciliations, setStockReconciliations] = React.useState<StockReconciliation[]>([]);
   const [pagination, setPagination] = React.useState<StockReconciliationsResponse['pagination'] | null>(null);
@@ -36,6 +37,15 @@ export function useStockReconciliations(
   const [error, setError] = React.useState<string | null>(null);
   const [currentPage, setCurrentPage] = React.useState(initialPage);
   const [currentPageSize, setCurrentPageSize] = React.useState(initialPageSize);
+
+  // Sync internal state with options if they change
+  React.useEffect(() => {
+    if (options.page !== undefined) setCurrentPage(options.page);
+  }, [options.page]);
+
+  React.useEffect(() => {
+    if (options.pageSize !== undefined) setCurrentPageSize(options.pageSize);
+  }, [options.pageSize]);
 
   const fetchStockReconciliations = React.useCallback(async () => {
     if (!accessToken) {
@@ -93,7 +103,7 @@ export function useStockReconciliations(
   }, [fetchStockReconciliations]);
 
   return {
-    stockReconciliations,
+    data: stockReconciliations,
     pagination,
     stats,
     loading,

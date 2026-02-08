@@ -146,7 +146,7 @@ export function StockEntryDialog({ open, onOpenChange, entry, warehouses, items,
         status: (entry.status as StockEntryStatus) || 'draft',
         remarks: entry.remarks || '',
       });
-      setLineItems(entry.items.length > 0 ? entry.items : [{ item_id: '', qty: 0, basic_rate: 0 }]);
+      setLineItems(entry.items && entry.items.length > 0 ? entry.items : [{ item_id: '', qty: 0, basic_rate: 0 }]);
     } else {
       setFormData({
         stock_entry_no: '',

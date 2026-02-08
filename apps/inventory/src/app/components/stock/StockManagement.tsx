@@ -87,7 +87,7 @@ export function StockManagement() {
     loading: levelsLoading,
     error: levelsError,
     pagination: levelsPagination,
-  } = useStockLevels(levelsFilters);
+  } = useStockLevels({ page: levelsFilters.page, pageSize: levelsFilters.pageSize });
 
   const {
     data: stockMovements,
@@ -95,7 +95,7 @@ export function StockManagement() {
     loading: movementsLoading,
     error: movementsError,
     pagination: movementsPagination,
-  } = useStockMovements(movementsFilters);
+  } = useStockMovements({ page: movementsFilters.page, pageSize: movementsFilters.pageSize });
 
   const {
     data: stockEntries,
@@ -103,7 +103,7 @@ export function StockManagement() {
     loading: entriesLoading,
     error: entriesError,
     pagination: entriesPagination,
-  } = useStockEntries(entriesFilters);
+  } = useStockEntries({ page: entriesFilters.page, pageSize: entriesFilters.pageSize });
 
   const {
     data: stockReconciliations,
@@ -111,7 +111,7 @@ export function StockManagement() {
     loading: reconciliationsLoading,
     error: reconciliationsError,
     pagination: reconciliationsPagination,
-  } = useStockReconciliations(reconciliationsFilters);
+  } = useStockReconciliations({ page: reconciliationsFilters.page, pageSize: reconciliationsFilters.pageSize });
 
   // Reset filters when switching tabs (requirement 8.5)
   const handleTabChange = (newTab: string) => {
@@ -156,36 +156,36 @@ export function StockManagement() {
     switch (activeTab) {
       case 'levels':
         return {
-          stat1: { title: 'Total Items', value: formatQuantity(levelsStats.total_items), icon: Boxes },
-          stat2: { title: 'Total Warehouses', value: formatQuantity(levelsStats.total_warehouses), icon: Package },
-          stat3: { title: 'Low Stock Items', value: formatQuantity(levelsStats.low_stock_items), icon: AlertTriangle },
-          stat4: { title: 'Out of Stock', value: formatQuantity(levelsStats.out_of_stock_items), icon: AlertTriangle },
+          stat1: { title: 'Total Items', value: formatQuantity(levelsStats?.total_items || 0), icon: Boxes },
+          stat2: { title: 'Total Warehouses', value: formatQuantity(levelsStats?.total_warehouses || 0), icon: Package },
+          stat3: { title: 'Low Stock Items', value: formatQuantity(levelsStats?.low_stock_items || 0), icon: AlertTriangle },
+          stat4: { title: 'Out of Stock', value: formatQuantity(levelsStats?.out_of_stock_items || 0), icon: AlertTriangle },
         };
       case 'movements':
         return {
-          stat1: { title: 'Total Movements', value: formatQuantity(movementsStats.total_movements), icon: ArrowRightLeft },
-          stat2: { title: 'Stock In', value: formatQuantity(movementsStats.stock_in), icon: Package },
-          stat3: { title: 'Stock Out', value: formatQuantity(movementsStats.stock_out), icon: Package },
-          stat4: { title: 'Adjustments', value: formatQuantity(movementsStats.adjustments), icon: FileText },
+          stat1: { title: 'Total Movements', value: formatQuantity(movementsStats?.total_movements || 0), icon: ArrowRightLeft },
+          stat2: { title: 'Stock In', value: formatQuantity(movementsStats?.stock_in || 0), icon: Package },
+          stat3: { title: 'Stock Out', value: formatQuantity(movementsStats?.stock_out || 0), icon: Package },
+          stat4: { title: 'Adjustments', value: formatQuantity(movementsStats?.adjustments || 0), icon: FileText },
         };
       case 'entries':
         return {
-          stat1: { title: 'Total Entries', value: formatQuantity(entriesStats.total_entries), icon: FileText },
-          stat2: { title: 'Draft', value: formatQuantity(entriesStats.draft_count), icon: FileText },
-          stat3: { title: 'Submitted', value: formatQuantity(entriesStats.submitted_count), icon: ClipboardCheck },
-          stat4: { title: 'Total Value', value: `$${formatQuantity(entriesStats.total_value)}`, icon: Package },
+          stat1: { title: 'Total Entries', value: formatQuantity(entriesStats?.total_entries || 0), icon: FileText },
+          stat2: { title: 'Draft', value: formatQuantity(entriesStats?.draft_count || 0), icon: FileText },
+          stat3: { title: 'Submitted', value: formatQuantity(entriesStats?.submitted_count || 0), icon: ClipboardCheck },
+          stat4: { title: 'Total Value', value: `$${formatQuantity(entriesStats?.total_value || 0)}`, icon: Package },
         };
       case 'reconciliations':
         return {
-          stat1: { title: 'Total Reconciliations', value: formatQuantity(reconciliationsStats.total_reconciliations), icon: ClipboardCheck },
-          stat2: { title: 'Pending', value: formatQuantity(reconciliationsStats.pending_count), icon: AlertTriangle },
-          stat3: { title: 'Completed', value: formatQuantity(reconciliationsStats.completed_count), icon: ClipboardCheck },
-          stat4: { title: 'Total Adjustments', value: formatQuantity(reconciliationsStats.total_adjustments), icon: FileText },
+          stat1: { title: 'Total Reconciliations', value: formatQuantity(reconciliationsStats?.total_reconciliations || 0), icon: ClipboardCheck },
+          stat2: { title: 'Pending', value: formatQuantity(reconciliationsStats?.pending_count || 0), icon: AlertTriangle },
+          stat3: { title: 'Completed', value: formatQuantity(reconciliationsStats?.completed_count || 0), icon: ClipboardCheck },
+          stat4: { title: 'Total Adjustments', value: formatQuantity(reconciliationsStats?.total_adjustments || 0), icon: FileText },
         };
     }
   };
 
-  const activeStats = getActiveStats();
+  const activeStats = getActiveStats()!;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -263,7 +263,7 @@ export function StockManagement() {
             serverPagination={{
               pageIndex: levelsFilters.page - 1,
               pageSize: levelsFilters.pageSize,
-              totalItems: levelsPagination.total_records,
+              totalItems: levelsPagination?.total_records || 0,
               onPaginationChange: handleLevelsPaginationChange,
             }}/>
         </TabsContent>
@@ -277,7 +277,7 @@ export function StockManagement() {
             serverPagination={{
               pageIndex: movementsFilters.page - 1,
               pageSize: movementsFilters.pageSize,
-              totalItems: movementsPagination.total_records,
+              totalItems: movementsPagination?.total_records || 0,
               onPaginationChange: handleMovementsPaginationChange,
             }}/>
         </TabsContent>
@@ -291,7 +291,7 @@ export function StockManagement() {
             serverPagination={{
               pageIndex: entriesFilters.page - 1,
               pageSize: entriesFilters.pageSize,
-              totalItems: entriesPagination.total_records,
+              totalItems: entriesPagination?.total_records || 0,
               onPaginationChange: handleEntriesPaginationChange,
             }}/>
         </TabsContent>
@@ -305,7 +305,7 @@ export function StockManagement() {
             serverPagination={{
               pageIndex: reconciliationsFilters.page - 1,
               pageSize: reconciliationsFilters.pageSize,
-              totalItems: reconciliationsPagination.total_records,
+              totalItems: reconciliationsPagination?.total_records || 0,
               onPaginationChange: handleReconciliationsPaginationChange,
             }}/>
         </TabsContent>

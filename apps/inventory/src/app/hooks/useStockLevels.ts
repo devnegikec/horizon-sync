@@ -9,7 +9,7 @@ import { buildUrl, buildPaginationParams } from '../utility';
 const STOCK_LEVELS_URL = `${environment.apiCoreUrl}/stock-levels`;
 
 interface UseStockLevelsResult {
-  stockLevels: StockLevel[];
+  data: StockLevel[];
   pagination: StockLevelsResponse['pagination'] | null;
   stats: StockLevelStats | null;
   loading: boolean;
@@ -21,11 +21,12 @@ interface UseStockLevelsResult {
   currentPageSize: number;
 }
 
-export function useStockLevels(
-  initialPage = 1,
-  initialPageSize = 20,
-  filters?: Partial<StockLevelFilters>
-): UseStockLevelsResult {
+export function useStockLevels(options: {
+  page?: number;
+  pageSize?: number;
+  filters?: Partial<StockLevelFilters>;
+} = {}): UseStockLevelsResult {
+  const { page: initialPage = 1, pageSize: initialPageSize = 20, filters } = options;
   const accessToken = useUserStore((s) => s.accessToken);
   const [stockLevels, setStockLevels] = React.useState<StockLevel[]>([]);
   const [pagination, setPagination] = React.useState<StockLevelsResponse['pagination'] | null>(null);
@@ -34,6 +35,15 @@ export function useStockLevels(
   const [error, setError] = React.useState<string | null>(null);
   const [currentPage, setCurrentPage] = React.useState(initialPage);
   const [currentPageSize, setCurrentPageSize] = React.useState(initialPageSize);
+
+  // Sync internal state with options if they change
+  React.useEffect(() => {
+    if (options.page !== undefined) setCurrentPage(options.page);
+  }, [options.page]);
+
+  React.useEffect(() => {
+    if (options.pageSize !== undefined) setCurrentPageSize(options.pageSize);
+  }, [options.pageSize]);
 
   const fetchStockLevels = React.useCallback(async () => {
     if (!accessToken) {
@@ -105,7 +115,7 @@ export function useStockLevels(
   }, [fetchStockLevels]);
 
   return {
-    stockLevels,
+    data: stockLevels,
     pagination,
     stats,
     loading,

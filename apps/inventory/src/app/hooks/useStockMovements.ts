@@ -11,7 +11,7 @@ import type {
 import { buildUrl, buildPaginationParams } from '../utility';
 
 interface UseStockMovementsResult {
-  stockMovements: StockMovement[];
+  data: StockMovement[];
   pagination: StockMovementsResponse['pagination'] | null;
   stats: StockMovementStats | null;
   loading: boolean;
@@ -23,11 +23,12 @@ interface UseStockMovementsResult {
   currentPageSize: number;
 }
 
-export function useStockMovements(
-  initialPage = 1,
-  initialPageSize = 20,
-  filters?: Partial<StockMovementFilters>
-): UseStockMovementsResult {
+export function useStockMovements(options: {
+  page?: number;
+  pageSize?: number;
+  filters?: Partial<StockMovementFilters>;
+} = {}): UseStockMovementsResult {
+  const { page: initialPage = 1, pageSize: initialPageSize = 20, filters } = options;
   const accessToken = useUserStore((s) => s.accessToken);
   const [stockMovements, setStockMovements] = React.useState<StockMovement[]>([]);
   const [pagination, setPagination] = React.useState<StockMovementsResponse['pagination'] | null>(null);
@@ -36,6 +37,15 @@ export function useStockMovements(
   const [error, setError] = React.useState<string | null>(null);
   const [currentPage, setCurrentPage] = React.useState(initialPage);
   const [currentPageSize, setCurrentPageSize] = React.useState(initialPageSize);
+
+  // Sync internal state with options if they change
+  React.useEffect(() => {
+    if (options.page !== undefined) setCurrentPage(options.page);
+  }, [options.page]);
+
+  React.useEffect(() => {
+    if (options.pageSize !== undefined) setCurrentPageSize(options.pageSize);
+  }, [options.pageSize]);
 
   const fetchStockMovements = React.useCallback(async () => {
     if (!accessToken) {
@@ -93,7 +103,7 @@ export function useStockMovements(
   }, [fetchStockMovements]);
 
   return {
-    stockMovements,
+    data: stockMovements,
     pagination,
     stats,
     loading,
