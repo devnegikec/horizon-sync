@@ -8,7 +8,7 @@ import { buildUrl, buildPaginationParams } from '../utility';
 
 const STOCK_LEVELS_URL = `${environment.apiCoreUrl}/stock-levels`;
 
-interface UseStockLevelsResult {
+export interface UseStockLevelsResult {
   data: StockLevel[];
   pagination: StockLevelsResponse['pagination'] | null;
   stats: StockLevelStats | null;

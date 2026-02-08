@@ -263,7 +263,7 @@ export function StockManagement() {
             serverPagination={{
               pageIndex: levelsFilters.page - 1,
               pageSize: levelsFilters.pageSize,
-              totalItems: levelsPagination?.total_records || 0,
+              totalItems: levelsPagination?.total_items || 0,
               onPaginationChange: handleLevelsPaginationChange,
             }}/>
         </TabsContent>
@@ -277,7 +277,7 @@ export function StockManagement() {
             serverPagination={{
               pageIndex: movementsFilters.page - 1,
               pageSize: movementsFilters.pageSize,
-              totalItems: movementsPagination?.total_records || 0,
+              totalItems: movementsPagination?.total_items || 0,
               onPaginationChange: handleMovementsPaginationChange,
             }}/>
         </TabsContent>
@@ -291,7 +291,7 @@ export function StockManagement() {
             serverPagination={{
               pageIndex: entriesFilters.page - 1,
               pageSize: entriesFilters.pageSize,
-              totalItems: entriesPagination?.total_records || 0,
+              totalItems: entriesPagination?.total_items || 0,
               onPaginationChange: handleEntriesPaginationChange,
             }}/>
         </TabsContent>
@@ -305,7 +305,7 @@ export function StockManagement() {
             serverPagination={{
               pageIndex: reconciliationsFilters.page - 1,
               pageSize: reconciliationsFilters.pageSize,
-              totalItems: reconciliationsPagination?.total_records || 0,
+              totalItems: reconciliationsPagination?.total_items || 0,
               onPaginationChange: handleReconciliationsPaginationChange,
             }}/>
         </TabsContent>

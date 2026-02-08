@@ -14,10 +14,10 @@ import {
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
-import type { StockReconciliation, StockReconciliationStatus } from '../../types/stock.types';
+import type { StockReconciliation, StockEntryStatus } from '../../types/stock.types';
 import { formatDate, formatCurrency, formatQuantity } from '../../utility';
 
-function getStatusBadge(status: StockReconciliationStatus) {
+function getStatusBadge(status: StockEntryStatus) {
   switch (status) {
     case 'draft':
       return { variant: 'secondary' as const, label: 'Draft' };

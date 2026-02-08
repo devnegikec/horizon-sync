@@ -10,7 +10,7 @@ import type {
 } from '../types/stock.types';
 import { buildUrl, buildPaginationParams } from '../utility';
 
-interface UseStockEntriesResult {
+export interface UseStockEntriesResult {
   data: StockEntry[];
   pagination: StockEntriesResponse['pagination'] | null;
   stats: StockEntryStats | null;

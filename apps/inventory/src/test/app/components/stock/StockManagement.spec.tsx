@@ -43,7 +43,7 @@ describe('StockManagement', () => {
     pagination: {
       current_page: 1,
       page_size: 20,
-      total_records: 100,
+      total_items: 100,
       total_pages: 5,
     },
     refetch: jest.fn(),
@@ -62,7 +62,7 @@ describe('StockManagement', () => {
     pagination: {
       current_page: 1,
       page_size: 20,
-      total_records: 50,
+      total_items: 50,
       total_pages: 3,
     },
     refetch: jest.fn(),
@@ -81,7 +81,7 @@ describe('StockManagement', () => {
     pagination: {
       current_page: 1,
       page_size: 20,
-      total_records: 25,
+      total_items: 25,
       total_pages: 2,
     },
     refetch: jest.fn(),
@@ -100,7 +100,7 @@ describe('StockManagement', () => {
     pagination: {
       current_page: 1,
       page_size: 20,
-      total_records: 10,
+      total_items: 10,
       total_pages: 1,
     },
     refetch: jest.fn(),
