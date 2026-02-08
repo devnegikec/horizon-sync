@@ -24,6 +24,7 @@ import { useStockReconciliations } from '../../hooks/useStockReconciliations';
 import { formatQuantity } from '../../utility';
 
 import { StockEntriesTable } from './StockEntriesTable';
+import { StockEntryDialog } from './StockEntryDialog';
 import { StockLevelsTable } from './StockLevelsTable';
 import { StockMovementsTable } from './StockMovementsTable';
 import { StockReconciliationsTable } from './StockReconciliationsTable';
@@ -58,6 +59,7 @@ type ActiveTab = 'levels' | 'movements' | 'entries' | 'reconciliations';
 
 export function StockManagement() {
   const [activeTab, setActiveTab] = React.useState<ActiveTab>('levels');
+  const [stockEntryDialogOpen, setStockEntryDialogOpen] = React.useState(false);
 
   // Separate filter state for each tab
   const [levelsFilters, setLevelsFilters] = React.useState({
@@ -103,6 +105,7 @@ export function StockManagement() {
     loading: entriesLoading,
     error: entriesError,
     pagination: entriesPagination,
+    refetch: refetchEntries,
   } = useStockEntries({ page: entriesFilters.page, pageSize: entriesFilters.pageSize });
 
   const {
@@ -185,7 +188,7 @@ export function StockManagement() {
     }
   };
 
-  const activeStats = getActiveStats()!;
+  const activeStats = getActiveStats();
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -212,7 +215,7 @@ export function StockManagement() {
                 <ArrowRightLeft className="mr-2 h-4 w-4" />
                 Record Movement
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setStockEntryDialogOpen(true)}>
                 <FileText className="mr-2 h-4 w-4" />
                 Stock Entry
               </DropdownMenuItem>
@@ -310,6 +313,20 @@ export function StockManagement() {
             }}/>
         </TabsContent>
       </Tabs>
+
+      {/* Stock Entry Dialog */}
+      <StockEntryDialog open={stockEntryDialogOpen}
+        onOpenChange={setStockEntryDialogOpen}
+        warehouses={[]}
+        items={[]}
+        onCreated={() => {
+          setStockEntryDialogOpen(false);
+          refetchEntries();
+        }}
+        onUpdated={() => {
+          setStockEntryDialogOpen(false);
+          refetchEntries();
+        }}/>
     </div>
   );
 }
