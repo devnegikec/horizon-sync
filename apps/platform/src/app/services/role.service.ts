@@ -1,12 +1,5 @@
 import { environment } from '../../environments/environment';
-import type {
-  Role,
-  RoleListResponse,
-  RoleFormData,
-  RoleFilters,
-  PermissionGroupedResponse,
-  Permission,
-} from '../types/role.types';
+import type { Role, RoleListResponse, RoleFormData, RoleFilters, PermissionGroupedResponse, Permission } from '../types/role.types';
 
 const API_BASE_URL = environment.apiBaseUrl;
 
@@ -106,7 +99,7 @@ export class RoleService {
   static async getRoles(filters: RoleFilters, token: string): Promise<RoleListResponse> {
     try {
       const params = new URLSearchParams();
-      
+
       if (filters.search) params.append('search', filters.search);
       if (filters.isSystem !== null) params.append('is_system', String(filters.isSystem));
       if (filters.isActive !== null) params.append('is_active', String(filters.isActive));
@@ -136,15 +129,12 @@ export class RoleService {
    */
   static async getRole(roleId: string, token: string): Promise<Role> {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/identity/roles/${roleId}?include_permissions=true`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/identity/roles/${roleId}?include_permissions=true`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
       if (!response.ok) {
         throw response;
@@ -245,7 +235,22 @@ export class RoleService {
         throw response;
       }
 
-      return await response.json();
+      const apiResponse = await response.json();
+
+      // Transform API response to match our expected format
+      // API returns: { categories: [{ name, permissions: [...] }] }
+      // We need: { data: { "Category Name": [...permissions] } }
+      const grouped: Record<string, Permission[]> = {};
+
+      if (apiResponse.categories && Array.isArray(apiResponse.categories)) {
+        apiResponse.categories.forEach((category: { name: string; permissions: Permission[] }) => {
+          if (category.name && category.permissions) {
+            grouped[category.name] = category.permissions;
+          }
+        });
+      }
+
+      return { data: grouped };
     } catch (error) {
       throw handleAPIError(error);
     }
