@@ -158,15 +158,20 @@ export class AuthService {
   }
 
   /**
-   * Refresh access token using refresh token from cookie (HttpOnly).
-   * Backend should read refresh token from cookie and return new access_token in body.
+   * Refresh access token using refresh token from cookie (HttpOnly) or body (fallback).
+   * Backend should read refresh token from cookie (preferred) or body (backward compatibility).
+   * Returns new access_token in body.
+   * 
+   * @param refreshToken - Optional refresh token to send in body (for backward compatibility).
+   *                       If not provided, backend should read from HttpOnly cookie.
    */
-  static async refresh(): Promise<RefreshResponse> {
+  static async refresh(refreshToken?: string): Promise<RefreshResponse> {
     const url = `${API_BASE_URL}/identity/refresh`;
+    const body = refreshToken ? { refresh_token: refreshToken } : {};
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify(body),
       credentials: 'include',
     });
 

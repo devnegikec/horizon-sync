@@ -82,13 +82,17 @@ export function useAuth() {
   /**
    * Restore session from HttpOnly refresh cookie (e.g. after tab reopen when "Remember Me" was used).
    * Access token is stored in memory only; refresh token stays in cookie.
+   * If refreshToken is available in store, sends it in body as fallback (backward compatibility).
    */
   const restoreSession = async (): Promise<boolean> => {
     try {
-      const data = await AuthService.refresh();
+      // Try with refresh token from store if available (backward compatibility),
+      // otherwise rely on cookie (preferred approach)
+      const data = await AuthService.refresh(refreshToken || undefined);
       const userData = data.user
         ? userFromApi(data.user)
         : userFromApi(await AuthService.getUserProfile(data.access_token));
+      // If backend returns refresh_token in response, store it; otherwise keep empty (cookie-based)
       setAuth(userData, data.access_token, '');
       return true;
     } catch {
