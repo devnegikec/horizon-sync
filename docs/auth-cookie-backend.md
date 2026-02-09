@@ -8,25 +8,41 @@ The platform frontend sends `remember_me` on login and uses **credentials: 'incl
 - **Behaviour**:
   - Set a **refresh token** in an **HttpOnly cookie** (do not return the refresh token in the JSON body if you use cookie-based refresh).
   - **Cookie attributes** (security):
-    - **HttpOnly** – not readable by JavaScript (mitigates XSS).
-    - **Secure** – only sent over HTTPS in production.
-    - **SameSite=Lax** – reduces CSRF risk while allowing normal top-level navigations.
+    - **HttpOnly** – not readable by JavaScript (mitigates XSS). **Always set to true.**
+    - **Secure** – only sent over HTTPS. **Set conditionally:**
+      - **Development (HTTP)**: `Secure: false` (required for localhost/HTTP)
+      - **Production (HTTPS)**: `Secure: true` (required for security)
+    - **SameSite=Lax** – reduces CSRF risk while allowing normal top-level navigations. **Always set to Lax.**
   - **Expiry**:
     - If **`remember_me === true`**: set `Max-Age=2592000` (30 days).
     - If **`remember_me === false`** or omitted: do **not** set `Max-Age` (session cookie; expires when the browser/tab closes).
   - Response body: return `access_token` (and optionally `user`). Optionally return `refresh_token` in body for backward compatibility (frontend may use it for logout body if needed).
 
-Example cookie (30 days, Remember Me):
+Example cookie (30 days, Remember Me, **Production**):
 
 ```http
 Set-Cookie: refresh_token=<token>; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000
 ```
 
-Example session cookie (no Remember Me):
+Example cookie (30 days, Remember Me, **Development** - note: no Secure flag):
+
+```http
+Set-Cookie: refresh_token=<token>; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000
+```
+
+Example session cookie (no Remember Me, **Production**):
 
 ```http
 Set-Cookie: refresh_token=<token>; Path=/; HttpOnly; Secure; SameSite=Lax
 ```
+
+Example session cookie (no Remember Me, **Development** - note: no Secure flag):
+
+```http
+Set-Cookie: refresh_token=<token>; Path=/; HttpOnly; SameSite=Lax
+```
+
+**Important**: In development (localhost, HTTP), omit the `Secure` flag. In production (HTTPS), always include `Secure`.
 
 ## 2. Refresh `POST /identity/refresh`
 
@@ -40,14 +56,48 @@ Set-Cookie: refresh_token=<token>; Path=/; HttpOnly; Secure; SameSite=Lax
 - **Response**: 204 or 200.
 - **Behaviour**: Invalidate the refresh token (from body or cookie) and clear the cookie, e.g.:
 
+**Production** (with Secure):
 ```http
 Set-Cookie: refresh_token=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0
+```
+
+**Development** (without Secure):
+```http
+Set-Cookie: refresh_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0
 ```
 
 ## 4. CORS
 
 - For cookie-based auth, the API must allow the frontend origin in `Access-Control-Allow-Origin` (not `*` when using credentials).
 - Set `Access-Control-Allow-Credentials: true` for requests that send cookies.
+
+## 6. Environment Detection
+
+The backend should detect the environment and set the `Secure` flag accordingly:
+
+- **Development**: Check if the request is over HTTP (not HTTPS) or if the host is `localhost`. Set `Secure: false` or omit the `Secure` flag entirely.
+- **Production**: Always set `Secure: true` when serving over HTTPS.
+
+Example logic (pseudo-code):
+```python
+# Python/FastAPI example
+is_secure = request.url.scheme == "https" or os.getenv("ENVIRONMENT") == "production"
+cookie_attributes = f"HttpOnly; SameSite=Lax"
+if is_secure:
+    cookie_attributes += "; Secure"
+```
+
+```javascript
+// Node.js/Express example
+const isSecure = req.protocol === 'https' || process.env.NODE_ENV === 'production';
+const secureFlag = isSecure ? 'Secure' : '';
+res.cookie('refresh_token', token, {
+  httpOnly: true,
+  secure: isSecure,
+  sameSite: 'lax',
+  maxAge: rememberMe ? 2592000000 : undefined, // 30 days in milliseconds
+});
+```
 
 ## 5. Frontend behaviour (summary)
 

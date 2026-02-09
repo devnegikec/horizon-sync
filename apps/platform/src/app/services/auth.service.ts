@@ -123,6 +123,9 @@ async function apiRequest<T>(
  * Login with credentials: 'include' so the backend can set HttpOnly cookies
  * (e.g. refresh token). Backend should set cookie expiry: 30 days if
  * remember_me is true, session cookie otherwise.
+ * 
+ * Note: Cookie security flags (HttpOnly, Secure, SameSite) are set by the backend.
+ * Backend should set Secure=false in development (HTTP/localhost) and Secure=true in production (HTTPS).
  */
 async function loginWithCredentials(payload: LoginPayload): Promise<LoginResponse> {
   const url = `${API_BASE_URL}/identity/login`;
