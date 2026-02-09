@@ -8,21 +8,41 @@ import { useAuth } from '../hooks';
 import { AuthService } from '../services/auth.service';
 import { loginSchema, LoginFormData } from '../utility/validationSchema';
 
+const REMEMBER_EMAIL_KEY = 'login_remember_email';
+
+function getStoredEmail(): string {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(REMEMBER_EMAIL_KEY) ?? '';
+}
+
 export function useLoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const [rememberMe, setRememberMe] = React.useState(() => !!getStoredEmail());
   const [status, setStatus] = React.useState<{ loading: boolean; error: string; success: string }>({
     loading: false,
     error: '',
     success: '',
   });
 
-  const form = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) });
+  const form = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: getStoredEmail(),
+      password: '',
+    },
+  });
 
   const onSubmit = async (data: LoginFormData) => {
     setStatus({ loading: true, error: '', success: '' });
     try {
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_EMAIL_KEY, data.email);
+      } else {
+        localStorage.removeItem(REMEMBER_EMAIL_KEY);
+      }
+
       const response = await AuthService.login(data);
       setStatus((s) => ({ ...s, success: 'Login successful!' }));
 
@@ -62,5 +82,11 @@ export function useLoginForm() {
     }
   };
 
-  return { ...form, ...status, onSubmit: form.handleSubmit(onSubmit) };
+  return {
+    ...form,
+    ...status,
+    onSubmit: form.handleSubmit(onSubmit),
+    rememberMe,
+    setRememberMe,
+  };
 }
