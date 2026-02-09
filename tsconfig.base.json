@@ -1,0 +1,33 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "es2015",
+    "module": "esnext",
+    "lib": ["es2020", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@platform/*": ["apps/platform/src/*"],
+      "inventory/Module": ["apps/inventory/src/remote-entry.ts"],
+      "@horizon-sync/ui": ["libs/shared/ui/src/index.ts"],
+      "@horizon-sync/ui/*": ["libs/shared/ui/src/*"],
+      "@horizon-sync/ui/components/*": ["libs/shared/ui/src/components/*"],
+      "@horizon-sync/ui/lib": ["libs/shared/ui/src/lib/index.ts"],
+      "@horizon-sync/ui/lib/*": ["libs/shared/ui/src/lib/*"],
+      "@horizon-sync/ui/hooks/*": ["libs/shared/ui/src/hooks/*"],
+      "@horizon-sync/store": ["libs/shared/store/src/index.ts"],
+      "@horizon-sync/store/*": ["libs/shared/store/src/*"],
+      "@/components/*": ["libs/shared/ui/src/components/*"],
+      "@/lib/*": ["libs/shared/ui/src/lib/*"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "apps/platform/tailwind.config.js",
+    "css": "libs/shared/ui/src/styles/globals.css",
+    "baseColor": "slate",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@horizon-sync/ui/components",
+    "utils": "@horizon-sync/ui/lib",
+    "ui": "@horizon-sync/ui/components/ui",
+    "lib": "@horizon-sync/ui/lib",
+    "hooks": "@horizon-sync/ui/hooks"
+  }
+}
