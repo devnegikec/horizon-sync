@@ -43,7 +43,11 @@ export function useLoginForm() {
         localStorage.removeItem(REMEMBER_EMAIL_KEY);
       }
 
-      const response = await AuthService.login(data);
+      const response = await AuthService.login({
+        email: data.email,
+        password: data.password,
+        remember_me: rememberMe,
+      });
       setStatus((s) => ({ ...s, success: 'Login successful!' }));
 
       // Login with basic user data from login response

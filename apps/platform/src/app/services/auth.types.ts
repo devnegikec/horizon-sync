@@ -43,6 +43,8 @@ export interface RegisterResponse {
 export interface LoginPayload {
   email: string;
   password: string;
+  /** When true, backend should set persistent cookie (e.g. 30 days); when false, session cookie. */
+  remember_me?: boolean;
 }
 
 export interface LoginResponse {
@@ -56,8 +58,15 @@ export interface LoginResponse {
   message?: string;
 }
 
+/** Response from POST /identity/refresh when using cookie-based refresh token. */
+export interface RefreshResponse {
+  access_token: string;
+  token_type?: string;
+  user?: UserType;
+}
+
 export interface LogoutPayload {
-  refresh_token: string;
+  refresh_token?: string;
 }
 
 export interface ForgotPasswordPayload {
