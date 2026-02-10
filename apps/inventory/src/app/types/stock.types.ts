@@ -136,9 +136,11 @@ export interface StockEntry {
   stock_entry_no: string;
   stock_entry_type: StockEntryType;
   from_warehouse_id?: string | null;
-  from_warehouse_name?: string | null;
+  from_warehouse_name?: string | null; // Deprecated: use from_warehouse.name instead
   to_warehouse_id?: string | null;
-  to_warehouse_name?: string | null;
+  to_warehouse_name?: string | null; // Deprecated: use to_warehouse.name instead
+  from_warehouse?: WarehouseInfo;
+  to_warehouse?: WarehouseInfo;
   posting_date: string;
   posting_time?: string | null;
   status: StockEntryStatus;

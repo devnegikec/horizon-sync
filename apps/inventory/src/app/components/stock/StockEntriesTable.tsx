@@ -128,24 +128,42 @@ export function StockEntriesTable({
         },
       },
       {
-        accessorKey: 'from_warehouse_name',
+        accessorFn: (row) => row.from_warehouse?.name || row.from_warehouse_name || '',
+        id: 'from_warehouse_name',
         header: ({ column }) => <DataTableColumnHeader column={column} title="From Warehouse" />,
         cell: ({ row }) => {
-          const fromWarehouse = row.original.from_warehouse_name;
-          return fromWarehouse ? (
-            <span className="text-sm">{fromWarehouse}</span>
+          const entry = row.original;
+          // Use nested from_warehouse object if available, otherwise fall back to flat field
+          const fromWarehouseName = entry.from_warehouse?.name || entry.from_warehouse_name;
+          const fromWarehouseCode = entry.from_warehouse?.code;
+          return fromWarehouseName ? (
+            <div>
+              <span className="text-sm">{fromWarehouseName}</span>
+              {fromWarehouseCode && (
+                <code className="text-xs text-muted-foreground block">{fromWarehouseCode}</code>
+              )}
+            </div>
           ) : (
             <span className="text-muted-foreground">—</span>
           );
         },
       },
       {
-        accessorKey: 'to_warehouse_name',
+        accessorFn: (row) => row.to_warehouse?.name || row.to_warehouse_name || '',
+        id: 'to_warehouse_name',
         header: ({ column }) => <DataTableColumnHeader column={column} title="To Warehouse" />,
         cell: ({ row }) => {
-          const toWarehouse = row.original.to_warehouse_name;
-          return toWarehouse ? (
-            <span className="text-sm">{toWarehouse}</span>
+          const entry = row.original;
+          // Use nested to_warehouse object if available, otherwise fall back to flat field
+          const toWarehouseName = entry.to_warehouse?.name || entry.to_warehouse_name;
+          const toWarehouseCode = entry.to_warehouse?.code;
+          return toWarehouseName ? (
+            <div>
+              <span className="text-sm">{toWarehouseName}</span>
+              {toWarehouseCode && (
+                <code className="text-xs text-muted-foreground block">{toWarehouseCode}</code>
+              )}
+            </div>
           ) : (
             <span className="text-muted-foreground">—</span>
           );

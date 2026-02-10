@@ -47,6 +47,22 @@ export function useStockEntries(options: {
     if (options.pageSize !== undefined) setCurrentPageSize(options.pageSize);
   }, [options.pageSize]);
 
+  // Extract filter values to prevent unnecessary re-renders
+  const stockEntryType = filters?.stock_entry_type;
+  const status = filters?.status;
+  const fromWarehouseId = filters?.from_warehouse_id;
+  const toWarehouseId = filters?.to_warehouse_id;
+  const search = filters?.search;
+
+  // Memoize filters to prevent unnecessary re-renders
+  const memoizedFilters = React.useMemo(() => filters, [
+    stockEntryType,
+    status,
+    fromWarehouseId,
+    toWarehouseId,
+    search,
+  ]);
+
   const fetchStockEntries = React.useCallback(async () => {
     if (!accessToken) {
       setStockEntries([]);
@@ -61,7 +77,7 @@ export function useStockEntries(options: {
     setError(null);
 
     try {
-      const params = buildStockEntriesParams(currentPage, currentPageSize, filters);
+      const params = buildStockEntriesParams(currentPage, currentPageSize, memoizedFilters);
       const url = buildUrl('/stock-entries', params);
 
       const res = await fetch(url, {
@@ -96,7 +112,7 @@ export function useStockEntries(options: {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, currentPage, currentPageSize, filters]);
+  }, [accessToken, currentPage, currentPageSize, memoizedFilters]);
 
   React.useEffect(() => {
     fetchStockEntries();
