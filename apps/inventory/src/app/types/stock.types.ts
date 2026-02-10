@@ -7,14 +7,26 @@
 import type { Pagination } from './warehouse.types';
 
 // Stock Levels
+export interface ProductInfo {
+  name: string;
+  code: string;
+}
+
+export interface WarehouseInfo {
+  name: string;
+  code: string;
+}
+
 export interface StockLevel {
   id: string;
   organization_id?: string;
   product_id: string;
-  product_name?: string;
-  product_code?: string;
+  product_name?: string; // Deprecated: use product.name instead
+  product_code?: string; // Deprecated: use product.code instead
   warehouse_id: string;
-  warehouse_name?: string;
+  warehouse_name?: string; // Deprecated: use warehouse.name instead
+  product?: ProductInfo;
+  warehouse?: WarehouseInfo;
   quantity_on_hand: number;
   quantity_reserved: number;
   quantity_available: number;
@@ -52,10 +64,12 @@ export interface StockMovement {
   id: string;
   organization_id?: string;
   product_id: string;
-  product_name?: string;
-  product_code?: string;
+  product_name?: string; // Deprecated: use product.name instead
+  product_code?: string; // Deprecated: use product.code instead
   warehouse_id: string;
-  warehouse_name?: string;
+  warehouse_name?: string; // Deprecated: use warehouse.name instead
+  product?: ProductInfo;
+  warehouse?: WarehouseInfo;
   movement_type: MovementType;
   quantity: number;
   unit_cost?: number | string | null;

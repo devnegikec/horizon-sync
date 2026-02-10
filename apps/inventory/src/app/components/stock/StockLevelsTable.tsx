@@ -61,29 +61,46 @@ export function StockLevelsTable({ stockLevels, loading, error, hasActiveFilters
   const columns: ColumnDef<StockLevel, unknown>[] = React.useMemo(
     () => [
       {
-        accessorKey: 'product_name',
+        accessorFn: (row) => row.product?.name || row.product_name || '',
+        id: 'product_name',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Item Name / Code" />,
         cell: ({ row }) => {
           const stockLevel = row.original;
+          // Use nested product object if available, otherwise fall back to flat fields
+          const productName = stockLevel.product?.name || stockLevel.product_name || 'Unknown Item';
+          const productCode = stockLevel.product?.code || stockLevel.product_code || 'N/A';
           return (
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                 <Package className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="font-medium">{stockLevel.product_name || 'Unknown Item'}</p>
-                <code className="text-xs text-muted-foreground">{stockLevel.product_code || 'N/A'}</code>
+                <p className="font-medium">{productName}</p>
+                <code className="text-xs text-muted-foreground">{productCode}</code>
               </div>
             </div>
           );
         },
       },
       {
-        accessorKey: 'warehouse_name',
+        accessorFn: (row) => row.warehouse?.name || row.warehouse_name || '',
+        id: 'warehouse_name',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Warehouse" />,
         cell: ({ row }) => {
-          const warehouseName = row.original.warehouse_name;
-          return warehouseName ? <span className="text-sm">{warehouseName}</span> : <span className="text-muted-foreground">—</span>;
+          const stockLevel = row.original;
+          // Use nested warehouse object if available, otherwise fall back to flat fields
+          const warehouseName = stockLevel.warehouse?.name || stockLevel.warehouse_name;
+          const warehouseCode = stockLevel.warehouse?.code;
+          return warehouseName ? (
+            <div>
+              <span className="text-sm">{warehouseName}</span>
+              {warehouseCode && (
+                <code className="text-xs text-muted-foreground block">{warehouseCode}</code>
+              )}
+            </div>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          );
         },
       },
       {
@@ -184,13 +201,13 @@ export function StockLevelsTable({ stockLevels, loading, error, hasActiveFilters
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState
-              icon={<Package className="h-12 w-12" />}
+            <EmptyState icon={<Package className="h-12 w-12" />}
               title="No stock levels found"
               description={
-                hasActiveFilters ? 'Try adjusting your search or filters' : 'Stock levels will appear here once items are added to warehouses'
-              }
-            />
+                hasActiveFilters
+                  ? 'Try adjusting your search or filters'
+                  : 'Stock levels will appear here once items are added to warehouses'
+              } />
           </div>
         </CardContent>
       </Card>
@@ -200,8 +217,7 @@ export function StockLevelsTable({ stockLevels, loading, error, hasActiveFilters
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable
-          columns={columns}
+        <DataTable columns={columns}
           data={stockLevels}
           config={{
             showSerialNumber: true,
@@ -215,9 +231,8 @@ export function StockLevelsTable({ stockLevels, loading, error, hasActiveFilters
           }}
           filterPlaceholder="Search by item name, code, or warehouse..."
           renderViewOptions={renderViewOptions}
-          fixedHeader
-          maxHeight="auto"
-        />
+          fixedHeader={true}
+          maxHeight="auto"/>
       </CardContent>
     </Card>
   );
