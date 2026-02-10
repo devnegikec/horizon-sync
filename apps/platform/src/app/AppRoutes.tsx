@@ -50,7 +50,7 @@ function ProtectedRouteWrapper() {
           <Route path="/subscriptions" element={<SubscriptionManagementPage />} />
           <Route path="/analytics" element={<AnalyticsPlaceholder />} />
           <Route path="/users" element={<UserManagementPage />} />
-          <Route path="/users/roles" element={<RoleManagementPage />} />
+          <Route path="/roles" element={<RoleManagementPage />} />
           <Route path="/reports" element={<ReportsPlaceholder />} />
           <Route path="/settings" element={<SettingsPlaceholder />} />
           <Route path="/help" element={<HelpPlaceholder />} />

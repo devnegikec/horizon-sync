@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { LayoutDashboard, Package, BarChart3, Settings, Users, FileText, HelpCircle, Zap, CreditCard, DollarSign, ShoppingCart, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Package, BarChart3, Settings, Users, FileText, HelpCircle, Zap, CreditCard, DollarSign, ShoppingCart, BookOpen, Shield } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
@@ -22,6 +22,7 @@ const mainNavItems: NavItem[] = [
   { title: 'Subscriptions', href: '/subscriptions', icon: CreditCard },
   { title: 'Analytics', href: '/analytics', icon: BarChart3 },
   { title: 'Users', href: '/users', icon: Users },
+  { title: 'Roles', href: '/roles', icon: Shield },
   { title: 'Reports', href: '/reports', icon: FileText },
 ];
 
