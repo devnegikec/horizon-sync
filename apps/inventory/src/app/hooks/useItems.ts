@@ -28,6 +28,13 @@ export function useItems(initialPage = 1, initialPageSize = 20, filters?: { sear
   const [currentPage, setCurrentPage] = React.useState(initialPage);
   const [currentPageSize, setCurrentPageSize] = React.useState(initialPageSize);
 
+  // Memoize filters to prevent unnecessary re-renders
+  const memoizedFilters = React.useMemo(() => filters, [
+    filters?.search,
+    filters?.groupId,
+    filters?.status,
+  ]);
+
   const fetchItems = React.useCallback(async () => {
     if (!accessToken) {
       setItems([]);
@@ -47,14 +54,14 @@ export function useItems(initialPage = 1, initialPageSize = 20, filters?: { sear
       });
       
       // Add filters to API params if provided
-      if (filters?.search) {
-        params.append('search', filters.search);
+      if (memoizedFilters?.search) {
+        params.append('search', memoizedFilters.search);
       }
-      if (filters?.groupId && filters.groupId !== 'all') {
-        params.append('item_group_id', filters.groupId);
+      if (memoizedFilters?.groupId && memoizedFilters.groupId !== 'all') {
+        params.append('item_group_id', memoizedFilters.groupId);
       }
-      if (filters?.status && filters.status !== 'all') {
-        params.append('status', filters.status);
+      if (memoizedFilters?.status && memoizedFilters.status !== 'all') {
+        params.append('status', memoizedFilters.status);
       }
       
       const res = await fetch(`${ITEMS_URL}?${params}`, {
@@ -76,7 +83,7 @@ export function useItems(initialPage = 1, initialPageSize = 20, filters?: { sear
     } finally {
       setLoading(false);
     }
-  }, [accessToken, currentPage, currentPageSize, filters]);
+  }, [accessToken, currentPage, currentPageSize, memoizedFilters]);
 
   React.useEffect(() => {
     fetchItems();

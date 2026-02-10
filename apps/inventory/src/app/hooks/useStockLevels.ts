@@ -45,6 +45,13 @@ export function useStockLevels(options: {
     if (options.pageSize !== undefined) setCurrentPageSize(options.pageSize);
   }, [options.pageSize]);
 
+  // Memoize filters to prevent unnecessary re-renders
+  const memoizedFilters = React.useMemo(() => filters, [
+    filters?.item_id,
+    filters?.warehouse_id,
+    filters?.search,
+  ]);
+
   const fetchStockLevels = React.useCallback(async () => {
     if (!accessToken) {
       setStockLevels([]);
@@ -64,14 +71,14 @@ export function useStockLevels(options: {
       };
 
       // Add filters to API params if provided
-      if (filters?.item_id && filters.item_id !== 'all') {
-        params.item_id = filters.item_id;
+      if (memoizedFilters?.item_id && memoizedFilters.item_id !== 'all') {
+        params.item_id = memoizedFilters.item_id;
       }
-      if (filters?.warehouse_id && filters.warehouse_id !== 'all') {
-        params.warehouse_id = filters.warehouse_id;
+      if (memoizedFilters?.warehouse_id && memoizedFilters.warehouse_id !== 'all') {
+        params.warehouse_id = memoizedFilters.warehouse_id;
       }
-      if (filters?.search) {
-        params.search = filters.search;
+      if (memoizedFilters?.search) {
+        params.search = memoizedFilters.search;
       }
 
       const url = buildUrl('/stock-levels', params);
@@ -108,7 +115,7 @@ export function useStockLevels(options: {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, currentPage, currentPageSize, filters]);
+  }, [accessToken, currentPage, currentPageSize, memoizedFilters]);
 
   React.useEffect(() => {
     fetchStockLevels();
