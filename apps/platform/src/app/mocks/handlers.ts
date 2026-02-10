@@ -91,13 +91,18 @@ export const handlers = [
     return HttpResponse.json(newSubscription, { status: 201 });
   }),
 
-  // POST /api/v1/auth/login - Login endpoint
+  // POST /api/v1/identity/login - Login endpoint (supports remember_me for cookie behaviour)
   http.post(`${API_BASE_URL}/identity/login`, async ({ request }) => {
-    const body = (await request.json()) as { email: string };
-    console.log('🔵 MSW: POST /auth/login', body);
+    const body = (await request.json()) as { email: string; password?: string; remember_me?: boolean };
+    console.log('🔵 MSW: POST /identity/login', body);
 
     const response = {
+      user: {
+        ...mockUsers[0],
+        email: body.email,
+      },
       access_token: 'mock_access_token_' + Date.now(),
+      refresh_token: 'mock_refresh_token_' + Date.now(),
       token_type: 'Bearer',
       user_id: mockUsers[0].id,
       email: body.email,
@@ -107,6 +112,17 @@ export const handlers = [
 
     await new Promise((resolve) => setTimeout(resolve, 300));
 
+    return HttpResponse.json(response, { status: 200 });
+  }),
+
+  // POST /api/v1/identity/refresh - Refresh access token (cookie-based refresh in production)
+  http.post(`${API_BASE_URL}/identity/refresh`, async () => {
+    console.log('🔵 MSW: POST /identity/refresh');
+    const response = {
+      access_token: 'mock_access_token_' + Date.now(),
+      token_type: 'Bearer',
+      user: mockUsers[0],
+    };
     return HttpResponse.json(response, { status: 200 });
   }),
 

@@ -5,12 +5,15 @@ import '@horizon-sync/ui/styles/globals.css';
 
 import { AppRoutes } from './AppRoutes';
 import { AppLoading } from './components/AppLoading';
+import { AuthSessionRestore } from './components/auth/AuthSessionRestore';
 
 export function App() {
   return (
     <React.Suspense fallback={<AppLoading />}>
-      <AppRoutes />
-      <Toaster />
+      <AuthSessionRestore>
+        <AppRoutes />
+        <Toaster />
+      </AuthSessionRestore>
     </React.Suspense>
   );
 }

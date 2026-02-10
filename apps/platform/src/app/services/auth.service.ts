@@ -6,6 +6,7 @@ import {
   LoginPayload,
   LoginResponse,
   LogoutPayload,
+  RefreshResponse,
   ForgotPasswordPayload,
   ResetPasswordPayload,
   ApiErrorResponse,
@@ -67,27 +68,34 @@ async function handleApiError(response: Response): Promise<never> {
 /**
  * Generic request helper to reduce boilerplate
  */
-async function apiRequest<T>(endpoint: string, method: string, body?: unknown, token?: string): Promise<T> {
+async function apiRequest<T>(
+  endpoint: string,
+  method: string,
+  body?: unknown,
+  token?: string,
+  options?: { credentials?: RequestCredentials }
+): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
   console.log(`Making ${method} request to:`, url);
   if (body) {
     console.log('Request body:', body);
   }
-  
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  
+
   try {
     const response = await fetch(url, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
+      credentials: options?.credentials ?? 'same-origin',
     });
 
     console.log(`Response status: ${response.status}`);
@@ -102,7 +110,7 @@ async function apiRequest<T>(endpoint: string, method: string, body?: unknown, t
 
     const responseData = await response.json();
     console.log('Response data:', responseData);
-    
+
     return responseData;
   } catch (error) {
     console.error('API request error:', error);
@@ -111,17 +119,81 @@ async function apiRequest<T>(endpoint: string, method: string, body?: unknown, t
   }
 }
 
+/**
+ * Login with credentials: 'include' so the backend can set HttpOnly cookies
+ * (e.g. refresh token). Backend should set cookie expiry: 30 days if
+ * remember_me is true, session cookie otherwise.
+ * 
+ * Note: Cookie security flags (HttpOnly, Secure, SameSite) are set by the backend.
+ * Backend should set Secure=false in development (HTTP/localhost) and Secure=true in production (HTTPS).
+ */
+async function loginWithCredentials(payload: LoginPayload): Promise<LoginResponse> {
+  const url = `${API_BASE_URL}/identity/login`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    await handleApiError(response);
+  }
+
+  const data = (await response.json()) as LoginResponse;
+  return data;
+}
+
 export class AuthService {
   static async register(payload: RegisterPayload): Promise<RegisterResponse> {
     return apiRequest<RegisterResponse>('/identity/register', 'POST', payload);
   }
 
+  /**
+   * Login with credentials: 'include' so backend can set HttpOnly, Secure, SameSite=Lax
+   * cookies. Send remember_me so backend can use persistent (30d) vs session cookie.
+   */
   static async login(payload: LoginPayload): Promise<LoginResponse> {
-    return apiRequest<LoginResponse>('/identity/login', 'POST', payload);
+    return loginWithCredentials(payload);
   }
 
-  static async logout(payload: LogoutPayload): Promise<void> {
-    return apiRequest<void>('/identity/logout', 'POST', payload);
+  /**
+   * Refresh access token using refresh token from cookie (HttpOnly) or body (fallback).
+   * Backend should read refresh token from cookie (preferred) or body (backward compatibility).
+   * Returns new access_token in body.
+   * 
+   * @param refreshToken - Optional refresh token to send in body (for backward compatibility).
+   *                       If not provided, backend should read from HttpOnly cookie.
+   */
+  static async refresh(refreshToken?: string): Promise<RefreshResponse> {
+    const url = `${API_BASE_URL}/identity/refresh`;
+    const body = refreshToken ? { refresh_token: refreshToken } : {};
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const err = new Error('Session expired or invalid.');
+      (err as Error & { status?: number }).status = response.status;
+      throw err;
+    }
+
+    return response.json() as Promise<RefreshResponse>;
+  }
+
+  /**
+   * Logout. Uses credentials: 'include' so backend can clear/invalidate
+   * the refresh token cookie. Pass refresh_token in payload if backend expects it in body.
+   */
+  static async logout(payload: LogoutPayload = {}): Promise<void> {
+    const body =
+      payload?.refresh_token !== undefined ? payload : undefined;
+    return apiRequest<void>('/identity/logout', 'POST', body, undefined, {
+      credentials: 'include',
+    });
   }
 
   static async forgotPassword(payload: ForgotPasswordPayload): Promise<void> {

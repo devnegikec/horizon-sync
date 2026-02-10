@@ -6,10 +6,13 @@ import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
+import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
+import { useItems } from '../../hooks/useItems';
 import { useStockEntryMutations } from '../../hooks/useStock';
+import { useWarehouses } from '../../hooks/useWarehouses';
 import type { ApiItem } from '../../types/items-api.types';
 import type { StockEntry, StockEntryItem, StockEntryStatus } from '../../types/stock.types';
 import type { Warehouse } from '../../types/warehouse.types';
@@ -18,8 +21,6 @@ interface StockEntryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   entry?: StockEntry | null;
-  warehouses: Warehouse[];
-  items: ApiItem[];
   onCreated?: () => void;
   onUpdated?: () => void;
 }
@@ -37,59 +38,102 @@ interface ItemLineProps {
   index: number;
   warehouses: Warehouse[];
   items: ApiItem[];
+  itemsLoading: boolean;
+  warehousesLoading: boolean;
+  onItemSearch: (search: string) => void;
+  onWarehouseSearch: (search: string) => void;
   onChange: (index: number, field: string, value: string | number) => void;
   onRemove: (index: number) => void;
 }
 
-function ItemLine({ item, index, warehouses, items, onChange, onRemove }: ItemLineProps) {
+function ItemLine({ item, index, warehouses, items, itemsLoading, warehousesLoading, onItemSearch, onWarehouseSearch, onChange, onRemove }: ItemLineProps) {
+  const [itemSearchOpen, setItemSearchOpen] = React.useState(false);
+  const [sourceWhSearchOpen, setSourceWhSearchOpen] = React.useState(false);
+  const [targetWhSearchOpen, setTargetWhSearchOpen] = React.useState(false);
+
   return (
     <div className="grid grid-cols-12 gap-2 items-end border-b pb-3">
       <div className="col-span-3 space-y-1">
         <Label className="text-xs">Item</Label>
-        <Select value={item.item_id || ''} onValueChange={(value) => onChange(index, 'item_id', value)}>
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue placeholder="Select" />
-          </SelectTrigger>
-          <SelectContent>
-            {items.map((i) => (
-              <SelectItem key={i.id} value={i.id}>
-                {i.item_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="relative">
+          <Select value={item.item_id || ''} onValueChange={(value) => onChange(index, 'item_id', value)} open={itemSearchOpen} onOpenChange={setItemSearchOpen}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Select item" />
+            </SelectTrigger>
+            <SelectContent>
+              <div className="p-2 border-b">
+                <SearchInput placeholder="Search items..." onSearch={onItemSearch} className="h-8 text-xs" />
+              </div>
+              <div className="max-h-[200px] overflow-y-auto">
+                {itemsLoading ? (
+                  <div className="p-2 text-xs text-muted-foreground text-center">Loading...</div>
+                ) : items.length === 0 ? (
+                  <div className="p-2 text-xs text-muted-foreground text-center">No items found</div>
+                ) : (
+                  items.map((i) => (
+                    <SelectItem key={i.id} value={i.id} className="text-xs">
+                      {i.item_name} ({i.item_code})
+                    </SelectItem>
+                  ))
+                )}
+              </div>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <div className="col-span-2 space-y-1">
         <Label className="text-xs">Source WH</Label>
         <Select value={item.source_warehouse_id || 'none'}
-          onValueChange={(value) => onChange(index, 'source_warehouse_id', value === 'none' ? '' : value)}>
+          onValueChange={(value) => onChange(index, 'source_warehouse_id', value === 'none' ? '' : value)}
+          open={sourceWhSearchOpen}
+          onOpenChange={setSourceWhSearchOpen}>
           <SelectTrigger className="h-8 text-xs">
             <SelectValue placeholder="Select" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            {warehouses.map((w) => (
-              <SelectItem key={w.id} value={w.id}>
-                {w.code}
-              </SelectItem>
-            ))}
+            <div className="p-2 border-b">
+              <SearchInput placeholder="Search warehouses..." onSearch={onWarehouseSearch} className="h-8 text-xs" />
+            </div>
+            <div className="max-h-[200px] overflow-y-auto">
+              <SelectItem value="none" className="text-xs">None</SelectItem>
+              {warehousesLoading ? (
+                <div className="p-2 text-xs text-muted-foreground text-center">Loading...</div>
+              ) : (
+                warehouses.map((w) => (
+                  <SelectItem key={w.id} value={w.id} className="text-xs">
+                    {w.name} ({w.code})
+                  </SelectItem>
+                ))
+              )}
+            </div>
           </SelectContent>
         </Select>
       </div>
       <div className="col-span-2 space-y-1">
         <Label className="text-xs">Target WH</Label>
         <Select value={item.target_warehouse_id || 'none'}
-          onValueChange={(value) => onChange(index, 'target_warehouse_id', value === 'none' ? '' : value)}>
+          onValueChange={(value) => onChange(index, 'target_warehouse_id', value === 'none' ? '' : value)}
+          open={targetWhSearchOpen}
+          onOpenChange={setTargetWhSearchOpen}>
           <SelectTrigger className="h-8 text-xs">
             <SelectValue placeholder="Select" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="none">None</SelectItem>
-            {warehouses.map((w) => (
-              <SelectItem key={w.id} value={w.id}>
-                {w.code}
-              </SelectItem>
-            ))}
+            <div className="p-2 border-b">
+              <SearchInput placeholder="Search warehouses..." onSearch={onWarehouseSearch} className="h-8 text-xs" />
+            </div>
+            <div className="max-h-[200px] overflow-y-auto">
+              <SelectItem value="none" className="text-xs">None</SelectItem>
+              {warehousesLoading ? (
+                <div className="p-2 text-xs text-muted-foreground text-center">Loading...</div>
+              ) : (
+                warehouses.map((w) => (
+                  <SelectItem key={w.id} value={w.id} className="text-xs">
+                    {w.name} ({w.code})
+                  </SelectItem>
+                ))
+              )}
+            </div>
           </SelectContent>
         </Select>
       </div>
@@ -119,8 +163,16 @@ function ItemLine({ item, index, warehouses, items, onChange, onRemove }: ItemLi
   );
 }
 
-export function StockEntryDialog({ open, onOpenChange, entry, warehouses, items, onCreated, onUpdated }: StockEntryDialogProps) {
+export function StockEntryDialog({ open, onOpenChange, entry, onCreated, onUpdated }: StockEntryDialogProps) {
   const { createEntry, updateEntry, loading } = useStockEntryMutations();
+  
+  // Fetch warehouses and items with search
+  const [warehouseSearch, setWarehouseSearch] = React.useState('');
+  const [itemSearch, setItemSearch] = React.useState('');
+  
+  const { warehouses, loading: warehousesLoading } = useWarehouses(1, 100, { search: warehouseSearch });
+  const { items, loading: itemsLoading } = useItems(1, 100, { search: itemSearch });
+  
   const [formData, setFormData] = React.useState({
     stock_entry_no: '',
     stock_entry_type: 'material_receipt',
@@ -146,7 +198,7 @@ export function StockEntryDialog({ open, onOpenChange, entry, warehouses, items,
         status: (entry.status as StockEntryStatus) || 'draft',
         remarks: entry.remarks || '',
       });
-      setLineItems(entry.items.length > 0 ? entry.items : [{ item_id: '', qty: 0, basic_rate: 0 }]);
+      setLineItems(entry.items && entry.items.length > 0 ? entry.items : [{ item_id: '', qty: 0, basic_rate: 0 }]);
     } else {
       setFormData({
         stock_entry_no: '',
@@ -280,12 +332,23 @@ export function StockEntryDialog({ open, onOpenChange, entry, warehouses, items,
                     <SelectValue placeholder="Select warehouse" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {warehouses.map((w) => (
-                      <SelectItem key={w.id} value={w.id}>
-                        {w.name} ({w.code})
-                      </SelectItem>
-                    ))}
+                    <div className="p-2 border-b">
+                      <SearchInput placeholder="Search warehouses..." onSearch={setWarehouseSearch} className="h-8 text-xs" />
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto">
+                      <SelectItem value="none">None</SelectItem>
+                      {warehousesLoading ? (
+                        <div className="p-2 text-xs text-muted-foreground text-center">Loading...</div>
+                      ) : warehouses.length === 0 ? (
+                        <div className="p-2 text-xs text-muted-foreground text-center">No warehouses found</div>
+                      ) : (
+                        warehouses.map((w) => (
+                          <SelectItem key={w.id} value={w.id}>
+                            {w.name} ({w.code})
+                          </SelectItem>
+                        ))
+                      )}
+                    </div>
                   </SelectContent>
                 </Select>
               </div>
@@ -297,12 +360,23 @@ export function StockEntryDialog({ open, onOpenChange, entry, warehouses, items,
                     <SelectValue placeholder="Select warehouse" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {warehouses.map((w) => (
-                      <SelectItem key={w.id} value={w.id}>
-                        {w.name} ({w.code})
-                      </SelectItem>
-                    ))}
+                    <div className="p-2 border-b">
+                      <SearchInput placeholder="Search warehouses..." onSearch={setWarehouseSearch} className="h-8 text-xs" />
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto">
+                      <SelectItem value="none">None</SelectItem>
+                      {warehousesLoading ? (
+                        <div className="p-2 text-xs text-muted-foreground text-center">Loading...</div>
+                      ) : warehouses.length === 0 ? (
+                        <div className="p-2 text-xs text-muted-foreground text-center">No warehouses found</div>
+                      ) : (
+                        warehouses.map((w) => (
+                          <SelectItem key={w.id} value={w.id}>
+                            {w.name} ({w.code})
+                          </SelectItem>
+                        ))
+                      )}
+                    </div>
                   </SelectContent>
                 </Select>
               </div>
@@ -333,6 +407,10 @@ export function StockEntryDialog({ open, onOpenChange, entry, warehouses, items,
                     index={index}
                     warehouses={warehouses}
                     items={items}
+                    itemsLoading={itemsLoading}
+                    warehousesLoading={warehousesLoading}
+                    onItemSearch={setItemSearch}
+                    onWarehouseSearch={setWarehouseSearch}
                     onChange={handleItemChange}
                     onRemove={handleRemoveItem}/>
                 ))}
