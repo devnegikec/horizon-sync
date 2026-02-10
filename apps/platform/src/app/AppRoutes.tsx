@@ -7,6 +7,9 @@ import { PlaceholderPage } from './components/PlaceholderPage';
 import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage } from './pages';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
+const RevenuePage = React.lazy(() => import('inventory/RevenuePage'));
+const SourcingPage = React.lazy(() => import('inventory/SourcingPage'));
+const BooksPage = React.lazy(() => import('inventory/BooksPage'));
 
 export function AppRoutes() {
   return (
@@ -41,6 +44,9 @@ function ProtectedRouteWrapper() {
           <Route path="/" element={<DashboardHome />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/inventory" element={<Inventory />} />
+          <Route path="/revenue" element={<RevenuePage />} />
+          <Route path="/sourcing" element={<SourcingPage />} />
+          <Route path="/books" element={<BooksPage />} />
           <Route path="/subscriptions" element={<SubscriptionManagementPage />} />
           <Route path="/analytics" element={<AnalyticsPlaceholder />} />
           <Route path="/users" element={<UserManagementPage />} />
