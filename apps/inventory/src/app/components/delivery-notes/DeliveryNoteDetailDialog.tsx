@@ -76,7 +76,7 @@ export function DeliveryNoteDetailDialog({
         <DialogHeader className="flex flex-row items-center justify-between space-y-0 p-8 pb-6">
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <DialogTitle className="text-2xl font-bold">{deliveryNote.delivery_note_number}</DialogTitle>
+              <DialogTitle className="text-2xl font-bold">{deliveryNote.delivery_note_no}</DialogTitle>
               <Badge variant={statusBadge.variant} className="px-3 py-1 text-xs font-semibold uppercase tracking-wider">
                 {statusBadge.label}
               </Badge>

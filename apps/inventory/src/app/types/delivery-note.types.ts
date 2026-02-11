@@ -19,7 +19,7 @@ export interface DeliveryNoteTimelineEntry {
 
 export interface DeliveryNote {
   id: string;
-  delivery_note_number: string;
+  delivery_note_no: string;
   customer_id: string;
   customer_name: string;
   shipping_address: string;
@@ -52,3 +52,35 @@ export interface DeliveryNoteResponse {
 }
 
 export type DeliveryNoteStatus = DeliveryNote['status'];
+
+export interface DeliveryNoteCreateItem {
+  item_id: string;
+  qty: number;
+  uom: string;
+  rate: number;
+  amount: number;
+  warehouse_id: string;
+  batch_no: string;
+  serial_nos: string[];
+  sort_order: number;
+}
+
+export interface DeliveryNoteCreate {
+  delivery_note_no: string;
+  customer_id: string;
+  delivery_date: string;
+  status: DeliveryNoteStatus;
+  warehouse_id: string;
+  pick_list_id?: string;
+  reference_type?: string;
+  reference_id?: string;
+  remarks?: string;
+  items: DeliveryNoteCreateItem[];
+}
+
+export interface DeliveryNoteUpdate {
+  delivery_date?: string;
+  status?: DeliveryNoteStatus;
+  warehouse_id?: string;
+  remarks?: string;
+}

@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Truck,
   Plus,
@@ -27,12 +27,14 @@ import {
   TableHeader,
   TableRow,
 } from '@horizon-sync/ui/components/ui/table';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { cn } from '@horizon-sync/ui/lib';
 
-import type { DeliveryNote, DeliveryNoteResponse } from '../../types/delivery-note.types';
+import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteResponse, DeliveryNoteUpdate } from '../../types/delivery-note.types';
 import { deliveryNoteApi } from '../../utility/api';
 
 import { DeliveryNoteDetailDialog } from './DeliveryNoteDetailDialog';
+import { DeliveryNoteDialog } from './DeliveryNoteDialog';
 
 interface StatCardProps {
   title: string;
@@ -73,6 +75,8 @@ function getStatusBadge(status: DeliveryNote['status']) {
 
 export function DeliveryNoteManagement() {
   const accessToken = useUserStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const [filters, setFilters] = React.useState({
     search: '',
@@ -82,7 +86,10 @@ export function DeliveryNoteManagement() {
   });
 
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
   const [selectedNote, setSelectedNote] = React.useState<DeliveryNote | null>(null);
+  const [editNote, setEditNote] = React.useState<DeliveryNote | null>(null);
+  const [saving, setSaving] = React.useState(false);
 
   const { data, isLoading, error, refetch } = useQuery<DeliveryNoteResponse>({
     queryKey: ['delivery-notes', filters.page, filters.pageSize, filters.status],
@@ -114,6 +121,41 @@ export function DeliveryNoteManagement() {
     setDetailDialogOpen(true);
   }, []);
 
+  const handleCreate = () => {
+    setEditNote(null);
+    setCreateDialogOpen(true);
+  };
+
+  const handleEdit = React.useCallback((note: DeliveryNote) => {
+    setEditNote(note);
+    setDetailDialogOpen(false);
+    setCreateDialogOpen(true);
+  }, []);
+
+  const handleSave = async (data: DeliveryNoteCreate | DeliveryNoteUpdate, id?: string) => {
+    if (!accessToken) return;
+    setSaving(true);
+    try {
+      if (id) {
+        await deliveryNoteApi.update(accessToken, id, data);
+        toast({ title: 'Success', description: 'Delivery note updated successfully' });
+      } else {
+        await deliveryNoteApi.create(accessToken, data);
+        toast({ title: 'Success', description: 'Delivery note created successfully' });
+      }
+      queryClient.invalidateQueries({ queryKey: ['delivery-notes'] });
+      setCreateDialogOpen(false);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to save delivery note',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
@@ -131,7 +173,7 @@ export function DeliveryNoteManagement() {
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
+          <Button className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg" onClick={handleCreate}>
             <Plus className="h-4 w-4" />
             New Delivery Note
           </Button>
@@ -213,7 +255,7 @@ export function DeliveryNoteManagement() {
                 const badge = getStatusBadge(note.status);
                 return (
                   <TableRow key={note.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleView(note)}>
-                    <TableCell className="font-medium">{note.delivery_note_number}</TableCell>
+                    <TableCell className="font-medium">{note.delivery_note_no}</TableCell>
                     <TableCell>{note.customer_name}</TableCell>
                     <TableCell>
                       <Badge variant={badge.variant} className="text-xs">
@@ -260,7 +302,15 @@ export function DeliveryNoteManagement() {
         onOpenChange={setDetailDialogOpen}
         deliveryNote={selectedNote}
         onConvertToInvoice={(id) => console.log('Convert to invoice:', id)}
-        onEdit={(note) => console.log('Edit:', note.id)}
+        onEdit={handleEdit}
+      />
+
+      <DeliveryNoteDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        deliveryNote={editNote}
+        onSave={handleSave}
+        saving={saving}
       />
     </div>
   );
