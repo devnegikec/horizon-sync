@@ -9,9 +9,10 @@ import { AuthService } from '../services/auth.service';
 import { loginSchema, LoginFormData } from '../utility/validationSchema';
 
 const REMEMBER_EMAIL_KEY = 'login_remember_email';
+const IS_LOCAL = process.env.NODE_ENV === 'development';
 
 function getStoredEmail(): string {
-  if (typeof window === 'undefined') return '';
+  if (typeof window === 'undefined' || IS_LOCAL) return '';
   return localStorage.getItem(REMEMBER_EMAIL_KEY) ?? '';
 }
 
@@ -20,7 +21,7 @@ export function useLoginForm() {
   const location = useLocation();
   const { login } = useAuth();
   const { fetchPermissions } = usePermissions();
-  const [rememberMe, setRememberMe] = React.useState(() => !!getStoredEmail());
+  const [rememberMe, setRememberMe] = React.useState(() => !IS_LOCAL && !!getStoredEmail());
   const [status, setStatus] = React.useState<{ loading: boolean; error: string; success: string }>({
     loading: false,
     error: '',
@@ -38,16 +39,18 @@ export function useLoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     setStatus({ loading: true, error: '', success: '' });
     try {
-      if (rememberMe) {
+      const effectiveRememberMe = IS_LOCAL ? false : rememberMe;
+      
+      if (effectiveRememberMe) {
         localStorage.setItem(REMEMBER_EMAIL_KEY, data.email);
-      } else {
+      } else if (!IS_LOCAL) {
         localStorage.removeItem(REMEMBER_EMAIL_KEY);
       }
 
       const response = await AuthService.login({
         email: data.email,
         password: data.password,
-        remember_me: rememberMe,
+        remember_me: effectiveRememberMe,
       });
       setStatus((s) => ({ ...s, success: 'Login successful!' }));
 
@@ -101,5 +104,6 @@ export function useLoginForm() {
     onSubmit: form.handleSubmit(onSubmit),
     rememberMe,
     setRememberMe,
+    isLocal: IS_LOCAL,
   };
 }

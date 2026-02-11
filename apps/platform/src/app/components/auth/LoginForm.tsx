@@ -25,6 +25,7 @@ export function LoginForm() {
     success,
     rememberMe,
     setRememberMe,
+    isLocal,
     formState: { errors },
   } = useLoginForm();
 
@@ -73,16 +74,18 @@ export function LoginForm() {
             {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox id="remember-me"
-              checked={rememberMe}
-              onCheckedChange={(checked) => setRememberMe(checked === true)}
-              aria-label="Remember me" />
-            <Label htmlFor="remember-me"
-              className="text-sm font-normal cursor-pointer select-none">
-              Remember me
-            </Label>
-          </div>
+          {!isLocal && (
+            <div className="flex items-center space-x-2">
+              <Checkbox id="remember-me"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked === true)}
+                aria-label="Remember me" />
+              <Label htmlFor="remember-me"
+                className="text-sm font-normal cursor-pointer select-none">
+                Remember me
+              </Label>
+            </div>
+          )}
 
           {success && <StatusAlert message={success} variant="success" />}
           {error && <StatusAlert message={error} variant="error" />}
