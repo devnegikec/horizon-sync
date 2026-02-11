@@ -16,7 +16,6 @@
     "baseUrl": ".",
     "paths": {
       "@platform/*": ["apps/platform/src/*"],
-      "inventory/Module": ["apps/inventory/src/remote-entry.ts"],
       "@horizon-sync/ui": ["libs/shared/ui/src/index.ts"],
       "@horizon-sync/ui/*": ["libs/shared/ui/src/*"],
       "@horizon-sync/ui/components/*": ["libs/shared/ui/src/components/*"],
