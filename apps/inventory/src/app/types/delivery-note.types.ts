@@ -17,11 +17,24 @@ export interface DeliveryNoteTimelineEntry {
   notes?: string;
 }
 
+export interface CustomerInfo {
+  customer_code: string;
+  customer_name: string;
+}
+
+export interface WarehouseInfo {
+  warehouse_code: string;
+  warehouse_name: string;
+}
+
 export interface DeliveryNote {
   id: string;
   delivery_note_no: string;
   customer_id: string;
   customer_name: string;
+  customer?: CustomerInfo;
+  warehouse_id?: string;
+  warehouse?: WarehouseInfo;
   shipping_address: string;
   contact_person: string;
   contact_phone: string;
@@ -37,6 +50,7 @@ export interface DeliveryNote {
   timeline: DeliveryNoteTimelineEntry[];
   created_at: string;
   updated_at: string;
+  remarks?: string;
 }
 
 export interface DeliveryNoteResponse {

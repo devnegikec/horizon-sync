@@ -1,6 +1,8 @@
 import * as React from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { type Table } from '@tanstack/react-table';
 import {
   Truck,
   Plus,
@@ -10,67 +12,24 @@ import {
   Package,
   FileCheck,
   Ban,
-  Eye,
 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Badge } from '@horizon-sync/ui/components/ui/badge';
-import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
-import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@horizon-sync/ui/components/ui/table';
+import { Button, Card, CardContent, DataTableViewOptions, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { cn } from '@horizon-sync/ui/lib';
 
 import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteResponse, DeliveryNoteUpdate } from '../../types/delivery-note.types';
 import { deliveryNoteApi } from '../../utility/api';
+import { StatCard } from '../shared';
 
 import { DeliveryNoteDetailDialog } from './DeliveryNoteDetailDialog';
 import { DeliveryNoteDialog } from './DeliveryNoteDialog';
+import { DeliveryNotesTable } from './DeliveryNotesTable';
 
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  icon: React.ComponentType<{ className?: string }>;
-  iconBg: string;
-  iconColor: string;
-}
-
-function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps) {
-  return (
-    <Card className="border-border hover:shadow-md transition-shadow">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold tracking-tight">{value}</p>
-          </div>
-          <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl', iconBg)}>
-            <Icon className={cn('h-6 w-6', iconColor)} />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function getStatusBadge(status: DeliveryNote['status']) {
-  switch (status) {
-    case 'draft':
-      return { variant: 'secondary' as const, label: 'Draft' };
-    case 'submitted':
-      return { variant: 'success' as const, label: 'Shipped' };
-    case 'cancelled':
-      return { variant: 'destructive' as const, label: 'Cancelled' };
-  }
+interface DeliveryNoteFilters {
+  search: string;
+  status: string;
 }
 
 export function DeliveryNoteManagement() {
@@ -78,28 +37,35 @@ export function DeliveryNoteManagement() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [filters, setFilters] = React.useState({
+  const [filters, setFilters] = useState<DeliveryNoteFilters>({
     search: '',
     status: 'all',
-    page: 1,
-    pageSize: 20,
   });
 
-  const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
-  const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
-  const [selectedNote, setSelectedNote] = React.useState<DeliveryNote | null>(null);
-  const [editNote, setEditNote] = React.useState<DeliveryNote | null>(null);
-  const [saving, setSaving] = React.useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<DeliveryNote | null>(null);
+  const [editNote, setEditNote] = useState<DeliveryNote | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [tableInstance, setTableInstance] = useState<Table<DeliveryNote> | null>(null);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
 
   const { data, isLoading, error, refetch } = useQuery<DeliveryNoteResponse>({
-    queryKey: ['delivery-notes', filters.page, filters.pageSize, filters.status],
+    queryKey: ['delivery-notes', page, pageSize, filters.status, filters.search],
     queryFn: () =>
       deliveryNoteApi.list(
         accessToken || '',
-        filters.page,
-        filters.pageSize,
+        page,
+        pageSize,
         {
           status: filters.status !== 'all' ? filters.status : undefined,
+          search: filters.search || undefined,
         },
       ) as Promise<DeliveryNoteResponse>,
     enabled: !!accessToken,
@@ -108,7 +74,7 @@ export function DeliveryNoteManagement() {
   const deliveryNotes = data?.delivery_notes ?? [];
   const pagination = data?.pagination;
 
-  const stats = React.useMemo(() => {
+  const stats = useMemo(() => {
     const total = pagination?.total_items ?? 0;
     const draft = deliveryNotes.filter((d) => d.status === 'draft').length;
     const shipped = deliveryNotes.filter((d) => d.status === 'submitted').length;
@@ -131,6 +97,10 @@ export function DeliveryNoteManagement() {
     setDetailDialogOpen(false);
     setCreateDialogOpen(true);
   }, []);
+
+  const handleTableReady = (table: Table<DeliveryNote>) => {
+    setTableInstance(table);
+  };
 
   const handleSave = async (data: DeliveryNoteCreate | DeliveryNoteUpdate, id?: string) => {
     if (!accessToken) return;
@@ -155,6 +125,16 @@ export function DeliveryNoteManagement() {
       setSaving(false);
     }
   };
+
+  const serverPaginationConfig = useMemo(() => ({
+    pageIndex: page - 1, // DataTable uses 0-based indexing
+    pageSize: pageSize,
+    totalItems: pagination?.total_items ?? 0,
+    onPaginationChange: (pageIndex: number, newPageSize: number) => {
+      setPage(pageIndex + 1); // Convert back to 1-based for API
+      setPageSize(newPageSize);
+    }
+  }), [page, pageSize, pagination?.total_items]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -201,100 +181,40 @@ export function DeliveryNoteManagement() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <SearchInput
-          className="sm:w-80"
-          placeholder="Search by delivery note #, customer..."
-          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value, page: 1 }))}
-        />
-        <Select value={filters.status} onValueChange={(status) => setFilters((prev) => ({ ...prev, status, page: 1 }))}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="submitted">Shipped</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Table */}
-      <Card>
-        <div className="rounded-lg border-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Delivery Note #</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Shipping Date</TableHead>
-                <TableHead>Carrier</TableHead>
-                <TableHead>Tracking #</TableHead>
-                <TableHead className="text-right">Packages</TableHead>
-                <TableHead className="w-[80px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              )}
-              {!isLoading && deliveryNotes.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                    No delivery notes found
-                  </TableCell>
-                </TableRow>
-              )}
-              {deliveryNotes.map((note) => {
-                const badge = getStatusBadge(note.status);
-                return (
-                  <TableRow key={note.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleView(note)}>
-                    <TableCell className="font-medium">{note.delivery_note_no}</TableCell>
-                    <TableCell>{note.customer_name}</TableCell>
-                    <TableCell>
-                      <Badge variant={badge.variant} className="text-xs">
-                        {badge.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{new Date(note.shipping_date).toLocaleDateString()}</TableCell>
-                    <TableCell>{note.carrier_name}</TableCell>
-                    <TableCell className="font-mono text-xs">{note.tracking_number}</TableCell>
-                    <TableCell className="text-right">{note.total_packages}</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleView(note); }}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
-
-      {/* Pagination */}
-      {pagination && pagination.total_pages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Page {pagination.page} of {pagination.total_pages} ({pagination.total_items} total)
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={!pagination.has_prev} onClick={() => setFilters((prev) => ({ ...prev, page: prev.page - 1 }))}>
-              Previous
-            </Button>
-            <Button variant="outline" size="sm" disabled={!pagination.has_next} onClick={() => setFilters((prev) => ({ ...prev, page: prev.page + 1 }))}>
-              Next
-            </Button>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <SearchInput className="sm:w-80"
+            placeholder="Search by delivery note #, customer..."
+            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))} />
+          <div className="flex gap-3">
+            <Select value={filters.status} onValueChange={(status) => setFilters((prev) => ({ ...prev, status }))}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="submitted">Shipped</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
-      )}
+        <div className="flex items-center">
+          {tableInstance && <DataTableViewOptions table={tableInstance} />}
+        </div>
+      </div>
+
+      {/* Delivery Notes Table */}
+      <DeliveryNotesTable deliveryNotes={deliveryNotes}
+        loading={isLoading}
+        error={error ? (error as Error).message : null}
+        hasActiveFilters={!!filters.search || filters.status !== 'all'}
+        onView={handleView}
+        onEdit={handleEdit}
+        onCreateDeliveryNote={handleCreate}
+        onTableReady={handleTableReady}
+        serverPagination={serverPaginationConfig} />
 
       {/* Detail Dialog */}
       <DeliveryNoteDetailDialog
@@ -302,16 +222,14 @@ export function DeliveryNoteManagement() {
         onOpenChange={setDetailDialogOpen}
         deliveryNote={selectedNote}
         onConvertToInvoice={(id) => console.log('Convert to invoice:', id)}
-        onEdit={handleEdit}
-      />
+        onEdit={handleEdit} />
 
       <DeliveryNoteDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         deliveryNote={editNote}
         onSave={handleSave}
-        saving={saving}
-      />
+        saving={saving} />
     </div>
   );
 }

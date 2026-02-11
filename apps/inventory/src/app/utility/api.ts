@@ -300,12 +300,13 @@ export const customerApi = {
 
 // Delivery Notes API helpers
 export const deliveryNoteApi = {
-  list: (accessToken: string, page = 1, pageSize = 20, filters?: { customer_id?: string; status?: string; sort_by?: string; sort_order?: 'asc' | 'desc' }) =>
+  list: (accessToken: string, page = 1, pageSize = 20, filters?: { customer_id?: string; status?: string; search?: string; sort_by?: string; sort_order?: 'asc' | 'desc' }) =>
     apiRequest('/delivery-notes', accessToken, {
       params: {
         ...buildPaginationParams(page, pageSize, filters?.sort_by || 'delivery_date', filters?.sort_order || 'desc'),
         customer_id: filters?.customer_id,
         status: filters?.status,
+        search: filters?.search,
       },
     }),
 
