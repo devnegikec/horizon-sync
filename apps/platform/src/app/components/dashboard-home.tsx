@@ -72,6 +72,13 @@ const stats: StatCardProps[] = [
   },
 ];
 
+const QuickActions: { label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { label: 'Add Inventory', icon: Package },
+  { label: 'Create User', icon: Users },
+  { label: 'View Reports', icon: TrendingUp },
+  { label: 'System Settings', icon: Activity },
+];
+
 interface RecentActivityItem {
   id: string;
   action: string;
@@ -174,7 +181,7 @@ export function DashboardHome() {
             {[40, 65, 45, 80, 55, 70, 85, 60, 75, 90, 70, 95].map((height, index) => (
               <div key={index}
                 className="flex-1 bg-gradient-to-t from-violet-500 to-fuchsia-500 rounded-t-md opacity-80 hover:opacity-100 transition-all duration-300 cursor-pointer hover:scale-y-105 origin-bottom"
-                style={{ height: `${height}%` }}/>
+                style={{ height: `${height}%` }} />
             ))}
           </div>
           <div className="flex justify-between mt-4 px-4 text-xs text-muted-foreground">
@@ -220,12 +227,7 @@ export function DashboardHome() {
       <div className="rounded-xl border border-border bg-gradient-to-br from-violet-500/5 via-transparent to-fuchsia-500/5 p-6">
         <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { label: 'Add Inventory', icon: Package },
-            { label: 'Create User', icon: Users },
-            { label: 'View Reports', icon: TrendingUp },
-            { label: 'System Settings', icon: Activity },
-          ].map((action) => (
+          {QuickActions.map((action) => (
             <Button key={action.label}
               variant="outline"
               className="h-auto py-4 flex-col gap-2 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all">

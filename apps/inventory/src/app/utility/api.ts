@@ -297,3 +297,84 @@ export const customerApi = {
       method: 'DELETE',
     }),
 };
+
+// Bulk Import API helpers
+export const bulkImportApi = {
+  upload: async (accessToken: string, file: File): Promise<unknown> => {
+    const url = buildUrl('/bulk-import/upload');
+    
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      const error: ApiError = {
+        message: errorText || `HTTP ${response.status}`,
+        status: response.status,
+      };
+      try {
+        error.details = JSON.parse(errorText);
+      } catch {
+        // Text is not JSON
+      }
+      throw error;
+    }
+
+    // Handle 204 No Content
+    if (response.status === 204) {
+      return {};
+    }
+
+    return response.json();
+  },
+};
+
+// Bulk Export API helpers
+export interface BulkExportPayload {
+  file_format: 'csv' | 'xlsx' | 'json';
+  file_name: string;
+  filters?: {
+    item_type?: string;
+    status?: string;
+  };
+  selected_columns?: string[];
+}
+
+export const bulkExportApi = {
+  export: async (accessToken: string, payload: BulkExportPayload): Promise<Blob> => {
+    const url = buildUrl('/bulk-export');
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      const error: ApiError = {
+        message: errorText || `HTTP ${response.status}`,
+        status: response.status,
+      };
+      try {
+        error.details = JSON.parse(errorText);
+      } catch {
+        // Text is not JSON
+      }
+      throw error;
+    }
+
+    return response.blob();
+  },
+};
