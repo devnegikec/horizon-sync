@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DollarSign, Package, Users, Warehouse, Boxes, Truck } from 'lucide-react';
 
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
@@ -7,6 +8,11 @@ import { Button } from '@horizon-sync/ui/components/ui/button';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { CustomerManagement } from '../components/customers';
+import { DeliveryNoteManagement } from '../components/delivery-notes';
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+});
 
 type ActiveView = 'customers' | 'delivery_notes' | 'invoices' | 'payments';
 
@@ -29,6 +35,7 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 export function RevenuePage() {
   const [activeView, setActiveView] = React.useState<ActiveView>('customers');
   return (
+    <QueryClientProvider client={queryClient}>
     <ThemeProvider>
 
       <div className="min-h-screen bg-background">
@@ -47,9 +54,11 @@ export function RevenuePage() {
         {/* Main Content */}
         <main className="container px-4 py-8">
           {activeView === 'customers' && <CustomerManagement />}
+          {activeView === 'delivery_notes' && <DeliveryNoteManagement />}
         </main>
       </div>
     </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
