@@ -7,6 +7,8 @@ import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 import { cn } from '@horizon-sync/ui/lib';
 
+import { usePermissions } from '../hooks/usePermissions';
+
 interface NavItem {
   title: string;
   href: string;
@@ -80,12 +82,22 @@ function SidebarNavItem({ item, isActive, collapsed, isMobile, onClick }: Sideba
 
 export function Sidebar({ open = true, collapsed = false, isMobile = false, onClose }: SidebarProps) {
   const location = useLocation();
+  const { filterNavigation } = usePermissions();
 
   const handleLinkClick = () => {
     if (isMobile) {
       onClose?.();
     }
   };
+
+  // Filter navigation items based on user permissions
+  const filteredMainNavItems = React.useMemo(() => {
+    return filterNavigation(mainNavItems);
+  }, [filterNavigation]);
+
+  const filteredBottomNavItems = React.useMemo(() => {
+    return filterNavigation(bottomNavItems);
+  }, [filterNavigation]);
 
   return (
     <aside className={cn(
@@ -110,7 +122,7 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
 
       {/* Main Navigation */}
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-        {mainNavItems.map((item) => {
+        {filteredMainNavItems.map((item) => {
           const isActive = item.href === '/' ? location.pathname === '/' : location.pathname.startsWith(item.href);
           return (
             <SidebarNavItem key={item.href}
@@ -127,7 +139,7 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
 
       {/* Bottom Navigation */}
       <div className="py-4 px-3 space-y-1">
-        {bottomNavItems.map((item) => {
+        {filteredBottomNavItems.map((item) => {
           const isActive = location.pathname.startsWith(item.href);
           return (
             <SidebarNavItem key={item.href}

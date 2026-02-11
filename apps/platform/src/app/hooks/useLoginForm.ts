@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-import { useAuth } from '../hooks';
+import { useAuth, usePermissions } from '../hooks';
 import { AuthService } from '../services/auth.service';
 import { loginSchema, LoginFormData } from '../utility/validationSchema';
 
@@ -19,6 +19,7 @@ export function useLoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const { fetchPermissions } = usePermissions();
   const [rememberMe, setRememberMe] = React.useState(() => !!getStoredEmail());
   const [status, setStatus] = React.useState<{ loading: boolean; error: string; success: string }>({
     loading: false,
@@ -75,6 +76,14 @@ export function useLoginForm() {
         preferences: response.user.preferences,
         extra_data: response.user.extra_data,
       });
+
+      // Fetch user permissions after successful login
+      try {
+        await fetchPermissions();
+      } catch (permissionError) {
+        console.warn('Failed to fetch user permissions:', permissionError);
+        // Don't prevent navigation if permissions fetch fails
+      }
 
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
       setTimeout(() => navigate(from, { replace: true }), 1000);

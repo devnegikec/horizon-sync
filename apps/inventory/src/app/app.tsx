@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Package, Users, LayoutDashboard, Warehouse, Boxes, Truck } from 'lucide-react';
+import { Package, Users, Warehouse, Boxes, Truck } from 'lucide-react';
 
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -12,7 +12,7 @@ import { StockManagement } from './components/stock';
 import { SupplierManagement } from './components/suppliers';
 import { WarehouseManagement } from './components/warehouses';
 
-type ActiveView = 'items' | 'customers' | 'warehouses' | 'stock' | 'suppliers';
+type ActiveView = 'items' | 'warehouses' | 'stock' | 'suppliers' | 'stock_movements' | 'pick_lists' | 'put_aways_rules' | 'replenishments' | 'batches' | 'stock_settings';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -48,10 +48,10 @@ export function App() {
             </div> */}
             <nav className="flex items-center gap-2">
               <NavItem icon={Package} label="Items" isActive={activeView === 'items'} onClick={() => setActiveView('items')} />
-              <NavItem icon={Users} label="Customers" isActive={activeView === 'customers'} onClick={() => setActiveView('customers')} />
+              {/* <NavItem icon={Users} label="Customers" isActive={activeView === 'customers'} onClick={() => setActiveView('customers')} /> */}
               <NavItem icon={Warehouse} label="Warehouses" isActive={activeView === 'warehouses'} onClick={() => setActiveView('warehouses')} />
               <NavItem icon={Boxes} label="Stock" isActive={activeView === 'stock'} onClick={() => setActiveView('stock')} />
-              <NavItem icon={Truck} label="Suppliers" isActive={activeView === 'suppliers'} onClick={() => setActiveView('suppliers')} />
+              {/* <NavItem icon={Truck} label="Suppliers" isActive={activeView === 'suppliers'} onClick={() => setActiveView('suppliers')} /> */}
             </nav>
           </div>
         </header>
@@ -59,7 +59,6 @@ export function App() {
         {/* Main Content */}
         <main className="container px-4 py-8">
           {activeView === 'items' && <ItemManagement />}
-          {activeView === 'customers' && <CustomerManagement />}
           {activeView === 'warehouses' && <WarehouseManagement />}
           {activeView === 'stock' && <StockManagement />}
           {activeView === 'suppliers' && <SupplierManagement />}
