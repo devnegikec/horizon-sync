@@ -10,6 +10,21 @@ const config = {
 };
 
 export default composePlugins(withNx(), withReact(), withModuleFederation(config, { dts: false }), (config) => {
+  config.output = {
+    ...config.output,
+    publicPath: 'auto',
+  };
+
+  config.devServer = {
+    ...config.devServer,
+    hot: true,
+    historyApiFallback: true,
+    watchFiles: ['apps/inventory/src/**/*'],
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+    },
+  };
+
   config.plugins = config.plugins || [];
   config.plugins.push(
     new webpack.DefinePlugin({
