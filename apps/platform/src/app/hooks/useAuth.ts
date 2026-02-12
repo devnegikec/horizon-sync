@@ -80,22 +80,35 @@ export function useAuth() {
   };
 
   /**
-   * Restore session from HttpOnly refresh cookie (e.g. after tab reopen when "Remember Me" was used).
-   * Access token is stored in memory only; refresh token stays in cookie.
-   * If refreshToken is available in store, sends it in body as fallback (backward compatibility).
+   * Restore session using refresh token from store.
+   * The refresh token is persisted in localStorage and used to get a new access token.
+   * If refresh token is not available or invalid, session restoration fails.
    */
   const restoreSession = async (): Promise<boolean> => {
     try {
-      // Try with refresh token from store if available (backward compatibility),
-      // otherwise rely on cookie (preferred approach)
-      const data = await AuthService.refresh(refreshToken || undefined);
+      // Check if we have a refresh token
+      if (!refreshToken || refreshToken.trim() === '') {
+        console.log('No refresh token available for session restoration');
+        return false;
+      }
+
+      console.log('Attempting to restore session with refresh token');
+      
+      // Use the refresh token to get a new access token
+      const data = await AuthService.refresh(refreshToken);
+      
       const userData = data.user
         ? userFromApi(data.user)
         : userFromApi(await AuthService.getUserProfile(data.access_token));
-      // If backend returns refresh_token in response, store it; otherwise keep empty (cookie-based)
-      setAuth(userData, data.access_token, '');
+      
+      // Store the new tokens (keep the same refresh token or use new one if provided)
+      const newRefreshToken = data.refresh_token || refreshToken;
+      setAuth(userData, data.access_token, newRefreshToken);
+      
+      console.log('Session restored successfully');
       return true;
-    } catch {
+    } catch (error) {
+      console.error('Failed to restore session:', error);
       return false;
     }
   };

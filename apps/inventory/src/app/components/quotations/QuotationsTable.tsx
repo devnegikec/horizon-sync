@@ -43,11 +43,20 @@ export function QuotationsTable({
 }: QuotationsTableProps) {
   const [tableInstance, setTableInstance] = React.useState<Table<Quotation> | null>(null);
 
+  // Call onTableReady when table instance changes
   React.useEffect(() => {
     if (tableInstance && onTableReady) {
       onTableReady(tableInstance);
     }
   }, [tableInstance, onTableReady]);
+
+  const renderViewOptions = (table: Table<Quotation>) => {
+    // Set table instance in state, which will trigger useEffect
+    if (table !== tableInstance) {
+      setTableInstance(table);
+    }
+    return null; // Don't render anything in the table
+  };
 
   const serverPaginationConfig = React.useMemo(() => {
     if (!serverPagination) return undefined;
@@ -186,12 +195,7 @@ export function QuotationsTable({
     [onView, onEdit, onDelete],
   );
 
-  const renderViewOptions = (table: Table<Quotation>) => {
-    if (table !== tableInstance) {
-      setTableInstance(table);
-    }
-    return null;
-  };
+
 
   if (error) {
     return (

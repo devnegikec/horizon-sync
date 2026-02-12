@@ -61,6 +61,7 @@ export interface LoginResponse {
 /** Response from POST /identity/refresh when using cookie-based refresh token. */
 export interface RefreshResponse {
   access_token: string;
+  refresh_token?: string;
   token_type?: string;
   user?: UserType;
 }
