@@ -4,6 +4,7 @@ import { Package, Users, Warehouse, Boxes, Truck } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { cn } from '@horizon-sync/ui/lib';
+import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 
 import { CustomerManagement } from './components/customers';
 import { ItemManagement } from './components/items';
