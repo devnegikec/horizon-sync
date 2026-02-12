@@ -34,7 +34,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
     quotation_no: '',
     customer_id: '',
     quotation_date: new Date().toISOString().slice(0, 10),
-    valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    valid_until:new Date().toISOString().slice(0, 10),
     currency: 'INR',
     status: 'draft' as QuotationStatus,
     remarks: '',
@@ -167,16 +167,16 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Basic Information</h3>
             <div className="grid gap-4 md:grid-cols-2">
-              {isEdit && (
-                <div className="space-y-2">
-                  <Label htmlFor="quotation_no">Quotation # *</Label>
-                  <Input
-                    id="quotation_no"
-                    value={formData.quotation_no}
-                    disabled
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="quotation_no">Quotation #</Label>
+                <Input
+                  id="quotation_no"
+                  value={formData.quotation_no}
+                  onChange={(e) => handleChange('quotation_no', e.target.value)}
+                  disabled={isEdit}
+                  placeholder={isEdit ? '' : 'Auto-generated if left blank'}
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="customer_id">Customer *</Label>
                 <Select 
