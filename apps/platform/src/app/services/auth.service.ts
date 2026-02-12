@@ -216,6 +216,6 @@ export class AuthService {
   }
 
   static async getUserProfile(token: string): Promise<UserType> {
-    return apiRequest<UserType>('/identity/profile', 'GET', undefined, token);
+    return apiRequest<UserType>('/identity/users/me', 'GET', undefined, token);
   }
 }
