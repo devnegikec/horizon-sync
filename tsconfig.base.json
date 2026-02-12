@@ -24,6 +24,7 @@
       "@horizon-sync/ui/hooks/*": ["libs/shared/ui/src/hooks/*"],
       "@horizon-sync/store": ["libs/shared/store/src/index.ts"],
       "@horizon-sync/store/*": ["libs/shared/store/src/*"],
+      "@horizon-sync/search": ["apps/platform/src/app/features/search/index.ts"],
       "@/components/*": ["libs/shared/ui/src/components/*"],
       "@/lib/*": ["libs/shared/ui/src/lib/*"]
     }

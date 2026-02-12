@@ -1,7 +1,7 @@
 import type { Table } from '@tanstack/react-table';
 
 import { DataTableViewOptions } from '@horizon-sync/ui/components/data-table/DataTableViewOptions';
-import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
+import { LocalSearch, type SearchResult } from '@horizon-sync/search';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 
 import type { ItemFilters } from '../../types/item.types';
@@ -12,20 +12,51 @@ interface ItemManagementFiltersProps {
   setFilters: React.Dispatch<React.SetStateAction<ItemFilters>>;
   itemGroups: Array<{ id: string; name: string }>;
   tableInstance: Table<ApiItem> | null;
+  onSearchResults?: (results: SearchResult[]) => void;
 }
 
 export function ItemManagementFilters({ 
   filters, 
   setFilters, 
   itemGroups, 
-  tableInstance 
+  tableInstance,
+  onSearchResults 
 }: ItemManagementFiltersProps) {
+  
+  const handleSearchResults = (results: SearchResult[]) => {
+    console.log('[ItemManagementFilters] Search results received:', results.length);
+    
+    // If we have search results, use them
+    if (results.length > 0) {
+      // Extract entity IDs from search results
+      const searchResultIds = results.map(r => r.entity_id);
+      console.log('[ItemManagementFilters] Search result IDs:', searchResultIds);
+      
+      // Pass results to parent component
+      if (onSearchResults) {
+        onSearchResults(results);
+      }
+    } else if (results.length === 0 && onSearchResults) {
+      // Empty results from search (not cleared search)
+      onSearchResults(results);
+    } else {
+      // Search was cleared, reset to show all items
+      console.log('[ItemManagementFilters] Search cleared, showing all items');
+      if (onSearchResults) {
+        onSearchResults([]);
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <SearchInput className="sm:w-80" 
-          placeholder="Search by code, name, or group..." 
-          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
+        <LocalSearch
+          entityType="items"
+          onResultsChange={handleSearchResults}
+          placeholder="Search items by name, SKU, or description..."
+          className="sm:w-80"
+        />
         <div className="flex gap-3">
           <Select value={filters.groupId} 
             onValueChange={(value) => setFilters((prev) => ({ ...prev, groupId: value }))}>

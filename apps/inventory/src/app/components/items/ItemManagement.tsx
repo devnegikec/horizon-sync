@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 import { useUserStore, hasOrganization } from '@horizon-sync/store';
 import { CreateOrganizationModal, OrganizationService, type CreateOrganizationPayload } from '@horizon-sync/ui/components';
+import type { SearchResult } from '@horizon-sync/search';
 
 import { environment } from '../../../environments/environment';
 import { useItemManagement } from '../../hooks/useItemManagement';
@@ -17,6 +18,8 @@ import { ItemStats } from './ItemStats';
 export function ItemManagement() {
   const { user, accessToken, updateUser } = useUserStore();
   const [createOrgModalOpen, setCreateOrgModalOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearchActive, setIsSearchActive] = useState(false);
   
   const {
     filters,
@@ -111,21 +114,56 @@ export function ItemManagement() {
     }
   };
 
+  // Handle search results from LocalSearch component
+  const handleSearchResults = useCallback((results: SearchResult[]) => {
+    console.log('[ItemManagement] Received search results:', results.length);
+    
+    if (results.length > 0) {
+      // Search returned results
+      setSearchResults(results);
+      setIsSearchActive(true);
+    } else if (results.length === 0 && isSearchActive) {
+      // Empty search results (no matches)
+      setSearchResults([]);
+      setIsSearchActive(true);
+    } else {
+      // Search was cleared
+      setSearchResults([]);
+      setIsSearchActive(false);
+    }
+  }, [isSearchActive]);
+
+  // Filter items based on search results
+  const displayedItems = isSearchActive && searchResults.length > 0
+    ? items.filter(item => searchResults.some(result => result.entity_id === item.id))
+    : items;
+
+  console.log('[ItemManagement] Display state:', {
+    isSearchActive,
+    searchResultsCount: searchResults.length,
+    totalItems: items.length,
+    displayedItems: displayedItems.length
+  });
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <ItemManagementHeader onCreateItem={handleCreateItemWithOrgCheck} />
 
       <ItemStats totalItems={stats.totalItems} activeItems={stats.activeItems} />
 
-      <ItemManagementFilters filters={filters} 
+      <ItemManagementFilters 
+        filters={filters} 
         setFilters={setFilters} 
         itemGroups={itemGroups} 
-        tableInstance={tableInstance}/>
+        tableInstance={tableInstance}
+        onSearchResults={handleSearchResults}
+      />
 
-      <ItemsTable items={items} 
+      <ItemsTable 
+        items={displayedItems} 
         loading={loading} 
         error={error} 
-        hasActiveFilters={!!filters.search || filters.groupId !== 'all' || filters.status !== 'all'} 
+        hasActiveFilters={isSearchActive || !!filters.search || filters.groupId !== 'all' || filters.status !== 'all'} 
         onView={handleViewItem} 
         onEdit={handleEditItem} 
         onToggleStatus={handleToggleStatus} 
@@ -133,7 +171,8 @@ export function ItemManagement() {
         onBulkUpload={handleBulkUpload}
         onCreateOrganization={() => setCreateOrgModalOpen(true)}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}/>
+        serverPagination={serverPaginationConfig}
+      />
 
       <ItemDialog open={itemDialogOpen} 
         onOpenChange={setItemDialogOpen} 
