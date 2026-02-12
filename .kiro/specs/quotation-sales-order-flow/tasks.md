@@ -19,7 +19,7 @@ This implementation plan breaks down the Quotation and Sales Order management fe
     - Use Shadcn Badge component as base
     - _Requirements: 6.6-6.10, 14.9-14.14_
   
-  - [ ] 2.2 Write unit tests for StatusBadge
+  - [x] 2.2 Write unit tests for StatusBadge
     - Test each status renders with correct styling
     - Test className prop merging
     - _Requirements: 6.6-6.10, 14.9-14.14_
@@ -34,11 +34,11 @@ This implementation plan breaks down the Quotation and Sales Order management fe
     - Support fulfillment status display for sales orders
     - _Requirements: 3.8, 11.8_
   
-  - [ ] 3.2 Write property test for line item amount calculation
+  - [x] 3.2 Write property test for line item amount calculation
     - **Property 1: Line Item Amount Calculation**
     - **Validates: Requirements 3.9, 11.9**
   
-  - [ ] 3.3 Write unit tests for LineItemTable
+  - [x] 3.3 Write unit tests for LineItemTable
     - Test adding and removing line items
     - Test readonly mode
     - Test fulfillment status display
@@ -55,19 +55,19 @@ This implementation plan breaks down the Quotation and Sales Order management fe
     - Fetch customers and items data for dropdowns
     - _Requirements: 3.1-3.18, 4.1-4.9_
   
-  - [ ] 4.2 Write property test for grand total calculation
+  - [x] 4.2 Write property test for grand total calculation
     - **Property 2: Grand Total Calculation**
     - **Validates: Requirements 3.10, 11.10**
   
-  - [ ] 4.3 Write property test for line item validation
+  - [x] 4.3 Write property test for line item validation
     - **Property 8: Line Item Validation**
     - **Validates: Requirements 3.13, 11.13, 19.5, 19.6**
   
-  - [ ] 4.4 Write property test for date validation
+  - [x] 4.4 Write property test for date validation
     - **Property 9: Date Validation**
     - **Validates: Requirements 19.3, 19.4**
   
-  - [ ] 4.5 Write unit tests for QuotationDialog
+  - [x] 4.5 Write unit tests for QuotationDialog
     - Test form opens in create mode
     - Test form opens in edit mode with pre-filled data
     - Test validation prevents submission with missing fields
@@ -85,7 +85,7 @@ This implementation plan breaks down the Quotation and Sales Order management fe
     - Add "Convert to Sales Order" button (only for ACCEPTED status)
     - _Requirements: 5.1-5.9_
   
-  - [ ] 5.2 Write unit tests for QuotationDetailDialog
+  - [x] 5.2 Write unit tests for QuotationDetailDialog
     - Test all information displays correctly
     - Test Edit button disabled for terminal statuses
     - Test Convert button only shown for ACCEPTED status
@@ -102,11 +102,11 @@ This implementation plan breaks down the Quotation and Sales Order management fe
     - Conditionally enable/disable actions based on status
     - _Requirements: 1.5, 1.6, 1.10, 1.11, 1.12_
   
-  - [ ] 6.2 Write property test for pagination consistency
+  - [x] 6.2 Write property test for pagination consistency
     - **Property 12: Pagination Consistency**
     - **Validates: Requirements 1.6, 9.6**
   
-  - [ ] 6.3 Write unit tests for QuotationsTable
+  - [x] 6.3 Write unit tests for QuotationsTable
     - Test table renders with correct columns
     - Test row actions are conditionally enabled
     - Test empty state displays correctly
@@ -124,27 +124,27 @@ This implementation plan breaks down the Quotation and Sales Order management fe
     - Implement query cache invalidation
     - _Requirements: 1.1-1.12, 2.1-2.7, 3.14-3.18, 4.6-4.9, 7.1-7.9_
   
-  - [ ] 7.2 Write property test for statistics recalculation
+  - [x] 7.2 Write property test for statistics recalculation
     - **Property 3: Statistics Recalculation**
     - **Validates: Requirements 2.6, 10.6**
   
-  - [ ] 7.3 Write property test for filter reset
+  - [x] 7.3 Write property test for filter reset
     - **Property 4: Filter Reset on Change**
     - **Validates: Requirements 1.9, 9.9**
   
-  - [ ] 7.4 Write property test for search filtering
+  - [x] 7.4 Write property test for search filtering
     - **Property 5: Search Filtering Correctness**
     - **Validates: Requirements 1.7, 9.7**
   
-  - [ ] 7.5 Write property test for form pre-population
+  - [x] 7.5 Write property test for form pre-population
     - **Property 6: Form Pre-population**
     - **Validates: Requirements 4.1, 12.1**
   
-  - [ ] 7.6 Write property test for initial status assignment
+  - [x] 7.6 Write property test for initial status assignment
     - **Property 7: Initial Status Assignment**
     - **Validates: Requirements 6.1, 14.1**
   
-  - [ ] 7.7 Write unit tests for QuotationManagement
+  - [x] 7.7 Write unit tests for QuotationManagement
     - Test component renders with all sections
     - Test filter changes trigger data refresh
     - Test create quotation flow
@@ -153,11 +153,11 @@ This implementation plan breaks down the Quotation and Sales Order management fe
     - Test error handling displays correctly
     - _Requirements: 1.1-1.12, 2.1-2.7_
 
-- [ ] 8. Checkpoint - Ensure quotation management tests pass
+- [x] 8. Checkpoint - Ensure quotation management tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 9. Implement ConvertToSalesOrderDialog component
-  - [ ] 9.1 Create ConvertToSalesOrderDialog
+  - [x] 9.1 Create ConvertToSalesOrderDialog
     - Display quotation summary
     - Add order date picker (default: current date)
     - Add optional delivery date picker
@@ -173,7 +173,7 @@ This implementation plan breaks down the Quotation and Sales Order management fe
     - _Requirements: 8.1-8.13_
 
 - [ ] 10. Implement SalesOrderDialog component
-  - [ ] 10.1 Create SalesOrderDialog form component
+  - [-] 10.1 Create SalesOrderDialog form component
     - Implement dialog with form fields (customer, dates, currency, remarks)
     - Integrate LineItemTable for line items management
     - Display billed_qty and delivered_qty as read-only
