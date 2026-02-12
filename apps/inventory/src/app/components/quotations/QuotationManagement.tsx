@@ -179,7 +179,7 @@ export function QuotationManagement() {
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg" onClick={handleCreate}>
+          <Button variant="default" className="gap-2 text-primary-foreground shadow-lg" onClick={handleCreate}>
             <Plus className="h-4 w-4" />
             New Quotation
           </Button>
