@@ -4,6 +4,9 @@ const config: ModuleFederationConfig = {
   name: 'inventory',
   exposes: {
     './Module': './src/remote-entry.ts',
+    './RevenuePage': './src/app/pages/RevenuePage.tsx',
+    './SourcingPage': './src/app/pages/SourcingPage.tsx',
+    './BooksPage': './src/app/pages/BooksPage.tsx',
   },
   shared: (libraryName, defaultConfig) => {
     // Share React and React-DOM as singletons

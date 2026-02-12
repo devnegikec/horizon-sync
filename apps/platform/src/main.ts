@@ -1,6 +1,6 @@
 async function prepare() {
   // Enable MSW in development mode
-  if (process.env.NODE_ENV === 'development1') {
+  if (process.env.NODE_ENV === 'local') {
     console.log('🔵 MSW: Starting Mock Service Worker in development mode');
     const { worker } = await import('./app/mocks');
     await worker.start({

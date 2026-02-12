@@ -4,14 +4,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-import { useAuth } from '../hooks';
+import { useAuth, usePermissions } from '../hooks';
 import { AuthService } from '../services/auth.service';
 import { loginSchema, LoginFormData } from '../utility/validationSchema';
 
 const REMEMBER_EMAIL_KEY = 'login_remember_email';
+const IS_LOCAL = process.env.NODE_ENV === 'development';
 
 function getStoredEmail(): string {
-  if (typeof window === 'undefined') return '';
+  if (typeof window === 'undefined' || IS_LOCAL) return '';
   return localStorage.getItem(REMEMBER_EMAIL_KEY) ?? '';
 }
 
@@ -19,7 +20,8 @@ export function useLoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
-  const [rememberMe, setRememberMe] = React.useState(() => !!getStoredEmail());
+  const { fetchPermissions } = usePermissions();
+  const [rememberMe, setRememberMe] = React.useState(() => !IS_LOCAL && !!getStoredEmail());
   const [status, setStatus] = React.useState<{ loading: boolean; error: string; success: string }>({
     loading: false,
     error: '',
@@ -37,16 +39,18 @@ export function useLoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     setStatus({ loading: true, error: '', success: '' });
     try {
-      if (rememberMe) {
+      const effectiveRememberMe = IS_LOCAL ? false : rememberMe;
+      
+      if (effectiveRememberMe) {
         localStorage.setItem(REMEMBER_EMAIL_KEY, data.email);
-      } else {
+      } else if (!IS_LOCAL) {
         localStorage.removeItem(REMEMBER_EMAIL_KEY);
       }
 
       const response = await AuthService.login({
         email: data.email,
         password: data.password,
-        remember_me: rememberMe,
+        remember_me: effectiveRememberMe,
       });
       setStatus((s) => ({ ...s, success: 'Login successful!' }));
 
@@ -76,6 +80,14 @@ export function useLoginForm() {
         extra_data: response.user.extra_data,
       });
 
+      // Fetch user permissions after successful login
+      try {
+        await fetchPermissions();
+      } catch (permissionError) {
+        console.warn('Failed to fetch user permissions:', permissionError);
+        // Don't prevent navigation if permissions fetch fails
+      }
+
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
       setTimeout(() => navigate(from, { replace: true }), 1000);
     } catch (err) {
@@ -92,5 +104,6 @@ export function useLoginForm() {
     onSubmit: form.handleSubmit(onSubmit),
     rememberMe,
     setRememberMe,
+    isLocal: IS_LOCAL,
   };
 }
