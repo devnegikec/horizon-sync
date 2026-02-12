@@ -6,7 +6,7 @@ import type { Table } from '@tanstack/react-table';
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { quotationApi } from '../utility/api';
-import type { Quotation, QuotationCreate, QuotationUpdate } from '../types/quotation.types';
+import type { Quotation, QuotationCreate, QuotationUpdate, QuotationResponse } from '../types/quotation.types';
 
 export interface QuotationFilters {
   search: string;
@@ -94,7 +94,7 @@ function useQuotations(
           status: memoizedFilters?.status !== 'all' ? memoizedFilters?.status : undefined,
           search: memoizedFilters?.search || undefined,
         }
-      );
+      ) as QuotationResponse;
       setQuotations(data.quotations ?? []);
       setPagination(data.pagination ?? null);
     } catch (err) {

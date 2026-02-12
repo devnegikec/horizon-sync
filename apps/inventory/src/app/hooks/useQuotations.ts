@@ -59,7 +59,7 @@ export function useQuotations(
           status: memoizedFilters?.status !== 'all' ? memoizedFilters?.status : undefined,
           search: memoizedFilters?.search || undefined,
         }
-      );
+      ) as QuotationResponse;
       setQuotations(data.quotations ?? []);
       setPagination(data.pagination ?? null);
     } catch (err) {
