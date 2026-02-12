@@ -1,4 +1,4 @@
-import { Download, Upload, ChevronDown } from 'lucide-react';
+import { Download, Upload, ChevronDown, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
@@ -55,7 +55,7 @@ export function ItemQuickActions() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportFileName, setExportFileName] = useState('items_export_file');
-  const [exportFileFormat, setExportFileFormat] = useState<'csv' | 'xlsx' | 'json'>('csv');
+  const [exportFileFormat, setExportFileFormat] = useState<'csv' | 'xlsx' | 'json' | 'pdf'>('csv');
   const [exportItemType, setExportItemType] = useState<string>('all');
   const [exportStatus, setExportStatus] = useState<string>('all');
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
@@ -243,7 +243,7 @@ export function ItemQuickActions() {
               <Label htmlFor="file-format">File Format</Label>
               <Select
                 value={exportFileFormat}
-                onValueChange={(value: 'csv' | 'xlsx' | 'json') => setExportFileFormat(value)}
+                onValueChange={(value: 'csv' | 'xlsx' | 'json' | 'pdf') => setExportFileFormat(value)}
                 disabled={isExporting}
               >
                 <SelectTrigger id="file-format">
@@ -253,6 +253,7 @@ export function ItemQuickActions() {
                   <SelectItem value="csv">CSV</SelectItem>
                   <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
                   <SelectItem value="json">JSON</SelectItem>
+                  <SelectItem value="pdf">PDF</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -316,12 +317,28 @@ export function ItemQuickActions() {
               </div>
             </div>
           </div>
+          {isExporting && (
+            <div className="flex items-center justify-center gap-3 p-4 bg-muted/50 rounded-lg border border-muted">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <div className="text-sm">
+                <p className="font-medium">Exporting your data...</p>
+                <p className="text-muted-foreground">Please wait while we prepare your file for download.</p>
+              </div>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} disabled={isExporting}>
               Cancel
             </Button>
             <Button onClick={handleExportSubmit} disabled={isExporting || selectedColumns.length === 0}>
-              {isExporting ? 'Exporting...' : 'Export'}
+              {isExporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                'Export'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
