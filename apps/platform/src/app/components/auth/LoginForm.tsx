@@ -29,6 +29,13 @@ export function LoginForm() {
     formState: { errors },
   } = useLoginForm();
 
+  React.useEffect(() => {
+    // Debug: trace login form state to help diagnose persistent loader
+    // Remove or disable this in production once the issue is resolved
+    // eslint-disable-next-line no-console
+    console.debug('LoginForm state:', { loading, error, success, rememberMe });
+  }, [loading, error, success, rememberMe]);
+
   return (
     <Card className="w-full max-w-md border-none shadow-2xl">
       <LoginHeader />

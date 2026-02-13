@@ -24,28 +24,40 @@ const defaultPreferences: UserPreferences = {
   },
 };
 
-// User store - NOT persisted for security reasons
+// User store - Partially persisted (only refreshToken for session restoration)
+// Note: We persist refreshToken to enable session restoration after page reload
+// This is a trade-off between security and UX. For maximum security, use HttpOnly cookies.
 export const useUserStore = create<UserState>()(
   devtools(
-    (set) => ({
-      ...initialState,
-      setAuth: (user, accessToken, refreshToken) => 
-        set({ user, accessToken, refreshToken, isAuthenticated: true }, false, 'setAuth'),
-      updateUser: (partial) =>
-        set((state) => ({
-          user: state.user ? { ...state.user, ...partial } : null,
-        }), false, 'updateUser'),
-      updatePreferences: (preferences) =>
-        set((state) => ({
-          user: state.user 
-            ? { 
-                ...state.user, 
-                preferences: { ...state.user.preferences, ...preferences } 
-              } 
-            : null,
-        }), false, 'updatePreferences'),
-      clearAuth: () => set(initialState, false, 'clearAuth'),
-    }),
+    persist(
+      (set) => ({
+        ...initialState,
+        setAuth: (user, accessToken, refreshToken) => 
+          set({ user, accessToken, refreshToken, isAuthenticated: true }, false, 'setAuth'),
+        updateUser: (partial) =>
+          set((state) => ({
+            user: state.user ? { ...state.user, ...partial } : null,
+          }), false, 'updateUser'),
+        updatePreferences: (preferences) =>
+          set((state) => ({
+            user: state.user 
+              ? { 
+                  ...state.user, 
+                  preferences: { ...state.user.preferences, ...preferences } 
+                } 
+              : null,
+          }), false, 'updatePreferences'),
+        clearAuth: () => set(initialState, false, 'clearAuth'),
+      }),
+      {
+        name: 'horizon-auth',
+        // Only persist refreshToken for session restoration
+        // accessToken and user data are kept in memory only for security
+        partialize: (state) => ({ 
+          refreshToken: state.refreshToken,
+        }),
+      }
+    ),
     {
       name: 'user-store',
       enabled: isDevToolsEnabled(),
