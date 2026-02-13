@@ -30,6 +30,7 @@ export {
   SearchEmptyState,
   SearchErrorState,
   SearchLoadingState,
+  SearchableSelect,
 } from './components';
 
 export type {
@@ -38,6 +39,7 @@ export type {
   SearchResultItemProps,
   SearchEmptyStateProps,
   SearchErrorStateProps,
+  SearchableSelectProps,
 } from './components';
 
 // Hooks

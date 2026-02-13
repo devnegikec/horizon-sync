@@ -3,35 +3,34 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Button, Input, Label } from '@horizon-sync/ui/components';
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { SearchableSelect } from '@horizon-sync/search';
 
-import type { QuotationLineItemCreate } from '../../types/quotation.types';
+import type { InvoiceLineItemFormData } from '../../types/invoice';
 import { itemApi } from '../../utility/api';
 
-interface LineItemTableProps {
-  items: QuotationLineItemCreate[];
-  onItemsChange: (items: QuotationLineItemCreate[]) => void;
+interface InvoiceLineItemTableProps {
+  items: InvoiceLineItemFormData[];
+  onItemsChange: (items: InvoiceLineItemFormData[]) => void;
   readonly?: boolean;
-  showFulfillmentStatus?: boolean;
   disabled?: boolean;
 }
 
-const emptyItem: QuotationLineItemCreate = {
+const emptyItem: InvoiceLineItemFormData = {
   item_id: '',
-  qty: 1,
+  description: '',
+  quantity: 1,
   uom: 'pcs',
   rate: 0,
-  amount: 0,
-  sort_order: 0,
+  tax_template_id: null,
 };
 
-export function LineItemTable({ items, onItemsChange, readonly = false, disabled = false }: LineItemTableProps) {
+export function InvoiceLineItemTable({ items, onItemsChange, readonly = false, disabled = false }: InvoiceLineItemTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
 
-  const { data: itemsData, isLoading } = useQuery<{ items: { id: string; item_name: string; item_sku?: string }[] }>({
+  const { data: itemsData, isLoading } = useQuery<{ items: { id: string; item_name: string; item_sku?: string; uom?: string }[] }>({
     queryKey: ['items-list'],
-    queryFn: () => itemApi.list(accessToken || '', 1, 100) as Promise<{ items: { id: string; item_name: string; item_sku?: string }[] }>,
+    queryFn: () => itemApi.list(accessToken || '', 1, 100) as Promise<{ items: { id: string; item_name: string; item_sku?: string; uom?: string }[] }>,
     enabled: !!accessToken && !readonly,
   });
 
@@ -42,7 +41,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
     if (availableItems.length > 0) {
       return availableItems;
     }
-    const data = await itemApi.list(accessToken || '', 1, 100) as { items: { id: string; item_name: string; item_sku?: string }[] };
+    const data = await itemApi.list(accessToken || '', 1, 100) as { items: { id: string; item_name: string; item_sku?: string; uom?: string }[] };
     return data.items;
   }, [availableItems, accessToken]);
 
@@ -53,25 +52,44 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
     []
   );
 
-  const handleItemChange = (index: number, field: keyof QuotationLineItemCreate, value: string | number) => {
+  const handleItemChange = (index: number, field: keyof InvoiceLineItemFormData, value: string | number | null) => {
     const updated = [...items];
     updated[index] = { ...updated[index], [field]: value };
 
-    if (field === 'qty' || field === 'rate') {
-      updated[index].amount = Number(updated[index].qty) * Number(updated[index].rate);
+    // Auto-fill UOM when item is selected
+    if (field === 'item_id' && typeof value === 'string') {
+      const selectedItem = availableItems.find((item) => item.id === value);
+      if (selectedItem?.uom) {
+        updated[index].uom = selectedItem.uom;
+      }
+      // Auto-fill description with item name
+      if (selectedItem?.item_name) {
+        updated[index].description = selectedItem.item_name;
+      }
     }
 
     onItemsChange(updated);
   };
 
   const addItem = () => {
-    onItemsChange([...items, { ...emptyItem, sort_order: items.length + 1 }]);
+    onItemsChange([...items, { ...emptyItem }]);
   };
 
   const removeItem = (index: number) => {
     if (items.length <= 1) return;
-    const updated = items.filter((_, i) => i !== index).map((item, i) => ({ ...item, sort_order: i + 1 }));
+    const updated = items.filter((_, i) => i !== index);
     onItemsChange(updated);
+  };
+
+  // Calculate amount for display
+  const calculateAmount = (item: InvoiceLineItemFormData) => {
+    return item.quantity * item.rate;
+  };
+
+  // Calculate tax amount for display (placeholder - will be implemented with tax templates)
+  const calculateTaxAmount = (item: InvoiceLineItemFormData) => {
+    // TODO: Implement tax calculation when tax templates are available
+    return 0;
   };
 
   if (readonly) {
@@ -84,9 +102,11 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium">#</th>
                   <th className="px-4 py-3 text-left text-sm font-medium">Item</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">Description</th>
                   <th className="px-4 py-3 text-right text-sm font-medium">Quantity</th>
                   <th className="px-4 py-3 text-left text-sm font-medium">UOM</th>
                   <th className="px-4 py-3 text-right text-sm font-medium">Rate</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium">Tax</th>
                   <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
                 </tr>
               </thead>
@@ -95,10 +115,12 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                   <tr key={index}>
                     <td className="px-4 py-3 text-sm">{index + 1}</td>
                     <td className="px-4 py-3 text-sm">{item.item_id}</td>
-                    <td className="px-4 py-3 text-sm text-right">{item.qty}</td>
+                    <td className="px-4 py-3 text-sm">{item.description}</td>
+                    <td className="px-4 py-3 text-sm text-right">{item.quantity}</td>
                     <td className="px-4 py-3 text-sm">{item.uom}</td>
                     <td className="px-4 py-3 text-sm text-right">{Number(item.rate).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-sm text-right font-medium">{Number(item.amount).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm text-right">{calculateTaxAmount(item).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm text-right font-medium">{calculateAmount(item).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -128,8 +150,8 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                 </Button>
               )}
             </div>
-            <div className="grid gap-3 md:grid-cols-5">
-              <div className="space-y-1 md:col-span-2">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-1">
                 <Label className="text-xs">Item *</Label>
                 <SearchableSelect
                   entityType="items"
@@ -145,13 +167,24 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                 />
               </div>
               <div className="space-y-1">
+                <Label className="text-xs">Description</Label>
+                <Input
+                  value={item.description}
+                  onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                  placeholder="Item description"
+                  disabled={disabled}
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-5">
+              <div className="space-y-1">
                 <Label className="text-xs">Quantity *</Label>
                 <Input
                   type="number"
                   min="0.01"
                   step="0.01"
-                  value={item.qty}
-                  onChange={(e) => handleItemChange(index, 'qty', Number(e.target.value))}
+                  value={item.quantity}
+                  onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
                   disabled={disabled}
                   required
                 />
@@ -178,13 +211,35 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                   required
                 />
               </div>
-            </div>
-            <div className="grid gap-3 md:grid-cols-5">
+              <div className="space-y-1">
+                <Label className="text-xs">Tax Template</Label>
+                <Select
+                  value={item.tax_template_id || 'none'}
+                  onValueChange={(v) => handleItemChange(index, 'tax_template_id', v === 'none' ? null : v)}
+                  disabled={disabled}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {/* TODO: Add tax templates when available */}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1">
                 <Label className="text-xs">Amount</Label>
-                <Input value={Number(item.amount).toFixed(2)} disabled className="font-medium" />
+                <Input value={calculateAmount(item).toFixed(2)} disabled className="font-medium" />
               </div>
             </div>
+            {item.tax_template_id && (
+              <div className="grid gap-3 md:grid-cols-5">
+                <div className="space-y-1 md:col-start-5">
+                  <Label className="text-xs">Tax Amount</Label>
+                  <Input value={calculateTaxAmount(item).toFixed(2)} disabled className="text-muted-foreground" />
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

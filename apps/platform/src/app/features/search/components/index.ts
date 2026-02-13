@@ -19,3 +19,6 @@ export type { LocalSearchProps } from './LocalSearch';
 
 export { GlobalSearch } from './GlobalSearch';
 export type { GlobalSearchProps } from './GlobalSearch';
+
+export { SearchableSelect } from './SearchableSelect';
+export type { SearchableSelectProps } from './SearchableSelect';

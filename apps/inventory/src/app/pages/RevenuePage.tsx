@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { DollarSign, Package, Users, Warehouse, Boxes, Truck, FileText, ShoppingCart } from 'lucide-react';
+import { DollarSign, Package, Users, Truck, FileText, ShoppingCart } from 'lucide-react';
 
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -9,6 +9,8 @@ import { cn } from '@horizon-sync/ui/lib';
 
 import { CustomerManagement } from '../components/customers';
 import { DeliveryNoteManagement } from '../components/delivery-notes';
+import { InvoiceManagement } from '../components/invoices';
+import { PaymentManagement } from '../components/payments';
 import { QuotationManagement } from '../components/quotations';
 import { SalesOrderManagement } from '../components/sales-orders';
 
@@ -61,6 +63,8 @@ export function RevenuePage() {
           {activeView === 'quotations' && <QuotationManagement />}
           {activeView === 'sales_orders' && <SalesOrderManagement />}
           {activeView === 'delivery_notes' && <DeliveryNoteManagement />}
+          {activeView === 'invoices' && <InvoiceManagement />}
+          {activeView === 'payments' && <PaymentManagement />}
         </main>
       </div>
     </ThemeProvider>
