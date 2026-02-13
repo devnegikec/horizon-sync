@@ -61,15 +61,19 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         status: quotation.status,
         remarks: quotation.remarks || '',
       });
-      if (quotation.line_items && quotation.line_items.length > 0) {
-        setItems(quotation.line_items.map((item) => ({
+      // Handle both 'items' and 'line_items' field names from API
+      const lineItems = quotation.items || quotation.line_items || [];
+      if (lineItems.length > 0) {
+        setItems(lineItems.map((item) => ({
           item_id: item.item_id,
-          qty: item.qty,
+          qty: Number(item.qty),
           uom: item.uom,
           rate: Number(item.rate),
           amount: Number(item.amount),
           sort_order: item.sort_order,
         })));
+      } else {
+        setItems([{ ...emptyItem, sort_order: 1 }]);
       }
     } else {
       setFormData({

@@ -163,21 +163,43 @@ export function useQuotationManagement() {
     },
   });
 
-  const handleView = React.useCallback((quotation: Quotation) => {
-    setSelectedQuotation(quotation);
-    setDetailDialogOpen(true);
-  }, []);
+  const handleView = React.useCallback(async (quotation: Quotation) => {
+    if (!accessToken) return;
+    try {
+      // Fetch full quotation details including line items
+      const fullQuotation = await quotationApi.get(accessToken, quotation.id) as Quotation;
+      setSelectedQuotation(fullQuotation);
+      setDetailDialogOpen(true);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load quotation details',
+        variant: 'destructive',
+      });
+    }
+  }, [accessToken, toast]);
 
   const handleCreate = React.useCallback(() => {
     setEditQuotation(null);
     setCreateDialogOpen(true);
   }, []);
 
-  const handleEdit = React.useCallback((quotation: Quotation) => {
-    setEditQuotation(quotation);
-    setDetailDialogOpen(false);
-    setCreateDialogOpen(true);
-  }, []);
+  const handleEdit = React.useCallback(async (quotation: Quotation) => {
+    if (!accessToken) return;
+    try {
+      // Fetch full quotation details including line items
+      const fullQuotation = await quotationApi.get(accessToken, quotation.id) as Quotation;
+      setEditQuotation(fullQuotation);
+      setDetailDialogOpen(false);
+      setCreateDialogOpen(true);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load quotation details',
+        variant: 'destructive',
+      });
+    }
+  }, [accessToken, toast]);
 
   const handleDelete = React.useCallback((quotation: Quotation) => {
     if (quotation.status !== 'draft') {
