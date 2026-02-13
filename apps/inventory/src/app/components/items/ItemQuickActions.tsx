@@ -1,4 +1,4 @@
-import { Plus, Download, Upload, ChevronDown, Loader2 } from 'lucide-react';
+import { Download, Upload, ChevronDown, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
@@ -31,10 +31,6 @@ import { useToast } from '@horizon-sync/ui/hooks';
 
 import { bulkImportApi, bulkExportApi, BulkExportPayload } from '../../utility/api';
 
-interface ItemManagementHeaderProps {
-  onCreateItem: () => void;
-}
-
 const AVAILABLE_COLUMNS = [
   { id: 'id', label: 'ID' },
   { id: 'item_code', label: 'Item Code' },
@@ -46,10 +42,10 @@ const AVAILABLE_COLUMNS = [
   { id: 'standard_rate', label: 'Standard Rate' },
 ];
 
-export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps) {
+export function ItemQuickActions() {
   const accessToken = useUserStore((s) => s.accessToken);
   const { toast } = useToast();
-  
+
   // Import state
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -58,7 +54,7 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
   // Export state
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [exportFileName, setExportFileName] = useState('items export file');
+  const [exportFileName, setExportFileName] = useState('items_export_file');
   const [exportFileFormat, setExportFileFormat] = useState<'csv' | 'xlsx' | 'json' | 'pdf'>('csv');
   const [exportItemType, setExportItemType] = useState<string>('all');
   const [exportStatus, setExportStatus] = useState<string>('all');
@@ -179,12 +175,12 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
     try {
       setIsImporting(true);
       await bulkImportApi.upload(accessToken, selectedFile);
-      
+
       toast({
         title: 'Success',
         description: `File "${selectedFile.name}" imported successfully`,
       });
-      
+
       setIsImportDialogOpen(false);
       setSelectedFile(null);
     } catch (error) {
@@ -201,36 +197,24 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
 
   return (
     <>
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Item Management</h1>
-          <p className="text-muted-foreground mt-1">Manage your product catalog, pricing, and inventory levels</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                Item Export/Import
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleExport}>
-                <Download className="h-4 w-4" />
-                Export Items
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleImport}>
-                <Upload className="h-4 w-4" />
-                Import Items
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button onClick={onCreateItem} className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
-            <Plus className="h-4 w-4" />
-            Add Item
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="gap-2">
+            Item Export/Import
+            <ChevronDown className="h-4 w-4" />
           </Button>
-        </div>
-      </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleExport}>
+            <Download className="h-4 w-4" />
+            Export Items
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleImport}>
+            <Upload className="h-4 w-4" />
+            Import Items
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* Export Dialog */}
       <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
@@ -249,7 +233,7 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
                 id="file-name"
                 value={exportFileName}
                 onChange={(e) => setExportFileName(e.target.value)}
-                placeholder="stock_items_export"
+                placeholder="items_export_file"
                 disabled={isExporting}
               />
             </div>
@@ -279,12 +263,10 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
               <Label>Filters</Label>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="item-type" className="text-sm">Item Type</Label>
-                  <Select
-                    value={exportItemType}
-                    onValueChange={setExportItemType}
-                    disabled={isExporting}
-                  >
+                  <Label htmlFor="item-type" className="text-sm">
+                    Item Type
+                  </Label>
+                  <Select value={exportItemType} onValueChange={setExportItemType} disabled={isExporting}>
                     <SelectTrigger id="item-type">
                       <SelectValue />
                     </SelectTrigger>
@@ -298,12 +280,10 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="status" className="text-sm">Status</Label>
-                  <Select
-                    value={exportStatus}
-                    onValueChange={setExportStatus}
-                    disabled={isExporting}
-                  >
+                  <Label htmlFor="status" className="text-sm">
+                    Status
+                  </Label>
+                  <Select value={exportStatus} onValueChange={setExportStatus} disabled={isExporting}>
                     <SelectTrigger id="status">
                       <SelectValue />
                     </SelectTrigger>
@@ -329,10 +309,7 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
                       onCheckedChange={() => handleColumnToggle(column.id)}
                       disabled={isExporting}
                     />
-                    <Label
-                      htmlFor={column.id}
-                      className="text-sm font-normal cursor-pointer"
-                    >
+                    <Label htmlFor={column.id} className="text-sm font-normal cursor-pointer">
                       {column.label}
                     </Label>
                   </div>
@@ -350,11 +327,7 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
             </div>
           )}
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsExportDialogOpen(false)}
-              disabled={isExporting}
-            >
+            <Button variant="outline" onClick={() => setIsExportDialogOpen(false)} disabled={isExporting}>
               Cancel
             </Button>
             <Button onClick={handleExportSubmit} disabled={isExporting || selectedColumns.length === 0}>
@@ -393,25 +366,14 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
                 disabled={isImporting}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
-              {selectedFile && (
-                <p className="text-sm text-muted-foreground">
-                  Selected: {selectedFile.name}
-                </p>
-              )}
+              {selectedFile && <p className="text-sm text-muted-foreground">Selected: {selectedFile.name}</p>}
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsImportDialogOpen(false)}
-              disabled={isImporting}
-            >
+            <Button variant="outline" onClick={() => setIsImportDialogOpen(false)} disabled={isImporting}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleImportSubmit} 
-              disabled={!selectedFile || isImporting}
-            >
+            <Button onClick={handleImportSubmit} disabled={!selectedFile || isImporting}>
               {isImporting ? 'Importing...' : 'Import'}
             </Button>
           </DialogFooter>
