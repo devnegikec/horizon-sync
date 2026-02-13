@@ -115,7 +115,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
               <div className="space-y-1 md:col-span-2">
                 <Label className="text-xs">Item *</Label>
                 <Select 
-                  value={item.item_id} 
+                  value={item.item_id || undefined} 
                   onValueChange={(v) => handleItemChange(index, 'item_id', v)}
                   disabled={disabled}
                   required

@@ -184,7 +184,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
               <div className="space-y-2">
                 <Label htmlFor="customer_id">Customer *</Label>
                 <Select 
-                  value={formData.customer_id} 
+                  value={formData.customer_id || undefined} 
                   onValueChange={(v) => handleChange('customer_id', v)} 
                   disabled={isEdit}
                   required
