@@ -156,7 +156,7 @@ This implementation plan breaks down the Quotation and Sales Order management fe
 - [x] 8. Checkpoint - Ensure quotation management tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 9. Implement ConvertToSalesOrderDialog component
+- [x] 9. Implement ConvertToSalesOrderDialog component
   - [x] 9.1 Create ConvertToSalesOrderDialog
     - Display quotation summary
     - Add order date picker (default: current date)
@@ -172,8 +172,8 @@ This implementation plan breaks down the Quotation and Sales Order management fe
     - Test success navigation to Sales Orders tab
     - _Requirements: 8.1-8.13_
 
-- [ ] 10. Implement SalesOrderDialog component
-  - [-] 10.1 Create SalesOrderDialog form component
+- [x] 10. Implement SalesOrderDialog component
+  - [x] 10.1 Create SalesOrderDialog form component
     - Implement dialog with form fields (customer, dates, currency, remarks)
     - Integrate LineItemTable for line items management
     - Display billed_qty and delivered_qty as read-only
@@ -192,8 +192,8 @@ This implementation plan breaks down the Quotation and Sales Order management fe
     - Test billed_qty and delivered_qty display as read-only
     - _Requirements: 11.1-11.18, 12.1-12.10_
 
-- [ ] 11. Implement SalesOrderDetailDialog component
-  - [ ] 11.1 Create SalesOrderDetailDialog read-only view
+- [x] 11. Implement SalesOrderDetailDialog component
+  - [x] 11.1 Create SalesOrderDetailDialog read-only view
     - Display sales order header with number and status badge
     - Display customer information
     - Display dates, currency, and grand total
@@ -211,8 +211,8 @@ This implementation plan breaks down the Quotation and Sales Order management fe
     - Test quotation reference link displays when applicable
     - _Requirements: 13.1-13.11_
 
-- [ ] 12. Implement CreateInvoiceDialog component
-  - [ ] 12.1 Create CreateInvoiceDialog
+- [x] 12. Implement CreateInvoiceDialog component
+  - [x] 12.1 Create CreateInvoiceDialog
     - Display sales order summary
     - Add posting date and due date pickers
     - Display line items with quantity information (ordered, billed, available)
@@ -234,8 +234,8 @@ This implementation plan breaks down the Quotation and Sales Order management fe
     - Test invoice creation API call with correct data
     - _Requirements: 16.1-16.17_
 
-- [ ] 13. Implement SalesOrdersTable component
-  - [ ] 13.1 Create SalesOrdersTable with TanStack Table
+- [x] 13. Implement SalesOrdersTable component
+  - [x] 13.1 Create SalesOrdersTable with TanStack Table
     - Define table columns (order number, customer, dates, total, status, reference)
     - Implement row actions (View, Edit, Delete)
     - Add server-side pagination support
@@ -253,8 +253,8 @@ This implementation plan breaks down the Quotation and Sales Order management fe
     - Test empty state displays correctly
     - _Requirements: 9.5, 9.6, 9.10, 9.11, 9.12, 9.13_
 
-- [ ] 14. Implement SalesOrderManagement component
-  - [ ] 14.1 Create SalesOrderManagement container component
+- [x] 14. Implement SalesOrderManagement component
+  - [x] 14.1 Create SalesOrderManagement container component
     - Implement stats cards for sales order metrics
     - Add filter controls (search input, status dropdown)
     - Integrate SalesOrdersTable
@@ -281,7 +281,7 @@ This implementation plan breaks down the Quotation and Sales Order management fe
 - [ ] 15. Checkpoint - Ensure sales order management tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 16. Update RevenuePage with new navigation tabs
+- [x] 16. Update RevenuePage with new navigation tabs
   - [x] 16.1 Add Quotations and Sales Orders tabs to Revenue_Navigation
     - Add "Quotations" tab with appropriate icon (FileText)
     - Add "Sales Orders" tab with appropriate icon (ShoppingCart)

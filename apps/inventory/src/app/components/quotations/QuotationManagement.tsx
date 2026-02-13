@@ -11,6 +11,7 @@ import { QuotationsTable } from './QuotationsTable';
 import { QuotationManagementHeader } from './QuotationManagementHeader';
 import { QuotationStats } from './QuotationStats';
 import { QuotationManagementFilters } from './QuotationManagementFilters';
+import { ConvertToSalesOrderDialog } from './ConvertToSalesOrderDialog';
 
 export function QuotationManagement() {
   const { toast } = useToast();
@@ -34,6 +35,10 @@ export function QuotationManagement() {
     handleEdit,
     handleDelete,
     handleConvert,
+    handleConvertConfirm,
+    convertDialogOpen,
+    setConvertDialogOpen,
+    converting,
     handleTableReady,
     handleSave,
     serverPaginationConfig,
@@ -111,6 +116,15 @@ export function QuotationManagement() {
         quotation={editQuotation}
         onSave={handleSave}
         saving={false}
+      />
+
+      {/* Convert to Sales Order Dialog */}
+      <ConvertToSalesOrderDialog
+        open={convertDialogOpen}
+        onOpenChange={setConvertDialogOpen}
+        quotation={selectedQuotation}
+        onConvert={handleConvertConfirm}
+        converting={converting}
       />
     </div>
   );

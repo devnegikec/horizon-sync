@@ -10,6 +10,7 @@ import { cn } from '@horizon-sync/ui/lib';
 import { CustomerManagement } from '../components/customers';
 import { DeliveryNoteManagement } from '../components/delivery-notes';
 import { QuotationManagement } from '../components/quotations';
+import { SalesOrderManagement } from '../components/sales-orders';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -58,7 +59,7 @@ export function RevenuePage() {
         <main className="container px-4 py-8">
           {activeView === 'customers' && <CustomerManagement />}
           {activeView === 'quotations' && <QuotationManagement />}
-          {activeView === 'sales_orders' && <div className="text-center text-muted-foreground py-12">Sales Orders - Coming Soon</div>}
+          {activeView === 'sales_orders' && <SalesOrderManagement />}
           {activeView === 'delivery_notes' && <DeliveryNoteManagement />}
         </main>
       </div>
