@@ -95,6 +95,7 @@ export function QuotationManagement() {
         onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onConvert={handleConvert}
         onCreateQuotation={handleCreate}
         onTableReady={handleTableReady}
         serverPagination={serverPaginationConfig}
