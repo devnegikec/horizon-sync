@@ -5,6 +5,7 @@
 
 /**
  * Search request payload
+ * Matches SearchRequestSchema from backend
  */
 export interface SearchRequest {
   query: string;
@@ -12,12 +13,12 @@ export interface SearchRequest {
   filters?: Record<string, unknown>;
   page?: number;
   page_size?: number;
-  sort?: string;
-  sort_order?: 'asc' | 'desc';
+  sort_by?: string;
 }
 
 /**
  * Individual search result item
+ * Matches SearchResultSchema from backend
  */
 export interface SearchResult {
   entity_id: string;
@@ -30,6 +31,7 @@ export interface SearchResult {
 
 /**
  * Search response from API
+ * Matches SearchResponseSchema from backend
  */
 export interface SearchResponse {
   results: SearchResult[];

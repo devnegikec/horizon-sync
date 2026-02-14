@@ -42,8 +42,7 @@ export function useGlobalSearch(query: string, page: number = 1) {
         query: debouncedQuery,
         page,
         page_size: 20,
-        sort: 'created_at',
-        sort_order: 'desc',
+        sort_by: 'created_at',
       }, accessToken || undefined);
     },
     // Only enable the query when the debounced query has at least 2 characters AND we have a token
