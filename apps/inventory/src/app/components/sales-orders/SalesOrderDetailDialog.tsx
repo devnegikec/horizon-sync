@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Edit, FileText, ShoppingCart, Receipt } from 'lucide-react';
+import { Edit, FileText, ShoppingCart, Receipt, ExternalLink } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 

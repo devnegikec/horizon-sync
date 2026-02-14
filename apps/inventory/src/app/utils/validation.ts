@@ -13,14 +13,8 @@ export const invoiceLineItemSchema = z.object({
 export const invoiceFormSchema = z.object({
   party_id: z.string().min(1, 'Customer is required'),
   party_type: z.enum(['Customer', 'Supplier']),
-  posting_date: z.date({
-    required_error: 'Posting date is required',
-    invalid_type_error: 'Invalid date format',
-  }),
-  due_date: z.date({
-    required_error: 'Due date is required',
-    invalid_type_error: 'Invalid date format',
-  }),
+  posting_date: z.date(),
+  due_date: z.date(),
   currency: z.string().min(1, 'Currency is required'),
   invoice_type: z.enum(['Sales', 'Purchase', 'Debit Note', 'Credit Note']),
   status: z.enum(['Draft', 'Submitted', 'Cancelled']),
@@ -43,13 +37,8 @@ export const paymentAllocationSchema = z.object({
 export const paymentFormSchema = z.object({
   party_id: z.string().min(1, 'Party is required'),
   party_type: z.enum(['Customer', 'Supplier']),
-  payment_date: z.date({
-    required_error: 'Payment date is required',
-    invalid_type_error: 'Invalid date format',
-  }),
-  payment_mode: z.enum(['Cash', 'Bank Transfer', 'Credit Card', 'Check', 'Other'], {
-    required_error: 'Payment mode is required',
-  }),
+  payment_date: z.date(),
+  payment_mode: z.enum(['Cash', 'Bank Transfer', 'Credit Card', 'Check', 'Other']),
   reference_number: z.string(),
   currency: z.string().min(1, 'Currency is required'),
   total_amount: z.number().positive('Total amount must be greater than zero'),
