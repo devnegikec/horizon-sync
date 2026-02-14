@@ -8,6 +8,7 @@ import { cn } from '@horizon-sync/ui/lib';
 
 import { SupplierManagement } from '../components/suppliers';
 import { MaterialRequestManagement } from '../components/material-requests';
+import { RFQManagement } from '../components/rfqs';
 
 type ActiveView = 'material_requests' | 'rfqs' | 'purchase_orders' | 'suppliers' | 'purchase_receipts' | 'landed_costs';
 
@@ -71,6 +72,7 @@ export function SourcingPage() {
         {/* Main Content */}
         <main className="container px-4 py-8">
           {activeView === 'material_requests' && <MaterialRequestManagement />}
+          {activeView === 'rfqs' && <RFQManagement />}
           {activeView === 'suppliers' && <SupplierManagement/>}
         </main>
       </div>
