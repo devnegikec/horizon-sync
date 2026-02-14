@@ -16,7 +16,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
   - Update RevenuePage.tsx to render InvoiceManagement and PaymentManagement components
   - _Requirements: 1.1, 11.1, 20.1, 20.2_
 
-- [ ] 2. Implement invoice API client and types
+- [x] 2. Implement invoice API client and types
   - [x] 2.1 Create invoice types and interfaces
     - Create `apps/inventory/src/app/types/invoice.ts` with Invoice, InvoiceLineItem, InvoiceFormData types
     - Define InvoiceStatus, InvoiceType enums
@@ -30,7 +30,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Add proper error handling and type safety
     - _Requirements: 1.2, 3.17, 4.11, 5.6, 8.6, 9.1, 10.5_
 
-- [ ] 3. Implement invoice list view and table
+- [x] 3. Implement invoice list view and table
   - [x] 3.1 Create InvoicesTable component
     - Create `apps/inventory/src/app/components/invoices/InvoicesTable.tsx`
     - Implement TanStack Table with columns: invoice number, customer, dates, amounts, status
@@ -64,7 +64,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - **Property 27: Search filter application**
     - **Validates: Requirements 1.7**
 
-- [ ] 4. Implement invoice statistics dashboard
+- [x] 4. Implement invoice statistics dashboard
   - [x] 4.1 Create InvoiceStats component
     - Create `apps/inventory/src/app/components/invoices/InvoiceStats.tsx`
     - Display stats cards: total, draft, submitted, paid, overdue, total outstanding
@@ -72,7 +72,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Implement responsive grid layout
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7_
 
-- [ ] 5. Implement invoice management hook
+- [x] 5. Implement invoice management hook
   - [x] 5.1 Create useInvoiceManagement hook
     - Create `apps/inventory/src/app/hooks/useInvoiceManagement.ts`
     - Implement TanStack Query hooks for invoice list and stats
@@ -84,7 +84,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Add proper error handling and loading states
     - _Requirements: 1.2, 1.3, 1.4, 3.17, 5.6, 8.6, 9.1, 10.5_
 
-- [ ] 6. Implement invoice detail dialog
+- [x] 6. Implement invoice detail dialog
   - [x] 6.1 Create InvoiceDetailDialog component
     - Create `apps/inventory/src/app/components/invoices/InvoiceDetailDialog.tsx`
     - Display invoice header with number and status badge
@@ -107,7 +107,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
 - [x] 7. Checkpoint - Ensure invoice list and detail views work
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Implement invoice form dialog
+- [x] 8. Implement invoice form dialog
   - [x] 8.1 Create InvoiceDialog component
     - Create `apps/inventory/src/app/components/invoices/InvoiceDialog.tsx`
     - Implement React Hook Form with Zod validation
@@ -151,7 +151,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - **Property 11: New invoice status**
     - **Validates: Requirements 7.1**
 
-- [ ] 9. Implement invoice status management
+- [x] 9. Implement invoice status management
   - [x] 9.1 Create StatusBadge component (if not already exists)
     - Create `apps/inventory/src/app/components/common/StatusBadge.tsx`
     - Support invoice statuses: Draft, Submitted, Paid, Partially Paid, Overdue, Cancelled
@@ -171,7 +171,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - **Property 13: Overdue invoice detection**
     - **Validates: Requirements 7.6**
 
-- [ ] 10. Implement invoice delete functionality
+- [x] 10. Implement invoice delete functionality
   - [x] 10.1 Add delete confirmation dialog
     - Create `apps/inventory/src/app/components/common/DeleteConfirmationDialog.tsx` (if not exists)
     - Display invoice/payment number in confirmation message
@@ -191,7 +191,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - **Property 15: Non-draft invoice edit restriction**
     - **Validates: Requirements 5.3, 8.3**
 
-- [ ] 11. Implement create invoice from sales order
+- [x] 11. Implement create invoice from sales order
   - [x] 11.1 Create CreateInvoiceFromSalesOrderDialog component
     - Create `apps/inventory/src/app/components/invoices/CreateInvoiceFromSalesOrderDialog.tsx`
     - Display sales order details
@@ -227,7 +227,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
 - [x] 12. Checkpoint - Ensure invoice creation and editing work
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 13. Implement invoice PDF generation
+- [x] 13. Implement invoice PDF generation
   - [x] 13.1 Add generateInvoicePDF function to API client
     - Implement generateInvoicePDF in `apps/inventory/src/app/api/invoices.ts`
     - Handle PDF blob response
@@ -240,7 +240,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Display success/error toast
     - _Requirements: 6.10, 9.1, 9.3, 9.4, 9.5, 9.6_
 
-- [ ] 14. Implement invoice email sending
+- [x] 14. Implement invoice email sending
   - [x] 14.1 Create SendInvoiceEmailDialog component
     - Create `apps/inventory/src/app/components/invoices/SendInvoiceEmailDialog.tsx`
     - Display customer email (editable)
@@ -260,7 +260,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Display success/error toast
     - _Requirements: 1.11, 6.11, 10.5, 10.6, 10.7, 10.8_
 
-- [ ] 15. Set up payment component structure and types
+- [x] 15. Set up payment component structure and types
   - [x] 15.1 Create payment types and interfaces
     - Create `apps/inventory/src/app/types/payment.ts` with Payment, PaymentAllocation, PaymentFormData types
     - Define PaymentStatus, PaymentMode enums
@@ -274,7 +274,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Add proper error handling and type safety
     - _Requirements: 11.2, 13.20, 15.5, 18.6_
 
-- [ ] 16. Implement payment list view and table
+- [x] 16. Implement payment list view and table
   - [x] 16.1 Create PaymentsTable component
     - Create `apps/inventory/src/app/components/payments/PaymentsTable.tsx`
     - Implement TanStack Table with columns: payment number, party, date, mode, amounts, status
@@ -301,7 +301,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Implement filter state management
     - _Requirements: 11.7, 11.8, 11.9, 11.10, 11.11_
 
-- [ ] 17. Implement payment statistics dashboard
+- [x] 17. Implement payment statistics dashboard
   - [x] 17.1 Create PaymentStats component
     - Create `apps/inventory/src/app/components/payments/PaymentStats.tsx`
     - Display stats cards: total, pending, completed, total amount
@@ -309,7 +309,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Implement responsive grid layout
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7_
 
-- [ ] 18. Implement payment management hook
+- [x] 18. Implement payment management hook
   - [x] 18.1 Create usePaymentManagement hook
     - Create `apps/inventory/src/app/hooks/usePaymentManagement.ts`
     - Implement TanStack Query hooks for payment list and stats
@@ -320,7 +320,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Add proper error handling and loading states
     - _Requirements: 11.2, 11.3, 11.4, 13.20, 15.5, 18.6_
 
-- [ ] 19. Implement payment detail dialog
+- [x] 19. Implement payment detail dialog
   - [x] 19.1 Create PaymentDetailDialog component
     - Create `apps/inventory/src/app/components/payments/PaymentDetailDialog.tsx`
     - Display payment header with number and status badge
@@ -334,7 +334,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Conditionally enable/disable actions based on status
     - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5, 16.6, 16.7, 16.8, 16.9_
 
-- [ ] 20. Implement payment form dialog
+- [x] 20. Implement payment form dialog
   - [x] 20.1 Create PaymentDialog component
     - Create `apps/inventory/src/app/components/payments/PaymentDialog.tsx`
     - Implement React Hook Form with Zod validation
@@ -370,7 +370,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - **Property 21: New payment status**
     - **Validates: Requirements 17.1**
 
-- [ ] 21. Implement payment status management
+- [x] 21. Implement payment status management
   - [x] 21.1 Implement payment status dropdown in PaymentDialog
     - Add status dropdown with conditional options based on current status
     - Implement status transition rules
@@ -382,7 +382,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - **Property 23: Non-draft payment edit restriction**
     - **Validates: Requirements 15.3, 18.3**
 
-- [ ] 22. Implement payment delete functionality
+- [x] 22. Implement payment delete functionality
   - [x] 22.1 Implement delete handler in usePaymentManagement
     - Add handleDelete function with confirmation
     - Call delete API endpoint
@@ -390,17 +390,17 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Display success/error toast
     - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 18.7, 18.8, 18.9_
 
-- [-] 23. Checkpoint - Ensure payment creation and editing work
+- [x] 23. Checkpoint - Ensure payment creation and editing work
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 24. Implement payment-invoice integration
-  - [~] 24.1 Add "Record Payment" button to InvoiceDetailDialog
+- [x] 24. Implement payment-invoice integration
+  - [x] 24.1 Add "Record Payment" button to InvoiceDetailDialog
     - Add button to invoice detail dialog (conditionally shown for submitted invoices with outstanding amount)
     - Open PaymentDialog with invoice pre-selected
     - Pre-fill party, currency, and allocation from invoice
     - _Requirements: 6.9, 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7, 14.8, 14.9_
   
-  - [~] 24.2 Implement payment submission with invoice updates
+  - [x] 24.2 Implement payment submission with invoice updates
     - When payment is submitted, update paid_amount for all allocated invoices
     - Update invoice status based on new outstanding amount
     - Invalidate invoice query cache
@@ -414,69 +414,69 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - **Property 26: Multiple payment aggregation**
     - **Validates: Requirements 28.5**
 
-- [ ] 25. Implement cross-document navigation
-  - [~] 25.1 Add navigation links in InvoiceDetailDialog
+- [x] 25. Implement cross-document navigation
+  - [x] 25.1 Add navigation links in InvoiceDetailDialog
     - Add link to view source sales order (if reference exists)
     - Add links to view related payments
     - Implement navigation handlers to switch tabs and open detail dialogs
     - _Requirements: 21.1, 21.3_
   
-  - [~] 25.2 Add navigation links in PaymentDetailDialog
+  - [x] 25.2 Add navigation links in PaymentDetailDialog
     - Add links to view allocated invoices
     - Implement navigation handlers to switch tabs and open detail dialogs
     - _Requirements: 16.9, 21.4_
   
-  - [~] 25.3 Add navigation links in SalesOrderDetailDialog
+  - [x] 25.3 Add navigation links in SalesOrderDetailDialog
     - Add links to view related invoices
     - Implement navigation handlers to switch tabs and open detail dialogs
     - _Requirements: 21.2_
   
-  - [~] 25.4 Implement cross-document navigation utility
+  - [x] 25.4 Implement cross-document navigation utility
     - Create utility function to handle tab switching and dialog opening
     - Support navigation between sales orders, invoices, and payments
     - _Requirements: 21.5_
 
-- [ ] 26. Implement payment reconciliation
-  - [~] 26.1 Add reconciliation status to PaymentDetailDialog
+- [x] 26. Implement payment reconciliation
+  - [x] 26.1 Add reconciliation status to PaymentDetailDialog
     - Display reconciliation status
     - Disable edit/delete for reconciled payments
     - _Requirements: 19.1, 19.2, 19.3_
   
-  - [~] 26.2 Add reconciliation filter to PaymentManagementFilters
+  - [x] 26.2 Add reconciliation filter to PaymentManagementFilters
     - Add reconciliation status filter
     - _Requirements: 19.4_
   
-  - [~] 26.3 Implement reconciliation status update
+  - [x] 26.3 Implement reconciliation status update
     - Update payment status to RECONCILED
     - _Requirements: 19.5_
 
-- [ ] 27. Implement overdue invoice detection
-  - [~] 27.1 Add overdue detection logic
+- [x] 27. Implement overdue invoice detection
+  - [x] 27.1 Add overdue detection logic
     - Check for overdue invoices when loading invoice list
     - Automatically update status to OVERDUE for eligible invoices
     - _Requirements: 27.1, 27.2_
   
-  - [~] 27.2 Add overdue styling to InvoicesTable
+  - [x] 27.2 Add overdue styling to InvoicesTable
     - Display overdue invoices with red styling
     - _Requirements: 27.3_
   
-  - [~] 27.3 Update InvoiceStats to show overdue count
+  - [x] 27.3 Update InvoiceStats to show overdue count
     - Display overdue count prominently in stats cards
     - _Requirements: 27.4_
   
-  - [~] 27.4 Add overdue filter to InvoiceManagementFilters
+  - [x] 27.4 Add overdue filter to InvoiceManagementFilters
     - Add overdue status filter option
     - _Requirements: 27.5_
 
-- [ ] 28. Implement responsive design and accessibility
-  - [~] 28.1 Add responsive breakpoints to all components
+- [x] 28. Implement responsive design and accessibility
+  - [x] 28.1 Add responsive breakpoints to all components
     - Ensure dialogs are full-screen on mobile, centered on desktop
     - Stack stats cards vertically on mobile, grid on desktop
     - Stack filter controls vertically on mobile, horizontal on desktop
     - Make tables horizontally scrollable on small screens
     - _Requirements: 22.1, 22.2, 22.3, 22.4, 22.5, 22.6_
   
-  - [~] 28.2 Add accessibility features
+  - [x] 28.2 Add accessibility features
     - Ensure keyboard navigation works for all interactive elements
     - Add proper ARIA labels to all form inputs
     - Add aria-labels to icon-only buttons
@@ -484,36 +484,36 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Test with screen reader
     - _Requirements: 22.7, 22.8, 22.9, 22.10_
 
-- [ ] 29. Implement error handling and validation
-  - [~] 29.1 Add comprehensive form validation
+- [x] 29. Implement error handling and validation
+  - [x] 29.1 Add comprehensive form validation
     - Implement Zod schemas for invoice and payment forms
     - Add field-level validation errors
     - Add custom validation messages
     - _Requirements: 23.1, 23.2, 23.3, 23.4, 23.5, 23.6, 23.7_
   
-  - [~] 29.2 Add API error handling
+  - [x] 29.2 Add API error handling
     - Handle network errors with retry option
     - Handle validation errors from backend
     - Handle authorization errors
     - Display user-friendly error messages
     - _Requirements: 23.8, 23.9, 23.10, 23.11_
 
-- [ ] 30. Implement performance optimizations
-  - [~] 30.1 Add TanStack Query caching configuration
+- [x] 30. Implement performance optimizations
+  - [x] 30.1 Add TanStack Query caching configuration
     - Set stale time to 30 seconds for invoice and payment queries
     - Implement proper cache invalidation on mutations
     - Add optimistic updates for status changes
     - _Requirements: 24.1, 24.2, 24.3, 24.4, 24.5, 24.6_
   
-  - [~] 30.2 Add performance optimizations
+  - [x] 30.2 Add performance optimizations
     - Lazy load invoice and payment management components
     - Debounce search input (300ms)
     - Prefetch customer and item data on dialog open
     - Use React.memo for expensive components
     - _Requirements: 24.7, 24.8, 24.9, 24.10_
 
-- [ ] 31. Final checkpoint - Integration testing and polish
-  - [~] 31.1 Test complete invoice workflow
+- [x] 31. Final checkpoint - Integration testing and polish
+  - [x] 31.1 Test complete invoice workflow
     - Test creating invoice manually
     - Test creating invoice from sales order
     - Test editing and deleting invoices
@@ -521,7 +521,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Test PDF generation and email sending
     - _Requirements: All invoice requirements_
   
-  - [~] 31.2 Test complete payment workflow
+  - [x] 31.2 Test complete payment workflow
     - Test creating payment with allocations
     - Test recording payment from invoice
     - Test editing and deleting payments
@@ -529,18 +529,18 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Test multi-invoice allocation
     - _Requirements: All payment requirements_
   
-  - [~] 31.3 Test cross-document navigation
+  - [x] 31.3 Test cross-document navigation
     - Test navigation from sales order to invoice
     - Test navigation from invoice to payment
     - Test navigation from payment to invoice
     - _Requirements: 21.1, 21.2, 21.3, 21.4, 21.5_
   
-  - [~] 31.4 Test responsive design
+  - [x] 31.4 Test responsive design
     - Test on mobile, tablet, and desktop screen sizes
     - Verify all components are responsive
     - _Requirements: 22.1, 22.2, 22.3, 22.4, 22.5, 22.6_
   
-  - [~] 31.5 Test accessibility
+  - [x] 31.5 Test accessibility
     - Test keyboard navigation
     - Test with screen reader
     - Verify ARIA labels
@@ -551,7 +551,7 @@ The implementation prioritizes core functionality first (list views, CRUD operat
     - Fix any failing tests
     - Verify test coverage
 
-- [~] 32. Final checkpoint - Ensure all tests pass
+- [ ] 32. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

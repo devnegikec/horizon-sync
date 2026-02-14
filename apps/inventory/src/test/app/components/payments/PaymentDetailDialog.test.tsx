@@ -237,4 +237,33 @@ describe('PaymentDetailDialog', () => {
 
     expect(screen.getByText('Supplier')).toBeInTheDocument();
   });
+
+  it('calls onViewInvoice when View button is clicked for an invoice allocation', () => {
+    render(
+      <PaymentDetailDialog
+        open={true}
+        payment={mockPayment}
+        {...mockHandlers}
+      />
+    );
+
+    const viewButtons = screen.getAllByText('View');
+    viewButtons[0].click();
+    
+    expect(mockHandlers.onViewInvoice).toHaveBeenCalledWith('inv-1');
+  });
+
+  it('does not display View buttons when onViewInvoice is not provided', () => {
+    const handlersWithoutInvoice = { ...mockHandlers, onViewInvoice: undefined };
+    render(
+      <PaymentDetailDialog
+        open={true}
+        payment={mockPayment}
+        {...handlersWithoutInvoice}
+      />
+    );
+
+    expect(screen.getByText('Invoice Allocations')).toBeInTheDocument();
+    expect(screen.queryByText('View')).not.toBeInTheDocument();
+  });
 });

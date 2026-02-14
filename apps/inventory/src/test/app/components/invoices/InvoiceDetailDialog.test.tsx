@@ -1,5 +1,5 @@
 import { describe, it, expect, jest } from '@jest/globals';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { InvoiceDetailDialog } from '../../../../app/components/invoices/InvoiceDetailDialog';
 import type { Invoice } from '../../../../app/types/invoice';
@@ -63,6 +63,7 @@ describe('InvoiceDetailDialog', () => {
     onGeneratePDF: jest.fn(),
     onSendEmail: jest.fn(),
     onViewSalesOrder: jest.fn(),
+    onViewPayment: jest.fn(),
   };
 
   it('renders invoice details correctly', () => {
@@ -196,5 +197,84 @@ describe('InvoiceDetailDialog', () => {
     );
 
     expect(container.firstChild).toBeNull();
+  });
+
+  it('displays View button for each payment in payment history', () => {
+    render(
+      <InvoiceDetailDialog
+        open={true}
+        invoice={mockInvoice}
+        {...mockHandlers}
+      />
+    );
+
+    expect(screen.getByText('Payment History')).toBeInTheDocument();
+    const viewButtons = screen.getAllByRole('button', { name: /View/i });
+    // Should have at least one View button for the payment
+    expect(viewButtons.length).toBeGreaterThan(0);
+  });
+
+  it('calls onViewPayment when View button is clicked in payment history', () => {
+    render(
+      <InvoiceDetailDialog
+        open={true}
+        invoice={mockInvoice}
+        {...mockHandlers}
+      />
+    );
+
+    // Find all buttons with "View" text
+    const allButtons = screen.getAllByRole('button');
+    const viewButtons = allButtons.filter(btn => btn.textContent?.includes('View') && !btn.textContent?.includes('Order'));
+    
+    expect(viewButtons.length).toBeGreaterThan(0);
+    fireEvent.click(viewButtons[0]);
+    
+    expect(mockHandlers.onViewPayment).toHaveBeenCalledWith('pay-1');
+  });
+
+  it('calls onViewSalesOrder when View Order button is clicked', () => {
+    render(
+      <InvoiceDetailDialog
+        open={true}
+        invoice={mockInvoice}
+        {...mockHandlers}
+      />
+    );
+
+    const viewOrderButton = screen.getByText('View Order');
+    fireEvent.click(viewOrderButton);
+    
+    expect(mockHandlers.onViewSalesOrder).toHaveBeenCalledWith('so-123');
+  });
+
+  it('does not display View Order button when onViewSalesOrder is not provided', () => {
+    const handlersWithoutSalesOrder = { ...mockHandlers, onViewSalesOrder: undefined };
+    render(
+      <InvoiceDetailDialog
+        open={true}
+        invoice={mockInvoice}
+        {...handlersWithoutSalesOrder}
+      />
+    );
+
+    expect(screen.queryByText('View Order')).not.toBeInTheDocument();
+  });
+
+  it('does not display View buttons in payment history when onViewPayment is not provided', () => {
+    const handlersWithoutPayment = { ...mockHandlers, onViewPayment: undefined };
+    render(
+      <InvoiceDetailDialog
+        open={true}
+        invoice={mockInvoice}
+        {...handlersWithoutPayment}
+      />
+    );
+
+    expect(screen.getByText('Payment History')).toBeInTheDocument();
+    // Should not have View buttons in the payment history table
+    const allButtons = screen.getAllByRole('button');
+    const viewButtonsInTable = allButtons.filter(btn => btn.textContent?.includes('View') && btn.closest('table'));
+    expect(viewButtonsInTable.length).toBe(0);
   });
 });

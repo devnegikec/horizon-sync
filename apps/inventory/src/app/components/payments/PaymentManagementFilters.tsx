@@ -12,6 +12,7 @@ export interface PaymentFilters {
   search: string;
   status: string;
   payment_mode: string;
+  reconciliation_status: string;
   date_from?: string;
   date_to?: string;
 }
@@ -46,7 +47,7 @@ export function PaymentManagementFilters({
               value={filters.status}
               onValueChange={(status) => setFilters((prev) => ({ ...prev, status }))}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px]" aria-label="Filter by status">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
@@ -61,7 +62,7 @@ export function PaymentManagementFilters({
               value={filters.payment_mode}
               onValueChange={(payment_mode) => setFilters((prev) => ({ ...prev, payment_mode }))}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px]" aria-label="Filter by payment mode">
                 <SelectValue placeholder="All Payment Modes" />
               </SelectTrigger>
               <SelectContent>
@@ -71,6 +72,19 @@ export function PaymentManagementFilters({
                 <SelectItem value="credit_card">Credit Card</SelectItem>
                 <SelectItem value="check">Check</SelectItem>
                 <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={filters.reconciliation_status}
+              onValueChange={(reconciliation_status) => setFilters((prev) => ({ ...prev, reconciliation_status }))}
+            >
+              <SelectTrigger className="w-[180px]" aria-label="Filter by reconciliation status">
+                <SelectValue placeholder="Reconciliation Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="reconciled">Reconciled</SelectItem>
+                <SelectItem value="not_reconciled">Not Reconciled</SelectItem>
               </SelectContent>
             </Select>
           </div>

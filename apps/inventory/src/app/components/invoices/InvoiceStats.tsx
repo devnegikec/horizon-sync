@@ -1,3 +1,4 @@
+import * as React from 'react';
 import {
   FileText,
   FilePenLine,
@@ -18,7 +19,7 @@ interface InvoiceStatsProps {
   totalOutstanding: number;
 }
 
-export function InvoiceStats({
+export const InvoiceStats = React.memo(function InvoiceStats({
   total,
   draft,
   submitted,
@@ -65,11 +66,11 @@ export function InvoiceStats({
       />
       <StatCard
         title="Total Outstanding"
-        value={`$${totalOutstanding.toLocaleString()}`}
+        value={`${totalOutstanding.toLocaleString()}`}
         icon={DollarSign}
         iconBg="bg-purple-100 dark:bg-purple-900/20"
         iconColor="text-purple-600 dark:text-purple-400"
       />
     </div>
   );
-}
+});

@@ -14,7 +14,15 @@ import { SalesOrderStats } from './SalesOrderStats';
 import { SalesOrderManagementFilters } from './SalesOrderManagementFilters';
 import { CreateInvoiceDialog } from './CreateInvoiceDialog';
 
-export function SalesOrderManagement() {
+export function SalesOrderManagement({
+  pendingSalesOrderId,
+  onClearPendingSalesOrderId,
+  onNavigateToInvoice,
+}: {
+  pendingSalesOrderId?: string | null;
+  onClearPendingSalesOrderId?: () => void;
+  onNavigateToInvoice?: (invoiceId: string) => void;
+}) {
   const { toast } = useToast();
   const {
     filters,
@@ -46,6 +54,18 @@ export function SalesOrderManagement() {
 
   const [saving, setSaving] = React.useState(false);
   const [creatingInvoice, setCreatingInvoice] = React.useState(false);
+
+  // Handle pending sales order ID from cross-document navigation
+  React.useEffect(() => {
+    if (pendingSalesOrderId) {
+      // Find the sales order and open its detail dialog
+      const salesOrder = salesOrders.find(so => so.id === pendingSalesOrderId);
+      if (salesOrder) {
+        handleView(salesOrder);
+      }
+      onClearPendingSalesOrderId?.();
+    }
+  }, [pendingSalesOrderId, salesOrders, handleView, onClearPendingSalesOrderId]);
 
   const handleSaveWrapper = React.useCallback(async (data: Parameters<typeof handleSave>[0], id?: string) => {
     setSaving(true);
@@ -128,6 +148,10 @@ export function SalesOrderManagement() {
         salesOrder={selectedSalesOrder}
         onEdit={handleEdit}
         onCreateInvoice={handleCreateInvoice}
+        onViewInvoice={(invoiceId) => {
+          setDetailDialogOpen(false);
+          onNavigateToInvoice?.(invoiceId);
+        }}
       />
 
       {/* Create/Edit Dialog */}

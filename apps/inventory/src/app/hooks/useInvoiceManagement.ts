@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useMemo, useEffect } from 'react';
-import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import type { Table } from '@tanstack/react-table';
 
 import { useUserStore } from '@horizon-sync/store';
@@ -13,6 +13,7 @@ import type {
   InvoiceStats 
 } from '../types/invoice';
 import type { SendInvoiceEmailData } from '../api/invoices';
+import { formatErrorForToast } from '../utils/errorHandling';
 
 export interface InvoiceFilters {
   search: string;
@@ -64,40 +65,26 @@ interface UseInvoiceManagementResult {
   };
 }
 
-// Internal hook to fetch invoices with pagination and filters
+// Internal hook to fetch invoices with pagination and filters using TanStack Query
 function useInvoices(
   initialPage: number,
   initialPageSize: number,
   filters?: { search?: string; status?: string; date_from?: string | null; date_to?: string | null }
 ) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [invoices, setInvoices] = React.useState<Invoice[]>([]);
-  const [pagination, setPagination] = React.useState<{
-    total_items: number;
-    total_pages: number;
-    page: number;
-    page_size: number;
-    has_next: boolean;
-    has_prev: boolean;
-  } | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
 
   const memoizedFilters = React.useMemo(
     () => filters,
     [filters?.search, filters?.status, filters?.date_from, filters?.date_to]
   );
 
-  const fetchInvoices = React.useCallback(async () => {
-    if (!accessToken) {
-      setInvoices([]);
-      setPagination(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['invoices', initialPage, initialPageSize, memoizedFilters],
+    queryFn: async () => {
+      if (!accessToken) {
+        return { invoices: [], pagination: null };
+      }
+      
       const data = await invoiceApi.list(
         accessToken,
         initialPage,
@@ -109,22 +96,40 @@ function useInvoices(
           date_to: memoizedFilters?.date_to || undefined,
         }
       ) as InvoiceListResponse;
-      setInvoices(data.invoices ?? []);
-      setPagination(data.pagination ?? null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load invoices');
-      setInvoices([]);
-      setPagination(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken, initialPage, initialPageSize, memoizedFilters]);
+      
+      // Check for overdue invoices and update their status
+      const currentDate = new Date();
+      const invoicesWithOverdueCheck = data.invoices.map((invoice) => {
+        // Check if invoice should be marked as overdue
+        if (
+          invoice.status === 'Submitted' &&
+          invoice.outstanding_amount > 0 &&
+          new Date(invoice.due_date) < currentDate
+        ) {
+          // Update invoice status to Overdue
+          return { ...invoice, status: 'Overdue' as const };
+        }
+        return invoice;
+      });
+      
+      return {
+        invoices: invoicesWithOverdueCheck ?? [],
+        pagination: data.pagination ?? null,
+      };
+    },
+    staleTime: 30_000, // 30 seconds as per requirement 24.2
+    enabled: !!accessToken,
+  });
 
-  React.useEffect(() => {
-    fetchInvoices();
-  }, [fetchInvoices]);
-
-  return { invoices, pagination, loading, error, refetch: fetchInvoices };
+  return {
+    invoices: data?.invoices ?? [],
+    pagination: data?.pagination ?? null,
+    loading: isLoading,
+    error: error instanceof Error ? error.message : error ? 'Failed to load invoices' : null,
+    refetch: async () => {
+      await refetch();
+    },
+  };
 }
 
 export function useInvoiceManagement(): UseInvoiceManagementResult {
@@ -169,21 +174,40 @@ export function useInvoiceManagement(): UseInvoiceManagementResult {
     return { total, draft, submitted, paid, overdue, total_outstanding };
   }, [invoices, pagination]);
 
-  // Delete mutation
+  // Delete mutation with optimistic updates
   const deleteMutation = useMutation({
     mutationFn: (id: string) => invoiceApi.delete(accessToken || '', id),
+    onMutate: async (id) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['invoices'] });
+      
+      // Snapshot the previous value
+      const previousInvoices = queryClient.getQueryData(['invoices', page, pageSize, filters]);
+      
+      // Optimistically update to remove the invoice
+      queryClient.setQueryData(['invoices', page, pageSize, filters], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          invoices: old.invoices.filter((inv: Invoice) => inv.id !== id),
+        };
+      });
+      
+      return { previousInvoices };
+    },
     onSuccess: () => {
       toast({ title: 'Success', description: 'Invoice deleted successfully' });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
       refetch();
     },
-    onError: (err) => {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete invoice',
-        variant: 'destructive',
-      });
+    onError: (err, id, context) => {
+      // Rollback on error
+      if (context?.previousInvoices) {
+        queryClient.setQueryData(['invoices', page, pageSize, filters], context.previousInvoices);
+      }
+      const errorInfo = formatErrorForToast(err);
+      toast(errorInfo);
     },
   });
 
@@ -196,11 +220,8 @@ export function useInvoiceManagement(): UseInvoiceManagementResult {
       setSelectedInvoice(fullInvoice);
       setDetailDialogOpen(true);
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load invoice details',
-        variant: 'destructive',
-      });
+      const errorInfo = formatErrorForToast(err);
+      toast(errorInfo);
     }
   }, [accessToken, toast]);
 
@@ -231,11 +252,8 @@ export function useInvoiceManagement(): UseInvoiceManagementResult {
       setDetailDialogOpen(false);
       setCreateDialogOpen(true);
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load invoice details',
-        variant: 'destructive',
-      });
+      const errorInfo = formatErrorForToast(err);
+      toast(errorInfo);
     }
   }, [accessToken, toast]);
 
@@ -291,11 +309,8 @@ export function useInvoiceManagement(): UseInvoiceManagementResult {
         description: 'Invoice PDF generated successfully',
       });
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to generate PDF',
-        variant: 'destructive',
-      });
+      const errorInfo = formatErrorForToast(err);
+      toast(errorInfo);
     }
   }, [accessToken, toast]);
 
@@ -321,11 +336,8 @@ export function useInvoiceManagement(): UseInvoiceManagementResult {
       setCreateDialogOpen(false);
       refetch();
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save invoice',
-        variant: 'destructive',
-      });
+      const errorInfo = formatErrorForToast(err);
+      toast(errorInfo);
       throw err;
     }
   }, [accessToken, toast, queryClient, refetch]);
@@ -342,11 +354,8 @@ export function useInvoiceManagement(): UseInvoiceManagementResult {
       });
       setEmailDialogOpen(false);
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to send email',
-        variant: 'destructive',
-      });
+      const errorInfo = formatErrorForToast(err);
+      toast(errorInfo);
       throw err;
     }
   }, [accessToken, toast]);

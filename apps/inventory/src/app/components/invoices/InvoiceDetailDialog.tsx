@@ -15,6 +15,7 @@ interface InvoiceDetailDialogProps {
   onGeneratePDF: (invoiceId: string) => void;
   onSendEmail: (invoice: Invoice) => void;
   onViewSalesOrder?: (salesOrderId: string) => void;
+  onViewPayment?: (paymentId: string) => void;
 }
 
 export function InvoiceDetailDialog({
@@ -26,6 +27,7 @@ export function InvoiceDetailDialog({
   onGeneratePDF,
   onSendEmail,
   onViewSalesOrder,
+  onViewPayment,
 }: InvoiceDetailDialogProps) {
   if (!invoice) return null;
 
@@ -47,7 +49,7 @@ export function InvoiceDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto sm:rounded-lg w-full h-full sm:h-auto sm:max-h-[90vh]">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-3">
@@ -200,15 +202,29 @@ export function InvoiceDetailDialog({
                           <th className="px-4 py-3 text-left text-sm font-medium">Payment Number</th>
                           <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
                           <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
+                          <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
                         {invoice.payments.map((payment, index) => (
                           <tr key={payment.id || index}>
-                            <td className="px-4 py-3 text-sm">{payment.invoice_number}</td>
+                            <td className="px-4 py-3 text-sm font-medium">{payment.invoice_number}</td>
                             <td className="px-4 py-3 text-sm">{formatDate(payment.invoice_date)}</td>
                             <td className="px-4 py-3 text-sm text-right font-medium">
                               {formatCurrency(payment.allocated_amount)}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {onViewPayment && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => onViewPayment(payment.id)}
+                                  className="h-7 gap-1"
+                                >
+                                  View
+                                  <ExternalLink className="h-3 w-3" />
+                                </Button>
+                              )}
                             </td>
                           </tr>
                         ))}

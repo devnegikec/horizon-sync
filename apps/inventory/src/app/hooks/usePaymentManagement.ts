@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useMemo, useEffect } from 'react';
-import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import type { Table } from '@tanstack/react-table';
 
 import { useUserStore } from '@horizon-sync/store';
@@ -12,11 +12,13 @@ import type {
   PaymentListResponse,
   PaymentStats 
 } from '../types/payment';
+import { formatErrorForToast } from '../utils/errorHandling';
 
 export interface PaymentFilters {
   search: string;
   status: string;
   payment_mode: string;
+  reconciliation_status: string;
   date_from?: string;
   date_to?: string;
 }
@@ -59,40 +61,26 @@ interface UsePaymentManagementResult {
   };
 }
 
-// Internal hook to fetch payments with pagination and filters
+// Internal hook to fetch payments with pagination and filters using TanStack Query
 function usePayments(
   initialPage: number,
   initialPageSize: number,
-  filters?: { search?: string; status?: string; payment_mode?: string; date_from?: string | null; date_to?: string | null }
+  filters?: { search?: string; status?: string; payment_mode?: string; reconciliation_status?: string; date_from?: string | null; date_to?: string | null }
 ) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [payments, setPayments] = React.useState<Payment[]>([]);
-  const [pagination, setPagination] = React.useState<{
-    total_items: number;
-    total_pages: number;
-    page: number;
-    page_size: number;
-    has_next: boolean;
-    has_prev: boolean;
-  } | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
 
   const memoizedFilters = React.useMemo(
     () => filters,
-    [filters?.search, filters?.status, filters?.payment_mode, filters?.date_from, filters?.date_to]
+    [filters?.search, filters?.status, filters?.payment_mode, filters?.reconciliation_status, filters?.date_from, filters?.date_to]
   );
 
-  const fetchPayments = React.useCallback(async () => {
-    if (!accessToken) {
-      setPayments([]);
-      setPagination(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['payments', initialPage, initialPageSize, memoizedFilters],
+    queryFn: async () => {
+      if (!accessToken) {
+        return { payments: [], pagination: null };
+      }
+      
       const data = await paymentApi.list(
         accessToken,
         initialPage,
@@ -100,27 +88,31 @@ function usePayments(
         {
           status: memoizedFilters?.status !== 'all' ? memoizedFilters?.status : undefined,
           payment_mode: memoizedFilters?.payment_mode !== 'all' ? memoizedFilters?.payment_mode : undefined,
+          reconciliation_status: memoizedFilters?.reconciliation_status !== 'all' ? memoizedFilters?.reconciliation_status : undefined,
           search: memoizedFilters?.search || undefined,
           date_from: memoizedFilters?.date_from || undefined,
           date_to: memoizedFilters?.date_to || undefined,
         }
       ) as PaymentListResponse;
-      setPayments(data.payments ?? []);
-      setPagination(data.pagination ?? null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load payments');
-      setPayments([]);
-      setPagination(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken, initialPage, initialPageSize, memoizedFilters]);
+      
+      return {
+        payments: data.payments ?? [],
+        pagination: data.pagination ?? null,
+      };
+    },
+    staleTime: 30_000, // 30 seconds as per requirement 24.2
+    enabled: !!accessToken,
+  });
 
-  React.useEffect(() => {
-    fetchPayments();
-  }, [fetchPayments]);
-
-  return { payments, pagination, loading, error, refetch: fetchPayments };
+  return {
+    payments: data?.payments ?? [],
+    pagination: data?.pagination ?? null,
+    loading: isLoading,
+    error: error instanceof Error ? error.message : error ? 'Failed to load payments' : null,
+    refetch: async () => {
+      await refetch();
+    },
+  };
 }
 
 export function usePaymentManagement(): UsePaymentManagementResult {
@@ -132,6 +124,7 @@ export function usePaymentManagement(): UsePaymentManagementResult {
     search: '',
     status: 'all',
     payment_mode: 'all',
+    reconciliation_status: 'all',
     date_from: undefined,
     date_to: undefined,
   });
@@ -165,21 +158,40 @@ export function usePaymentManagement(): UsePaymentManagementResult {
     return { total, pending, completed, total_amount };
   }, [payments, pagination]);
 
-  // Delete mutation
+  // Delete mutation with optimistic updates
   const deleteMutation = useMutation({
     mutationFn: (id: string) => paymentApi.delete(accessToken || '', id),
+    onMutate: async (id) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['payments'] });
+      
+      // Snapshot the previous value
+      const previousPayments = queryClient.getQueryData(['payments', page, pageSize, filters]);
+      
+      // Optimistically update to remove the payment
+      queryClient.setQueryData(['payments', page, pageSize, filters], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          payments: old.payments.filter((pmt: Payment) => pmt.id !== id),
+        };
+      });
+      
+      return { previousPayments };
+    },
     onSuccess: () => {
       toast({ title: 'Success', description: 'Payment deleted successfully' });
       queryClient.invalidateQueries({ queryKey: ['payments'] });
       queryClient.invalidateQueries({ queryKey: ['payment-stats'] });
       refetch();
     },
-    onError: (err) => {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete payment',
-        variant: 'destructive',
-      });
+    onError: (err, id, context) => {
+      // Rollback on error
+      if (context?.previousPayments) {
+        queryClient.setQueryData(['payments', page, pageSize, filters], context.previousPayments);
+      }
+      const errorInfo = formatErrorForToast(err);
+      toast(errorInfo);
     },
   });
 
@@ -192,11 +204,8 @@ export function usePaymentManagement(): UsePaymentManagementResult {
       setSelectedPayment(fullPayment);
       setDetailDialogOpen(true);
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load payment details',
-        variant: 'destructive',
-      });
+      const errorInfo = formatErrorForToast(err);
+      toast(errorInfo);
     }
   }, [accessToken, toast]);
 
@@ -227,11 +236,8 @@ export function usePaymentManagement(): UsePaymentManagementResult {
       setDetailDialogOpen(false);
       setCreateDialogOpen(true);
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load payment details',
-        variant: 'destructive',
-      });
+      const errorInfo = formatErrorForToast(err);
+      toast(errorInfo);
     }
   }, [accessToken, toast]);
 
@@ -275,18 +281,25 @@ export function usePaymentManagement(): UsePaymentManagementResult {
         await paymentApi.create(accessToken, data);
         toast({ title: 'Success', description: 'Payment created successfully' });
       }
+      
+      // Invalidate payment queries
       queryClient.invalidateQueries({ queryKey: ['payments'] });
       queryClient.invalidateQueries({ queryKey: ['payment-stats'] });
+      
+      // Invalidate invoice queries (due to paid_amount and status updates)
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-stats'] });
+      
+      // Invalidate individual invoice queries for each allocated invoice
+      data.allocations.forEach((allocation) => {
+        queryClient.invalidateQueries({ queryKey: ['invoice', allocation.invoice_id] });
+      });
+      
       setCreateDialogOpen(false);
       refetch();
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save payment',
-        variant: 'destructive',
-      });
+      const errorInfo = formatErrorForToast(err);
+      toast(errorInfo);
       throw err;
     }
   }, [accessToken, toast, queryClient, refetch]);

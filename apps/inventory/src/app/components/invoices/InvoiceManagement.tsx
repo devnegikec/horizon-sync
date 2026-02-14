@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import { useInvoiceManagement } from '../../hooks/useInvoiceManagement';
+import type { Invoice } from '../../types/invoice';
 import { DeleteConfirmationDialog } from '../common';
 import { InvoiceDetailDialog } from './InvoiceDetailDialog';
 import { InvoiceDialog } from './InvoiceDialog';
@@ -10,7 +11,21 @@ import { InvoicesTable } from './InvoicesTable';
 import { InvoiceStats } from './InvoiceStats';
 import { SendInvoiceEmailDialog } from './SendInvoiceEmailDialog';
 
-export function InvoiceManagement() {
+interface InvoiceManagementProps {
+  onRecordPayment?: (invoice: Invoice) => void;
+  pendingInvoiceId?: string | null;
+  onClearPendingInvoiceId?: () => void;
+  onNavigateToSalesOrder?: (salesOrderId: string) => void;
+  onNavigateToPayment?: (paymentId: string) => void;
+}
+
+export function InvoiceManagement({ 
+  onRecordPayment,
+  pendingInvoiceId,
+  onClearPendingInvoiceId,
+  onNavigateToSalesOrder,
+  onNavigateToPayment,
+}: InvoiceManagementProps) {
   const {
     filters,
     setFilters,
@@ -45,6 +60,18 @@ export function InvoiceManagement() {
   } = useInvoiceManagement();
 
   const hasActiveFilters = filters.search !== '' || filters.status !== 'all' || filters.date_from !== undefined || filters.date_to !== undefined;
+
+  // Handle pending invoice ID from cross-document navigation
+  React.useEffect(() => {
+    if (pendingInvoiceId) {
+      // Find the invoice and open its detail dialog
+      const invoice = invoices.find(inv => inv.id === pendingInvoiceId);
+      if (invoice) {
+        handleView(invoice);
+      }
+      onClearPendingInvoiceId?.();
+    }
+  }, [pendingInvoiceId, invoices, handleView, onClearPendingInvoiceId]);
 
   return (
     <div className="space-y-6">
@@ -89,12 +116,20 @@ export function InvoiceManagement() {
         onOpenChange={setDetailDialogOpen}
         invoice={selectedInvoice}
         onEdit={handleEdit}
-        onRecordPayment={() => {
-          // TODO: Implement record payment handler
-          console.log('Record payment not yet implemented');
+        onRecordPayment={(invoice) => {
+          setDetailDialogOpen(false);
+          onRecordPayment?.(invoice);
         }}
         onGeneratePDF={handleGeneratePDF}
         onSendEmail={handleSendEmail}
+        onViewSalesOrder={(salesOrderId) => {
+          setDetailDialogOpen(false);
+          onNavigateToSalesOrder?.(salesOrderId);
+        }}
+        onViewPayment={(paymentId) => {
+          setDetailDialogOpen(false);
+          onNavigateToPayment?.(paymentId);
+        }}
       />
 
       {/* Create/Edit Dialog */}

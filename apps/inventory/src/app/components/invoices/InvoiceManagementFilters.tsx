@@ -45,7 +45,7 @@ export function InvoiceManagementFilters({
               value={filters.status}
               onValueChange={(status) => setFilters((prev) => ({ ...prev, status }))}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px]" aria-label="Filter by status">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>

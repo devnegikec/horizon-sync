@@ -65,7 +65,7 @@ export interface PaymentFormData {
   reference_number: string;
   currency: string;
   total_amount: number;
-  status: 'Draft' | 'Submitted';
+  status: 'Draft' | 'Submitted' | 'Reconciled' | 'Cancelled';
   remarks: string;
   allocations: PaymentAllocationFormData[];
 }

@@ -24,6 +24,7 @@ export function PaymentDetailDialog({
   if (!payment) return null;
 
   const canEdit = payment.status === 'Draft';
+  const isReconciled = payment.status === 'Reconciled';
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -39,7 +40,7 @@ export function PaymentDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto sm:rounded-lg w-full h-full sm:h-auto sm:max-h-[90vh]">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-3">
@@ -84,6 +85,21 @@ export function PaymentDetailDialog({
             <div>
               <p className="text-sm text-muted-foreground">Reference Number</p>
               <p className="font-medium">{payment.reference_number}</p>
+            </div>
+          )}
+
+          {/* Reconciliation Status */}
+          {isReconciled && (
+            <div className="rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 p-4">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <div>
+                  <p className="font-medium text-green-900 dark:text-green-100">Payment Reconciled</p>
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    This payment has been reconciled with bank statements and cannot be edited or deleted.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 

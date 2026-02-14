@@ -1,5 +1,7 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 import { useUserStore } from '@horizon-sync/store';
 import {
@@ -20,10 +22,11 @@ import {
   Textarea,
 } from '@horizon-sync/ui/components';
 
-import type { Invoice, InvoiceLineItemFormData, InvoiceType, PartyType, InvoiceFormData } from '../../types/invoice';
+import type { Invoice, InvoiceType, PartyType } from '../../types/invoice';
 import type { CustomerResponse } from '../../types/customer.types';
 import { customerApi } from '../../utility/api';
 import { InvoiceLineItemTable } from './InvoiceLineItemTable';
+import { invoiceFormSchema, type InvoiceFormData, type InvoiceLineItemFormData } from '../../utils/validation';
 
 interface InvoiceDialogProps {
   open: boolean;
@@ -37,72 +40,73 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
   const accessToken = useUserStore((s) => s.accessToken);
   const isEdit = !!invoice;
 
-  const [formData, setFormData] = React.useState({
-    party_id: '',
-    party_type: 'Customer' as PartyType,
-    posting_date: new Date().toISOString().slice(0, 10),
-    due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-    currency: 'INR',
-    invoice_type: 'Sales' as InvoiceType,
-    status: 'Draft' as 'Draft' | 'Submitted' | 'Cancelled',
-    remarks: '',
-  });
-
-  const [lineItems, setLineItems] = React.useState<InvoiceLineItemFormData[]>([]);
-
+  // Prefetch customer data when dialog opens
   const { data: customersData } = useQuery<CustomerResponse>({
     queryKey: ['customers-list'],
     queryFn: () => customerApi.list(accessToken || '', 1, 100) as Promise<CustomerResponse>,
     enabled: !!accessToken && open,
+    staleTime: 30_000, // 30 seconds cache
   });
+
+  const form = useForm<InvoiceFormData>({
+    resolver: zodResolver(invoiceFormSchema),
+    defaultValues: {
+      party_id: '',
+      party_type: 'Customer',
+      posting_date: new Date(),
+      due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      currency: 'INR',
+      invoice_type: 'Sales',
+      status: 'Draft',
+      remarks: '',
+      line_items: [],
+    },
+  });
+
+  const { control, handleSubmit, formState: { errors }, setValue, watch, reset } = form;
+  const lineItems = watch('line_items');
 
   const customers = customersData?.customers ?? [];
 
   // Reset form when dialog opens or invoice changes
   React.useEffect(() => {
     if (invoice) {
-      setFormData({
+      reset({
         party_id: invoice.party_id,
         party_type: invoice.party_type,
-        posting_date: invoice.posting_date.slice(0, 10),
-        due_date: invoice.due_date.slice(0, 10),
+        posting_date: new Date(invoice.posting_date),
+        due_date: new Date(invoice.due_date),
         currency: invoice.currency,
         invoice_type: invoice.invoice_type,
         status: ['Draft', 'Submitted', 'Cancelled'].includes(invoice.status) 
           ? (invoice.status as 'Draft' | 'Submitted' | 'Cancelled')
           : 'Draft',
         remarks: invoice.remarks || '',
+        line_items: invoice.line_items && invoice.line_items.length > 0
+          ? invoice.line_items.map((item) => ({
+              item_id: item.item_id,
+              description: item.description,
+              quantity: Number(item.quantity),
+              uom: item.uom,
+              rate: Number(item.rate),
+              tax_template_id: item.tax_template_id,
+            }))
+          : [],
       });
-      if (invoice.line_items && invoice.line_items.length > 0) {
-        setLineItems(invoice.line_items.map((item) => ({
-          item_id: item.item_id,
-          description: item.description,
-          quantity: Number(item.quantity),
-          uom: item.uom,
-          rate: Number(item.rate),
-          tax_template_id: item.tax_template_id,
-        })));
-      } else {
-        setLineItems([]);
-      }
     } else {
-      setFormData({
+      reset({
         party_id: '',
         party_type: 'Customer',
-        posting_date: new Date().toISOString().slice(0, 10),
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        posting_date: new Date(),
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         currency: 'INR',
         invoice_type: 'Sales',
         status: 'Draft',
         remarks: '',
+        line_items: [],
       });
-      setLineItems([]);
     }
-  }, [invoice, open]);
-
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+  }, [invoice, open, reset]);
 
   // Calculate totals
   const { subtotal, totalTax, grandTotal } = React.useMemo(() => {
@@ -124,38 +128,11 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
     return { subtotal, totalTax, grandTotal };
   }, [lineItems]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validation
-    if (!formData.party_id) {
-      alert('Please select a customer');
-      return;
-    }
-    if (lineItems.length === 0 || lineItems.some(item => !item.item_id)) {
-      alert('Please add at least one line item with a valid item');
-      return;
-    }
-    if (lineItems.some(item => item.quantity <= 0 || item.rate < 0)) {
-      alert('All line items must have positive quantities and non-negative rates');
-      return;
-    }
-    if (new Date(formData.due_date) < new Date(formData.posting_date)) {
-      alert('Due date must not be before posting date');
-      return;
-    }
-
-    const submitData: InvoiceFormData = {
-      ...formData,
-      posting_date: new Date(formData.posting_date),
-      due_date: new Date(formData.due_date),
-      line_items: lineItems,
-    };
-
+  const onSubmit = async (data: InvoiceFormData) => {
     if (isEdit && invoice) {
-      await onSave(submitData, invoice.id);
+      await onSave(data, invoice.id);
     } else {
-      await onSave(submitData);
+      await onSave(data);
     }
   };
 
@@ -170,15 +147,16 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
   }, [isEdit, invoice?.status]);
 
   const isLineItemEditingDisabled = isEdit && invoice?.status !== 'Draft';
+  const currency = watch('currency');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto sm:rounded-lg w-full h-full sm:h-auto sm:max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Invoice' : 'Create Invoice'}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Basic Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Basic Information</h3>
@@ -193,107 +171,158 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="party_id">Customer *</Label>
-                <Select
-                  value={formData.party_id}
-                  onValueChange={(v) => handleChange('party_id', v)}
-                  disabled={isEdit}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select customer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.customer_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="party_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={isEdit}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select customer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customers.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.customer_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.party_id && (
+                  <p className="text-sm text-red-600">{errors.party_id.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="invoice_type">Invoice Type *</Label>
-                <Select
-                  value={formData.invoice_type}
-                  onValueChange={(v) => handleChange('invoice_type', v)}
-                  disabled={isEdit}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Sales">Sales</SelectItem>
-                    <SelectItem value="Purchase">Purchase</SelectItem>
-                    <SelectItem value="Debit Note">Debit Note</SelectItem>
-                    <SelectItem value="Credit Note">Credit Note</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="invoice_type"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={isEdit}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Sales">Sales</SelectItem>
+                        <SelectItem value="Purchase">Purchase</SelectItem>
+                        <SelectItem value="Debit Note">Debit Note</SelectItem>
+                        <SelectItem value="Credit Note">Credit Note</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.invoice_type && (
+                  <p className="text-sm text-red-600">{errors.invoice_type.message}</p>
+                )}
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="posting_date">Posting Date *</Label>
-                <Input
-                  id="posting_date"
-                  type="date"
-                  value={formData.posting_date}
-                  onChange={(e) => handleChange('posting_date', e.target.value)}
-                  required
+                <Controller
+                  name="posting_date"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      id="posting_date"
+                      type="date"
+                      value={field.value instanceof Date ? field.value.toISOString().slice(0, 10) : ''}
+                      onChange={(e) => field.onChange(new Date(e.target.value))}
+                    />
+                  )}
                 />
+                {errors.posting_date && (
+                  <p className="text-sm text-red-600">{errors.posting_date.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="due_date">Due Date *</Label>
-                <Input
-                  id="due_date"
-                  type="date"
-                  value={formData.due_date}
-                  onChange={(e) => handleChange('due_date', e.target.value)}
-                  required
+                <Controller
+                  name="due_date"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      id="due_date"
+                      type="date"
+                      value={field.value instanceof Date ? field.value.toISOString().slice(0, 10) : ''}
+                      onChange={(e) => field.onChange(new Date(e.target.value))}
+                    />
+                  )}
                 />
+                {errors.due_date && (
+                  <p className="text-sm text-red-600">{errors.due_date.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="currency">Currency *</Label>
-                <Select
-                  value={formData.currency}
-                  onValueChange={(v) => handleChange('currency', v)}
-                  disabled={isEdit}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="INR">INR</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="GBP">GBP</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="currency"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={isEdit}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="INR">INR</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="GBP">GBP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.currency && (
+                  <p className="text-sm text-red-600">{errors.currency.message}</p>
+                )}
               </div>
             </div>
 
             {isEdit && (
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(v) => handleChange('status', v)}
-                  disabled={availableStatuses.length === 1}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableStatuses.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="status"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={availableStatuses.length === 1}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableStatuses.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.status && (
+                  <p className="text-sm text-red-600">{errors.status.message}</p>
+                )}
               </div>
             )}
           </div>
@@ -301,22 +330,37 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
           {/* Remarks */}
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>
-            <Textarea
-              id="remarks"
-              value={formData.remarks}
-              onChange={(e) => handleChange('remarks', e.target.value)}
-              placeholder="Additional notes..."
-              rows={2}
+            <Controller
+              name="remarks"
+              control={control}
+              render={({ field }) => (
+                <Textarea
+                  id="remarks"
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Additional notes..."
+                  rows={2}
+                />
+              )}
             />
           </div>
 
           {/* Line Items */}
           <Separator />
-          <InvoiceLineItemTable
-            items={lineItems}
-            onItemsChange={setLineItems}
-            disabled={isLineItemEditingDisabled}
-          />
+          <div className="space-y-2">
+            <InvoiceLineItemTable
+              items={lineItems}
+              onItemsChange={(items) => setValue('line_items', items)}
+              disabled={isLineItemEditingDisabled}
+            />
+            {errors.line_items && (
+              <p className="text-sm text-red-600">
+                {typeof errors.line_items.message === 'string' 
+                  ? errors.line_items.message 
+                  : 'Please check line items for errors'}
+              </p>
+            )}
+          </div>
 
           {/* Totals */}
           <div className="flex justify-end">
@@ -324,20 +368,20 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
               <div className="flex justify-between items-center">
                 <span className="text-sm">Subtotal:</span>
                 <span className="text-sm font-medium">
-                  {formData.currency} {subtotal.toFixed(2)}
+                  {currency} {subtotal.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm">Total Tax:</span>
                 <span className="text-sm font-medium">
-                  {formData.currency} {totalTax.toFixed(2)}
+                  {currency} {totalTax.toFixed(2)}
                 </span>
               </div>
               <Separator />
               <div className="flex justify-between items-center text-lg font-semibold">
                 <span>Grand Total:</span>
                 <span>
-                  {formData.currency} {grandTotal.toFixed(2)}
+                  {currency} {grandTotal.toFixed(2)}
                 </span>
               </div>
             </div>
@@ -361,3 +405,6 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
     </Dialog>
   );
 }
+
+// Memoize the component for better performance
+export default React.memo(InvoiceDialog);

@@ -12,9 +12,10 @@ interface SalesOrderDetailDialogProps {
   salesOrder: SalesOrder | null;
   onEdit: (salesOrder: SalesOrder) => void;
   onCreateInvoice: (salesOrder: SalesOrder) => void;
+  onViewInvoice?: (invoiceId: string) => void;
 }
 
-export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit, onCreateInvoice }: SalesOrderDetailDialogProps) {
+export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit, onCreateInvoice, onViewInvoice }: SalesOrderDetailDialogProps) {
   if (!salesOrder) return null;
 
   const isClosedOrCancelled = salesOrder.status === 'closed' || salesOrder.status === 'cancelled';
@@ -153,6 +154,41 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
               <p className="text-sm text-muted-foreground">No line items</p>
             )}
           </div>
+
+          {/* Related Invoices - Show if any items have been billed */}
+          {salesOrder.items && salesOrder.items.some(item => Number(item.billed_qty) > 0) && (
+            <>
+              <Separator />
+              <div>
+                <h3 className="text-lg font-medium mb-4">Related Invoices</h3>
+                <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Receipt className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span className="text-blue-900 dark:text-blue-100">
+                        This sales order has been invoiced
+                      </span>
+                    </div>
+                    {onViewInvoice && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          // Note: In a real implementation, we would need to fetch the actual invoice ID
+                          // For now, this is a placeholder that would need the invoice ID from the backend
+                          console.log('View invoices for sales order:', salesOrder.id);
+                        }}
+                        className="h-7 gap-1 text-blue-600 dark:text-blue-400"
+                      >
+                        View Invoices
+                        <ExternalLink className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Remarks */}
           {salesOrder.remarks && (

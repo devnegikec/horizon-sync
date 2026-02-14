@@ -14,6 +14,7 @@ import type {
 export interface PaymentFilters {
   status?: string;
   payment_mode?: string;
+  reconciliation_status?: string;
   search?: string;
   date_from?: string;
   date_to?: string;
@@ -44,6 +45,7 @@ export const paymentApi = {
         ),
         status: filters?.status,
         payment_mode: filters?.payment_mode,
+        reconciliation_status: filters?.reconciliation_status,
         search: filters?.search,
         date_from: filters?.date_from,
         date_to: filters?.date_to,

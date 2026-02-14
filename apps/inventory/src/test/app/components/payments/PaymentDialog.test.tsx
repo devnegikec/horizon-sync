@@ -84,7 +84,7 @@ describe('PaymentDialog', () => {
       />
     );
 
-    expect(screen.getByText('Create Payment')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Create Payment' })).toBeInTheDocument();
   });
 
   it('renders edit payment dialog with payment data', () => {
@@ -132,10 +132,10 @@ describe('PaymentDialog', () => {
       />
     );
 
-    expect(screen.getByLabelText(/Party Type/)).toBeInTheDocument();
+    expect(screen.getByText(/Party Type/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Payment Date/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Payment Mode/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Currency/)).toBeInTheDocument();
+    expect(screen.getByText(/Payment Mode/)).toBeInTheDocument();
+    expect(screen.getByText(/Currency/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Total Amount/)).toBeInTheDocument();
   });
 
@@ -190,7 +190,7 @@ describe('PaymentDialog', () => {
     );
 
     expect(screen.getByText('Cancel')).toBeInTheDocument();
-    expect(screen.getByText('Create Payment')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create Payment' })).toBeInTheDocument();
   });
 
   it('pre-fills form when preSelectedInvoice is provided', () => {
@@ -246,7 +246,7 @@ describe('PaymentDialog', () => {
       />
     );
 
-    const submitButton = screen.getByText('Create Payment');
+    const submitButton = screen.getByRole('button', { name: 'Create Payment' });
     await user.click(submitButton);
 
     // Alert should be shown (in real implementation, this would be a toast)

@@ -94,7 +94,7 @@ export function SendInvoiceEmailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl sm:rounded-lg w-full h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <Mail className="h-5 w-5" />

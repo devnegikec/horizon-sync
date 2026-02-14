@@ -1,3 +1,4 @@
+import * as React from 'react';
 import {
   Wallet,
   Clock,
@@ -14,7 +15,7 @@ interface PaymentStatsProps {
   totalAmount: number;
 }
 
-export function PaymentStats({
+export const PaymentStats = React.memo(function PaymentStats({
   total,
   pending,
   completed,
@@ -52,4 +53,4 @@ export function PaymentStats({
       />
     </div>
   );
-}
+});

@@ -78,13 +78,14 @@ export function InvoicesTable({
         header: ({ column }) => <DataTableColumnHeader column={column} title="Invoice #" />,
         cell: ({ row }) => {
           const invoice = row.original;
+          const isOverdue = invoice.status === 'Overdue';
           return (
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <FileText className="h-5 w-5 text-primary" />
+              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isOverdue ? 'bg-red-100 dark:bg-red-900/20' : 'bg-primary/10'}`}>
+                <FileText className={`h-5 w-5 ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-primary'}`} />
               </div>
               <div>
-                <p className="font-medium font-mono text-sm">{invoice.invoice_number}</p>
+                <p className={`font-medium font-mono text-sm ${isOverdue ? 'text-red-600 dark:text-red-400' : ''}`}>{invoice.invoice_number}</p>
                 <p className="text-xs text-muted-foreground">
                   {formatDate(invoice.created_at, 'DD-MMM-YY')}
                 </p>
@@ -119,7 +120,13 @@ export function InvoicesTable({
         accessorKey: 'due_date',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Due Date" />,
         cell: ({ row }) => {
-          return <span className="text-sm">{formatDate(row.original.due_date, 'DD-MMM-YY')}</span>;
+          const invoice = row.original;
+          const isOverdue = invoice.status === 'Overdue';
+          return (
+            <span className={`text-sm ${isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : ''}`}>
+              {formatDate(row.original.due_date, 'DD-MMM-YY')}
+            </span>
+          );
         },
       },
       {
@@ -177,7 +184,7 @@ export function InvoicesTable({
             <div className="text-right">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" aria-label="Open invoice actions menu">
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>

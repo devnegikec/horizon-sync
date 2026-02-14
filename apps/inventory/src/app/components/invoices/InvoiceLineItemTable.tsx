@@ -145,7 +145,14 @@ export function InvoiceLineItemTable({ items, onItemsChange, readonly = false, d
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">Item #{index + 1}</span>
               {items.length > 1 && (
-                <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(index)} disabled={disabled}>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => removeItem(index)} 
+                  disabled={disabled}
+                  aria-label={`Remove item ${index + 1}`}
+                >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               )}
