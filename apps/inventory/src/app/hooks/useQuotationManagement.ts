@@ -216,8 +216,10 @@ export function useQuotationManagement() {
     }
   }, [deleteMutation, toast]);
 
-  const handleConvert = React.useCallback((quotation: Quotation) => {
-    setSelectedQuotation(quotation);
+  const handleConvert = React.useCallback(async (quotation: Quotation) => {
+    if (!accessToken) return;
+    const fullQuotation = await quotationApi.get(accessToken, quotation.id) as Quotation;
+    setSelectedQuotation(fullQuotation);
     setDetailDialogOpen(false);
     setConvertDialogOpen(true);
   }, []);

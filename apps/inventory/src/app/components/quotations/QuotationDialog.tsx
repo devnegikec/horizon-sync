@@ -246,7 +246,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select 
-                  value={formData.status} 
+                  value={formData.status || 'draft'} 
                   onValueChange={(v) => handleChange('status', v as QuotationStatus)}
                   disabled={availableStatuses.length === 1}
                 >
@@ -254,7 +254,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableStatuses.map((status) => (
+                    {availableStatuses.filter(status => status).map((status) => (
                       <SelectItem key={status} value={status}>
                         {status.charAt(0).toUpperCase() + status.slice(1)}
                       </SelectItem>

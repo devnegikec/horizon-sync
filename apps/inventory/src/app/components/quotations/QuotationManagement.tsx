@@ -44,6 +44,8 @@ export function QuotationManagement() {
     serverPaginationConfig,
   } = useQuotationManagement();
 
+  console.log({selectedQuotation})
+
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
     if (!error) return null;
