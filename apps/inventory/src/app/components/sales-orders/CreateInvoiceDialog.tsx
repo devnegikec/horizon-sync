@@ -122,6 +122,71 @@ export function CreateInvoiceDialog({ open, onOpenChange, salesOrder, onCreateIn
 
           <Separator />
 
+          {/* Line Items - View Only (Reference) */}
+          <div>
+            <h3 className="text-lg font-medium mb-4">Line Items</h3>
+            {salesOrder.items && salesOrder.items.length > 0 ? (
+              <div className="rounded-lg border">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-sm font-medium">#</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">Item</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium">Qty</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium">UOM</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium">Rate</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium">Billed</th>
+                        <th className="px-4 py-3 text-right text-sm font-medium">Delivered</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {salesOrder.items.map((item, index) => {
+                        const qty = Number(item.qty);
+                        const billedQty = Number(item.billed_qty);
+                        const deliveredQty = Number(item.delivered_qty);
+                        const billedPct = qty > 0 ? Math.min((billedQty / qty) * 100, 100) : 0;
+                        const deliveredPct = qty > 0 ? Math.min((deliveredQty / qty) * 100, 100) : 0;
+
+                        return (
+                          <tr key={item.id || index}>
+                            <td className="px-4 py-3 text-sm">{index + 1}</td>
+                            <td className="px-4 py-3 text-sm">{item.item_name || item.item_id}</td>
+                            <td className="px-4 py-3 text-sm text-right">{qty}</td>
+                            <td className="px-4 py-3 text-sm">{item.uom}</td>
+                            <td className="px-4 py-3 text-sm text-right">{Number(item.rate).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-right font-medium">{Number(item.amount).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-right">
+                              <div className="flex flex-col items-end gap-1">
+                                <span>{billedQty} / {qty}</span>
+                                <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-blue-500 rounded-full" style={{ width: `${billedPct}%` }} />
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-right">
+                              <div className="flex flex-col items-end gap-1">
+                                <span>{deliveredQty} / {qty}</span>
+                                <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                                  <div className="h-full bg-green-500 rounded-full" style={{ width: `${deliveredPct}%` }} />
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No line items</p>
+            )}
+          </div>
+
+          <Separator />
+
           {/* Line Items for Billing */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Select Quantities to Bill</h3>
