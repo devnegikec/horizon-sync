@@ -26,9 +26,14 @@ export {
   quotationApi,
   salesOrderApi,
   itemApi,
+  materialRequestApi,
+  rfqApi,
   bulkImportApi,
   bulkExportApi,
 } from './api/index';
+
+// Alias for backward compatibility
+export { itemSupplierApi as supplierApi } from './api/index';
 
 export type {
   ApiRequestOptions,

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 
 import type { DeliveryNoteCreateItem } from '../../types/delivery-note.types';
+
 import { formatSerialNumbers, parseSerialNumbers, type WarehouseOption, type DeliveryNoteCreateItemField } from './delivery-note-dialog.utils';
 
 interface DialogFieldGroupProps {
@@ -74,15 +75,13 @@ export function DeliveryNoteLineItemsSection({
 
         <div className="space-y-4">
           {items.map((item, index) => (
-            <DeliveryNoteLineItemRow
-              key={`${item.item_id}-${index}`}
+            <DeliveryNoteLineItemRow key={`${item.item_id}-${index}`}
               item={item}
               index={index}
               onRemoveItem={onRemoveItem}
               onUpdateItem={onUpdateItem}
               onUpdateSerialNumbers={onUpdateSerialNumbers}
-              warehouses={warehouses}
-            />
+              warehouses={warehouses} />
           ))}
         </div>
       </div>
@@ -120,22 +119,18 @@ const DeliveryNoteLineItemRow = React.memo(function DeliveryNoteLineItemRow({
 
       <div className="grid gap-3 md:grid-cols-4">
         <DialogField label="Item ID *" labelClassName="text-xs">
-          <Input
-            value={item.item_id}
+          <Input value={item.item_id}
             onChange={(event) => onUpdateItem(index, 'item_id', event.target.value)}
             placeholder="Item UUID"
-            required
-          />
+            required />
         </DialogField>
 
         <DialogField label="Quantity *" labelClassName="text-xs">
-          <Input
-            type="number"
+          <Input type="number"
             min="0"
             value={item.qty}
             onChange={(event) => onUpdateItem(index, 'qty', Number(event.target.value))}
-            required
-          />
+            required />
         </DialogField>
 
         <DialogField label="UOM" labelClassName="text-xs">
@@ -143,13 +138,11 @@ const DeliveryNoteLineItemRow = React.memo(function DeliveryNoteLineItemRow({
         </DialogField>
 
         <DialogField label="Rate" labelClassName="text-xs">
-          <Input
-            type="number"
+          <Input type="number"
             min="0"
             step="0.01"
             value={item.rate}
-            onChange={(event) => onUpdateItem(index, 'rate', Number(event.target.value))}
-          />
+            onChange={(event) => onUpdateItem(index, 'rate', Number(event.target.value))} />
         </DialogField>
       </div>
 
@@ -172,19 +165,15 @@ const DeliveryNoteLineItemRow = React.memo(function DeliveryNoteLineItemRow({
         </DialogField>
 
         <DialogField label="Batch No" labelClassName="text-xs">
-          <Input
-            value={item.batch_no}
+          <Input value={item.batch_no}
             onChange={(event) => onUpdateItem(index, 'batch_no', event.target.value)}
-            placeholder="Batch"
-          />
+            placeholder="Batch"/>
         </DialogField>
 
         <DialogField label="Serial Nos" labelClassName="text-xs">
-          <Input
-            value={formatSerialNumbers(item.serial_nos)}
+          <Input value={formatSerialNumbers(item.serial_nos)}
             onChange={(event) => onUpdateSerialNumbers(index, parseSerialNumbers(event.target.value))}
-            placeholder="Comma-separated"
-          />
+            placeholder="Comma-separated" />
         </DialogField>
       </div>
     </div>
