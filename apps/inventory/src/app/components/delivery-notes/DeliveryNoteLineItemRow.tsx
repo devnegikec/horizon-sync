@@ -1,93 +1,20 @@
 import * as React from 'react';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
-import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
-import { Separator } from '@horizon-sync/ui/components/ui/separator';
 
 import type { DeliveryNoteCreateItem } from '../../types/delivery-note.types';
 
-import { formatSerialNumbers, parseSerialNumbers, type WarehouseOption, type DeliveryNoteCreateItemField } from './delivery-note-dialog.utils';
-
-interface DialogFieldGroupProps {
-  title: string;
-  children: React.ReactNode;
-}
-
-export function DialogFieldGroup({ title, children }: DialogFieldGroupProps) {
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">{title}</h3>
-      {children}
-    </div>
-  );
-}
-
-interface FieldContainerProps {
-  label: string;
-  htmlFor?: string;
-  labelClassName?: string;
-  children: React.ReactNode;
-  className?: string;
-}
-
-export function DialogField({ label, htmlFor, children, labelClassName, className = '' }: FieldContainerProps) {
-  return (
-    <div className={`space-y-2 ${className}`}>
-      <Label htmlFor={htmlFor} className={labelClassName}>
-        {label}
-      </Label>
-      {children}
-    </div>
-  );
-}
-
-interface DeliveryNoteLineItemSectionProps {
-  items: DeliveryNoteCreateItem[];
-  warehouses: WarehouseOption[];
-  onAddItem: () => void;
-  onUpdateItem: (index: number, field: Exclude<DeliveryNoteCreateItemField, 'serial_nos'>, value: string | number) => void;
-  onUpdateSerialNumbers: (index: number, serials: string[]) => void;
-  onRemoveItem: (index: number) => void;
-}
-
-export function DeliveryNoteLineItemsSection({
-  items,
-  warehouses,
-  onAddItem,
-  onUpdateItem,
-  onUpdateSerialNumbers,
-  onRemoveItem,
-}: DeliveryNoteLineItemSectionProps) {
-  return (
-    <>
-      <Separator />
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium">Line Items</h3>
-          <Button type="button" variant="outline" size="sm" className="gap-1" onClick={onAddItem}>
-            <Plus className="h-4 w-4" /> Add Item
-          </Button>
-        </div>
-
-        <div className="space-y-4">
-          {items.map((item, index) => (
-            <DeliveryNoteLineItemRow key={`${item.item_id}-${index}`}
-              item={item}
-              index={index}
-              onRemoveItem={onRemoveItem}
-              onUpdateItem={onUpdateItem}
-              onUpdateSerialNumbers={onUpdateSerialNumbers}
-              warehouses={warehouses} />
-          ))}
-        </div>
-      </div>
-    </>
-  );
-}
+import {
+  formatSerialNumbers,
+  parseSerialNumbers,
+  type WarehouseOption,
+  type DeliveryNoteCreateItemField
+} from '../../utility/delivery-note';
+import { DialogField } from './FormComponents';
 
 interface DeliveryNoteLineItemRowProps {
   item: DeliveryNoteCreateItem;
@@ -98,7 +25,7 @@ interface DeliveryNoteLineItemRowProps {
   onRemoveItem: (index: number) => void;
 }
 
-const DeliveryNoteLineItemRow = React.memo(function DeliveryNoteLineItemRow({
+export const DeliveryNoteLineItemRow = React.memo(function DeliveryNoteLineItemRow({
   item,
   index,
   warehouses,
@@ -134,7 +61,9 @@ const DeliveryNoteLineItemRow = React.memo(function DeliveryNoteLineItemRow({
         </DialogField>
 
         <DialogField label="UOM" labelClassName="text-xs">
-          <Input value={item.uom} onChange={(event) => onUpdateItem(index, 'uom', event.target.value)} placeholder="pcs" />
+          <Input value={item.uom}
+            onChange={(event) => onUpdateItem(index, 'uom', event.target.value)}
+            placeholder="pcs" />
         </DialogField>
 
         <DialogField label="Rate" labelClassName="text-xs">
@@ -158,7 +87,9 @@ const DeliveryNoteLineItemRow = React.memo(function DeliveryNoteLineItemRow({
             </SelectTrigger>
             <SelectContent>
               {warehouses.map((warehouse) => (
-                <SelectItem key={warehouse.id} value={warehouse.id}>{warehouse.warehouse_name}</SelectItem>
+                <SelectItem key={warehouse.id} value={warehouse.id}>
+                  {warehouse.warehouse_name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -179,4 +110,3 @@ const DeliveryNoteLineItemRow = React.memo(function DeliveryNoteLineItemRow({
     </div>
   );
 });
-

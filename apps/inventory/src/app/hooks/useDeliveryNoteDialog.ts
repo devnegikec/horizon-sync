@@ -1,10 +1,13 @@
 import * as React from 'react';
 
 import { useQuery } from '@tanstack/react-query';
+
 import { useUserStore } from '@horizon-sync/store';
 
-import type { CustomerResponse } from '../../types/customer.types';
-import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteCreateItem, DeliveryNoteUpdate } from '../../types/delivery-note.types';
+import type { CustomerResponse } from '../types/customer.types';
+import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteCreateItem, DeliveryNoteUpdate } from '../types/delivery-note.types';
+
+import { customerApi, warehouseApi } from '../utility/api';
 import {
   DeliveryNoteCreateItemField,
   type DeliveryNoteDialogFormData,
@@ -14,8 +17,7 @@ import {
   getDialogFormDataFromDeliveryNote,
   getEmptyDeliveryNoteItem,
   getInitialDialogFormData,
-} from './delivery-note-dialog.utils';
-import { customerApi, warehouseApi } from '../../utility/api';
+} from '../utility/delivery-note';
 
 interface UseDeliveryNoteDialogProps {
   open: boolean;

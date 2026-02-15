@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
 import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteUpdate } from '../../types/delivery-note.types';
-import { DeliveryNoteLineItemsSection, DialogField, DialogFieldGroup } from './delivery-note-dialog.components';
-import { useDeliveryNoteDialog } from './delivery-note-dialog.hooks';
+
+import { useDeliveryNoteDialog } from '../../hooks/useDeliveryNoteDialog';
+import { DeliveryNoteLineItemsSection, DialogField, DialogFieldGroup } from './DeliveryNoteHelpers';
 
 interface DeliveryNoteDialogProps {
   open: boolean;

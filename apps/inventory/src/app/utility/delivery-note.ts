@@ -1,4 +1,4 @@
-import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteCreateItem, DeliveryNoteUpdate } from '../../types/delivery-note.types';
+import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteCreateItem, DeliveryNoteUpdate } from '../types/delivery-note.types';
 
 export type DeliveryNoteCreateItemField = keyof DeliveryNoteCreateItem;
 
