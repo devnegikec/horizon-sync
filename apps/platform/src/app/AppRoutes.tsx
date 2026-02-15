@@ -10,6 +10,7 @@ const Inventory = React.lazy(() => import('inventory/Module'));
 const RevenuePage = React.lazy(() => import('inventory/RevenuePage'));
 const SourcingPage = React.lazy(() => import('inventory/SourcingPage'));
 const BooksPage = React.lazy(() => import('inventory/BooksPage'));
+const TaxChargesPage = React.lazy(() => import('inventory/TaxChargesPage'));
 
 export function AppRoutes() {
   return (
@@ -47,6 +48,7 @@ function ProtectedRouteWrapper() {
           <Route path="/revenue" element={<RevenuePage />} />
           <Route path="/sourcing" element={<SourcingPage />} />
           <Route path="/books" element={<BooksPage />} />
+          <Route path="/tax-charges" element={<TaxChargesPage />} />
           <Route path="/subscriptions" element={<SubscriptionManagementPage />} />
           <Route path="/analytics" element={<AnalyticsPlaceholder />} />
           <Route path="/users" element={<UserManagementPage />} />
