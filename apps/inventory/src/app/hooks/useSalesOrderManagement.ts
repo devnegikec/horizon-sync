@@ -1,11 +1,12 @@
 import * as React from 'react';
 import { useMemo, useEffect } from 'react';
+
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import type { Table } from '@tanstack/react-table';
 
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
-import { salesOrderApi } from '../utility/api/sales-orders';
+
 import type {
   SalesOrder,
   SalesOrderCreate,
@@ -14,6 +15,7 @@ import type {
   ConvertToInvoiceRequest,
   ConvertToInvoiceResponse,
 } from '../types/sales-order.types';
+import { salesOrderApi } from '../utility/api/sales-orders';
 
 export interface SalesOrderFilters {
   search: string;

@@ -7,9 +7,9 @@ import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
+import { useDeliveryNoteDialog } from '../../hooks/useDeliveryNoteDialog';
 import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteUpdate } from '../../types/delivery-note.types';
 
-import { useDeliveryNoteDialog } from '../../hooks/useDeliveryNoteDialog';
 import { DeliveryNoteLineItemsSection, DialogField, DialogFieldGroup } from './DeliveryNoteHelpers';
 
 interface DeliveryNoteDialogProps {
@@ -51,14 +51,12 @@ export function DeliveryNoteDialog({ open, onOpenChange, deliveryNote, onSave, s
           <DialogFieldGroup title="Basic Information">
             <div className="grid gap-4 md:grid-cols-2">
               <DialogField label="Delivery Note # *" htmlFor="delivery_note_no">
-                <Input
-                  id="delivery_note_no"
+                <Input id="delivery_note_no"
                   value={formData.delivery_note_no}
                   onChange={(event) => handleFieldChange('delivery_note_no', event.target.value)}
                   placeholder="DN-2026-001"
                   required
-                  disabled={isEdit}
-                />
+                  disabled={isEdit} />
               </DialogField>
               <DialogField label="Customer *" htmlFor="customer_id">
                 <Select value={formData.customer_id} onValueChange={(value) => handleFieldChange('customer_id', value)} disabled={isEdit} required>
@@ -78,13 +76,11 @@ export function DeliveryNoteDialog({ open, onOpenChange, deliveryNote, onSave, s
 
             <div className="grid gap-4 md:grid-cols-3">
               <DialogField label="Delivery Date *" htmlFor="delivery_date">
-                <Input
-                  id="delivery_date"
+                <Input id="delivery_date"
                   type="datetime-local"
                   value={formData.delivery_date}
                   onChange={(event) => handleFieldChange('delivery_date', event.target.value)}
-                  required
-                />
+                  required />
               </DialogField>
               <DialogField label="Status" htmlFor="status">
                 <Select value={formData.status} onValueChange={(value) => handleFieldChange('status', value)}>
@@ -120,28 +116,22 @@ export function DeliveryNoteDialog({ open, onOpenChange, deliveryNote, onSave, s
             <DialogFieldGroup title="References">
               <div className="grid gap-4 md:grid-cols-3">
                 <DialogField label="Pick List ID" htmlFor="pick_list_id">
-                  <Input
-                    id="pick_list_id"
+                  <Input id="pick_list_id"
                     value={formData.pick_list_id}
                     onChange={(event) => handleFieldChange('pick_list_id', event.target.value)}
-                    placeholder="UUID"
-                  />
+                    placeholder="UUID" />
                 </DialogField>
                 <DialogField label="Reference Type" htmlFor="reference_type">
-                  <Input
-                    id="reference_type"
+                  <Input id="reference_type"
                     value={formData.reference_type}
                     onChange={(event) => handleFieldChange('reference_type', event.target.value)}
-                    placeholder="e.g. Sales Order"
-                  />
+                    placeholder="e.g. Sales Order" />
                 </DialogField>
                 <DialogField label="Reference ID" htmlFor="reference_id">
-                  <Input
-                    id="reference_id"
+                  <Input id="reference_id"
                     value={formData.reference_id}
                     onChange={(event) => handleFieldChange('reference_id', event.target.value)}
-                    placeholder="UUID"
-                  />
+                    placeholder="UUID" />
                 </DialogField>
               </div>
             </DialogFieldGroup>
@@ -150,25 +140,21 @@ export function DeliveryNoteDialog({ open, onOpenChange, deliveryNote, onSave, s
           {/* Remarks */}
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>
-            <Textarea
-              id="remarks"
+            <Textarea id="remarks"
               value={formData.remarks}
               onChange={(event) => handleFieldChange('remarks', event.target.value)}
               placeholder="Additional notes..."
-              rows={2}
-            />
+              rows={2} />
           </div>
 
           {/* Line Items (Create only) */}
           {!isEdit && (
-            <DeliveryNoteLineItemsSection
-              items={items}
+            <DeliveryNoteLineItemsSection items={items}
               warehouses={warehouses}
               onAddItem={addItem}
               onUpdateItem={handleItemChange}
               onUpdateSerialNumbers={handleItemSerialNoChange}
-              onRemoveItem={removeItem}
-            />
+              onRemoveItem={removeItem} />
           )}
 
           <DialogFooter>

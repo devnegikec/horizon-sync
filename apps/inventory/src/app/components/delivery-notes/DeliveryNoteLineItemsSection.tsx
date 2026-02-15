@@ -6,8 +6,8 @@ import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 
 import type { DeliveryNoteCreateItem } from '../../types/delivery-note.types';
-
 import { type WarehouseOption, type DeliveryNoteCreateItemField } from '../../utility/delivery-note';
+
 import { DeliveryNoteLineItemRow } from './DeliveryNoteLineItemRow';
 
 interface DeliveryNoteLineItemSectionProps {
