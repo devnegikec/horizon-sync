@@ -131,6 +131,7 @@ export function SalesOrderManagement({
         onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onCreateInvoice={handleCreateInvoice}
         onCreateSalesOrder={handleCreate}
         onTableReady={handleTableReady}
         serverPagination={serverPaginationConfig}/>
