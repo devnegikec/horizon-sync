@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { Package } from 'lucide-react';
 
-import { StatCard } from '../../../../app/components/items/StatCard';
+import { StatCard } from '../../../../app/components/shared/StatCard';
 
 describe('StatCard', () => {
   it('should render title and value correctly', () => {

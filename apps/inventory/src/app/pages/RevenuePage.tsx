@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { DollarSign, Package, Users, Warehouse, Boxes, Truck, FileText, ShoppingCart } from 'lucide-react';
+import { DollarSign, Package, Users, Truck, FileText, ShoppingCart } from 'lucide-react';
 
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -10,6 +10,12 @@ import { cn } from '@horizon-sync/ui/lib';
 import { CustomerManagement } from '../components/customers';
 import { DeliveryNoteManagement } from '../components/delivery-notes';
 import { QuotationManagement } from '../components/quotations';
+import { SalesOrderManagement } from '../components/sales-orders';
+import type { Invoice } from '../types/invoice';
+
+// Lazy load invoice and payment management components for better performance
+const InvoiceManagement = React.lazy(() => import('../components/invoices').then(m => ({ default: m.InvoiceManagement })));
+const PaymentManagement = React.lazy(() => import('../components/payments').then(m => ({ default: m.PaymentManagement })));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -35,6 +41,42 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 }
 export function RevenuePage() {
   const [activeView, setActiveView] = React.useState<ActiveView>('customers');
+  const [preSelectedInvoice, setPreSelectedInvoice] = React.useState<Invoice | null>(null);
+  
+  // State for cross-document navigation
+  const [pendingSalesOrderId, setPendingSalesOrderId] = React.useState<string | null>(null);
+  const [pendingInvoiceId, setPendingInvoiceId] = React.useState<string | null>(null);
+  const [pendingPaymentId, setPendingPaymentId] = React.useState<string | null>(null);
+
+  // Handler for recording payment from invoice
+  const handleRecordPayment = React.useCallback((invoice: Invoice) => {
+    setPreSelectedInvoice(invoice);
+    setActiveView('payments');
+  }, []);
+
+  // Handlers for cross-document navigation
+  const handleNavigateToSalesOrder = React.useCallback((salesOrderId: string) => {
+    setPendingSalesOrderId(salesOrderId);
+    setActiveView('sales_orders');
+  }, []);
+
+  const handleNavigateToInvoice = React.useCallback((invoiceId: string) => {
+    setPendingInvoiceId(invoiceId);
+    setActiveView('invoices');
+  }, []);
+
+  const handleNavigateToPayment = React.useCallback((paymentId: string) => {
+    setPendingPaymentId(paymentId);
+    setActiveView('payments');
+  }, []);
+
+  // Clear pre-selected invoice when switching away from payments
+  React.useEffect(() => {
+    if (activeView !== 'payments') {
+      setPreSelectedInvoice(null);
+    }
+  }, [activeView]);
+
   return (
     <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -58,8 +100,35 @@ export function RevenuePage() {
         <main className="container px-4 py-8">
           {activeView === 'customers' && <CustomerManagement />}
           {activeView === 'quotations' && <QuotationManagement />}
-          {activeView === 'sales_orders' && <div className="text-center text-muted-foreground py-12">Sales Orders - Coming Soon</div>}
+          {activeView === 'sales_orders' && (
+            <SalesOrderManagement 
+              pendingSalesOrderId={pendingSalesOrderId}
+              onClearPendingSalesOrderId={() => setPendingSalesOrderId(null)}
+              onNavigateToInvoice={handleNavigateToInvoice}
+            />
+          )}
           {activeView === 'delivery_notes' && <DeliveryNoteManagement />}
+          {activeView === 'invoices' && (
+            <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading invoices...</div>}>
+              <InvoiceManagement 
+                onRecordPayment={handleRecordPayment}
+                pendingInvoiceId={pendingInvoiceId}
+                onClearPendingInvoiceId={() => setPendingInvoiceId(null)}
+                onNavigateToSalesOrder={handleNavigateToSalesOrder}
+                onNavigateToPayment={handleNavigateToPayment}
+              />
+            </React.Suspense>
+          )}
+          {activeView === 'payments' && (
+            <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading payments...</div>}>
+              <PaymentManagement 
+                preSelectedInvoice={preSelectedInvoice}
+                pendingPaymentId={pendingPaymentId}
+                onClearPendingPaymentId={() => setPendingPaymentId(null)}
+                onNavigateToInvoice={handleNavigateToInvoice}
+              />
+            </React.Suspense>
+          )}
         </main>
       </div>
     </ThemeProvider>

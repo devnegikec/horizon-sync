@@ -22,7 +22,6 @@ export interface FormatDateOptions {
 }
 
 export function toDate(input: DateInput): Date {
-  console.log({input});
   // 1. Handle empty cases immediately
   if (input === null || input === undefined) {
     throw new Error('date_util: Input is null or undefined');

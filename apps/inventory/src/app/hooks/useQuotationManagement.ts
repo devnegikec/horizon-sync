@@ -127,6 +127,8 @@ export function useQuotationManagement() {
   const [pageSize, setPageSize] = React.useState(20);
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
+  const [convertDialogOpen, setConvertDialogOpen] = React.useState(false);
+  const [converting, setConverting] = React.useState(false);
   const [selectedQuotation, setSelectedQuotation] = React.useState<Quotation | null>(null);
   const [editQuotation, setEditQuotation] = React.useState<Quotation | null>(null);
   const [tableInstance, setTableInstance] = React.useState<Table<Quotation> | null>(null);
@@ -161,21 +163,43 @@ export function useQuotationManagement() {
     },
   });
 
-  const handleView = React.useCallback((quotation: Quotation) => {
-    setSelectedQuotation(quotation);
-    setDetailDialogOpen(true);
-  }, []);
+  const handleView = React.useCallback(async (quotation: Quotation) => {
+    if (!accessToken) return;
+    try {
+      // Fetch full quotation details including line items
+      const fullQuotation = await quotationApi.get(accessToken, quotation.id) as Quotation;
+      setSelectedQuotation(fullQuotation);
+      setDetailDialogOpen(true);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load quotation details',
+        variant: 'destructive',
+      });
+    }
+  }, [accessToken, toast]);
 
   const handleCreate = React.useCallback(() => {
     setEditQuotation(null);
     setCreateDialogOpen(true);
   }, []);
 
-  const handleEdit = React.useCallback((quotation: Quotation) => {
-    setEditQuotation(quotation);
-    setDetailDialogOpen(false);
-    setCreateDialogOpen(true);
-  }, []);
+  const handleEdit = React.useCallback(async (quotation: Quotation) => {
+    if (!accessToken) return;
+    try {
+      // Fetch full quotation details including line items
+      const fullQuotation = await quotationApi.get(accessToken, quotation.id) as Quotation;
+      setEditQuotation(fullQuotation);
+      setDetailDialogOpen(false);
+      setCreateDialogOpen(true);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load quotation details',
+        variant: 'destructive',
+      });
+    }
+  }, [accessToken, toast]);
 
   const handleDelete = React.useCallback((quotation: Quotation) => {
     if (quotation.status !== 'draft') {
@@ -192,12 +216,37 @@ export function useQuotationManagement() {
     }
   }, [deleteMutation, toast]);
 
-  const handleConvert = React.useCallback((quotation: Quotation) => {
-    toast({
-      title: 'Coming Soon',
-      description: 'Convert to Sales Order functionality will be implemented next',
-    });
-  }, [toast]);
+  const handleConvert = React.useCallback(async (quotation: Quotation) => {
+    if (!accessToken) return;
+    const fullQuotation = await quotationApi.get(accessToken, quotation.id) as Quotation;
+    setSelectedQuotation(fullQuotation);
+    setDetailDialogOpen(false);
+    setConvertDialogOpen(true);
+  }, []);
+
+  const handleConvertConfirm = React.useCallback(async (quotationId: string, data: { order_date: string; delivery_date?: string }) => {
+    if (!accessToken) return;
+    setConverting(true);
+    try {
+      const result = await quotationApi.convertToSalesOrder(accessToken, quotationId, data) as { sales_order_id: string; sales_order_no: string; message: string };
+      toast({
+        title: 'Success',
+        description: result.message || 'Quotation converted to sales order successfully',
+      });
+      setConvertDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      refetch();
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to convert quotation',
+        variant: 'destructive',
+      });
+      throw err;
+    } finally {
+      setConverting(false);
+    }
+  }, [accessToken, toast, queryClient, refetch]);
 
   const handleTableReady = React.useCallback((table: Table<Quotation>) => {
     setTableInstance(table);
@@ -260,6 +309,10 @@ export function useQuotationManagement() {
     handleEdit,
     handleDelete,
     handleConvert,
+    handleConvertConfirm,
+    convertDialogOpen,
+    setConvertDialogOpen,
+    converting,
     handleTableReady,
     handleSave,
     serverPaginationConfig,

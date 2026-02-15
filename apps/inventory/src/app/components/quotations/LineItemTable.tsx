@@ -3,7 +3,8 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
+import { Button, Input, Label } from '@horizon-sync/ui/components';
+import { SearchableSelect } from '@horizon-sync/search';
 
 import type { QuotationLineItemCreate } from '../../types/quotation.types';
 import { itemApi } from '../../utility/api';
@@ -28,7 +29,7 @@ const emptyItem: QuotationLineItemCreate = {
 export function LineItemTable({ items, onItemsChange, readonly = false, disabled = false }: LineItemTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
 
-  const { data: itemsData } = useQuery<{ items: { id: string; item_name: string; item_sku?: string }[] }>({
+  const { data: itemsData, isLoading } = useQuery<{ items: { id: string; item_name: string; item_sku?: string }[] }>({
     queryKey: ['items-list'],
     queryFn: () => itemApi.list(accessToken || '', 1, 100) as Promise<{ items: { id: string; item_name: string; item_sku?: string }[] }>,
     enabled: !!accessToken && !readonly,
@@ -36,14 +37,30 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
 
   const availableItems = itemsData?.items ?? [];
 
+  // List fetcher for SearchableSelect
+  const itemListFetcher = React.useCallback(async () => {
+    if (availableItems.length > 0) {
+      return availableItems;
+    }
+    const data = await itemApi.list(accessToken || '', 1, 100) as { items: { id: string; item_name: string; item_sku?: string }[] };
+    return data.items;
+  }, [availableItems, accessToken]);
+
+  // Label formatter for SearchableSelect
+  const itemLabelFormatter = React.useCallback(
+    (item: { id: string; item_name: string; item_sku?: string }) =>
+      `${item.item_name}${item.item_sku ? ` (${item.item_sku})` : ''}`,
+    []
+  );
+
   const handleItemChange = (index: number, field: keyof QuotationLineItemCreate, value: string | number) => {
     const updated = [...items];
     updated[index] = { ...updated[index], [field]: value };
-    
+
     if (field === 'qty' || field === 'rate') {
       updated[index].amount = Number(updated[index].qty) * Number(updated[index].rate);
     }
-    
+
     onItemsChange(updated);
   };
 
@@ -114,23 +131,18 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
             <div className="grid gap-3 md:grid-cols-5">
               <div className="space-y-1 md:col-span-2">
                 <Label className="text-xs">Item *</Label>
-                <Select 
-                  value={item.item_id} 
+                <SearchableSelect
+                  entityType="items"
+                  value={item.item_id}
                   onValueChange={(v) => handleItemChange(index, 'item_id', v)}
+                  listFetcher={itemListFetcher}
+                  labelFormatter={itemLabelFormatter}
+                  valueKey="id"
+                  placeholder="Select an item..."
                   disabled={disabled}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select item" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableItems.map((i) => (
-                      <SelectItem key={i.id} value={i.id}>
-                        {i.item_name} {i.item_sku ? `(${i.item_sku})` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  isLoading={isLoading}
+                  items={availableItems}
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Quantity *</Label>

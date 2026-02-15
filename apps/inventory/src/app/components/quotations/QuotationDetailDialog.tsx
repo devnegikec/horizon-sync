@@ -83,22 +83,25 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
           <Separator />
           <div>
             <h3 className="text-lg font-medium mb-4">Line Items</h3>
-            {quotation.line_items && quotation.line_items.length > 0 ? (
-              <LineItemTable 
-                items={quotation.line_items.map(item => ({
-                  item_id: item.item_name || item.item_id,
-                  qty: item.qty,
-                  uom: item.uom,
-                  rate: Number(item.rate),
-                  amount: Number(item.amount),
-                  sort_order: item.sort_order,
-                }))} 
-                onItemsChange={() => {}} 
-                readonly 
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">No line items</p>
-            )}
+            {(() => {
+              const lineItems = quotation.items || quotation.line_items || [];
+              return lineItems.length > 0 ? (
+                <LineItemTable 
+                  items={lineItems.map(item => ({
+                    item_id: item.item_name || item.item_id,
+                    qty: Number(item.qty),
+                    uom: item.uom,
+                    rate: Number(item.rate),
+                    amount: Number(item.amount),
+                    sort_order: item.sort_order,
+                  }))} 
+                  onItemsChange={() => {}} 
+                  readonly 
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">No line items</p>
+              );
+            })()}
           </div>
 
           {/* Remarks */}

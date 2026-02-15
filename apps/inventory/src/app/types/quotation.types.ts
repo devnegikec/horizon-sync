@@ -33,6 +33,7 @@ export interface Quotation {
   status: QuotationStatus;
   remarks?: string;
   line_items?: QuotationLineItem[];
+  items?: QuotationLineItem[]; // API returns 'items' instead of 'line_items'
   created_by?: string;
   updated_by?: string;
   created_at: string;

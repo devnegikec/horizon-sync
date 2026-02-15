@@ -61,15 +61,19 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         status: quotation.status,
         remarks: quotation.remarks || '',
       });
-      if (quotation.line_items && quotation.line_items.length > 0) {
-        setItems(quotation.line_items.map((item) => ({
+      // Handle both 'items' and 'line_items' field names from API
+      const lineItems = quotation.items || quotation.line_items || [];
+      if (lineItems.length > 0) {
+        setItems(lineItems.map((item) => ({
           item_id: item.item_id,
-          qty: item.qty,
+          qty: Number(item.qty),
           uom: item.uom,
           rate: Number(item.rate),
           amount: Number(item.amount),
           sort_order: item.sort_order,
         })));
+      } else {
+        setItems([{ ...emptyItem, sort_order: 1 }]);
       }
     } else {
       setFormData({
@@ -180,7 +184,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
               <div className="space-y-2">
                 <Label htmlFor="customer_id">Customer *</Label>
                 <Select 
-                  value={formData.customer_id} 
+                  value={formData.customer_id || undefined} 
                   onValueChange={(v) => handleChange('customer_id', v)} 
                   disabled={isEdit}
                   required
@@ -242,7 +246,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select 
-                  value={formData.status} 
+                  value={formData.status || 'draft'} 
                   onValueChange={(v) => handleChange('status', v as QuotationStatus)}
                   disabled={availableStatuses.length === 1}
                 >
@@ -250,7 +254,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableStatuses.map((status) => (
+                    {availableStatuses.filter(status => status).map((status) => (
                       <SelectItem key={status} value={status}>
                         {status.charAt(0).toUpperCase() + status.slice(1)}
                       </SelectItem>

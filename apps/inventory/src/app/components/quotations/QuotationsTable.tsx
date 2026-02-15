@@ -19,6 +19,7 @@ export interface QuotationsTableProps {
   onView: (quotation: Quotation) => void;
   onEdit: (quotation: Quotation) => void;
   onDelete: (quotation: Quotation) => void;
+  onConvert?: (quotation: Quotation) => void;
   onCreateQuotation: () => void;
   onTableReady?: (table: Table<Quotation>) => void;
   serverPagination?: {
@@ -37,6 +38,7 @@ export function QuotationsTable({
   onView,
   onEdit,
   onDelete,
+  onConvert,
   onCreateQuotation,
   onTableReady,
   serverPagination
@@ -154,6 +156,7 @@ export function QuotationsTable({
           const quotation = row.original;
           const canEdit = quotation.status !== 'accepted' && quotation.status !== 'rejected' && quotation.status !== 'expired';
           const canDelete = quotation.status === 'draft';
+          const canConvert = quotation.status === 'accepted';
           
           return (
             <div className="text-right">
@@ -172,6 +175,15 @@ export function QuotationsTable({
                     <Edit className="mr-2 h-4 w-4" />
                     Edit Quotation
                   </DropdownMenuItem>
+                  {canConvert && onConvert && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onConvert(quotation)}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Convert to Sales Order
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
@@ -192,7 +204,7 @@ export function QuotationsTable({
         enableSorting: false,
       },
     ],
-    [onView, onEdit, onDelete],
+    [onView, onEdit, onDelete, onConvert],
   );
 
 

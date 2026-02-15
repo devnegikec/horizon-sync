@@ -4,6 +4,7 @@ import { ArrowRight, FileText } from 'lucide-react';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Separator } from '@horizon-sync/ui/components';
 
 import type { Quotation } from '../../types/quotation.types';
+import { LineItemTable } from './LineItemTable';
 
 interface ConvertToSalesOrderDialogProps {
   open: boolean;
@@ -117,11 +118,33 @@ export function ConvertToSalesOrderDialog({
                 <p className="font-medium">{quotation.currency} {Number(quotation.grand_total).toFixed(2)}</p>
               </div>
             </div>
+          </div>
 
-            <div>
-              <p className="text-sm text-muted-foreground">Line Items</p>
-              <p className="font-medium">{quotation.line_items?.length || 0} items</p>
-            </div>
+          <Separator />
+
+          {/* Line Items */}
+          <div>
+            <h3 className="text-lg font-medium mb-4">Line Items</h3>
+            {(() => {
+              console.log("Line itmes:-", quotation.items);
+              const lineItems = quotation.items || quotation.line_items || [];
+              return lineItems.length > 0 ? (
+                <LineItemTable 
+                  items={lineItems.map(item => ({
+                    item_id: item.item_name || item.item_id,
+                    qty: Number(item.qty),
+                    uom: item.uom,
+                    rate: Number(item.rate),
+                    amount: Number(item.amount),
+                    sort_order: item.sort_order,
+                  }))} 
+                  onItemsChange={() => {}} 
+                  readonly 
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">No line items</p>
+              );
+            })()}
           </div>
 
           <Separator />
