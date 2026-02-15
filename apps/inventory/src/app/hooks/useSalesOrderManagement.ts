@@ -136,21 +136,43 @@ export function useSalesOrderManagement() {
     },
   });
 
-  const handleView = React.useCallback((salesOrder: SalesOrder) => {
-    setSelectedSalesOrder(salesOrder);
-    setDetailDialogOpen(true);
-  }, []);
+  const handleView = React.useCallback(async (salesOrder: SalesOrder) => {
+    if (!accessToken) return;
+    try {
+      // Fetch full sales order details including line items
+      const fullSalesOrder = await salesOrderApi.get(accessToken, salesOrder.id) as SalesOrder;
+      setSelectedSalesOrder(fullSalesOrder);
+      setDetailDialogOpen(true);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load sales order details',
+        variant: 'destructive',
+      });
+    }
+  }, [accessToken, toast]);
 
   const handleCreate = React.useCallback(() => {
     setEditSalesOrder(null);
     setCreateDialogOpen(true);
   }, []);
 
-  const handleEdit = React.useCallback((salesOrder: SalesOrder) => {
-    setEditSalesOrder(salesOrder);
-    setDetailDialogOpen(false);
-    setCreateDialogOpen(true);
-  }, []);
+  const handleEdit = React.useCallback(async (salesOrder: SalesOrder) => {
+    if (!accessToken) return;
+    try {
+      // Fetch full sales order details including line items
+      const fullSalesOrder = await salesOrderApi.get(accessToken, salesOrder.id) as SalesOrder;
+      setEditSalesOrder(fullSalesOrder);
+      setDetailDialogOpen(false);
+      setCreateDialogOpen(true);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load sales order details',
+        variant: 'destructive',
+      });
+    }
+  }, [accessToken, toast]);
 
   const handleDelete = React.useCallback((salesOrder: SalesOrder) => {
     if (salesOrder.status !== 'draft') {

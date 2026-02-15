@@ -1,11 +1,12 @@
 import * as React from 'react';
+
 import { useQuery } from '@tanstack/react-query';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Separator, Textarea } from '@horizon-sync/ui/components';
 
-import type { SalesOrder, SalesOrderCreate, SalesOrderItemCreate, SalesOrderStatus, SalesOrderUpdate } from '../../types/sales-order.types';
 import type { CustomerResponse } from '../../types/customer.types';
+import type { SalesOrder, SalesOrderCreate, SalesOrderItemCreate, SalesOrderStatus, SalesOrderUpdate } from '../../types/sales-order.types';
 import { customerApi } from '../../utility/api/customers';
 import { LineItemTable } from '../quotations/LineItemTable';
 
@@ -180,22 +181,18 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="sales_order_no">Sales Order #</Label>
-                <Input
-                  id="sales_order_no"
+                <Input id="sales_order_no"
                   value={formData.sales_order_no}
                   onChange={(e) => handleChange('sales_order_no', e.target.value)}
                   disabled={isEdit}
-                  placeholder={isEdit ? '' : 'Auto-generated if left blank'}
-                />
+                  placeholder={isEdit ? '' : 'Auto-generated if left blank'}/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customer_id">Customer *</Label>
-                <Select
-                  value={formData.customer_id}
+                <Select value={formData.customer_id}
                   onValueChange={(v) => handleChange('customer_id', v)}
                   disabled={isEdit}
-                  required
-                >
+                  required>
                   <SelectTrigger>
                     <SelectValue placeholder="Select customer" />
                   </SelectTrigger>
@@ -211,30 +208,24 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="order_date">Order Date *</Label>
-                <Input
-                  id="order_date"
+                <Input id="order_date"
                   type="date"
                   value={formData.order_date}
                   onChange={(e) => handleChange('order_date', e.target.value)}
-                  required
-                />
+                  required/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="delivery_date">Delivery Date</Label>
-                <Input
-                  id="delivery_date"
+                <Input id="delivery_date"
                   type="date"
                   value={formData.delivery_date}
-                  onChange={(e) => handleChange('delivery_date', e.target.value)}
-                />
+                  onChange={(e) => handleChange('delivery_date', e.target.value)}/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="currency">Currency *</Label>
-                <Select
-                  value={formData.currency}
+                <Select value={formData.currency}
                   onValueChange={(v) => handleChange('currency', v)}
-                  disabled={isEdit}
-                >
+                  disabled={isEdit}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -251,18 +242,16 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
             {isEdit && (
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
+                <Select value={formData.status || 'draft'}
                   onValueChange={(v) => handleChange('status', v as SalesOrderStatus)}
-                  disabled={availableStatuses.length === 1}
-                >
+                  disabled={availableStatuses.length === 1}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableStatuses.map((status) => (
+                    {availableStatuses.filter(status => status).map((status) => (
                       <SelectItem key={status} value={status}>
-                        {statusLabels[status]}
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -274,22 +263,18 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
           {/* Remarks */}
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>
-            <Textarea
-              id="remarks"
+            <Textarea id="remarks"
               value={formData.remarks}
               onChange={(e) => handleChange('remarks', e.target.value)}
               placeholder="Additional notes..."
-              rows={2}
-            />
+              rows={2}/>
           </div>
 
           {/* Line Items */}
           <Separator />
-          <LineItemTable
-            items={items}
+          <LineItemTable items={items}
             onItemsChange={setItems}
-            disabled={isLineItemEditingDisabled}
-          />
+            disabled={isLineItemEditingDisabled}/>
 
           {/* Fulfillment Info (edit mode only) */}
           {isEdit && salesOrder?.items && salesOrder.items.some(i => Number(i.billed_qty) > 0 || Number(i.delivered_qty) > 0) && (

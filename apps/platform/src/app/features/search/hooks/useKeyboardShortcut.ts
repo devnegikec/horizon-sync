@@ -42,7 +42,7 @@ export function useKeyboardShortcut(
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Check if the pressed key matches
-      if (event.key.toLowerCase() !== key.toLowerCase()) {
+      if (event.key?.toLowerCase() !== key?.toLowerCase()) {
         return;
       }
 

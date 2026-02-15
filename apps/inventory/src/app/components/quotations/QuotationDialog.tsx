@@ -101,7 +101,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     if (!formData.customer_id) {
       alert('Please select a customer');
@@ -127,11 +127,11 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         status: formData.status,
         remarks: formData.remarks || undefined,
       };
-      
+
       if (!isLineItemEditingDisabled) {
         updateData.items = items;
       }
-      
+
       await onSave(updateData, quotation.id);
     } else {
       const createData: QuotationCreate = {
@@ -152,7 +152,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
   const canChangeStatus = isEdit && quotation;
   const availableStatuses: QuotationStatus[] = React.useMemo(() => {
     if (!canChangeStatus) return ['draft'];
-    
+
     const current = formData.status;
     if (current === 'draft') return ['draft', 'sent'];
     if (current === 'sent') return ['sent', 'accepted', 'rejected', 'expired'];
@@ -183,9 +183,9 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customer_id">Customer *</Label>
-                <Select 
-                  value={formData.customer_id || undefined} 
-                  onValueChange={(v) => handleChange('customer_id', v)} 
+                <Select
+                  value={formData.customer_id || undefined}
+                  onValueChange={(v) => handleChange('customer_id', v)}
                   disabled={isEdit}
                   required
                 >
@@ -224,8 +224,8 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
               </div>
               <div className="space-y-2">
                 <Label htmlFor="currency">Currency *</Label>
-                <Select 
-                  value={formData.currency} 
+                <Select
+                  value={formData.currency}
                   onValueChange={(v) => handleChange('currency', v)}
                   disabled={isEdit}
                 >
@@ -245,11 +245,9 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
             {isEdit && (
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select 
-                  value={formData.status || 'draft'} 
+                <Select value={formData.status || 'draft'}
                   onValueChange={(v) => handleChange('status', v as QuotationStatus)}
-                  disabled={availableStatuses.length === 1}
-                >
+                  disabled={availableStatuses.length === 1}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -279,9 +277,9 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
 
           {/* Line Items */}
           <Separator />
-          <LineItemTable 
-            items={items} 
-            onItemsChange={setItems} 
+          <LineItemTable
+            items={items}
+            onItemsChange={setItems}
             disabled={isLineItemEditingDisabled}
           />
 
