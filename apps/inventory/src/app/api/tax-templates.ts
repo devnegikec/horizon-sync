@@ -36,7 +36,18 @@ export const taxTemplateApi = {
       throw new Error(`Failed to fetch tax templates: ${response.statusText}`);
     }
 
-    return response.json();
+    const apiResponse = await response.json();
+    
+    // Map API response to expected format
+    return {
+      data: apiResponse.templates || [],
+      pagination: {
+        page: apiResponse.pagination.page,
+        limit: apiResponse.pagination.page_size,
+        total: apiResponse.pagination.total_items,
+        pages: apiResponse.pagination.total_pages,
+      },
+    };
   },
 
   getById: async (accessToken: string, id: string): Promise<TaxTemplate> => {

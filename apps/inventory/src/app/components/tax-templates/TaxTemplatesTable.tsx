@@ -83,7 +83,7 @@ export function TaxTemplatesTable({
                       {template.tax_category}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-center">{template.tax_rules.length}</td>
+                  <td className="px-4 py-3 text-sm text-center">{template.tax_rules?.length}</td>
                   <td className="px-4 py-3 text-center">
                     {template.is_default && (
                       <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
