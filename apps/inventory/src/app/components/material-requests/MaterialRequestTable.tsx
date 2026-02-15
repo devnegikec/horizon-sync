@@ -19,7 +19,7 @@ import {
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import { TableSkeleton } from '@horizon-sync/ui/components/ui/table-skeleton';
-import type { MaterialRequest, MaterialRequestFilters, MaterialRequestStatus } from '../../types/material-request.types';
+import type { MaterialRequest, MaterialRequestFilters, MaterialRequestStatus } from '../../types/material-requests.types';
 import { MoreHorizontal } from 'lucide-react';
 
 interface MaterialRequestTableProps {

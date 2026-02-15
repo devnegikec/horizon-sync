@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
-import type { MaterialRequestFilters as Filters, MaterialRequestStatus } from '../../types/material-request.types';
+import type { MaterialRequestFilters as Filters, MaterialRequestStatus } from '../../types/material-requests.types';
 
 interface MaterialRequestFiltersProps {
   filters: Partial<Filters>;

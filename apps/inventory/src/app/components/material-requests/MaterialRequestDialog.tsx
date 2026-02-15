@@ -21,7 +21,7 @@ import {
 } from '@horizon-sync/ui/components/ui/select';
 import { useMaterialRequestActions } from '../../hooks/useMaterialRequestActions';
 import { useItems } from '../../hooks/useItems';
-import type { MaterialRequest, CreateMaterialRequestPayload } from '../../types/material-request.types';
+import type { MaterialRequest, CreateMaterialRequestPayload } from '../../types/material-requests.types';
 
 interface MaterialRequestDialogProps {
   open: boolean;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMaterialRequests } from '../../hooks/useMaterialRequests';
 import { useMaterialRequestActions } from '../../hooks/useMaterialRequestActions';
-import type { MaterialRequest } from '../../types/material-request.types';
+import type { MaterialRequest } from '../../types/material-requests.types';
 
 import {
   MaterialRequestHeader,

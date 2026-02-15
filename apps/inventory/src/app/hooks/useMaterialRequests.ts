@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUserStore } from '@horizon-sync/store';
 import { materialRequestApi } from '../utility/api';
-import type { MaterialRequest, MaterialRequestFilters } from '../types/material-request.types';
+import type { MaterialRequest, MaterialRequestFilters } from '../types/material-requests.types';
 
 export function useMaterialRequests(initialFilters: Partial<MaterialRequestFilters> = {}) {
   const accessToken = useUserStore((s) => s.accessToken);

@@ -5,3 +5,5 @@ export * from './api';
 export * from './item-mappers';
 export * from './item-payload-builders';
 export * from './item-group-payload-builders';
+export * from './material-requests';
+export * from './rfq';

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks';
 import { materialRequestApi } from '../utility/api';
-import type { MaterialRequest, CreateMaterialRequestPayload, UpdateMaterialRequestPayload } from '../types/material-request.types';
+import type { MaterialRequest, CreateMaterialRequestPayload, UpdateMaterialRequestPayload } from '../types/material-requests.types';
 
 export function useMaterialRequestActions() {
   const accessToken = useUserStore((s) => s.accessToken);

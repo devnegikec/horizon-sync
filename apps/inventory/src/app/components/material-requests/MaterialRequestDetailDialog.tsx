@@ -18,7 +18,7 @@ import {
 } from '@horizon-sync/ui/components/ui/table';
 import { useUserStore } from '@horizon-sync/store';
 import { materialRequestApi } from '../../utility/api';
-import type { MaterialRequest, MaterialRequestStatus } from '../../types/material-request.types';
+import type { MaterialRequest, MaterialRequestStatus } from '../../types/material-requests.types';
 
 interface MaterialRequestDetailDialogProps {
   open: boolean;

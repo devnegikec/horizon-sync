@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 
 import type { DeliveryNoteCreateItem } from '../../types/delivery-note.types';
-import { formatSerialNumbers, parseSerialNumbers, type WarehouseOption } from './delivery-note-dialog.utils';
+import { formatSerialNumbers, parseSerialNumbers, type WarehouseOption, type DeliveryNoteCreateItemField } from './delivery-note-dialog.utils';
 
 interface DialogFieldGroupProps {
   title: string;
@@ -48,7 +48,7 @@ interface DeliveryNoteLineItemSectionProps {
   items: DeliveryNoteCreateItem[];
   warehouses: WarehouseOption[];
   onAddItem: () => void;
-  onUpdateItem: (index: number, field: keyof DeliveryNoteCreateItem, value: string | number) => void;
+  onUpdateItem: (index: number, field: Exclude<DeliveryNoteCreateItemField, 'serial_nos'>, value: string | number) => void;
   onUpdateSerialNumbers: (index: number, serials: string[]) => void;
   onRemoveItem: (index: number) => void;
 }
@@ -94,7 +94,7 @@ interface DeliveryNoteLineItemRowProps {
   item: DeliveryNoteCreateItem;
   index: number;
   warehouses: WarehouseOption[];
-  onUpdateItem: (index: number, field: keyof DeliveryNoteCreateItem, value: string | number) => void;
+  onUpdateItem: (index: number, field: Exclude<DeliveryNoteCreateItemField, 'serial_nos'>, value: string | number) => void;
   onUpdateSerialNumbers: (index: number, serials: string[]) => void;
   onRemoveItem: (index: number) => void;
 }
