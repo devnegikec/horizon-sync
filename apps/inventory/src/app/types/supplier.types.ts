@@ -39,3 +39,23 @@ export interface ItemSupplierFilters {
   supplierId: string;
   itemId: string;
 }
+
+
+// Supplier entity types
+export interface Supplier {
+  id: string;
+  supplier_code: string;
+  supplier_name: string;
+  contact_person?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  status?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface SuppliersResponse {
+  suppliers: Supplier[];
+  pagination: Pagination;
+}
