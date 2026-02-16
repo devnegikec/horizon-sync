@@ -14,7 +14,7 @@ interface UseItemFormResult {
   resetForm: () => void;
 }
 
-const getInitialFormData = () => ({
+const getInitialFormData = (): ItemFormData & { itemGroupName: string } => ({
   itemCode: '',
   name: '',
   description: '',
@@ -22,10 +22,41 @@ const getInitialFormData = () => ({
   defaultPrice: '',
   itemGroupId: '',
   itemGroupName: '',
+  itemType: 'Product',
+  status: 'Active',
+  maintainStock: true,
+  valuationMethod: 'FIFO',
+  allowNegativeStock: false,
+  hasVariants: false,
+  variantOf: null,
+  variantAttributes: {},
+  hasBatchNo: false,
+  batchNumberSeries: '',
+  hasSerialNo: false,
+  serialNumberSeries: '',
+  valuationRate: '0',
+  weightPerUnit: '0',
+  weightUom: 'kg',
+  enableAutoReorder: false,
+  reorderLevel: 0,
+  reorderQty: 0,
+  minOrderQty: 0,
+  maxOrderQty: 0,
+  inspectionRequiredBeforePurchase: false,
+  inspectionRequiredBeforeDelivery: false,
+  qualityInspectionTemplate: null,
+  salesTaxTemplateId: null,
+  purchaseTaxTemplateId: null,
+  barcode: '',
+  imageUrl: '',
+  images: [],
+  tags: [],
+  customFields: {},
+  extraData: {},
 });
 
 export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult {
-  const [formData, setFormData] = useState(getInitialFormData());
+  const [formData, setFormData] = useState<ItemFormData & { itemGroupName: string }>(getInitialFormData());
 
   const resetForm = () => {
     setFormData(getInitialFormData());
@@ -34,6 +65,7 @@ export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult
   useEffect(() => {
     if (item) {
       setFormData({
+        ...getInitialFormData(),
         itemCode: item.itemCode,
         name: item.name,
         description: item.description,
@@ -41,6 +73,7 @@ export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult
         defaultPrice: item.defaultPrice.toString(),
         itemGroupId: item.itemGroupId,
         itemGroupName: item.itemGroupName,
+        status: item.status === 'active' ? 'Active' : 'Inactive',
       });
     } else {
       resetForm();

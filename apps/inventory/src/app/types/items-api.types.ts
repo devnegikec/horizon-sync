@@ -64,6 +64,10 @@ export interface CreateItemPayload {
   images: string[];
   tags: string[];
   custom_fields: Record<string, unknown>;
+  quality_inspection_template?: string | null;
+  sales_tax_template_id?: string | null;
+  purchase_tax_template_id?: string | null;
+  extra_data?: Record<string, unknown>;
 }
 
 /** Item group snippet in update payload */
@@ -110,4 +114,8 @@ export interface UpdateItemPayload {
   images: string[];
   tags: string[];
   custom_fields: Record<string, unknown>;
+  quality_inspection_template?: string | null;
+  sales_tax_template_id?: string | null;
+  purchase_tax_template_id?: string | null;
+  extra_data?: Record<string, unknown>;
 }
