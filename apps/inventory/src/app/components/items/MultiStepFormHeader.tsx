@@ -3,11 +3,8 @@ import { Check } from 'lucide-react';
 import { useMultiStepForm } from './MultiStepFormContext';
 
 const STEP_TITLES = [
-    'Basic Info',
-    'Stock & Inventory',
-    'Pricing',
-    'Reordering',
-    'Quality',
+    'Basic & Inventory',
+    'Pricing & Ordering',
     'Tax & Additional',
 ];
 

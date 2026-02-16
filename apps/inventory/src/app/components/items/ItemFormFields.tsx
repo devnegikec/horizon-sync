@@ -11,12 +11,9 @@ import type { TaxTemplate } from '../../types/tax-template.types';
 import { CreateItemGroupModal } from './CreateItemGroupModal';
 import { MultiStepFormProvider, useMultiStepForm } from './MultiStepFormContext';
 import { MultiStepFormHeader } from './MultiStepFormHeader';
-import { BasicInformationStep } from './steps/BasicInformationStep';
-import { StockInventoryStep } from './steps/StockInventoryStep';
-import { PricingValuationStep } from './steps/PricingValuationStep';
-import { ReorderingStep } from './steps/ReorderingStep';
-import { QualityInspectionStep } from './steps/QualityInspectionStep';
-import { TaxAdditionalStep } from './steps/TaxAdditionalStep';
+import { Step1BasicInventory } from './steps/Step1BasicInventory';
+import { Step2PricingOrdering } from './steps/Step2PricingOrdering';
+import { Step3TaxAdditional } from './steps/Step3TaxAdditional';
 
 interface ItemFormFieldsProps {
   formData: ItemFormData & { itemGroupName: string };
@@ -55,24 +52,17 @@ function ItemFormContent({
     switch (currentStep) {
       case 1:
         return (
-          <BasicInformationStep
+          <Step1BasicInventory
             formData={formData}
             setFormData={setFormData}
             itemGroups={itemGroups}
-            onCreateItemGroup={() => setCreateGroupModalOpen(true)}
           />
         );
       case 2:
-        return <StockInventoryStep formData={formData} setFormData={setFormData} />;
+        return <Step2PricingOrdering formData={formData} setFormData={setFormData} />;
       case 3:
-        return <PricingValuationStep formData={formData} setFormData={setFormData} />;
-      case 4:
-        return <ReorderingStep formData={formData} setFormData={setFormData} />;
-      case 5:
-        return <QualityInspectionStep formData={formData} setFormData={setFormData} />;
-      case 6:
         return (
-          <TaxAdditionalStep
+          <Step3TaxAdditional
             formData={formData}
             setFormData={setFormData}
             salesTaxTemplates={salesTaxTemplates}
@@ -129,7 +119,7 @@ export function ItemFormFields(props: Omit<ItemFormFieldsProps, 'salesTaxTemplat
   isLoadingTaxTemplates?: boolean;
 }) {
   return (
-    <MultiStepFormProvider totalSteps={6}>
+    <MultiStepFormProvider totalSteps={3}>
       <ItemFormContent
         {...props}
         salesTaxTemplates={props.salesTaxTemplates || []}
