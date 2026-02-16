@@ -11,7 +11,7 @@ const STEP_TITLES = [
     'Tax & Additional',
 ];
 
-export function MultiStepFormHeader() {
+export const MultiStepFormHeader = React.memo(function MultiStepFormHeader() {
     const { currentStep, totalSteps, goToStep } = useMultiStepForm();
 
     return (
@@ -80,4 +80,4 @@ export function MultiStepFormHeader() {
             </div>
         </div>
     );
-}
+});

@@ -42,16 +42,16 @@ function ItemFormContent({
   const { currentStep, nextStep, previousStep, isFirstStep, isLastStep } = useMultiStepForm();
   const [createGroupModalOpen, setCreateGroupModalOpen] = React.useState(false);
 
-  const handleItemGroupCreated = (newItemGroup: CreateItemGroupResponse) => {
+  const handleItemGroupCreated = React.useCallback((newItemGroup: CreateItemGroupResponse) => {
     setFormData((prev) => ({
       ...prev,
       itemGroupId: newItemGroup.id,
       itemGroupName: newItemGroup.name,
     }));
     onItemGroupsRefresh?.();
-  };
+  }, [setFormData, onItemGroupsRefresh]);
 
-  const renderStep = () => {
+  const currentStepComponent = React.useMemo(() => {
     switch (currentStep) {
       case 1:
         return (
@@ -83,13 +83,13 @@ function ItemFormContent({
       default:
         return null;
     }
-  };
+  }, [currentStep, formData, setFormData, itemGroups, salesTaxTemplates, purchaseTaxTemplates, isLoadingTaxTemplates]);
 
   return (
     <>
       <MultiStepFormHeader />
 
-      <div className="min-h-[400px]">{renderStep()}</div>
+      <div className="min-h-[400px]">{currentStepComponent}</div>
 
       <div className="flex justify-between pt-6 border-t mt-4">
         <Button

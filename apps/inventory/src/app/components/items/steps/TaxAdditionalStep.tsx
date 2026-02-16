@@ -19,7 +19,7 @@ interface TaxAdditionalStepProps {
     isLoadingTaxTemplates: boolean;
 }
 
-export function TaxAdditionalStep({
+export const TaxAdditionalStep = React.memo(function TaxAdditionalStep({
     formData,
     setFormData,
     salesTaxTemplates,
@@ -63,6 +63,15 @@ export function TaxAdditionalStep({
         }));
     };
 
+    // Memoize the list fetchers to prevent SearchableSelect from re-initializing
+    const salesListFetcher = React.useCallback(async () => salesTaxTemplates, [salesTaxTemplates]);
+    const purchaseListFetcher = React.useCallback(async () => purchaseTaxTemplates, [purchaseTaxTemplates]);
+
+    // Memoize the label formatter
+    const templateLabelFormatter = React.useCallback((template: TaxTemplate) =>
+        `${template.template_name} (${template.template_code})`,
+        []);
+
     return (
         <div className="grid gap-4 py-4">
             <div className="border-b pb-4">
@@ -76,10 +85,8 @@ export function TaxAdditionalStep({
                             onValueChange={(value) =>
                                 setFormData((prev) => ({ ...prev, salesTaxTemplateId: value || null }))
                             }
-                            listFetcher={async () => salesTaxTemplates}
-                            labelFormatter={(template: TaxTemplate) =>
-                                `${template.template_name} (${template.template_code})`
-                            }
+                            listFetcher={salesListFetcher}
+                            labelFormatter={templateLabelFormatter}
                             valueKey="id"
                             placeholder="Select sales tax template"
                             isLoading={isLoadingTaxTemplates}
@@ -95,10 +102,8 @@ export function TaxAdditionalStep({
                             onValueChange={(value) =>
                                 setFormData((prev) => ({ ...prev, purchaseTaxTemplateId: value || null }))
                             }
-                            listFetcher={async () => purchaseTaxTemplates}
-                            labelFormatter={(template: TaxTemplate) =>
-                                `${template.template_name} (${template.template_code})`
-                            }
+                            listFetcher={purchaseListFetcher}
+                            labelFormatter={templateLabelFormatter}
                             valueKey="id"
                             placeholder="Select purchase tax template"
                             isLoading={isLoadingTaxTemplates}
@@ -223,4 +228,4 @@ export function TaxAdditionalStep({
             </div>
         </div>
     );
-}
+});
