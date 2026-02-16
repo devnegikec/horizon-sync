@@ -37,11 +37,11 @@ interface RFQTableProps {
 }
 
 const STATUS_COLORS: Record<RFQStatus, string> = {
-  DRAFT: 'bg-gray-100 text-gray-800',
-  SENT: 'bg-blue-100 text-blue-800',
-  PARTIALLY_RESPONDED: 'bg-yellow-100 text-yellow-800',
-  FULLY_RESPONDED: 'bg-green-100 text-green-800',
-  CLOSED: 'bg-red-100 text-red-800',
+  draft: 'bg-gray-100 text-gray-800',
+  sent: 'bg-blue-100 text-blue-800',
+  partially_responded: 'bg-yellow-100 text-yellow-800',
+  fully_responded: 'bg-green-100 text-green-800',
+  closed: 'bg-red-100 text-red-800',
 };
 
 function formatDate(dateString: string): string {
@@ -101,10 +101,10 @@ export function RFQTable({
     );
   }
 
-  const canEdit = (rfq: RFQListItem) => rfq.status === 'DRAFT';
-  const canSend = (rfq: RFQListItem) => rfq.status === 'DRAFT';
-  const canClose = (rfq: RFQListItem) => rfq.status === 'SENT' || rfq.status === 'PARTIALLY_RESPONDED' || rfq.status === 'FULLY_RESPONDED';
-  const canDelete = (rfq: RFQListItem) => rfq.status === 'DRAFT';
+  const canEdit = (rfq: RFQListItem) => rfq.status === 'draft';
+  const canSend = (rfq: RFQListItem) => rfq.status === 'draft';
+  const canClose = (rfq: RFQListItem) => rfq.status === 'sent' || rfq.status === 'partially_responded' || rfq.status === 'fully_responded';
+  const canDelete = (rfq: RFQListItem) => rfq.status === 'draft';
 
   return (
     <div className="space-y-4">
@@ -139,7 +139,7 @@ export function RFQTable({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={STATUS_COLORS[rfq.status]} variant="secondary">
+                      <Badge className={STATUS_COLORS[rfq.status as RFQStatus]} variant="secondary">
                         {rfq.status.replace(/_/g, ' ')}
                       </Badge>
                     </TableCell>

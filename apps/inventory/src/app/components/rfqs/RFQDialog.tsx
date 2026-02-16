@@ -44,7 +44,7 @@ export function RFQDialog({ open, onOpenChange, rfqId, onSave }: RFQDialogProps)
           const rfq = await rfqApi.getById(accessToken, rfqId);
           setFormData({
             material_request_id: rfq.material_request_id || '',
-            supplier_ids: rfq.supplier_ids?.join(', ') || '',
+            supplier_ids: rfq.suppliers?.map(s => s.supplier_id).join(', ') || '',
             closing_date: rfq.closing_date?.split('T')[0] || '',
           });
         } catch (err) {

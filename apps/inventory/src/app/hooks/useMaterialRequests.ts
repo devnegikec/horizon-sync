@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUserStore } from '@horizon-sync/store';
 import { materialRequestApi } from '../utility/api';
-import type { MaterialRequest, MaterialRequestFilters } from '../types/material-request.types';
+import type { MaterialRequestListItem, MaterialRequestFilters } from '../types/material-request.types';
 
 export function useMaterialRequests(initialFilters: Partial<MaterialRequestFilters> = {}) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [materialRequests, setMaterialRequests] = useState<MaterialRequest[]>([]);
+  const [materialRequests, setMaterialRequests] = useState<MaterialRequestListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
@@ -36,8 +36,8 @@ export function useMaterialRequests(initialFilters: Partial<MaterialRequestFilte
       
       console.log('Material Requests Response:', response);
       
-      setMaterialRequests(response.data || []);
-      setTotalCount(response.total_count || 0);
+      setMaterialRequests(response.material_requests || []);
+      setTotalCount(response.pagination?.total_count || 0);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch material requests';
       setError(errorMessage);

@@ -1,11 +1,7 @@
-// RFQ Types based on sourcing-flow spec
-
-export type RFQStatus = 
-  | 'DRAFT' 
-  | 'SENT' 
-  | 'PARTIALLY_RESPONDED' 
-  | 'FULLY_RESPONDED' 
-  | 'CLOSED';
+/**
+ * RFQ (Request for Quotation) TypeScript types
+ * Based on backend schemas from core-service/app/schemas/rfq.py
+ */
 
 export interface SupplierQuote {
   id: string;
@@ -43,28 +39,31 @@ export interface RFQSupplier {
 export interface RFQ {
   id: string;
   organization_id: string;
-  material_request_id: string | null;
-  reference_type: 'MATERIAL_REQUEST' | null;
-  reference_id: string | null;
-  status: RFQStatus;
+  material_request_id?: string;
+  reference_type?: string;
+  reference_id?: string;
+  status: 'draft' | 'sent' | 'partially_responded' | 'fully_responded' | 'closed';
   closing_date: string;
+  created_by?: string;
+  updated_by?: string;
   created_at: string;
   updated_at: string;
-  created_by: string | null;
-  updated_by: string | null;
   line_items: RFQLine[];
   suppliers: RFQSupplier[];
-  // Computed fields for convenience
-  supplier_ids?: string[];
-  line_items_count?: number;
-  suppliers_count?: number;
 }
 
-export interface CreateRFQPayload {
-  material_request_id: string;
-  supplier_ids: string[];
+export type RFQStatus = RFQ['status'];
+
+export interface RFQListItem {
+  id: string;
+  organization_id: string;
+  material_request_id?: string;
+  status: string;
   closing_date: string;
-  line_items?: RFQLineCreate[]; // Optional when creating from Material Request
+  created_at: string;
+  created_by?: string;
+  line_items_count: number;
+  suppliers_count: number;
 }
 
 export interface RFQLineCreate {
@@ -74,44 +73,44 @@ export interface RFQLineCreate {
   description?: string;
 }
 
+export interface CreateRFQPayload {
+  material_request_id?: string;
+  reference_type?: string;
+  reference_id?: string;
+  closing_date: string;
+  line_items?: RFQLineCreate[];
+  supplier_ids: string[];
+}
+
 export interface UpdateRFQPayload {
-  supplier_ids?: string[];
   closing_date?: string;
-  notes?: string;
+  line_items?: RFQLineCreate[];
+  supplier_ids?: string[];
 }
 
 export interface RecordQuotePayload {
+  rfq_line_id: string;
   supplier_id: string;
-  line_item_id: string;
   quoted_price: number;
   quoted_delivery_date: string;
   supplier_notes?: string;
 }
 
-export interface RFQListItem {
-  id: string;
-  organization_id: string;
-  material_request_id: string | null;
-  status: RFQStatus;
-  closing_date: string;
-  created_at: string;
-  created_by: string | null;
-  line_items_count: number;
-  suppliers_count: number;
-}
-
-export interface RFQListResponse {
-  data: RFQListItem[];
-  total_count: number;
-  page: number;
-  page_size: number;
-}
-
 export interface RFQFilters {
-  status: RFQStatus | 'all';
-  search: string;
-  page: number;
-  page_size: number;
+  page?: number;
+  page_size?: number;
+  status?: string;
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
+  search?: string;
+}
+
+export interface RFQsResponse {
+  rfqs: RFQListItem[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total_count: number;
+    total_pages: number;
+  };
 }
