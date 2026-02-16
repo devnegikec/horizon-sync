@@ -1,27 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUserStore } from '@horizon-sync/store';
-import { rfqApi } from '../utility/api';
-import type { RFQListItem, RFQFilters } from '../types/rfq.types';
+import { landedCostApi } from '../utility/api/landed-costs';
+import type { LandedCostVoucherListItem, LandedCostVoucherFilters } from '../types/landed-cost.types';
 
-export function useRFQs(initialFilters: Partial<RFQFilters> = {}) {
+export function useLandedCosts(initialFilters: Partial<LandedCostVoucherFilters> = {}) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [rfqs, setRFQs] = useState<RFQListItem[]>([]);
+  const [landedCosts, setLandedCosts] = useState<LandedCostVoucherListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
-  const [filters, setFilters] = useState<Partial<RFQFilters>>({
+  const [filters, setFilters] = useState<Partial<LandedCostVoucherFilters>>({
     status: 'all',
-    search: '',
     page: 1,
     page_size: 10,
-    sort_by: 'created_at',
+    sort_by: 'posting_date',
     sort_order: 'desc',
     ...initialFilters,
   });
 
-  const fetchRFQs = useCallback(async () => {
+  const fetchLandedCosts = useCallback(async () => {
     if (!accessToken) {
-      setRFQs([]);
+      setLandedCosts([]);
       setTotalCount(0);
       setLoading(false);
       return;
@@ -31,17 +30,15 @@ export function useRFQs(initialFilters: Partial<RFQFilters> = {}) {
     setError(null);
 
     try {
-      const response = await rfqApi.list(accessToken, filters);
+      const response = await landedCostApi.list(accessToken, filters);
       
-      console.log('RFQs Response:', response);
-      
-      setRFQs(response.rfqs || []);
+      setLandedCosts(response.vouchers || []);
       setTotalCount(response.pagination?.total_count || 0);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch RFQs';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch landed cost vouchers';
       setError(errorMessage);
-      console.error('Error fetching RFQs:', err);
-      setRFQs([]);
+      console.error('Error fetching landed cost vouchers:', err);
+      setLandedCosts([]);
       setTotalCount(0);
     } finally {
       setLoading(false);
@@ -49,15 +46,15 @@ export function useRFQs(initialFilters: Partial<RFQFilters> = {}) {
   }, [accessToken, filters]);
 
   useEffect(() => {
-    fetchRFQs();
-  }, [fetchRFQs]);
+    fetchLandedCosts();
+  }, [fetchLandedCosts]);
 
   const refetch = useCallback(() => {
-    fetchRFQs();
-  }, [fetchRFQs]);
+    fetchLandedCosts();
+  }, [fetchLandedCosts]);
 
   return {
-    rfqs,
+    landedCosts,
     loading,
     error,
     totalCount,

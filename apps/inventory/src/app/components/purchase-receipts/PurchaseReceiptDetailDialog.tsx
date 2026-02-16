@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Package, FileText } from 'lucide-react';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import {
   Dialog,
@@ -17,22 +17,14 @@ import {
   TableRow,
 } from '@horizon-sync/ui/components/ui/table';
 import { useUserStore } from '@horizon-sync/store';
-import { rfqApi } from '../../utility/api';
-import type { RFQ, RFQStatus } from '../../types/rfq.types';
+import { purchaseReceiptApi } from '../../utility/api';
+import type { PurchaseReceipt } from '../../types/purchase-receipt.types';
 
-interface RFQDetailDialogProps {
+interface PurchaseReceiptDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  rfqId: string | null;
+  purchaseReceipt: PurchaseReceipt | null;
 }
-
-const STATUS_COLORS: Record<RFQStatus, string> = {
-  draft: 'bg-gray-100 text-gray-800',
-  sent: 'bg-blue-100 text-blue-800',
-  partially_responded: 'bg-yellow-100 text-yellow-800',
-  fully_responded: 'bg-green-100 text-green-800',
-  closed: 'bg-red-100 text-red-800',
-};
 
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -44,7 +36,7 @@ function formatDate(dateString: string): string {
   });
 }
 
-function formatRequiredDate(dateString: string): string {
+function formatReceivedDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -52,45 +44,47 @@ function formatRequiredDate(dateString: string): string {
   });
 }
 
-export function RFQDetailDialog({
+export function PurchaseReceiptDetailDialog({
   open,
   onOpenChange,
-  rfqId,
-}: RFQDetailDialogProps) {
+  purchaseReceipt,
+}: PurchaseReceiptDetailDialogProps) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [rfqDetails, setRFQDetails] = useState<RFQ | null>(null);
+  const [fullDetails, setFullDetails] = useState<PurchaseReceipt | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open && rfqId && accessToken) {
+    if (open && purchaseReceipt && accessToken) {
       const fetchDetails = async () => {
         setLoading(true);
         setError(null);
         try {
-          const details = await rfqApi.getById(accessToken, rfqId);
-          setRFQDetails(details);
+          const details = await purchaseReceiptApi.getById(accessToken, purchaseReceipt.id);
+          setFullDetails(details);
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Failed to load details');
-          console.error('Error fetching RFQ details:', err);
+          console.error('Error fetching purchase receipt details:', err);
         } finally {
           setLoading(false);
         }
       };
       fetchDetails();
     } else {
-      setRFQDetails(null);
+      setFullDetails(null);
     }
-  }, [open, rfqId, accessToken]);
+  }, [open, purchaseReceipt, accessToken]);
 
-  if (!rfqId) return null;
+  if (!purchaseReceipt) return null;
+
+  const displayData = fullDetails || purchaseReceipt;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>RFQ Details</DialogTitle>
-          <DialogDescription>View complete information about this RFQ.</DialogDescription>
+          <DialogTitle>Purchase Receipt Details</DialogTitle>
+          <DialogDescription>View complete information about this goods receipt.</DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -101,65 +95,65 @@ export function RFQDetailDialog({
           <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
             <p className="text-sm text-destructive">{error}</p>
           </div>
-        ) : rfqDetails ? (
+        ) : (
           <div className="space-y-6 py-4">
             {/* Header Information */}
             <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">ID</p>
-                <p className="text-sm font-mono">{rfqDetails.id}</p>
+                <p className="text-sm font-medium text-muted-foreground">Receipt Number</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Package className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-mono">RN-{displayData.id.slice(0, 8)}</p>
+                </div>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Status</p>
-                <Badge className={STATUS_COLORS[rfqDetails.status]} variant="secondary">
-                  {rfqDetails.status.replace(/_/g, ' ')}
+                <Badge className="bg-green-100 text-green-800 mt-1" variant="secondary">
+                  {displayData.status}
                 </Badge>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Material Request ID</p>
-                <p className="text-sm font-mono">{rfqDetails.material_request_id || 'N/A'}</p>
+                <p className="text-sm font-medium text-muted-foreground">Purchase Order</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-mono">PO-{displayData.reference_id.slice(0, 8)}</p>
+                </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Closing Date</p>
-                <p className="text-sm">{formatRequiredDate(rfqDetails.closing_date)}</p>
+                <p className="text-sm font-medium text-muted-foreground">Received Date</p>
+                <p className="text-sm mt-1">{formatReceivedDate(displayData.received_date)}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Created Date</p>
-                <p className="text-sm">{formatDate(rfqDetails.created_at)}</p>
+                <p className="text-sm mt-1">{formatDate(displayData.created_at)}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Last Updated</p>
-                <p className="text-sm">{formatDate(rfqDetails.updated_at)}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-sm font-medium text-muted-foreground">Suppliers</p>
-                <p className="text-sm">{rfqDetails.suppliers?.length || 0} suppliers selected</p>
+                <p className="text-sm mt-1">{formatDate(displayData.updated_at)}</p>
               </div>
             </div>
 
             {/* Line Items */}
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Line Items</h3>
-              {rfqDetails.line_items && rfqDetails.line_items.length > 0 ? (
+              <h3 className="text-lg font-semibold">Received Items</h3>
+              {displayData.line_items && displayData.line_items.length > 0 ? (
                 <div className="border rounded-lg">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Item ID</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Required Date</TableHead>
-                        <TableHead>Quotes</TableHead>
-                        <TableHead>Description</TableHead>
+                        <TableHead>Purchase Order Line</TableHead>
+                        <TableHead className="text-right">Quantity Received</TableHead>
+                        <TableHead>Received Date</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {rfqDetails.line_items.map((item) => (
+                      {displayData.line_items.map((item) => (
                         <TableRow key={item.id}>
                           <TableCell className="font-mono text-sm">{item.item_id.slice(0, 8)}</TableCell>
-                          <TableCell>{item.quantity}</TableCell>
-                          <TableCell>{formatRequiredDate(item.required_date)}</TableCell>
-                          <TableCell>{item.quotes?.length || 0} quotes</TableCell>
-                          <TableCell>{item.description || '-'}</TableCell>
+                          <TableCell className="font-mono text-sm">{item.purchase_order_line_id.slice(0, 8)}</TableCell>
+                          <TableCell className="text-right font-medium">{item.quantity}</TableCell>
+                          <TableCell>{formatDate(item.created_at)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -169,8 +163,16 @@ export function RFQDetailDialog({
                 <p className="text-sm text-muted-foreground">No line items found</p>
               )}
             </div>
+
+            {/* Stock Impact Summary */}
+            <div className="border rounded-lg p-4 bg-blue-50">
+              <h3 className="text-sm font-semibold text-blue-900 mb-2">Stock Impact</h3>
+              <p className="text-sm text-blue-800">
+                Stock levels were automatically incremented for all received items.
+              </p>
+            </div>
           </div>
-        ) : null}
+        )}
       </DialogContent>
     </Dialog>
   );

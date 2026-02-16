@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUserStore } from '@horizon-sync/store';
-import { rfqApi } from '../utility/api';
-import type { RFQListItem, RFQFilters } from '../types/rfq.types';
+import { purchaseOrderApi } from '../utility/api';
+import type { PurchaseOrderListItem, PurchaseOrderFilters } from '../types/purchase-order.types';
 
-export function useRFQs(initialFilters: Partial<RFQFilters> = {}) {
+export function usePurchaseOrders(initialFilters: Partial<PurchaseOrderFilters> = {}) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [rfqs, setRFQs] = useState<RFQListItem[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
-  const [filters, setFilters] = useState<Partial<RFQFilters>>({
+  const [filters, setFilters] = useState<Partial<PurchaseOrderFilters>>({
     status: 'all',
     search: '',
     page: 1,
@@ -19,9 +19,9 @@ export function useRFQs(initialFilters: Partial<RFQFilters> = {}) {
     ...initialFilters,
   });
 
-  const fetchRFQs = useCallback(async () => {
+  const fetchPurchaseOrders = useCallback(async () => {
     if (!accessToken) {
-      setRFQs([]);
+      setPurchaseOrders([]);
       setTotalCount(0);
       setLoading(false);
       return;
@@ -31,17 +31,14 @@ export function useRFQs(initialFilters: Partial<RFQFilters> = {}) {
     setError(null);
 
     try {
-      const response = await rfqApi.list(accessToken, filters);
-      
-      console.log('RFQs Response:', response);
-      
-      setRFQs(response.rfqs || []);
+      const response = await purchaseOrderApi.list(accessToken, filters);
+      setPurchaseOrders(response.purchase_orders || []);
       setTotalCount(response.pagination?.total_count || 0);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch RFQs';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch Purchase Orders';
       setError(errorMessage);
-      console.error('Error fetching RFQs:', err);
-      setRFQs([]);
+      console.error('Error fetching Purchase Orders:', err);
+      setPurchaseOrders([]);
       setTotalCount(0);
     } finally {
       setLoading(false);
@@ -49,15 +46,15 @@ export function useRFQs(initialFilters: Partial<RFQFilters> = {}) {
   }, [accessToken, filters]);
 
   useEffect(() => {
-    fetchRFQs();
-  }, [fetchRFQs]);
+    fetchPurchaseOrders();
+  }, [fetchPurchaseOrders]);
 
   const refetch = useCallback(() => {
-    fetchRFQs();
-  }, [fetchRFQs]);
+    fetchPurchaseOrders();
+  }, [fetchPurchaseOrders]);
 
   return {
-    rfqs,
+    purchaseOrders,
     loading,
     error,
     totalCount,

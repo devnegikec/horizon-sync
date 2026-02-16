@@ -1,4 +1,4 @@
-import { Eye, Edit, Send, XCircle, Trash2, FileText } from 'lucide-react';
+import { Eye, Edit, Send, XCircle, Trash2, FileText, Lock } from 'lucide-react';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
@@ -19,28 +19,30 @@ import {
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import { TableSkeleton } from '@horizon-sync/ui/components/ui/table-skeleton';
-import type { MaterialRequestListItem, MaterialRequest, MaterialRequestFilters, MaterialRequestStatus } from '../../types/material-request.types';
+import type { PurchaseOrderListItem, PurchaseOrderFilters, PurchaseOrderStatus } from '../../types/purchase-order.types';
 import { MoreHorizontal } from 'lucide-react';
 
-interface MaterialRequestTableProps {
-  materialRequests: MaterialRequestListItem[];
+interface PurchaseOrderTableProps {
+  purchaseOrders: PurchaseOrderListItem[];
   loading: boolean;
   error: string | null;
   totalCount: number;
-  filters: Partial<MaterialRequestFilters>;
-  setFilters: (filters: Partial<MaterialRequestFilters>) => void;
-  onView: (mr: MaterialRequestListItem) => void;
-  onEdit: (mr: MaterialRequestListItem) => void;
-  onSubmit: (mr: MaterialRequestListItem) => void;
-  onCancel: (mr: MaterialRequestListItem) => void;
-  onDelete: (mr: MaterialRequestListItem) => void;
+  filters: Partial<PurchaseOrderFilters>;
+  setFilters: (filters: Partial<PurchaseOrderFilters>) => void;
+  onView: (po: PurchaseOrderListItem) => void;
+  onEdit: (po: PurchaseOrderListItem) => void;
+  onSubmit: (po: PurchaseOrderListItem) => void;
+  onCancel: (po: PurchaseOrderListItem) => void;
+  onClose: (po: PurchaseOrderListItem) => void;
+  onDelete: (po: PurchaseOrderListItem) => void;
 }
 
-const STATUS_COLORS: Record<MaterialRequestStatus, string> = {
+const STATUS_COLORS: Record<PurchaseOrderStatus, string> = {
   draft: 'bg-gray-100 text-gray-800',
   submitted: 'bg-blue-100 text-blue-800',
-  partially_quoted: 'bg-yellow-100 text-yellow-800',
-  fully_quoted: 'bg-green-100 text-green-800',
+  partially_received: 'bg-yellow-100 text-yellow-800',
+  fully_received: 'bg-green-100 text-green-800',
+  closed: 'bg-purple-100 text-purple-800',
   cancelled: 'bg-red-100 text-red-800',
 };
 
@@ -52,8 +54,15 @@ function formatDate(dateString: string): string {
   });
 }
 
-export function MaterialRequestTable({
-  materialRequests = [],
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+}
+
+export function PurchaseOrderTable({
+  purchaseOrders = [],
   loading,
   error,
   totalCount,
@@ -63,8 +72,9 @@ export function MaterialRequestTable({
   onEdit,
   onSubmit,
   onCancel,
+  onClose,
   onDelete,
-}: MaterialRequestTableProps) {
+}: PurchaseOrderTableProps) {
   if (loading) {
     return (
       <Card>
@@ -87,24 +97,25 @@ export function MaterialRequestTable({
     );
   }
 
-  if (!Array.isArray(materialRequests) || materialRequests.length === 0) {
+  if (!Array.isArray(purchaseOrders) || purchaseOrders.length === 0) {
     return (
       <Card>
         <CardContent className="p-6">
           <EmptyState
             icon={<FileText className="h-12 w-12" />}
-            title="No material requests found"
-            description="Create your first material request to get started with procurement."
+            title="No purchase orders found"
+            description="Create your first purchase order to start ordering from suppliers."
           />
         </CardContent>
       </Card>
     );
   }
 
-  const canEdit = (mr: MaterialRequestListItem) => mr.status === 'draft';
-  const canSubmit = (mr: MaterialRequestListItem) => mr.status === 'draft';
-  const canCancel = (mr: MaterialRequestListItem) => mr.status === 'draft' || mr.status === 'submitted';
-  const canDelete = (mr: MaterialRequestListItem) => mr.status === 'draft';
+  const canEdit = (po: PurchaseOrderListItem) => po.status === 'draft';
+  const canSubmit = (po: PurchaseOrderListItem) => po.status === 'draft';
+  const canCancel = (po: PurchaseOrderListItem) => po.status === 'draft' || po.status === 'submitted';
+  const canClose = (po: PurchaseOrderListItem) => po.status === 'fully_received';
+  const canDelete = (po: PurchaseOrderListItem) => po.status === 'draft';
 
   return (
     <div className="space-y-4">
@@ -114,39 +125,45 @@ export function MaterialRequestTable({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Material Request</TableHead>
+                  <TableHead>PO Number</TableHead>
+                  <TableHead>Supplier</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Line Items</TableHead>
+                  <TableHead>Grand Total</TableHead>
                   <TableHead>Created Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {materialRequests.map((mr) => (
-                  <TableRow key={mr.id}>
+                {purchaseOrders.map((po) => (
+                  <TableRow key={po.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                           <FileText className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <p className="font-medium">MR-{mr.id.slice(0, 8)}</p>
+                          <p className="font-medium">PO-{po.id.slice(0, 8)}</p>
                           <p className="text-sm text-muted-foreground">
-                            {mr.line_items_count ?? 0} items
+                            {po.line_items_count ?? 0} items
                           </p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={STATUS_COLORS[mr.status as MaterialRequestStatus]} variant="secondary">
-                        {mr.status.replace(/_/g, ' ')}
+                      <p className="font-medium">{po.supplier_name}</p>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={STATUS_COLORS[po.status as PurchaseOrderStatus]} variant="secondary">
+                        {po.status.replace(/_/g, ' ')}
                       </Badge>
                     </TableCell>
-                    <TableCell>{mr.line_items_count ?? 0}</TableCell>
-                    <TableCell>{formatDate(mr.created_at)}</TableCell>
+                    <TableCell>
+                      <p className="font-medium">{formatCurrency(po.grand_total)}</p>
+                    </TableCell>
+                    <TableCell>{formatDate(po.created_at)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => onView(mr)}>
+                        <Button variant="ghost" size="sm" onClick={() => onView(po)}>
                           <Eye className="h-4 w-4" />
                         </Button>
 
@@ -157,34 +174,43 @@ export function MaterialRequestTable({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {canEdit(mr) && (
-                              <DropdownMenuItem onClick={() => onEdit(mr)}>
+                            {canEdit(po) && (
+                              <DropdownMenuItem onClick={() => onEdit(po)}>
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
                             )}
-                            {canSubmit(mr) && (
+                            {canSubmit(po) && (
                               <>
-                                {canEdit(mr) && <DropdownMenuSeparator />}
-                                <DropdownMenuItem onClick={() => onSubmit(mr)}>
+                                {canEdit(po) && <DropdownMenuSeparator />}
+                                <DropdownMenuItem onClick={() => onSubmit(po)}>
                                   <Send className="h-4 w-4 mr-2" />
                                   Submit
                                 </DropdownMenuItem>
                               </>
                             )}
-                            {canCancel(mr) && (
+                            {canClose(po) && (
                               <>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => onCancel(mr)}>
+                                <DropdownMenuItem onClick={() => onClose(po)}>
+                                  <Lock className="h-4 w-4 mr-2" />
+                                  Close
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {canCancel(po) && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => onCancel(po)}>
                                   <XCircle className="h-4 w-4 mr-2" />
                                   Cancel
                                 </DropdownMenuItem>
                               </>
                             )}
-                            {canDelete(mr) && (
+                            {canDelete(po) && (
                               <>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => onDelete(mr)} className="text-destructive">
+                                <DropdownMenuItem onClick={() => onDelete(po)} className="text-destructive">
                                   <Trash2 className="h-4 w-4 mr-2" />
                                   Delete
                                 </DropdownMenuItem>
@@ -205,7 +231,7 @@ export function MaterialRequestTable({
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing {materialRequests.length} of {totalCount} material requests
+          Showing {purchaseOrders.length} of {totalCount} purchase orders
         </p>
         <div className="flex items-center gap-2">
           <Button
@@ -219,7 +245,7 @@ export function MaterialRequestTable({
           <Button
             variant="outline"
             size="sm"
-            disabled={materialRequests.length < (filters.page_size || 10)}
+            disabled={purchaseOrders.length < (filters.page_size || 10)}
             onClick={() => setFilters({ ...filters, page: (filters.page || 1) + 1 })}
           >
             Next

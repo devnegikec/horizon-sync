@@ -7,29 +7,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
-import type { MaterialRequestFilters as Filters, MaterialRequestStatus } from '../../types/material-request.types';
+import type { PurchaseOrderFilters as Filters, PurchaseOrderStatus } from '../../types/purchase-order.types';
 
-interface MaterialRequestFiltersProps {
+interface PurchaseOrderFiltersProps {
   filters: Partial<Filters>;
   setFilters: (filters: Partial<Filters>) => void;
 }
 
-const STATUS_OPTIONS: Array<{ value: MaterialRequestStatus | 'all'; label: string }> = [
+const STATUS_OPTIONS: Array<{ value: PurchaseOrderStatus | 'all'; label: string }> = [
   { value: 'all', label: 'All Status' },
   { value: 'draft', label: 'Draft' },
   { value: 'submitted', label: 'Submitted' },
-  { value: 'partially_quoted', label: 'Partially Quoted' },
-  { value: 'fully_quoted', label: 'Fully Quoted' },
+  { value: 'partially_received', label: 'Partially Received' },
+  { value: 'fully_received', label: 'Fully Received' },
+  { value: 'closed', label: 'Closed' },
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-export function MaterialRequestFilters({ filters, setFilters }: MaterialRequestFiltersProps) {
+export function PurchaseOrderFilters({ filters, setFilters }: PurchaseOrderFiltersProps) {
   const handleSearchChange = (value: string) => {
     setFilters({ ...filters, search: value, page: 1 });
   };
 
   const handleStatusChange = (value: string) => {
-    setFilters({ ...filters, status: value as MaterialRequestStatus | 'all', page: 1 });
+    setFilters({ ...filters, status: value as PurchaseOrderStatus | 'all', page: 1 });
   };
 
   return (
@@ -38,7 +39,7 @@ export function MaterialRequestFilters({ filters, setFilters }: MaterialRequestF
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search material requests..."
+            placeholder="Search purchase orders..."
             value={filters.search || ''}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9"
@@ -46,7 +47,7 @@ export function MaterialRequestFilters({ filters, setFilters }: MaterialRequestF
         </div>
 
         <Select value={filters.status || 'all'} onValueChange={handleStatusChange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
