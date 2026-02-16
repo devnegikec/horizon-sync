@@ -4,9 +4,9 @@ import { X } from 'lucide-react';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
-import { SearchableSelect } from '@platform/app/features/search';
 import type { TaxTemplate } from '../../../types/tax-template.types';
 import type { ItemFormData } from '../../../utility/item-payload-builders';
 
@@ -62,12 +62,30 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
         }));
     }, [setFormData]);
 
-    const salesListFetcher = React.useCallback(async () => salesTaxTemplates, [salesTaxTemplates]);
-    const purchaseListFetcher = React.useCallback(async () => purchaseTaxTemplates, [purchaseTaxTemplates]);
+    const handleSalesTaxChange = React.useCallback((value: string) => {
+        setFormData((prev) => ({ ...prev, salesTaxTemplateId: value || null }));
+    }, [setFormData]);
 
-    const templateLabelFormatter = React.useCallback((template: TaxTemplate) =>
-        `${template.template_name} (${template.template_code})`,
-        []);
+    const handlePurchaseTaxChange = React.useCallback((value: string) => {
+        setFormData((prev) => ({ ...prev, purchaseTaxTemplateId: value || null }));
+    }, [setFormData]);
+
+    const handleBarcodeChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData((prev) => ({ ...prev, barcode: e.target.value }));
+    }, [setFormData]);
+
+    const handleImageUrlChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData((prev) => ({ ...prev, imageUrl: e.target.value }));
+    }, [setFormData]);
+
+    const handleCustomFieldsChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        try {
+            const parsed = JSON.parse(e.target.value);
+            setFormData((prev) => ({ ...prev, customFields: parsed }));
+        } catch {
+            // Invalid JSON, don't update
+        }
+    }, [setFormData]);
 
     return (
         <div className="grid gap-6 py-4">
@@ -78,36 +96,42 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="salesTaxTemplate">Sales Tax Template</Label>
-                        <SearchableSelect
-                            entityType="tax_templates"
+                        <Select
                             value={formData.salesTaxTemplateId || ''}
-                            onValueChange={(value) =>
-                                setFormData((prev) => ({ ...prev, salesTaxTemplateId: value || null }))
-                            }
-                            listFetcher={salesListFetcher}
-                            labelFormatter={templateLabelFormatter}
-                            valueKey="id"
-                            placeholder="Select sales tax template"
-                            isLoading={isLoadingTaxTemplates}
-                            items={salesTaxTemplates}
-                        />
+                            onValueChange={handleSalesTaxChange}
+                            disabled={isLoadingTaxTemplates}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select sales tax template" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {salesTaxTemplates.map((template) => (
+                                    <SelectItem key={template.id} value={template.id}>
+                                        {template.template_name} ({template.template_code})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="purchaseTaxTemplate">Purchase Tax Template</Label>
-                        <SearchableSelect
-                            entityType="tax_templates"
+                        <Select
                             value={formData.purchaseTaxTemplateId || ''}
-                            onValueChange={(value) =>
-                                setFormData((prev) => ({ ...prev, purchaseTaxTemplateId: value || null }))
-                            }
-                            listFetcher={purchaseListFetcher}
-                            labelFormatter={templateLabelFormatter}
-                            valueKey="id"
-                            placeholder="Select purchase tax template"
-                            isLoading={isLoadingTaxTemplates}
-                            items={purchaseTaxTemplates}
-                        />
+                            onValueChange={handlePurchaseTaxChange}
+                            disabled={isLoadingTaxTemplates}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select purchase tax template" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {purchaseTaxTemplates.map((template) => (
+                                    <SelectItem key={template.id} value={template.id}>
+                                        {template.template_name} ({template.template_code})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
             </div>
@@ -122,7 +146,7 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
                         <Input
                             id="barcode"
                             value={formData.barcode}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, barcode: e.target.value }))}
+                            onChange={handleBarcodeChange}
                             placeholder="Enter barcode"
                         />
                     </div>
@@ -132,7 +156,7 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
                         <Input
                             id="imageUrl"
                             value={formData.imageUrl}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                            onChange={handleImageUrlChange}
                             placeholder="https://example.com/image.jpg"
                         />
                     </div>
@@ -221,14 +245,7 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
                 
                 <Textarea
                     value={JSON.stringify(formData.customFields, null, 2)}
-                    onChange={(e) => {
-                        try {
-                            const parsed = JSON.parse(e.target.value);
-                            setFormData((prev) => ({ ...prev, customFields: parsed }));
-                        } catch {
-                            // Invalid JSON, don't update
-                        }
-                    }}
+                    onChange={handleCustomFieldsChange}
                     placeholder='{"key": "value"}'
                     rows={4}
                 />
