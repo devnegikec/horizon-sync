@@ -15,15 +15,17 @@ interface UseItemFormResult {
 }
 
 const getInitialFormData = (): ItemFormData & { itemGroupName: string } => ({
+  // Basic Information
   itemCode: '',
   name: '',
   description: '',
-  unitOfMeasure: 'Piece',
-  defaultPrice: '',
   itemGroupId: '',
   itemGroupName: '',
-  itemType: 'Product',
-  status: 'Active',
+  itemType: 'stock',
+  unitOfMeasure: 'Piece',
+  status: 'ACTIVE',
+
+  // Stock & Inventory
   maintainStock: true,
   valuationMethod: 'FIFO',
   allowNegativeStock: false,
@@ -34,17 +36,26 @@ const getInitialFormData = (): ItemFormData & { itemGroupName: string } => ({
   batchNumberSeries: '',
   hasSerialNo: false,
   serialNumberSeries: '',
+
+  // Pricing & Valuation
+  defaultPrice: '',
   valuationRate: '0',
   weightPerUnit: '0',
-  weightUom: 'kg',
+  weightUom: '',
+
+  // Reordering
   enableAutoReorder: false,
   reorderLevel: 0,
   reorderQty: 0,
-  minOrderQty: 0,
+  minOrderQty: 1,
   maxOrderQty: 0,
+
+  // Quality & Inspection
   inspectionRequiredBeforePurchase: false,
   inspectionRequiredBeforeDelivery: false,
   qualityInspectionTemplate: null,
+
+  // Tax & Additional
   salesTaxTemplateId: null,
   purchaseTaxTemplateId: null,
   barcode: '',
@@ -56,7 +67,7 @@ const getInitialFormData = (): ItemFormData & { itemGroupName: string } => ({
 });
 
 export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult {
-  const [formData, setFormData] = useState<ItemFormData & { itemGroupName: string }>(getInitialFormData());
+  const [formData, setFormData] = useState(getInitialFormData());
 
   const resetForm = () => {
     setFormData(getInitialFormData());
@@ -65,15 +76,55 @@ export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult
   useEffect(() => {
     if (item) {
       setFormData({
-        ...getInitialFormData(),
+        // Basic Information
         itemCode: item.itemCode,
         name: item.name,
         description: item.description,
-        unitOfMeasure: item.unitOfMeasure,
-        defaultPrice: item.defaultPrice.toString(),
         itemGroupId: item.itemGroupId,
         itemGroupName: item.itemGroupName,
-        status: item.status === 'active' ? 'Active' : 'Inactive',
+        itemType: item.itemType || 'stock',
+        unitOfMeasure: item.unitOfMeasure || 'Piece',
+        status: item.status || 'ACTIVE',
+
+        // Stock & Inventory
+        maintainStock: item.maintainStock ?? true,
+        valuationMethod: item.valuationMethod || 'FIFO',
+        allowNegativeStock: item.allowNegativeStock ?? false,
+        hasVariants: item.hasVariants ?? false,
+        variantOf: item.variantOf || null,
+        variantAttributes: item.variantAttributes || {},
+        hasBatchNo: item.hasBatchNo ?? false,
+        batchNumberSeries: item.batchNumberSeries || '',
+        hasSerialNo: item.hasSerialNo ?? false,
+        serialNumberSeries: item.serialNumberSeries || '',
+
+        // Pricing & Valuation
+        defaultPrice: item.defaultPrice?.toString() || '',
+        valuationRate: item.valuationRate?.toString() || '0',
+        weightPerUnit: item.weightPerUnit?.toString() || '0',
+        weightUom: item.weightUom || '',
+
+        // Reordering
+        enableAutoReorder: item.enableAutoReorder ?? false,
+        reorderLevel: item.reorderLevel || 0,
+        reorderQty: item.reorderQty || 0,
+        minOrderQty: item.minOrderQty || 1,
+        maxOrderQty: item.maxOrderQty || 0,
+
+        // Quality & Inspection
+        inspectionRequiredBeforePurchase: item.inspectionRequiredBeforePurchase ?? false,
+        inspectionRequiredBeforeDelivery: item.inspectionRequiredBeforeDelivery ?? false,
+        qualityInspectionTemplate: item.qualityInspectionTemplate || null,
+
+        // Tax & Additional
+        salesTaxTemplateId: item.salesTaxTemplateId || null,
+        purchaseTaxTemplateId: item.purchaseTaxTemplateId || null,
+        barcode: item.barcode || '',
+        imageUrl: item.imageUrl || '',
+        images: item.images || [],
+        tags: item.tags || [],
+        customFields: item.customFields || {},
+        extraData: item.extraData || {},
       });
     } else {
       resetForm();

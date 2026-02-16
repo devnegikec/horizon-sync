@@ -71,7 +71,7 @@ export function TaxAdditionalStep({
                     <div className="space-y-2">
                         <Label htmlFor="salesTaxTemplate">Sales Tax Template</Label>
                         <SearchableSelect
-                            entityType="tax-templates"
+                            entityType="tax_templates"
                             value={formData.salesTaxTemplateId || ''}
                             onValueChange={(value) =>
                                 setFormData((prev) => ({ ...prev, salesTaxTemplateId: value || null }))
@@ -90,7 +90,7 @@ export function TaxAdditionalStep({
                     <div className="space-y-2">
                         <Label htmlFor="purchaseTaxTemplate">Purchase Tax Template</Label>
                         <SearchableSelect
-                            entityType="tax-templates"
+                            entityType="tax_templates"
                             value={formData.purchaseTaxTemplateId || ''}
                             onValueChange={(value) =>
                                 setFormData((prev) => ({ ...prev, purchaseTaxTemplateId: value || null }))

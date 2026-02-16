@@ -11,6 +11,8 @@ import { ItemDialogFooter } from './ItemDialogFooter';
 import { ItemDialogHeader } from './ItemDialogHeader';
 import { ItemFormFields } from './ItemFormFields';
 
+import { useTaxTemplates } from '../../hooks/useTaxTemplates';
+
 interface ItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -22,19 +24,20 @@ interface ItemDialogProps {
   onItemGroupsRefresh?: () => void;
 }
 
-export function ItemDialog({ 
-  open, 
-  onOpenChange, 
-  item, 
-  itemGroups, 
-  onSave, 
-  onCreated, 
-  onUpdated, 
-  onItemGroupsRefresh 
+export function ItemDialog({
+  open,
+  onOpenChange,
+  item,
+  itemGroups,
+  onSave,
+  onCreated,
+  onUpdated,
+  onItemGroupsRefresh
 }: ItemDialogProps) {
   const isEditing = !!item;
 
   const { formData, setFormData } = useItemForm({ item, open });
+  const { salesTaxTemplates, purchaseTaxTemplates, isLoading: isLoadingTaxTemplates } = useTaxTemplates();
 
   const { handleSubmit, isLoading, error } = useItemSubmission({
     item,
@@ -59,18 +62,20 @@ export function ItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <ItemDialogHeader isEditing={isEditing} />
 
         <form onSubmit={handleFormSubmit}>
-          <ItemFormFields 
-            formData={formData} 
-            setFormData={setFormData} 
+          <ItemFormFields
+            formData={formData}
+            setFormData={setFormData}
             itemGroups={itemGroups}
             onItemGroupsRefresh={onItemGroupsRefresh}
+            isLoading={isLoading}
+            salesTaxTemplates={salesTaxTemplates}
+            purchaseTaxTemplates={purchaseTaxTemplates}
+            isLoadingTaxTemplates={isLoadingTaxTemplates}
           />
-
-          <ItemDialogFooter isEditing={isEditing} isLoading={isLoading} onCancel={handleCancel} submitError={error} />
         </form>
       </DialogContent>
     </Dialog>
