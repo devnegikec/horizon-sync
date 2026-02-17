@@ -35,6 +35,9 @@ export {
   materialRequestApi,
   purchaseOrderApi,
   purchaseReceiptApi,
+  
+  // ERP APIs
+  accountApi,
 } from './api/index';
 
 export type {
