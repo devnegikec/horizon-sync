@@ -18,6 +18,7 @@ export interface Account {
     account_code: string;
     account_name: string;
   } | null;
+  currency: string;
   level: number;
   is_group: boolean;
   opening_balance: number;
@@ -37,6 +38,7 @@ export interface AccountListItem {
   account_name: string;
   account_type: AccountType;
   parent_account_id: string | null;
+  currency: string;
   level: number;
   is_group: boolean;
   is_active: boolean;
@@ -47,6 +49,7 @@ export interface AccountFilters {
   search: string;
   account_type: string;
   status: string;
+  currency: string;
 }
 
 export interface CreateAccountPayload {
@@ -54,6 +57,7 @@ export interface CreateAccountPayload {
   account_name: string;
   account_type: AccountType;
   parent_account_id?: string | null;
+  currency?: string;
   level?: number;
   is_group?: boolean;
   opening_balance?: number;

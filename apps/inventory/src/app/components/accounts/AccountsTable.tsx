@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { Wallet, Plus, MoreHorizontal, Edit, Power, PowerOff } from 'lucide-react';
+import { Wallet, Plus, MoreHorizontal, Edit, Power, PowerOff, Info } from 'lucide-react';
 
 import { TableSkeleton, Badge, Button, Card, CardContent } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -11,9 +11,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@horizon-sync/ui/components/ui/tooltip';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
 import type { AccountListItem } from '../../types/account.types';
+import { getCurrencySymbol, SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import { formatDate } from '../../utility/formatDate';
 
 export interface AccountsTableProps {
@@ -100,6 +107,79 @@ export function AccountsTable({
             <Badge variant="secondary" className={colorClass}>
               {type}
             </Badge>
+          );
+        },
+      },
+      {
+        accessorKey: 'currency',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Currency" />,
+        cell: ({ row }) => {
+          const currencyCode = row.original.currency || 'USD';
+          const currency = SUPPORTED_CURRENCIES.find(c => c.code === currencyCode);
+          const symbol = getCurrencySymbol(currencyCode);
+          
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 cursor-help">
+                    <span className="text-sm font-medium">{currencyCode}</span>
+                    <span className="text-xs text-muted-foreground">{symbol}</span>
+                    <Info className="h-3 w-3 text-muted-foreground" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <div className="space-y-1">
+                    <p className="font-semibold">{currency?.name || currencyCode}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Account currency: {currencyCode} ({symbol})
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Base currency: USD ($)
+                    </p>
+                    <p className="text-xs text-muted-foreground italic">
+                      Exchange rate info available when balances are loaded
+                    </p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        },
+      },
+      {
+        accessorKey: 'balance',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Balance" />,
+        cell: ({ row }) => {
+          const currencyCode = row.original.currency || 'USD';
+          const symbol = getCurrencySymbol(currencyCode);
+          
+          // Placeholder until Phase 4 (Balance Calculator) is implemented
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex flex-col gap-0.5 cursor-help">
+                    <span className="text-sm text-muted-foreground">N/A</span>
+                    <span className="text-xs text-muted-foreground">Pending Phase 4</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <div className="space-y-1">
+                    <p className="font-semibold">Balance Information</p>
+                    <p className="text-xs text-muted-foreground">
+                      Account balance in {currencyCode} ({symbol})
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Base currency equivalent in USD ($)
+                    </p>
+                    <p className="text-xs text-muted-foreground italic">
+                      Balance calculations will be available in Phase 4
+                    </p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
       },
@@ -196,7 +276,7 @@ export function AccountsTable({
     return (
       <Card>
         <CardContent className="p-0">
-          <TableSkeleton columns={7} rows={10} showHeader={true} />
+          <TableSkeleton columns={8} rows={10} showHeader={true} />
         </CardContent>
       </Card>
     );

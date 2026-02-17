@@ -54,6 +54,7 @@ export function AccountManagement() {
     search: '',
     account_type: 'all',
     status: 'all',
+    currency: '',
   });
 
   const {
