@@ -50,6 +50,7 @@ export interface AccountFilters {
   account_type: string;
   status: string;
   currency: string;
+  parent_account_id?: string;
 }
 
 export interface CreateAccountPayload {

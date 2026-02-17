@@ -15,10 +15,15 @@ export const accountApi = {
       account_type?: string;
       status?: string;
       currency?: string;
-    }
+      parent_account_id?: string;
+    },
+    sortBy = 'account_code',
+    sortOrder: 'asc' | 'desc' = 'asc'
   ) => {
     const params: Record<string, string | number> = {
       ...buildPaginationParams(page, pageSize),
+      sort_by: sortBy,
+      sort_order: sortOrder,
     };
 
     if (filters?.search) {
@@ -32,6 +37,9 @@ export const accountApi = {
     }
     if (filters?.currency && filters.currency !== 'all') {
       params.currency = filters.currency;
+    }
+    if (filters?.parent_account_id) {
+      params.parent_account_id = filters.parent_account_id;
     }
 
     return apiRequest('/chart-of-accounts', accessToken, { params });

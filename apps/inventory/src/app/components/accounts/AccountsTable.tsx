@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { Wallet, Plus, MoreHorizontal, Edit, Power, PowerOff, Info, TrendingUp, TrendingDown } from 'lucide-react';
+import { Wallet, Plus, MoreHorizontal, Edit, Power, PowerOff, Info, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 
 import { TableSkeleton, Badge, Button, Card, CardContent } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -39,6 +39,9 @@ export interface AccountsTableProps {
     totalItems: number;
     onPaginationChange: (pageIndex: number, pageSize: number) => void;
   };
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSortingChange?: (columnId: string) => void;
 }
 
 const ACCOUNT_TYPE_COLORS: Record<string, string> = {
@@ -59,6 +62,9 @@ export function AccountsTable({
   onCreateAccount,
   onTableReady,
   serverPagination,
+  sortBy,
+  sortOrder,
+  onSortingChange,
 }: AccountsTableProps) {
   const tableReadyRef = React.useRef<((table: Table<AccountListItem>) => void) | undefined>(onTableReady);
 
@@ -91,11 +97,39 @@ export function AccountsTable({
     };
   }, [serverPagination]);
 
+  // Custom sortable header component for server-side sorting
+  const SortableHeader = React.useCallback(
+    ({ title, columnId }: { title: string; columnId: string }) => {
+      const isSorted = sortBy === columnId;
+      const isAsc = isSorted && sortOrder === 'asc';
+      const isDesc = isSorted && sortOrder === 'desc';
+
+      return (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-3 h-8 hover:bg-accent"
+          onClick={() => onSortingChange?.(columnId)}
+        >
+          <span className={isSorted ? 'font-semibold' : ''}>{title}</span>
+          {isDesc ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : isAsc ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : (
+            <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+          )}
+        </Button>
+      );
+    },
+    [sortBy, sortOrder, onSortingChange]
+  );
+
   const columns: ColumnDef<AccountListItem, unknown>[] = React.useMemo(
     () => [
       {
         accessorKey: 'account_code',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Code" />,
+        header: () => <SortableHeader title="Code" columnId="account_code" />,
         cell: ({ row }) => (
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -104,15 +138,17 @@ export function AccountsTable({
             <code className="text-sm bg-muted px-2 py-1 rounded font-medium">{row.original.account_code}</code>
           </div>
         ),
+        enableSorting: false,
       },
       {
         accessorKey: 'account_name',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Account Name" />,
+        header: () => <SortableHeader title="Account Name" columnId="account_name" />,
         cell: ({ row }) => <p className="font-medium">{row.original.account_name}</p>,
+        enableSorting: false,
       },
       {
         accessorKey: 'account_type',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
+        header: () => <SortableHeader title="Type" columnId="account_type" />,
         cell: ({ row }) => {
           const type = row.original.account_type;
           const colorClass = ACCOUNT_TYPE_COLORS[type] || 'bg-gray-100 text-gray-800';
@@ -122,6 +158,7 @@ export function AccountsTable({
             </Badge>
           );
         },
+        enableSorting: false,
       },
       {
         accessorKey: 'currency',
@@ -258,16 +295,18 @@ export function AccountsTable({
       },
       {
         accessorKey: 'is_active',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+        header: () => <SortableHeader title="Status" columnId="is_active" />,
         cell: ({ row }) => {
           const isActive = row.original.is_active;
           return <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? 'Active' : 'Inactive'}</Badge>;
         },
+        enableSorting: false,
       },
       {
         accessorKey: 'created_at',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Created" />,
+        header: () => <SortableHeader title="Created" columnId="created_at" />,
         cell: ({ row }) => formatDate(row.original.created_at, 'DD-MMM-YY'),
+        enableSorting: false,
       },
       {
         id: 'actions',
@@ -310,7 +349,7 @@ export function AccountsTable({
         enableSorting: false,
       },
     ],
-    [onEdit, onToggleStatus, balances, balancesLoading]
+    [onEdit, onToggleStatus, balances, balancesLoading, SortableHeader]
   );
 
   const renderViewOptions = React.useCallback(
@@ -380,7 +419,7 @@ export function AccountsTable({
             showPagination: true,
             enableRowSelection: false,
             enableColumnVisibility: true,
-            enableSorting: true,
+            enableSorting: false, // Disable client-side sorting, we use server-side
             enableFiltering: false,
             initialPageSize: serverPagination?.pageSize ?? 20,
             serverPagination: serverPaginationConfig,
