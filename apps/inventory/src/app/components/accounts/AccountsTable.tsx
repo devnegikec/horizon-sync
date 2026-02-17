@@ -31,6 +31,7 @@ export interface AccountsTableProps {
   hasActiveFilters: boolean;
   onEdit: (account: AccountListItem) => void;
   onToggleStatus: (account: AccountListItem) => void;
+  onViewDetails?: (account: AccountListItem) => void;
   onCreateAccount: () => void;
   onTableReady?: (table: Table<AccountListItem>) => void;
   serverPagination?: {
@@ -59,6 +60,7 @@ export function AccountsTable({
   hasActiveFilters,
   onEdit,
   onToggleStatus,
+  onViewDetails,
   onCreateAccount,
   onTableReady,
   serverPagination,
@@ -323,6 +325,15 @@ export function AccountsTable({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {onViewDetails && (
+                    <>
+                      <DropdownMenuItem onClick={() => onViewDetails(account)}>
+                        <Info className="mr-2 h-4 w-4" />
+                        View Details
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem onClick={() => onEdit(account)}>
                     <Edit className="mr-2 h-4 w-4" />
                     Edit Account
@@ -349,7 +360,7 @@ export function AccountsTable({
         enableSorting: false,
       },
     ],
-    [onEdit, onToggleStatus, balances, balancesLoading, SortableHeader]
+    [onEdit, onToggleStatus, onViewDetails, balances, balancesLoading, SortableHeader]
   );
 
   const renderViewOptions = React.useCallback(

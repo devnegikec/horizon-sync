@@ -122,3 +122,43 @@ export interface AccountBalanceHistoryResponse {
   end_date: string;
   history: AccountBalance[];
 }
+
+/**
+ * Audit trail types
+ */
+
+export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'STATUS_CHANGE';
+
+export interface AuditLogEntry {
+  id: string;
+  account_id: string;
+  action: AuditAction;
+  user_id: string;
+  timestamp: string;
+  changes: Record<string, {
+    oldValue?: unknown;
+    newValue?: unknown;
+  }> | {
+    old?: Record<string, unknown>;
+    new?: Record<string, unknown>;
+  };
+  audit_metadata?: Record<string, unknown>;
+}
+
+export interface AuditTrailResponse {
+  items: AuditLogEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+export interface AuditTrailFilters {
+  action?: AuditAction;
+  start_date?: string;
+  end_date?: string;
+  page?: number;
+  page_size?: number;
+}
