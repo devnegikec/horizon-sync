@@ -1,6 +1,8 @@
 import { apiRequest, buildPaginationParams } from './core';
 import type {
+  Account,
   AccountBalanceHistoryResponse,
+  AuditTrailResponse,
   CreateAccountPayload,
   UpdateAccountPayload,
 } from '../../types/account.types';
@@ -46,7 +48,7 @@ export const accountApi = {
   },
 
   get: (accessToken: string, id: string) =>
-    apiRequest(`/chart-of-accounts/${id}`, accessToken),
+    apiRequest<Account>(`/chart-of-accounts/${id}`, accessToken),
 
   create: (accessToken: string, data: CreateAccountPayload) =>
     apiRequest('/chart-of-accounts', accessToken, {
@@ -100,4 +102,34 @@ export const accountApi = {
         end_date: endDate,
       },
     }),
+
+  // Audit trail operations
+  getAuditTrail: (
+    accessToken: string,
+    id: string,
+    filters?: {
+      action?: string;
+      start_date?: string;
+      end_date?: string;
+      page?: number;
+      page_size?: number;
+    }
+  ) => {
+    const params: Record<string, string | number> = {
+      page: filters?.page || 1,
+      page_size: filters?.page_size || 50,
+    };
+
+    if (filters?.action) {
+      params.action = filters.action;
+    }
+    if (filters?.start_date) {
+      params.start_date = filters.start_date;
+    }
+    if (filters?.end_date) {
+      params.end_date = filters.end_date;
+    }
+
+    return apiRequest<AuditTrailResponse>(`/chart-of-accounts/${id}/audit-trail`, accessToken, { params });
+  },
 };
