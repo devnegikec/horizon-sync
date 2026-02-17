@@ -70,30 +70,13 @@ interface LineItemWithMetadata extends QuotationLineItemCreate {
 export function LineItemTable({ items, onItemsChange, readonly = false, disabled = false }: LineItemTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [itemsWithMetadata, setItemsWithMetadata] = React.useState<LineItemWithMetadata[]>([]);
+  const [itemsCache, setItemsCache] = React.useState<Map<string, PickerItem>>(new Map());
 
-  const { data: pickerData, isLoading } = useQuery<PickerResponse>({
-    queryKey: ['items-picker'],
-    queryFn: async () => {
-      const response = await fetch(`${environment.apiCoreUrl}/items/picker`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) throw new Error('Failed to fetch items');
-      return response.json();
-    },
-    enabled: !!accessToken && !readonly,
-  });
-
-  const availableItems = pickerData?.items ?? [];
-
-  // List fetcher for SearchableSelect
-  const itemListFetcher = React.useCallback(async () => {
-    if (availableItems.length > 0) {
-      return availableItems;
-    }
-    const response = await fetch(`${environment.apiCoreUrl}/items/picker`, {
+  // Search function for ItemPickerSelect
+  const searchItems = React.useCallback(async (query: string): Promise<PickerItem[]> => {
+    if (!accessToken) return [];
+    
+    const response = await fetch(`${environment.apiCoreUrl}/items/picker?search=${encodeURIComponent(query)}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -101,23 +84,33 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
     });
     if (!response.ok) throw new Error('Failed to fetch items');
     const data: PickerResponse = await response.json();
+    
+    // Cache the items for later use
+    setItemsCache(prevCache => {
+      const newCache = new Map(prevCache);
+      data.items.forEach(item => {
+        newCache.set(item.id, item);
+      });
+      return newCache;
+    });
+    
     return data.items;
-  }, [availableItems, accessToken]);
+  }, [accessToken]);
 
-  // Label formatter for SearchableSelect
+  // Label formatter
   const itemLabelFormatter = React.useCallback(
     (item: PickerItem) => `${item.item_name} (${item.item_code})`,
     []
   );
 
-  // Sync items with metadata
+  // Sync items with metadata from cache
   React.useEffect(() => {
     const enriched = items.map(item => {
-      const itemData = availableItems.find(i => i.id === item.item_id);
+      const itemData = itemsCache.get(item.item_id);
       return { ...item, itemData };
     });
     setItemsWithMetadata(enriched);
-  }, [items, availableItems]);
+  }, [items, itemsCache]);
 
   const validateQuantity = (qty: number, itemData?: PickerItem): string | undefined => {
     if (!itemData) return undefined;
@@ -140,7 +133,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
 
     // Auto-populate fields when item is selected
     if (field === 'item_id') {
-      const selectedItem = availableItems.find(i => i.id === value);
+      const selectedItem = itemsCache.get(value as string);
       if (selectedItem) {
         updated[index].uom = selectedItem.uom;
         updated[index].rate = parseFloat(selectedItem.standard_rate) || 0;
@@ -240,16 +233,16 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Item Name *</Label>
-                  <ItemPickerSelect
-                    items={availableItems}
+                  <ItemPickerSelect<PickerItem>
                     value={item.item_id}
                     onValueChange={(v) => handleItemChange(index, 'item_id', v)}
+                    searchItems={searchItems}
                     labelFormatter={itemLabelFormatter}
                     valueKey="id"
                     placeholder="Select an item..."
                     disabled={disabled}
-                    isLoading={isLoading}
                     searchPlaceholder="Search items..."
+                    minSearchLength={2}
                   />
                 </div>
                 <div className="space-y-1">

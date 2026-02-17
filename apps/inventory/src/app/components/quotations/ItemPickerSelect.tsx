@@ -1,46 +1,80 @@
 import * as React from 'react';
-import { Check, ChevronsUpDown, Search, X } from 'lucide-react';
+import { Check, ChevronsUpDown, Search, X, Loader2 } from 'lucide-react';
 import { cn } from '@horizon-sync/ui/lib';
 
 interface ItemPickerSelectProps<T> {
-  items: T[];
   value?: string;
   onValueChange: (value: string) => void;
+  searchItems: (query: string) => Promise<T[]>;
   labelFormatter: (item: T) => string;
   valueKey: keyof T;
   placeholder?: string;
   disabled?: boolean;
-  isLoading?: boolean;
   searchPlaceholder?: string;
+  minSearchLength?: number;
 }
 
 export function ItemPickerSelect<T extends Record<string, any>>({
-  items,
   value,
   onValueChange,
+  searchItems,
   labelFormatter,
   valueKey,
   placeholder = 'Select item...',
   disabled = false,
-  isLoading = false,
   searchPlaceholder = 'Search items...',
+  minSearchLength = 2,
 }: ItemPickerSelectProps<T>) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [items, setItems] = React.useState<T[]>([]);
+  const [isSearching, setIsSearching] = React.useState(false);
+  const [selectedItem, setSelectedItem] = React.useState<T | null>(null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  const selectedItem = items.find((item) => String(item[valueKey]) === value);
+  // Debounced search
+  React.useEffect(() => {
+    if (searchQuery.length < minSearchLength) {
+      setItems([]);
+      return;
+    }
 
-  // Client-side filtering
-  const filteredItems = React.useMemo(() => {
-    if (!searchQuery) return items;
-    
-    const query = searchQuery.toLowerCase();
-    return items.filter((item) => {
-      const label = labelFormatter(item).toLowerCase();
-      return label.includes(query);
-    });
-  }, [items, searchQuery, labelFormatter]);
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Set new timeout for debounced search
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await searchItems(searchQuery);
+        setItems(results);
+      } catch (error) {
+        console.error('Search failed:', error);
+        setItems([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery, searchItems, minSearchLength]);
+
+  // Update selected item when value changes
+  React.useEffect(() => {
+    if (value && items.length > 0) {
+      const item = items.find((item) => String(item[valueKey]) === value);
+      if (item) {
+        setSelectedItem(item);
+      }
+    }
+  }, [value, items, valueKey]);
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
@@ -61,19 +95,15 @@ export function ItemPickerSelect<T extends Record<string, any>>({
     <div ref={dropdownRef} className="relative">
       <button
         type="button"
-        onClick={() => !disabled && !isLoading && setOpen(!open)}
-        disabled={disabled || isLoading}
+        onClick={() => !disabled && setOpen(!open)}
+        disabled={disabled}
         className={cn(
           'flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
           !selectedItem && 'text-muted-foreground'
         )}
       >
         <span className="truncate">
-          {isLoading
-            ? 'Loading...'
-            : selectedItem
-            ? labelFormatter(selectedItem)
-            : placeholder}
+          {selectedItem ? labelFormatter(selectedItem) : placeholder}
         </span>
         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </button>
@@ -101,12 +131,21 @@ export function ItemPickerSelect<T extends Record<string, any>>({
             )}
           </div>
           <div className="max-h-60 overflow-y-auto p-1">
-            {filteredItems.length === 0 ? (
+            {isSearching ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
+              </div>
+            ) : searchQuery.length < minSearchLength ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                Type at least {minSearchLength} characters to search...
+              </div>
+            ) : items.length === 0 ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
                 No items found.
               </div>
             ) : (
-              filteredItems.map((item) => {
+              items.map((item) => {
                 const itemValue = String(item[valueKey]);
                 const isSelected = itemValue === value;
 
@@ -115,6 +154,7 @@ export function ItemPickerSelect<T extends Record<string, any>>({
                     key={itemValue}
                     onClick={() => {
                       onValueChange(itemValue);
+                      setSelectedItem(item);
                       setOpen(false);
                       setSearchQuery('');
                     }}
