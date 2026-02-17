@@ -45,6 +45,9 @@ const CURRENCIES = [
   { value: 'JPY', label: 'JPY - Japanese Yen' },
   { value: 'AUD', label: 'AUD - Australian Dollar' },
   { value: 'CAD', label: 'CAD - Canadian Dollar' },
+  { value: 'CHF', label: 'CHF - Swiss Franc' },
+  { value: 'CNY', label: 'CNY - Chinese Yuan' },
+  { value: 'INR', label: 'INR - Indian Rupee' },
 ];
 
 /**
@@ -96,7 +99,7 @@ function wouldCreateCircularReference(
 export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdated }: AccountDialogProps) {
   const isEditing = !!account;
   const { createAccount, updateAccount, loading, error } = useAccountActions();
-  
+
   // Fetch all accounts for parent selection (with a large page size to get all)
   const { accounts: allAccounts, loading: accountsLoading } = useAccounts(1, 1000);
 
@@ -105,6 +108,7 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
     account_name: '',
     account_type: 'ASSET',
     parent_account_id: null,
+    currency: 'USD',
     opening_balance: 0,
     is_active: true,
   });
@@ -118,24 +122,24 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
     return allAccounts.filter(a => {
       // Can't select self as parent
       if (account && a.id === account.id) return false;
-      
+
       // Must be same account type
       if (a.account_type !== formData.account_type) return false;
-      
+
       // Must be active
       if (!a.is_active) return false;
-      
+
       // Check for circular reference
       if (wouldCreateCircularReference(account?.id, a.id, allAccounts)) return false;
-      
+
       // Filter by search term
       if (parentSearchTerm) {
-        const searchLower = parentSearchTerm.toLowerCase();
-        const matchesCode = a.account_code.toLowerCase().includes(searchLower);
-        const matchesName = a.account_name.toLowerCase().includes(searchLower);
+        const searchLower = parentSearchTerm.toString().toLowerCase();
+        const matchesCode = a.account_code?.toString().toLowerCase().includes(searchLower);
+        const matchesName = a.account_name?.toString().toLowerCase().includes(searchLower);
         return matchesCode || matchesName;
       }
-      
+
       return true;
     });
   }, [allAccounts, account, formData.account_type, parentSearchTerm]);
@@ -148,6 +152,7 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
           account_name: account.account_name,
           account_type: account.account_type,
           parent_account_id: account.parent_account_id,
+          currency: (account as any).currency || 'USD',
           opening_balance: 0,
           is_active: account.is_active,
         });
@@ -158,6 +163,7 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
           account_name: '',
           account_type: 'ASSET',
           parent_account_id: null,
+          currency: 'USD',
           opening_balance: 0,
           is_active: true,
         });
@@ -302,6 +308,28 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
               )}
             </div>
 
+            {/* Currency */}
+            <div className="space-y-2">
+              <Label htmlFor="currency">
+                Currency <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={formData.currency}
+                onValueChange={(value) => setFormData({ ...formData, currency: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((currency) => (
+                    <SelectItem key={currency.value} value={currency.value}>
+                      {currency.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Parent Account */}
             <div className="space-y-2">
               <Label htmlFor="parent_account">Parent Account (Optional)</Label>
@@ -313,7 +341,7 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
                   onChange={(e) => setParentSearchTerm(e.target.value)}
                   disabled={accountsLoading}
                 />
-                
+
                 {/* Parent account dropdown */}
                 <Select
                   value={formData.parent_account_id || 'none'}
@@ -345,7 +373,7 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Warning when parent is selected */}
               {showParentWarning && (
                 <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md flex gap-2">

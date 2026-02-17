@@ -10,6 +10,7 @@ export const accountApi = {
       search?: string;
       account_type?: string;
       status?: string;
+      currency?: string;
     }
   ) => {
     const params: Record<string, string | number> = {
@@ -24,6 +25,9 @@ export const accountApi = {
     }
     if (filters?.status && filters.status !== 'all') {
       params.is_active = filters.status === 'active' ? 'true' : 'false';
+    }
+    if (filters?.currency && filters.currency !== 'all') {
+      params.currency = filters.currency;
     }
 
     return apiRequest('/chart-of-accounts', accessToken, { params });
