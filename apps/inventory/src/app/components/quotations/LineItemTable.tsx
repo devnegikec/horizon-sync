@@ -1,13 +1,49 @@
 import * as React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Button, Input, Label } from '@horizon-sync/ui/components';
-import { SearchableSelect } from '@horizon-sync/search';
+import { Button, Input, Label, Badge } from '@horizon-sync/ui/components';
 
 import type { QuotationLineItemCreate } from '../../types/quotation.types';
-import { itemApi } from '../../utility/api';
+import { environment } from '../../../environments/environment';
+import { ItemPickerSelect } from './ItemPickerSelect';
+
+interface PickerItem {
+  id: string;
+  item_code: string;
+  item_name: string;
+  uom: string;
+  min_order_qty: number;
+  max_order_qty: number;
+  standard_rate: string;
+  stock_levels: {
+    quantity_on_hand: number;
+    quantity_reserved: number;
+    quantity_available: number;
+  };
+  item_group: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  tax_info: {
+    id: string;
+    template_name: string;
+    template_code: string;
+    is_compound: boolean;
+    breakup: Array<{
+      rule_name: string;
+      tax_type: string;
+      rate: number;
+      is_compound: boolean;
+    }>;
+  } | null;
+}
+
+interface PickerResponse {
+  items: PickerItem[];
+}
 
 interface LineItemTableProps {
   items: QuotationLineItemCreate[];
@@ -26,36 +62,91 @@ const emptyItem: QuotationLineItemCreate = {
   sort_order: 0,
 };
 
+interface LineItemWithMetadata extends QuotationLineItemCreate {
+  itemData?: PickerItem;
+  validationError?: string;
+}
+
 export function LineItemTable({ items, onItemsChange, readonly = false, disabled = false }: LineItemTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const [itemsWithMetadata, setItemsWithMetadata] = React.useState<LineItemWithMetadata[]>([]);
 
-  const { data: itemsData, isLoading } = useQuery<{ items: { id: string; item_name: string; item_sku?: string }[] }>({
-    queryKey: ['items-list'],
-    queryFn: () => itemApi.list(accessToken || '', 1, 100) as Promise<{ items: { id: string; item_name: string; item_sku?: string }[] }>,
+  const { data: pickerData, isLoading } = useQuery<PickerResponse>({
+    queryKey: ['items-picker'],
+    queryFn: async () => {
+      const response = await fetch(`${environment.apiCoreUrl}/items/picker`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch items');
+      return response.json();
+    },
     enabled: !!accessToken && !readonly,
   });
 
-  const availableItems = itemsData?.items ?? [];
+  const availableItems = pickerData?.items ?? [];
 
   // List fetcher for SearchableSelect
   const itemListFetcher = React.useCallback(async () => {
     if (availableItems.length > 0) {
       return availableItems;
     }
-    const data = await itemApi.list(accessToken || '', 1, 100) as { items: { id: string; item_name: string; item_sku?: string }[] };
+    const response = await fetch(`${environment.apiCoreUrl}/items/picker`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Failed to fetch items');
+    const data: PickerResponse = await response.json();
     return data.items;
   }, [availableItems, accessToken]);
 
   // Label formatter for SearchableSelect
   const itemLabelFormatter = React.useCallback(
-    (item: { id: string; item_name: string; item_sku?: string }) =>
-      `${item.item_name}${item.item_sku ? ` (${item.item_sku})` : ''}`,
+    (item: PickerItem) => `${item.item_name} (${item.item_code})`,
     []
   );
+
+  // Sync items with metadata
+  React.useEffect(() => {
+    const enriched = items.map(item => {
+      const itemData = availableItems.find(i => i.id === item.item_id);
+      return { ...item, itemData };
+    });
+    setItemsWithMetadata(enriched);
+  }, [items, availableItems]);
+
+  const validateQuantity = (qty: number, itemData?: PickerItem): string | undefined => {
+    if (!itemData) return undefined;
+    
+    if (qty < itemData.min_order_qty) {
+      return `Minimum order quantity is ${itemData.min_order_qty}`;
+    }
+    if (qty > itemData.max_order_qty) {
+      return `Maximum order quantity is ${itemData.max_order_qty}`;
+    }
+    if (qty > itemData.stock_levels.quantity_available) {
+      return `Only ${itemData.stock_levels.quantity_available} units available`;
+    }
+    return undefined;
+  };
 
   const handleItemChange = (index: number, field: keyof QuotationLineItemCreate, value: string | number) => {
     const updated = [...items];
     updated[index] = { ...updated[index], [field]: value };
+
+    // Auto-populate fields when item is selected
+    if (field === 'item_id') {
+      const selectedItem = availableItems.find(i => i.id === value);
+      if (selectedItem) {
+        updated[index].uom = selectedItem.uom;
+        updated[index].rate = parseFloat(selectedItem.standard_rate) || 0;
+        updated[index].qty = selectedItem.min_order_qty || 1;
+      }
+    }
 
     if (field === 'qty' || field === 'rate') {
       updated[index].amount = Number(updated[index].qty) * Number(updated[index].rate);
@@ -109,6 +200,16 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
     );
   }
 
+  const calculateTaxAmount = (baseAmount: number, itemData?: PickerItem): number => {
+    if (!itemData?.tax_info?.breakup) return 0;
+    
+    let taxAmount = 0;
+    for (const tax of itemData.tax_info.breakup) {
+      taxAmount += (baseAmount * tax.rate) / 100;
+    }
+    return taxAmount;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -118,75 +219,141 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
         </Button>
       </div>
       <div className="space-y-4">
-        {items.map((item, index) => (
-          <div key={index} className="rounded-lg border p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Item #{index + 1}</span>
-              {items.length > 1 && (
-                <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(index)} disabled={disabled}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              )}
+        {itemsWithMetadata.map((item, index) => {
+          const validationError = validateQuantity(item.qty, item.itemData);
+          const baseAmount = Number(item.qty) * Number(item.rate);
+          const taxAmount = calculateTaxAmount(baseAmount, item.itemData);
+          const totalAmount = baseAmount + taxAmount;
+          
+          return (
+            <div key={index} className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Item #{index + 1}</span>
+                {items.length > 1 && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(index)} disabled={disabled}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Row 1: Item Name, Item Group */}
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Item Name *</Label>
+                  <ItemPickerSelect
+                    items={availableItems}
+                    value={item.item_id}
+                    onValueChange={(v) => handleItemChange(index, 'item_id', v)}
+                    labelFormatter={itemLabelFormatter}
+                    valueKey="id"
+                    placeholder="Select an item..."
+                    disabled={disabled}
+                    isLoading={isLoading}
+                    searchPlaceholder="Search items..."
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Item Group</Label>
+                  <Input
+                    value={item.itemData?.item_group.name || '-'}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Quantity, UOM */}
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Quantity *</Label>
+                  <Input
+                    type="number"
+                    min={item.itemData?.min_order_qty || 1}
+                    max={item.itemData?.max_order_qty}
+                    step="0.01"
+                    value={item.qty}
+                    onChange={(e) => handleItemChange(index, 'qty', Number(e.target.value))}
+                    disabled={disabled}
+                    required
+                    className={validationError ? 'border-destructive' : ''}
+                  />
+                  {validationError && (
+                    <div className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="h-3 w-3" />
+                      <span>{validationError}</span>
+                    </div>
+                  )}
+                  {item.itemData && (
+                    <p className="text-xs text-muted-foreground">
+                      Min: {item.itemData.min_order_qty}, Max: {item.itemData.max_order_qty}, Available: {item.itemData.stock_levels.quantity_available}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">UOM *</Label>
+                  <Input
+                    value={item.uom}
+                    onChange={(e) => handleItemChange(index, 'uom', e.target.value)}
+                    placeholder="pcs"
+                    disabled
+                    className="bg-muted"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Rate, Tax */}
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Rate *</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={item.rate}
+                    onChange={(e) => handleItemChange(index, 'rate', Number(e.target.value))}
+                    disabled={disabled}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Tax</Label>
+                  <div className="flex flex-wrap gap-1 min-h-[40px] items-center p-2 border rounded-md bg-muted">
+                    {item.itemData?.tax_info?.breakup && item.itemData.tax_info.breakup.length > 0 ? (
+                      item.itemData.tax_info.breakup.map((tax, taxIndex) => (
+                        <Badge key={taxIndex} variant="secondary" className="text-xs">
+                          {tax.rule_name}: {tax.rate}%
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No tax</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 4: Amount (before tax), Total Amount */}
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Amount (Before Tax)</Label>
+                  <Input
+                    value={baseAmount.toFixed(2)}
+                    disabled
+                    className="font-medium bg-muted"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Total Amount</Label>
+                  <Input
+                    value={totalAmount.toFixed(2)}
+                    disabled
+                    className="font-bold bg-primary/10"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="grid gap-3 md:grid-cols-5">
-              <div className="space-y-1 md:col-span-2">
-                <Label className="text-xs">Item *</Label>
-                <SearchableSelect
-                  entityType="items"
-                  value={item.item_id}
-                  onValueChange={(v) => handleItemChange(index, 'item_id', v)}
-                  listFetcher={itemListFetcher}
-                  labelFormatter={itemLabelFormatter}
-                  valueKey="id"
-                  placeholder="Select an item..."
-                  disabled={disabled}
-                  isLoading={isLoading}
-                  items={availableItems}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Quantity *</Label>
-                <Input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  value={item.qty}
-                  onChange={(e) => handleItemChange(index, 'qty', Number(e.target.value))}
-                  disabled={disabled}
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">UOM *</Label>
-                <Input
-                  value={item.uom}
-                  onChange={(e) => handleItemChange(index, 'uom', e.target.value)}
-                  placeholder="pcs"
-                  disabled={disabled}
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Rate *</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={item.rate}
-                  onChange={(e) => handleItemChange(index, 'rate', Number(e.target.value))}
-                  disabled={disabled}
-                  required
-                />
-              </div>
-            </div>
-            <div className="grid gap-3 md:grid-cols-5">
-              <div className="space-y-1">
-                <Label className="text-xs">Amount</Label>
-                <Input value={Number(item.amount).toFixed(2)} disabled className="font-medium" />
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
