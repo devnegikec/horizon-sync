@@ -1,5 +1,9 @@
 import { apiRequest, buildPaginationParams } from './core';
-import type { CreateAccountPayload, UpdateAccountPayload } from '../../types/account.types';
+import type {
+  AccountBalanceHistoryResponse,
+  CreateAccountPayload,
+  UpdateAccountPayload,
+} from '../../types/account.types';
 
 export const accountApi = {
   list: (
@@ -61,5 +65,31 @@ export const accountApi = {
   deactivate: (accessToken: string, id: string) =>
     apiRequest(`/chart-of-accounts/${id}/deactivate`, accessToken, {
       method: 'PUT',
+    }),
+
+  // Balance operations
+  getBalance: (accessToken: string, id: string, asOfDate?: string) => {
+    const params: Record<string, string> = {};
+    if (asOfDate) {
+      params.as_of_date = asOfDate;
+    }
+    return apiRequest(`/chart-of-accounts/${id}/balance`, accessToken, { params });
+  },
+
+  getBalances: (accessToken: string, accountIds: string[], asOfDate?: string) =>
+    apiRequest('/chart-of-accounts/balances', accessToken, {
+      method: 'POST',
+      body: {
+        account_ids: accountIds,
+        as_of_date: asOfDate,
+      },
+    }),
+
+  getBalanceHistory: (accessToken: string, id: string, startDate: string, endDate: string) =>
+    apiRequest<AccountBalanceHistoryResponse>(`/chart-of-accounts/${id}/balance/history`, accessToken, {
+      params: {
+        start_date: startDate,
+        end_date: endDate,
+      },
     }),
 };

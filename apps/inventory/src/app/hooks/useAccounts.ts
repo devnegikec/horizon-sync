@@ -3,6 +3,11 @@ import { useUserStore } from '@horizon-sync/store';
 import { accountApi } from '../utility/api/accounts';
 import type { AccountListItem, AccountFilters, AccountPaginationResponse } from '../types/account.types';
 
+const MAX_PAGE_SIZE = 100;
+const MIN_PAGE_SIZE = 1;
+
+const normalizePageSize = (pageSize: number) => Math.min(Math.max(pageSize, MIN_PAGE_SIZE), MAX_PAGE_SIZE);
+
 export function useAccounts(initialPage = 1, initialPageSize = 20, filters?: AccountFilters) {
   const { accessToken } = useUserStore();
   const [accounts, setAccounts] = useState<AccountListItem[]>([]);
@@ -10,7 +15,7 @@ export function useAccounts(initialPage = 1, initialPageSize = 20, filters?: Acc
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(initialPage);
-  const [currentPageSize, setCurrentPageSize] = useState(initialPageSize);
+  const [currentPageSize, setCurrentPageSize] = useState(normalizePageSize(initialPageSize));
 
   const fetchAccounts = useCallback(async () => {
     if (!accessToken) {
@@ -25,7 +30,7 @@ export function useAccounts(initialPage = 1, initialPageSize = 20, filters?: Acc
       const response = await accountApi.list(
         accessToken,
         currentPage,
-        currentPageSize,
+        normalizePageSize(currentPageSize),
         filters
       ) as AccountPaginationResponse;
       setAccounts(response.chart_of_accounts || []);
@@ -52,7 +57,7 @@ export function useAccounts(initialPage = 1, initialPageSize = 20, filters?: Acc
   }, []);
 
   const setPageSize = useCallback((pageSize: number) => {
-    setCurrentPageSize(pageSize);
+    setCurrentPageSize(normalizePageSize(pageSize));
     setCurrentPage(1); // Reset to first page when page size changes
   }, []);
 
