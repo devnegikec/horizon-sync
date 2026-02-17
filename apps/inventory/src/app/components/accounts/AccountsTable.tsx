@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { Wallet, Plus, MoreHorizontal, Edit, Power, PowerOff, Info } from 'lucide-react';
+import { Wallet, Plus, MoreHorizontal, Edit, Power, PowerOff, Info, TrendingUp, TrendingDown } from 'lucide-react';
 
 import { TableSkeleton, Badge, Button, Card, CardContent } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -22,6 +22,7 @@ import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import type { AccountListItem } from '../../types/account.types';
 import { getCurrencySymbol, SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import { formatDate } from '../../utility/formatDate';
+import { useAccountBalances } from '../../hooks/useAccountBalances';
 
 export interface AccountsTableProps {
   accounts: AccountListItem[];
@@ -64,6 +65,18 @@ export function AccountsTable({
   React.useEffect(() => {
     tableReadyRef.current = onTableReady;
   }, [onTableReady]);
+
+  // Fetch balances for all accounts
+  const accountIds = React.useMemo(() => accounts.map(a => a.id), [accounts]);
+  const { balances, loading: balancesLoading } = useAccountBalances({
+    accountIds,
+    enabled: accountIds.length > 0,
+  });
+
+  const formatCurrency = (amount: number, currencyCode: string): string => {
+    const symbol = getCurrencySymbol(currencyCode);
+    return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   const serverPaginationConfig = React.useMemo(() => {
     if (!serverPagination) return undefined;
@@ -151,31 +164,79 @@ export function AccountsTable({
         accessorKey: 'balance',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Balance" />,
         cell: ({ row }) => {
-          const currencyCode = row.original.currency || 'USD';
+          const account = row.original;
+          const currencyCode = account.currency || 'USD';
           const symbol = getCurrencySymbol(currencyCode);
+          const balance = balances.get(account.id);
           
-          // Placeholder until Phase 4 (Balance Calculator) is implemented
+          if (balancesLoading) {
+            return (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm text-muted-foreground">Loading...</span>
+              </div>
+            );
+          }
+          
+          if (!balance) {
+            return (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm text-muted-foreground">N/A</span>
+              </div>
+            );
+          }
+          
+          const isPositive = balance.balance >= 0;
+          const isDebitAccount = account.account_type === 'ASSET' || account.account_type === 'EXPENSE';
+          
           return (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="flex flex-col gap-0.5 cursor-help">
-                    <span className="text-sm text-muted-foreground">N/A</span>
-                    <span className="text-xs text-muted-foreground">Pending Phase 4</span>
+                    <div className="flex items-center gap-1">
+                      {isPositive ? (
+                        <TrendingUp className="h-3 w-3 text-emerald-600" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3 text-red-600" />
+                      )}
+                      <span className={`text-sm font-medium ${isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {formatCurrency(Math.abs(balance.balance), currencyCode)}
+                      </span>
+                    </div>
+                    {currencyCode !== 'USD' && (
+                      <span className="text-xs text-muted-foreground">
+                        ${Math.abs(balance.base_currency_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    )}
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">
-                  <div className="space-y-1">
-                    <p className="font-semibold">Balance Information</p>
-                    <p className="text-xs text-muted-foreground">
-                      Account balance in {currencyCode} ({symbol})
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Base currency equivalent in USD ($)
-                    </p>
-                    <p className="text-xs text-muted-foreground italic">
-                      Balance calculations will be available in Phase 4
-                    </p>
+                  <div className="space-y-2">
+                    <p className="font-semibold">Balance Details</p>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Debit Total:</span>
+                        <span className="font-medium">{formatCurrency(balance.debit_total, currencyCode)}</span>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Credit Total:</span>
+                        <span className="font-medium">{formatCurrency(balance.credit_total, currencyCode)}</span>
+                      </div>
+                      <div className="flex justify-between gap-4 pt-1 border-t">
+                        <span className="text-muted-foreground">Net Balance:</span>
+                        <span className="font-medium">{formatCurrency(balance.balance, currencyCode)}</span>
+                      </div>
+                      {currencyCode !== 'USD' && (
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Base Currency (USD):</span>
+                          <span className="font-medium">${balance.base_currency_balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between gap-4 pt-1 border-t">
+                        <span className="text-muted-foreground">As of Date:</span>
+                        <span className="font-medium">{balance.as_of_date}</span>
+                      </div>
+                    </div>
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -249,7 +310,7 @@ export function AccountsTable({
         enableSorting: false,
       },
     ],
-    [onEdit, onToggleStatus]
+    [onEdit, onToggleStatus, balances, balancesLoading]
   );
 
   const renderViewOptions = React.useCallback(

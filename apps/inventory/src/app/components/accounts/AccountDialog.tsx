@@ -100,8 +100,8 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
   const isEditing = !!account;
   const { createAccount, updateAccount, loading, error } = useAccountActions();
 
-  // Fetch all accounts for parent selection (with a large page size to get all)
-  const { accounts: allAccounts, loading: accountsLoading } = useAccounts(1, 1000);
+  // Fetch accounts for parent selection (API max page size is 100)
+  const { accounts: allAccounts, loading: accountsLoading } = useAccounts(1, 100);
 
   const [formData, setFormData] = useState<CreateAccountPayload>({
     account_code: '',

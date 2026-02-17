@@ -89,3 +89,35 @@ export interface AccountPaginationResponse {
     total_pages: number;
   };
 }
+
+
+/**
+ * Account balance types
+ */
+
+export interface AccountBalance {
+  account_id: string;
+  currency: string;
+  debit_total: number;
+  credit_total: number;
+  balance: number;
+  base_currency_balance: number;
+  as_of_date: string;
+  account_type: AccountType;
+  account_code: string;
+  account_name: string;
+  is_consolidated?: boolean;
+  child_count?: number;
+}
+
+export interface AccountBalanceRequest {
+  account_ids: string[];
+  as_of_date?: string;
+}
+
+export interface AccountBalanceHistoryResponse {
+  account_id: string;
+  start_date: string;
+  end_date: string;
+  history: AccountBalance[];
+}
