@@ -8,7 +8,13 @@ const MIN_PAGE_SIZE = 1;
 
 const normalizePageSize = (pageSize: number) => Math.min(Math.max(pageSize, MIN_PAGE_SIZE), MAX_PAGE_SIZE);
 
-export function useAccounts(initialPage = 1, initialPageSize = 20, filters?: AccountFilters) {
+export function useAccounts(
+  initialPage = 1,
+  initialPageSize = 20,
+  filters?: AccountFilters,
+  sortBy?: string,
+  sortOrder?: 'asc' | 'desc'
+) {
   const { accessToken } = useUserStore();
   const [accounts, setAccounts] = useState<AccountListItem[]>([]);
   const [pagination, setPagination] = useState<AccountPaginationResponse['pagination'] | null>(null);
@@ -16,6 +22,8 @@ export function useAccounts(initialPage = 1, initialPageSize = 20, filters?: Acc
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [currentPageSize, setCurrentPageSize] = useState(normalizePageSize(initialPageSize));
+  const [currentSortBy, setCurrentSortBy] = useState(sortBy || 'account_code');
+  const [currentSortOrder, setCurrentSortOrder] = useState<'asc' | 'desc'>(sortOrder || 'asc');
 
   const fetchAccounts = useCallback(async () => {
     if (!accessToken) {
@@ -31,7 +39,9 @@ export function useAccounts(initialPage = 1, initialPageSize = 20, filters?: Acc
         accessToken,
         currentPage,
         normalizePageSize(currentPageSize),
-        filters
+        filters,
+        currentSortBy,
+        currentSortOrder
       ) as AccountPaginationResponse;
       setAccounts(response.chart_of_accounts || []);
       setPagination(response.pagination || null);
@@ -42,7 +52,7 @@ export function useAccounts(initialPage = 1, initialPageSize = 20, filters?: Acc
     } finally {
       setLoading(false);
     }
-  }, [accessToken, currentPage, currentPageSize, filters]);
+  }, [accessToken, currentPage, currentPageSize, filters, currentSortBy, currentSortOrder]);
 
   useEffect(() => {
     fetchAccounts();
@@ -61,6 +71,12 @@ export function useAccounts(initialPage = 1, initialPageSize = 20, filters?: Acc
     setCurrentPage(1); // Reset to first page when page size changes
   }, []);
 
+  const setSorting = useCallback((sortBy: string, sortOrder: 'asc' | 'desc') => {
+    setCurrentSortBy(sortBy);
+    setCurrentSortOrder(sortOrder);
+    setCurrentPage(1); // Reset to first page when sorting changes
+  }, []);
+
   return {
     accounts,
     pagination,
@@ -69,7 +85,10 @@ export function useAccounts(initialPage = 1, initialPageSize = 20, filters?: Acc
     refetch,
     setPage,
     setPageSize,
+    setSorting,
     currentPage,
     currentPageSize,
+    currentSortBy,
+    currentSortOrder,
   };
 }
