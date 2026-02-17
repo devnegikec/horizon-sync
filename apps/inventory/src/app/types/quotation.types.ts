@@ -8,6 +8,10 @@ export interface QuotationLineItem {
   uom: string;
   rate: number;
   amount: number;
+  tax_template_id?: string | null;
+  tax_rate?: number;
+  tax_amount?: number;
+  total_amount?: number;
   sort_order: number;
   extra_data?: Record<string, unknown>;
 }
@@ -62,6 +66,10 @@ export interface QuotationLineItemCreate {
   uom: string;
   rate: number;
   amount: number;
+  tax_template_id?: string | null;
+  tax_rate?: number;
+  tax_amount?: number;
+  total_amount?: number;
   sort_order: number;
 }
 

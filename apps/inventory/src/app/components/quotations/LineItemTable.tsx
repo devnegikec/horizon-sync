@@ -59,6 +59,10 @@ const emptyItem: QuotationLineItemCreate = {
   uom: 'pcs',
   rate: 0,
   amount: 0,
+  tax_template_id: null,
+  tax_rate: 0,
+  tax_amount: 0,
+  total_amount: 0,
   sort_order: 0,
 };
 
@@ -127,6 +131,31 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
     return undefined;
   };
 
+  const calculateTaxAndTotal = (item: QuotationLineItemCreate, itemData?: PickerItem): QuotationLineItemCreate => {
+    const amount = Number(item.qty) * Number(item.rate);
+    let taxRate = 0;
+    let taxTemplateId: string | null = null;
+
+    // Get tax info from item data if available
+    if (itemData?.tax_info) {
+      taxTemplateId = itemData.tax_info.id;
+      // Calculate total tax rate from breakup
+      taxRate = itemData.tax_info.breakup.reduce((sum, tax) => sum + tax.rate, 0);
+    }
+
+    const taxAmount = (amount * taxRate) / 100;
+    const totalAmount = amount + taxAmount;
+
+    return {
+      ...item,
+      amount,
+      tax_template_id: taxTemplateId,
+      tax_rate: taxRate,
+      tax_amount: Number(taxAmount.toFixed(2)),
+      total_amount: Number(totalAmount.toFixed(2)),
+    };
+  };
+
   const handleItemChange = (index: number, field: keyof QuotationLineItemCreate, value: string | number) => {
     const updated = [...items];
     updated[index] = { ...updated[index], [field]: value };
@@ -138,11 +167,15 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
         updated[index].uom = selectedItem.uom;
         updated[index].rate = parseFloat(selectedItem.standard_rate) || 0;
         updated[index].qty = selectedItem.min_order_qty || 1;
+        // Recalculate with tax
+        updated[index] = calculateTaxAndTotal(updated[index], selectedItem);
       }
     }
 
+    // Recalculate amounts when qty or rate changes
     if (field === 'qty' || field === 'rate') {
-      updated[index].amount = Number(updated[index].qty) * Number(updated[index].rate);
+      const itemData = itemsCache.get(updated[index].item_id);
+      updated[index] = calculateTaxAndTotal(updated[index], itemData);
     }
 
     onItemsChange(updated);
@@ -193,16 +226,6 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
     );
   }
 
-  const calculateTaxAmount = (baseAmount: number, itemData?: PickerItem): number => {
-    if (!itemData?.tax_info?.breakup) return 0;
-    
-    let taxAmount = 0;
-    for (const tax of itemData.tax_info.breakup) {
-      taxAmount += (baseAmount * tax.rate) / 100;
-    }
-    return taxAmount;
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -214,9 +237,9 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
       <div className="space-y-4">
         {itemsWithMetadata.map((item, index) => {
           const validationError = validateQuantity(item.qty, item.itemData);
-          const baseAmount = Number(item.qty) * Number(item.rate);
-          const taxAmount = calculateTaxAmount(baseAmount, item.itemData);
-          const totalAmount = baseAmount + taxAmount;
+          const baseAmount = item.amount || 0;
+          const taxAmount = item.tax_amount || 0;
+          const totalAmount = item.total_amount || 0;
           
           return (
             <div key={index} className="rounded-lg border p-4 space-y-3">
@@ -310,17 +333,24 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Tax</Label>
-                  <div className="flex flex-wrap gap-1 min-h-[40px] items-center p-2 border rounded-md bg-muted">
-                    {item.itemData?.tax_info?.breakup && item.itemData.tax_info.breakup.length > 0 ? (
-                      item.itemData.tax_info.breakup.map((tax, taxIndex) => (
-                        <Badge key={taxIndex} variant="secondary" className="text-xs">
-                          {tax.rule_name}: {tax.rate}%
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-xs text-muted-foreground">No tax</span>
-                    )}
+                  <Label className="text-xs">Tax ({item.tax_rate ? `${item.tax_rate}%` : '0%'})</Label>
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap gap-1 min-h-[40px] items-center p-2 border rounded-md bg-muted">
+                      {item.itemData?.tax_info?.breakup && item.itemData.tax_info.breakup.length > 0 ? (
+                        item.itemData.tax_info.breakup.map((tax, taxIndex) => (
+                          <Badge key={taxIndex} variant="secondary" className="text-xs">
+                            {tax.rule_name}: {tax.rate}%
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No tax</span>
+                      )}
+                    </div>
+                    {item.tax_amount ? (
+                      <p className="text-xs text-muted-foreground">
+                        Tax Amount: ₹{taxAmount.toFixed(2)}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </div>
