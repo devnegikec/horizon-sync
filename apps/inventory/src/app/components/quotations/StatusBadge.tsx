@@ -74,8 +74,9 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const config = statusConfig[status.toLowerCase()] || {
-    label: status,
+  const safeStatus = typeof status === 'string' ? status : '';
+  const config = statusConfig[safeStatus?.toLowerCase?.() || ''] || {
+    label: safeStatus,
     className: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400',
   };
 
