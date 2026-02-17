@@ -43,7 +43,7 @@ export function MultiStepFormProvider({ children, totalSteps, initialStep = 1 }:
         setCurrentStep((prev) => Math.max(prev - 1, 1));
     }, []);
 
-    const value: MultiStepFormContextValue = {
+    const value: MultiStepFormContextValue = React.useMemo(() => ({
         currentStep,
         totalSteps,
         goToStep,
@@ -51,7 +51,7 @@ export function MultiStepFormProvider({ children, totalSteps, initialStep = 1 }:
         previousStep,
         isFirstStep: currentStep === 1,
         isLastStep: currentStep === totalSteps,
-    };
+    }), [currentStep, totalSteps, goToStep, nextStep, previousStep]);
 
     return (
         <MultiStepFormContext.Provider value={value}>

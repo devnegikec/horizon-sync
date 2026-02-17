@@ -9,7 +9,9 @@ import { useItemManagement } from '../../hooks/useItemManagement';
 import { apiItemToItem } from '../../utility';
 
 import { ItemDetailDialog } from './ItemDetailDialog';
-import { ItemDialog } from './ItemDialog';
+// import { ItemDialog } from './ItemDialog';
+// import { ItemDialogSimple as ItemDialog } from './ItemDialog.simple';
+import { ItemDialogMultiStep as ItemDialog } from './ItemDialog.multistep';
 import { ItemManagementFilters } from './ItemManagementFilters';
 import { ItemManagementHeader } from './ItemManagementHeader';
 import { ItemsTable } from './ItemsTable';

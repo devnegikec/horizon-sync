@@ -71,7 +71,7 @@ export function Step2PricingOrdering({ formData, setFormData }: Step2PricingOrde
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="weightUom">Weight UOM</Label>
+                        <Label>Weight UOM</Label>
                         <Select
                             value={formData.weightUom}
                             onValueChange={(value) => setFormData((prev) => ({ ...prev, weightUom: value }))}

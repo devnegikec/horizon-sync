@@ -71,7 +71,7 @@ export function Step1BasicInventory({
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label htmlFor="itemGroup">
+                        <Label>
                             Item Group <span className="text-red-500">*</span>
                         </Label>
                         {hasItemGroups ? (
@@ -98,7 +98,7 @@ export function Step1BasicInventory({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="itemType">
+                        <Label>
                             Item Type <span className="text-red-500">*</span>
                         </Label>
                         <Select
@@ -121,7 +121,7 @@ export function Step1BasicInventory({
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label htmlFor="unitOfMeasure">
+                        <Label>
                             Unit of Measure <span className="text-red-500">*</span>
                         </Label>
                         <Select
@@ -142,7 +142,7 @@ export function Step1BasicInventory({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="status">
+                        <Label>
                             Status <span className="text-red-500">*</span>
                         </Label>
                         <Select
@@ -197,7 +197,7 @@ export function Step1BasicInventory({
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="valuationMethod">Valuation Method</Label>
+                    <Label>Valuation Method</Label>
                     <Select
                         value={formData.valuationMethod}
                         onValueChange={(value) => setFormData((prev) => ({ ...prev, valuationMethod: value }))}
