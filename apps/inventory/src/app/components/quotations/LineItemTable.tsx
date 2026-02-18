@@ -1,48 +1,18 @@
 import * as React from 'react';
-import { Plus, Trash2, AlertCircle } from 'lucide-react';
+
 import { useQuery } from '@tanstack/react-query';
+import { Plus, Trash2, AlertCircle } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button, Input, Label, Badge } from '@horizon-sync/ui/components';
 
-import type { QuotationLineItemCreate } from '../../types/quotation.types';
 import { environment } from '../../../environments/environment';
+import type { QuotationLineItemCreate, QuotationLineItem } from '../../types/quotation.types';
+
 import { ItemPickerSelect } from './ItemPickerSelect';
 
-interface PickerItem {
-  id: string;
-  item_code: string;
-  item_name: string;
-  uom: string;
-  min_order_qty: number;
-  max_order_qty: number;
-  standard_rate: string;
-  stock_levels: {
-    quantity_on_hand: number;
-    quantity_reserved: number;
-    quantity_available: number;
-  };
-  item_group: {
-    id: string;
-    name: string;
-    code: string;
-  };
-  tax_info: {
-    id: string;
-    template_name: string;
-    template_code: string;
-    is_compound: boolean;
-    breakup: Array<{
-      rule_name: string;
-      tax_type: string;
-      rate: number;
-      is_compound: boolean;
-    }>;
-  } | null;
-}
-
 interface PickerResponse {
-  items: PickerItem[];
+  items: QuotationLineItem[];
 }
 
 interface LineItemTableProps {
@@ -51,7 +21,7 @@ interface LineItemTableProps {
   readonly?: boolean;
   showFulfillmentStatus?: boolean;
   disabled?: boolean;
-  initialItemsData?: PickerItem[];
+  initialItemsData?: QuotationLineItem[];
 }
 
 const emptyItem: QuotationLineItemCreate = {
@@ -68,16 +38,16 @@ const emptyItem: QuotationLineItemCreate = {
 };
 
 interface LineItemWithMetadata extends QuotationLineItemCreate {
-  itemData?: PickerItem;
+  itemData?: QuotationLineItem;
   validationError?: string;
 }
 
 export function LineItemTable({ items, onItemsChange, readonly = false, disabled = false, initialItemsData }: LineItemTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [itemsWithMetadata, setItemsWithMetadata] = React.useState<LineItemWithMetadata[]>([]);
-  const [itemsCache, setItemsCache] = React.useState<Map<string, PickerItem>>(() => {
+  const [itemsCache, setItemsCache] = React.useState<Map<string, QuotationLineItem>>(() => {
     // Initialize cache with initial items data if provided (for edit mode)
-    const initialCache = new Map<string, PickerItem>();
+    const initialCache = new Map<string, QuotationLineItem>();
     if (initialItemsData) {
       initialItemsData.forEach(item => {
         initialCache.set(item.id, item);
@@ -87,9 +57,9 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
   });
 
   // Search function for ItemPickerSelect
-  const searchItems = React.useCallback(async (query: string): Promise<PickerItem[]> => {
+  const searchItems = React.useCallback(async (query: string): Promise<QuotationLineItem[]> => {
     if (!accessToken) return [];
-    
+
     const response = await fetch(`${environment.apiCoreUrl}/items/picker?search=${encodeURIComponent(query)}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -98,7 +68,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
     });
     if (!response.ok) throw new Error('Failed to fetch items');
     const data: PickerResponse = await response.json();
-    
+
     // Cache the items for later use
     setItemsCache(prevCache => {
       const newCache = new Map(prevCache);
@@ -107,13 +77,13 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
       });
       return newCache;
     });
-    
+
     return data.items;
   }, [accessToken]);
 
   // Label formatter
   const itemLabelFormatter = React.useCallback(
-    (item: PickerItem) => `${item.item_name} (${item.item_code})`,
+    (item: QuotationLineItem) => `${item.item_name} (${item.item_code})`,
     []
   );
 
@@ -126,22 +96,22 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
     setItemsWithMetadata(enriched);
   }, [items, itemsCache]);
 
-  const validateQuantity = (qty: number, itemData?: PickerItem): string | undefined => {
+  const validateQuantity = (qty: number, itemData?: QuotationLineItem): string | undefined => {
     if (!itemData) return undefined;
-    
-    if (qty < itemData.min_order_qty) {
+
+    if (itemData.min_order_qty && qty < itemData.min_order_qty) {
       return `Minimum order quantity is ${itemData.min_order_qty}`;
     }
-    if (qty > itemData.max_order_qty) {
+    if (itemData.max_order_qty && qty > itemData.max_order_qty) {
       return `Maximum order quantity is ${itemData.max_order_qty}`;
     }
-    if (qty > itemData.stock_levels.quantity_available) {
+    if (itemData.stock_levels?.quantity_available && qty > itemData.stock_levels.quantity_available) {
       return `Only ${itemData.stock_levels.quantity_available} units available`;
     }
     return undefined;
   };
 
-  const calculateTaxAndTotal = (item: QuotationLineItemCreate, itemData?: PickerItem): QuotationLineItemCreate => {
+  const calculateTaxAndTotal = (item: QuotationLineItemCreate, itemData?: QuotationLineItem): QuotationLineItemCreate => {
     const amount = Number(item.qty) * Number(item.rate);
     let taxRate = 0;
     let taxTemplateId: string | null = null;
@@ -150,7 +120,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
     if (itemData?.tax_info) {
       taxTemplateId = itemData.tax_info.id;
       // Calculate total tax rate from breakup
-      taxRate = itemData.tax_info.breakup.reduce((sum, tax) => sum + tax.rate, 0);
+      taxRate = itemData.tax_info.breakup.reduce((sum: number, tax: any) => sum + tax.rate, 0);
     }
 
     const taxAmount = (amount * taxRate) / 100;
@@ -172,7 +142,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
 
     // Auto-populate fields when item is selected
     if (field === 'item_id') {
-      const selectedItem = itemsCache.get(value as string);
+      const selectedItem = value && typeof value === 'string' ? itemsCache.get(value) : undefined;
       if (selectedItem) {
         updated[index].uom = selectedItem.uom;
         updated[index].rate = parseFloat(selectedItem.standard_rate) || 0;
@@ -246,11 +216,11 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
       </div>
       <div className="space-y-4">
         {itemsWithMetadata.map((item, index) => {
-          const validationError = validateQuantity(item.qty, item.itemData);
+          const validationError = validateQuantity(Number(item.qty), item.itemData);
           const baseAmount = item.amount || 0;
           const taxAmount = item.tax_amount || 0;
           const totalAmount = item.total_amount || 0;
-          
+
           return (
             <div key={index} className="rounded-lg border p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -266,8 +236,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Item Name *</Label>
-                  <ItemPickerSelect<PickerItem>
-                    value={item.item_id}
+                  <ItemPickerSelect value={item.item_id}
                     onValueChange={(v) => handleItemChange(index, 'item_id', v)}
                     searchItems={searchItems}
                     labelFormatter={itemLabelFormatter}
@@ -276,16 +245,13 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                     disabled={disabled}
                     searchPlaceholder="Search items..."
                     minSearchLength={2}
-                    selectedItemData={item.itemData || null}
-                  />
+                    selectedItemData={item.itemData || null}/>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Item Group</Label>
-                  <Input
-                    value={item.itemData?.item_group.name || '-'}
+                  <Input value={item.itemData?.item_group?.name || item.item_group?.name || '-'}
                     disabled
-                    className="bg-muted"
-                  />
+                    className="bg-muted"/>
                 </div>
               </div>
 
@@ -293,8 +259,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Quantity *</Label>
-                  <Input
-                    type="number"
+                  <Input type="number"
                     min={item.itemData?.min_order_qty || 1}
                     max={item.itemData?.max_order_qty}
                     step="0.01"
@@ -302,8 +267,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                     onChange={(e) => handleItemChange(index, 'qty', Number(e.target.value))}
                     disabled={disabled}
                     required
-                    className={validationError ? 'border-destructive' : ''}
-                  />
+                    className={validationError ? 'border-destructive' : ''}/>
                   {validationError && (
                     <div className="flex items-center gap-1 text-xs text-destructive">
                       <AlertCircle className="h-3 w-3" />
@@ -312,20 +276,18 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                   )}
                   {item.itemData && (
                     <p className="text-xs text-muted-foreground">
-                      Min: {item.itemData.min_order_qty}, Max: {item.itemData.max_order_qty}, Available: {item.itemData.stock_levels.quantity_available}
+                      Min: {item.itemData.min_order_qty}, Max: {item.itemData.max_order_qty}, Available: {item.itemData.stock_levels?.quantity_available || 0}
                     </p>
                   )}
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">UOM *</Label>
-                  <Input
-                    value={item.uom}
+                  <Input value={item.uom}
                     onChange={(e) => handleItemChange(index, 'uom', e.target.value)}
                     placeholder="pcs"
                     disabled
                     className="bg-muted"
-                    required
-                  />
+                    required/>
                 </div>
               </div>
 
@@ -333,15 +295,13 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Rate *</Label>
-                  <Input
-                    type="number"
+                  <Input type="number"
                     min="0"
                     step="0.01"
                     value={item.rate}
                     onChange={(e) => handleItemChange(index, 'rate', Number(e.target.value))}
                     disabled={disabled}
-                    required
-                  />
+                    required/>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Tax ({item.tax_rate ? `${item.tax_rate}%` : '0%'})</Label>
@@ -370,19 +330,15 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Amount (Before Tax)</Label>
-                  <Input
-                    value={baseAmount.toFixed(2)}
+                  <Input value={Number(baseAmount).toFixed(2)}
                     disabled
-                    className="font-medium bg-muted"
-                  />
+                    className="font-medium bg-muted"/>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Total Amount</Label>
-                  <Input
-                    value={totalAmount}
+                  <Input value={totalAmount}
                     disabled
-                    className="font-bold bg-primary/10"
-                  />
+                    className="font-bold bg-primary/10"/>
                 </div>
               </div>
             </div>

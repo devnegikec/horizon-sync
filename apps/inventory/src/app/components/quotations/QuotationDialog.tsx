@@ -71,18 +71,8 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
           setInitialItemsData(itemsWithPickerData);
         }
         
-        setItems(lineItems.map((item: any) => ({
-          item_id: item.item_id || item.id,
-          qty: Number(item.qty),
-          uom: item.uom,
-          rate: Number(item.rate),
-          amount: Number(item.amount),
-          tax_template_id: item.tax_template_id || null,
-          tax_rate: item.tax_rate || 0,
-          tax_amount: item.tax_amount || 0,
-          total_amount: item.total_amount || 0,
-          sort_order: item.sort_order,
-        })));
+        // Use items directly from API response
+        setItems(lineItems as QuotationLineItemCreate[]);
       } else {
         setItems([{ ...emptyItem, sort_order: 1 }]);
         setInitialItemsData([]);
@@ -107,7 +97,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
   };
 
   const grandTotal = React.useMemo(() => {
-    return items.reduce((sum, item) => sum + Number(item.amount), 0);
+    return items.reduce((sum, item) => sum + Number(item.total_amount || item.amount || 0), 0);
   }, [items]);
 
   const isLineItemEditingDisabled = isEdit && (formData.status === 'sent' || formData.status === 'accepted' || formData.status === 'rejected' || formData.status === 'expired');
@@ -124,7 +114,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
       alert('Please add at least one line item with a valid item');
       return;
     }
-    if (items.some(item => item.qty <= 0 || item.rate < 0)) {
+    if (items.some(item => Number(item.qty) <= 0 || Number(item.rate) < 0)) {
       alert('All line items must have positive quantities and non-negative rates');
       return;
     }
