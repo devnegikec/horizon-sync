@@ -276,6 +276,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                     disabled={disabled}
                     searchPlaceholder="Search items..."
                     minSearchLength={2}
+                    selectedItemData={item.itemData || null}
                   />
                 </div>
                 <div className="space-y-1">

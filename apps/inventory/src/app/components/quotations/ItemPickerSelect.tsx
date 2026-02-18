@@ -12,6 +12,7 @@ interface ItemPickerSelectProps<T> {
   disabled?: boolean;
   searchPlaceholder?: string;
   minSearchLength?: number;
+  selectedItemData?: T | null;
 }
 
 export function ItemPickerSelect<T extends Record<string, any>>({
@@ -24,12 +25,13 @@ export function ItemPickerSelect<T extends Record<string, any>>({
   disabled = false,
   searchPlaceholder = 'Search items...',
   minSearchLength = 2,
+  selectedItemData,
 }: ItemPickerSelectProps<T>) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [items, setItems] = React.useState<T[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
-  const [selectedItem, setSelectedItem] = React.useState<T | null>(null);
+  const [selectedItem, setSelectedItem] = React.useState<T | null>(selectedItemData || null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -66,15 +68,17 @@ export function ItemPickerSelect<T extends Record<string, any>>({
     };
   }, [searchQuery, searchItems, minSearchLength]);
 
-  // Update selected item when value changes
+  // Update selected item when value or selectedItemData changes
   React.useEffect(() => {
-    if (value && items.length > 0) {
+    if (selectedItemData) {
+      setSelectedItem(selectedItemData);
+    } else if (value && items.length > 0) {
       const item = items.find((item) => String(item[valueKey]) === value);
       if (item) {
         setSelectedItem(item);
       }
     }
-  }, [value, items, valueKey]);
+  }, [value, items, valueKey, selectedItemData]);
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
