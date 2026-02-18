@@ -2,8 +2,12 @@ import { apiRequest, buildPaginationParams } from './core';
 import type {
   Account,
   AccountBalanceHistoryResponse,
+  AccountCodeFormat,
+  AccountPaginationResponse,
   AuditTrailResponse,
   CreateAccountPayload,
+  DefaultAccountMapping,
+  DefaultAccountUpdateResponse,
   UpdateAccountPayload,
 } from '../../types/account.types';
 
@@ -44,7 +48,7 @@ export const accountApi = {
       params.parent_account_id = filters.parent_account_id;
     }
 
-    return apiRequest('/chart-of-accounts', accessToken, { params });
+    return apiRequest<AccountPaginationResponse>('/chart-of-accounts', accessToken, { params });
   },
 
   get: (accessToken: string, id: string) =>
@@ -139,7 +143,7 @@ export const accountApi = {
     if (transactionType) {
       params.transaction_type = transactionType;
     }
-    return apiRequest('/chart-of-accounts/config/defaults', accessToken, { params });
+    return apiRequest<DefaultAccountMapping[]>('/chart-of-accounts/config/defaults', accessToken, { params });
   },
 
   updateDefaultAccounts: (accessToken: string, defaults: Array<{
@@ -147,16 +151,16 @@ export const accountApi = {
     scenario?: string | null;
     account_id: string;
   }>) =>
-    apiRequest('/chart-of-accounts/config/defaults', accessToken, {
+    apiRequest<DefaultAccountUpdateResponse>('/chart-of-accounts/config/defaults', accessToken, {
       method: 'PUT',
       body: defaults,
     }),
 
   getAccountCodeFormat: (accessToken: string) =>
-    apiRequest('/chart-of-accounts/config/format', accessToken),
+    apiRequest<AccountCodeFormat>('/chart-of-accounts/config/format', accessToken),
 
   updateAccountCodeFormat: (accessToken: string, formatPattern: string) =>
-    apiRequest('/chart-of-accounts/config/format', accessToken, {
+    apiRequest<AccountCodeFormat>('/chart-of-accounts/config/format', accessToken, {
       method: 'PUT',
       params: {
         format_pattern: formatPattern,
