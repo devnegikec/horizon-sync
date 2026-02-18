@@ -51,6 +51,7 @@ interface LineItemTableProps {
   readonly?: boolean;
   showFulfillmentStatus?: boolean;
   disabled?: boolean;
+  initialItemsData?: PickerItem[];
 }
 
 const emptyItem: QuotationLineItemCreate = {
@@ -71,10 +72,19 @@ interface LineItemWithMetadata extends QuotationLineItemCreate {
   validationError?: string;
 }
 
-export function LineItemTable({ items, onItemsChange, readonly = false, disabled = false }: LineItemTableProps) {
+export function LineItemTable({ items, onItemsChange, readonly = false, disabled = false, initialItemsData }: LineItemTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [itemsWithMetadata, setItemsWithMetadata] = React.useState<LineItemWithMetadata[]>([]);
-  const [itemsCache, setItemsCache] = React.useState<Map<string, PickerItem>>(new Map());
+  const [itemsCache, setItemsCache] = React.useState<Map<string, PickerItem>>(() => {
+    // Initialize cache with initial items data if provided (for edit mode)
+    const initialCache = new Map<string, PickerItem>();
+    if (initialItemsData) {
+      initialItemsData.forEach(item => {
+        initialCache.set(item.id, item);
+      });
+    }
+    return initialCache;
+  });
 
   // Search function for ItemPickerSelect
   const searchItems = React.useCallback(async (query: string): Promise<PickerItem[]> => {
@@ -348,7 +358,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                     </div>
                     {item.tax_amount ? (
                       <p className="text-xs text-muted-foreground">
-                        Tax Amount: ₹{taxAmount.toFixed(2)}
+                        Tax Amount: ₹{taxAmount}
                       </p>
                     ) : null}
                   </div>
@@ -368,7 +378,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                 <div className="space-y-1">
                   <Label className="text-xs">Total Amount</Label>
                   <Input
-                    value={totalAmount.toFixed(2)}
+                    value={totalAmount}
                     disabled
                     className="font-bold bg-primary/10"
                   />

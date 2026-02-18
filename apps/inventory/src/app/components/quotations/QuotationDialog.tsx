@@ -41,6 +41,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
   });
 
   const [items, setItems] = React.useState<QuotationLineItemCreate[]>([{ ...emptyItem, sort_order: 1 }]);
+  const [initialItemsData, setInitialItemsData] = React.useState<any[]>([]);
 
   const { data: customersData } = useQuery<CustomerResponse>({
     queryKey: ['customers-list'],
@@ -64,16 +65,27 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
       // Handle both 'items' and 'line_items' field names from API
       const lineItems = quotation.items || quotation.line_items || [];
       if (lineItems.length > 0) {
-        setItems(lineItems.map((item) => ({
-          item_id: item.item_id,
+        // Extract picker data if available (items with full details)
+        const itemsWithPickerData = lineItems.filter((item: any) => item.item_code && item.item_name);
+        if (itemsWithPickerData.length > 0) {
+          setInitialItemsData(itemsWithPickerData);
+        }
+        
+        setItems(lineItems.map((item: any) => ({
+          item_id: item.item_id || item.id,
           qty: Number(item.qty),
           uom: item.uom,
           rate: Number(item.rate),
           amount: Number(item.amount),
+          tax_template_id: item.tax_template_id || null,
+          tax_rate: item.tax_rate || 0,
+          tax_amount: item.tax_amount || 0,
+          total_amount: item.total_amount || 0,
           sort_order: item.sort_order,
         })));
       } else {
         setItems([{ ...emptyItem, sort_order: 1 }]);
+        setInitialItemsData([]);
       }
     } else {
       setFormData({
@@ -86,6 +98,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         remarks: '',
       });
       setItems([{ ...emptyItem, sort_order: 1 }]);
+      setInitialItemsData([]);
     }
   }, [quotation, open]);
 
@@ -283,6 +296,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
             items={items} 
             onItemsChange={setItems} 
             disabled={isLineItemEditingDisabled}
+            initialItemsData={initialItemsData}
           />
 
           {/* Grand Total */}
