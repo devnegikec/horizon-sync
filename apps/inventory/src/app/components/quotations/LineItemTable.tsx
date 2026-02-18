@@ -50,7 +50,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
     const initialCache = new Map<string, QuotationLineItem>();
     if (initialItemsData) {
       initialItemsData.forEach(item => {
-        initialCache.set(item.id, item);
+        initialCache.set(item.item_id, item);
       });
     }
     return initialCache;
@@ -86,6 +86,19 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
     (item: QuotationLineItem) => `${item.item_name} (${item.item_code})`,
     []
   );
+
+  // Update cache when initialItemsData changes
+  React.useEffect(() => {
+    if (initialItemsData) {
+      setItemsCache(prevCache => {
+        const newCache = new Map(prevCache);
+        initialItemsData.forEach(item => {
+          newCache.set(item.item_id, item);
+        });
+        return newCache;
+      });
+    }
+  }, [initialItemsData]);
 
   // Sync items with metadata from cache
   React.useEffect(() => {
