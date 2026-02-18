@@ -132,4 +132,34 @@ export const accountApi = {
 
     return apiRequest<AuditTrailResponse>(`/chart-of-accounts/${id}/audit-trail`, accessToken, { params });
   },
+
+  // Configuration operations
+  getDefaultAccounts: (accessToken: string, transactionType?: string) => {
+    const params: Record<string, string> = {};
+    if (transactionType) {
+      params.transaction_type = transactionType;
+    }
+    return apiRequest('/chart-of-accounts/config/defaults', accessToken, { params });
+  },
+
+  updateDefaultAccounts: (accessToken: string, defaults: Array<{
+    transaction_type: string;
+    scenario?: string | null;
+    account_id: string;
+  }>) =>
+    apiRequest('/chart-of-accounts/config/defaults', accessToken, {
+      method: 'PUT',
+      body: defaults,
+    }),
+
+  getAccountCodeFormat: (accessToken: string) =>
+    apiRequest('/chart-of-accounts/config/format', accessToken),
+
+  updateAccountCodeFormat: (accessToken: string, formatPattern: string) =>
+    apiRequest('/chart-of-accounts/config/format', accessToken, {
+      method: 'PUT',
+      params: {
+        format_pattern: formatPattern,
+      },
+    }),
 };

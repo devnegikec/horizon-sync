@@ -172,3 +172,47 @@ export interface ReportFilters {
   status: string;
   as_of_date: string;
 }
+
+/**
+ * Default account configuration types
+ */
+
+export interface DefaultAccountMapping {
+  id: string;
+  organization_id: string;
+  transaction_type: string;
+  scenario: string | null;
+  account_id: string;
+  account_code?: string;
+  account_name?: string;
+  account_type?: AccountType;
+}
+
+export interface DefaultAccountUpdate {
+  transaction_type: string;
+  scenario?: string | null;
+  account_id: string;
+}
+
+export interface DefaultAccountUpdateResponse {
+  updated: Array<{
+    transaction_type: string;
+    scenario: string | null;
+    account_id: string;
+  }>;
+  errors: Array<{
+    error: string;
+    data: unknown;
+  }>;
+  success_count: number;
+  error_count: number;
+}
+
+/**
+ * System configuration types
+ */
+
+export interface AccountCodeFormat {
+  format_pattern: string;
+  example: string | null;
+}

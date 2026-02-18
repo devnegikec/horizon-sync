@@ -72,7 +72,7 @@ export function ExportDialog({ open, onOpenChange, filters }: ExportDialogProps)
       // Build query parameters
       const params = new URLSearchParams();
       params.append('format', selectedFormat);
-      
+
       if (filters.account_type && filters.account_type !== 'all') {
         params.append('account_type', filters.account_type);
       }
@@ -85,7 +85,7 @@ export function ExportDialog({ open, onOpenChange, filters }: ExportDialogProps)
 
       // Trigger download
       const url = `/api/v1/accounts/export?${params.toString()}`;
-      
+
       // Create a temporary link and click it to trigger download
       const link = document.createElement('a');
       link.href = url;
@@ -95,7 +95,7 @@ export function ExportDialog({ open, onOpenChange, filters }: ExportDialogProps)
       document.body.removeChild(link);
 
       setSuccess(true);
-      
+
       // Close dialog after a short delay
       setTimeout(() => {
         onOpenChange(false);
@@ -126,10 +126,10 @@ export function ExportDialog({ open, onOpenChange, filters }: ExportDialogProps)
           {/* Active Filters Info */}
           {(filters.account_type !== 'all' || filters.status !== 'all' || filters.currency !== 'all') && (
             <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
-                <strong>Active filters:</strong>
-                {filters.account_type !== 'all' && ` Type: ${filters.account_type}`}
-                {filters.status !== 'all' && ` • Status: ${filters.status}`}
-                {filters.currency !== 'all' && ` • Currency: ${filters.currency}`}
+              <strong>Active filters:</strong>
+              {filters.account_type !== 'all' && ` Type: ${filters.account_type}`}
+              {filters.status !== 'all' && ` • Status: ${filters.status}`}
+              {filters.currency !== 'all' && ` • Currency: ${filters.currency}`}
             </div>
           )}
 
@@ -173,7 +173,7 @@ export function ExportDialog({ open, onOpenChange, filters }: ExportDialogProps)
           {/* Success Message */}
           {success && (
             <div className="rounded-md border border-green-500 bg-green-50 p-3 text-green-700 dark:bg-green-900/20 dark:text-green-400">
-                ✓ Export started successfully! Your download should begin shortly.
+              ✓ Export started successfully! Your download should begin shortly.
             </div>
           )}
 
