@@ -1,11 +1,13 @@
 import * as React from 'react';
+
 import { useQuery } from '@tanstack/react-query';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Separator, Textarea } from '@horizon-sync/ui/components';
 
-import type { SalesOrder, SalesOrderCreate, SalesOrderItemCreate, SalesOrderStatus, SalesOrderUpdate } from '../../types/sales-order.types';
 import type { CustomerResponse } from '../../types/customer.types';
+import type { QuotationLineItemCreate } from '../../types/quotation.types';
+import type { SalesOrder, SalesOrderCreate, SalesOrderItemCreate, SalesOrderStatus, SalesOrderUpdate } from '../../types/sales-order.types';
 import { customerApi } from '../../utility/api/customers';
 import { LineItemTable } from '../quotations/LineItemTable';
 
@@ -40,7 +42,8 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
     remarks: '',
   });
 
-  const [items, setItems] = React.useState<SalesOrderItemCreate[]>([{ ...emptyItem, sort_order: 1 }]);
+  const [items, setItems] = React.useState<QuotationLineItemCreate[]>([{ ...emptyItem, sort_order: 1 }]);
+  const [initialItemsData, setInitialItemsData] = React.useState<any[]>([]);
 
   const { data: customersData } = useQuery<CustomerResponse>({
     queryKey: ['customers-list'],
@@ -62,6 +65,9 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
         remarks: salesOrder.remarks || '',
       });
       if (salesOrder.items && salesOrder.items.length > 0) {
+        // Set all items as initial data for the cache (they contain full details in edit mode)
+        setInitialItemsData(salesOrder.items);
+
         setItems(salesOrder.items.map((item) => ({
           item_id: item.item_id,
           qty: Number(item.qty),
@@ -70,6 +76,8 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
           amount: Number(item.amount),
           sort_order: item.sort_order,
         })));
+      } else {
+        setInitialItemsData([]);
       }
     } else {
       setFormData({
@@ -82,6 +90,7 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
         remarks: '',
       });
       setItems([{ ...emptyItem, sort_order: 1 }]);
+      setInitialItemsData([]);
     }
   }, [salesOrder, open]);
 
@@ -107,7 +116,7 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
       alert('Please add at least one line item with a valid item');
       return;
     }
-    if (items.some(item => item.qty <= 0 || item.rate < 0)) {
+    if (items.some(item => Number(item.qty) <= 0 || Number(item.rate) < 0)) {
       alert('All line items must have positive quantities and non-negative rates');
       return;
     }
@@ -125,7 +134,14 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
       };
 
       if (!isLineItemEditingDisabled) {
-        updateData.items = items;
+        updateData.items = items.map(item => ({
+          item_id: item.item_id,
+          qty: Number(item.qty),
+          uom: item.uom,
+          rate: Number(item.rate),
+          amount: Number(item.amount),
+          sort_order: item.sort_order,
+        }));
       }
 
       await onSave(updateData, salesOrder.id);
@@ -139,7 +155,14 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
         grand_total: grandTotal,
         currency: formData.currency,
         remarks: formData.remarks || null,
-        items: items,
+        items: items.map(item => ({
+          item_id: item.item_id,
+          qty: Number(item.qty),
+          uom: item.uom,
+          rate: Number(item.rate),
+          amount: Number(item.amount),
+          sort_order: item.sort_order,
+        })),
       };
       await onSave(createData);
     }
@@ -180,22 +203,18 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="sales_order_no">Sales Order #</Label>
-                <Input
-                  id="sales_order_no"
+                <Input id="sales_order_no"
                   value={formData.sales_order_no}
                   onChange={(e) => handleChange('sales_order_no', e.target.value)}
                   disabled={isEdit}
-                  placeholder={isEdit ? '' : 'Auto-generated if left blank'}
-                />
+                  placeholder={isEdit ? '' : 'Auto-generated if left blank'}/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customer_id">Customer *</Label>
-                <Select
-                  value={formData.customer_id}
+                <Select value={formData.customer_id}
                   onValueChange={(v) => handleChange('customer_id', v)}
                   disabled={isEdit}
-                  required
-                >
+                  required>
                   <SelectTrigger>
                     <SelectValue placeholder="Select customer" />
                   </SelectTrigger>
@@ -211,30 +230,24 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="order_date">Order Date *</Label>
-                <Input
-                  id="order_date"
+                <Input id="order_date"
                   type="date"
                   value={formData.order_date}
                   onChange={(e) => handleChange('order_date', e.target.value)}
-                  required
-                />
+                  required/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="delivery_date">Delivery Date</Label>
-                <Input
-                  id="delivery_date"
+                <Input id="delivery_date"
                   type="date"
                   value={formData.delivery_date}
-                  onChange={(e) => handleChange('delivery_date', e.target.value)}
-                />
+                  onChange={(e) => handleChange('delivery_date', e.target.value)}/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="currency">Currency *</Label>
-                <Select
-                  value={formData.currency}
+                <Select value={formData.currency}
                   onValueChange={(v) => handleChange('currency', v)}
-                  disabled={isEdit}
-                >
+                  disabled={isEdit}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -251,11 +264,9 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
             {isEdit && (
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
+                <Select value={formData.status}
                   onValueChange={(v) => handleChange('status', v as SalesOrderStatus)}
-                  disabled={availableStatuses.length === 1}
-                >
+                  disabled={availableStatuses.length === 1}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -274,22 +285,19 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
           {/* Remarks */}
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>
-            <Textarea
-              id="remarks"
+            <Textarea id="remarks"
               value={formData.remarks}
               onChange={(e) => handleChange('remarks', e.target.value)}
               placeholder="Additional notes..."
-              rows={2}
-            />
+              rows={2}/>
           </div>
 
           {/* Line Items */}
           <Separator />
-          {/* <LineItemTable
-            items={items}
+          <LineItemTable items={items}
             onItemsChange={setItems}
             disabled={isLineItemEditingDisabled}
-          /> */}
+            initialItemsData={initialItemsData} />
 
           {/* Fulfillment Info (edit mode only) */}
           {isEdit && salesOrder?.items && salesOrder.items.some(i => Number(i.billed_qty) > 0 || Number(i.delivered_qty) > 0) && (
