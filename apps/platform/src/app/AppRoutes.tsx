@@ -5,6 +5,7 @@ import { Route, Routes } from 'react-router-dom';
 import { DashboardLayout, DashboardHome, AuthGuard, PublicRoute } from './components';
 import { PlaceholderPage } from './components/PlaceholderPage';
 import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage } from './pages';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 const RevenuePage = React.lazy(() => import('inventory/RevenuePage'));

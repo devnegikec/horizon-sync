@@ -53,8 +53,7 @@ export function useLocalSearch(entityType: string, query: string) {
         query: debouncedQuery,
         page: 1,
         page_size: 20,
-        sort: 'created_at',
-        sort_order: 'desc',
+        sort_by: 'created_at',
       }, accessToken || undefined);
     },
     // Only enable the query when the debounced query has at least 2 characters AND we have a token

@@ -27,6 +27,14 @@ export default composePlugins(
       publicPath: 'auto',
     };
 
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      {
+        module: /@module-federation/,
+        message: /Failed to parse source map/,
+      },
+    ];
+
     config.devServer = {
       ...config.devServer,
       hot: true,
