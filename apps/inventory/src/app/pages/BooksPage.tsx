@@ -1,14 +1,14 @@
 import * as React from 'react';
 
-import { BookOpen, FileText, CreditCard } from 'lucide-react';
+import { BookOpen, FileText, CreditCard, Settings } from 'lucide-react';
 
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { AccountManagement } from '../components/accounts';
+import { AccountManagement, SystemConfiguration } from '../components/accounts';
 
-type ActiveView = 'coa' | 'journal_entries' | 'payments';
+type ActiveView = 'coa' | 'journal_entries' | 'payments' | 'configuration';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -54,6 +54,12 @@ export function BooksPage() {
                 isActive={activeView === 'payments'} 
                 onClick={() => setActiveView('payments')} 
               />
+              <NavItem 
+                icon={Settings} 
+                label="Configuration" 
+                isActive={activeView === 'configuration'} 
+                onClick={() => setActiveView('configuration')} 
+              />
             </nav>
           </div>
         </header>
@@ -79,6 +85,7 @@ export function BooksPage() {
               </div>
             </div>
           )}
+          {activeView === 'configuration' && <SystemConfiguration />}
         </main>
       </div>
     </ThemeProvider>

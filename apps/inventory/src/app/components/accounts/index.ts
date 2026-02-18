@@ -3,3 +3,4 @@ export { AccountsTable } from './AccountsTable';
 export { AccountDialog } from './AccountDialog';
 export { AccountTreeView } from './AccountTreeView';
 export { Reports } from './Reports';
+export { SystemConfiguration } from './SystemConfiguration';
