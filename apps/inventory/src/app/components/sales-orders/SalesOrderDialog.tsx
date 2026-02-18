@@ -61,7 +61,7 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
         order_date: salesOrder.order_date.slice(0, 10),
         delivery_date: salesOrder.delivery_date ? salesOrder.delivery_date.slice(0, 10) : '',
         currency: salesOrder.currency,
-        status: salesOrder.status,
+        status: salesOrder.status || 'draft',
         remarks: salesOrder.remarks || '',
       });
       if (salesOrder.items && salesOrder.items.length > 0) {
@@ -264,14 +264,14 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
             {isEdit && (
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select value={formData.status || 'draft'}
+                <Select value={formData.status}
                   onValueChange={(v) => handleChange('status', v as SalesOrderStatus)}
                   disabled={availableStatuses.length === 1}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableStatuses.map((status) => (
+                    {availableStatuses.filter(status => status).map((status) => (
                       <SelectItem key={status} value={status}>
                         {statusLabels[status]}
                       </SelectItem>
