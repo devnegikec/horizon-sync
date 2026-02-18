@@ -264,7 +264,7 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
             {isEdit && (
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select value={formData.status}
+                <Select value={formData.status || 'draft'}
                   onValueChange={(v) => handleChange('status', v as SalesOrderStatus)}
                   disabled={availableStatuses.length === 1}>
                   <SelectTrigger>
