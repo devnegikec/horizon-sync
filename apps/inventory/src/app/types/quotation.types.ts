@@ -1,14 +1,47 @@
 export interface QuotationLineItem {
-  id?: string;
+  id: string;
   quotation_id?: string;
+  organization_id?: string;
   item_id: string;
   item_name?: string;
   item_sku?: string;
-  qty: number;
+  item_code?: string;
+  qty: number | string;
   uom: string;
-  rate: number;
-  amount: number;
+  rate: number | string;
+  amount: number | string;
+  tax_template_id?: string | null;
+  tax_rate?: number | string;
+  tax_amount?: number | string;
+  total_amount?: number | string;
   sort_order: number;
+  min_order_qty?: number;
+  max_order_qty?: number;
+  standard_rate?: string;
+  stock_levels?: {
+    quantity_on_hand: number;
+    quantity_reserved: number;
+    quantity_available: number;
+  };
+  item_group?: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  tax_info?: {
+    id: string;
+    template_name: string;
+    template_code: string;
+    is_compound: boolean;
+    breakup: Array<{
+      rule_name: string;
+      tax_type: string;
+      rate: number;
+      is_compound: boolean;
+    }>;
+  } | null;
+  created_at?: string;
+  updated_at?: string;
   extra_data?: Record<string, unknown>;
 }
 
@@ -58,10 +91,14 @@ export interface QuotationResponse {
 
 export interface QuotationLineItemCreate {
   item_id: string;
-  qty: number;
+  qty: number | string;
   uom: string;
-  rate: number;
-  amount: number;
+  rate: number | string;
+  amount: number | string;
+  tax_template_id?: string | null;
+  tax_rate?: number | string;
+  tax_amount?: number | string;
+  total_amount?: number | string;
   sort_order: number;
 }
 

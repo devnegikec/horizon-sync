@@ -19,3 +19,8 @@ declare module 'inventory/BooksPage' {
   const Component: React.ComponentType;
   export default Component;
 }
+
+declare module 'inventory/TaxChargesPage' {
+  const Component: React.ComponentType;
+  export default Component;
+}

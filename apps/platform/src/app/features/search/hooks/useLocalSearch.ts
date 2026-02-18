@@ -29,10 +29,17 @@ import type { SearchResponse } from '../types/search.types';
  */
 export function useLocalSearch(entityType: string, query: string) {
   const { accessToken } = useAuth();
-  
+
   // Validate entity type
   if (!isValidEntityType(entityType)) {
-    throw new Error(`Invalid entity type: ${entityType}`);
+    console.error(`Invalid entity type: ${entityType}`);
+    return {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error(`Invalid entity type: ${entityType}`),
+      refetch: async () => { throw new Error(`Invalid entity type: ${entityType}`); },
+    };
   }
 
   // Debounce the query to avoid excessive API calls

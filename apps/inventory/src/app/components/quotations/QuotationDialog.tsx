@@ -1,12 +1,14 @@
 import * as React from 'react';
+
 import { useQuery } from '@tanstack/react-query';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Separator, Textarea } from '@horizon-sync/ui/components';
 
-import type { Quotation, QuotationCreate, QuotationLineItemCreate, QuotationStatus, QuotationUpdate } from '../../types/quotation.types';
 import type { CustomerResponse } from '../../types/customer.types';
+import type { Quotation, QuotationCreate, QuotationLineItemCreate, QuotationStatus, QuotationUpdate } from '../../types/quotation.types';
 import { customerApi } from '../../utility/api';
+
 import { LineItemTable } from './LineItemTable';
 
 interface QuotationDialogProps {
@@ -41,6 +43,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
   });
 
   const [items, setItems] = React.useState<QuotationLineItemCreate[]>([{ ...emptyItem, sort_order: 1 }]);
+  const [initialItemsData, setInitialItemsData] = React.useState<any[]>([]);
 
   const { data: customersData } = useQuery<CustomerResponse>({
     queryKey: ['customers-list'],
@@ -64,16 +67,14 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
       // Handle both 'items' and 'line_items' field names from API
       const lineItems = quotation.items || quotation.line_items || [];
       if (lineItems.length > 0) {
-        setItems(lineItems.map((item) => ({
-          item_id: item.item_id,
-          qty: Number(item.qty),
-          uom: item.uom,
-          rate: Number(item.rate),
-          amount: Number(item.amount),
-          sort_order: item.sort_order,
-        })));
+        // Set all items as initial data for the cache (they contain full details in edit mode)
+        setInitialItemsData(lineItems);
+
+        // Use items directly from API response
+        setItems(lineItems as QuotationLineItemCreate[]);
       } else {
         setItems([{ ...emptyItem, sort_order: 1 }]);
+        setInitialItemsData([]);
       }
     } else {
       setFormData({
@@ -86,6 +87,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         remarks: '',
       });
       setItems([{ ...emptyItem, sort_order: 1 }]);
+      setInitialItemsData([]);
     }
   }, [quotation, open]);
 
@@ -94,14 +96,14 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
   };
 
   const grandTotal = React.useMemo(() => {
-    return items.reduce((sum, item) => sum + Number(item.amount), 0);
+    return items.reduce((sum, item) => sum + Number(item.total_amount || item.amount || 0), 0);
   }, [items]);
 
   const isLineItemEditingDisabled = isEdit && (formData.status === 'sent' || formData.status === 'accepted' || formData.status === 'rejected' || formData.status === 'expired');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     if (!formData.customer_id) {
       alert('Please select a customer');
@@ -111,7 +113,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
       alert('Please add at least one line item with a valid item');
       return;
     }
-    if (items.some(item => item.qty <= 0 || item.rate < 0)) {
+    if (items.some(item => Number(item.qty) <= 0 || Number(item.rate) < 0)) {
       alert('All line items must have positive quantities and non-negative rates');
       return;
     }
@@ -127,11 +129,11 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         status: formData.status,
         remarks: formData.remarks || undefined,
       };
-      
+
       if (!isLineItemEditingDisabled) {
         updateData.items = items;
       }
-      
+
       await onSave(updateData, quotation.id);
     } else {
       const createData: QuotationCreate = {
@@ -152,7 +154,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
   const canChangeStatus = isEdit && quotation;
   const availableStatuses: QuotationStatus[] = React.useMemo(() => {
     if (!canChangeStatus) return ['draft'];
-    
+
     const current = formData.status;
     if (current === 'draft') return ['draft', 'sent'];
     if (current === 'sent') return ['sent', 'accepted', 'rejected', 'expired'];
@@ -173,22 +175,18 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="quotation_no">Quotation #</Label>
-                <Input
-                  id="quotation_no"
+                <Input id="quotation_no"
                   value={formData.quotation_no}
                   onChange={(e) => handleChange('quotation_no', e.target.value)}
                   disabled={isEdit}
-                  placeholder={isEdit ? '' : 'Auto-generated if left blank'}
-                />
+                  placeholder={isEdit ? '' : 'Auto-generated if left blank'}/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customer_id">Customer *</Label>
-                <Select 
-                  value={formData.customer_id || undefined} 
-                  onValueChange={(v) => handleChange('customer_id', v)} 
+                <Select value={formData.customer_id || undefined}
+                  onValueChange={(v) => handleChange('customer_id', v)}
                   disabled={isEdit}
-                  required
-                >
+                  required>
                   <SelectTrigger>
                     <SelectValue placeholder="Select customer" />
                   </SelectTrigger>
@@ -204,31 +202,25 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="quotation_date">Quotation Date *</Label>
-                <Input
-                  id="quotation_date"
+                <Input id="quotation_date"
                   type="date"
                   value={formData.quotation_date}
                   onChange={(e) => handleChange('quotation_date', e.target.value)}
-                  required
-                />
+                  required/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="valid_until">Valid Until *</Label>
-                <Input
-                  id="valid_until"
+                <Input id="valid_until"
                   type="date"
                   value={formData.valid_until}
                   onChange={(e) => handleChange('valid_until', e.target.value)}
-                  required
-                />
+                  required/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="currency">Currency *</Label>
-                <Select 
-                  value={formData.currency} 
+                <Select value={formData.currency}
                   onValueChange={(v) => handleChange('currency', v)}
-                  disabled={isEdit}
-                >
+                  disabled={isEdit}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -245,11 +237,9 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
             {isEdit && (
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select 
-                  value={formData.status || 'draft'} 
+                <Select value={formData.status || 'draft'}
                   onValueChange={(v) => handleChange('status', v as QuotationStatus)}
-                  disabled={availableStatuses.length === 1}
-                >
+                  disabled={availableStatuses.length === 1} >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -268,22 +258,19 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
           {/* Remarks */}
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>
-            <Textarea
-              id="remarks"
+            <Textarea id="remarks"
               value={formData.remarks}
               onChange={(e) => handleChange('remarks', e.target.value)}
               placeholder="Additional notes..."
-              rows={2}
-            />
+              rows={2}/>
           </div>
 
           {/* Line Items */}
           <Separator />
-          <LineItemTable 
-            items={items} 
-            onItemsChange={setItems} 
+          <LineItemTable items={items}
+            onItemsChange={setItems}
             disabled={isLineItemEditingDisabled}
-          />
+            initialItemsData={initialItemsData}/>
 
           {/* Grand Total */}
           <div className="flex justify-end">

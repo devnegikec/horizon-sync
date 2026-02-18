@@ -4,7 +4,7 @@ import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { Package, Plus, MoreHorizontal, Eye, Edit, Power, PowerOff, Building2, Upload } from 'lucide-react';
 
 import { TableSkeleton, Badge, Button, Card, CardContent } from '@horizon-sync/ui/components'
-import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
+import { DataTable, DataTableColumnHeader, DataTableViewOptions } from '@horizon-sync/ui/components/data-table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,12 +51,14 @@ export function ItemsTable({
   onTableReady, 
   serverPagination 
 }: ItemsTableProps) {
-  const tableReadyRef = React.useRef<((table: Table<ApiItem>) => void) | undefined>(onTableReady);
+  const [tableInstance, setTableInstance] = React.useState<Table<ApiItem> | null>(null);
 
-  // Update ref when onTableReady changes
+  // Call onTableReady when table instance is available
   React.useEffect(() => {
-    tableReadyRef.current = onTableReady;
-  }, [onTableReady]);
+    if (tableInstance && onTableReady) {
+      onTableReady(tableInstance);
+    }
+  }, [tableInstance, onTableReady]);
 
   // Create server pagination config for DataTable
   const serverPaginationConfig = React.useMemo(() => {
@@ -176,12 +178,10 @@ export function ItemsTable({
     [onView, onEdit, onToggleStatus],
   );
 
-  const renderViewOptions = React.useCallback((table: Table<ApiItem>) => {
-    // Call onTableReady callback if provided
-    if (tableReadyRef.current) {
-      tableReadyRef.current(table);
-    }
-    return null; // Don't render anything in the table
+  // Callback to capture table instance from DataTable
+  const handleTableReady = React.useCallback((table: Table<ApiItem>) => {
+    setTableInstance(table);
+    return <DataTableViewOptions table={table} />;
   }, []);
 
   // Check if error is related to organization
@@ -280,7 +280,7 @@ export function ItemsTable({
             initialPageSize: serverPagination?.pageSize ?? 20,
             serverPagination: serverPaginationConfig,
           }}
-          renderViewOptions={renderViewOptions}
+          renderViewOptions={handleTableReady}
           fixedHeader
           maxHeight="600px"/>
       </CardContent>

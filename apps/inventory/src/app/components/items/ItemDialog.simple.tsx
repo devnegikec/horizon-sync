@@ -1,16 +1,14 @@
 import * as React from 'react';
 
-import { Dialog, DialogContent } from '@horizon-sync/ui/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
+import { Button } from '@horizon-sync/ui/components/ui/button';
 
 import { useItemForm } from '../../hooks/useItemForm';
 import { useItemSubmission } from '../../hooks/useItemSubmission';
 import type { ApiItemGroup } from '../../types/item-groups.types';
 import type { Item } from '../../types/item.types';
 
-import { ItemDialogFooter } from './ItemDialogFooter';
-import { ItemDialogHeader } from './ItemDialogHeader';
-import { ItemFormFields } from './ItemFormFields';
-
+import { SimpleItemFormFields } from './SimpleItemFormFields';
 import { useTaxTemplates } from '../../hooks/useTaxTemplates';
 
 interface ItemDialogProps {
@@ -24,7 +22,7 @@ interface ItemDialogProps {
   onItemGroupsRefresh?: () => void;
 }
 
-export function ItemDialog({
+export function ItemDialogSimple({
   open,
   onOpenChange,
   item,
@@ -62,20 +60,37 @@ export function ItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-        <ItemDialogHeader isEditing={isEditing} />
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? 'Edit Item' : 'Create New Item'}
+          </DialogTitle>
+        </DialogHeader>
 
-        <form onSubmit={handleFormSubmit}>
-          <ItemFormFields
+        <form onSubmit={handleFormSubmit} className="space-y-4">
+          <SimpleItemFormFields
             formData={formData}
             setFormData={setFormData}
             itemGroups={itemGroups}
-            onItemGroupsRefresh={onItemGroupsRefresh}
-            isLoading={isLoading}
             salesTaxTemplates={salesTaxTemplates}
             purchaseTaxTemplates={purchaseTaxTemplates}
             isLoadingTaxTemplates={isLoadingTaxTemplates}
           />
+
+          {error && (
+            <div className="text-sm text-red-500 bg-red-50 dark:bg-red-950 p-3 rounded-md">
+              {error}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={handleCancel} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Saving...' : isEditing ? 'Update Item' : 'Create Item'}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
