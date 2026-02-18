@@ -60,6 +60,13 @@ export const ENTITY_TYPE_CONFIGS: Record<string, EntityTypeConfig> = {
     color: 'teal',
     route: '/inventory/stock-entries/:id',
   },
+  tax_templates: {
+    type: 'tax_templates',
+    label: 'Tax Templates',
+    icon: ClipboardList,
+    color: 'teal',
+    route: '/inventory/tax-templates/:id',
+  },
 };
 
 /**

@@ -285,11 +285,11 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
 
           {/* Line Items */}
           <Separator />
-          <LineItemTable
+          {/* <LineItemTable
             items={items}
             onItemsChange={setItems}
             disabled={isLineItemEditingDisabled}
-          />
+          /> */}
 
           {/* Fulfillment Info (edit mode only) */}
           {isEdit && salesOrder?.items && salesOrder.items.some(i => Number(i.billed_qty) > 0 || Number(i.delivered_qty) > 0) && (
