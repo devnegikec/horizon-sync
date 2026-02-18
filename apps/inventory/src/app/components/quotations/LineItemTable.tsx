@@ -145,7 +145,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
       const selectedItem = value && typeof value === 'string' ? itemsCache.get(value) : undefined;
       if (selectedItem) {
         updated[index].uom = selectedItem.uom;
-        updated[index].rate = parseFloat(selectedItem.standard_rate) || 0;
+        updated[index].rate = parseFloat(selectedItem.standard_rate || '0') || 0;
         updated[index].qty = selectedItem.min_order_qty || 1;
         // Recalculate with tax
         updated[index] = calculateTaxAndTotal(updated[index], selectedItem);
@@ -249,7 +249,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Item Group</Label>
-                  <Input value={item.itemData?.item_group?.name || item.item_group?.name || '-'}
+                  <Input value={item.itemData?.item_group?.name || '-'}
                     disabled
                     className="bg-muted"/>
                 </div>
