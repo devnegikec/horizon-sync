@@ -78,7 +78,8 @@ export function AccountManagement() {
     const total = pagination?.total_items ?? 0;
     const active = accounts.filter((a) => a.is_active).length;
     const byType = accounts.reduce((acc, a) => {
-      acc[a.account_type] = (acc[a.account_type] || 0) + 1;
+      const normalizedType = String(a.account_type || '').toUpperCase();
+      acc[normalizedType] = (acc[normalizedType] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     return { total, active, byType };

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { Wallet, Plus, MoreHorizontal, Edit, Power, PowerOff, Info, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
+import { Wallet, Plus, MoreHorizontal, Edit, Power, PowerOff, Info, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ChevronsUpDown, Loader2, Download, Trash2 } from 'lucide-react';
 
 import { TableSkeleton, Badge, Button, Card, CardContent } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -43,6 +43,11 @@ export interface AccountsTableProps {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   onSortingChange?: (columnId: string) => void;
+  actionLoading?: string | null;
+  onBulkActivate?: (accountIds: string[]) => void;
+  onBulkDeactivate?: (accountIds: string[]) => void;
+  onBulkDelete?: (accountIds: string[]) => void;
+  onBulkExport?: (accountIds: string[]) => void;
 }
 
 const ACCOUNT_TYPE_COLORS: Record<string, string> = {
@@ -67,8 +72,14 @@ export function AccountsTable({
   sortBy,
   sortOrder,
   onSortingChange,
+  actionLoading,
+  onBulkActivate,
+  onBulkDeactivate,
+  onBulkDelete,
+  onBulkExport,
 }: AccountsTableProps) {
   const tableReadyRef = React.useRef<((table: Table<AccountListItem>) => void) | undefined>(onTableReady);
+  const [selectedRows, setSelectedRows] = React.useState<Record<string, boolean>>({});
 
   React.useEffect(() => {
     tableReadyRef.current = onTableReady;
@@ -300,7 +311,16 @@ export function AccountsTable({
         header: () => <SortableHeader title="Status" columnId="is_active" />,
         cell: ({ row }) => {
           const isActive = row.original.is_active;
-          return <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? 'Active' : 'Inactive'}</Badge>;
+          const isLoading = actionLoading === row.original.id;
+          
+          return (
+            <div className="flex items-center gap-2">
+              {isLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+              <Badge variant={isActive ? 'success' : 'secondary'}>
+                {isActive ? 'Active' : 'Inactive'}
+              </Badge>
+            </div>
+          );
         },
         enableSorting: false,
       },
@@ -316,12 +336,18 @@ export function AccountsTable({
         cell: ({ row }) => {
           const account = row.original;
           const isActive = account.is_active;
+          const isLoading = actionLoading === account.id;
+          
           return (
             <div className="text-right">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreHorizontal className="h-4 w-4" />
+                  <Button variant="ghost" size="icon" disabled={isLoading}>
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <MoreHorizontal className="h-4 w-4" />
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -360,7 +386,7 @@ export function AccountsTable({
         enableSorting: false,
       },
     ],
-    [onEdit, onToggleStatus, onViewDetails, balances, balancesLoading, SortableHeader]
+    [onEdit, onToggleStatus, onViewDetails, balances, balancesLoading, SortableHeader, actionLoading]
   );
 
   const renderViewOptions = React.useCallback(
@@ -368,9 +394,81 @@ export function AccountsTable({
       if (tableReadyRef.current) {
         tableReadyRef.current(table);
       }
+      
+      const selectedRowCount = Object.keys(table.getState().rowSelection).length;
+      const selectedAccountIds = Object.keys(table.getState().rowSelection)
+        .filter(key => table.getState().rowSelection[key])
+        .map(key => {
+          const row = table.getRowModel().rows.find(r => r.id === key);
+          return row?.original.id;
+        })
+        .filter(Boolean) as string[];
+
+      if (selectedRowCount > 0) {
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {selectedRowCount} selected
+            </span>
+            {onBulkActivate && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onBulkActivate(selectedAccountIds);
+                  table.resetRowSelection();
+                }}
+              >
+                <Power className="mr-2 h-4 w-4" />
+                Activate
+              </Button>
+            )}
+            {onBulkDeactivate && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onBulkDeactivate(selectedAccountIds);
+                  table.resetRowSelection();
+                }}
+              >
+                <PowerOff className="mr-2 h-4 w-4" />
+                Deactivate
+              </Button>
+            )}
+            {onBulkExport && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onBulkExport(selectedAccountIds);
+                  table.resetRowSelection();
+                }}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export Selected
+              </Button>
+            )}
+            {onBulkDelete && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  onBulkDelete(selectedAccountIds);
+                  table.resetRowSelection();
+                }}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            )}
+          </div>
+        );
+      }
+      
       return null;
     },
-    []
+    [onBulkActivate, onBulkDeactivate, onBulkDelete, onBulkExport]
   );
 
   if (error) {
@@ -428,7 +526,7 @@ export function AccountsTable({
           config={{
             showSerialNumber: true,
             showPagination: true,
-            enableRowSelection: false,
+            enableRowSelection: true,
             enableColumnVisibility: true,
             enableSorting: false, // Disable client-side sorting, we use server-side
             enableFiltering: false,
