@@ -162,3 +162,13 @@ export interface AuditTrailFilters {
   page?: number;
   page_size?: number;
 }
+
+/**
+ * Report types
+ */
+
+export interface ReportFilters {
+  account_type: string;
+  status: string;
+  as_of_date: string;
+}
