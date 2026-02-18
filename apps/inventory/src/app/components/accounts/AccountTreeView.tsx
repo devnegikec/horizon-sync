@@ -16,11 +16,14 @@ interface TreeNode {
   is_group: boolean;
   is_active: boolean;
   children: TreeNode[];
+  childrenLoaded?: boolean; // Track if children have been loaded
+  hasChildren?: boolean; // Track if node has children
 }
 
 interface AccountTreeViewProps {
   onAccountSelect?: (accountId: string) => void;
   selectedAccountId?: string | null;
+  lazyLoad?: boolean; // Enable lazy loading mode
 }
 
 const ACCOUNT_TYPE_COLORS: Record<string, string> = {
@@ -38,6 +41,8 @@ interface TreeNodeItemProps {
   onToggleExpand: (nodeId: string) => void;
   onAccountSelect?: (accountId: string) => void;
   selectedAccountId?: string | null;
+  lazyLoad?: boolean;
+  onLoadChildren?: (nodeId: string) => Promise<void>;
 }
 
 function TreeNodeItem({
@@ -47,13 +52,27 @@ function TreeNodeItem({
   onToggleExpand,
   onAccountSelect,
   selectedAccountId,
+  lazyLoad,
+  onLoadChildren,
 }: TreeNodeItemProps) {
   const isExpanded = expandedNodes.has(node.id);
-  const hasChildren = node.children && node.children.length > 0;
+  const hasChildren = lazyLoad 
+    ? (node.hasChildren || (node.children && node.children.length > 0))
+    : (node.children && node.children.length > 0);
   const isSelected = selectedAccountId === node.id;
+  const [loading, setLoading] = useState(false);
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (hasChildren) {
+      // If lazy loading and children not loaded yet, load them
+      if (lazyLoad && !node.childrenLoaded && !isExpanded && onLoadChildren) {
+        setLoading(true);
+        try {
+          await onLoadChildren(node.id);
+        } finally {
+          setLoading(false);
+        }
+      }
       onToggleExpand(node.id);
     }
     if (onAccountSelect) {
@@ -74,7 +93,9 @@ function TreeNodeItem({
       >
         {/* Expand/Collapse Icon */}
         <div className="flex-shrink-0 w-4 h-4">
-          {hasChildren ? (
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          ) : hasChildren ? (
             isExpanded ? (
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             ) : (
@@ -121,7 +142,7 @@ function TreeNodeItem({
       </div>
 
       {/* Render Children */}
-      {hasChildren && isExpanded && (
+      {hasChildren && isExpanded && node.children && (
         <div>
           {node.children.map((child) => (
             <TreeNodeItem
@@ -132,6 +153,8 @@ function TreeNodeItem({
               onToggleExpand={onToggleExpand}
               onAccountSelect={onAccountSelect}
               selectedAccountId={selectedAccountId}
+              lazyLoad={lazyLoad}
+              onLoadChildren={onLoadChildren}
             />
           ))}
         </div>
@@ -140,7 +163,7 @@ function TreeNodeItem({
   );
 }
 
-export function AccountTreeView({ onAccountSelect, selectedAccountId }: AccountTreeViewProps) {
+export function AccountTreeView({ onAccountSelect, selectedAccountId, lazyLoad = false }: AccountTreeViewProps) {
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -155,7 +178,11 @@ export function AccountTreeView({ onAccountSelect, selectedAccountId }: AccountT
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/v1/chart-of-accounts/tree', {
+      const url = lazyLoad 
+        ? '/api/v1/chart-of-accounts/tree?lazy_load=true'
+        : '/api/v1/chart-of-accounts/tree';
+
+      const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -167,15 +194,71 @@ export function AccountTreeView({ onAccountSelect, selectedAccountId }: AccountT
       }
 
       const data = await response.json();
-      setTreeData(data);
-
-      // Auto-expand root level nodes
-      const rootNodeIds = data.map((node: TreeNode) => node.id);
-      setExpandedNodes(new Set(rootNodeIds));
+      
+      // Mark nodes with children info for lazy loading
+      if (lazyLoad) {
+        const processedData = data.map((node: TreeNode) => ({
+          ...node,
+          childrenLoaded: false,
+          hasChildren: node.children && node.children.length === 0 ? true : false, // Empty array means has children
+        }));
+        setTreeData(processedData);
+      } else {
+        setTreeData(data);
+        // Auto-expand root level nodes
+        const rootNodeIds = data.map((node: TreeNode) => node.id);
+        setExpandedNodes(new Set(rootNodeIds));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadChildren = async (nodeId: string) => {
+    try {
+      const response = await fetch(`/api/v1/chart-of-accounts/tree/${nodeId}/children`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load children');
+      }
+
+      const children = await response.json();
+
+      // Update tree data with loaded children
+      setTreeData((prevData) => {
+        const updateNode = (nodes: TreeNode[]): TreeNode[] => {
+          return nodes.map((node) => {
+            if (node.id === nodeId) {
+              return {
+                ...node,
+                children: children.map((child: TreeNode) => ({
+                  ...child,
+                  childrenLoaded: false,
+                  hasChildren: child.children && child.children.length === 0 ? true : false,
+                })),
+                childrenLoaded: true,
+              };
+            }
+            if (node.children && node.children.length > 0) {
+              return {
+                ...node,
+                children: updateNode(node.children),
+              };
+            }
+            return node;
+          });
+        };
+        return updateNode(prevData);
+      });
+    } catch (err) {
+      console.error('Failed to load children:', err);
     }
   };
 
@@ -282,6 +365,8 @@ export function AccountTreeView({ onAccountSelect, selectedAccountId }: AccountT
               onToggleExpand={handleToggleExpand}
               onAccountSelect={onAccountSelect}
               selectedAccountId={selectedAccountId}
+              lazyLoad={lazyLoad}
+              onLoadChildren={loadChildren}
             />
           ))}
         </div>
