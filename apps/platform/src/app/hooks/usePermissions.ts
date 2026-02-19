@@ -1,128 +1,123 @@
 import * as React from 'react';
 
+import { useUserStore } from '@horizon-sync/store';
+
 import { PermissionsService } from '../services/permissions.service';
-import { Permission, NavigationPermissions, filterNavigationByPermissions, hasPermission, hasAnyPermission, hasAllPermissions } from '../utils/permissions';
+import { NavigationPermissions, filterNavigationByPermissions, hasPermission, hasAnyPermission, hasAllPermissions } from '../utils/permissions';
 
 import { useAuth } from './useAuth';
 
-interface PermissionsState {
-  permissions: Permission[];
-  roles: string[];
-  hasAccess: boolean;
+interface PermissionsHookState {
   loading: boolean;
   error: string | null;
-  lastFetched: Date | null;
 }
-
-const initialState: PermissionsState = {
-  permissions: [],
-  roles: [],
-  hasAccess: false,
-  loading: false,
-  error: null,
-  lastFetched: null,
-};
 
 export function usePermissions() {
   const { user, accessToken, isAuthenticated } = useAuth();
-  const [state, setState] = React.useState<PermissionsState>(initialState);
+  const { permissions: permissionsData, setPermissions, clearPermissions } = useUserStore();
+  const [state, setState] = React.useState<PermissionsHookState>({
+    loading: false,
+    error: null,
+  });
 
   const fetchPermissions = React.useCallback(async () => {
     if (!isAuthenticated || !user?.organization_id || !accessToken) {
-      setState(initialState);
+      clearPermissions();
       return;
     }
 
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    setState({ loading: true, error: null });
 
     try {
-      const permissionsData = await PermissionsService.getUserPermissions(
+      const data = await PermissionsService.getUserPermissions(
         user.organization_id,
         accessToken
       );
 
-      setState({
-        permissions: permissionsData.permissions,
-        roles: permissionsData.roles,
-        hasAccess: permissionsData.has_access,
-        loading: false,
-        error: null,
+      setPermissions({
+        permissions: data.permissions,
+        roles: data.roles,
+        hasAccess: data.has_access,
         lastFetched: new Date(),
       });
+
+      setState({ loading: false, error: null });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch permissions';
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: errorMessage,
-      }));
+      setState({ loading: false, error: errorMessage });
     }
-  }, [isAuthenticated, user?.organization_id, accessToken]);
+  }, [isAuthenticated, user?.organization_id, accessToken, setPermissions, clearPermissions]);
 
   // Fetch permissions when auth state changes
   React.useEffect(() => {
     fetchPermissions();
   }, [fetchPermissions]);
 
-  const clearPermissions = React.useCallback(() => {
-    setState(initialState);
-  }, []);
-
   // Permission checking functions
   const checkPermission = React.useCallback((requiredPermission: string) => {
-    return hasPermission(state.permissions, requiredPermission);
-  }, [state.permissions]);
+    return hasPermission(permissionsData.permissions, requiredPermission);
+  }, [permissionsData.permissions]);
 
   const checkAnyPermission = React.useCallback((requiredPermissions: string[]) => {
-    return hasAnyPermission(state.permissions, requiredPermissions);
-  }, [state.permissions]);
+    return hasAnyPermission(permissionsData.permissions, requiredPermissions);
+  }, [permissionsData.permissions]);
 
   const checkAllPermissions = React.useCallback((requiredPermissions: string[]) => {
-    return hasAllPermissions(state.permissions, requiredPermissions);
-  }, [state.permissions]);
+    return hasAllPermissions(permissionsData.permissions, requiredPermissions);
+  }, [permissionsData.permissions]);
 
   // Navigation permission helpers
   const canViewUsers = React.useCallback(() => {
-    return NavigationPermissions.users.view(state.permissions);
-  }, [state.permissions]);
+    return NavigationPermissions.users.view(permissionsData.permissions);
+  }, [permissionsData.permissions]);
 
   const canViewRoles = React.useCallback(() => {
-    return NavigationPermissions.roles.view(state.permissions);
-  }, [state.permissions]);
+    return NavigationPermissions.roles.view(permissionsData.permissions);
+  }, [permissionsData.permissions]);
 
   const canViewReports = React.useCallback(() => {
-    return NavigationPermissions.reports.view(state.permissions);
-  }, [state.permissions]);
+    return NavigationPermissions.reports.view(permissionsData.permissions);
+  }, [permissionsData.permissions]);
 
   const canViewAnalytics = React.useCallback(() => {
-    return NavigationPermissions.analytics.view(state.permissions);
-  }, [state.permissions]);
+    return NavigationPermissions.analytics.view(permissionsData.permissions);
+  }, [permissionsData.permissions]);
 
   const canViewSettings = React.useCallback(() => {
-    return NavigationPermissions.settings.view(state.permissions);
-  }, [state.permissions]);
+    return NavigationPermissions.settings.view(permissionsData.permissions);
+  }, [permissionsData.permissions]);
 
   const canViewInventory = React.useCallback(() => {
-    return NavigationPermissions.inventory.view(state.permissions);
-  }, [state.permissions]);
+    return NavigationPermissions.inventory.view(permissionsData.permissions);
+  }, [permissionsData.permissions]);
 
   const canViewRevenue = React.useCallback(() => {
-    return NavigationPermissions.revenue.view(state.permissions);
-  }, [state.permissions]);
+    return NavigationPermissions.revenue.view(permissionsData.permissions);
+  }, [permissionsData.permissions]);
 
   const canViewSubscriptions = React.useCallback(() => {
-    return NavigationPermissions.subscriptions.view(state.permissions);
-  }, [state.permissions]);
+    return NavigationPermissions.subscriptions.view(permissionsData.permissions);
+  }, [permissionsData.permissions]);
 
   // Filter navigation items based on permissions
   const filterNavigation = React.useCallback(<T extends { href: string; title: string }>(
     navigationItems: T[]
   ): T[] => {
-    return filterNavigationByPermissions(navigationItems, state.permissions);
-  }, [state.permissions]);
+    return filterNavigationByPermissions(navigationItems, permissionsData.permissions);
+  }, [permissionsData.permissions]);
 
   return {
-    ...state,
+    // Permissions data from global store
+    permissions: permissionsData.permissions,
+    roles: permissionsData.roles,
+    hasAccess: permissionsData.hasAccess,
+    lastFetched: permissionsData.lastFetched,
+    
+    // Local loading/error state
+    loading: state.loading,
+    error: state.error,
+    
+    // Actions
     fetchPermissions,
     clearPermissions,
 

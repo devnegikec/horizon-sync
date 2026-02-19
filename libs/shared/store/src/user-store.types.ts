@@ -57,9 +57,17 @@ export interface UserPreferences {
   [key: string]: unknown;
 }
 
+export interface PermissionsData {
+  permissions: string[];
+  roles: string[];
+  hasAccess: boolean;
+  lastFetched: Date | null;
+}
+
 export interface UserState {
   user: User | null;
   organization: Organization | null;
+  permissions: PermissionsData;
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
@@ -68,6 +76,8 @@ export interface UserState {
   updatePreferences: (preferences: Partial<UserPreferences>) => void;
   setOrganization: (organization: Organization) => void;
   updateOrganization: (partial: Partial<Organization>) => void;
+  setPermissions: (permissions: PermissionsData) => void;
+  clearPermissions: () => void;
   clearAuth: () => void;
 }
 

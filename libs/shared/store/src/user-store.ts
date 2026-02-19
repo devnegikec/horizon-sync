@@ -2,11 +2,19 @@ import { create } from 'zustand';
 import { persist, devtools } from 'zustand/middleware';
 
 import { isDevToolsEnabled } from './devtools';
-import type { User, UserState, UserPreferences, PreferencesState, Organization } from './user-store.types';
+import type { User, UserState, UserPreferences, PreferencesState, Organization, PermissionsData } from './user-store.types';
+
+const initialPermissions: PermissionsData = {
+  permissions: [],
+  roles: [],
+  hasAccess: false,
+  lastFetched: null,
+};
 
 const initialState = {
   user: null as User | null,
   organization: null as Organization | null,
+  permissions: initialPermissions,
   accessToken: null as string | null,
   refreshToken: null as string | null,
   isAuthenticated: false,
@@ -54,6 +62,10 @@ export const useUserStore = create<UserState>()(
           set((state) => ({
             organization: state.organization ? { ...state.organization, ...partial } : null,
           }), false, 'updateOrganization'),
+        setPermissions: (permissions) =>
+          set({ permissions }, false, 'setPermissions'),
+        clearPermissions: () =>
+          set({ permissions: initialPermissions }, false, 'clearPermissions'),
         clearAuth: () => set(initialState, false, 'clearAuth'),
       }),
       {
