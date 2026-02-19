@@ -11,7 +11,7 @@ import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import type { Quotation } from '../../types/quotation.types';
 import { formatDate } from '../../utility/formatDate';
 
-import { StatusBadge } from './StatusBadge';
+// import { StatusBadge } from './StatusBadge';
 
 export interface PickListTableProps {
   quotations: Quotation[];
@@ -148,7 +148,7 @@ export function PickListTable({
         accessorKey: 'status',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => {
-          return <StatusBadge status={row.original.status} />;
+          // return <StatusBadge status={row.original.status} />;
         },
       },
       {

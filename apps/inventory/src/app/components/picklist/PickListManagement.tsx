@@ -9,7 +9,7 @@ import { useQuotationManagement } from '../../hooks/useQuotationManagement';
 
 import { PickListStats } from './PickListStats';
 import { PickListManagementFilters } from './PickListManagementFilters';
-import { QuotationManagementHeader } from './PickListManagementHeader';
+import { PickListManagementHeader } from './PickListManagementHeader';
 import { PickListTable } from './PickListTable';
 
 
@@ -65,7 +65,7 @@ export function PickListManagement() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <QuotationManagementHeader onRefresh={refetch}
+      <PickListManagementHeader onRefresh={refetch}
         onCreateQuotation={handleCreate}
         isLoading={loading}/>
 
