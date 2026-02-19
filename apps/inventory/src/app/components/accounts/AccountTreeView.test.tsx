@@ -12,7 +12,7 @@ describe('AccountTreeView', () => {
 
   it('renders loading state initially', () => {
     (global.fetch as jest.Mock).mockImplementation(
-      () => new Promise(() => {}) // Never resolves
+      () => new Promise(() => { }) // Never resolves
     );
 
     render(<AccountTreeView />);

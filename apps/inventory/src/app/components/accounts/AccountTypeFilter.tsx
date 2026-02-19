@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 import {
   Select,
   SelectContent,
@@ -11,6 +9,7 @@ import {
 } from '@horizon-sync/ui/components';
 
 import type { AccountType } from '../../types/account.types';
+import { ACCOUNT_TYPE_COLORS } from '../../utils/accountColors';
 
 export interface AccountTypeFilterProps {
   value?: AccountType | 'all';
@@ -23,11 +22,11 @@ export interface AccountTypeFilterProps {
 }
 
 const ACCOUNT_TYPES: { value: AccountType; label: string; color: string }[] = [
-  { value: 'ASSET', label: 'Asset', color: 'bg-blue-100 text-blue-800' },
-  { value: 'LIABILITY', label: 'Liability', color: 'bg-red-100 text-red-800' },
-  { value: 'EQUITY', label: 'Equity', color: 'bg-purple-100 text-purple-800' },
-  { value: 'REVENUE', label: 'Revenue', color: 'bg-green-100 text-green-800' },
-  { value: 'EXPENSE', label: 'Expense', color: 'bg-orange-100 text-orange-800' },
+  { value: 'ASSET', label: 'Asset', color: ACCOUNT_TYPE_COLORS.ASSET },
+  { value: 'LIABILITY', label: 'Liability', color: ACCOUNT_TYPE_COLORS.LIABILITY },
+  { value: 'EQUITY', label: 'Equity', color: ACCOUNT_TYPE_COLORS.EQUITY },
+  { value: 'REVENUE', label: 'Revenue', color: ACCOUNT_TYPE_COLORS.REVENUE },
+  { value: 'EXPENSE', label: 'Expense', color: ACCOUNT_TYPE_COLORS.EXPENSE },
 ];
 
 /**
@@ -119,8 +118,7 @@ export function AccountTypeFilter({
  * Get the color class for an account type badge
  */
 export function getAccountTypeColor(type: AccountType): string {
-  const typeConfig = ACCOUNT_TYPES.find(t => t.value === type);
-  return typeConfig?.color || 'bg-gray-100 text-gray-800';
+  return ACCOUNT_TYPE_COLORS[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
 }
 
 /**
