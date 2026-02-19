@@ -74,24 +74,19 @@ src/
 // communication.types.ts
 
 export type DocType =
-  | "quotation"
-  | "sales_order"
-  | "purchase_order"
-  | "invoice"
-  | "delivery_note"
-  | "purchase_receipt"
-  | "payment"
-  | "rfq"
-  | "material_request";
+  | 'quotation'
+  | 'sales_order'
+  | 'purchase_order'
+  | 'invoice'
+  | 'delivery_note'
+  | 'purchase_receipt'
+  | 'payment'
+  | 'rfq'
+  | 'material_request';
 
-export type CommunicationChannel = "email" | "whatsapp" | "sms" | "webhook";
+export type CommunicationChannel = 'email' | 'whatsapp' | 'sms' | 'webhook';
 
-export type CommunicationStatus =
-  | "pending"
-  | "sent"
-  | "delivered"
-  | "failed"
-  | "bounced";
+export type CommunicationStatus = 'pending' | 'sent' | 'delivered' | 'failed' | 'bounced';
 
 export interface EmailAttachment {
   filename: string;
@@ -112,7 +107,7 @@ export interface SendEmailRequest {
 }
 
 export interface SendEmailResponse {
-  status: "sent" | "failed" | "disabled";
+  status: 'sent' | 'failed' | 'disabled';
   message: string;
   communication_id: string | null;
 }
@@ -177,31 +172,22 @@ export interface CommunicationListResponse {
 ```typescript
 // services/communicationService.ts
 
-import axios from "axios";
-import type {
-  SendEmailRequest,
-  SendEmailResponse,
-  Communication,
-  CommunicationListResponse,
-} from "../types/communication.types";
+import axios from 'axios';
+import type { SendEmailRequest, SendEmailResponse, Communication, CommunicationListResponse } from '../types/communication.types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8001";
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001';
 
 class CommunicationService {
   private getHeaders() {
-    const token = localStorage.getItem("token"); // Adjust based on your auth
+    const token = localStorage.getItem('token'); // Adjust based on your auth
     return {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     };
   }
 
   async sendEmail(data: SendEmailRequest): Promise<SendEmailResponse> {
-    const response = await axios.post(
-      `${API_BASE_URL}/api/v1/communications/send`,
-      data,
-      { headers: this.getHeaders() },
-    );
+    const response = await axios.post(`${API_BASE_URL}/api/v1/communications/send`, data, { headers: this.getHeaders() });
     return response.data;
   }
 
@@ -222,10 +208,7 @@ class CommunicationService {
   }
 
   async getCommunication(id: string): Promise<Communication> {
-    const response = await axios.get(
-      `${API_BASE_URL}/api/v1/communications/${id}`,
-      { headers: this.getHeaders() },
-    );
+    const response = await axios.get(`${API_BASE_URL}/api/v1/communications/${id}`, { headers: this.getHeaders() });
     return response.data;
   }
 
@@ -250,7 +233,7 @@ export const fileToBase64 = (file: File): Promise<string> => {
     reader.readAsDataURL(file);
     reader.onload = () => {
       // Remove data:*/*;base64, prefix
-      const base64 = (reader.result as string).split(",")[1];
+      const base64 = (reader.result as string).split(',')[1];
       resolve(base64);
     };
     reader.onerror = (error) => reject(error);
@@ -258,7 +241,7 @@ export const fileToBase64 = (file: File): Promise<string> => {
 };
 
 export const getContentType = (file: File): string => {
-  return file.type || "application/octet-stream";
+  return file.type || 'application/octet-stream';
 };
 ```
 
@@ -267,12 +250,9 @@ export const getContentType = (file: File): string => {
 ```typescript
 // hooks/useSendEmail.ts
 
-import { useState } from "react";
-import { communicationService } from "../services/communicationService";
-import type {
-  SendEmailRequest,
-  SendEmailResponse,
-} from "../types/communication.types";
+import { useState } from 'react';
+import { communicationService } from '../services/communicationService';
+import type { SendEmailRequest, SendEmailResponse } from '../types/communication.types';
 
 export const useSendEmail = () => {
   const [loading, setLoading] = useState(false);
@@ -288,7 +268,7 @@ export const useSendEmail = () => {
       setResponse(result);
       return result;
     } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || "Failed to send email";
+      const errorMessage = err.response?.data?.detail || 'Failed to send email';
       setError(errorMessage);
       throw err;
     } finally {
@@ -303,15 +283,11 @@ export const useSendEmail = () => {
 ```typescript
 // hooks/useCommunications.ts
 
-import { useState, useEffect } from "react";
-import { communicationService } from "../services/communicationService";
-import type { CommunicationListResponse } from "../types/communication.types";
+import { useState, useEffect } from 'react';
+import { communicationService } from '../services/communicationService';
+import type { CommunicationListResponse } from '../types/communication.types';
 
-export const useCommunications = (filters?: {
-  doc_type?: string;
-  doc_id?: string;
-  status?: string;
-}) => {
+export const useCommunications = (filters?: { doc_type?: string; doc_id?: string; status?: string }) => {
   const [data, setData] = useState<CommunicationListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -326,7 +302,7 @@ export const useCommunications = (filters?: {
       });
       setData(result);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to fetch communications");
+      setError(err.response?.data?.detail || 'Failed to fetch communications');
     } finally {
       setLoading(false);
     }

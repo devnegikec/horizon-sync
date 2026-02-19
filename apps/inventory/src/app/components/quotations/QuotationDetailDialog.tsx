@@ -1,9 +1,10 @@
 import * as React from 'react';
-import { Edit, FileText } from 'lucide-react';
+import { Edit, FileText, Mail } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 
 import type { Quotation } from '../../types/quotation.types';
+import { EmailComposer } from '../common/EmailComposer';
 import { StatusBadge } from './StatusBadge';
 import { LineItemTable } from './LineItemTable';
 
@@ -16,6 +17,8 @@ interface QuotationDetailDialogProps {
 }
 
 export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, onConvert }: QuotationDetailDialogProps) {
+  const [emailDialogOpen, setEmailDialogOpen] = React.useState(false);
+  
   if (!quotation) return null;
 
   const isTerminalStatus = quotation.status === 'accepted' || quotation.status === 'rejected' || quotation.status === 'expired';
@@ -30,7 +33,8 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
@@ -130,6 +134,10 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
+          <Button variant="outline" onClick={() => setEmailDialogOpen(true)} className="gap-2">
+            <Mail className="h-4 w-4" />
+            Send Email
+          </Button>
           {canConvert && (
             <Button variant="default" onClick={() => onConvert(quotation)} className="gap-2">
               <FileText className="h-4 w-4" />
@@ -145,5 +153,20 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <EmailComposer
+      open={emailDialogOpen}
+      onOpenChange={setEmailDialogOpen}
+      docType="quotation"
+      docId={quotation.id}
+      docNo={quotation.quotation_no}
+      defaultRecipient={quotation.customer?.email || ''}
+      defaultSubject={`Quotation ${quotation.quotation_no}`}
+      defaultMessage={`Dear ${quotation.customer_name || quotation.customer?.customer_name || 'Customer'},\n\nPlease find attached quotation ${quotation.quotation_no} for your review.\n\nBest regards`}
+      onSuccess={() => {
+        setEmailDialogOpen(false);
+      }}
+    />
+  </>
   );
 }
