@@ -4,7 +4,7 @@ import { Route, Routes } from 'react-router-dom';
 
 import { DashboardLayout, DashboardHome, AuthGuard, PublicRoute } from './components';
 import { PlaceholderPage } from './components/PlaceholderPage';
-import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage } from './pages';
+import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage } from './pages';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
@@ -55,7 +55,7 @@ function ProtectedRouteWrapper() {
           <Route path="/users" element={<UserManagementPage />} />
           <Route path="/roles" element={<RoleManagementPage />} />
           <Route path="/reports" element={<ReportsPlaceholder />} />
-          <Route path="/settings" element={<SettingsPlaceholder />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/help" element={<HelpPlaceholder />} />
         </Routes>
       </DashboardLayout>
@@ -69,10 +69,6 @@ function AnalyticsPlaceholder() {
 
 function ReportsPlaceholder() {
   return <PlaceholderPage title="Reports" description="Generate and view reports" />;
-}
-
-function SettingsPlaceholder() {
-  return <PlaceholderPage title="Settings" description="Configure your platform settings" />;
 }
 
 function HelpPlaceholder() {

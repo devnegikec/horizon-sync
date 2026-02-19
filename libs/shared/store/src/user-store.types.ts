@@ -1,3 +1,21 @@
+export interface Organization {
+  id: string;
+  name: string;
+  display_name: string | null;
+  status: 'active' | 'inactive' | 'suspended';
+  is_active: boolean;
+  settings: Record<string, unknown> | null;
+  extra_data: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  permissions?: string[];
+}
+
 export interface User {
   id: string;
   email: string;
@@ -21,6 +39,8 @@ export interface User {
   bio?: string;
   preferences?: Record<string, unknown> | null;
   extra_data?: Record<string, unknown> | null;
+  permissions?: string[];
+  role?: Role;
 }
 
 export interface UserPreferences {
@@ -39,12 +59,15 @@ export interface UserPreferences {
 
 export interface UserState {
   user: User | null;
+  organization: Organization | null;
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   updateUser: (partial: Partial<User>) => void;
   updatePreferences: (preferences: Partial<UserPreferences>) => void;
+  setOrganization: (organization: Organization) => void;
+  updateOrganization: (partial: Partial<Organization>) => void;
   clearAuth: () => void;
 }
 
