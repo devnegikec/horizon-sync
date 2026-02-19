@@ -1,120 +1,117 @@
-import { useState } from 'react';
-import { useMaterialRequests } from '../../hooks/useMaterialRequests';
-import { useMaterialRequestActions } from '../../hooks/useMaterialRequestActions';
-import type { MaterialRequest, MaterialRequestListItem } from '../../types/material-request.types';
+import * as React from 'react';
+import { AlertTriangle } from 'lucide-react';
+
+import { Card, CardContent } from '@horizon-sync/ui/components';
+
+import { useMaterialRequestManagement } from '../../hooks/useMaterialRequestManagement';
 
 import {
-  MaterialRequestHeader,
-  MaterialRequestFilters,
-  MaterialRequestTable,
+  MaterialRequestManagementHeader,
+  MaterialRequestManagementFilters,
+  MaterialRequestsTable,
   MaterialRequestDialog,
   MaterialRequestDetailDialog,
+  MaterialRequestStats,
 } from './index';
 
 export function MaterialRequestManagement() {
-  console.log('[MaterialRequestManagement] Component mounting');
-  
   const {
+    filters,
+    setFilters,
     materialRequests,
     loading,
     error,
-    totalCount,
-    filters,
-    setFilters,
     refetch,
-  } = useMaterialRequests();
+    stats,
+    detailDialogOpen,
+    setDetailDialogOpen,
+    createDialogOpen,
+    setCreateDialogOpen,
+    selectedMaterialRequest,
+    editMaterialRequest,
+    tableInstance,
+    handleView,
+    handleCreate,
+    handleEdit,
+    handleDelete,
+    handleSubmit,
+    handleCancel,
+    handleTableReady,
+    handleSave,
+    serverPaginationConfig,
+  } = useMaterialRequestManagement();
 
-  console.log('[MaterialRequestManagement] State:', { materialRequests, loading, error, totalCount });
-
-  const {
-    loading: actionLoading,
-    submitMaterialRequest,
-    cancelMaterialRequest,
-    deleteMaterialRequest,
-  } = useMaterialRequestActions();
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [selectedMaterialRequest, setSelectedMaterialRequest] = useState<MaterialRequest | null>(null);
-
-  const handleCreate = () => {
-    setSelectedMaterialRequest(null);
-    setDialogOpen(true);
-  };
-
-  const handleEdit = (mr: MaterialRequestListItem) => {
-    if (mr.status !== 'draft') {
-      return; // Only draft can be edited
-    }
-    // Fetch full details for editing
-    // For now, we'll need to convert to MaterialRequest or fetch it
-    // This is a limitation - we might need to fetch the full object
-    setSelectedMaterialRequest(mr as unknown as MaterialRequest);
-    setDialogOpen(true);
-  };
-
-  const handleView = (mr: MaterialRequestListItem) => {
-    setSelectedMaterialRequest(mr as unknown as MaterialRequest);
-    setDetailDialogOpen(true);
-  };
-
-  const handleSubmit = async (mr: MaterialRequestListItem) => {
-    const result = await submitMaterialRequest(mr.id);
-    if (result) {
-      refetch();
-    }
-  };
-
-  const handleCancel = async (mr: MaterialRequestListItem) => {
-    const result = await cancelMaterialRequest(mr.id);
-    if (result) {
-      refetch();
-    }
-  };
-
-  const handleDelete = async (mr: MaterialRequestListItem) => {
-    const success = await deleteMaterialRequest(mr.id);
-    if (success) {
-      refetch();
-    }
-  };
-
-  const handleSave = () => {
-    setDialogOpen(false);
-    refetch();
-  };
+  // Error display component
+  const ErrorDisplay = React.useMemo(() => {
+    if (!error) return null;
+    return (
+      <Card className="border-destructive">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="text-sm font-medium">Error loading material requests: {error}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }, [error]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <MaterialRequestHeader onCreateMaterialRequest={handleCreate} />
+      {/* Header */}
+      <MaterialRequestManagementHeader
+        onRefresh={refetch}
+        onCreateMaterialRequest={handleCreate}
+        isLoading={loading}
+      />
 
-      <MaterialRequestFilters filters={filters} setFilters={setFilters} />
+      {/* Error State */}
+      {ErrorDisplay}
 
-      <MaterialRequestTable
-        materialRequests={materialRequests}
-        loading={loading || actionLoading}
-        error={error}
-        totalCount={totalCount}
+      {/* Stats Cards */}
+      <MaterialRequestStats
+        total={stats.total}
+        draft={stats.draft}
+        submitted={stats.submitted}
+        quoted={stats.quoted}
+      />
+
+      {/* Filters */}
+      <MaterialRequestManagementFilters
         filters={filters}
         setFilters={setFilters}
+        tableInstance={tableInstance}
+      />
+
+      {/* Material Requests Table */}
+      <MaterialRequestsTable
+        materialRequests={materialRequests}
+        loading={loading}
+        error={error}
+        hasActiveFilters={!!filters.search || filters.status !== 'all'}
         onView={handleView}
         onEdit={handleEdit}
+        onDelete={handleDelete}
         onSubmit={handleSubmit}
         onCancel={handleCancel}
-        onDelete={handleDelete}
+        onCreateMaterialRequest={handleCreate}
+        onTableReady={handleTableReady}
+        serverPagination={serverPaginationConfig}
       />
 
-      <MaterialRequestDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        materialRequest={selectedMaterialRequest}
-        onSave={handleSave}
-      />
-
+      {/* Detail Dialog */}
       <MaterialRequestDetailDialog
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         materialRequest={selectedMaterialRequest}
+      />
+
+      {/* Create/Edit Dialog */}
+      <MaterialRequestDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        materialRequest={editMaterialRequest}
+        onSave={handleSave}
       />
     </div>
   );

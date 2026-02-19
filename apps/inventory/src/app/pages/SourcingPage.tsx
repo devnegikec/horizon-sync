@@ -37,7 +37,7 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
   );
 }
 export function SourcingPage() {
-  const [activeView, setActiveView] = React.useState<ActiveView>('material_requests');
+  const [activeView, setActiveView] = React.useState<ActiveView>('suppliers');
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -48,24 +48,24 @@ export function SourcingPage() {
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-16 items-center px-4">
             <nav className="flex items-center gap-2">
+              <NavItem icon={Truck} label="Suppliers" isActive={activeView === 'suppliers'} onClick={() => setActiveView('suppliers')} />
               <NavItem icon={FileText} label="Material Requests" isActive={activeView === 'material_requests'} onClick={() => setActiveView('material_requests')} />
               <NavItem icon={MessageSquare} label="RFQs" isActive={activeView === 'rfqs'} onClick={() => setActiveView('rfqs')} />
               <NavItem icon={Package} label="Purchase Orders" isActive={activeView === 'purchase_orders'} onClick={() => setActiveView('purchase_orders')} />
               <NavItem icon={Boxes} label="Purchase Receipts" isActive={activeView === 'purchase_receipts'} onClick={() => setActiveView('purchase_receipts')} />
               <NavItem icon={DollarSign} label="Landed Costs" isActive={activeView === 'landed_costs'} onClick={() => setActiveView('landed_costs')} />
-              <NavItem icon={Truck} label="Suppliers" isActive={activeView === 'suppliers'} onClick={() => setActiveView('suppliers')} />
             </nav>
           </div>
         </header>
 
         {/* Main Content */}
         <main className="container px-4 py-8">
+          {activeView === 'suppliers' && <SupplierManagement/>}
           {activeView === 'material_requests' && <MaterialRequestManagement />}
           {activeView === 'rfqs' && <RFQManagement />}
           {activeView === 'purchase_orders' && <PurchaseOrderManagement />}
           {activeView === 'purchase_receipts' && <PurchaseReceiptManagement />}
           {activeView === 'landed_costs' && <LandedCostManagement />}
-          {activeView === 'suppliers' && <SupplierManagement/>}
         </main>
       </div>
     </ThemeProvider>
