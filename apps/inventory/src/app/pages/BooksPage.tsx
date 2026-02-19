@@ -1,14 +1,14 @@
 import * as React from 'react';
 
-import { BookOpen, FileText, CreditCard, Settings } from 'lucide-react';
+import { BookOpen, FileText, CreditCard, Settings, BarChart3 } from 'lucide-react';
 
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { AccountManagement, SystemConfiguration } from '../components/accounts';
+import { AccountManagement, SystemConfiguration, Reports } from '../components/accounts';
 
-type ActiveView = 'coa' | 'journal_entries' | 'payments' | 'configuration';
+type ActiveView = 'coa' | 'journal_entries' | 'payments' | 'reports' | 'configuration';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -43,6 +43,12 @@ export function BooksPage() {
                 onClick={() => setActiveView('coa')} 
               />
               <NavItem 
+                icon={BarChart3} 
+                label="Reports" 
+                isActive={activeView === 'reports'} 
+                onClick={() => setActiveView('reports')} 
+              />
+              <NavItem 
                 icon={FileText} 
                 label="Journal Entries" 
                 isActive={activeView === 'journal_entries'} 
@@ -67,6 +73,7 @@ export function BooksPage() {
         {/* Main Content */}
         <main className="container px-4 py-8">
           {activeView === 'coa' && <AccountManagement />}
+          {activeView === 'reports' && <Reports />}
           {activeView === 'journal_entries' && (
             <div className="flex items-center justify-center h-96">
               <div className="text-center">

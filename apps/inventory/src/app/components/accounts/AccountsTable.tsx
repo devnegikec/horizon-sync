@@ -23,6 +23,7 @@ import type { AccountListItem } from '../../types/account.types';
 import { getCurrencySymbol, SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import { formatDate } from '../../utility/formatDate';
 import { useAccountBalances } from '../../hooks/useAccountBalances';
+import { ACCOUNT_TYPE_COLORS } from '../../utils/accountColors';
 
 export interface AccountsTableProps {
   accounts: AccountListItem[];
@@ -49,14 +50,6 @@ export interface AccountsTableProps {
   onBulkDelete?: (accountIds: string[]) => void;
   onBulkExport?: (accountIds: string[]) => void;
 }
-
-const ACCOUNT_TYPE_COLORS: Record<string, string> = {
-  ASSET: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-  LIABILITY: 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400',
-  EQUITY: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
-  REVENUE: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400',
-  EXPENSE: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-};
 
 export function AccountsTable({
   accounts,
@@ -180,7 +173,7 @@ export function AccountsTable({
           const currencyCode = row.original.currency || 'USD';
           const currency = SUPPORTED_CURRENCIES.find(c => c.code === currencyCode);
           const symbol = getCurrencySymbol(currencyCode);
-          
+
           return (
             <TooltipProvider>
               <Tooltip>
@@ -218,7 +211,7 @@ export function AccountsTable({
           const currencyCode = account.currency || 'USD';
           const symbol = getCurrencySymbol(currencyCode);
           const balance = balances.get(account.id);
-          
+
           if (balancesLoading) {
             return (
               <div className="flex flex-col gap-0.5">
@@ -226,7 +219,7 @@ export function AccountsTable({
               </div>
             );
           }
-          
+
           if (!balance) {
             return (
               <div className="flex flex-col gap-0.5">
@@ -234,10 +227,10 @@ export function AccountsTable({
               </div>
             );
           }
-          
+
           const isPositive = balance.balance >= 0;
           const isDebitAccount = account.account_type === 'ASSET' || account.account_type === 'EXPENSE';
-          
+
           return (
             <TooltipProvider>
               <Tooltip>
@@ -312,7 +305,7 @@ export function AccountsTable({
         cell: ({ row }) => {
           const isActive = row.original.is_active;
           const isLoading = actionLoading === row.original.id;
-          
+
           return (
             <div className="flex items-center gap-2">
               {isLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
@@ -337,7 +330,7 @@ export function AccountsTable({
           const account = row.original;
           const isActive = account.is_active;
           const isLoading = actionLoading === account.id;
-          
+
           return (
             <div className="text-right">
               <DropdownMenu>
@@ -394,7 +387,7 @@ export function AccountsTable({
       if (tableReadyRef.current) {
         tableReadyRef.current(table);
       }
-      
+
       const selectedRowCount = Object.keys(table.getState().rowSelection).length;
       const selectedAccountIds = Object.keys(table.getState().rowSelection)
         .filter(key => table.getState().rowSelection[key])
@@ -465,7 +458,7 @@ export function AccountsTable({
           </div>
         );
       }
-      
+
       return null;
     },
     [onBulkActivate, onBulkDeactivate, onBulkDelete, onBulkExport]

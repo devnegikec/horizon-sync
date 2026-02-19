@@ -11,6 +11,23 @@ import type {
   UpdateAccountPayload,
 } from '../../types/account.types';
 
+const ACCOUNT_TYPE_API_MAP: Record<string, string> = {
+  ASSET: 'asset',
+  LIABILITY: 'liability',
+  EQUITY: 'equity',
+  REVENUE: 'income',
+  INCOME: 'income',
+  EXPENSE: 'expense',
+};
+
+const toAccountTypeApiValue = (accountType?: string): string | undefined => {
+  if (!accountType || accountType === 'all') {
+    return undefined;
+  }
+
+  return ACCOUNT_TYPE_API_MAP[accountType.toUpperCase()] ?? accountType.toLowerCase();
+};
+
 export const accountApi = {
   list: (
     accessToken: string,
@@ -35,8 +52,9 @@ export const accountApi = {
     if (filters?.search) {
       params.search = filters.search;
     }
-    if (filters?.account_type && filters.account_type !== 'all') {
-      params.account_type = filters.account_type;
+    const accountType = toAccountTypeApiValue(filters?.account_type);
+    if (accountType) {
+      params.account_type = accountType;
     }
     if (filters?.status && filters.status !== 'all') {
       params.is_active = filters.status === 'active' ? 'true' : 'false';

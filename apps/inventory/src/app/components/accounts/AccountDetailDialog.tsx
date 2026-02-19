@@ -7,6 +7,7 @@ import { accountApi } from '../../utility/api/accounts';
 import type { Account, AccountListItem } from '../../types/account.types';
 import { AuditTrail } from './AuditTrail';
 import { BalanceHistory } from './BalanceHistory';
+import { ACCOUNT_TYPE_COLORS } from '../../utils/accountColors';
 
 interface AccountDetailDialogProps {
   open: boolean;
@@ -47,14 +48,6 @@ export const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
 
   if (!accountListItem) return null;
 
-  const typeBadgeClass = {
-    ASSET: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-    LIABILITY: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-    EQUITY: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400',
-    REVENUE: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400',
-    EXPENSE: 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400',
-  } as const;
-
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
@@ -85,7 +78,7 @@ export const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
             <div className="grid gap-4 md:grid-cols-2 mb-4">
               <div>
                 <p className="text-sm text-muted-foreground">Account Type</p>
-                <Badge variant="secondary" className={typeBadgeClass[account.account_type]}>
+                <Badge variant="secondary" className={ACCOUNT_TYPE_COLORS[account.account_type]}>
                   {account.account_type}
                 </Badge>
               </div>

@@ -6,6 +6,7 @@ import { cn } from '@horizon-sync/ui/lib';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
 import type { AccountType } from '../../types/account.types';
+import { ACCOUNT_TYPE_COLORS } from '../../utils/accountColors';
 
 interface TreeNode {
   id: string;
@@ -25,14 +26,6 @@ interface AccountTreeViewProps {
   selectedAccountId?: string | null;
   lazyLoad?: boolean; // Enable lazy loading mode
 }
-
-const ACCOUNT_TYPE_COLORS: Record<string, string> = {
-  ASSET: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-  LIABILITY: 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400',
-  EQUITY: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
-  REVENUE: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400',
-  EXPENSE: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-};
 
 interface TreeNodeItemProps {
   node: TreeNode;

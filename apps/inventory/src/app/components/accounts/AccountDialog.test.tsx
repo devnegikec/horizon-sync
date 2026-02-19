@@ -240,7 +240,7 @@ describe('AccountDialog - Parent Account Selection', () => {
     await waitFor(() => {
       const codeInput = screen.getByLabelText(/account code/i);
       const nameInput = screen.getByLabelText(/account name/i);
-      
+
       fireEvent.change(codeInput, { target: { value: '1200' } });
       fireEvent.change(nameInput, { target: { value: 'Test Account' } });
     });

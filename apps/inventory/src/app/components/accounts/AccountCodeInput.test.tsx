@@ -70,7 +70,7 @@ describe('AccountCodeInput', () => {
 
   it('shows error for value exceeding max length', async () => {
     const longValue = 'A'.repeat(51);
-    
+
     render(
       <AccountCodeInput
         value={longValue}
@@ -173,7 +173,7 @@ describe('AccountCodeInput', () => {
 
   it('respects custom maxLength', async () => {
     const value = 'A'.repeat(11);
-    
+
     render(
       <AccountCodeInput
         value={value}
