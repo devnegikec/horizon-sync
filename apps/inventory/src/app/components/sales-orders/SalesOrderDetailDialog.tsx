@@ -1,9 +1,15 @@
 import * as React from 'react';
-import { Edit, FileText, ShoppingCart, Receipt, ExternalLink } from 'lucide-react';
+
+import { Edit, FileText, ShoppingCart, Receipt, ExternalLink, Mail, Download, Eye } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
+import { usePDFGeneration } from '../../hooks/usePDFGeneration';
+import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { SalesOrder } from '../../types/sales-order.types';
+import { convertSalesOrderToPDFData } from '../../utils/pdf/salesOrderToPDF';
+import { EmailComposer } from '../common/EmailComposer';
 import { StatusBadge } from '../quotations/StatusBadge';
 
 interface SalesOrderDetailDialogProps {
@@ -16,10 +22,22 @@ interface SalesOrderDetailDialogProps {
 }
 
 export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit, onCreateInvoice, onViewInvoice }: SalesOrderDetailDialogProps) {
+  const [emailDialogOpen, setEmailDialogOpen] = React.useState(false);
+  const [pdfAttachment, setPdfAttachment] = React.useState<{ filename: string; content: string; content_type: string } | null>(null);
+  const { toast } = useToast();
+  const { loading: pdfLoading, download, preview, generateBase64 } = usePDFGeneration();
+
   if (!salesOrder) return null;
 
   const isClosedOrCancelled = salesOrder.status === 'closed' || salesOrder.status === 'cancelled';
   const canCreateInvoice = salesOrder.status === 'confirmed' || salesOrder.status === 'partially_delivered' || salesOrder.status === 'delivered';
+
+  const getCurrencySymbol = (currencyCode: string): string => {
+    const currency = SUPPORTED_CURRENCIES.find((c: { code: string; symbol: string }) => c.code === currencyCode);
+    return currency?.symbol || currencyCode;
+  };
+
+  const currencySymbol = getCurrencySymbol(salesOrder.currency);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -29,207 +47,397 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
     });
   };
 
+  const handleDownloadPDF = async () => {
+    try {
+      const pdfData = convertSalesOrderToPDFData(salesOrder);
+      await download(pdfData, `${salesOrder.sales_order_no}.pdf`);
+      toast({ title: 'PDF Downloaded', description: `${salesOrder.sales_order_no}.pdf has been downloaded` });
+    } catch (error) {
+      toast({ title: 'Download Failed', description: error instanceof Error ? error.message : 'Failed to download PDF', variant: 'destructive' });
+    }
+  };
+
+  const handlePreviewPDF = async () => {
+    try {
+      const pdfData = convertSalesOrderToPDFData(salesOrder);
+      await preview(pdfData);
+    } catch (error) {
+      toast({ title: 'Preview Failed', description: error instanceof Error ? error.message : 'Failed to preview PDF', variant: 'destructive' });
+    }
+  };
+
+  const handleSendEmail = async () => {
+    try {
+      const pdfData = convertSalesOrderToPDFData(salesOrder);
+      const base64Content = await generateBase64(pdfData);
+      if (base64Content) {
+        setPdfAttachment({ filename: `${salesOrder.sales_order_no}.pdf`, content: base64Content, content_type: 'application/pdf' });
+        setEmailDialogOpen(true);
+      } else {
+        toast({ title: 'PDF Generation Failed', description: 'Could not generate PDF attachment', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to prepare email', variant: 'destructive' });
+    }
+  };
+
+  // Extract tax info from line items (future-proof: items may have tax_info via extra_data)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getItemTaxInfo = (item: any) => {
+    return (item.tax_info || item.extra_data?.tax_info) as {
+      template_name: string;
+      template_code: string;
+      breakup: Array<{ rule_name: string; tax_type: string; rate: number; is_compound: boolean }>;
+    } | null | undefined;
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getItemTaxAmount = (item: any): number => {
+    return Number(item.tax_amount || item.extra_data?.tax_amount || 0);
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getItemTotalAmount = (item: any): number => {
+    return Number(item.total_amount || item.extra_data?.total_amount || item.amount || 0);
+  };
+
+  // Build tax summary
+  const lineItems = salesOrder.items || [];
+  const taxSummary = new Map<string, { name: string; amount: number; breakup: Array<{ rule_name: string; rate: number; amount: number }> }>();
+  const hasTaxInfo = lineItems.some(item => getItemTaxInfo(item));
+
+  lineItems.forEach(item => {
+    const taxInfo = getItemTaxInfo(item);
+    if (taxInfo) {
+      const templateKey = taxInfo.template_code;
+      if (!taxSummary.has(templateKey)) {
+        taxSummary.set(templateKey, {
+          name: taxInfo.template_name,
+          amount: 0,
+          breakup: taxInfo.breakup.map(tax => ({ rule_name: tax.rule_name, rate: tax.rate, amount: 0 })),
+        });
+      }
+      const summary = taxSummary.get(templateKey);
+      if (summary) {
+        summary.amount += getItemTaxAmount(item);
+        taxInfo.breakup.forEach((tax, idx) => {
+          const taxComponentAmount = (Number(item.amount) * tax.rate) / 100;
+          summary.breakup[idx].amount += taxComponentAmount;
+        });
+      }
+    }
+  });
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-3">
-              <ShoppingCart className="h-5 w-5" />
-              Sales Order Details
-            </DialogTitle>
-            <StatusBadge status={salesOrder.status} />
-          </div>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-3">
+                <ShoppingCart className="h-5 w-5" />
+                Sales Order Details
+              </DialogTitle>
+              <StatusBadge status={salesOrder.status} />
+            </div>
+          </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Header Information */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <p className="text-sm text-muted-foreground">Sales Order Number</p>
-              <p className="text-lg font-semibold">{salesOrder.sales_order_no}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Customer</p>
-              <p className="text-lg font-semibold">{salesOrder.customer_name || salesOrder.customer_id}</p>
-            </div>
-          </div>
-
-          {/* Dates and Currency */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <p className="text-sm text-muted-foreground">Order Date</p>
-              <p className="font-medium">{formatDate(salesOrder.order_date)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Delivery Date</p>
-              <p className="font-medium">{salesOrder.delivery_date ? formatDate(salesOrder.delivery_date) : 'Not set'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Currency</p>
-              <p className="font-medium">{salesOrder.currency}</p>
-            </div>
-          </div>
-
-          {/* Reference */}
-          {salesOrder.reference_type === 'Quotation' && salesOrder.reference_id && (
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-3 text-sm">
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <span className="text-blue-900 dark:text-blue-100">
-                  Created from Quotation (Ref: {salesOrder.reference_id.slice(0, 8)}...)
-                </span>
+          <div className="space-y-6">
+            {/* Header Information */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <p className="text-sm text-muted-foreground">Sales Order Number</p>
+                <p className="text-lg font-semibold">{salesOrder.sales_order_no}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Customer</p>
+                <p className="text-lg font-semibold">{salesOrder.customer_name || salesOrder.customer_id}</p>
               </div>
             </div>
-          )}
 
-          {/* Grand Total */}
-          <div className="rounded-lg bg-muted/50 p-4">
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-medium">Grand Total</span>
-              <span className="text-2xl font-bold">{salesOrder.currency} {Number(salesOrder.grand_total).toFixed(2)}</span>
+            {/* Dates and Currency */}
+            <div className="grid gap-4 md:grid-cols-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Order Date</p>
+                <p className="font-medium">{formatDate(salesOrder.order_date)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Delivery Date</p>
+                <p className="font-medium">{salesOrder.delivery_date ? formatDate(salesOrder.delivery_date) : 'Not set'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Currency</p>
+                <p className="font-medium">{salesOrder.currency}</p>
+              </div>
             </div>
-          </div>
 
-          {/* Line Items with Fulfillment Status */}
-          <Separator />
-          <div>
-            <h3 className="text-lg font-medium mb-4">Line Items</h3>
-            {salesOrder.items && salesOrder.items.length > 0 ? (
-              <div className="rounded-lg border">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium">#</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Item</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium">Qty</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">UOM</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium">Rate</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium">Billed</th>
-                        <th className="px-4 py-3 text-right text-sm font-medium">Delivered</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {salesOrder.items.map((item, index) => {
-                        const qty = Number(item.qty);
-                        const billedQty = Number(item.billed_qty);
-                        const deliveredQty = Number(item.delivered_qty);
-                        const billedPct = qty > 0 ? Math.min((billedQty / qty) * 100, 100) : 0;
-                        const deliveredPct = qty > 0 ? Math.min((deliveredQty / qty) * 100, 100) : 0;
-
-                        return (
-                          <tr key={item.id || index}>
-                            <td className="px-4 py-3 text-sm">{index + 1}</td>
-                            <td className="px-4 py-3 text-sm">{item.item_name || item.item_id}</td>
-                            <td className="px-4 py-3 text-sm text-right">{qty}</td>
-                            <td className="px-4 py-3 text-sm">{item.uom}</td>
-                            <td className="px-4 py-3 text-sm text-right">{Number(item.rate).toFixed(2)}</td>
-                            <td className="px-4 py-3 text-sm text-right font-medium">{Number(item.amount).toFixed(2)}</td>
-                            <td className="px-4 py-3 text-sm text-right">
-                              <div className="flex flex-col items-end gap-1">
-                                <span>{billedQty} / {qty}</span>
-                                <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-blue-500 rounded-full" style={{ width: `${billedPct}%` }} />
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-right">
-                              <div className="flex flex-col items-end gap-1">
-                                <span>{deliveredQty} / {qty}</span>
-                                <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-green-500 rounded-full" style={{ width: `${deliveredPct}%` }} />
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+            {/* Reference */}
+            {salesOrder.reference_type === 'Quotation' && salesOrder.reference_id && (
+              <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-blue-900 dark:text-blue-100">
+                    Created from Quotation (Ref: {salesOrder.reference_id.slice(0, 8)}...)
+                  </span>
                 </div>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No line items</p>
             )}
-          </div>
 
-          {/* Related Invoices - Show if any items have been billed */}
-          {salesOrder.items && salesOrder.items.some(item => Number(item.billed_qty) > 0) && (
-            <>
-              <Separator />
-              <div>
-                <h3 className="text-lg font-medium mb-4">Related Invoices</h3>
-                <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Receipt className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      <span className="text-blue-900 dark:text-blue-100">
-                        This sales order has been invoiced
-                      </span>
+            {/* Tax Summary */}
+            {taxSummary.size > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-lg font-medium">Tax Summary</h3>
+                <div className="rounded-lg border p-4 space-y-2">
+                  {Array.from(taxSummary.entries()).map(([key, summary]) => (
+                    <div key={key} className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">{summary.name}</span>
+                        <span className="text-sm font-semibold">{currencySymbol} {summary.amount.toFixed(2)}</span>
+                      </div>
+                      <div className="pl-4 space-y-1">
+                        {summary.breakup.map((tax, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-xs text-muted-foreground">
+                            <span>{tax.rule_name} ({tax.rate}%)</span>
+                            <span>{currencySymbol} {tax.amount.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    {onViewInvoice && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          // Note: In a real implementation, we would need to fetch the actual invoice ID
-                          // For now, this is a placeholder that would need the invoice ID from the backend
-                          console.log('View invoices for sales order:', salesOrder.id);
-                        }}
-                        className="h-7 gap-1 text-blue-600 dark:text-blue-400"
-                      >
-                        View Invoices
-                        <ExternalLink className="h-3 w-3" />
-                      </Button>
-                    )}
+                  ))}
+                  <Separator className="my-2" />
+                  <div className="flex justify-between items-center font-semibold">
+                    <span className="text-sm">Total Tax</span>
+                    <span className="text-sm">{currencySymbol} {Array.from(taxSummary.values()).reduce((sum, s) => sum + s.amount, 0).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
-            </>
-          )}
+            )}
 
-          {/* Remarks */}
-          {salesOrder.remarks && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Remarks</p>
-              <p className="text-sm">{salesOrder.remarks}</p>
+            {/* Grand Total */}
+            <div className="rounded-lg bg-muted/50 p-4">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-medium">Grand Total</span>
+                <span className="text-2xl font-bold">{currencySymbol} {Number(salesOrder.grand_total).toFixed(2)}</span>
+              </div>
             </div>
-          )}
 
-          {/* Timestamps */}
-          <Separator />
-          <div className="grid gap-4 md:grid-cols-2 text-sm text-muted-foreground">
+            {/* Line Items */}
+            <Separator />
             <div>
-              <p>Created: {formatDate(salesOrder.created_at)}</p>
+              <h3 className="text-lg font-medium mb-4">Line Items</h3>
+              {lineItems.length > 0 ? (
+                <div className="rounded-lg border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-medium">#</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium">Item</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium">Qty</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium">UOM</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium">Rate</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
+                          {hasTaxInfo && <th className="px-4 py-3 text-right text-sm font-medium">Tax</th>}
+                          {hasTaxInfo && <th className="px-4 py-3 text-right text-sm font-medium">Total</th>}
+                          <th className="px-4 py-3 text-right text-sm font-medium">Billed</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium">Delivered</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {lineItems.map((item, index) => {
+                          const qty = Number(item.qty);
+                          const billedQty = Number(item.billed_qty);
+                          const deliveredQty = Number(item.delivered_qty);
+                          const billedPct = qty > 0 ? Math.min((billedQty / qty) * 100, 100) : 0;
+                          const deliveredPct = qty > 0 ? Math.min((deliveredQty / qty) * 100, 100) : 0;
+                          const taxInfo = getItemTaxInfo(item);
+                          const taxAmount = getItemTaxAmount(item);
+                          const totalAmount = getItemTotalAmount(item);
+
+                          return (
+                            <tr key={item.id || index} className="hover:bg-muted/30">
+                              <td className="px-4 py-3 text-sm">{index + 1}</td>
+                              <td className="px-4 py-3">
+                                <div>
+                                  <p className="text-sm font-medium">{item.item_name || item.item_id}</p>
+                                  {item.item_sku && <p className="text-xs text-muted-foreground">{item.item_sku}</p>}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-right">{qty}</td>
+                              <td className="px-4 py-3 text-sm">{item.uom}</td>
+                              <td className="px-4 py-3 text-sm text-right">{currencySymbol} {Number(item.rate).toFixed(2)}</td>
+                              <td className="px-4 py-3 text-sm text-right">{currencySymbol} {Number(item.amount).toFixed(2)}</td>
+                              {hasTaxInfo && (
+                                <td className="px-4 py-3 text-right">
+                                  {taxInfo ? (
+                                    <div className="space-y-1">
+                                      <p className="text-sm font-medium">{currencySymbol} {taxAmount.toFixed(2)}</p>
+                                      <div className="flex flex-wrap gap-1 justify-end">
+                                        {taxInfo.breakup.map((tax, taxIdx) => (
+                                          <span key={taxIdx} className="text-xs text-muted-foreground">
+                                            {tax.rule_name} {tax.rate}%
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">—</span>
+                                  )}
+                                </td>
+                              )}
+                              {hasTaxInfo && (
+                                <td className="px-4 py-3 text-sm text-right font-semibold">
+                                  {currencySymbol} {totalAmount.toFixed(2)}
+                                </td>
+                              )}
+                              <td className="px-4 py-3 text-sm text-right">
+                                <div className="flex flex-col items-end gap-1">
+                                  <span>{billedQty} / {qty}</span>
+                                  <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${billedPct}%` }} />
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-right">
+                                <div className="flex flex-col items-end gap-1">
+                                  <span>{deliveredQty} / {qty}</span>
+                                  <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                                    <div className="h-full bg-green-500 rounded-full" style={{ width: `${deliveredPct}%` }} />
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-muted/30 border-t-2">
+                        <tr>
+                          <td colSpan={5} className="px-4 py-3 text-right text-sm font-medium">Subtotal:</td>
+                          <td className="px-4 py-3 text-right text-sm font-semibold">
+                            {currencySymbol} {lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2)}
+                          </td>
+                          {hasTaxInfo && (
+                            <td className="px-4 py-3 text-right text-sm font-semibold">
+                              {currencySymbol} {lineItems.reduce((sum, item) => sum + getItemTaxAmount(item), 0).toFixed(2)}
+                            </td>
+                          )}
+                          {hasTaxInfo && (
+                            <td className="px-4 py-3 text-right text-sm font-bold">
+                              {currencySymbol} {lineItems.reduce((sum, item) => sum + getItemTotalAmount(item), 0).toFixed(2)}
+                            </td>
+                          )}
+                          <td colSpan={2} />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No line items</p>
+              )}
             </div>
-            {salesOrder.updated_at && (
+
+            {/* Related Invoices */}
+            {salesOrder.items && salesOrder.items.some(item => Number(item.billed_qty) > 0) && (
+              <>
+                <Separator />
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Related Invoices</h3>
+                  <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Receipt className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <span className="text-blue-900 dark:text-blue-100">This sales order has been invoiced</span>
+                      </div>
+                      {onViewInvoice && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => console.log('View invoices for sales order:', salesOrder.id)}
+                          className="h-7 gap-1 text-blue-600 dark:text-blue-400"
+                        >
+                          View Invoices
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Remarks */}
+            {salesOrder.remarks && (
               <div>
-                <p>Updated: {formatDate(salesOrder.updated_at)}</p>
+                <p className="text-sm text-muted-foreground mb-1">Remarks</p>
+                <p className="text-sm">{salesOrder.remarks}</p>
               </div>
             )}
-          </div>
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-          {canCreateInvoice && (
-            <Button variant="default" onClick={() => onCreateInvoice(salesOrder)} className="gap-2">
-              <Receipt className="h-4 w-4" />
-              Create Invoice
+            {/* Timestamps */}
+            <Separator />
+            <div className="grid gap-4 md:grid-cols-2 text-sm text-muted-foreground">
+              <div>
+                <p>Created: {formatDate(salesOrder.created_at)}</p>
+              </div>
+              {salesOrder.updated_at && (
+                <div>
+                  <p>Updated: {formatDate(salesOrder.updated_at)}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
             </Button>
-          )}
-          {!isClosedOrCancelled && (
-            <Button variant="default" onClick={() => onEdit(salesOrder)} className="gap-2">
-              <Edit className="h-4 w-4" />
-              Edit
+            <Button variant="outline" onClick={handlePreviewPDF} disabled={pdfLoading} className="gap-2">
+              <Eye className="h-4 w-4" />
+              Preview PDF
             </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            <Button variant="outline" onClick={handleDownloadPDF} disabled={pdfLoading} className="gap-2">
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+            <Button variant="outline" onClick={handleSendEmail} disabled={pdfLoading} className="gap-2">
+              <Mail className="h-4 w-4" />
+              Send Email
+            </Button>
+            {canCreateInvoice && (
+              <Button variant="default" onClick={() => onCreateInvoice(salesOrder)} className="gap-2">
+                <Receipt className="h-4 w-4" />
+                Create Invoice
+              </Button>
+            )}
+            {!isClosedOrCancelled && (
+              <Button variant="default" onClick={() => onEdit(salesOrder)} className="gap-2">
+                <Edit className="h-4 w-4" />
+                Edit
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <EmailComposer
+        open={emailDialogOpen}
+        onOpenChange={(isOpen) => {
+          setEmailDialogOpen(isOpen);
+          if (!isOpen) setPdfAttachment(null);
+        }}
+        docType="sales_order"
+        docId={salesOrder.id}
+        docNo={salesOrder.sales_order_no}
+        defaultRecipient=""
+        defaultSubject={`Sales Order ${salesOrder.sales_order_no}`}
+        defaultMessage={`Dear ${salesOrder.customer_name || 'Customer'},\n\nPlease find attached sales order ${salesOrder.sales_order_no} for your reference.\n\nBest regards`}
+        defaultAttachments={pdfAttachment ? [pdfAttachment] : undefined}
+        onSuccess={() => {
+          setEmailDialogOpen(false);
+          setPdfAttachment(null);
+        }}
+      />
+    </>
   );
 }
