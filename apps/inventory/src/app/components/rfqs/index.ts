@@ -1,6 +1,7 @@
 export { RFQManagement } from './RFQManagement';
 export { RFQHeader } from './RFQHeader';
-export { RFQFilters } from './RFQFilters';
-export { RFQTable } from './RFQTable';
+export { RFQManagementFilters } from './RFQManagementFilters';
+export { RFQsTable } from './RFQsTable';
 export { RFQDialog } from './RFQDialog';
 export { RFQDetailDialog } from './RFQDetailDialog';
+export { RFQStats } from './RFQStats';

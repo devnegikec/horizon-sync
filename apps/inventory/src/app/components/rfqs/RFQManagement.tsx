@@ -1,118 +1,98 @@
-import { useState } from 'react';
-import { useRFQs } from '../../hooks/useRFQs';
-import { useRFQActions } from '../../hooks/useRFQActions';
-import type { RFQListItem } from '../../types/rfq.types';
+import * as React from 'react';
+
+import { AlertTriangle } from 'lucide-react';
+
+import { Card, CardContent } from '@horizon-sync/ui/components';
+
+import { useRFQManagement } from '../../hooks/useRFQManagement';
 
 import {
   RFQHeader,
-  RFQFilters,
-  RFQTable,
+  RFQManagementFilters,
+  RFQsTable,
   RFQDialog,
   RFQDetailDialog,
+  RFQStats,
 } from './index';
 
 export function RFQManagement() {
-  console.log('[RFQManagement] Component mounting');
-  
   const {
+    filters,
+    setFilters,
     rfqs,
     loading,
     error,
-    totalCount,
-    filters,
-    setFilters,
     refetch,
-  } = useRFQs();
+    stats,
+    detailDialogOpen,
+    setDetailDialogOpen,
+    createDialogOpen,
+    setCreateDialogOpen,
+    selectedRFQ,
+    editRFQ,
+    tableInstance,
+    saving,
+    handleView,
+    handleCreate,
+    handleEdit,
+    handleDelete,
+    handleSend,
+    handleClose,
+    handleTableReady,
+    handleSave,
+    serverPaginationConfig,
+  } = useRFQManagement();
 
-  console.log('[RFQManagement] State:', { rfqs, loading, error, totalCount });
-
-  const {
-    loading: actionLoading,
-    sendRFQ,
-    closeRFQ,
-    deleteRFQ,
-  } = useRFQActions();
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [selectedRFQId, setSelectedRFQId] = useState<string | null>(null);
-
-  const handleCreate = () => {
-    setSelectedRFQId(null);
-    setDialogOpen(true);
-  };
-
-  const handleEdit = (rfq: RFQListItem) => {
-    if (rfq.status !== 'DRAFT') {
-      return; // Only DRAFT can be edited
-    }
-    setSelectedRFQId(rfq.id);
-    setDialogOpen(true);
-  };
-
-  const handleView = (rfq: RFQListItem) => {
-    setSelectedRFQId(rfq.id);
-    setDetailDialogOpen(true);
-  };
-
-  const handleSend = async (rfq: RFQListItem) => {
-    const result = await sendRFQ(rfq.id);
-    if (result) {
-      refetch();
-    }
-  };
-
-  const handleClose = async (rfq: RFQListItem) => {
-    const result = await closeRFQ(rfq.id);
-    if (result) {
-      refetch();
-    }
-  };
-
-  const handleDelete = async (rfq: RFQListItem) => {
-    const success = await deleteRFQ(rfq.id);
-    if (success) {
-      refetch();
-    }
-  };
-
-  const handleSave = () => {
-    setDialogOpen(false);
-    refetch();
-  };
+  // Error display component
+  const ErrorDisplay = React.useMemo(() => {
+    if (!error) return null;
+    return (
+      <Card className="border-destructive">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="text-sm font-medium">Error loading RFQs: {error}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }, [error]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <RFQHeader onCreateRFQ={handleCreate} />
+      {/* Header */}
+      <RFQHeader onCreateRFQ={handleCreate} onRefresh={refetch} isLoading={loading} />
 
-      <RFQFilters filters={filters} setFilters={setFilters} />
+      {/* Error State */}
+      {ErrorDisplay}
 
-      <RFQTable
+      {/* Stats Cards */}
+      <RFQStats total={stats.total} draft={stats.draft} sent={stats.sent} responded={stats.responded} />
+
+      {/* Filters */}
+      <RFQManagementFilters filters={filters} setFilters={setFilters} tableInstance={tableInstance} />
+
+      {/* RFQs Table */}
+      <RFQsTable
         rfqs={rfqs}
-        loading={loading || actionLoading}
+        loading={loading}
         error={error}
-        totalCount={totalCount}
-        filters={filters}
-        setFilters={setFilters}
+        hasActiveFilters={!!filters.search || !!filters.status}
         onView={handleView}
         onEdit={handleEdit}
+        onDelete={handleDelete}
         onSend={handleSend}
         onClose={handleClose}
-        onDelete={handleDelete}
+        onCreateRFQ={handleCreate}
+        onTableReady={handleTableReady}
+        serverPagination={serverPaginationConfig}
       />
 
-      <RFQDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        rfqId={selectedRFQId}
-        onSave={handleSave}
-      />
+      {/* Detail Dialog */}
+      <RFQDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} rfq={selectedRFQ} onEdit={handleEdit} />
 
-      <RFQDetailDialog
-        open={detailDialogOpen}
-        onOpenChange={setDetailDialogOpen}
-        rfqId={selectedRFQId}
-      />
+      {/* Create/Edit Dialog */}
+      <RFQDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} rfq={editRFQ} onSave={handleSave} saving={saving} />
     </div>
   );
 }

@@ -103,6 +103,14 @@ export interface RFQFilters {
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
   search?: string;
+  material_request_id?: string;
+}
+
+// Internal filters for the management hook
+export interface RFQManagementFilters {
+  search: string;
+  status: string;
+  material_request_id?: string;
 }
 
 export interface RFQsResponse {
@@ -112,5 +120,7 @@ export interface RFQsResponse {
     page_size: number;
     total_count: number;
     total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
   };
 }
