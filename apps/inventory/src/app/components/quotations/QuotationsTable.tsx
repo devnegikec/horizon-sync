@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { FileText, Plus, MoreHorizontal, Eye, Edit, Trash2, User } from 'lucide-react';
+import { FileText, Plus, MoreHorizontal, Eye, Edit, Trash2, User, Lock } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -83,10 +83,19 @@ export function QuotationsTable({
           return (
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <FileText className="h-5 w-5 text-primary" />
+                {quotation.converted_to_sales_order ? (
+                  <Lock className="h-5 w-5 text-primary" />
+                ) : (
+                  <FileText className="h-5 w-5 text-primary" />
+                )}
               </div>
               <div>
-                <p className="font-medium font-mono text-sm">{quotation.quotation_no}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium font-mono text-sm">{quotation.quotation_no}</p>
+                  {quotation.converted_to_sales_order && (
+                    <Badge variant="secondary" className="text-xs">Converted</Badge>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {formatDate(quotation.created_at, 'DD-MMM-YY')}
                 </p>
@@ -154,9 +163,9 @@ export function QuotationsTable({
         header: () => <span className="sr-only">Actions</span>,
         cell: ({ row }) => {
           const quotation = row.original;
-          const canEdit = quotation.status !== 'accepted' && quotation.status !== 'rejected' && quotation.status !== 'expired';
-          const canDelete = quotation.status === 'draft';
-          const canConvert = quotation.status === 'accepted';
+          const canEdit = quotation.status !== 'accepted' && quotation.status !== 'rejected' && quotation.status !== 'expired' && !quotation.converted_to_sales_order;
+          const canDelete = quotation.status === 'draft' && !quotation.converted_to_sales_order;
+          const canConvert = quotation.status === 'accepted' && !quotation.converted_to_sales_order;
           
           return (
             <div className="text-right">

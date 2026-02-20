@@ -229,17 +229,21 @@ export function useQuotationManagement() {
     setConverting(true);
     try {
       const result = await quotationApi.convertToSalesOrder(accessToken, quotationId, data) as { sales_order_id: string; sales_order_no: string; message: string };
+      
+      // Update the quotation's converted_to_sales_order flag locally
+      setSelectedQuotation(prev => prev ? { ...prev, converted_to_sales_order: true } : null);
+      
       toast({
         title: 'Success',
-        description: result.message || 'Quotation converted to sales order successfully',
+        description: result.message || `Quotation converted to sales order ${result.sales_order_no} successfully`,
       });
       setConvertDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['quotations'] });
-      refetch();
+      await refetch();
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to convert quotation',
+        description: err instanceof Error ? err.message : 'Failed to convert quotation to sales order',
         variant: 'destructive',
       });
       throw err;

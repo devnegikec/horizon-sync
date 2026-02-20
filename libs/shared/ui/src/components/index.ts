@@ -21,3 +21,4 @@ export * from './ui/toaster';
 export * from './ui/tooltip';
 export * from './data-table';
 export * from './organization';
+export * from './email';

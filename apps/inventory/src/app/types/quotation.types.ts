@@ -67,6 +67,7 @@ export interface Quotation {
   remarks?: string;
   line_items?: QuotationLineItem[];
   items?: QuotationLineItem[]; // API returns 'items' instead of 'line_items'
+  converted_to_sales_order?: boolean;
   created_by?: string;
   updated_by?: string;
   created_at: string;

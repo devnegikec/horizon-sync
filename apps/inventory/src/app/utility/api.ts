@@ -38,6 +38,9 @@ export {
   
   // ERP APIs
   accountApi,
+  
+  // Communication APIs
+  communicationApi,
 } from './api/index';
 
 export type {

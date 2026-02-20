@@ -61,7 +61,7 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
         order_date: salesOrder.order_date.slice(0, 10),
         delivery_date: salesOrder.delivery_date ? salesOrder.delivery_date.slice(0, 10) : '',
         currency: salesOrder.currency,
-        status: salesOrder.status,
+        status: salesOrder.status || 'draft',
         remarks: salesOrder.remarks || '',
       });
       if (salesOrder.items && salesOrder.items.length > 0) {
@@ -271,7 +271,7 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableStatuses.map((status) => (
+                    {availableStatuses.filter(status => status).map((status) => (
                       <SelectItem key={status} value={status}>
                         {statusLabels[status]}
                       </SelectItem>

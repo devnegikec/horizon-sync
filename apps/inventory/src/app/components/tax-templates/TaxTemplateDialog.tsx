@@ -105,7 +105,7 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
         tax_category: template.tax_category,
         is_default: template.is_default,
         is_active: template.is_active,
-        tax_rules: template.tax_rules.map((rule, index) => ({
+        tax_rules: template.tax_rules?.map((rule, index) => ({
           rule_name: rule.rule_name,
           tax_type: rule.tax_type,
           description: rule.description || '',

@@ -1,5 +1,12 @@
 import { environment } from '../../environments/environment';
 
+export class AuthenticationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthenticationError';
+  }
+}
+
 export interface CreateOrganizationPayload {
   name: string;
   slug: string;
@@ -34,6 +41,12 @@ export interface Organization {
   updated_at: string;
 }
 
+export interface UpdateOrganizationPayload {
+  name?: string;
+  display_name?: string | null;
+  settings?: Record<string, unknown>;
+}
+
 const API_BASE_URL = environment.apiBaseUrl;
 
 export class OrganizationService {
@@ -49,6 +62,9 @@ export class OrganizationService {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new AuthenticationError('Authentication failed. Please log in again.');
+        }
         const errorData = await response.json().catch(() => ({
           message: 'Failed to create organization',
         }));
@@ -75,6 +91,9 @@ export class OrganizationService {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new AuthenticationError('Authentication failed. Please log in again.');
+        }
         const errorData = await response.json().catch(() => ({
           message: 'Failed to fetch organization',
         }));
@@ -87,6 +106,40 @@ export class OrganizationService {
         throw error;
       }
       throw new Error('An unexpected error occurred while fetching organization');
+    }
+  }
+
+  static async updateOrganization(
+    organizationId: string,
+    payload: UpdateOrganizationPayload,
+    token: string
+  ): Promise<Organization> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/identity/organizations/${organizationId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new AuthenticationError('Authentication failed. Please log in again.');
+        }
+        const errorData = await response.json().catch(() => ({
+          message: 'Failed to update organization',
+        }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred while updating organization');
     }
   }
 }
