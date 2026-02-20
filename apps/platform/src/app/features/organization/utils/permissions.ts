@@ -1,9 +1,11 @@
+import { useUserStore } from '@horizon-sync/store';
 import type { User } from '@horizon-sync/store';
 
 /**
  * Check if a user has a specific permission
  * 
- * This function checks both direct user permissions and role-based permissions.
+ * This function checks permissions from the global store first (recommended),
+ * then falls back to checking user object permissions for backward compatibility.
  * It supports wildcard permissions like "*.*" and "organization.*"
  * 
  * @param user - The user object (can be null for unauthenticated users)
@@ -15,6 +17,33 @@ export function hasPermission(user: User | null, permission: string): boolean {
     return false;
   }
 
+  // First, try to get permissions from global store (preferred method)
+  const storePermissions = getStorePermissions();
+  if (storePermissions.length > 0) {
+    return checkPermissionInList(storePermissions, permission);
+  }
+
+  // Fallback: Check user object permissions
+  return checkUserPermissions(user, permission);
+}
+
+/**
+ * Get permissions from the global store
+ */
+function getStorePermissions(): string[] {
+  try {
+    const storeState = useUserStore.getState();
+    return storeState.permissions.permissions;
+  } catch {
+    // If store is not available (e.g., in tests), return empty array
+    return [];
+  }
+}
+
+/**
+ * Check permissions from user object (fallback method)
+ */
+function checkUserPermissions(user: User, permission: string): boolean {
   // Check direct user permissions
   if (user.permissions && Array.isArray(user.permissions)) {
     if (checkPermissionInList(user.permissions, permission)) {
@@ -30,6 +59,17 @@ export function hasPermission(user: User | null, permission: string): boolean {
   }
 
   return false;
+}
+
+/**
+ * Check permissions directly from the global store (recommended for new code)
+ * 
+ * @param permission - The permission string to check (e.g., "organization.update")
+ * @returns boolean indicating if the current user has the specified permission
+ */
+export function hasPermissionFromStore(permission: string): boolean {
+  const storeState = useUserStore.getState();
+  return checkPermissionInList(storeState.permissions.permissions, permission);
 }
 
 /**

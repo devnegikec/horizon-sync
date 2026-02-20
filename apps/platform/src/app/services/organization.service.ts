@@ -116,7 +116,7 @@ export class OrganizationService {
   ): Promise<Organization> {
     try {
       const response = await fetch(`${API_BASE_URL}/identity/organizations/${organizationId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,

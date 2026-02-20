@@ -124,7 +124,7 @@ describe('OrganizationService', () => {
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining(`/identity/organizations/${mockOrgId}`),
         expect.objectContaining({
-          method: 'PUT',
+          method: 'PATCH',
           headers: expect.objectContaining({
             Authorization: `Bearer ${mockToken}`,
           }),
