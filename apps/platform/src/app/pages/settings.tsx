@@ -6,7 +6,7 @@ import { useUserStore } from '@horizon-sync/store';
 
 import { CurrencySettings } from '../features/organization/components/CurrencySettings';
 import { OrganizationSettings } from '../features/organization/components/OrganizationSettings';
-import { hasPermission } from '../features/organization/utils/permissions';
+import { hasPermissionFromStore } from '../features/organization/utils/permissions';
 import { useAuth } from '../hooks';
 
 /**
@@ -54,8 +54,8 @@ export function SettingsPage() {
     );
   }
 
-  // Check if user has permission to edit organization settings
-  const canEdit = hasPermission(user, 'organization.update');
+  // Check if user has permission to edit organization settings from global store
+  const canEdit = hasPermissionFromStore('organization.update');
 
   // Get current settings from organization in store
   const currentSettings = organization?.settings || null;

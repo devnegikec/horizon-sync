@@ -4,8 +4,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useLocation } from 'react-router-dom';
 
+import { useUserStore, type Organization as StoreOrganization } from '@horizon-sync/store';
+
 import { useAuth, usePermissions } from '../hooks';
 import { AuthService } from '../services/auth.service';
+import { OrganizationService, type Organization as ServiceOrganization } from '../services/organization.service';
 import { loginSchema, LoginFormData } from '../utility/validationSchema';
 
 const REMEMBER_EMAIL_KEY = 'login_remember_email';
@@ -16,11 +19,58 @@ function getStoredEmail(): string {
   return localStorage.getItem(REMEMBER_EMAIL_KEY) ?? '';
 }
 
+/**
+ * Convert service organization to store organization format
+ */
+function convertToStoreOrganization(org: ServiceOrganization): StoreOrganization {
+  return {
+    id: org.id,
+    name: org.name,
+    display_name: org.display_name,
+    status: org.status as 'active' | 'inactive' | 'suspended',
+    is_active: org.status === 'active',
+    settings: org.settings || null,
+    extra_data: org.extra_data || null,
+    created_at: org.created_at,
+    updated_at: org.updated_at,
+  };
+}
+
+/**
+ * Fetch and store user permissions after login
+ */
+async function fetchUserPermissions(fetchPermissions: () => Promise<void>): Promise<void> {
+  try {
+    await fetchPermissions();
+  } catch (permissionError) {
+    console.warn('Failed to fetch user permissions:', permissionError);
+    // Don't prevent navigation if permissions fetch fails
+  }
+}
+
+/**
+ * Fetch and store organization details after login
+ */
+async function fetchOrganizationDetails(
+  organizationId: string,
+  accessToken: string,
+  setOrganization: (org: StoreOrganization) => void
+): Promise<void> {
+  try {
+    const organizationData = await OrganizationService.getOrganization(organizationId, accessToken);
+    setOrganization(convertToStoreOrganization(organizationData));
+  } catch (orgError) {
+    console.warn('Failed to fetch organization details:', orgError);
+    // Don't prevent navigation if organization fetch fails
+  }
+}
+
 export function useLoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
   const { fetchPermissions } = usePermissions();
+  const { setOrganization } = useUserStore();
   const [rememberMe, setRememberMe] = React.useState(() => !IS_LOCAL && !!getStoredEmail());
   const [status, setStatus] = React.useState<{ loading: boolean; error: string; success: string }>({
     loading: false,
@@ -81,11 +131,11 @@ export function useLoginForm() {
       });
 
       // Fetch user permissions after successful login
-      try {
-        await fetchPermissions();
-      } catch (permissionError) {
-        console.warn('Failed to fetch user permissions:', permissionError);
-        // Don't prevent navigation if permissions fetch fails
+      await fetchUserPermissions(fetchPermissions);
+
+      // Fetch organization details if user has organization_id
+      if (response.user.organization_id) {
+        await fetchOrganizationDetails(response.user.organization_id, response.access_token, setOrganization);
       }
 
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
