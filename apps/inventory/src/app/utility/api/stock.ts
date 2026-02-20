@@ -23,6 +23,23 @@ export const stockLevelApi = {
       method: 'PUT',
       body: data,
     }),
+
+  getByLocation: (accessToken: string, itemId: string, warehouseId: string) =>
+    apiRequest('/stock-levels', accessToken, {
+      params: { item_id: itemId, warehouse_id: warehouseId, page: 1, page_size: 1 },
+    }),
+
+  updateByLocation: (accessToken: string, itemId: string, warehouseId: string, data: {
+    quantity_on_hand: number;
+    quantity_reserved: number;
+    quantity_available: number;
+    last_counted_at?: string;
+  }) =>
+    apiRequest(`/stock-levels/by-location`, accessToken, {
+      method: 'PUT',
+      params: { item_id: itemId, warehouse_id: warehouseId },
+      body: data,
+    }),
 };
 
 // Stock Movements API helpers
