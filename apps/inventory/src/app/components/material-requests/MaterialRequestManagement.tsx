@@ -6,8 +6,8 @@ import { Card, CardContent } from '@horizon-sync/ui/components';
 import { useMaterialRequestManagement } from '../../hooks/useMaterialRequestManagement';
 
 import {
-  MaterialRequestManagementHeader,
-  MaterialRequestManagementFilters,
+  MaterialRequestHeader,
+  MaterialRequestFilters,
   MaterialRequestsTable,
   MaterialRequestDialog,
   MaterialRequestDetailDialog,
@@ -59,7 +59,7 @@ export function MaterialRequestManagement() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <MaterialRequestManagementHeader
+      <MaterialRequestHeader
         onRefresh={refetch}
         onCreateMaterialRequest={handleCreate}
         isLoading={loading}
@@ -77,7 +77,7 @@ export function MaterialRequestManagement() {
       />
 
       {/* Filters */}
-      <MaterialRequestManagementFilters
+      <MaterialRequestFilters
         filters={filters}
         setFilters={setFilters}
         tableInstance={tableInstance}

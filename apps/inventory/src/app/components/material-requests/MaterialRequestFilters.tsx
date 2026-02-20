@@ -26,7 +26,7 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-export function MaterialRequestManagementFilters({ 
+export function MaterialRequestFilters({ 
   filters, 
   setFilters,
   tableInstance 

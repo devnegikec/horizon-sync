@@ -206,7 +206,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     if (!accessToken) return;
     try {
       // Fetch full material request details including line items
-      const fullMaterialRequest = await materialRequestApi.get(accessToken, mr.id) as MaterialRequest;
+      const fullMaterialRequest = await materialRequestApi.getById(accessToken, mr.id) as MaterialRequest;
       setSelectedMaterialRequest(fullMaterialRequest);
       setDetailDialogOpen(true);
     } catch (err) {
@@ -235,7 +235,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     }
     try {
       // Fetch full material request details including line items
-      const fullMaterialRequest = await materialRequestApi.get(accessToken, mr.id) as MaterialRequest;
+      const fullMaterialRequest = await materialRequestApi.getById(accessToken, mr.id) as MaterialRequest;
       setEditMaterialRequest(fullMaterialRequest);
       setDetailDialogOpen(false);
       setCreateDialogOpen(true);
@@ -302,10 +302,12 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
 
     try {
       if (id) {
-        await materialRequestApi.update(accessToken, id, data);
+        // When updating, data is UpdateMaterialRequestPayload
+        await materialRequestApi.update(accessToken, id, data as UpdateMaterialRequestPayload);
         toast({ title: 'Success', description: 'Material Request updated successfully' });
       } else {
-        await materialRequestApi.create(accessToken, data);
+        // When creating, data is CreateMaterialRequestPayload
+        await materialRequestApi.create(accessToken, data as CreateMaterialRequestPayload);
         toast({ title: 'Success', description: 'Material Request created successfully' });
       }
       queryClient.invalidateQueries({ queryKey: ['material-requests'] });

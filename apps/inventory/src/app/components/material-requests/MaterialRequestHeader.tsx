@@ -7,7 +7,7 @@ interface MaterialRequestManagementHeaderProps {
   isLoading?: boolean;
 }
 
-export function MaterialRequestManagementHeader({
+export function MaterialRequestHeader({
   onRefresh,
   onCreateMaterialRequest,
   isLoading = false,
