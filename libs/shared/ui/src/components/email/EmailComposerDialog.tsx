@@ -36,6 +36,7 @@ export interface EmailComposerDialogProps {
   defaultRecipient?: string;
   defaultSubject?: string;
   defaultMessage?: string;
+  defaultAttachments?: EmailAttachment[];
   onSend: (data: EmailComposerData) => Promise<void>;
   sending?: boolean;
   maxFileSize?: number; // in bytes
@@ -47,6 +48,7 @@ export function EmailComposerDialog({
   defaultRecipient = '',
   defaultSubject = '',
   defaultMessage = '',
+  defaultAttachments = [],
   onSend,
   sending = false,
   maxFileSize = 10 * 1024 * 1024, // 10MB default
@@ -68,10 +70,10 @@ export function EmailComposerDialog({
       setMessage(defaultMessage);
       setCc([]);
       setCcInput('');
-      setAttachments([]);
+      setAttachments(defaultAttachments || []);
       setFileError(null);
     }
-  }, [open, defaultRecipient, defaultSubject, defaultMessage]);
+  }, [open, defaultRecipient, defaultSubject, defaultMessage, defaultAttachments]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -275,31 +277,43 @@ export function EmailComposerDialog({
 
             {attachments.length > 0 && (
               <div className="space-y-2 mt-2">
-                {attachments.map((att, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 bg-muted rounded-md"
-                  >
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <span className="text-sm truncate">{att.filename}</span>
-                      {att.size && (
-                        <span className="text-xs text-muted-foreground">
-                          ({formatFileSize(att.size)})
-                        </span>
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeAttachment(index)}
-                      className="flex-shrink-0"
+                {attachments.map((att, index) => {
+                  // Check if this is a default attachment (from PDF generation)
+                  const isDefaultAttachment = defaultAttachments?.some(
+                    (defAtt) => defAtt.filename === att.filename && defAtt.content === att.content
+                  );
+                  
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 bg-muted rounded-md"
                     >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-sm truncate">{att.filename}</span>
+                        {att.size && (
+                          <span className="text-xs text-muted-foreground">
+                            ({formatFileSize(att.size)})
+                          </span>
+                        )}
+                        {isDefaultAttachment && (
+                          <Badge variant="secondary" className="text-xs">
+                            Auto-attached
+                          </Badge>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeAttachment(index)}
+                        className="flex-shrink-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

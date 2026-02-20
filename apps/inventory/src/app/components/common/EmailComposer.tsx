@@ -15,6 +15,7 @@ export interface EmailComposerProps {
   defaultRecipient?: string;
   defaultSubject?: string;
   defaultMessage?: string;
+  defaultAttachments?: Array<{ filename: string; content: string; content_type?: string }>;
   onSuccess?: (communicationId: string | null) => void;
 }
 
@@ -27,6 +28,7 @@ export function EmailComposer({
   defaultRecipient,
   defaultSubject,
   defaultMessage,
+  defaultAttachments,
   onSuccess,
 }: EmailComposerProps) {
   const { toast } = useToast();
@@ -40,12 +42,15 @@ export function EmailComposer({
     attachments: Array<{ filename: string; content: string; content_type?: string }>;
   }) => {
     try {
+      // Merge default attachments with user-added attachments
+      const allAttachments = [...(defaultAttachments || []), ...data.attachments];
+      
       const result = await sendEmail({
         to: data.to,
         cc: data.cc.length > 0 ? data.cc : undefined,
         subject: data.subject,
         message: data.message,
-        attachments: data.attachments.length > 0 ? data.attachments : undefined,
+        attachments: allAttachments.length > 0 ? allAttachments : undefined,
         doc_type: docType,
         doc_id: docId,
         doc_no: docNo,
@@ -87,6 +92,7 @@ export function EmailComposer({
       defaultRecipient={defaultRecipient}
       defaultSubject={defaultSubject}
       defaultMessage={defaultMessage}
+      defaultAttachments={defaultAttachments}
       onSend={handleSend}
       sending={loading}
     />
