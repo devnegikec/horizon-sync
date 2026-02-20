@@ -19,15 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
-import { useMaterialRequestActions } from '../../hooks/useMaterialRequestActions';
 import { useItems } from '../../hooks/useItems';
-import type { MaterialRequest, CreateMaterialRequestPayload } from '../../types/material-request.types';
+import type { MaterialRequest, CreateMaterialRequestPayload, UpdateMaterialRequestPayload } from '../../types/material-request.types';
 
 interface MaterialRequestDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   materialRequest: MaterialRequest | null;
-  onSave: () => void;
+  onSave: (data: CreateMaterialRequestPayload | UpdateMaterialRequestPayload, id?: string) => Promise<void>;
 }
 
 interface LineItemForm {
@@ -43,10 +42,13 @@ export function MaterialRequestDialog({
   materialRequest,
   onSave,
 }: MaterialRequestDialogProps) {
-  const { createMaterialRequest, updateMaterialRequest, loading } = useMaterialRequestActions();
   const { items = [] } = useItems();
+  const [saving, setSaving] = useState(false);
 
   const [notes, setNotes] = useState('');
+  const [type, setType] = useState<'purchase' | 'transfer' | 'issue'>('purchase');
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
+  const [department, setDepartment] = useState('');
   const [lineItems, setLineItems] = useState<LineItemForm[]>([
     { item_id: '', quantity: 1, required_date: '', description: '' },
   ]);
@@ -54,6 +56,9 @@ export function MaterialRequestDialog({
   useEffect(() => {
     if (materialRequest) {
       setNotes(materialRequest.notes || '');
+      setType(materialRequest.type);
+      setPriority(materialRequest.priority);
+      setDepartment(materialRequest.department || '');
       setLineItems(
         materialRequest.line_items.map((item) => ({
           item_id: item.item_id,
@@ -64,6 +69,9 @@ export function MaterialRequestDialog({
       );
     } else {
       setNotes('');
+      setType('purchase');
+      setPriority('medium');
+      setDepartment('');
       setLineItems([{ item_id: '', quantity: 1, required_date: '', description: '' }]);
     }
   }, [materialRequest, open]);
@@ -92,24 +100,34 @@ export function MaterialRequestDialog({
     }
 
     const payload: CreateMaterialRequestPayload = {
-      notes,
+      type,
+      priority,
+      department: department || null,
+      notes: notes || null,
       line_items: lineItems.map((item) => ({
         item_id: item.item_id,
         quantity: item.quantity,
+        uom: null,
         required_date: item.required_date,
-        description: item.description || undefined,
+        description: item.description || null,
+        estimated_unit_cost: null,
+        requested_for: null,
+        requested_for_department: null,
       })),
     };
 
-    let result;
-    if (materialRequest) {
-      result = await updateMaterialRequest(materialRequest.id, payload);
-    } else {
-      result = await createMaterialRequest(payload);
-    }
-
-    if (result) {
-      onSave(); // This will close dialog and trigger refetch
+    setSaving(true);
+    try {
+      if (materialRequest) {
+        await onSave(payload, materialRequest.id);
+      } else {
+        await onSave(payload);
+      }
+      onOpenChange(false);
+    } catch (error) {
+      // Error is handled by the parent
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -126,6 +144,49 @@ export function MaterialRequestDialog({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* Type and Priority */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="type">Request Type</Label>
+              <Select value={type} onValueChange={(value: any) => setType(value)}>
+                <SelectTrigger id="type">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="purchase">Purchase</SelectItem>
+                  <SelectItem value="transfer">Transfer</SelectItem>
+                  <SelectItem value="issue">Issue</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="priority">Priority</Label>
+              <Select value={priority} onValueChange={(value: any) => setPriority(value)}>
+                <SelectTrigger id="priority">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Department */}
+          <div className="space-y-2">
+            <Label htmlFor="department">Department</Label>
+            <Input
+              id="department"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              placeholder="Enter department name"
+            />
+          </div>
+
           {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>
@@ -219,11 +280,11 @@ export function MaterialRequestDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? (
+          <Button onClick={handleSubmit} disabled={saving}>
+            {saving ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Saving...

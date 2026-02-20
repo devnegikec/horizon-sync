@@ -1,4 +1,5 @@
 import { Search } from 'lucide-react';
+import type { Table } from '@tanstack/react-table';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import {
   Select,
@@ -7,14 +8,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
-import type { MaterialRequestFilters as Filters, MaterialRequestStatus } from '../../types/material-request.types';
+import type { MaterialRequestListItem } from '../../types/material-request.types';
+import type { MaterialRequestFilters as Filters } from '../../hooks/useMaterialRequestManagement';
 
-interface MaterialRequestFiltersProps {
-  filters: Partial<Filters>;
-  setFilters: (filters: Partial<Filters>) => void;
+interface MaterialRequestManagementFiltersProps {
+  filters: Filters;
+  setFilters: React.Dispatch<React.SetStateAction<Filters>>;
+  tableInstance?: Table<MaterialRequestListItem> | null;
 }
 
-const STATUS_OPTIONS: Array<{ value: MaterialRequestStatus | 'all'; label: string }> = [
+const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'all', label: 'All Status' },
   { value: 'draft', label: 'Draft' },
   { value: 'submitted', label: 'Submitted' },
@@ -23,13 +26,17 @@ const STATUS_OPTIONS: Array<{ value: MaterialRequestStatus | 'all'; label: strin
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-export function MaterialRequestFilters({ filters, setFilters }: MaterialRequestFiltersProps) {
+export function MaterialRequestFilters({ 
+  filters, 
+  setFilters,
+  tableInstance 
+}: MaterialRequestManagementFiltersProps) {
   const handleSearchChange = (value: string) => {
-    setFilters({ ...filters, search: value, page: 1 });
+    setFilters((prev) => ({ ...prev, search: value }));
   };
 
   const handleStatusChange = (value: string) => {
-    setFilters({ ...filters, status: value as MaterialRequestStatus | 'all', page: 1 });
+    setFilters((prev) => ({ ...prev, status: value }));
   };
 
   return (
