@@ -4,6 +4,7 @@ import { Edit, FileText, Mail } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 
+import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { Quotation } from '../../types/quotation.types';
 import { EmailComposer } from '../common/EmailComposer';
 
@@ -24,6 +25,14 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
 
   const isTerminalStatus = quotation.status === 'accepted' || quotation.status === 'rejected' || quotation.status === 'expired';
   const canConvert = quotation.status === 'accepted';
+
+  // Get currency symbol from SUPPORTED_CURRENCIES
+  const getCurrencySymbol = (currencyCode: string): string => {
+    const currency = SUPPORTED_CURRENCIES.find((c: { code: string; symbol: string }) => c.code === currencyCode);
+    return currency?.symbol || currencyCode;
+  };
+
+  const currencySymbol = getCurrencySymbol(quotation.currency);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -116,13 +125,13 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
                     <div key={key} className="space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-medium">{summary.name}</span>
-                        <span className="text-sm font-semibold">{quotation.currency} {summary.amount.toFixed(2)}</span>
+                        <span className="text-sm font-semibold">{currencySymbol} {summary.amount.toFixed(2)}</span>
                       </div>
                       <div className="pl-4 space-y-1">
                         {summary.breakup.map((tax, idx) => (
                           <div key={idx} className="flex justify-between items-center text-xs text-muted-foreground">
                             <span>{tax.rule_name} ({tax.rate}%)</span>
-                            <span>{quotation.currency} {tax.amount.toFixed(2)}</span>
+                            <span>{currencySymbol} {tax.amount.toFixed(2)}</span>
                           </div>
                         ))}
                       </div>
@@ -131,7 +140,7 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
                   <Separator className="my-2" />
                   <div className="flex justify-between items-center font-semibold">
                     <span className="text-sm">Total Tax</span>
-                    <span className="text-sm">{quotation.currency} {Array.from(taxSummary.values()).reduce((sum, s) => sum + s.amount, 0).toFixed(2)}</span>
+                    <span className="text-sm">{currencySymbol} {Array.from(taxSummary.values()).reduce((sum, s) => sum + s.amount, 0).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -142,7 +151,7 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
           <div className="rounded-lg bg-muted/50 p-4">
             <div className="flex justify-between items-center">
               <span className="text-lg font-medium">Grand Total</span>
-              <span className="text-2xl font-bold">{quotation.currency} {Number(quotation.grand_total).toFixed(2)}</span>
+              <span className="text-2xl font-bold">{currencySymbol} {Number(quotation.grand_total).toFixed(2)}</span>
             </div>
           </div>
 
@@ -180,12 +189,12 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
                             </td>
                             <td className="px-4 py-3 text-sm text-right">{Number(item.qty).toFixed(3)}</td>
                             <td className="px-4 py-3 text-sm">{item.uom}</td>
-                            <td className="px-4 py-3 text-sm text-right">{quotation.currency} {Number(item.rate).toFixed(2)}</td>
-                            <td className="px-4 py-3 text-sm text-right">{quotation.currency} {Number(item.amount).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-right">{currencySymbol} {Number(item.rate).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-right">{currencySymbol} {Number(item.amount).toFixed(2)}</td>
                             <td className="px-4 py-3 text-right">
                               {item.tax_info ? (
                                 <div className="space-y-1">
-                                  <p className="text-sm font-medium">{quotation.currency} {Number(item.tax_amount || 0).toFixed(2)}</p>
+                                  <p className="text-sm font-medium">{currencySymbol} {Number(item.tax_amount || 0).toFixed(2)}</p>
                                   <div className="flex flex-wrap gap-1 justify-end">
                                     {item.tax_info.breakup.map((tax, taxIdx) => (
                                       <span key={taxIdx} className="text-xs text-muted-foreground">
@@ -198,7 +207,7 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
                                 <span className="text-sm text-muted-foreground">—</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-sm text-right font-semibold">{quotation.currency} {Number(item.total_amount || item.amount).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-right font-semibold">{currencySymbol} {Number(item.total_amount || item.amount).toFixed(2)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -206,13 +215,13 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
                         <tr>
                           <td colSpan={5} className="px-4 py-3 text-right text-sm font-medium">Subtotal:</td>
                           <td className="px-4 py-3 text-right text-sm font-semibold">
-                            {quotation.currency} {lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2)}
+                            {currencySymbol} {lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2)}
                           </td>
                           <td className="px-4 py-3 text-right text-sm font-semibold">
-                            {quotation.currency} {lineItems.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0).toFixed(2)}
+                            {currencySymbol} {lineItems.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0).toFixed(2)}
                           </td>
                           <td className="px-4 py-3 text-right text-sm font-bold">
-                            {quotation.currency} {lineItems.reduce((sum, item) => sum + Number(item.total_amount || item.amount), 0).toFixed(2)}
+                            {currencySymbol} {lineItems.reduce((sum, item) => sum + Number(item.total_amount || item.amount), 0).toFixed(2)}
                           </td>
                         </tr>
                       </tfoot>
