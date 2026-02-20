@@ -83,11 +83,11 @@ export function DeliveryNoteDetailDialog({
             </div>
             <p className="text-sm text-muted-foreground mt-1.5 flex items-center gap-1.5 font-medium">
               <Calendar className="h-3.5 w-3.5" />
-              {new Date(deliveryNote.shipping_date).toLocaleDateString(undefined, {
+              {deliveryNote.shipping_date ? new Date(deliveryNote.shipping_date).toLocaleDateString(undefined, {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
-              })}
+              }) : '—'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -122,9 +122,9 @@ export function DeliveryNoteDetailDialog({
                 <h3 className="text-lg font-bold">Customer Details</h3>
               </div>
               <div className="grid gap-4">
-                <InfoRow icon={User} label="Customer Name" value={deliveryNote.customer_name} />
-                <InfoRow icon={MapPin} label="Shipping Address" value={deliveryNote.shipping_address} />
-                <InfoRow icon={Phone} label="Contact" value={`${deliveryNote.contact_person} - ${deliveryNote.contact_phone}`} />
+                <InfoRow icon={User} label="Customer Name" value={deliveryNote.customer_name || '—'} />
+                <InfoRow icon={MapPin} label="Shipping Address" value={deliveryNote.shipping_address || '—'} />
+                <InfoRow icon={Phone} label="Contact" value={deliveryNote.contact_person ? `${deliveryNote.contact_person}${deliveryNote.contact_phone ? ` - ${deliveryNote.contact_phone}` : ''}` : '—'} />
               </div>
             </div>
 
@@ -135,7 +135,7 @@ export function DeliveryNoteDetailDialog({
                 <h3 className="text-lg font-bold">Logistics</h3>
               </div>
               <div className="grid gap-4">
-                <InfoRow icon={Truck} label="Carrier" value={deliveryNote.carrier_name} />
+                <InfoRow icon={Truck} label="Carrier" value={deliveryNote.carrier_name || '—'} />
                 <div className="flex gap-3">
                   <div className="mt-1 bg-primary/10 p-2 rounded-lg">
                     <Hash className="h-4 w-4 text-primary" />
@@ -157,7 +157,7 @@ export function DeliveryNoteDetailDialog({
                     </div>
                   </div>
                 </div>
-                <InfoRow icon={Calendar} label="Shipping Date" value={new Date(deliveryNote.shipping_date).toLocaleDateString()} />
+                <InfoRow icon={Calendar} label="Shipping Date" value={deliveryNote.shipping_date ? new Date(deliveryNote.shipping_date).toLocaleDateString() : '—'} />
               </div>
             </div>
 
@@ -168,9 +168,9 @@ export function DeliveryNoteDetailDialog({
                 <h3 className="text-lg font-bold">References</h3>
               </div>
               <div className="grid gap-4">
-                <InfoRow icon={FileText} label="Sales Order #" value={deliveryNote.sales_order_number} />
-                <InfoRow icon={Weight} label="Total Weight" value={`${deliveryNote.total_weight} kg`} />
-                <InfoRow icon={Boxes} label="Total Packages" value={String(deliveryNote.total_packages)} />
+                <InfoRow icon={FileText} label="Sales Order #" value={deliveryNote.sales_order_number || '—'} />
+                <InfoRow icon={Weight} label="Total Weight" value={deliveryNote.total_weight != null ? `${deliveryNote.total_weight} kg` : '—'} />
+                <InfoRow icon={Boxes} label="Total Packages" value={deliveryNote.total_packages != null ? String(deliveryNote.total_packages) : '—'} />
               </div>
             </div>
           </div>
@@ -192,7 +192,7 @@ export function DeliveryNoteDetailDialog({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {deliveryNote.line_items.map((item) => (
+                  {(deliveryNote.line_items ?? []).map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>
                         {item.item_image ? (
@@ -226,7 +226,7 @@ export function DeliveryNoteDetailDialog({
                       </TableCell>
                     </TableRow>
                   ))}
-                  {deliveryNote.line_items.length === 0 && (
+                  {(deliveryNote.line_items ?? []).length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                         No line items
@@ -247,11 +247,11 @@ export function DeliveryNoteDetailDialog({
               <h3 className="text-lg font-bold">Timeline</h3>
             </div>
             <div className="relative pl-6 space-y-6">
-              {deliveryNote.timeline.map((entry, index) => (
+              {(deliveryNote.timeline ?? []).map((entry, index) => (
                 <div key={entry.id} className="relative flex gap-4">
                   <div className="absolute -left-6 mt-1.5">
                     <div className={`h-3 w-3 rounded-full ${getTimelineIcon(entry.action)}`} />
-                    {index < deliveryNote.timeline.length - 1 && (
+                    {index < (deliveryNote.timeline ?? []).length - 1 && (
                       <div className="absolute left-1.5 top-3 w-px h-[calc(100%+12px)] bg-border" />
                     )}
                   </div>
@@ -271,7 +271,7 @@ export function DeliveryNoteDetailDialog({
                   </div>
                 </div>
               ))}
-              {deliveryNote.timeline.length === 0 && (
+              {(deliveryNote.timeline ?? []).length === 0 && (
                 <p className="text-sm text-muted-foreground">No timeline entries</p>
               )}
             </div>
