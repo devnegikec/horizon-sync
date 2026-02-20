@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import * as React from "react";
+import * as React from 'react';
 
-import { Button } from "@horizon-sync/ui/components/ui/button";
+import { Button } from '@horizon-sync/ui/components/ui/button';
 
-import { useOnboardingStore } from "../../hooks/useOnboardingStore";
+import { useOnboardingStore } from '../../hooks/useOnboardingStore';
 
 export function InviteTeamStep() {
   const { setCurrentStep, setIsComplete } = useOnboardingStore();

@@ -25,12 +25,8 @@ export function LoginBrandingSection() {
 
         {/* Title */}
         <div className="space-y-3">
-          <h1 className="text-5xl font-bold tracking-tight">
-            Access Your Workspace
-          </h1>
-          <p className="text-xl text-white/90">
-            Sign in to continue managing your projects and collaborating with your team
-          </p>
+          <h1 className="text-5xl font-bold tracking-tight">Access Your Workspace</h1>
+          <p className="text-xl text-white/90">Sign in to continue managing your projects and collaborating with your team</p>
         </div>
 
         {/* Features */}

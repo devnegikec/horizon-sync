@@ -25,12 +25,8 @@ export function BrandingSection() {
 
         {/* Title */}
         <div className="space-y-3">
-          <h1 className="text-5xl font-bold tracking-tight">
-            Welcome to Horizon Sync
-          </h1>
-          <p className="text-xl text-white/90">
-            The modern platform for seamless collaboration and management
-          </p>
+          <h1 className="text-5xl font-bold tracking-tight">Welcome to Horizon Sync</h1>
+          <p className="text-xl text-white/90">The modern platform for seamless collaboration and management</p>
         </div>
 
         {/* Features */}

@@ -5,16 +5,36 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
-import { LoginForm } from '@platform/app/components';
-import { useAuth } from '@platform/app/hooks';
-import { AuthService } from '@platform/app/services/auth.service';
+import { LoginForm } from '../../../app/components/auth/LoginForm';
+import { useAuth } from '../../../app/hooks';
+import { AuthService } from '../../../app/services/auth.service';
 
-jest.mock('@platform/app/services/auth.service');
-jest.mock('@platform/app/hooks');
+jest.mock('../../../app/services/auth.service');
+jest.mock('../../../app/hooks');
 jest.mock('../../../assets/ciphercode_logo.png', () => 'mock-logo.png');
 
 describe('LoginForm', () => {
   const mockLogin = jest.fn();
+  const mockUser = {
+    id: 'user-123',
+    email: 'test@example.com',
+    first_name: 'John',
+    last_name: 'Doe',
+    display_name: 'John Doe',
+    phone: '1234567890',
+    avatar_url: null,
+    user_type: 'admin',
+    status: 'active',
+    is_active: true,
+    email_verified: true,
+    email_verified_at: '2023-01-01T00:00:00Z',
+    last_login_at: '2023-01-01T00:00:00Z',
+    last_login_ip: '127.0.0.1',
+    timezone: 'UTC',
+    language: 'en',
+    organization_id: 'org-123',
+    created_at: '2023-01-01T00:00:00Z',
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -31,7 +51,7 @@ describe('LoginForm', () => {
           <Route path="/" element={<LoginForm />} />
           <Route path="/forgot-password" element={<div>Forgot Password Page</div>} />
         </Routes>
-      </BrowserRouter>
+      </BrowserRouter>,
     );
   };
 
@@ -121,6 +141,7 @@ describe('LoginForm', () => {
     it('should accept valid email and password combination', async () => {
       const user = userEvent.setup();
       (AuthService.login as jest.Mock).mockResolvedValue({
+        user: mockUser,
         access_token: 'test-token',
         refresh_token: 'test-refresh-token',
         user_id: 'user-123',
@@ -149,6 +170,7 @@ describe('LoginForm', () => {
     it('should call AuthService.login with correct payload on form submission', async () => {
       const user = userEvent.setup();
       (AuthService.login as jest.Mock).mockResolvedValue({
+        user: mockUser,
         access_token: 'test-token',
         refresh_token: 'test-refresh-token',
         user_id: 'user-123',
@@ -178,6 +200,7 @@ describe('LoginForm', () => {
     it('should call login hook with correct user data on successful login', async () => {
       const user = userEvent.setup();
       (AuthService.login as jest.Mock).mockResolvedValue({
+        user: mockUser,
         access_token: 'test-token',
         refresh_token: 'test-refresh-token',
         user_id: 'user-123',
@@ -197,17 +220,18 @@ describe('LoginForm', () => {
       await user.click(signInButton);
 
       await waitFor(() => {
-        expect(mockLogin).toHaveBeenCalledWith('test-token', 'test-refresh-token', {
+        expect(mockLogin).toHaveBeenCalledWith('test-token', 'test-refresh-token', expect.objectContaining({
           id: 'user-123',
           email: 'test@example.com',
           organization_id: 'org-123',
-        });
+        }));
       });
     });
 
     it('should display success message on successful login', async () => {
       const user = userEvent.setup();
       (AuthService.login as jest.Mock).mockResolvedValue({
+        user: mockUser,
         access_token: 'test-token',
         refresh_token: 'test-refresh-token',
         user_id: 'user-123',
@@ -297,15 +321,14 @@ describe('LoginForm', () => {
 
     it('should clear previous error messages when resubmitting form', async () => {
       const user = userEvent.setup();
-      (AuthService.login as jest.Mock)
-        .mockRejectedValueOnce(new Error('Login failed'))
-        .mockResolvedValueOnce({
-          access_token: 'test-token',
-          refresh_token: 'test-refresh-token',
-          user_id: 'user-123',
-          email: 'test@example.com',
-          organization_id: 'org-123',
-        });
+      (AuthService.login as jest.Mock).mockRejectedValueOnce(new Error('Login failed')).mockResolvedValueOnce({
+        user: mockUser,
+        access_token: 'test-token',
+        refresh_token: 'test-refresh-token',
+        user_id: 'user-123',
+        email: 'test@example.com',
+        organization_id: 'org-123',
+      });
 
       renderLoginForm();
 
@@ -340,9 +363,7 @@ describe('LoginForm', () => {
   describe('UI Behavior', () => {
     it('should disable sign in button while submitting', async () => {
       const user = userEvent.setup();
-      (AuthService.login as jest.Mock).mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 1000))
-      );
+      (AuthService.login as jest.Mock).mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 1000)));
 
       renderLoginForm();
 
@@ -360,9 +381,7 @@ describe('LoginForm', () => {
 
     it('should show loading state with spinner while submitting', async () => {
       const user = userEvent.setup();
-      (AuthService.login as jest.Mock).mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 500))
-      );
+      (AuthService.login as jest.Mock).mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 500)));
 
       renderLoginForm();
 
@@ -381,6 +400,7 @@ describe('LoginForm', () => {
     it('should re-enable sign in button after submission completes', async () => {
       const user = userEvent.setup();
       (AuthService.login as jest.Mock).mockResolvedValue({
+        user: mockUser,
         access_token: 'test-token',
         refresh_token: 'test-refresh-token',
         user_id: 'user-123',

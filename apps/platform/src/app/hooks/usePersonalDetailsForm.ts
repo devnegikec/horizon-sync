@@ -4,10 +4,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
+import type { User } from '@horizon-sync/store';
+
 import { UserService } from '../services/user.service';
 
 import { useAuth } from './useAuth';
-import { useOnboardingStore } from './useOnboardingStore';
+import { useOnboardingStore, type OnboardingData } from './useOnboardingStore';
 
 export const personalDetailsSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -21,15 +23,16 @@ export const personalDetailsSchema = z.object({
 
 export type PersonalDetailsFormData = z.infer<typeof personalDetailsSchema>;
 
-const getInitialValues = (data: any, user: any) => ({
-  firstName: data?.firstName || user?.first_name || '',
-  lastName: data?.lastName || user?.last_name || '',
-  phoneNumber: data?.phoneNumber || user?.phone || '',
-  jobTitle: data?.jobTitle || user?.job_title || '',
-  department: data?.department || user?.department || '',
-  bio: data?.bio || user?.bio || '',
-  timezone: data?.timezone || user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-  avatarUrl: data?.avatarUrl || user?.avatar_url || '',
+// eslint-disable-next-line complexity
+const getInitialValues = (data: OnboardingData, user: User | null) => ({
+  firstName: data.firstName || user?.first_name || '',
+  lastName: data.lastName || user?.last_name || '',
+  phoneNumber: data.phoneNumber || user?.phone || '',
+  jobTitle: data.jobTitle || user?.job_title || '',
+  department: data.department || user?.department || '',
+  bio: data.bio || user?.bio || '',
+  timezone: data.timezone || user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+  avatarUrl: data.avatarUrl || user?.avatar_url || '',
 });
 
 export function usePersonalDetailsForm() {

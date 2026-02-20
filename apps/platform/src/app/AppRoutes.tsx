@@ -4,9 +4,14 @@ import { Route, Routes } from 'react-router-dom';
 
 import { DashboardLayout, DashboardHome, AuthGuard, PublicRoute } from './components';
 import { PlaceholderPage } from './components/PlaceholderPage';
-import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding } from './pages';
+import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage } from './pages';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
+const RevenuePage = React.lazy(() => import('inventory/RevenuePage'));
+const SourcingPage = React.lazy(() => import('inventory/SourcingPage'));
+const BooksPage = React.lazy(() => import('inventory/BooksPage'));
+const TaxChargesPage = React.lazy(() => import('inventory/TaxChargesPage'));
 
 export function AppRoutes() {
   return (
@@ -16,7 +21,12 @@ export function AppRoutes() {
       <Route path="/register" element={<PublicRouteWrapper element={<RegisterPage />} />} />
       <Route path="/forgot-password" element={<PublicRouteWrapper element={<ForgotPasswordPage />} />} />
       <Route path="/reset-password" element={<PublicRouteWrapper element={<ResetPasswordPage />} />} />
-      <Route path="/onboarding" element={<AuthGuard><OnBoarding /></AuthGuard>} />
+      <Route path="/onboarding"
+        element={
+          <AuthGuard>
+            <OnBoarding />
+          </AuthGuard>
+        }/>
 
       {/* Protected routes */}
       <Route path="/*" element={<ProtectedRouteWrapper />} />
@@ -34,12 +44,18 @@ function ProtectedRouteWrapper() {
       <DashboardLayout>
         <Routes>
           <Route path="/" element={<DashboardHome />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/inventory" element={<Inventory />} />
+          <Route path="/revenue" element={<RevenuePage />} />
+          <Route path="/sourcing" element={<SourcingPage />} />
+          <Route path="/books" element={<BooksPage />} />
+          <Route path="/tax-charges" element={<TaxChargesPage />} />
           <Route path="/subscriptions" element={<SubscriptionManagementPage />} />
           <Route path="/analytics" element={<AnalyticsPlaceholder />} />
           <Route path="/users" element={<UserManagementPage />} />
+          <Route path="/roles" element={<RoleManagementPage />} />
           <Route path="/reports" element={<ReportsPlaceholder />} />
-          <Route path="/settings" element={<SettingsPlaceholder />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/help" element={<HelpPlaceholder />} />
         </Routes>
       </DashboardLayout>
@@ -53,10 +69,6 @@ function AnalyticsPlaceholder() {
 
 function ReportsPlaceholder() {
   return <PlaceholderPage title="Reports" description="Generate and view reports" />;
-}
-
-function SettingsPlaceholder() {
-  return <PlaceholderPage title="Settings" description="Configure your platform settings" />;
 }
 
 function HelpPlaceholder() {

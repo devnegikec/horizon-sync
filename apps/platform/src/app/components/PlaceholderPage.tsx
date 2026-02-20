@@ -13,9 +13,7 @@ export function PlaceholderPage({ title, description }: PlaceholderPageProps) {
       </div>
       <h1 className="text-2xl font-bold mb-2">{title}</h1>
       <p className="text-muted-foreground text-center max-w-md">{description}</p>
-      <p className="text-sm text-muted-foreground mt-4">
-        This page is under construction
-      </p>
+      <p className="text-sm text-muted-foreground mt-4">This page is under construction</p>
     </div>
   );
 }

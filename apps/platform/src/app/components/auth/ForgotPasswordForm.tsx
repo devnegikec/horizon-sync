@@ -6,14 +6,7 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@horizon-sync/ui/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 
@@ -66,15 +59,11 @@ export function ForgotPasswordForm() {
           </span>
         </div>
         <CardTitle className="text-2xl">Forgot Password</CardTitle>
-        <CardDescription>
-          Enter your email address and we&apos;ll send you a link to reset your password
-        </CardDescription>
+        <CardDescription>Enter your email address and we&apos;ll send you a link to reset your password</CardDescription>
       </CardHeader>
 
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} 
-          noValidate
-          className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">
               Email Address <span className="text-destructive">*</span>
@@ -84,9 +73,7 @@ export function ForgotPasswordForm() {
               placeholder="john.doe@example.com"
               {...register('email')}
               className={errors.email ? 'border-destructive' : ''}/>
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
+            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
 
           {successMessage && (

@@ -5,11 +5,11 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, useSearchParams } from 'react-router-dom';
 
-import { ResetPasswordForm } from '@platform/app/components';
-import { AuthService } from '@platform/app/services/auth.service';
+import { ResetPasswordForm } from '../../../app/components/auth/ResetPasswordForm';
+import { AuthService } from '../../../app/services/auth.service';
 
 // Mock dependencies
-jest.mock('@platform/app/services/auth.service');
+jest.mock('../../../app/services/auth.service');
 jest.mock('../../../assets/ciphercode_logo.png', () => 'mock-logo.png');
 
 const mockNavigate = jest.fn();
@@ -38,7 +38,7 @@ describe('ResetPasswordForm', () => {
           v7_relativeSplatPath: true,
         }}>
         <ResetPasswordForm />
-      </BrowserRouter>
+      </BrowserRouter>,
     );
   };
 
@@ -61,7 +61,7 @@ describe('ResetPasswordForm', () => {
   it('3. should show validation error when passwords do not match', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     renderForm();
-    
+
     await user.type(screen.getByLabelText(/^new password/i), 'Password123!');
     await user.type(screen.getByLabelText(/confirm new password/i), 'Mismatch123!');
     await user.click(screen.getByRole('button', { name: /reset password/i }));
@@ -124,7 +124,7 @@ describe('ResetPasswordForm', () => {
   it('7. should navigate to forgot-password page when Request New Link button is clicked', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     (useSearchParams as jest.Mock).mockReturnValue([new URLSearchParams(''), jest.fn()]);
-    
+
     renderForm();
     const requestNewLinkButton = screen.getByRole('button', { name: /request new link/i });
     await user.click(requestNewLinkButton);
@@ -135,7 +135,7 @@ describe('ResetPasswordForm', () => {
   it('8. should show password validation error for invalid password format', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     renderForm();
-    
+
     await user.type(screen.getByLabelText(/^new password/i), 'weak');
     await user.type(screen.getByLabelText(/confirm new password/i), 'weak');
     await user.click(screen.getByRole('button', { name: /reset password/i }));
@@ -147,7 +147,7 @@ describe('ResetPasswordForm', () => {
 
   it('9. should show error message when token becomes missing during submission', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    
+
     // Use a flag to control token value - returns 'test-token' during render, null during submit
     let shouldReturnToken = true;
     const mockGet = jest.fn((key: string) => {
@@ -156,7 +156,7 @@ describe('ResetPasswordForm', () => {
       }
       return null;
     });
-    
+
     const mockSearchParams = {
       get: mockGet,
       has: jest.fn(),
@@ -171,24 +171,24 @@ describe('ResetPasswordForm', () => {
       sort: jest.fn(),
       toString: jest.fn(),
     };
-    
+
     (useSearchParams as jest.Mock).mockReturnValue([mockSearchParams as unknown as URLSearchParams, jest.fn()]);
-    
+
     renderForm();
-    
+
     // Fill in the form while token is still 'test-token'
     await user.type(screen.getByLabelText(/^new password/i), 'Password123!');
     await user.type(screen.getByLabelText(/confirm new password/i), 'Password123!');
-    
+
     // Now simulate the token becoming missing
     shouldReturnToken = false;
-    
+
     await user.click(screen.getByRole('button', { name: /reset password/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Reset token is missing. Please request a new password reset link.')).toBeInTheDocument();
     });
-    
+
     // Verify get was called for 'token'
     expect(mockGet).toHaveBeenCalledWith('token');
   });

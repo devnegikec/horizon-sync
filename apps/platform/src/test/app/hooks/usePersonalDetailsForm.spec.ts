@@ -56,7 +56,7 @@ describe('usePersonalDetailsForm', () => {
 
   it('1. should initialize with user data from auth', () => {
     const { result } = renderHook(() => usePersonalDetailsForm());
-    
+
     expect(result.current.form.getValues()).toEqual({
       firstName: 'John',
       lastName: 'Doe',
@@ -83,7 +83,7 @@ describe('usePersonalDetailsForm', () => {
 
   it('3. should update initials when names change', async () => {
     const { result } = renderHook(() => usePersonalDetailsForm());
-    
+
     await act(async () => {
       result.current.form.setValue('firstName', 'Alice');
       result.current.form.setValue('lastName', 'Smith');
@@ -94,7 +94,7 @@ describe('usePersonalDetailsForm', () => {
 
   it('4. should call UserService.updateMe and transition to step 2 on successful submission', async () => {
     const { result } = renderHook(() => usePersonalDetailsForm());
-    
+
     const formData = {
       firstName: 'Jane',
       lastName: 'Smith',
@@ -122,23 +122,26 @@ describe('usePersonalDetailsForm', () => {
       await result.current.onSubmit();
     });
 
-    expect(UserService.updateMe).toHaveBeenCalledWith({
-      first_name: 'Jane',
-      last_name: 'Smith',
-      display_name: 'Jane Smith',
-      phone: '9876543210',
-      timezone: 'GMT',
-      avatar_url: 'avatar.png',
-      preferences: {
-        onboarding_step: 2,
-        theme: 'light',
+    expect(UserService.updateMe).toHaveBeenCalledWith(
+      {
+        first_name: 'Jane',
+        last_name: 'Smith',
+        display_name: 'Jane Smith',
+        phone: '9876543210',
+        timezone: 'GMT',
+        avatar_url: 'avatar.png',
+        preferences: {
+          onboarding_step: 2,
+          theme: 'light',
+        },
+        extra_data: {
+          job_title: 'Manager',
+          department: 'Sales',
+          bio: 'New bio',
+        },
       },
-      extra_data: {
-        job_title: 'Manager',
-        department: 'Sales',
-        bio: 'New bio',
-      },
-    }, mockAccessToken);
+      mockAccessToken,
+    );
 
     expect(mockUpdateData).toHaveBeenCalledWith({
       ...formData,
@@ -152,7 +155,7 @@ describe('usePersonalDetailsForm', () => {
       // Intentionally empty for mocking
     });
     const { result } = renderHook(() => usePersonalDetailsForm());
-    
+
     (UserService.updateMe as jest.Mock).mockRejectedValue(new Error('API Error'));
 
     await act(async () => {
@@ -166,10 +169,10 @@ describe('usePersonalDetailsForm', () => {
       await result.current.onSubmit();
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith("Failed to update personal details:", expect.any(Error));
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to update personal details:', expect.any(Error));
     // Should NOT transition to next step on error
     expect(mockSetCurrentStep).not.toHaveBeenCalled();
-    
+
     consoleSpy.mockRestore();
   });
 });

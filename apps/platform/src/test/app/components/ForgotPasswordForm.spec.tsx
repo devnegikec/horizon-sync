@@ -5,11 +5,11 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 
-import { ForgotPasswordForm } from '@platform/app/components';
-import { AuthService } from '@platform/app/services/auth.service';
+import { ForgotPasswordForm } from '../../../app/components/auth/ForgotPasswordForm';
+import { AuthService } from '../../../app/services/auth.service';
 
 // Mock dependencies
-jest.mock('@platform/app/services/auth.service');
+jest.mock('../../../app/services/auth.service');
 jest.mock('../../../assets/ciphercode_logo.png', () => 'mock-logo.png');
 
 const mockNavigate = jest.fn();
@@ -30,7 +30,7 @@ describe('ForgotPasswordForm', () => {
           v7_relativeSplatPath: true,
         }}>
         <ForgotPasswordForm />
-      </BrowserRouter>
+      </BrowserRouter>,
     );
   };
 
@@ -45,7 +45,7 @@ describe('ForgotPasswordForm', () => {
   it('2. should show validation error for invalid email', async () => {
     const user = userEvent.setup();
     renderForm();
-    
+
     await user.type(screen.getByLabelText(/email address/i), 'invalid-email');
     await user.click(screen.getByRole('button', { name: /send reset link/i }));
 
@@ -85,7 +85,7 @@ describe('ForgotPasswordForm', () => {
   it('5. should navigate to login page when "Back to login" is clicked', async () => {
     const user = userEvent.setup();
     renderForm();
-    
+
     await user.click(screen.getByRole('button', { name: /back to login/i }));
     expect(mockNavigate).toHaveBeenCalledWith('/login');
   });

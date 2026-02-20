@@ -6,14 +6,7 @@ import { useForm } from 'react-hook-form';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@horizon-sync/ui/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 
@@ -27,7 +20,7 @@ export function ResetPasswordForm() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [successMessage, setSuccessMessage] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
-  
+
   // Check token once at mount to avoid re-checking on every render
   const [initialToken] = React.useState(() => searchParams.get('token'));
 
@@ -75,9 +68,7 @@ export function ResetPasswordForm() {
       <Card className="w-full max-w-md border-none shadow-2xl">
         <CardHeader>
           <CardTitle className="text-destructive">Invalid Link</CardTitle>
-          <CardDescription>
-            The password reset link is invalid or has expired. Please request a new one.
-          </CardDescription>
+          <CardDescription>The password reset link is invalid or has expired. Please request a new one.</CardDescription>
         </CardHeader>
         <CardFooter>
           <Button onClick={() => navigate('/forgot-password')} className="w-full">
@@ -100,9 +91,7 @@ export function ResetPasswordForm() {
           </span>
         </div>
         <CardTitle className="text-2xl">Reset Password</CardTitle>
-        <CardDescription>
-          Enter your new password below
-        </CardDescription>
+        <CardDescription>Enter your new password below</CardDescription>
       </CardHeader>
 
       <CardContent>
@@ -116,9 +105,7 @@ export function ResetPasswordForm() {
               placeholder="••••••••"
               {...register('password')}
               className={errors.password ? 'border-destructive' : ''}/>
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
-            )}
+            {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -130,9 +117,7 @@ export function ResetPasswordForm() {
               placeholder="••••••••"
               {...register('confirm_password')}
               className={errors.confirm_password ? 'border-destructive' : ''}/>
-            {errors.confirm_password && (
-              <p className="text-sm text-destructive">{errors.confirm_password.message}</p>
-            )}
+            {errors.confirm_password && <p className="text-sm text-destructive">{errors.confirm_password.message}</p>}
           </div>
 
           {successMessage && (

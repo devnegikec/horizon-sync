@@ -7,16 +7,28 @@ export interface RegisterPayload {
 }
 
 export interface UserType {
+  id: string;
   email: string;
   first_name: string;
   last_name: string;
-  phone: string;
-  id: string;
   display_name: string;
+  phone: string;
+  avatar_url: string | null;
   user_type: string;
   status: string;
+  is_active: boolean;
   email_verified: boolean;
+  email_verified_at: string | null;
   last_login_at: string | null;
+  last_login_ip: string | null;
+  timezone: string;
+  language: string;
+  organization_id: string | null;
+  job_title?: string;
+  department?: string;
+  bio?: string;
+  preferences?: Record<string, unknown> | null;
+  extra_data?: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -31,9 +43,12 @@ export interface RegisterResponse {
 export interface LoginPayload {
   email: string;
   password: string;
+  /** When true, backend should set persistent cookie (e.g. 30 days); when false, session cookie. */
+  remember_me?: boolean;
 }
 
 export interface LoginResponse {
+  user: UserType;
   access_token: string;
   refresh_token: string;
   token_type: string;
@@ -43,8 +58,16 @@ export interface LoginResponse {
   message?: string;
 }
 
+/** Response from POST /identity/refresh when using cookie-based refresh token. */
+export interface RefreshResponse {
+  access_token: string;
+  refresh_token?: string;
+  token_type?: string;
+  user?: UserType;
+}
+
 export interface LogoutPayload {
-  refresh_token: string;
+  refresh_token?: string;
 }
 
 export interface ForgotPasswordPayload {

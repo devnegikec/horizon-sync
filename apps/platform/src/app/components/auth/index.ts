@@ -4,6 +4,7 @@ export * from './RegistrationForm';
 export * from './ResetPasswordForm';
 export * from './LoginBrandingSection';
 export * from './AuthGuard';
+export * from './AuthSessionRestore';
 export * from './PublicRoute';
 export * from './FormInput';
 export * from './StatusAlert';

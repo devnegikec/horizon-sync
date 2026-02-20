@@ -21,22 +21,31 @@ export interface FormatDateOptions {
   timeZone?: string;
 }
 
-function toDate(input: DateInput): Date {
-  if (input instanceof Date) return input;
-  if (typeof input === 'number') return new Date(input);
-  const parsed = new Date(input);
-  if (Number.isNaN(parsed.getTime())) throw new Error('Invalid date');
-  return parsed;
+export function toDate(input: DateInput): Date {
+  // 1. Handle empty cases immediately
+  if (input === null || input === undefined) {
+    throw new Error('date_util: Input is null or undefined');
+  }
+
+  // 2. Initialize the Date object
+  // If it's already a Date, new Date(date) creates a safe clone.
+  // If it's a string or number, it attempts to parse it.
+  const date = input instanceof Date ? new Date(input.getTime()) : new Date(input);
+
+  // 3. Validation
+  // getTime() returns NaN for "Invalid Date" objects.
+  if (isNaN(date.getTime())) {
+    throw new Error(`date_util: Unable to parse "${input}" into a valid date`);
+  }
+
+  return date;
 }
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-const MONTH_ABBREV = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
+const MONTH_ABBREV = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 interface DateParts {
   month: string;
@@ -47,11 +56,7 @@ interface DateParts {
   second: string;
 }
 
-function getPartsInTimezone(
-  d: Date,
-  timeZone: string,
-  opts: FormatDateOptions
-): DateParts {
+function getPartsInTimezone(d: Date, timeZone: string, opts: FormatDateOptions): DateParts {
   const dtf = new Intl.DateTimeFormat('en-CA', {
     timeZone,
     year: '2-digit',
@@ -63,8 +68,7 @@ function getPartsInTimezone(
     hour12: false,
   });
   const parts = dtf.formatToParts(d);
-  const get = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((p) => p.type === type)?.value ?? '';
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? '';
   return {
     month: pad2(parseInt(get('month'), 10) || 0),
     day: pad2(parseInt(get('day'), 10) || 0),
@@ -86,12 +90,7 @@ function getPartsLocal(d: Date): DateParts {
   };
 }
 
-function buildDateString(
-  format: DateFormat,
-  month: string,
-  day: string,
-  year: string
-): string {
+function buildDateString(format: DateFormat, month: string, day: string, year: string): string {
   const mmm = MONTH_ABBREV[(parseInt(month, 10) || 1) - 1];
   if (format === 'DD-MM-YY') return `${day}-${month}-${year}`;
   if (format === 'MM-DD-YY') return `${month}-${day}-${year}`;
@@ -124,29 +123,17 @@ function buildDateString(
  * formatDate('2026-01-31', 'MMM-DD-YY')
  * // => "Jan-31-26"
  */
-export function formatDate(
-  date: DateInput,
-  format: DateFormat,
-  includeTimeOrOptions?: boolean | FormatDateOptions
-): string {
-  const opts: FormatDateOptions =
-    typeof includeTimeOrOptions === 'boolean'
-      ? { includeTime: includeTimeOrOptions }
-      : { ...includeTimeOrOptions };
+export function formatDate(date: DateInput, format: DateFormat, includeTimeOrOptions?: boolean | FormatDateOptions): string {
+  const opts: FormatDateOptions = typeof includeTimeOrOptions === 'boolean' ? { includeTime: includeTimeOrOptions } : { ...includeTimeOrOptions };
 
   const d = toDate(date);
-  const parts = opts.timeZone
-    ? getPartsInTimezone(d, opts.timeZone, opts)
-    : getPartsLocal(d);
+  const parts = opts.timeZone ? getPartsInTimezone(d, opts.timeZone, opts) : getPartsLocal(d);
   const { month, day, year, hour, minute, second } = parts;
   let out = buildDateString(format, month, day, year);
 
   if (opts.includeTime) {
     const timeFmt = opts.timeFormat ?? 'HH:mm';
-    const time =
-      timeFmt === 'HH:mm:ss'
-        ? `${hour}:${minute}:${second}`
-        : `${hour}:${minute}`;
+    const time = timeFmt === 'HH:mm:ss' ? `${hour}:${minute}:${second}` : `${hour}:${minute}`;
     out = `${out} ${time}`;
   }
 

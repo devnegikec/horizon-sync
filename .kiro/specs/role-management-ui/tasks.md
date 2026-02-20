@@ -1,0 +1,491 @@
+# Implementation Plan: Role Management UI
+
+## Overview
+
+This implementation plan breaks down the Role Management UI feature into discrete, incremental coding tasks. Each task builds on previous work, with testing integrated throughout to validate correctness early. The implementation follows a bottom-up approach: core utilities and data models first, then API layer, state management, and finally UI components.
+
+## Tasks
+
+- [x] 1. Set up project structure and core types
+  - Create directory structure: `src/features/role-management/`
+  - Define TypeScript interfaces for Role, Permission, and API response types
+  - Create Zod validation schemas for role forms
+  - Set up test files with fast-check arbitraries for Role and Permission
+  - _Requirements: 2.2, 13.1, 13.2_
+
+- [ ] 2. Implement wildcard permission utilities
+  - [x] 2.1 Create wildcard detection and validation functions
+    - Implement `isWildcardPermission()`, `getWildcardType()`, `validateWildcardPattern()`
+    - _Requirements: 6.1, 6.6_
+  - [ ]\* 2.2 Write property test for wildcard validation
+    - **Property 33: Wildcard pattern validation**
+    - **Validates: Requirements 6.6**
+  - [x] 2.3 Create wildcard expansion and compression functions
+    - Implement `expandWildcardPermissions()` and `suggestWildcardCompression()`
+    - _Requirements: 6.3, 6.5_
+  - [ ]\* 2.4 Write property test for wildcard expansion
+    - **Property 31: Module wildcard expansion display**
+    - **Validates: Requirements 6.3**
+  - [ ]\* 2.5 Write unit tests for wildcard edge cases
+    - Test `*.*` full access wildcard
+    - Test invalid wildcard patterns
+    - _Requirements: 6.1, 6.6_
+
+- [x] 3. Implement API client
+  - [x] 3.1 Create base API client with interceptors
+    - Set up Axios instance with auth and error interceptors
+    - Implement error handler function with error type mapping
+    - _Requirements: 16.1, 16.2, 16.3, 16.5_
+  - [x] 3.2 Implement role API methods
+    - Create `getRoles()`, `getRole()`, `createRole()`, `updateRole()`, `deleteRole()`
+    - _Requirements: 1.7, 2.6, 3.4, 4.3_
+  - [ ]\* 3.3 Write property test for role API request formatting
+    - **Property 12: Role creation API request format**
+    - **Property 16: Role update API request format**
+    - **Property 21: Role deletion API request**
+    - **Validates: Requirements 2.6, 3.4, 4.3**
+  - [x] 3.4 Implement permission API methods
+    - Create `getGroupedPermissions()` and `getPermissions()`
+    - _Requirements: 5.4_
+  - [ ]\* 3.5 Write property test for organization context in requests
+    - **Property 7: Organization context in API requests**
+    - **Validates: Requirements 1.7**
+  - [ ]\* 3.6 Write unit tests for API error handling
+    - Test network error, auth error, validation error responses
+    - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
+
+- [ ] 4. Set up state management with Zustand and React Query
+  - [ ] 4.1 Create Zustand store for UI state
+    - Implement role store with actions for dialog management
+    - _Requirements: 2.1, 3.1_
+  - [ ] 4.2 Create React Query hooks for roles
+    - Implement `useRoles()`, `useCreateRole()`, `useUpdateRole()`, `useDeleteRole()`
+    - Configure cache times (5 minutes for roles)
+    - _Requirements: 17.2, 17.4_
+  - [ ]\* 4.3 Write property test for cache expiration
+    - **Property 64: Cache expiration behavior**
+    - **Validates: Requirements 17.2, 17.3, 17.4**
+  - [ ] 4.4 Implement optimistic updates in mutations
+    - Add `onMutate`, `onError`, `onSettled` handlers for create/update/delete
+    - _Requirements: 12.1, 12.2, 12.3, 12.4_
+  - [ ]\* 4.5 Write property test for optimistic updates and rollback
+    - **Property 53: Optimistic updates for mutations**
+    - **Property 54: Rollback on failure**
+    - **Property 56: Rollback state maintenance**
+    - **Validates: Requirements 12.1, 12.2, 12.3, 12.4, 12.6**
+  - [ ] 4.6 Create React Query hooks for permissions
+    - Implement `useGroupedPermissions()` with 30-minute cache
+    - _Requirements: 17.3_
+  - [ ]\* 4.7 Write property test for cache invalidation
+    - **Property 65: Cache invalidation on mutation**
+    - **Validates: Requirements 17.5, 17.6**
+  - [ ]\* 4.8 Write property test for request deduplication
+    - **Property 66: Request deduplication**
+    - **Validates: Requirements 17.7**
+
+- [ ] 5. Checkpoint - Ensure core infrastructure tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 6. Implement PermissionSearch component
+  - [x] 6.1 Create PermissionSearch component with debounced input
+    - Implement search input with 300ms debounce
+    - Add module filter dropdown
+    - _Requirements: 9.1, 9.7_
+  - [ ]\* 6.2 Write property test for search filtering
+    - **Property 41: Permission search filtering**
+    - **Property 44: Case-insensitive search**
+    - **Validates: Requirements 9.2, 9.6**
+  - [ ]\* 6.3 Write property test for search restoration
+    - **Property 43: Search restoration on clear**
+    - **Validates: Requirements 9.5**
+  - [ ]\* 6.4 Write property test for module filter
+    - **Property 45: Module filter correctness**
+    - **Validates: Requirements 9.7**
+
+- [x] 7. Implement PermissionMatrix component
+  - [x] 7.1 Create PermissionMatrix with module grouping
+    - Implement permission grouping by module
+    - Add module section headers
+    - Display permission name and code for each permission
+    - _Requirements: 5.1, 5.2, 5.3_
+  - [ ]\* 7.2 Write property test for permission grouping
+    - **Property 10: Permission grouping by module**
+    - **Property 25: Module section headers**
+    - **Property 26: Permission detail display**
+    - **Validates: Requirements 2.4, 5.1, 5.2, 5.3**
+  - [x] 7.3 Add permission selection checkboxes
+    - Implement individual permission checkboxes with proper ARIA labels
+    - Handle permission toggle events
+    - _Requirements: 2.5, 15.3_
+  - [ ]\* 7.4 Write property test for permission selection state
+    - **Property 11: Permission selection state**
+    - **Validates: Requirements 2.5**
+  - [ ]\* 7.5 Write property test for ARIA labels
+    - **Property 59: Permission checkbox ARIA labels**
+    - **Validates: Requirements 15.3**
+  - [x] 7.6 Implement module "select all" functionality
+    - Add "select all" checkbox to each module header
+    - Implement select all, unselect all, and indeterminate states
+    - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
+  - [ ]\* 7.7 Write property tests for bulk selection
+    - **Property 48: Module select all checkbox presence**
+    - **Property 49: Select all behavior**
+    - **Property 50: Automatic select all state**
+    - **Property 51: Unselect all behavior**
+    - **Property 52: Indeterminate select all state**
+    - **Validates: Requirements 11.1, 11.2, 11.3, 11.4, 11.5**
+  - [x] 7.8 Add collapsible sections for large modules
+    - Implement collapsible module sections when permission count > 10
+    - _Requirements: 5.6_
+  - [ ]\* 7.9 Write property test for collapsible sections
+    - **Property 28: Collapsible sections for large modules**
+    - **Validates: Requirements 5.6**
+  - [x] 7.10 Integrate PermissionSearch with filtering
+    - Connect search component to filter displayed permissions
+    - Maintain module grouping during search
+    - _Requirements: 9.2, 9.3_
+  - [ ]\* 7.11 Write property test for search with grouping
+    - **Property 42: Search with module grouping preservation**
+    - **Validates: Requirements 9.3**
+  - [x] 7.12 Add wildcard permission indicators
+    - Display badges for wildcard permissions
+    - Show expanded permissions for module wildcards
+    - _Requirements: 6.2, 6.3_
+  - [ ]\* 7.13 Write property test for wildcard display
+    - **Property 30: Wildcard visual indicator**
+    - **Validates: Requirements 6.2**
+  - [x] 7.14 Implement wildcard conversion suggestion
+    - Add button/prompt to suggest wildcard when all module permissions selected
+    - _Requirements: 6.5_
+  - [ ]\* 7.15 Write property test for wildcard suggestion
+    - **Property 32: Wildcard conversion suggestion**
+    - **Validates: Requirements 6.5, 11.6**
+
+- [x] 8. Implement DangerousPermissionAlert component
+  - [x] 8.1 Create alert component with warning levels
+    - Implement critical alert for `*.*`
+    - Implement high alert for module wildcards
+    - _Requirements: 10.1, 10.3_
+  - [ ]\* 8.2 Write property test for module wildcard warning
+    - **Property 46: Module wildcard warning display**
+    - **Validates: Requirements 10.3**
+  - [x] 8.3 Add explicit confirmation for full access wildcard
+    - Require confirmation checkbox or button for `*.*`
+    - _Requirements: 10.6_
+  - [ ]\* 8.4 Write property test for warning non-blocking
+    - **Property 47: Warning non-blocking**
+    - **Validates: Requirements 10.5**
+  - [ ]\* 8.5 Write unit tests for warning edge cases
+    - Test `*.*` critical warning
+    - Test dismissible module wildcard warnings
+    - _Requirements: 10.1, 10.3, 10.6_
+
+- [x] 9. Implement RoleDialog component
+  - [x] 9.1 Create RoleDialog with form structure
+    - Implement dialog with name input, description textarea
+    - Add form validation with Zod schema
+    - Handle create/edit/clone modes
+    - _Requirements: 2.1, 2.2, 2.3, 3.1_
+  - [ ]\* 9.2 Write property test for role name uniqueness validation
+    - **Property 8: Role name uniqueness validation**
+    - **Validates: Requirements 2.2, 13.3**
+  - [ ]\* 9.3 Write property test for optional description
+    - **Property 9: Optional description field**
+    - **Validates: Requirements 2.3**
+  - [x] 9.2 Integrate PermissionMatrix into dialog
+    - Embed PermissionMatrix component
+    - Connect permission selection to form state
+    - _Requirements: 2.4, 2.5_
+  - [x] 9.3 Integrate DangerousPermissionAlert into dialog
+    - Show alert when dangerous permissions selected
+    - _Requirements: 10.1, 10.3_
+  - [x] 9.4 Implement form submission handlers
+    - Handle create, update, and clone submissions
+    - Show loading state during submission
+    - _Requirements: 2.6, 3.4, 18.2, 18.3_
+  - [ ]\* 9.5 Write property test for loading state during mutations
+    - **Property 67: Loading state during mutations**
+    - **Validates: Requirements 18.2, 18.3, 18.4**
+  - [x] 9.6 Implement success and error handling
+    - Close dialog on success with notification
+    - Keep dialog open on error with preserved input
+    - _Requirements: 2.7, 2.8, 3.5, 3.6, 16.7_
+  - [ ]\* 9.7 Write property tests for dialog state after operations
+    - **Property 13: Successful creation UI state**
+    - **Property 14: Failed creation UI state**
+    - **Property 17: Successful update UI state**
+    - **Property 18: Failed update UI state**
+    - **Property 63: Form preservation on error**
+    - **Validates: Requirements 2.7, 2.8, 3.5, 3.6, 16.7**
+  - [x] 9.8 Implement edit mode pre-population
+    - Pre-fill form fields with existing role data
+    - Pre-select permissions for editing
+    - _Requirements: 3.2_
+  - [ ]\* 9.9 Write property test for edit pre-population
+    - **Property 15: Edit dialog pre-population**
+    - **Validates: Requirements 3.1, 3.2**
+  - [x] 9.10 Implement clone mode pre-population
+    - Pre-fill with "Copy of [name]"
+    - Copy description and permissions from source
+    - _Requirements: 7.1, 7.2, 7.3, 7.4_
+  - [ ]\* 9.11 Write property test for clone pre-population
+    - **Property 34: Clone dialog pre-population**
+    - **Validates: Requirements 7.1, 7.2, 7.3, 7.4**
+  - [x] 9.12 Add form validation UI
+    - Display validation errors near form fields
+    - Disable submit button when errors exist
+    - Add ARIA attributes for error association
+    - _Requirements: 13.5, 13.6, 13.7, 15.6_
+  - [ ]\* 9.13 Write property tests for validation UI
+    - **Property 57: Submit button state based on validation**
+    - **Property 58: Validation error placement**
+    - **Property 60: Validation error ARIA association**
+    - **Validates: Requirements 13.5, 13.6, 13.7, 15.6**
+  - [x] 9.14 Implement focus trap and keyboard navigation
+    - Add focus trap when dialog opens
+    - Return focus to trigger element on close
+    - _Requirements: 15.4, 15.5_
+  - [ ]\* 9.15 Write unit tests for dialog edge cases
+    - Test empty name validation
+    - Test max length validation
+    - Test no permissions warning
+    - _Requirements: 2.9, 13.1, 13.2, 13.4_
+
+- [ ] 10. Checkpoint - Ensure dialog and permission components tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 11. Implement RoleList component
+  - [x] 11.1 Create RoleList table with columns
+    - Implement table with role name, description, user count, badges, actions
+    - Add sorting functionality
+    - _Requirements: 1.2_
+  - [ ]\* 11.2 Write property test for required information display
+    - **Property 2: Required role information display**
+    - **Validates: Requirements 1.2**
+  - [x] 11.3 Implement pagination
+    - Add pagination controls
+    - Show pagination only when role count > 20
+    - _Requirements: 1.3_
+  - [ ]\* 11.4 Write property test for pagination threshold
+    - **Property 3: Pagination threshold**
+    - **Validates: Requirements 1.3**
+  - [x] 11.5 Add user count display with click handler
+    - Display user count for each role
+    - Make count clickable when > 0
+    - Show user list popover on click
+    - _Requirements: 8.1, 8.2, 8.3, 8.4_
+  - [ ]\* 11.6 Write property tests for user count display
+    - **Property 37: User count display**
+    - **Property 38: User count clickability**
+    - **Property 39: User list display on click**
+    - **Validates: Requirements 8.1, 8.3, 8.4**
+  - [x] 11.7 Implement action buttons (Edit, Clone, Delete)
+    - Add edit button with system role protection
+    - Add clone button
+    - Add delete button with system role protection
+    - _Requirements: 3.7, 4.6, 7.1_
+  - [ ]\* 11.8 Write property test for system role edit protection
+    - **Property 19: System role edit protection**
+    - **Validates: Requirements 3.7**
+  - [ ]\* 11.9 Write property test for system role delete protection
+    - **Property 24: System role delete protection**
+    - **Validates: Requirements 4.6**
+  - [x] 11.10 Implement delete confirmation dialog
+    - Show confirmation with role name and user count
+    - Handle delete confirmation
+    - _Requirements: 4.1, 4.2, 4.7_
+  - [ ]\* 11.11 Write property test for delete confirmation
+    - **Property 20: Delete confirmation display**
+    - **Validates: Requirements 4.1, 4.2, 4.7, 8.6**
+  - [x] 11.12 Add system role badges
+    - Display badge for system roles
+    - Display badge for active/inactive status
+    - _Requirements: 1.2_
+  - [x] 11.13 Implement responsive card view
+    - Switch to card view on mobile (< 768px)
+    - _Requirements: 14.1_
+  - [ ]\* 11.14 Write unit tests for responsive behavior
+    - Test table view on desktop
+    - Test card view on mobile
+    - _Requirements: 14.1, 14.4, 14.5_
+
+- [x] 12. Implement RoleManagement container
+  - [x] 12.1 Create RoleManagement container component
+    - Set up container with header and role list
+    - Integrate Zustand store for UI state
+    - _Requirements: 1.1_
+  - [ ]\* 12.2 Write property test for complete role list rendering
+    - **Property 1: Complete role list rendering**
+    - **Validates: Requirements 1.1**
+  - [x] 12.3 Add search functionality
+    - Implement search input with filtering
+    - _Requirements: 1.4_
+  - [ ]\* 12.4 Write property test for search filtering
+    - **Property 4: Search filtering correctness**
+    - **Validates: Requirements 1.4**
+  - [x] 12.5 Add filter dropdowns
+    - Implement system role filter
+    - Implement active status filter
+    - _Requirements: 1.5, 1.6_
+  - [ ]\* 12.6 Write property tests for filters
+    - **Property 5: System role filter correctness**
+    - **Property 6: Active status filter correctness**
+    - **Validates: Requirements 1.5, 1.6**
+  - [x] 12.7 Add create role button
+    - Implement button to open create dialog
+    - _Requirements: 2.1_
+  - [x] 12.8 Integrate RoleDialog with container
+    - Connect dialog to create/edit/clone actions
+    - Pass role data to dialog based on mode
+    - _Requirements: 2.1, 3.1, 7.1_
+  - [x] 12.9 Integrate RoleList with container
+    - Pass roles and handlers to RoleList
+    - Handle pagination state
+    - _Requirements: 1.1, 1.3_
+  - [x] 12.10 Implement toast notifications
+    - Show success toasts for create/update/delete
+    - Show error toasts with retry button for recoverable errors
+    - _Requirements: 2.7, 3.5, 4.4, 16.6_
+  - [ ]\* 12.11 Write property tests for notification behavior
+    - **Property 55: Error notification on rollback**
+    - **Property 62: Retry button for recoverable errors**
+    - **Validates: Requirements 12.5, 16.6**
+  - [x] 12.12 Add loading states
+    - Show loading skeleton during initial data fetch
+    - _Requirements: 18.1_
+  - [ ]\* 12.13 Write property test for loading state cleanup
+    - **Property 68: Loading state cleanup**
+    - **Validates: Requirements 18.6**
+  - [x] 12.14 Implement error handling
+    - Display appropriate error messages based on error type
+    - Handle network, auth, validation, and server errors
+    - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
+  - [ ]\* 12.15 Write property test for API validation error display
+    - **Property 61: API validation error display**
+    - **Validates: Requirements 16.4**
+  - [ ]\* 12.16 Write unit tests for error edge cases
+    - Test network error message
+    - Test auth error message
+    - Test authorization error message
+    - Test server error message
+    - _Requirements: 16.1, 16.2, 16.3, 16.5_
+
+- [ ] 13. Implement responsive design
+  - [ ] 13.1 Add responsive styles with Tailwind
+    - Implement mobile styles (< 768px)
+    - Implement tablet styles (768px - 1023px)
+    - Implement desktop styles (>= 1024px)
+    - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
+  - [ ] 13.2 Create useIsMobile hook
+    - Implement media query hook for responsive behavior
+    - _Requirements: 14.1_
+  - [ ] 13.3 Implement full-screen dialog on mobile
+    - Adjust dialog layout for mobile devices
+    - _Requirements: 14.2_
+  - [ ] 13.4 Implement vertical stacking for PermissionMatrix on mobile
+    - Adjust permission matrix layout for mobile
+    - _Requirements: 14.3_
+  - [ ]\* 13.5 Write unit tests for responsive breakpoints
+    - Test mobile breakpoint behavior
+    - Test tablet breakpoint behavior
+    - Test desktop breakpoint behavior
+    - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
+
+- [ ] 14. Implement accessibility features
+  - [ ] 14.1 Add keyboard navigation support
+    - Ensure all interactive elements are keyboard accessible
+    - Implement Tab and Enter key navigation
+    - _Requirements: 15.1_
+  - [ ] 14.2 Add screen reader support
+    - Add ARIA labels for all interactive elements
+    - Add live regions for dynamic updates
+    - _Requirements: 15.2_
+  - [ ] 14.3 Implement focus management
+    - Add focus trap to dialogs (already done in 9.14)
+    - Ensure focus returns to trigger element on close
+    - _Requirements: 15.4, 15.5_
+  - [ ] 14.4 Add non-color indicators
+    - Ensure information conveyed by color also has icons/text
+    - _Requirements: 15.7_
+  - [ ]\* 14.5 Write unit tests for accessibility
+    - Test keyboard navigation
+    - Test ARIA attributes
+    - Test focus management
+    - _Requirements: 15.1, 15.2, 15.4, 15.5_
+
+- [ ] 15. Add additional features
+  - [x] 15.1 Implement consistent module ordering
+    - Define and enforce module display order
+    - _Requirements: 5.5_
+  - [ ]\* 15.2 Write property test for module ordering
+    - **Property 27: Consistent module ordering**
+    - **Validates: Requirements 5.5**
+  - [ ] 15.3 Implement clone independence verification
+    - Ensure cloned roles are independent from source
+    - _Requirements: 7.6_
+  - [ ]\* 15.4 Write property test for clone independence
+    - **Property 35: Clone independence**
+    - **Validates: Requirements 7.6**
+  - [ ] 15.5 Implement system role clone conversion
+    - Ensure cloned system roles become non-system roles
+    - _Requirements: 7.7_
+  - [ ]\* 15.6 Write property test for system role clone conversion
+    - **Property 36: System role clone conversion**
+    - **Validates: Requirements 7.7**
+  - [ ] 15.7 Verify user count in API response
+    - Ensure API responses include user count
+    - _Requirements: 8.5_
+  - [ ]\* 15.8 Write property test for user count in API response
+    - **Property 40: User count in API response**
+    - **Validates: Requirements 8.5**
+  - [ ] 15.9 Implement wildcard permission acceptance
+    - Ensure wildcard patterns are accepted and stored
+    - _Requirements: 6.1_
+  - [ ]\* 15.10 Write property test for wildcard acceptance
+    - **Property 29: Wildcard permission acceptance**
+    - **Validates: Requirements 6.1**
+
+- [ ] 16. Integration and final testing
+  - [x] 16.1 Wire all components together
+    - Ensure all components are properly integrated
+    - Verify data flow from API to UI
+    - _Requirements: All_
+  - [ ] 16.2 Test complete user flows
+    - Test create role flow end-to-end
+    - Test edit role flow end-to-end
+    - Test delete role flow end-to-end
+    - Test clone role flow end-to-end
+    - _Requirements: All_
+  - [ ]\* 16.3 Write integration tests
+    - Test API integration with mock server
+    - Test state management across components
+    - Test React Query cache behavior
+    - _Requirements: All_
+  - [ ] 16.4 Verify all edge cases are handled
+    - Test empty name validation
+    - Test max length validation
+    - Test zero user count display
+    - Test `*.*` wildcard confirmation
+    - Test system role protection
+    - _Requirements: 2.9, 3.8, 6.4, 8.2, 10.1, 10.6, 13.1, 13.2, 13.4, 16.1, 16.2, 16.3, 16.5, 18.7_
+  - [ ]\* 16.5 Write unit tests for remaining edge cases
+    - Test Owner_Role edit protection
+    - Test `*.*` full access wildcard display
+    - Test zero user count display
+    - Test no permissions warning
+    - Test empty search results
+    - Test timeout message for long operations
+    - _Requirements: 3.8, 6.4, 8.2, 9.4, 13.4, 18.7_
+
+- [ ] 17. Final checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Notes
+
+- Tasks marked with `*` are optional and can be skipped for faster MVP
+- Each task references specific requirements for traceability
+- Checkpoints ensure incremental validation
+- Property tests validate universal correctness properties (minimum 100 iterations each)
+- Unit tests validate specific examples and edge cases
+- Integration tests validate end-to-end flows
+- All property tests must include a comment tag: `// Feature: role-management-ui, Property {number}: {property_text}`

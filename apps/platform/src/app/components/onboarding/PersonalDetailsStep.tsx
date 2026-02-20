@@ -10,7 +10,6 @@ import { usePersonalDetailsForm } from '../../hooks/usePersonalDetailsForm';
 
 import { AdditionalDetailsFields } from './AdditionalDetailsFields';
 import { AvatarUpload } from './AvatarUpload';
-import { JobDetailsFields } from './JobDetailsFields';
 import { NameFields } from './NameFields';
 
 export function PersonalDetailsStep() {
@@ -42,7 +41,7 @@ export function PersonalDetailsStep() {
         </div>
       </div>
 
-      <JobDetailsFields register={register} errors={errors} setValue={setValue} watch={watch} />
+      {/* <JobDetailsFields register={register} errors={errors} setValue={setValue} watch={watch} /> */}
 
       <AdditionalDetailsFields register={register} errors={errors} setValue={setValue} watch={watch} />
 

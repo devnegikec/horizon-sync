@@ -1,17 +1,36 @@
 export interface Customer {
   id: string;
-  customerCode: string;
-  name: string;
+  customer_code: string;
+  customer_name: string;
   email: string;
   phone: string;
-  billingAddress: Address;
-  shippingAddresses: Address[];
-  creditLimit: number;
-  currentBalance: number;
-  paymentTerms: string;
-  status: 'active' | 'inactive' | 'on-hold';
-  createdAt: string;
-  updatedAt: string;
+  address: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city: string;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  tax_number: string | null;
+  status: 'active' | 'inactive' | 'blocked';
+  tags: string[] | null;
+  credit_limit: string;
+  outstanding_balance: string;
+  custom_fields: any | null;
+  extra_data: any | null;
+  created_at: string;
+}
+
+export interface CustomerResponse {
+  customers: Customer[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total_items: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
 }
 
 export interface Address {
