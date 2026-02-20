@@ -1,11 +1,14 @@
 import * as React from 'react';
 
-import { Edit, FileText, Mail } from 'lucide-react';
+import { Edit, FileText, Mail, Download, Eye } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
+import { usePDFGeneration } from '../../hooks/usePDFGeneration';
 import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { Quotation } from '../../types/quotation.types';
+import { convertQuotationToPDFData } from '../../utils/pdf/quotationToPDF';
 import { EmailComposer } from '../common/EmailComposer';
 
 import { StatusBadge } from './StatusBadge';
@@ -20,6 +23,9 @@ interface QuotationDetailDialogProps {
 
 export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, onConvert }: QuotationDetailDialogProps) {
   const [emailDialogOpen, setEmailDialogOpen] = React.useState(false);
+  const [pdfAttachment, setPdfAttachment] = React.useState<{ filename: string; content: string; content_type: string } | null>(null);
+  const { toast } = useToast();
+  const { loading: pdfLoading, download, preview, generateBase64 } = usePDFGeneration();
   
   if (!quotation) return null;
 
@@ -40,6 +46,65 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
       month: 'short',
       day: 'numeric',
     });
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      const pdfData = convertQuotationToPDFData(quotation);
+      await download(pdfData, `${quotation.quotation_no}.pdf`);
+      toast({
+        title: 'PDF Downloaded',
+        description: `${quotation.quotation_no}.pdf has been downloaded`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Download Failed',
+        description: error instanceof Error ? error.message : 'Failed to download PDF',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handlePreviewPDF = async () => {
+    try {
+      const pdfData = convertQuotationToPDFData(quotation);
+      await preview(pdfData);
+    } catch (error) {
+      toast({
+        title: 'Preview Failed',
+        description: error instanceof Error ? error.message : 'Failed to preview PDF',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSendEmail = async () => {
+    try {
+      // Generate PDF and convert to base64 for email attachment
+      const pdfData = convertQuotationToPDFData(quotation);
+      const base64Content = await generateBase64(pdfData);
+      
+      if (base64Content) {
+        setPdfAttachment({
+          filename: `${quotation.quotation_no}.pdf`,
+          content: base64Content,
+          content_type: 'application/pdf',
+        });
+        setEmailDialogOpen(true);
+      } else {
+        toast({
+          title: 'PDF Generation Failed',
+          description: 'Could not generate PDF attachment',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to prepare email',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -260,7 +325,15 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          <Button variant="outline" onClick={() => setEmailDialogOpen(true)} className="gap-2">
+          <Button variant="outline" onClick={handlePreviewPDF} disabled={pdfLoading} className="gap-2">
+            <Eye className="h-4 w-4" />
+            Preview PDF
+          </Button>
+          <Button variant="outline" onClick={handleDownloadPDF} disabled={pdfLoading} className="gap-2">
+            <Download className="h-4 w-4" />
+            Download PDF
+          </Button>
+          <Button variant="outline" onClick={handleSendEmail} disabled={pdfLoading} className="gap-2">
             <Mail className="h-4 w-4" />
             Send Email
           </Button>
@@ -280,17 +353,26 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
       </DialogContent>
     </Dialog>
 
-    <EmailComposer open={emailDialogOpen}
-      onOpenChange={setEmailDialogOpen}
+    <EmailComposer 
+      open={emailDialogOpen}
+      onOpenChange={(open) => {
+        setEmailDialogOpen(open);
+        if (!open) {
+          setPdfAttachment(null);
+        }
+      }}
       docType="quotation"
       docId={quotation.id}
       docNo={quotation.quotation_no}
       defaultRecipient={quotation.customer?.email || ''}
       defaultSubject={`Quotation ${quotation.quotation_no}`}
       defaultMessage={`Dear ${quotation.customer_name || quotation.customer?.customer_name || 'Customer'},\n\nPlease find attached quotation ${quotation.quotation_no} for your review.\n\nBest regards`}
+      defaultAttachments={pdfAttachment ? [pdfAttachment] : undefined}
       onSuccess={() => {
         setEmailDialogOpen(false);
-      }}/>
+        setPdfAttachment(null);
+      }}
+    />
   </>
   );
 }
