@@ -9,7 +9,7 @@ import { usePDFGeneration } from '../../hooks/usePDFGeneration';
 import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { SalesOrder } from '../../types/sales-order.types';
 import { convertSalesOrderToPDFData } from '../../utils/pdf/salesOrderToPDF';
-import { EmailComposer } from '../common/EmailComposer';
+import { EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
 import { StatusBadge } from '../quotations/StatusBadge';
 
 interface SalesOrderDetailDialogProps {
@@ -187,34 +187,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
             )}
 
             {/* Tax Summary */}
-            {taxSummary.size > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-lg font-medium">Tax Summary</h3>
-                <div className="rounded-lg border p-4 space-y-2">
-                  {Array.from(taxSummary.entries()).map(([key, summary]) => (
-                    <div key={key} className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">{summary.name}</span>
-                        <span className="text-sm font-semibold">{currencySymbol} {summary.amount.toFixed(2)}</span>
-                      </div>
-                      <div className="pl-4 space-y-1">
-                        {summary.breakup.map((tax, idx) => (
-                          <div key={idx} className="flex justify-between items-center text-xs text-muted-foreground">
-                            <span>{tax.rule_name} ({tax.rate}%)</span>
-                            <span>{currencySymbol} {tax.amount.toFixed(2)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  <Separator className="my-2" />
-                  <div className="flex justify-between items-center font-semibold">
-                    <span className="text-sm">Total Tax</span>
-                    <span className="text-sm">{currencySymbol} {Array.from(taxSummary.values()).reduce((sum, s) => sum + s.amount, 0).toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-            )}
+            <TaxSummaryCollapsible taxSummary={taxSummary} currencySymbol={currencySymbol} defaultCollapsed />
 
             {/* Grand Total */}
             <div className="rounded-lg bg-muted/50 p-4">
@@ -228,116 +201,32 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
             <Separator />
             <div>
               <h3 className="text-lg font-medium mb-4">Line Items</h3>
-              {lineItems.length > 0 ? (
-                <div className="rounded-lg border overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-muted/50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-sm font-medium">#</th>
-                          <th className="px-4 py-3 text-left text-sm font-medium">Item</th>
-                          <th className="px-4 py-3 text-right text-sm font-medium">Qty</th>
-                          <th className="px-4 py-3 text-left text-sm font-medium">UOM</th>
-                          <th className="px-4 py-3 text-right text-sm font-medium">Rate</th>
-                          <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
-                          {hasTaxInfo && <th className="px-4 py-3 text-right text-sm font-medium">Tax</th>}
-                          {hasTaxInfo && <th className="px-4 py-3 text-right text-sm font-medium">Total</th>}
-                          <th className="px-4 py-3 text-right text-sm font-medium">Billed</th>
-                          <th className="px-4 py-3 text-right text-sm font-medium">Delivered</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {lineItems.map((item, index) => {
-                          const qty = Number(item.qty);
-                          const billedQty = Number(item.billed_qty);
-                          const deliveredQty = Number(item.delivered_qty);
-                          const billedPct = qty > 0 ? Math.min((billedQty / qty) * 100, 100) : 0;
-                          const deliveredPct = qty > 0 ? Math.min((deliveredQty / qty) * 100, 100) : 0;
-                          const taxInfo = getItemTaxInfo(item);
-                          const taxAmount = getItemTaxAmount(item);
-                          const totalAmount = getItemTotalAmount(item);
-
-                          return (
-                            <tr key={item.id || index} className="hover:bg-muted/30">
-                              <td className="px-4 py-3 text-sm">{index + 1}</td>
-                              <td className="px-4 py-3">
-                                <div>
-                                  <p className="text-sm font-medium">{item.item_name || item.item_id}</p>
-                                  {item.item_sku && <p className="text-xs text-muted-foreground">{item.item_sku}</p>}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-right">{qty}</td>
-                              <td className="px-4 py-3 text-sm">{item.uom}</td>
-                              <td className="px-4 py-3 text-sm text-right">{currencySymbol} {Number(item.rate).toFixed(2)}</td>
-                              <td className="px-4 py-3 text-sm text-right">{currencySymbol} {Number(item.amount).toFixed(2)}</td>
-                              {hasTaxInfo && (
-                                <td className="px-4 py-3 text-right">
-                                  {taxInfo ? (
-                                    <div className="space-y-1">
-                                      <p className="text-sm font-medium">{currencySymbol} {taxAmount.toFixed(2)}</p>
-                                      <div className="flex flex-wrap gap-1 justify-end">
-                                        {taxInfo.breakup.map((tax, taxIdx) => (
-                                          <span key={taxIdx} className="text-xs text-muted-foreground">
-                                            {tax.rule_name} {tax.rate}%
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <span className="text-sm text-muted-foreground">—</span>
-                                  )}
-                                </td>
-                              )}
-                              {hasTaxInfo && (
-                                <td className="px-4 py-3 text-sm text-right font-semibold">
-                                  {currencySymbol} {totalAmount.toFixed(2)}
-                                </td>
-                              )}
-                              <td className="px-4 py-3 text-sm text-right">
-                                <div className="flex flex-col items-end gap-1">
-                                  <span>{billedQty} / {qty}</span>
-                                  <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${billedPct}%` }} />
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-right">
-                                <div className="flex flex-col items-end gap-1">
-                                  <span>{deliveredQty} / {qty}</span>
-                                  <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-green-500 rounded-full" style={{ width: `${deliveredPct}%` }} />
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot className="bg-muted/30 border-t-2">
-                        <tr>
-                          <td colSpan={5} className="px-4 py-3 text-right text-sm font-medium">Subtotal:</td>
-                          <td className="px-4 py-3 text-right text-sm font-semibold">
-                            {currencySymbol} {lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2)}
-                          </td>
-                          {hasTaxInfo && (
-                            <td className="px-4 py-3 text-right text-sm font-semibold">
-                              {currencySymbol} {lineItems.reduce((sum, item) => sum + getItemTaxAmount(item), 0).toFixed(2)}
-                            </td>
-                          )}
-                          {hasTaxInfo && (
-                            <td className="px-4 py-3 text-right text-sm font-bold">
-                              {currencySymbol} {lineItems.reduce((sum, item) => sum + getItemTotalAmount(item), 0).toFixed(2)}
-                            </td>
-                          )}
-                          <td colSpan={2} />
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No line items</p>
-              )}
+              <LineItemsDetailTable items={lineItems}
+                currencySymbol={currencySymbol}
+                hasTaxInfo={hasTaxInfo}
+                showBilledDelivered
+                getItemTaxInfo={getItemTaxInfo}
+                getItemTaxAmount={getItemTaxAmount}
+                getItemTotalAmount={getItemTotalAmount}
+                renderFooter={(items) => (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-3 text-right text-sm font-medium">Subtotal:</td>
+                    <td className="px-4 py-3 text-right text-sm font-semibold">
+                      {currencySymbol} {items.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2)}
+                    </td>
+                    {hasTaxInfo && (
+                      <td className="px-4 py-3 text-right text-sm font-semibold">
+                        {currencySymbol} {items.reduce((sum, item) => sum + getItemTaxAmount(item), 0).toFixed(2)}
+                      </td>
+                    )}
+                    {hasTaxInfo && (
+                      <td className="px-4 py-3 text-right text-sm font-bold">
+                        {currencySymbol} {items.reduce((sum, item) => sum + getItemTotalAmount(item), 0).toFixed(2)}
+                      </td>
+                    )}
+                    <td colSpan={2} />
+                  </tr>
+                )}/>
             </div>
 
             {/* Related Invoices */}
@@ -353,12 +242,10 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                         <span className="text-blue-900 dark:text-blue-100">This sales order has been invoiced</span>
                       </div>
                       {onViewInvoice && (
-                        <Button
-                          variant="ghost"
+                        <Button variant="ghost"
                           size="sm"
                           onClick={() => console.log('View invoices for sales order:', salesOrder.id)}
-                          className="h-7 gap-1 text-blue-600 dark:text-blue-400"
-                        >
+                          className="h-7 gap-1 text-blue-600 dark:text-blue-400">
                           View Invoices
                           <ExternalLink className="h-3 w-3" />
                         </Button>
@@ -429,8 +316,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
         </DialogContent>
       </Dialog>
 
-      <EmailComposer
-        open={emailDialogOpen}
+      <EmailComposer open={emailDialogOpen}
         onOpenChange={(isOpen) => {
           setEmailDialogOpen(isOpen);
           if (!isOpen) setPdfAttachment(null);
@@ -445,8 +331,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
         onSuccess={() => {
           setEmailDialogOpen(false);
           setPdfAttachment(null);
-        }}
-      />
+        }}/>
     </>
   );
 }

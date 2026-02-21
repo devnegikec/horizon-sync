@@ -1,19 +1,20 @@
 import * as React from 'react';
+
 import { AlertTriangle } from 'lucide-react';
 
-import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { Button, Card, CardContent } from '@horizon-sync/ui/components';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { useSalesOrderManagement } from '../../hooks/useSalesOrderManagement';
 
+import { CreateDeliveryNoteDialog } from './CreateDeliveryNoteDialog';
+import { CreateInvoiceDialog } from './CreateInvoiceDialog';
 import { SalesOrderDetailDialog } from './SalesOrderDetailDialog';
 import { SalesOrderDialog } from './SalesOrderDialog';
-import { SalesOrdersTable } from './SalesOrdersTable';
-import { SalesOrderManagementHeader } from './SalesOrderManagementHeader';
-import { SalesOrderStats } from './SalesOrderStats';
 import { SalesOrderManagementFilters } from './SalesOrderManagementFilters';
-import { CreateInvoiceDialog } from './CreateInvoiceDialog';
-import { CreateDeliveryNoteDialog } from './CreateDeliveryNoteDialog';
+import { SalesOrderManagementHeader } from './SalesOrderManagementHeader';
+import { SalesOrdersTable } from './SalesOrdersTable';
+import { SalesOrderStats } from './SalesOrderStats';
 
 export function SalesOrderManagement({
   pendingSalesOrderId,
@@ -118,33 +119,26 @@ export function SalesOrderManagement({
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <SalesOrderManagementHeader
-        onRefresh={refetch}
+      <SalesOrderManagementHeader onRefresh={refetch}
         onCreateSalesOrder={handleCreate}
-        isLoading={loading}
-      />
+        isLoading={loading}/>
 
       {/* Error State */}
       {ErrorDisplay}
 
       {/* Stats Cards */}
-      <SalesOrderStats
-        total={stats.total}
+      <SalesOrderStats total={stats.total}
         confirmed={stats.confirmed}
         confirmedValue={stats.confirmedValue}
-        pendingDelivery={stats.pendingDelivery}
-      />
+        pendingDelivery={stats.pendingDelivery}/>
 
       {/* Filters */}
-      <SalesOrderManagementFilters
-        filters={filters}
+      <SalesOrderManagementFilters filters={filters}
         setFilters={setFilters}
-        tableInstance={tableInstance}
-      />
+        tableInstance={tableInstance}/>
 
       {/* Sales Orders Table */}
-      <SalesOrdersTable
-        salesOrders={salesOrders}
+      <SalesOrdersTable salesOrders={salesOrders}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.status !== 'all'}
@@ -153,12 +147,10 @@ export function SalesOrderManagement({
         onDelete={handleDelete}
         onCreateSalesOrder={handleCreate}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
       {/* Detail Dialog */}
-      <SalesOrderDetailDialog
-        open={detailDialogOpen}
+      <SalesOrderDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         salesOrder={selectedSalesOrder}
         onEdit={handleEdit}
@@ -167,35 +159,28 @@ export function SalesOrderManagement({
         onViewInvoice={(invoiceId) => {
           setDetailDialogOpen(false);
           onNavigateToInvoice?.(invoiceId);
-        }}
-      />
+        }}/>
 
       {/* Create/Edit Dialog */}
-      <SalesOrderDialog
-        open={createDialogOpen}
+      <SalesOrderDialog open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         salesOrder={editSalesOrder}
         onSave={handleSaveWrapper}
-        saving={saving}
-      />
+        saving={saving}/>
 
       {/* Create Invoice Dialog */}
-      <CreateInvoiceDialog
-        open={invoiceDialogOpen}
+      <CreateInvoiceDialog open={invoiceDialogOpen}
         onOpenChange={setInvoiceDialogOpen}
         salesOrder={selectedSalesOrder}
         onCreateInvoice={handleConvertToInvoiceWrapper}
-        creating={creatingInvoice}
-      />
+        creating={creatingInvoice}/>
 
       {/* Create Delivery Note Dialog */}
-      <CreateDeliveryNoteDialog
-        open={deliveryNoteDialogOpen}
+      <CreateDeliveryNoteDialog open={deliveryNoteDialogOpen}
         onOpenChange={setDeliveryNoteDialogOpen}
         salesOrder={selectedSalesOrder}
         onCreateDeliveryNote={handleConvertToDeliveryNoteWrapper}
-        creating={creatingDeliveryNote}
-      />
+        creating={creatingDeliveryNote}/>
     </div>
   );
 }
