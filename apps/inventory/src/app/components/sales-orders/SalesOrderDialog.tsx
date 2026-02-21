@@ -5,11 +5,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@horizon-sync/store';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Separator, Textarea } from '@horizon-sync/ui/components';
 
-import { CurrencySelect, StatusSelect } from '../common';
 import type { CustomerResponse } from '../../types/customer.types';
 import type { QuotationLineItemCreate } from '../../types/quotation.types';
 import type { SalesOrder, SalesOrderCreate, SalesOrderItemCreate, SalesOrderStatus, SalesOrderUpdate } from '../../types/sales-order.types';
 import { customerApi } from '../../utility/api/customers';
+import { CurrencySelect, StatusSelect } from '../common';
 import { LineItemTable } from '../quotations/LineItemTable';
 
 interface SalesOrderDialogProps {
@@ -253,12 +253,10 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
             {isEdit && (
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <StatusSelect<SalesOrderStatus>
-                  value={formData.status}
+                <StatusSelect value={formData.status}
                   onValueChange={(v) => handleChange('status', v)}
                   availableStatuses={availableStatuses}
-                  statusLabels={statusLabels}
-                />
+                  statusLabels={statusLabels}/>
               </div>
             )}
           </div>
