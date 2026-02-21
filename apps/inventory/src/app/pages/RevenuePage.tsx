@@ -9,9 +9,9 @@ import { cn } from '@horizon-sync/ui/lib';
 
 import { CustomerManagement } from '../components/customers';
 import { DeliveryNoteManagement } from '../components/delivery-notes';
+import { PickListManagement } from '../components/picklist';
 import { QuotationManagement } from '../components/quotations';
 import { SalesOrderManagement } from '../components/sales-orders';
-import { PickListManagement } from '../components/smart-picking';
 import type { Invoice } from '../types/invoice';
 
 // Lazy load invoice and payment management components for better performance
