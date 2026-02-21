@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
+import { StatusSelect } from '../common';
 import type { Customer, CustomerResponse } from '../../types/customer.types';
 import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteCreateItem, DeliveryNoteUpdate } from '../../types/delivery-note.types';
 import { customerApi, warehouseApi } from '../../utility/api';
@@ -122,6 +123,15 @@ export function DeliveryNoteDialog({ open, onOpenChange, deliveryNote, onSave, s
     setItems((prev) => prev.filter((_, i) => i !== index).map((item, i) => ({ ...item, sort_order: i + 1 })));
   };
 
+  const availableStatuses: DeliveryNote['status'][] = React.useMemo(() => {
+    if (!isEdit) return ['draft'];
+
+    const current = formData.status;
+    if (current === 'draft') return ['draft', 'submitted', 'cancelled'];
+    if (current === 'submitted') return ['submitted', 'cancelled'];
+    return [current];
+  }, [isEdit, formData.status]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isEdit) {
@@ -203,16 +213,16 @@ export function DeliveryNoteDialog({ open, onOpenChange, deliveryNote, onSave, s
               </div>
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(v) => handleChange('status', v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="submitted">Submitted</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
+                <StatusSelect<DeliveryNote['status']>
+                  value={formData.status}
+                  onValueChange={(v) => handleChange('status', v)}
+                  availableStatuses={availableStatuses}
+                  statusLabels={{
+                    draft: 'Draft',
+                    submitted: 'Submitted',
+                    cancelled: 'Cancelled',
+                  }}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="warehouse_id">Warehouse *</Label>

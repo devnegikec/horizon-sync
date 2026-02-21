@@ -1,17 +1,19 @@
 import * as React from 'react';
+
 import { AlertTriangle } from 'lucide-react';
 
-import { useQuotationManagement } from '../../hooks/useQuotationManagement';
+import { Card, CardContent } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
-import { Button, Card, CardContent } from '@horizon-sync/ui/components';
 
+import { useQuotationManagement } from '../../hooks/useQuotationManagement';
+
+import { ConvertToSalesOrderDialog } from './ConvertToSalesOrderDialog';
 import { QuotationDetailDialog } from './QuotationDetailDialog';
 import { QuotationDialog } from './QuotationDialog';
-import { QuotationsTable } from './QuotationsTable';
-import { QuotationManagementHeader } from './QuotationManagementHeader';
-import { QuotationStats } from './QuotationStats';
 import { QuotationManagementFilters } from './QuotationManagementFilters';
-import { ConvertToSalesOrderDialog } from './ConvertToSalesOrderDialog';
+import { QuotationManagementHeader } from './QuotationManagementHeader';
+import { QuotationsTable } from './QuotationsTable';
+import { QuotationStats } from './QuotationStats';
 
 export function QuotationManagement() {
   const { toast } = useToast();
@@ -64,33 +66,26 @@ export function QuotationManagement() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <QuotationManagementHeader
-        onRefresh={refetch}
+      <QuotationManagementHeader onRefresh={refetch}
         onCreateQuotation={handleCreate}
-        isLoading={loading}
-      />
+        isLoading={loading}/>
 
       {/* Error State */}
       {ErrorDisplay}
 
       {/* Stats Cards */}
-      <QuotationStats
-        total={stats.total}
+      <QuotationStats total={stats.total}
         draft={stats.draft}
         sent={stats.sent}
-        accepted={stats.accepted}
-      />
+        accepted={stats.accepted}/>
 
       {/* Filters */}
-      <QuotationManagementFilters
-        filters={filters}
+      <QuotationManagementFilters filters={filters}
         setFilters={setFilters}
-        tableInstance={tableInstance}
-      />
+        tableInstance={tableInstance}/>
 
       {/* Quotations Table */}
-      <QuotationsTable
-        quotations={quotations}
+      <QuotationsTable quotations={quotations}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.status !== 'all'}
@@ -100,35 +95,28 @@ export function QuotationManagement() {
         onConvert={handleConvert}
         onCreateQuotation={handleCreate}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
       {/* Detail Dialog */}
-      <QuotationDetailDialog
-        open={detailDialogOpen}
+      <QuotationDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         quotation={selectedQuotation}
         onEdit={handleEdit}
-        onConvert={handleConvert}
-      />
+        onConvert={handleConvert}/>
 
       {/* Create/Edit Dialog */}
-      <QuotationDialog
-        open={createDialogOpen}
+      <QuotationDialog open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         quotation={editQuotation}
         onSave={handleSave}
-        saving={false}
-      />
+        saving={false}/>
 
       {/* Convert to Sales Order Dialog */}
-      <ConvertToSalesOrderDialog
-        open={convertDialogOpen}
+      <ConvertToSalesOrderDialog open={convertDialogOpen}
         onOpenChange={setConvertDialogOpen}
         quotation={selectedQuotation}
         onConvert={handleConvertConfirm}
-        converting={converting}
-      />
+        converting={converting}/>
     </div>
   );
 }

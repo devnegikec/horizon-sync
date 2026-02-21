@@ -13,6 +13,7 @@ import { SalesOrderManagementHeader } from './SalesOrderManagementHeader';
 import { SalesOrderStats } from './SalesOrderStats';
 import { SalesOrderManagementFilters } from './SalesOrderManagementFilters';
 import { CreateInvoiceDialog } from './CreateInvoiceDialog';
+import { CreateDeliveryNoteDialog } from './CreateDeliveryNoteDialog';
 
 export function SalesOrderManagement({
   pendingSalesOrderId,
@@ -38,6 +39,8 @@ export function SalesOrderManagement({
     setCreateDialogOpen,
     invoiceDialogOpen,
     setInvoiceDialogOpen,
+    deliveryNoteDialogOpen,
+    setDeliveryNoteDialogOpen,
     selectedSalesOrder,
     editSalesOrder,
     tableInstance,
@@ -46,14 +49,17 @@ export function SalesOrderManagement({
     handleEdit,
     handleDelete,
     handleCreateInvoice,
+    handleCreateDeliveryNote,
     handleTableReady,
     handleSave,
     handleConvertToInvoice,
+    handleConvertToDeliveryNote,
     serverPaginationConfig,
   } = useSalesOrderManagement();
 
   const [saving, setSaving] = React.useState(false);
   const [creatingInvoice, setCreatingInvoice] = React.useState(false);
+  const [creatingDeliveryNote, setCreatingDeliveryNote] = React.useState(false);
 
   // Handle pending sales order ID from cross-document navigation
   React.useEffect(() => {
@@ -84,6 +90,15 @@ export function SalesOrderManagement({
       setCreatingInvoice(false);
     }
   }, [handleConvertToInvoice]);
+
+  const handleConvertToDeliveryNoteWrapper = React.useCallback(async (salesOrderId: string, data: Parameters<typeof handleConvertToDeliveryNote>[1]) => {
+    setCreatingDeliveryNote(true);
+    try {
+      await handleConvertToDeliveryNote(salesOrderId, data);
+    } finally {
+      setCreatingDeliveryNote(false);
+    }
+  }, [handleConvertToDeliveryNote]);
 
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
@@ -148,6 +163,7 @@ export function SalesOrderManagement({
         salesOrder={selectedSalesOrder}
         onEdit={handleEdit}
         onCreateInvoice={handleCreateInvoice}
+        onCreateDeliveryNote={handleCreateDeliveryNote}
         onViewInvoice={(invoiceId) => {
           setDetailDialogOpen(false);
           onNavigateToInvoice?.(invoiceId);
@@ -170,6 +186,15 @@ export function SalesOrderManagement({
         salesOrder={selectedSalesOrder}
         onCreateInvoice={handleConvertToInvoiceWrapper}
         creating={creatingInvoice}
+      />
+
+      {/* Create Delivery Note Dialog */}
+      <CreateDeliveryNoteDialog
+        open={deliveryNoteDialogOpen}
+        onOpenChange={setDeliveryNoteDialogOpen}
+        salesOrder={selectedSalesOrder}
+        onCreateDeliveryNote={handleConvertToDeliveryNoteWrapper}
+        creating={creatingDeliveryNote}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@horizon-sync/store';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Separator, Textarea } from '@horizon-sync/ui/components';
 
+import { CurrencySelect, StatusSelect } from '../common';
 import type { CustomerResponse } from '../../types/customer.types';
 import type { Quotation, QuotationCreate, QuotationLineItemCreate, QuotationStatus, QuotationUpdate } from '../../types/quotation.types';
 import { customerApi } from '../../utility/api';
@@ -218,39 +219,18 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
               </div>
               <div className="space-y-2">
                 <Label htmlFor="currency">Currency *</Label>
-                <Select value={formData.currency}
-                  onValueChange={(v) => handleChange('currency', v)}
-                  disabled={isEdit}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="INR">INR</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="GBP">GBP</SelectItem>
-                  </SelectContent>
-                </Select>
+                <CurrencySelect value={formData.currency} onValueChange={(v) => handleChange('currency', v)} disabled={isEdit} />
               </div>
             </div>
 
             {isEdit && (
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select value={formData.status || 'draft'}
-                  onValueChange={(v) => handleChange('status', v as QuotationStatus)}
-                  disabled={availableStatuses.length === 1} >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableStatuses.filter(status => status).map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status.charAt(0).toUpperCase() + status.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <StatusSelect<QuotationStatus>
+                  value={formData.status}
+                  onValueChange={(v) => handleChange('status', v)}
+                  availableStatuses={availableStatuses}
+                />
               </div>
             )}
           </div>

@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Edit, FileText, ShoppingCart, Receipt, ExternalLink, Mail, Download, Eye } from 'lucide-react';
+import { Edit, FileText, ShoppingCart, Receipt, ExternalLink, Mail, Download, Eye, Truck } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
@@ -18,10 +18,11 @@ interface SalesOrderDetailDialogProps {
   salesOrder: SalesOrder | null;
   onEdit: (salesOrder: SalesOrder) => void;
   onCreateInvoice: (salesOrder: SalesOrder) => void;
+  onCreateDeliveryNote: (salesOrder: SalesOrder) => void;
   onViewInvoice?: (invoiceId: string) => void;
 }
 
-export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit, onCreateInvoice, onViewInvoice }: SalesOrderDetailDialogProps) {
+export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit, onCreateInvoice, onCreateDeliveryNote, onViewInvoice }: SalesOrderDetailDialogProps) {
   const [emailDialogOpen, setEmailDialogOpen] = React.useState(false);
   const [pdfAttachment, setPdfAttachment] = React.useState<{ filename: string; content: string; content_type: string } | null>(null);
   const { toast } = useToast();
@@ -31,6 +32,8 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
 
   const isClosedOrCancelled = salesOrder.status === 'closed' || salesOrder.status === 'cancelled';
   const canCreateInvoice = salesOrder.status === 'confirmed' || salesOrder.status === 'partially_delivered' || salesOrder.status === 'delivered';
+  const canCreateDeliveryNote = (salesOrder.status === 'confirmed' || salesOrder.status === 'partially_delivered');
+    // && salesOrder.items?.some(item => Number(item.qty) - Number(item.delivered_qty) > 0);
 
   const getCurrencySymbol = (currencyCode: string): string => {
     const currency = SUPPORTED_CURRENCIES.find((c: { code: string; symbol: string }) => c.code === currencyCode);
@@ -408,6 +411,12 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
               <Button variant="default" onClick={() => onCreateInvoice(salesOrder)} className="gap-2">
                 <Receipt className="h-4 w-4" />
                 Create Invoice
+              </Button>
+            )}
+            {canCreateDeliveryNote && (
+              <Button variant="default" onClick={() => onCreateDeliveryNote(salesOrder)} className="gap-2">
+                <Truck className="h-4 w-4" />
+                Create Delivery Note
               </Button>
             )}
             {!isClosedOrCancelled && (

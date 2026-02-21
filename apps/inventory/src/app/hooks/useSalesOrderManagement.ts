@@ -15,6 +15,7 @@ import type {
   SalesOrderListResponse,
   ConvertToInvoiceRequest,
   ConvertToInvoiceResponse,
+  ConvertToDeliveryNoteResponse,
 } from '../types/sales-order.types';
 import type { StockLevelsResponse, StockLevel } from '../types/stock.types';
 import type { WarehousesResponse } from '../types/warehouse.types';
@@ -161,6 +162,7 @@ export function useSalesOrderManagement() {
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = React.useState(false);
+  const [deliveryNoteDialogOpen, setDeliveryNoteDialogOpen] = React.useState(false);
   const [selectedSalesOrder, setSelectedSalesOrder] = React.useState<SalesOrder | null>(null);
   const [editSalesOrder, setEditSalesOrder] = React.useState<SalesOrder | null>(null);
   const [tableInstance, setTableInstance] = React.useState<Table<SalesOrder> | null>(null);
@@ -270,6 +272,22 @@ export function useSalesOrderManagement() {
     }
   }, [accessToken, toast]);
 
+  const handleCreateDeliveryNote = React.useCallback(async (salesOrder: SalesOrder) => {
+    if (!accessToken) return;
+    try {
+      const fullSalesOrder = await salesOrderApi.get(accessToken, salesOrder.id) as SalesOrder;
+      setSelectedSalesOrder(fullSalesOrder);
+      setDetailDialogOpen(false);
+      setDeliveryNoteDialogOpen(true);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load sales order details',
+        variant: 'destructive',
+      });
+    }
+  }, [accessToken, toast]);
+
   const handleTableReady = React.useCallback((table: Table<SalesOrder>) => {
     setTableInstance(table);
   }, []);
@@ -336,6 +354,52 @@ export function useSalesOrderManagement() {
     }
   }, [accessToken, toast, queryClient, refetch]);
 
+  const handleConvertToDeliveryNote = React.useCallback(async (
+    salesOrderId: string,
+    data: { items: { item_id: string; qty_to_deliver: number; warehouse_id: string }[] },
+  ) => {
+    if (!accessToken) return;
+
+    try {
+      // Group items by warehouse — create one delivery note per warehouse
+      const warehouseMap = new Map<string, { item_id: string; qty_to_deliver: number }[]>();
+      for (const item of data.items) {
+        const existing = warehouseMap.get(item.warehouse_id) || [];
+        existing.push({ item_id: item.item_id, qty_to_deliver: item.qty_to_deliver });
+        warehouseMap.set(item.warehouse_id, existing);
+      }
+
+      const results: ConvertToDeliveryNoteResponse[] = [];
+      for (const [, items] of warehouseMap) {
+        const result = await salesOrderApi.convertToDeliveryNote(
+          accessToken,
+          salesOrderId,
+          { items },
+        ) as ConvertToDeliveryNoteResponse;
+        results.push(result);
+      }
+
+      const noteCount = results.length;
+      toast({
+        title: 'Success',
+        description: noteCount > 1
+          ? `${noteCount} delivery notes created successfully`
+          : results[0]?.message || 'Delivery note created successfully',
+      });
+      setDeliveryNoteDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['delivery-notes'] });
+      refetch();
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to create delivery note',
+        variant: 'destructive',
+      });
+      throw err;
+    }
+  }, [accessToken, toast, queryClient, refetch]);
+
   const serverPaginationConfig = useMemo(() => ({
     pageIndex: page - 1,
     pageSize: pageSize,
@@ -361,6 +425,8 @@ export function useSalesOrderManagement() {
     setCreateDialogOpen,
     invoiceDialogOpen,
     setInvoiceDialogOpen,
+    deliveryNoteDialogOpen,
+    setDeliveryNoteDialogOpen,
     selectedSalesOrder,
     setSelectedSalesOrder,
     editSalesOrder,
@@ -372,9 +438,11 @@ export function useSalesOrderManagement() {
     handleEdit,
     handleDelete,
     handleCreateInvoice,
+    handleCreateDeliveryNote,
     handleTableReady,
     handleSave,
     handleConvertToInvoice,
+    handleConvertToDeliveryNote,
     serverPaginationConfig,
   };
 }
