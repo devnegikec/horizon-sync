@@ -7,6 +7,7 @@ import { Button } from '@horizon-sync/ui/components/ui/button';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { AccountManagement, SystemConfiguration, Reports } from '../components/accounts';
+import { PaymentManagement } from '../components/payments/PaymentManagement';
 
 type ActiveView = 'coa' | 'journal_entries' | 'payments' | 'reports' | 'configuration';
 
@@ -83,15 +84,7 @@ export function BooksPage() {
               </div>
             </div>
           )}
-          {activeView === 'payments' && (
-            <div className="flex items-center justify-center h-96">
-              <div className="text-center">
-                <CreditCard className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <h2 className="text-2xl font-semibold mb-2">Payments</h2>
-                <p className="text-muted-foreground">Coming soon - Phase 3</p>
-              </div>
-            </div>
-          )}
+          {activeView === 'payments' && <PaymentManagement />}
           {activeView === 'configuration' && <SystemConfiguration />}
         </main>
       </div>

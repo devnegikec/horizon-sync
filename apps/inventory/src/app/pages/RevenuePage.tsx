@@ -121,12 +121,7 @@ export function RevenuePage() {
           )}
           {activeView === 'payments' && (
             <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading payments...</div>}>
-              <PaymentManagement 
-                preSelectedInvoice={preSelectedInvoice}
-                pendingPaymentId={pendingPaymentId}
-                onClearPendingPaymentId={() => setPendingPaymentId(null)}
-                onNavigateToInvoice={handleNavigateToInvoice}
-              />
+              <PaymentManagement />
             </React.Suspense>
           )}
         </main>
