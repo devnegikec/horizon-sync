@@ -1,6 +1,7 @@
 import * as React from 'react';
+
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { ShoppingCart, Plus, MoreHorizontal, Eye, Edit, Trash2, User, FileText } from 'lucide-react';
+import { ShoppingCart, Plus, MoreHorizontal, Eye, Edit, Trash2, User, FileText, ClipboardList } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -20,6 +21,7 @@ export interface SalesOrdersTableProps {
   onEdit: (salesOrder: SalesOrder) => void;
   onDelete: (salesOrder: SalesOrder) => void;
   onCreateSalesOrder: () => void;
+  onCreatePickList?: (salesOrder: SalesOrder) => void;
   onTableReady?: (table: Table<SalesOrder>) => void;
   serverPagination?: {
     pageIndex: number;
@@ -38,6 +40,7 @@ export function SalesOrdersTable({
   onEdit,
   onDelete,
   onCreateSalesOrder,
+  onCreatePickList,
   onTableReady,
   serverPagination,
 }: SalesOrdersTableProps) {
@@ -163,6 +166,7 @@ export function SalesOrdersTable({
           const so = row.original;
           const canEdit = so.status !== 'closed' && so.status !== 'cancelled';
           const canDelete = so.status === 'draft';
+          const canPickList = so.status === 'confirmed' || so.status === 'partially_delivered';
 
           return (
             <div className="text-right">
@@ -181,13 +185,20 @@ export function SalesOrdersTable({
                     <Edit className="mr-2 h-4 w-4" />
                     Edit Sales Order
                   </DropdownMenuItem>
+                  {canPickList && onCreatePickList && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onCreatePickList(so)}>
+                        <ClipboardList className="mr-2 h-4 w-4" />
+                        Create Pick List
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => onDelete(so)}
-                        className="text-destructive focus:text-destructive"
-                      >
+                      <DropdownMenuItem onClick={() => onDelete(so)}
+                        className="text-destructive focus:text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Sales Order
                       </DropdownMenuItem>
@@ -201,7 +212,7 @@ export function SalesOrdersTable({
         enableSorting: false,
       },
     ],
-    [onView, onEdit, onDelete],
+    [onView, onEdit, onDelete, onCreatePickList],
   );
 
   if (error) {
@@ -229,8 +240,7 @@ export function SalesOrdersTable({
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState
-              icon={<ShoppingCart className="h-12 w-12" />}
+            <EmptyState icon={<ShoppingCart className="h-12 w-12" />}
               title="No sales orders found"
               description={
                 hasActiveFilters
@@ -244,8 +254,7 @@ export function SalesOrdersTable({
                     New Sales Order
                   </Button>
                 ) : undefined
-              }
-            />
+              }/>
           </div>
         </CardContent>
       </Card>
@@ -255,8 +264,7 @@ export function SalesOrdersTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable
-          columns={columns}
+        <DataTable columns={columns}
           data={salesOrders}
           config={{
             showSerialNumber: true,
@@ -271,8 +279,7 @@ export function SalesOrdersTable({
           filterPlaceholder="Search by order #, customer..."
           renderViewOptions={renderViewOptions}
           fixedHeader
-          maxHeight="auto"
-        />
+          maxHeight="auto"/>
       </CardContent>
     </Card>
   );

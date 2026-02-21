@@ -6,6 +6,7 @@ import { Button, Card, CardContent } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { useSalesOrderManagement } from '../../hooks/useSalesOrderManagement';
+import { SmartPickingDialog } from '../smart-picking/SmartPickingDialog';
 
 import { CreateDeliveryNoteDialog } from './CreateDeliveryNoteDialog';
 import { CreateInvoiceDialog } from './CreateInvoiceDialog';
@@ -61,6 +62,13 @@ export function SalesOrderManagement({
   const [saving, setSaving] = React.useState(false);
   const [creatingInvoice, setCreatingInvoice] = React.useState(false);
   const [creatingDeliveryNote, setCreatingDeliveryNote] = React.useState(false);
+  const [pickListDialogOpen, setPickListDialogOpen] = React.useState(false);
+  const [pickListSalesOrder, setPickListSalesOrder] = React.useState<import('../../types/sales-order.types').SalesOrder | null>(null);
+
+  const handleCreatePickList = React.useCallback((so: import('../../types/sales-order.types').SalesOrder) => {
+    setPickListSalesOrder(so);
+    setPickListDialogOpen(true);
+  }, []);
 
   // Handle pending sales order ID from cross-document navigation
   React.useEffect(() => {
@@ -146,6 +154,7 @@ export function SalesOrderManagement({
         onEdit={handleEdit}
         onDelete={handleDelete}
         onCreateSalesOrder={handleCreate}
+        onCreatePickList={handleCreatePickList}
         onTableReady={handleTableReady}
         serverPagination={serverPaginationConfig}/>
 
@@ -181,6 +190,15 @@ export function SalesOrderManagement({
         salesOrder={selectedSalesOrder}
         onCreateDeliveryNote={handleConvertToDeliveryNoteWrapper}
         creating={creatingDeliveryNote}/>
+
+      {/* Smart Picking Dialog */}
+      <SmartPickingDialog open={pickListDialogOpen}
+        onOpenChange={setPickListDialogOpen}
+        salesOrder={pickListSalesOrder}
+        onSuccess={() => {
+          setPickListDialogOpen(false);
+          refetch();
+        }}/>
     </div>
   );
 }

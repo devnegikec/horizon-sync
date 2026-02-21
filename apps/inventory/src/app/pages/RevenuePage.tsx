@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { DollarSign, Package, Users, Truck, FileText, ShoppingCart } from 'lucide-react';
+import { DollarSign, Package, Users, Truck, FileText, ShoppingCart, ClipboardList } from 'lucide-react';
 
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -11,6 +11,7 @@ import { CustomerManagement } from '../components/customers';
 import { DeliveryNoteManagement } from '../components/delivery-notes';
 import { QuotationManagement } from '../components/quotations';
 import { SalesOrderManagement } from '../components/sales-orders';
+import { PickListManagement } from '../components/smart-picking';
 import type { Invoice } from '../types/invoice';
 
 // Lazy load invoice and payment management components for better performance
@@ -21,7 +22,7 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 });
 
-type ActiveView = 'customers' | 'quotations' | 'sales_orders' | 'delivery_notes' | 'invoices' | 'payments';
+type ActiveView = 'customers' | 'quotations' | 'sales_orders' | 'pick_lists' | 'delivery_notes' | 'invoices' | 'payments';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -89,6 +90,7 @@ export function RevenuePage() {
               <NavItem icon={Users} label="Customers" isActive={activeView === 'customers'} onClick={() => setActiveView('customers')} />
               <NavItem icon={FileText} label="Quotations" isActive={activeView === 'quotations'} onClick={() => setActiveView('quotations')} />
               <NavItem icon={ShoppingCart} label="Sales Orders" isActive={activeView === 'sales_orders'} onClick={() => setActiveView('sales_orders')} />
+              <NavItem icon={ClipboardList} label="Pick Lists" isActive={activeView === 'pick_lists'} onClick={() => setActiveView('pick_lists')} />
               <NavItem icon={Truck} label="Delivery Notes" isActive={activeView === 'delivery_notes'} onClick={() => setActiveView('delivery_notes')} />
               <NavItem icon={DollarSign} label="Invoices" isActive={activeView === 'invoices'} onClick={() => setActiveView('invoices')} />
               <NavItem icon={Package} label="Payments" isActive={activeView === 'payments'} onClick={() => setActiveView('payments')} />
@@ -101,32 +103,27 @@ export function RevenuePage() {
           {activeView === 'customers' && <CustomerManagement />}
           {activeView === 'quotations' && <QuotationManagement />}
           {activeView === 'sales_orders' && (
-            <SalesOrderManagement 
-              pendingSalesOrderId={pendingSalesOrderId}
+            <SalesOrderManagement pendingSalesOrderId={pendingSalesOrderId}
               onClearPendingSalesOrderId={() => setPendingSalesOrderId(null)}
-              onNavigateToInvoice={handleNavigateToInvoice}
-            />
+              onNavigateToInvoice={handleNavigateToInvoice}/>
           )}
+          {activeView === 'pick_lists' && <PickListManagement />}
           {activeView === 'delivery_notes' && <DeliveryNoteManagement />}
           {activeView === 'invoices' && (
             <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading invoices...</div>}>
-              <InvoiceManagement 
-                onRecordPayment={handleRecordPayment}
+              <InvoiceManagement onRecordPayment={handleRecordPayment}
                 pendingInvoiceId={pendingInvoiceId}
                 onClearPendingInvoiceId={() => setPendingInvoiceId(null)}
                 onNavigateToSalesOrder={handleNavigateToSalesOrder}
-                onNavigateToPayment={handleNavigateToPayment}
-              />
+                onNavigateToPayment={handleNavigateToPayment}/>
             </React.Suspense>
           )}
           {activeView === 'payments' && (
             <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading payments...</div>}>
-              <PaymentManagement 
-                preSelectedInvoice={preSelectedInvoice}
+              <PaymentManagement preSelectedInvoice={preSelectedInvoice}
                 pendingPaymentId={pendingPaymentId}
                 onClearPendingPaymentId={() => setPendingPaymentId(null)}
-                onNavigateToInvoice={handleNavigateToInvoice}
-              />
+                onNavigateToInvoice={handleNavigateToInvoice}/>
             </React.Suspense>
           )}
         </main>
