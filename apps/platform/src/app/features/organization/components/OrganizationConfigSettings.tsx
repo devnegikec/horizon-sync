@@ -3,10 +3,12 @@ import { useState } from 'react';
 
 import { Save, AlertCircle } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
+import { OrganizationService } from '../../../services/organization.service';
 import type { OrganizationSettings as OrganizationSettingsType } from '../../../types/organization-settings.types';
 import { DEFAULT_ORGANIZATION_SETTINGS } from '../../../types/organization-settings.types';
 import { validateOrganizationSettings } from '../../../utils/organization-settings.utils';
@@ -23,6 +25,7 @@ interface OrganizationConfigSettingsProps {
 
 export function OrganizationConfigSettings({ organizationId, accessToken, canEdit }: OrganizationConfigSettingsProps) {
   const { toast } = useToast();
+  const { updateOrganization } = useUserStore();
   const [settings, setSettings] = useState<OrganizationSettingsType>(DEFAULT_ORGANIZATION_SETTINGS);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -32,21 +35,39 @@ export function OrganizationConfigSettings({ organizationId, accessToken, canEdi
   React.useEffect(() => {
     const fetchSettings = async () => {
       try {
-        // TODO: Replace with actual API call
-        // const response = await fetch(`/api/organizations/${organizationId}/settings`, {
-        //   headers: { Authorization: `Bearer ${accessToken}` }
-        // });
-        // const data = await response.json();
-        // setSettings(data.settings || DEFAULT_ORGANIZATION_SETTINGS);
+        const organization = await OrganizationService.getOrganization(organizationId, accessToken);
         
-        // For now, use default settings
-        setSettings(DEFAULT_ORGANIZATION_SETTINGS);
+        // If organization has settings, validate and use them; otherwise use defaults
+        if (organization.settings && typeof organization.settings === 'object') {
+          // Check if settings has the required structure
+          const orgSettings = organization.settings as Record<string, unknown>;
+          
+          if (
+            orgSettings.currencies &&
+            Array.isArray(orgSettings.currencies) &&
+            orgSettings.naming_series &&
+            typeof orgSettings.naming_series === 'object' &&
+            orgSettings.address &&
+            typeof orgSettings.address === 'object'
+          ) {
+            setSettings(organization.settings as unknown as OrganizationSettingsType);
+          } else {
+            // Settings exist but don't have the correct structure, use defaults
+            console.warn('Organization settings exist but have invalid structure, using defaults');
+            setSettings(DEFAULT_ORGANIZATION_SETTINGS);
+          }
+        } else {
+          setSettings(DEFAULT_ORGANIZATION_SETTINGS);
+        }
       } catch (error) {
+        console.error('Failed to load organization settings:', error);
         toast({
           title: 'Error',
-          description: 'Failed to load organization settings',
+          description: error instanceof Error ? error.message : 'Failed to load organization settings',
           variant: 'destructive',
         });
+        // Use default settings on error
+        setSettings(DEFAULT_ORGANIZATION_SETTINGS);
       } finally {
         setLoading(false);
       }
@@ -69,15 +90,15 @@ export function OrganizationConfigSettings({ organizationId, accessToken, canEdi
 
     setSaving(true);
     try {
-      // TODO: Replace with actual API call
-      // await fetch(`/api/organizations/${organizationId}/settings`, {
-      //   method: 'PATCH',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     Authorization: `Bearer ${accessToken}`
-      //   },
-      //   body: JSON.stringify({ settings })
-      // });
+      // Update organization with new settings
+      const updatedOrganization = await OrganizationService.updateOrganization(
+        organizationId,
+        { settings: settings as unknown as Record<string, unknown> },
+        accessToken
+      );
+      
+      // Update global store with new organization data
+      updateOrganization({ settings: updatedOrganization.settings });
       
       toast({
         title: 'Success',
@@ -85,6 +106,7 @@ export function OrganizationConfigSettings({ organizationId, accessToken, canEdi
       });
       setHasChanges(false);
     } catch (error) {
+      console.error('Failed to save organization settings:', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to save settings',
