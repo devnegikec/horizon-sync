@@ -111,11 +111,7 @@ export function RevenuePage() {
           {activeView === 'delivery_notes' && <DeliveryNoteManagement />}
           {activeView === 'invoices' && (
             <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading invoices...</div>}>
-              <InvoiceManagement onRecordPayment={handleRecordPayment}
-                pendingInvoiceId={pendingInvoiceId}
-                onClearPendingInvoiceId={() => setPendingInvoiceId(null)}
-                onNavigateToSalesOrder={handleNavigateToSalesOrder}
-                onNavigateToPayment={handleNavigateToPayment}/>
+              <InvoiceManagement />
             </React.Suspense>
           )}
           {activeView === 'payments' && (
