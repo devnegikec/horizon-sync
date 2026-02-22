@@ -12,9 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
-import type { Customer, CustomerResponse } from '../../types/customer.types';
+import type { CustomerResponse } from '../../types/customer.types';
 import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteCreateItem, DeliveryNoteUpdate } from '../../types/delivery-note.types';
 import { customerApi, warehouseApi } from '../../utility/api';
+import { StatusSelect } from '../common';
 
 interface DeliveryNoteDialogProps {
   open: boolean;
@@ -122,6 +123,15 @@ export function DeliveryNoteDialog({ open, onOpenChange, deliveryNote, onSave, s
     setItems((prev) => prev.filter((_, i) => i !== index).map((item, i) => ({ ...item, sort_order: i + 1 })));
   };
 
+  const availableStatuses: DeliveryNote['status'][] = React.useMemo(() => {
+    if (!isEdit) return ['draft'];
+
+    const current = formData.status;
+    if (current === 'draft') return ['draft', 'submitted', 'cancelled'];
+    if (current === 'submitted') return ['submitted', 'cancelled'];
+    return [current];
+  }, [isEdit, formData.status]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isEdit) {
@@ -166,14 +176,12 @@ export function DeliveryNoteDialog({ open, onOpenChange, deliveryNote, onSave, s
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="delivery_note_no">Delivery Note # *</Label>
-                <Input
-                  id="delivery_note_no"
+                <Input id="delivery_note_no"
                   value={formData.delivery_note_no}
                   onChange={(e) => handleChange('delivery_note_no', e.target.value)}
                   placeholder="DN-2026-001"
                   required
-                  disabled={isEdit}
-                />
+                  disabled={isEdit}/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customer_id">Customer *</Label>
@@ -193,26 +201,22 @@ export function DeliveryNoteDialog({ open, onOpenChange, deliveryNote, onSave, s
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="delivery_date">Delivery Date *</Label>
-                <Input
-                  id="delivery_date"
+                <Input id="delivery_date"
                   type="datetime-local"
                   value={formData.delivery_date}
                   onChange={(e) => handleChange('delivery_date', e.target.value)}
-                  required
-                />
+                  required/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(v) => handleChange('status', v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="submitted">Submitted</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
+                <StatusSelect value={formData.status}
+                  onValueChange={(v) => handleChange('status', v)}
+                  availableStatuses={availableStatuses}
+                  statusLabels={{
+                    draft: 'Draft',
+                    submitted: 'Submitted',
+                    cancelled: 'Cancelled',
+                  }}/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="warehouse_id">Warehouse *</Label>
@@ -237,30 +241,24 @@ export function DeliveryNoteDialog({ open, onOpenChange, deliveryNote, onSave, s
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="pick_list_id">Pick List ID</Label>
-                  <Input
-                    id="pick_list_id"
+                  <Input id="pick_list_id"
                     value={formData.pick_list_id}
                     onChange={(e) => handleChange('pick_list_id', e.target.value)}
-                    placeholder="UUID"
-                  />
+                    placeholder="UUID"/>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="reference_type">Reference Type</Label>
-                  <Input
-                    id="reference_type"
+                  <Input id="reference_type"
                     value={formData.reference_type}
                     onChange={(e) => handleChange('reference_type', e.target.value)}
-                    placeholder="e.g. Sales Order"
-                  />
+                    placeholder="e.g. Sales Order"/>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="reference_id">Reference ID</Label>
-                  <Input
-                    id="reference_id"
+                  <Input id="reference_id"
                     value={formData.reference_id}
                     onChange={(e) => handleChange('reference_id', e.target.value)}
-                    placeholder="UUID"
-                  />
+                    placeholder="UUID"/>
                 </div>
               </div>
             </div>
@@ -269,13 +267,11 @@ export function DeliveryNoteDialog({ open, onOpenChange, deliveryNote, onSave, s
           {/* Remarks */}
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>
-            <Textarea
-              id="remarks"
+            <Textarea id="remarks"
               value={formData.remarks}
               onChange={(e) => handleChange('remarks', e.target.value)}
               placeholder="Additional notes..."
-              rows={2}
-            />
+              rows={2}/>
           </div>
 
           {/* Line Items (Create only) */}
@@ -303,40 +299,32 @@ export function DeliveryNoteDialog({ open, onOpenChange, deliveryNote, onSave, s
                       <div className="grid gap-3 md:grid-cols-4">
                         <div className="space-y-1">
                           <Label className="text-xs">Item ID *</Label>
-                          <Input
-                            value={item.item_id}
+                          <Input value={item.item_id}
                             onChange={(e) => handleItemChange(index, 'item_id', e.target.value)}
                             placeholder="Item UUID"
-                            required
-                          />
+                            required/>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Quantity *</Label>
-                          <Input
-                            type="number"
+                          <Input type="number"
                             min="0"
                             value={item.qty}
                             onChange={(e) => handleItemChange(index, 'qty', Number(e.target.value))}
-                            required
-                          />
+                            required/>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">UOM</Label>
-                          <Input
-                            value={item.uom}
+                          <Input value={item.uom}
                             onChange={(e) => handleItemChange(index, 'uom', e.target.value)}
-                            placeholder="pcs"
-                          />
+                            placeholder="pcs"/>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Rate</Label>
-                          <Input
-                            type="number"
+                          <Input type="number"
                             min="0"
                             step="0.01"
                             value={item.rate}
-                            onChange={(e) => handleItemChange(index, 'rate', Number(e.target.value))}
-                          />
+                            onChange={(e) => handleItemChange(index, 'rate', Number(e.target.value))}/>
                         </div>
                       </div>
                       <div className="grid gap-3 md:grid-cols-4">
@@ -359,23 +347,19 @@ export function DeliveryNoteDialog({ open, onOpenChange, deliveryNote, onSave, s
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Batch No</Label>
-                          <Input
-                            value={item.batch_no}
+                          <Input value={item.batch_no}
                             onChange={(e) => handleItemChange(index, 'batch_no', e.target.value)}
-                            placeholder="Batch"
-                          />
+                            placeholder="Batch"/>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-xs">Serial Nos</Label>
-                          <Input
-                            value={item.serial_nos.join(', ')}
+                          <Input value={item.serial_nos.join(', ')}
                             onChange={(e) => {
                               const updated = [...items];
                               updated[index] = { ...updated[index], serial_nos: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) };
                               setItems(updated);
                             }}
-                            placeholder="Comma-separated"
-                          />
+                            placeholder="Comma-separated"/>
                         </div>
                       </div>
                     </div>

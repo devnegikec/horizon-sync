@@ -44,7 +44,7 @@ export function EmailComposer({
     try {
       // Merge default attachments with user-added attachments
       const allAttachments = [...(defaultAttachments || []), ...data.attachments];
-      
+
       const result = await sendEmail({
         to: data.to,
         cc: data.cc.length > 0 ? data.cc : undefined,
@@ -86,15 +86,13 @@ export function EmailComposer({
   };
 
   return (
-    <EmailComposerDialog
-      open={open}
+    <EmailComposerDialog open={open}
       onOpenChange={onOpenChange}
       defaultRecipient={defaultRecipient}
       defaultSubject={defaultSubject}
       defaultMessage={defaultMessage}
       defaultAttachments={defaultAttachments}
       onSend={handleSend}
-      sending={loading}
-    />
+      sending={loading}/>
   );
 }

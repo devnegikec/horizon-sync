@@ -9,6 +9,7 @@ import type { CustomerResponse } from '../../types/customer.types';
 import type { QuotationLineItemCreate } from '../../types/quotation.types';
 import type { SalesOrder, SalesOrderCreate, SalesOrderItemCreate, SalesOrderStatus, SalesOrderUpdate } from '../../types/sales-order.types';
 import { customerApi } from '../../utility/api/customers';
+import { CurrencySelect, StatusSelect } from '../common';
 import { LineItemTable } from '../quotations/LineItemTable';
 
 interface SalesOrderDialogProps {
@@ -245,39 +246,17 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
               </div>
               <div className="space-y-2">
                 <Label htmlFor="currency">Currency *</Label>
-                <Select value={formData.currency}
-                  onValueChange={(v) => handleChange('currency', v)}
-                  disabled={isEdit}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="INR">INR</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="GBP">GBP</SelectItem>
-                  </SelectContent>
-                </Select>
+                <CurrencySelect value={formData.currency} onValueChange={(v) => handleChange('currency', v)} disabled={isEdit} />
               </div>
             </div>
 
             {isEdit && (
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select value={formData.status}
-                  onValueChange={(v) => handleChange('status', v as SalesOrderStatus)}
-                  disabled={availableStatuses.length === 1}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableStatuses.filter(status => status).map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {statusLabels[status]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <StatusSelect value={formData.status}
+                  onValueChange={(v) => handleChange('status', v)}
+                  availableStatuses={availableStatuses}
+                  statusLabels={statusLabels}/>
               </div>
             )}
           </div>

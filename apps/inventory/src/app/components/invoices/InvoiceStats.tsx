@@ -1,34 +1,18 @@
-import * as React from 'react';
-import {
-  FileText,
-  FilePenLine,
-  Send,
-  CheckCircle,
-  AlertCircle,
-  DollarSign,
-} from 'lucide-react';
+import { FileText, FilePlus, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 import { StatCard } from '../shared';
 
 interface InvoiceStatsProps {
   total: number;
   draft: number;
-  submitted: number;
+  pending: number;
   paid: number;
   overdue: number;
-  totalOutstanding: number;
 }
 
-export const InvoiceStats = React.memo(function InvoiceStats({
-  total,
-  draft,
-  submitted,
-  paid,
-  overdue,
-  totalOutstanding,
-}: InvoiceStatsProps) {
+export function InvoiceStats({ total, draft, pending, paid, overdue }: InvoiceStatsProps) {
   return (
-    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <StatCard
         title="Total Invoices"
         value={total}
@@ -39,14 +23,14 @@ export const InvoiceStats = React.memo(function InvoiceStats({
       <StatCard
         title="Draft"
         value={draft}
-        icon={FilePenLine}
+        icon={FilePlus}
         iconBg="bg-amber-100 dark:bg-amber-900/20"
         iconColor="text-amber-600 dark:text-amber-400"
       />
       <StatCard
-        title="Submitted"
-        value={submitted}
-        icon={Send}
+        title="Pending"
+        value={pending}
+        icon={Clock}
         iconBg="bg-blue-100 dark:bg-blue-900/20"
         iconColor="text-blue-600 dark:text-blue-400"
       />
@@ -64,13 +48,6 @@ export const InvoiceStats = React.memo(function InvoiceStats({
         iconBg="bg-red-100 dark:bg-red-900/20"
         iconColor="text-red-600 dark:text-red-400"
       />
-      <StatCard
-        title="Total Outstanding"
-        value={`${totalOutstanding.toLocaleString()}`}
-        icon={DollarSign}
-        iconBg="bg-purple-100 dark:bg-purple-900/20"
-        iconColor="text-purple-600 dark:text-purple-400"
-      />
     </div>
   );
-});
+}

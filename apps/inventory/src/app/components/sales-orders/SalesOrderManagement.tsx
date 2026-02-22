@@ -1,18 +1,21 @@
 import * as React from 'react';
+
 import { AlertTriangle } from 'lucide-react';
 
-import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { Button, Card, CardContent } from '@horizon-sync/ui/components';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { useSalesOrderManagement } from '../../hooks/useSalesOrderManagement';
+import { SmartPickingDialog } from '../smart-picking/SmartPickingDialog';
 
+import { CreateDeliveryNoteDialog } from './CreateDeliveryNoteDialog';
+import { CreateInvoiceDialog } from './CreateInvoiceDialog';
 import { SalesOrderDetailDialog } from './SalesOrderDetailDialog';
 import { SalesOrderDialog } from './SalesOrderDialog';
-import { SalesOrdersTable } from './SalesOrdersTable';
-import { SalesOrderManagementHeader } from './SalesOrderManagementHeader';
-import { SalesOrderStats } from './SalesOrderStats';
 import { SalesOrderManagementFilters } from './SalesOrderManagementFilters';
-import { CreateInvoiceDialog } from './CreateInvoiceDialog';
+import { SalesOrderManagementHeader } from './SalesOrderManagementHeader';
+import { SalesOrdersTable } from './SalesOrdersTable';
+import { SalesOrderStats } from './SalesOrderStats';
 
 export function SalesOrderManagement({
   pendingSalesOrderId,
@@ -38,6 +41,8 @@ export function SalesOrderManagement({
     setCreateDialogOpen,
     invoiceDialogOpen,
     setInvoiceDialogOpen,
+    deliveryNoteDialogOpen,
+    setDeliveryNoteDialogOpen,
     selectedSalesOrder,
     editSalesOrder,
     tableInstance,
@@ -46,14 +51,24 @@ export function SalesOrderManagement({
     handleEdit,
     handleDelete,
     handleCreateInvoice,
+    handleCreateDeliveryNote,
     handleTableReady,
     handleSave,
     handleConvertToInvoice,
+    handleConvertToDeliveryNote,
     serverPaginationConfig,
   } = useSalesOrderManagement();
 
   const [saving, setSaving] = React.useState(false);
   const [creatingInvoice, setCreatingInvoice] = React.useState(false);
+  const [creatingDeliveryNote, setCreatingDeliveryNote] = React.useState(false);
+  const [pickListDialogOpen, setPickListDialogOpen] = React.useState(false);
+  const [pickListSalesOrder, setPickListSalesOrder] = React.useState<import('../../types/sales-order.types').SalesOrder | null>(null);
+
+  const handleCreatePickList = React.useCallback((so: import('../../types/sales-order.types').SalesOrder) => {
+    setPickListSalesOrder(so);
+    setPickListDialogOpen(true);
+  }, []);
 
   // Handle pending sales order ID from cross-document navigation
   React.useEffect(() => {
@@ -85,6 +100,15 @@ export function SalesOrderManagement({
     }
   }, [handleConvertToInvoice]);
 
+  const handleConvertToDeliveryNoteWrapper = React.useCallback(async (salesOrderId: string, data: Parameters<typeof handleConvertToDeliveryNote>[1]) => {
+    setCreatingDeliveryNote(true);
+    try {
+      await handleConvertToDeliveryNote(salesOrderId, data);
+    } finally {
+      setCreatingDeliveryNote(false);
+    }
+  }, [handleConvertToDeliveryNote]);
+
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
     if (!error) return null;
@@ -103,33 +127,26 @@ export function SalesOrderManagement({
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <SalesOrderManagementHeader
-        onRefresh={refetch}
+      <SalesOrderManagementHeader onRefresh={refetch}
         onCreateSalesOrder={handleCreate}
-        isLoading={loading}
-      />
+        isLoading={loading}/>
 
       {/* Error State */}
       {ErrorDisplay}
 
       {/* Stats Cards */}
-      <SalesOrderStats
-        total={stats.total}
+      <SalesOrderStats total={stats.total}
         confirmed={stats.confirmed}
         confirmedValue={stats.confirmedValue}
-        pendingDelivery={stats.pendingDelivery}
-      />
+        pendingDelivery={stats.pendingDelivery}/>
 
       {/* Filters */}
-      <SalesOrderManagementFilters
-        filters={filters}
+      <SalesOrderManagementFilters filters={filters}
         setFilters={setFilters}
-        tableInstance={tableInstance}
-      />
+        tableInstance={tableInstance}/>
 
       {/* Sales Orders Table */}
-      <SalesOrdersTable
-        salesOrders={salesOrders}
+      <SalesOrdersTable salesOrders={salesOrders}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.status !== 'all'}
@@ -137,40 +154,51 @@ export function SalesOrderManagement({
         onEdit={handleEdit}
         onDelete={handleDelete}
         onCreateSalesOrder={handleCreate}
+        onCreatePickList={handleCreatePickList}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
       {/* Detail Dialog */}
-      <SalesOrderDetailDialog
-        open={detailDialogOpen}
+      <SalesOrderDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         salesOrder={selectedSalesOrder}
         onEdit={handleEdit}
         onCreateInvoice={handleCreateInvoice}
+        onCreateDeliveryNote={handleCreateDeliveryNote}
         onViewInvoice={(invoiceId) => {
           setDetailDialogOpen(false);
           onNavigateToInvoice?.(invoiceId);
-        }}
-      />
+        }}/>
 
       {/* Create/Edit Dialog */}
-      <SalesOrderDialog
-        open={createDialogOpen}
+      <SalesOrderDialog open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         salesOrder={editSalesOrder}
         onSave={handleSaveWrapper}
-        saving={saving}
-      />
+        saving={saving}/>
 
       {/* Create Invoice Dialog */}
-      <CreateInvoiceDialog
-        open={invoiceDialogOpen}
+      <CreateInvoiceDialog open={invoiceDialogOpen}
         onOpenChange={setInvoiceDialogOpen}
         salesOrder={selectedSalesOrder}
         onCreateInvoice={handleConvertToInvoiceWrapper}
-        creating={creatingInvoice}
-      />
+        creating={creatingInvoice}/>
+
+      {/* Create Delivery Note Dialog */}
+      <CreateDeliveryNoteDialog open={deliveryNoteDialogOpen}
+        onOpenChange={setDeliveryNoteDialogOpen}
+        salesOrder={selectedSalesOrder}
+        onCreateDeliveryNote={handleConvertToDeliveryNoteWrapper}
+        creating={creatingDeliveryNote}/>
+
+      {/* Smart Picking Dialog */}
+      <SmartPickingDialog open={pickListDialogOpen}
+        onOpenChange={setPickListDialogOpen}
+        salesOrder={pickListSalesOrder}
+        onSuccess={() => {
+          setPickListDialogOpen(false);
+          refetch();
+        }}/>
     </div>
   );
 }

@@ -1,15 +1,23 @@
 import * as React from 'react';
+
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { FileText, Plus, MoreHorizontal, Eye, Edit, Trash2, User, Mail } from 'lucide-react';
+import { FileText, Plus, MoreHorizontal, Eye, Trash2, CheckCircle, Mail, User } from 'lucide-react';
 
 import { Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@horizon-sync/ui/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
-import type { Invoice } from '../../types/invoice';
+import type { Invoice } from '../../types/invoice.types';
 import { formatDate } from '../../utility/formatDate';
-import { StatusBadge } from '../quotations/StatusBadge';
+
+import { InvoiceStatusBadge } from './InvoiceStatusBadge';
 
 export interface InvoicesTableProps {
   invoices: Invoice[];
@@ -17,9 +25,8 @@ export interface InvoicesTableProps {
   error: string | null;
   hasActiveFilters: boolean;
   onView: (invoice: Invoice) => void;
-  onEdit: (invoice: Invoice) => void;
   onDelete: (invoice: Invoice) => void;
-  onSendEmail: (invoice: Invoice) => void;
+  onMarkAsPaid: (invoice: Invoice) => void;
   onCreateInvoice: () => void;
   onTableReady?: (table: Table<Invoice>) => void;
   serverPagination?: {
@@ -36,9 +43,8 @@ export function InvoicesTable({
   error,
   hasActiveFilters,
   onView,
-  onEdit,
   onDelete,
-  onSendEmail,
+  onMarkAsPaid,
   onCreateInvoice,
   onTableReady,
   serverPagination,
@@ -74,35 +80,44 @@ export function InvoicesTable({
   const columns: ColumnDef<Invoice, unknown>[] = React.useMemo(
     () => [
       {
-        accessorKey: 'invoice_number',
+        accessorKey: 'invoice_no',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Invoice #" />,
         cell: ({ row }) => {
           const invoice = row.original;
-          const isOverdue = invoice.status === 'Overdue';
           return (
             <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isOverdue ? 'bg-red-100 dark:bg-red-900/20' : 'bg-primary/10'}`}>
-                <FileText className={`h-5 w-5 ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-primary'}`} />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <FileText className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className={`font-medium font-mono text-sm ${isOverdue ? 'text-red-600 dark:text-red-400' : ''}`}>{invoice.invoice_number}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDate(invoice.created_at, 'DD-MMM-YY')}
-                </p>
+                <p className="font-medium font-mono text-sm">{invoice.invoice_no}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(invoice.created_at, 'DD-MMM-YY')}</p>
               </div>
             </div>
           );
         },
       },
       {
-        accessorKey: 'party_name',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
+        accessorKey: 'invoice_type',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
         cell: ({ row }) => {
-          const partyName = row.original.party_name;
-          return partyName ? (
+          const type = row.original.invoice_type;
+          return (
+            <span className="text-sm capitalize">
+              {type === 'sales' ? 'Sales' : 'Purchase'}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: 'party_name',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Party" />,
+        cell: ({ row }) => {
+          const invoice = row.original;
+          return invoice.party_name ? (
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
-              <p className="font-medium text-sm">{partyName}</p>
+              <p className="font-medium text-sm">{invoice.party_name}</p>
             </div>
           ) : (
             <span className="text-muted-foreground">—</span>
@@ -120,47 +135,24 @@ export function InvoicesTable({
         accessorKey: 'due_date',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Due Date" />,
         cell: ({ row }) => {
-          const invoice = row.original;
-          const isOverdue = invoice.status === 'Overdue';
-          return (
-            <span className={`text-sm ${isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : ''}`}>
-              {formatDate(row.original.due_date, 'DD-MMM-YY')}
-            </span>
-          );
+          return <span className="text-sm">{row.original?.due_date && formatDate(row.original.due_date, 'DD-MMM-YY')}</span>;
         },
       },
       {
         accessorKey: 'grand_total',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Grand Total" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Amount" />,
         cell: ({ row }) => {
           const invoice = row.original;
           return (
             <div className="text-right">
-              <p className="font-semibold">{invoice.currency} {Number(invoice.grand_total).toFixed(2)}</p>
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: 'paid_amount',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Paid Amount" />,
-        cell: ({ row }) => {
-          const invoice = row.original;
-          return (
-            <div className="text-right">
-              <p className="text-sm">{invoice.currency} {Number(invoice.paid_amount).toFixed(2)}</p>
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: 'outstanding_amount',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Outstanding" />,
-        cell: ({ row }) => {
-          const invoice = row.original;
-          return (
-            <div className="text-right">
-              <p className="text-sm font-medium">{invoice.currency} {Number(invoice.outstanding_amount).toFixed(2)}</p>
+              <p className="font-semibold">
+                {invoice.currency} {Number(invoice.grand_total).toFixed(2)}
+              </p>
+              {invoice.outstanding_amount > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Due: {invoice.currency} {Number(invoice.outstanding_amount).toFixed(2)}
+                </p>
+              )}
             </div>
           );
         },
@@ -169,7 +161,7 @@ export function InvoicesTable({
         accessorKey: 'status',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => {
-          return <StatusBadge status={row.original.status} />;
+          return <InvoiceStatusBadge status={row.original.status} />;
         },
       },
       {
@@ -177,14 +169,14 @@ export function InvoicesTable({
         header: () => <span className="sr-only">Actions</span>,
         cell: ({ row }) => {
           const invoice = row.original;
-          const canEdit = invoice.status === 'Draft';
-          const canDelete = invoice.status === 'Draft';
+          const canDelete = invoice.status === 'draft';
+          const canMarkPaid = invoice.status !== 'paid' && invoice.status !== 'cancelled';
 
           return (
             <div className="text-right">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Open invoice actions menu">
+                  <Button variant="ghost" size="icon">
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -193,21 +185,24 @@ export function InvoicesTable({
                     <Eye className="mr-2 h-4 w-4" />
                     View Details
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onEdit(invoice)} disabled={!canEdit}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit Invoice
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onSendEmail(invoice)}>
+                  {canMarkPaid && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onMarkAsPaid(invoice)}>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Mark as Paid
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuItem>
                     <Mail className="mr-2 h-4 w-4" />
                     Send Email
                   </DropdownMenuItem>
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => onDelete(invoice)}
-                        className="text-destructive focus:text-destructive"
-                      >
+                      <DropdownMenuItem onClick={() => onDelete(invoice)}
+                        className="text-destructive focus:text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Invoice
                       </DropdownMenuItem>
@@ -221,7 +216,7 @@ export function InvoicesTable({
         enableSorting: false,
       },
     ],
-    [onView, onEdit, onDelete, onSendEmail],
+    [onView, onDelete, onMarkAsPaid]
   );
 
   if (error) {
@@ -238,7 +233,7 @@ export function InvoicesTable({
     return (
       <Card>
         <CardContent className="p-0">
-          <TableSkeleton columns={9} rows={10} showHeader={true} />
+          <TableSkeleton columns={8} rows={10} showHeader={true} />
         </CardContent>
       </Card>
     );
@@ -249,13 +244,10 @@ export function InvoicesTable({
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState
-              icon={<FileText className="h-12 w-12" />}
+            <EmptyState icon={<FileText className="h-12 w-12" />}
               title="No invoices found"
               description={
-                hasActiveFilters
-                  ? 'Try adjusting your search or filters'
-                  : 'Get started by creating your first invoice'
+                hasActiveFilters ? 'Try adjusting your search or filters' : 'Get started by creating your first invoice'
               }
               action={
                 !hasActiveFilters ? (
@@ -264,8 +256,7 @@ export function InvoicesTable({
                     New Invoice
                   </Button>
                 ) : undefined
-              }
-            />
+              }/>
           </div>
         </CardContent>
       </Card>
@@ -275,8 +266,7 @@ export function InvoicesTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable
-          columns={columns}
+        <DataTable columns={columns}
           data={invoices}
           config={{
             showSerialNumber: true,
@@ -288,11 +278,10 @@ export function InvoicesTable({
             initialPageSize: serverPagination?.pageSize ?? 20,
             serverPagination: serverPaginationConfig,
           }}
-          filterPlaceholder="Search by invoice #, customer..."
+          filterPlaceholder="Search by invoice #, party..."
           renderViewOptions={renderViewOptions}
           fixedHeader
-          maxHeight="auto"
-        />
+          maxHeight="auto"/>
       </CardContent>
     </Card>
   );

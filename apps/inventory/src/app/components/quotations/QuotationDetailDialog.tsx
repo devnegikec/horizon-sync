@@ -9,7 +9,7 @@ import { usePDFGeneration } from '../../hooks/usePDFGeneration';
 import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { Quotation } from '../../types/quotation.types';
 import { convertQuotationToPDFData } from '../../utils/pdf/quotationToPDF';
-import { EmailComposer } from '../common/EmailComposer';
+import { EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
 
 import { StatusBadge } from './StatusBadge';
 
@@ -26,7 +26,7 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
   const [pdfAttachment, setPdfAttachment] = React.useState<{ filename: string; content: string; content_type: string } | null>(null);
   const { toast } = useToast();
   const { loading: pdfLoading, download, preview, generateBase64 } = usePDFGeneration();
-  
+
   if (!quotation) return null;
 
   const isTerminalStatus = quotation.status === 'accepted' || quotation.status === 'rejected' || quotation.status === 'expired';
@@ -83,7 +83,7 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
       // Generate PDF and convert to base64 for email attachment
       const pdfData = convertQuotationToPDFData(quotation);
       const base64Content = await generateBase64(pdfData);
-      
+
       if (base64Content) {
         setPdfAttachment({
           filename: `${quotation.quotation_no}.pdf`,
@@ -154,7 +154,7 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
           {(() => {
             const lineItems = quotation.items || quotation.line_items || [];
             const taxSummary = new Map<string, { name: string; amount: number; breakup: Array<{ rule_name: string; rate: number; amount: number }> }>();
-            
+
             lineItems.forEach(item => {
               if (item.tax_info) {
                 const templateKey = item.tax_info.template_code;
@@ -165,15 +165,14 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
                     breakup: item.tax_info.breakup.map(tax => ({
                       rule_name: tax.rule_name,
                       rate: tax.rate,
-                      amount: 0
-                    }))
+                      amount: 0,
+                    })),
                   });
                 }
                 const summary = taxSummary.get(templateKey);
                 if (summary) {
                   summary.amount += Number(item.tax_amount || 0);
-                  
-                  // Calculate individual tax component amounts
+
                   item.tax_info.breakup.forEach((tax, idx) => {
                     const taxComponentAmount = (Number(item.amount) * tax.rate) / 100;
                     summary.breakup[idx].amount += taxComponentAmount;
@@ -182,34 +181,7 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
               }
             });
 
-            return taxSummary.size > 0 ? (
-              <div className="space-y-3">
-                <h3 className="text-lg font-medium">Tax Summary</h3>
-                <div className="rounded-lg border p-4 space-y-2">
-                  {Array.from(taxSummary.entries()).map(([key, summary]) => (
-                    <div key={key} className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">{summary.name}</span>
-                        <span className="text-sm font-semibold">{currencySymbol} {summary.amount.toFixed(2)}</span>
-                      </div>
-                      <div className="pl-4 space-y-1">
-                        {summary.breakup.map((tax, idx) => (
-                          <div key={idx} className="flex justify-between items-center text-xs text-muted-foreground">
-                            <span>{tax.rule_name} ({tax.rate}%)</span>
-                            <span>{currencySymbol} {tax.amount.toFixed(2)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  <Separator className="my-2" />
-                  <div className="flex justify-between items-center font-semibold">
-                    <span className="text-sm">Total Tax</span>
-                    <span className="text-sm">{currencySymbol} {Array.from(taxSummary.values()).reduce((sum, s) => sum + s.amount, 0).toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-            ) : null;
+            return <TaxSummaryCollapsible taxSummary={taxSummary} currencySymbol={currencySymbol} />;
           })()}
 
           {/* Grand Total */}
@@ -226,75 +198,26 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
             <h3 className="text-lg font-medium mb-4">Line Items</h3>
             {(() => {
               const lineItems = quotation.items || quotation.line_items || [];
-              return lineItems.length > 0 ? (
-                <div className="rounded-lg border overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-muted/50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-sm font-medium">#</th>
-                          <th className="px-4 py-3 text-left text-sm font-medium">Item</th>
-                          <th className="px-4 py-3 text-right text-sm font-medium">Qty</th>
-                          <th className="px-4 py-3 text-left text-sm font-medium">UOM</th>
-                          <th className="px-4 py-3 text-right text-sm font-medium">Rate</th>
-                          <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
-                          <th className="px-4 py-3 text-right text-sm font-medium">Tax</th>
-                          <th className="px-4 py-3 text-right text-sm font-medium">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {lineItems.map((item, index) => (
-                          <tr key={index} className="hover:bg-muted/30">
-                            <td className="px-4 py-3 text-sm">{index + 1}</td>
-                            <td className="px-4 py-3">
-                              <div>
-                                <p className="text-sm font-medium">{item.item_name}</p>
-                                <p className="text-xs text-muted-foreground">{item.item_code}</p>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-right">{Number(item.qty).toFixed(3)}</td>
-                            <td className="px-4 py-3 text-sm">{item.uom}</td>
-                            <td className="px-4 py-3 text-sm text-right">{currencySymbol} {Number(item.rate).toFixed(2)}</td>
-                            <td className="px-4 py-3 text-sm text-right">{currencySymbol} {Number(item.amount).toFixed(2)}</td>
-                            <td className="px-4 py-3 text-right">
-                              {item.tax_info ? (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium">{currencySymbol} {Number(item.tax_amount || 0).toFixed(2)}</p>
-                                  <div className="flex flex-wrap gap-1 justify-end">
-                                    {item.tax_info.breakup.map((tax, taxIdx) => (
-                                      <span key={taxIdx} className="text-xs text-muted-foreground">
-                                        {tax.rule_name} {tax.rate}%
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-sm text-muted-foreground">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-right font-semibold">{currencySymbol} {Number(item.total_amount || item.amount).toFixed(2)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-muted/30 border-t-2">
-                        <tr>
-                          <td colSpan={5} className="px-4 py-3 text-right text-sm font-medium">Subtotal:</td>
-                          <td className="px-4 py-3 text-right text-sm font-semibold">
-                            {currencySymbol} {lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2)}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm font-semibold">
-                            {currencySymbol} {lineItems.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0).toFixed(2)}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm font-bold">
-                            {currencySymbol} {lineItems.reduce((sum, item) => sum + Number(item.total_amount || item.amount), 0).toFixed(2)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No line items</p>
+              return (
+                <LineItemsDetailTable items={lineItems}
+                  currencySymbol={currencySymbol}
+                  hasTaxInfo
+                  getItemSKU={(item: any) => item.item_code}
+                  getItemTotalAmount={(item: any) => Number(item.total_amount || item.amount || 0)}
+                  renderFooter={(items) => (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-3 text-right text-sm font-medium">Subtotal:</td>
+                      <td className="px-4 py-3 text-right text-sm font-semibold">
+                        {currencySymbol} {items.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-semibold">
+                        {currencySymbol} {items.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-bold">
+                        {currencySymbol} {items.reduce((sum, item) => sum + Number(item.total_amount || item.amount), 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  )}/>
               );
             })()}
           </div>
@@ -353,8 +276,7 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
       </DialogContent>
     </Dialog>
 
-    <EmailComposer 
-      open={emailDialogOpen}
+    <EmailComposer open={emailDialogOpen}
       onOpenChange={(open) => {
         setEmailDialogOpen(open);
         if (!open) {
@@ -371,8 +293,7 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
       onSuccess={() => {
         setEmailDialogOpen(false);
         setPdfAttachment(null);
-      }}
-    />
+      }}/>
   </>
   );
 }
