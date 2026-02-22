@@ -4,10 +4,12 @@ import { useNavigate } from 'react-router-dom';
 
 import { useUserStore } from '@horizon-sync/store';
 
-import { CurrencySettings } from '../features/organization/components/CurrencySettings';
+// import { CurrencySettings } from '../features/organization/components/CurrencySettings';
+import { OrganizationConfigSettings } from '../features/organization/components/OrganizationConfigSettings';
 import { OrganizationSettings } from '../features/organization/components/OrganizationSettings';
 import { hasPermissionFromStore } from '../features/organization/utils/permissions';
 import { useAuth } from '../hooks';
+
 
 /**
  * SettingsPage Component
@@ -57,9 +59,6 @@ export function SettingsPage() {
   // Check if user has permission to edit organization settings from global store
   const canEdit = hasPermissionFromStore('organization.update');
 
-  // Get current settings from organization in store
-  const currentSettings = organization?.settings || null;
-
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Page Header */}
@@ -72,12 +71,12 @@ export function SettingsPage() {
 
       {/* Settings Content */}
       {/* Requirement 10.1, 10.2, 10.3: Responsive layout */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Organization Settings */}
+      <div className="space-y-6">
+        {/* Organization Basic Information */}
         <OrganizationSettings organizationId={organizationId} accessToken={accessToken} canEdit={canEdit} />
 
-        {/* Currency Settings */}
-        <CurrencySettings organizationId={organizationId} accessToken={accessToken} currentSettings={currentSettings} canEdit={canEdit} />
+        {/* Organization Configuration Settings (Currencies, Naming Series, Address) */}
+        <OrganizationConfigSettings organizationId={organizationId} accessToken={accessToken} canEdit={canEdit} />
       </div>
     </div>
   );
