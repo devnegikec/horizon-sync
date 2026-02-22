@@ -17,6 +17,35 @@ export interface InvoiceLineItem {
   total_amount: number;
   uom?: string;
   description?: string;
+  tax_info?: {
+    id: string;
+    template_name: string;
+    template_code: string;
+    is_compound: boolean;
+    breakup: Array<{
+      rule_name: string;
+      tax_type: string;
+      rate: number;
+      is_compound: boolean;
+    }>;
+  };
+}
+
+export interface PartyDetails {
+  customer_name?: string;
+  supplier_name?: string;
+  customer_code?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  tax_number?: string;
+  status?: string;
 }
 
 export interface Invoice {
@@ -39,6 +68,9 @@ export interface Invoice {
   created_at: string;
   updated_at: string;
   line_items?: InvoiceLineItem[];
+  items?: InvoiceLineItem[]; // Alias for line_items
+  customer?: PartyDetails;
+  supplier?: PartyDetails;
 }
 
 export interface InvoiceListItem {
