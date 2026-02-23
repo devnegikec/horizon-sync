@@ -100,8 +100,8 @@ export const convertQuotationToPDFData = (quotation: Quotation): PDFDocumentData
     companyEmail: 'info@yourcompany.com',
 
     // Customer info
-    customerName: quotation.customer_name || quotation.customer?.customer_name || 'N/A',
-    customerCode: quotation.customer?.customer_code,
+    customerName: quotation.customer_name || quotation.customer?.name || 'N/A',
+    customerCode: quotation.customer?.code,
     customerEmail: quotation.customer?.email,
     customerPhone: quotation.customer?.phone,
 

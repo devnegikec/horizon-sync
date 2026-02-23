@@ -59,7 +59,7 @@
       "options": {
         "buildTarget": "inventory:build",
         "hmr": true,
-        "port": 3001
+        "port": 4201
       },
       "configurations": {
         "development": {

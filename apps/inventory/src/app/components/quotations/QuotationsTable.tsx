@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { FileText, Plus, MoreHorizontal, Eye, Edit, Trash2, User, Lock } from 'lucide-react';
 
@@ -9,6 +10,7 @@ import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
 import type { Quotation } from '../../types/quotation.types';
 import { formatDate } from '../../utility/formatDate';
+
 import { StatusBadge } from './StatusBadge';
 
 export interface QuotationsTableProps {
@@ -109,14 +111,14 @@ export function QuotationsTable({
         header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
         cell: ({ row }) => {
           const customer = row.original.customer;
-          const customerName = row.original.customer_name || customer?.customer_name;
+          const customerName = row.original.customer_name || customer?.name;
           return customerName ? (
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="font-medium text-sm">{customerName}</p>
-                {customer?.customer_code && (
-                  <p className="text-xs text-muted-foreground">{customer.customer_code}</p>
+                {customer?.code && (
+                  <p className="text-xs text-muted-foreground">{customer.code}</p>
                 )}
               </div>
             </div>
@@ -196,10 +198,8 @@ export function QuotationsTable({
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={() => onDelete(quotation)}
-                        className="text-destructive focus:text-destructive"
-                      >
+                      <DropdownMenuItem onClick={() => onDelete(quotation)}
+                        className="text-destructive focus:text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Quotation
                       </DropdownMenuItem>
@@ -243,8 +243,7 @@ export function QuotationsTable({
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState 
-              icon={<FileText className="h-12 w-12" />}
+            <EmptyState icon={<FileText className="h-12 w-12" />}
               title="No quotations found"
               description={
                 hasActiveFilters
@@ -258,8 +257,7 @@ export function QuotationsTable({
                     New Quotation
                   </Button>
                 ) : undefined
-              }
-            />
+              }/>
           </div>
         </CardContent>
       </Card>
@@ -269,8 +267,7 @@ export function QuotationsTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable 
-          columns={columns}
+        <DataTable columns={columns}
           data={quotations}
           config={{
             showSerialNumber: true,
@@ -285,8 +282,7 @@ export function QuotationsTable({
           filterPlaceholder="Search by quotation #, customer..."
           renderViewOptions={renderViewOptions}
           fixedHeader
-          maxHeight="auto"
-        />
+          maxHeight="auto"/>
       </CardContent>
     </Card>
   );

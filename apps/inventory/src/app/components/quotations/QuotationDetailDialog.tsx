@@ -130,7 +130,7 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Customer</p>
-              <p className="text-lg font-semibold">{quotation.customer_name || quotation.customer?.customer_name || 'N/A'}</p>
+              <p className="text-lg font-semibold">{quotation.customer_name || quotation.customer?.name || 'N/A'}</p>
             </div>
           </div>
 
@@ -148,6 +148,40 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
               <p className="text-sm text-muted-foreground">Currency</p>
               <p className="font-medium">{quotation.currency}</p>
             </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Grand Total</p>
+              <p className="font-medium">{currencySymbol} {Number(quotation.grand_total).toFixed(2)}</p>
+            </div>
+          </div>
+
+          {/* Line Items */}
+          <Separator />
+          <div>
+            <h3 className="text-lg font-medium mb-4">Line Items</h3>
+            {(() => {
+              const lineItems = quotation.items || quotation.line_items || [];
+              return (
+                <LineItemsDetailTable items={lineItems}
+                  currencySymbol={currencySymbol}
+                  hasTaxInfo
+                  getItemSKU={(item: any) => item.item_code}
+                  getItemTotalAmount={(item: any) => Number(item.total_amount || item.amount || 0)}
+                  renderFooter={(items) => (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-3 text-right text-sm font-medium">Subtotal:</td>
+                      <td className="px-4 py-3 text-right text-sm font-semibold">
+                        {currencySymbol} {items.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-semibold">
+                        {currencySymbol} {items.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0).toFixed(2)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-bold">
+                        {currencySymbol} {items.reduce((sum, item) => sum + Number(item.total_amount || item.amount), 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  )}/>
+              );
+            })()}
           </div>
 
           {/* Tax Summary */}
@@ -183,44 +217,6 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
 
             return <TaxSummaryCollapsible taxSummary={taxSummary} currencySymbol={currencySymbol} />;
           })()}
-
-          {/* Grand Total */}
-          <div className="rounded-lg bg-muted/50 p-4">
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-medium">Grand Total</span>
-              <span className="text-2xl font-bold">{currencySymbol} {Number(quotation.grand_total).toFixed(2)}</span>
-            </div>
-          </div>
-
-          {/* Line Items */}
-          <Separator />
-          <div>
-            <h3 className="text-lg font-medium mb-4">Line Items</h3>
-            {(() => {
-              const lineItems = quotation.items || quotation.line_items || [];
-              return (
-                <LineItemsDetailTable items={lineItems}
-                  currencySymbol={currencySymbol}
-                  hasTaxInfo
-                  getItemSKU={(item: any) => item.item_code}
-                  getItemTotalAmount={(item: any) => Number(item.total_amount || item.amount || 0)}
-                  renderFooter={(items) => (
-                    <tr>
-                      <td colSpan={5} className="px-4 py-3 text-right text-sm font-medium">Subtotal:</td>
-                      <td className="px-4 py-3 text-right text-sm font-semibold">
-                        {currencySymbol} {items.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm font-semibold">
-                        {currencySymbol} {items.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0).toFixed(2)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm font-bold">
-                        {currencySymbol} {items.reduce((sum, item) => sum + Number(item.total_amount || item.amount), 0).toFixed(2)}
-                      </td>
-                    </tr>
-                  )}/>
-              );
-            })()}
-          </div>
 
           {/* Remarks */}
           {quotation.remarks && (
@@ -288,7 +284,7 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
       docNo={quotation.quotation_no}
       defaultRecipient={quotation.customer?.email || ''}
       defaultSubject={`Quotation ${quotation.quotation_no}`}
-      defaultMessage={`Dear ${quotation.customer_name || quotation.customer?.customer_name || 'Customer'},\n\nPlease find attached quotation ${quotation.quotation_no} for your review.\n\nBest regards`}
+      defaultMessage={`Dear ${quotation.customer_name || quotation.customer?.name || 'Customer'},\n\nPlease find attached quotation ${quotation.quotation_no} for your review.\n\nBest regards`}
       defaultAttachments={pdfAttachment ? [pdfAttachment] : undefined}
       onSuccess={() => {
         setEmailDialogOpen(false);

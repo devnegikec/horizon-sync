@@ -1,9 +1,11 @@
 import * as React from 'react';
+
 import { ArrowRight, FileText } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Separator } from '@horizon-sync/ui/components';
 
 import type { Quotation } from '../../types/quotation.types';
+
 import { LineItemTable } from './LineItemTable';
 
 interface ConvertToSalesOrderDialogProps {
@@ -104,7 +106,7 @@ export function ConvertToSalesOrderDialog({
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Customer</p>
-                <p className="font-semibold">{quotation.customer_name || quotation.customer?.customer_name || 'N/A'}</p>
+                <p className="font-semibold">{quotation.customer_name || quotation.customer?.name || 'N/A'}</p>
               </div>
             </div>
 
@@ -129,8 +131,7 @@ export function ConvertToSalesOrderDialog({
               console.log("Line itmes:-", quotation.items);
               const lineItems = quotation.items || quotation.line_items || [];
               return lineItems.length > 0 ? (
-                <LineItemTable 
-                  items={lineItems.map(item => ({
+                <LineItemTable items={lineItems.map(item => ({
                     item_id: item.item_name || item.item_id,
                     qty: Number(item.qty),
                     uom: item.uom,
@@ -139,8 +140,7 @@ export function ConvertToSalesOrderDialog({
                     sort_order: item.sort_order,
                   }))} 
                   onItemsChange={() => {}} 
-                  readonly 
-                />
+                  readonly/>
               ) : (
                 <p className="text-sm text-muted-foreground">No line items</p>
               );
@@ -156,23 +156,19 @@ export function ConvertToSalesOrderDialog({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="order_date">Order Date *</Label>
-                <Input
-                  id="order_date"
+                <Input id="order_date"
                   type="date"
                   value={formData.order_date}
                   onChange={(e) => handleChange('order_date', e.target.value)}
-                  required
-                />
+                  required/>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="delivery_date">Delivery Date (Optional)</Label>
-                <Input
-                  id="delivery_date"
+                <Input id="delivery_date"
                   type="date"
                   value={formData.delivery_date}
-                  onChange={(e) => handleChange('delivery_date', e.target.value)}
-                />
+                  onChange={(e) => handleChange('delivery_date', e.target.value)}/>
               </div>
             </div>
 
