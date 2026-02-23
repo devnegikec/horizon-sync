@@ -9,8 +9,21 @@ import { PaymentFilters } from './PaymentFilters';
 import { PaymentDialog } from './PaymentDialog';
 import { StatCard } from './StatCard';
 import type { PaymentEntry, PaymentFilters as Filters } from '../../types/payment.types';
+import type { Invoice } from '../../types/invoice';
 
-export function PaymentManagement() {
+export interface PaymentManagementProps {
+  preSelectedInvoice?: Invoice | null;
+  pendingPaymentId?: string | null;
+  onClearPendingPaymentId?: () => void;
+  onNavigateToInvoice?: (invoiceId: string) => void;
+}
+
+export function PaymentManagement({
+  preSelectedInvoice = null,
+  pendingPaymentId = null,
+  onClearPendingPaymentId,
+  onNavigateToInvoice,
+}: PaymentManagementProps) {
   const [filters, setFilters] = useState<Partial<Filters>>({
     status: undefined,
     payment_mode: undefined,
