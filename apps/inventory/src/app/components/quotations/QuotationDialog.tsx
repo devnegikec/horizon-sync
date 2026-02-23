@@ -5,13 +5,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@horizon-sync/store';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 
-import { environment } from '../../../environments/environment';
 import type { CustomerResponse } from '../../types/customer.types';
 import type { Quotation, QuotationCreate, QuotationLineItemCreate, QuotationStatus, QuotationUpdate } from '../../types/quotation.types';
 import { customerApi } from '../../utility/api';
-import { EditableLineItemsTable, type ItemData } from '../common';
 
 import { QuotationFormFields } from './QuotationFormFields';
+import { QuotationLineItemsTable } from './QuotationLineItemsTable';
 
 interface QuotationDialogProps {
   open: boolean;
@@ -27,6 +26,9 @@ const emptyItem: QuotationLineItemCreate = {
   uom: 'pcs',
   rate: 0,
   amount: 0,
+  tax_rate: 0,
+  tax_amount: 0,
+  total_amount: 0,
   sort_order: 0,
 };
 
@@ -45,7 +47,6 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
   });
 
   const [items, setItems] = React.useState<QuotationLineItemCreate[]>([{ ...emptyItem, sort_order: 1 }]);
-  const [initialItemsData, setInitialItemsData] = React.useState<ItemData[]>([]);
 
   const { data: customersData } = useQuery<CustomerResponse>({
     queryKey: ['customers-list'],
@@ -54,21 +55,6 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
   });
 
   const customers = customersData?.customers ?? [];
-
-  // Search function for EditableLineItemsTable
-  const searchItems = React.useCallback(async (query: string): Promise<ItemData[]> => {
-    if (!accessToken) return [];
-
-    const response = await fetch(`${environment.apiCoreUrl}/items/picker?search=${encodeURIComponent(query)}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!response.ok) throw new Error('Failed to fetch items');
-    const data = await response.json();
-    return data.items || [];
-  }, [accessToken]);
 
   // Initialize form data from quotation
   const initializeFormData = React.useCallback(() => {
@@ -85,23 +71,9 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
       
       const lineItems = quotation.items || quotation.line_items || [];
       if (lineItems.length > 0) {
-        const itemsData: ItemData[] = lineItems.map(item => ({
-          id: item.item_id,
-          item_name: item.item_name || '',
-          item_code: item.item_code || '',
-          item_group: item.item_group,
-          uom: item.uom,
-          standard_rate: typeof item.rate === 'string' ? item.rate : String(item.rate),
-          min_order_qty: item.min_order_qty,
-          max_order_qty: item.max_order_qty,
-          stock_levels: item.stock_levels,
-          tax_info: item.tax_info || undefined,
-        }));
-        setInitialItemsData(itemsData);
         setItems(lineItems as QuotationLineItemCreate[]);
       } else {
         setItems([{ ...emptyItem, sort_order: 1 }]);
-        setInitialItemsData([]);
       }
     } else {
       setFormData({
@@ -114,7 +86,6 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         remarks: '',
       });
       setItems([{ ...emptyItem, sort_order: 1 }]);
-      setInitialItemsData([]);
     }
   }, [quotation]);
 
@@ -205,14 +176,15 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
 
           {/* Line Items */}
           <Separator />
-          <EditableLineItemsTable items={items}
-            onItemsChange={setItems}
-            disabled={isLineItemEditingDisabled}
-            initialItemsData={initialItemsData}
-            searchItems={searchItems}
-            emptyItem={emptyItem}
-            showTax={true}
-            showItemGroup={true}/>
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">Line Items</h3>
+            <QuotationLineItemsTable
+              items={items}
+              onItemsChange={setItems}
+              disabled={isLineItemEditingDisabled}
+              currency={formData.currency}
+            />
+          </div>
 
           {/* Grand Total */}
           <div className="flex justify-end">
