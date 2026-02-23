@@ -22,9 +22,15 @@ export function EditableDataTable<TData, TValue>({
   ...props
 }: EditableDataTableProps<TData, TValue>) {
   const [tableData, setTableData] = React.useState<TData[]>(data);
+  // Track whether the last change was internal to skip the sync-back effect
+  const internalChangeRef = React.useRef(false);
 
-  // Sync external data changes
+  // Sync external data changes only — skip when we caused the change ourselves
   React.useEffect(() => {
+    if (internalChangeRef.current) {
+      internalChangeRef.current = false;
+      return;
+    }
     setTableData(data);
   }, [data]);
 
@@ -37,6 +43,7 @@ export function EditableDataTable<TData, TValue>({
           }
           return row;
         });
+        internalChangeRef.current = true;
         onDataChange(newData);
         return newData;
       });
@@ -47,6 +54,7 @@ export function EditableDataTable<TData, TValue>({
   const addRow = React.useCallback(() => {
     if (newRowTemplate) {
       const newData = [...tableData, newRowTemplate];
+      internalChangeRef.current = true;
       setTableData(newData);
       onDataChange(newData);
     }
@@ -55,6 +63,7 @@ export function EditableDataTable<TData, TValue>({
   const deleteRow = React.useCallback(
     (rowIndex: number) => {
       const newData = tableData.filter((_, index) => index !== rowIndex);
+      internalChangeRef.current = true;
       setTableData(newData);
       onDataChange(newData);
     },
