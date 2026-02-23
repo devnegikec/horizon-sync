@@ -4,6 +4,7 @@ import { Dialog, DialogContent } from '@horizon-sync/ui/components/ui/dialog';
 
 import { useItemForm } from '../../hooks/useItemForm';
 import { useItemSubmission } from '../../hooks/useItemSubmission';
+import { useTaxTemplates } from '../../hooks/useTaxTemplates';
 import type { ApiItemGroup } from '../../types/item-groups.types';
 import type { Item } from '../../types/item.types';
 
@@ -11,7 +12,6 @@ import { ItemDialogFooter } from './ItemDialogFooter';
 import { ItemDialogHeader } from './ItemDialogHeader';
 import { ItemFormFields } from './ItemFormFields';
 
-import { useTaxTemplates } from '../../hooks/useTaxTemplates';
 
 interface ItemDialogProps {
   open: boolean;
@@ -66,16 +66,14 @@ export function ItemDialog({
         <ItemDialogHeader isEditing={isEditing} />
 
         <form onSubmit={handleFormSubmit}>
-          <ItemFormFields
-            formData={formData}
+          <ItemFormFields formData={formData}
             setFormData={setFormData}
             itemGroups={itemGroups}
             onItemGroupsRefresh={onItemGroupsRefresh}
             isLoading={isLoading}
             salesTaxTemplates={salesTaxTemplates}
             purchaseTaxTemplates={purchaseTaxTemplates}
-            isLoadingTaxTemplates={isLoadingTaxTemplates}
-          />
+            isLoadingTaxTemplates={isLoadingTaxTemplates}/>
         </form>
       </DialogContent>
     </Dialog>
