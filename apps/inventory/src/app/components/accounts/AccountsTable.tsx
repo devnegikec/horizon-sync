@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { Wallet, Plus, MoreHorizontal, Edit, Power, PowerOff, Info, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ChevronsUpDown, Loader2, Download, Trash2 } from 'lucide-react';
 
@@ -11,18 +12,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
+import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@horizon-sync/ui/components/ui/tooltip';
-import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
+import { useAccountBalances } from '../../hooks/useAccountBalances';
 import type { AccountListItem } from '../../types/account.types';
 import { getCurrencySymbol, SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import { formatDate } from '../../utility/formatDate';
-import { useAccountBalances } from '../../hooks/useAccountBalances';
 import { ACCOUNT_TYPE_COLORS } from '../../utils/accountColors';
 
 export interface AccountsTableProps {
@@ -111,12 +112,10 @@ export function AccountsTable({
       const isDesc = isSorted && sortOrder === 'desc';
 
       return (
-        <Button
-          variant="ghost"
+        <Button variant="ghost"
           size="sm"
           className="-ml-3 h-8 hover:bg-accent"
-          onClick={() => onSortingChange?.(columnId)}
-        >
+          onClick={() => onSortingChange?.(columnId)}>
           <span className={isSorted ? 'font-semibold' : ''}>{title}</span>
           {isDesc ? (
             <ArrowDown className="ml-2 h-4 w-4" />
@@ -404,53 +403,45 @@ export function AccountsTable({
               {selectedRowCount} selected
             </span>
             {onBulkActivate && (
-              <Button
-                variant="outline"
+              <Button variant="outline"
                 size="sm"
                 onClick={() => {
                   onBulkActivate(selectedAccountIds);
                   table.resetRowSelection();
-                }}
-              >
+                }}>
                 <Power className="mr-2 h-4 w-4" />
                 Activate
               </Button>
             )}
             {onBulkDeactivate && (
-              <Button
-                variant="outline"
+              <Button variant="outline"
                 size="sm"
                 onClick={() => {
                   onBulkDeactivate(selectedAccountIds);
                   table.resetRowSelection();
-                }}
-              >
+                }}>
                 <PowerOff className="mr-2 h-4 w-4" />
                 Deactivate
               </Button>
             )}
             {onBulkExport && (
-              <Button
-                variant="outline"
+              <Button variant="outline"
                 size="sm"
                 onClick={() => {
                   onBulkExport(selectedAccountIds);
                   table.resetRowSelection();
-                }}
-              >
+                }}>
                 <Download className="mr-2 h-4 w-4" />
                 Export Selected
               </Button>
             )}
             {onBulkDelete && (
-              <Button
-                variant="destructive"
+              <Button variant="destructive"
                 size="sm"
                 onClick={() => {
                   onBulkDelete(selectedAccountIds);
                   table.resetRowSelection();
-                }}
-              >
+                }}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </Button>
@@ -489,8 +480,7 @@ export function AccountsTable({
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState
-              icon={<Wallet className="h-12 w-12" />}
+            <EmptyState icon={<Wallet className="h-12 w-12" />}
               title="No accounts found"
               description={
                 hasActiveFilters ? 'Try adjusting your search or filters' : 'Get started by creating your first account'
@@ -502,8 +492,7 @@ export function AccountsTable({
                     Create Account
                   </Button>
                 ) : undefined
-              }
-            />
+              }/>
           </div>
         </CardContent>
       </Card>
@@ -513,8 +502,7 @@ export function AccountsTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable
-          columns={columns}
+        <DataTable columns={columns}
           data={accounts}
           config={{
             showSerialNumber: true,
@@ -528,8 +516,7 @@ export function AccountsTable({
           }}
           renderViewOptions={renderViewOptions}
           fixedHeader
-          maxHeight="600px"
-        />
+          maxHeight="600px"/>
       </CardContent>
     </Card>
   );

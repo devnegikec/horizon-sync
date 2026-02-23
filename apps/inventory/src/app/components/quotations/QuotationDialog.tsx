@@ -3,14 +3,14 @@ import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Separator, Textarea } from '@horizon-sync/ui/components';
+import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 
 import type { CustomerResponse } from '../../types/customer.types';
 import type { Quotation, QuotationCreate, QuotationLineItemCreate, QuotationStatus, QuotationUpdate } from '../../types/quotation.types';
 import { customerApi } from '../../utility/api';
-import { CurrencySelect, StatusSelect } from '../common';
 
-import { LineItemTable } from './LineItemTable';
+import { QuotationFormFields } from './QuotationFormFields';
+import { QuotationLineItemsTable } from './QuotationLineItemsTable';
 
 interface QuotationDialogProps {
   open: boolean;
@@ -20,31 +20,94 @@ interface QuotationDialogProps {
   saving: boolean;
 }
 
+interface FormState {
+  quotation_no: string;
+  customer_id: string;
+  quotation_date: string;
+  valid_until: string;
+  currency: string;
+  status: QuotationStatus;
+  remarks: string;
+}
+
 const emptyItem: QuotationLineItemCreate = {
   item_id: '',
   qty: 1,
   uom: 'pcs',
   rate: 0,
   amount: 0,
+  tax_rate: 0,
+  tax_amount: 0,
+  total_amount: 0,
   sort_order: 0,
 };
+
+const LOCKED_STATUSES: QuotationStatus[] = ['sent', 'accepted', 'rejected', 'expired'];
+
+function validateQuotationForm(formData: FormState, items: QuotationLineItemCreate[]): string | null {
+  if (!formData.customer_id) return 'Please select a customer';
+  if (items.length === 0 || items.some(item => !item.item_id)) return 'Please add at least one line item with a valid item';
+  if (items.some(item => Number(item.qty) <= 0 || Number(item.rate) < 0)) return 'All line items must have positive quantities and non-negative rates';
+  if (new Date(formData.valid_until) < new Date(formData.quotation_date)) return 'Valid until date must be after quotation date';
+  return null;
+}
+
+function buildSavePayload(
+  formData: FormState,
+  items: QuotationLineItemCreate[],
+  grandTotal: number,
+  quotation: Quotation | null,
+  isLineItemEditingDisabled: boolean
+): { data: QuotationCreate | QuotationUpdate; id?: string } {
+  if (quotation) {
+    const updateData: QuotationUpdate = {
+      quotation_date: new Date(formData.quotation_date).toISOString(),
+      valid_until: new Date(formData.valid_until).toISOString(),
+      status: formData.status,
+      remarks: formData.remarks || undefined,
+    };
+    if (!isLineItemEditingDisabled) {
+      updateData.items = items;
+    }
+    return { data: updateData, id: quotation.id };
+  }
+
+  const createData: QuotationCreate = {
+    quotation_no: formData.quotation_no || undefined,
+    customer_id: formData.customer_id,
+    quotation_date: new Date(formData.quotation_date).toISOString(),
+    valid_until: new Date(formData.valid_until).toISOString(),
+    status: formData.status,
+    grand_total: grandTotal,
+    currency: formData.currency,
+    remarks: formData.remarks || undefined,
+    items,
+  };
+  return { data: createData };
+}
+
+function getAvailableStatuses(isEdit: boolean, currentStatus: QuotationStatus): QuotationStatus[] {
+  if (!isEdit) return ['draft'];
+  if (currentStatus === 'draft') return ['draft', 'sent'];
+  if (currentStatus === 'sent') return ['sent', 'accepted', 'rejected', 'expired'];
+  return [currentStatus];
+}
 
 export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving }: QuotationDialogProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const isEdit = !!quotation;
 
-  const [formData, setFormData] = React.useState({
+  const [formData, setFormData] = React.useState<FormState>({
     quotation_no: '',
     customer_id: '',
     quotation_date: new Date().toISOString().slice(0, 10),
-    valid_until:new Date().toISOString().slice(0, 10),
+    valid_until: new Date().toISOString().slice(0, 10),
     currency: 'INR',
-    status: 'draft' as QuotationStatus,
+    status: 'draft',
     remarks: '',
   });
 
   const [items, setItems] = React.useState<QuotationLineItemCreate[]>([{ ...emptyItem, sort_order: 1 }]);
-  const [initialItemsData, setInitialItemsData] = React.useState<any[]>([]);
 
   const { data: customersData } = useQuery<CustomerResponse>({
     queryKey: ['customers-list'],
@@ -54,7 +117,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
 
   const customers = customersData?.customers ?? [];
 
-  React.useEffect(() => {
+  const initializeFormData = React.useCallback(() => {
     if (quotation) {
       setFormData({
         quotation_no: quotation.quotation_no,
@@ -65,18 +128,8 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         status: quotation.status,
         remarks: quotation.remarks || '',
       });
-      // Handle both 'items' and 'line_items' field names from API
       const lineItems = quotation.items || quotation.line_items || [];
-      if (lineItems.length > 0) {
-        // Set all items as initial data for the cache (they contain full details in edit mode)
-        setInitialItemsData(lineItems);
-
-        // Use items directly from API response
-        setItems(lineItems as QuotationLineItemCreate[]);
-      } else {
-        setItems([{ ...emptyItem, sort_order: 1 }]);
-        setInitialItemsData([]);
-      }
+      setItems(lineItems.length > 0 ? (lineItems as QuotationLineItemCreate[]) : [{ ...emptyItem, sort_order: 1 }]);
     } else {
       setFormData({
         quotation_no: '',
@@ -88,9 +141,12 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         remarks: '',
       });
       setItems([{ ...emptyItem, sort_order: 1 }]);
-      setInitialItemsData([]);
     }
-  }, [quotation, open]);
+  }, [quotation]);
+
+  React.useEffect(() => {
+    initializeFormData();
+  }, [initializeFormData, open]);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -100,157 +156,36 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
     return items.reduce((sum, item) => sum + Number(item.total_amount || item.amount || 0), 0);
   }, [items]);
 
-  const isLineItemEditingDisabled = isEdit && (formData.status === 'sent' || formData.status === 'accepted' || formData.status === 'rejected' || formData.status === 'expired');
+  const isLineItemEditingDisabled = isEdit && LOCKED_STATUSES.includes(formData.status);
+  const availableStatuses = React.useMemo(() => getAvailableStatuses(isEdit, formData.status), [isEdit, formData.status]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validation
-    if (!formData.customer_id) {
-      alert('Please select a customer');
+    const validationError = validateQuotationForm(formData, items);
+    if (validationError) {
+      alert(validationError);
       return;
     }
-    if (items.length === 0 || items.some(item => !item.item_id)) {
-      alert('Please add at least one line item with a valid item');
-      return;
-    }
-    if (items.some(item => Number(item.qty) <= 0 || Number(item.rate) < 0)) {
-      alert('All line items must have positive quantities and non-negative rates');
-      return;
-    }
-    if (new Date(formData.valid_until) < new Date(formData.quotation_date)) {
-      alert('Valid until date must be after quotation date');
-      return;
-    }
-
-    if (isEdit) {
-      const updateData: QuotationUpdate = {
-        quotation_date: new Date(formData.quotation_date).toISOString(),
-        valid_until: new Date(formData.valid_until).toISOString(),
-        status: formData.status,
-        remarks: formData.remarks || undefined,
-      };
-
-      if (!isLineItemEditingDisabled) {
-        updateData.items = items;
-      }
-
-      await onSave(updateData, quotation.id);
-    } else {
-      const createData: QuotationCreate = {
-        quotation_no: formData.quotation_no || undefined,
-        customer_id: formData.customer_id,
-        quotation_date: new Date(formData.quotation_date).toISOString(),
-        valid_until: new Date(formData.valid_until).toISOString(),
-        status: formData.status,
-        grand_total: grandTotal,
-        currency: formData.currency,
-        remarks: formData.remarks || undefined,
-        items: items,
-      };
-      await onSave(createData);
-    }
+    const { data, id } = buildSavePayload(formData, items, grandTotal, quotation, isLineItemEditingDisabled);
+    await onSave(data, id);
   };
-
-  const canChangeStatus = isEdit && quotation;
-  const availableStatuses: QuotationStatus[] = React.useMemo(() => {
-    if (!canChangeStatus) return ['draft'];
-
-    const current = formData.status;
-    if (current === 'draft') return ['draft', 'sent'];
-    if (current === 'sent') return ['sent', 'accepted', 'rejected', 'expired'];
-    return [current]; // Terminal statuses can't change
-  }, [canChangeStatus, formData.status]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Quotation' : 'Create Quotation'}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Basic Information</h3>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="quotation_no">Quotation #</Label>
-                <Input id="quotation_no"
-                  value={formData.quotation_no}
-                  onChange={(e) => handleChange('quotation_no', e.target.value)}
-                  disabled={isEdit}
-                  placeholder={isEdit ? '' : 'Auto-generated if left blank'}/>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="customer_id">Customer *</Label>
-                <Select value={formData.customer_id || undefined}
-                  onValueChange={(v) => handleChange('customer_id', v)}
-                  disabled={isEdit}
-                  required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select customer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.customer_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+          <QuotationFormFields formData={formData} customers={customers} isEdit={isEdit} availableStatuses={availableStatuses} onFieldChange={handleChange} />
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="quotation_date">Quotation Date *</Label>
-                <Input id="quotation_date"
-                  type="date"
-                  value={formData.quotation_date}
-                  onChange={(e) => handleChange('quotation_date', e.target.value)}
-                  required/>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="valid_until">Valid Until *</Label>
-                <Input id="valid_until"
-                  type="date"
-                  value={formData.valid_until}
-                  onChange={(e) => handleChange('valid_until', e.target.value)}
-                  required/>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="currency">Currency *</Label>
-                <CurrencySelect value={formData.currency} onValueChange={(v) => handleChange('currency', v)} disabled={isEdit} />
-              </div>
-            </div>
-
-            {isEdit && (
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <StatusSelect value={formData.status}
-                  onValueChange={(v) => handleChange('status', v)}
-                  availableStatuses={availableStatuses}/>
-              </div>
-            )}
-          </div>
-
-          {/* Remarks */}
-          <div className="space-y-2">
-            <Label htmlFor="remarks">Remarks</Label>
-            <Textarea id="remarks"
-              value={formData.remarks}
-              onChange={(e) => handleChange('remarks', e.target.value)}
-              placeholder="Additional notes..."
-              rows={2}/>
-          </div>
-
-          {/* Line Items */}
           <Separator />
-          <LineItemTable items={items}
-            onItemsChange={setItems}
-            disabled={isLineItemEditingDisabled}
-            initialItemsData={initialItemsData}/>
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">Line Items</h3>
+            <QuotationLineItemsTable items={items} onItemsChange={setItems} disabled={isLineItemEditingDisabled} currency={formData.currency} />
+          </div>
 
-          {/* Grand Total */}
           <div className="flex justify-end">
             <div className="w-64 space-y-2">
               <div className="flex justify-between items-center text-lg font-semibold">

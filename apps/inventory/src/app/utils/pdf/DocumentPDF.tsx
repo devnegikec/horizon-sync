@@ -184,6 +184,12 @@ interface DocumentPDFProps {
 }
 
 export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
+  console.log('=== DocumentPDF RENDER DEBUG ===');
+  console.log('1. Received data prop:', JSON.stringify(data, null, 2));
+  console.log('2. data.lineItems:', data.lineItems);
+  console.log('3. data.lineItems.length:', data.lineItems?.length);
+  console.log('4. Is lineItems an array?', Array.isArray(data.lineItems));
+  
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -210,6 +216,14 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
         return 'Document';
     }
   };
+
+  console.log('5. About to render, lineItems check:', {
+    exists: !!data.lineItems,
+    isArray: Array.isArray(data.lineItems),
+    length: data.lineItems?.length,
+    firstItem: data.lineItems?.[0]
+  });
+  console.log('=== END DocumentPDF RENDER DEBUG ===');
 
   return (
     <Document>
@@ -288,26 +302,37 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
             <Text style={styles.col8}>Total</Text>
           </View>
 
-          {data.lineItems.map((item) => (
-            <View key={item.index} style={styles.tableRow}>
-              <Text style={styles.col1}>{item.index}</Text>
-              <View style={styles.col2}>
-                <Text style={styles.itemName}>{item.itemName}</Text>
-                {item.itemCode && <Text style={styles.itemCode}>{item.itemCode}</Text>}
-                {item.taxInfo && (
-                  <Text style={styles.taxInfo}>
-                    {item.taxInfo.breakup.map((tax) => `${tax.rule_name} ${tax.rate}%`).join(', ')}
-                  </Text>
-                )}
-              </View>
-              <Text style={styles.col3}>{item.quantity.toFixed(3)}</Text>
-              <Text style={styles.col4}>{item.uom}</Text>
-              <Text style={styles.col5}>{formatCurrency(item.rate)}</Text>
-              <Text style={styles.col6}>{formatCurrency(item.amount)}</Text>
-              <Text style={styles.col7}>{item.taxAmount ? formatCurrency(item.taxAmount) : '—'}</Text>
-              <Text style={styles.col8}>{formatCurrency(item.totalAmount)}</Text>
+          {(!data.lineItems || data.lineItems.length === 0) && (
+            <View style={styles.tableRow}>
+              <Text style={{ width: '100%', textAlign: 'center', padding: 20, color: '#999' }}>
+                No line items found
+              </Text>
             </View>
-          ))}
+          )}
+
+          {data.lineItems && data.lineItems.map((item) => {
+            console.log('Rendering line item:', item);
+            return (
+              <View key={item.index} style={styles.tableRow}>
+                <Text style={styles.col1}>{item.index}</Text>
+                <View style={styles.col2}>
+                  <Text style={styles.itemName}>{item.itemName}</Text>
+                  {item.itemCode && <Text style={styles.itemCode}>{item.itemCode}</Text>}
+                  {item.taxInfo && (
+                    <Text style={styles.taxInfo}>
+                      {item.taxInfo.breakup.map((tax) => `${tax.rule_name} ${tax.rate}%`).join(', ')}
+                    </Text>
+                  )}
+                </View>
+                <Text style={styles.col3}>{item.quantity.toFixed(3)}</Text>
+                <Text style={styles.col4}>{item.uom}</Text>
+                <Text style={styles.col5}>{formatCurrency(item.rate)}</Text>
+                <Text style={styles.col6}>{formatCurrency(item.amount)}</Text>
+                <Text style={styles.col7}>{item.taxAmount ? formatCurrency(item.taxAmount) : '—'}</Text>
+                <Text style={styles.col8}>{formatCurrency(item.totalAmount)}</Text>
+              </View>
+            );
+          })}
         </View>
 
         {/* Tax Summary */}

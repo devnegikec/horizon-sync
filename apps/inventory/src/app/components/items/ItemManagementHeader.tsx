@@ -1,15 +1,10 @@
-import { Plus, Download, Upload, ChevronDown, Loader2 } from 'lucide-react';
 import { useState } from 'react';
+
+import { Plus, Download, Upload, ChevronDown, Loader2 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@horizon-sync/ui/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +13,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@horizon-sync/ui/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import {
@@ -225,7 +226,7 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={onCreateItem} className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
+          <Button onClick={onCreateItem} className="gap-2 text-primary-foreground shadow-lg">
             <Plus className="h-4 w-4" />
             Add Item
           </Button>
@@ -245,23 +246,19 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
             {/* File Name */}
             <div className="grid gap-2">
               <Label htmlFor="file-name">File Name</Label>
-              <Input
-                id="file-name"
+              <Input id="file-name"
                 value={exportFileName}
                 onChange={(e) => setExportFileName(e.target.value)}
                 placeholder="stock_items_export"
-                disabled={isExporting}
-              />
+                disabled={isExporting}/>
             </div>
 
             {/* File Format */}
             <div className="grid gap-2">
               <Label htmlFor="file-format">File Format</Label>
-              <Select
-                value={exportFileFormat}
+              <Select value={exportFileFormat}
                 onValueChange={(value: 'csv' | 'xlsx' | 'json' | 'pdf') => setExportFileFormat(value)}
-                disabled={isExporting}
-              >
+                disabled={isExporting}>
                 <SelectTrigger id="file-format">
                   <SelectValue />
                 </SelectTrigger>
@@ -280,11 +277,9 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="item-type" className="text-sm">Item Type</Label>
-                  <Select
-                    value={exportItemType}
+                  <Select value={exportItemType}
                     onValueChange={setExportItemType}
-                    disabled={isExporting}
-                  >
+                    disabled={isExporting}>
                     <SelectTrigger id="item-type">
                       <SelectValue />
                     </SelectTrigger>
@@ -299,11 +294,9 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
 
                 <div className="grid gap-2">
                   <Label htmlFor="status" className="text-sm">Status</Label>
-                  <Select
-                    value={exportStatus}
+                  <Select value={exportStatus}
                     onValueChange={setExportStatus}
-                    disabled={isExporting}
-                  >
+                    disabled={isExporting}>
                     <SelectTrigger id="status">
                       <SelectValue />
                     </SelectTrigger>
@@ -323,16 +316,12 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
               <div className="grid grid-cols-2 gap-3 border rounded-md p-4">
                 {AVAILABLE_COLUMNS.map((column) => (
                   <div key={column.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={column.id}
+                    <Checkbox id={column.id}
                       checked={selectedColumns.includes(column.id)}
                       onCheckedChange={() => handleColumnToggle(column.id)}
-                      disabled={isExporting}
-                    />
-                    <Label
-                      htmlFor={column.id}
-                      className="text-sm font-normal cursor-pointer"
-                    >
+                      disabled={isExporting}/>
+                    <Label htmlFor={column.id}
+                      className="text-sm font-normal cursor-pointer">
                       {column.label}
                     </Label>
                   </div>
@@ -350,11 +339,9 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
             </div>
           )}
           <DialogFooter>
-            <Button
-              variant="outline"
+            <Button variant="outline"
               onClick={() => setIsExportDialogOpen(false)}
-              disabled={isExporting}
-            >
+              disabled={isExporting}>
               Cancel
             </Button>
             <Button onClick={handleExportSubmit} disabled={isExporting || selectedColumns.length === 0}>
@@ -385,14 +372,12 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
               <label htmlFor="file-upload" className="text-sm font-medium">
                 Select File
               </label>
-              <input
-                id="file-upload"
+              <input id="file-upload"
                 type="file"
                 accept=".csv,.xlsx,.xls"
                 onChange={handleFileChange}
                 disabled={isImporting}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"/>
               {selectedFile && (
                 <p className="text-sm text-muted-foreground">
                   Selected: {selectedFile.name}
@@ -401,17 +386,13 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button variant="outline" 
               onClick={() => setIsImportDialogOpen(false)}
-              disabled={isImporting}
-            >
+              disabled={isImporting}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleImportSubmit} 
-              disabled={!selectedFile || isImporting}
-            >
+            <Button onClick={handleImportSubmit} 
+              disabled={!selectedFile || isImporting}>
               {isImporting ? 'Importing...' : 'Import'}
             </Button>
           </DialogFooter>

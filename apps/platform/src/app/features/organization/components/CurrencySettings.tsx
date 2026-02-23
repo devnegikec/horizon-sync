@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { Plus, Trash2, Star } from 'lucide-react';
 
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
@@ -70,10 +71,15 @@ export function CurrencySettings({ currencies, onChange, disabled }: CurrencySet
   const handleSelectCommonCurrency = (index: number, currencyCode: string) => {
     const commonCurrency = COMMON_CURRENCIES.find((c) => c.code === currencyCode);
     if (commonCurrency) {
-      handleUpdateCurrency(index, 'code', commonCurrency.code);
-      handleUpdateCurrency(index, 'symbol', commonCurrency.symbol);
-      handleUpdateCurrency(index, 'name', commonCurrency.name);
-      handleUpdateCurrency(index, 'precision', commonCurrency.precision);
+      const updated = [...currencies];
+      updated[index] = {
+        ...updated[index],
+        code: commonCurrency.code,
+        symbol: commonCurrency.symbol,
+        name: commonCurrency.name,
+        precision: commonCurrency.precision,
+      };
+      onChange(updated);
     }
   };
 
@@ -98,25 +104,21 @@ export function CurrencySettings({ currencies, onChange, disabled }: CurrencySet
           <div key={index} className="rounded-lg border p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Button
-                  type="button"
+                <Button type="button"
                   variant={currency.is_base_currency ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => handleSetBaseCurrency(index)}
                   disabled={disabled}
-                  className="gap-2"
-                >
+                  className="gap-2">
                   <Star className={`h-3 w-3 ${currency.is_base_currency ? 'fill-current' : ''}`} />
                   {currency.is_base_currency ? 'Base Currency' : 'Set as Base'}
                 </Button>
               </div>
-              <Button
-                type="button"
+              <Button type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => handleRemoveCurrency(index)}
-                disabled={disabled || currency.is_base_currency}
-              >
+                disabled={disabled || currency.is_base_currency}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
@@ -124,11 +126,9 @@ export function CurrencySettings({ currencies, onChange, disabled }: CurrencySet
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Currency</Label>
-                <Select
-                  value={currency.code}
+                <Select value={currency.code}
                   onValueChange={(value) => handleSelectCommonCurrency(index, value)}
-                  disabled={disabled}
-                >
+                  disabled={disabled}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -144,40 +144,42 @@ export function CurrencySettings({ currencies, onChange, disabled }: CurrencySet
 
               <div className="space-y-2">
                 <Label>Symbol</Label>
-                <Input
-                  value={currency.symbol}
+                <Input value={currency.symbol}
                   onChange={(e) => handleUpdateCurrency(index, 'symbol', e.target.value)}
                   disabled={disabled}
-                  placeholder="$"
-                />
+                  placeholder="$"/>
               </div>
 
               <div className="space-y-2">
                 <Label>Code (ISO 4217)</Label>
-                <Input
-                  value={currency.code}
+                <Input value={currency.code}
                   onChange={(e) => handleUpdateCurrency(index, 'code', e.target.value.toUpperCase())}
                   disabled={disabled}
                   placeholder="USD"
-                  maxLength={3}
-                />
+                  maxLength={3}/>
               </div>
 
               <div className="space-y-2">
                 <Label>Decimal Precision</Label>
-                <Select
-                  value={String(currency.precision)}
-                  onValueChange={(value) => handleUpdateCurrency(index, 'precision', Number(value))}
-                  disabled={disabled}
-                >
+                <Select key={`precision-${index + 1}-${currency.precision}`}
+                  value={currency.code}
+                  onValueChange={(value) => handleSelectCommonCurrency(index, value)}
+                  disabled={disabled}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="0">0 (e.g., ¥100)</SelectItem>
-                    <SelectItem value="2">2 (e.g., $100.00)</SelectItem>
-                    <SelectItem value="3">3 (e.g., BD 100.000)</SelectItem>
-                    <SelectItem value="4">4 (e.g., 100.0000)</SelectItem>
+                    {COMMON_CURRENCIES.map((c) => {
+                      let example = c.precision === 0 ? '100' : 
+                                    c.precision === 2 ? '100.00' : 
+                                    c.precision === 3 ? '100.000' : 
+                                    '100.0000';
+                        example = `${c.symbol} ${example}`
+                      return (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.precision} (e.g., {example})
+                      </SelectItem>
+                    )})}
                   </SelectContent>
                 </Select>
               </div>
