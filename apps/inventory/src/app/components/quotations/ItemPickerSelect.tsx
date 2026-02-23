@@ -1,6 +1,8 @@
 import * as React from 'react';
-import { createPortal } from 'react-dom';
+
 import { Check, ChevronsUpDown, Search, X, Loader2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+
 import { cn } from '@horizon-sync/ui/lib';
 
 interface ItemPickerSelectProps<T> {
@@ -16,6 +18,135 @@ interface ItemPickerSelectProps<T> {
   selectedItemData?: T | null;
 }
 
+interface DropdownItemProps<T> {
+  item: T;
+  isSelected: boolean;
+  labelFormatter: (item: T) => string;
+  onSelect: () => void;
+}
+
+function DropdownItem<T>({ item, isSelected, labelFormatter, onSelect }: DropdownItemProps<T>) {
+  return (
+    <div role="option"
+      aria-selected={isSelected}
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      className={cn(
+        'relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground',
+        isSelected && 'bg-accent text-accent-foreground'
+      )}>
+      <Check className={cn('mr-2 h-4 w-4', isSelected ? 'opacity-100' : 'opacity-0')} />
+      <span className="truncate">{labelFormatter(item)}</span>
+    </div>
+  );
+}
+
+interface DropdownContentProps<T> {
+  items: T[];
+  isSearching: boolean;
+  searchQuery: string;
+  minSearchLength: number;
+  searchPlaceholder: string;
+  value?: string;
+  valueKey: keyof T;
+  labelFormatter: (item: T) => string;
+  onSearchChange: (query: string) => void;
+  onItemSelect: (item: T) => void;
+  dropdownPosition: { top: number; left: number; width: number };
+  dropdownRef: React.RefObject<HTMLDivElement | null>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function DropdownContent<T extends Record<string, any>>({
+  items,
+  isSearching,
+  searchQuery,
+  minSearchLength,
+  searchPlaceholder,
+  value,
+  valueKey,
+  labelFormatter,
+  onSearchChange,
+  onItemSelect,
+  dropdownPosition,
+  dropdownRef,
+}: DropdownContentProps<T>) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    // Focus input after mount without using autoFocus
+    const timer = setTimeout(() => inputRef.current?.focus(), 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div ref={dropdownRef}
+      role="listbox"
+      tabIndex={-1}
+      className="fixed z-50 rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in"
+      style={{
+        top: `${dropdownPosition.top}px`,
+        left: `${dropdownPosition.left}px`,
+        width: `${dropdownPosition.width}px`,
+      }}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}>
+      <div className="flex items-center border-b px-3">
+        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+        <input ref={inputRef}
+          type="text"
+          placeholder={searchPlaceholder}
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          onFocus={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"/>
+        {searchQuery && (
+          <button type="button"
+            onClick={() => onSearchChange('')}
+            className="ml-2 h-4 w-4 shrink-0 opacity-50 hover:opacity-100">
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      <div className="max-h-60 overflow-y-auto p-1">
+        {isSearching ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
+          </div>
+        ) : searchQuery.length < minSearchLength ? (
+          <div className="py-6 text-center text-sm text-muted-foreground">
+            Type at least {minSearchLength} characters to search...
+          </div>
+        ) : items.length === 0 ? (
+          <div className="py-6 text-center text-sm text-muted-foreground">No items found.</div>
+        ) : (
+          items.map((item) => {
+            const itemValue = String(item[valueKey]);
+            return (
+              <DropdownItem key={itemValue}
+                item={item}
+                isSelected={itemValue === value}
+                labelFormatter={labelFormatter}
+                onSelect={() => onItemSelect(item)}/>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function ItemPickerSelect<T extends Record<string, any>>({
   value,
   onValueChange,
@@ -45,12 +176,10 @@ export function ItemPickerSelect<T extends Record<string, any>>({
       return;
     }
 
-    // Clear previous timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    // Set new timeout for debounced search
     searchTimeoutRef.current = setTimeout(async () => {
       setIsSearching(true);
       try {
@@ -76,9 +205,9 @@ export function ItemPickerSelect<T extends Record<string, any>>({
     if (selectedItemData) {
       setSelectedItem(selectedItemData);
     } else if (value && items.length > 0) {
-      const item = items.find((item) => String(item[valueKey]) === value);
-      if (item) {
-        setSelectedItem(item);
+      const found = items.find((i) => String(i[valueKey]) === value);
+      if (found) {
+        setSelectedItem(found);
       }
     }
   }, [value, items, valueKey, selectedItemData]);
@@ -97,6 +226,8 @@ export function ItemPickerSelect<T extends Record<string, any>>({
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
+    if (!open) return undefined;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dropdownRef.current &&
@@ -109,108 +240,54 @@ export function ItemPickerSelect<T extends Record<string, any>>({
       }
     };
 
-    if (open) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
+
+  const handleItemSelect = React.useCallback(
+    (item: T) => {
+      onValueChange(String(item[valueKey]));
+      setSelectedItem(item);
+      setOpen(false);
+      setSearchQuery('');
+    },
+    [onValueChange, valueKey]
+  );
 
   return (
     <div className="relative">
-      <button
-        ref={buttonRef}
+      <button ref={buttonRef}
         type="button"
-        onClick={() => !disabled && setOpen(!open)}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!disabled) setOpen(!open);
+        }}
         disabled={disabled}
         className={cn(
           'flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
           !selectedItem && 'text-muted-foreground'
-        )}
-      >
-        <span className="truncate">
-          {selectedItem ? labelFormatter(selectedItem) : placeholder}
-        </span>
+        )}>
+        <span className="truncate">{selectedItem ? labelFormatter(selectedItem) : placeholder}</span>
         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </button>
 
-      {open && createPortal(
-        <div
-          ref={dropdownRef}
-          className="fixed z-50 rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in"
-          style={{
-            top: `${dropdownPosition.top}px`,
-            left: `${dropdownPosition.left}px`,
-            width: `${dropdownPosition.width}px`,
-          }}
-        >
-          <div className="flex items-center border-b px-3">
-            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-            <input
-              type="text"
-              placeholder={searchPlaceholder}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              autoFocus
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="ml-2 h-4 w-4 shrink-0 opacity-50 hover:opacity-100"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-          <div className="max-h-60 overflow-y-auto p-1">
-            {isSearching ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
-              </div>
-            ) : searchQuery.length < minSearchLength ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                Type at least {minSearchLength} characters to search...
-              </div>
-            ) : items.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                No items found.
-              </div>
-            ) : (
-              items.map((item) => {
-                const itemValue = String(item[valueKey]);
-                const isSelected = itemValue === value;
-
-                return (
-                  <div
-                    key={itemValue}
-                    onClick={() => {
-                      onValueChange(itemValue);
-                      setSelectedItem(item);
-                      setOpen(false);
-                      setSearchQuery('');
-                    }}
-                    className={cn(
-                      'relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground',
-                      isSelected && 'bg-accent text-accent-foreground'
-                    )}
-                  >
-                    <Check
-                      className={cn(
-                        'mr-2 h-4 w-4',
-                        isSelected ? 'opacity-100' : 'opacity-0'
-                      )}
-                    />
-                    <span className="truncate">{labelFormatter(item)}</span>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
+      {open &&
+        createPortal(
+          <DropdownContent items={items}
+            isSearching={isSearching}
+            searchQuery={searchQuery}
+            minSearchLength={minSearchLength}
+            searchPlaceholder={searchPlaceholder}
+            value={value}
+            valueKey={valueKey}
+            labelFormatter={labelFormatter}
+            onSearchChange={setSearchQuery}
+            onItemSelect={handleItemSelect}
+            dropdownPosition={dropdownPosition}
+            dropdownRef={dropdownRef}/>,
+          document.body
+        )}
     </div>
   );
 }

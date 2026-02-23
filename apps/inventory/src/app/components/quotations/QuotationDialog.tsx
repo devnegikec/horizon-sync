@@ -20,6 +20,16 @@ interface QuotationDialogProps {
   saving: boolean;
 }
 
+interface FormState {
+  quotation_no: string;
+  customer_id: string;
+  quotation_date: string;
+  valid_until: string;
+  currency: string;
+  status: QuotationStatus;
+  remarks: string;
+}
+
 const emptyItem: QuotationLineItemCreate = {
   item_id: '',
   qty: 1,
@@ -32,17 +42,68 @@ const emptyItem: QuotationLineItemCreate = {
   sort_order: 0,
 };
 
+const LOCKED_STATUSES: QuotationStatus[] = ['sent', 'accepted', 'rejected', 'expired'];
+
+function validateQuotationForm(formData: FormState, items: QuotationLineItemCreate[]): string | null {
+  if (!formData.customer_id) return 'Please select a customer';
+  if (items.length === 0 || items.some(item => !item.item_id)) return 'Please add at least one line item with a valid item';
+  if (items.some(item => Number(item.qty) <= 0 || Number(item.rate) < 0)) return 'All line items must have positive quantities and non-negative rates';
+  if (new Date(formData.valid_until) < new Date(formData.quotation_date)) return 'Valid until date must be after quotation date';
+  return null;
+}
+
+function buildSavePayload(
+  formData: FormState,
+  items: QuotationLineItemCreate[],
+  grandTotal: number,
+  quotation: Quotation | null,
+  isLineItemEditingDisabled: boolean
+): { data: QuotationCreate | QuotationUpdate; id?: string } {
+  if (quotation) {
+    const updateData: QuotationUpdate = {
+      quotation_date: new Date(formData.quotation_date).toISOString(),
+      valid_until: new Date(formData.valid_until).toISOString(),
+      status: formData.status,
+      remarks: formData.remarks || undefined,
+    };
+    if (!isLineItemEditingDisabled) {
+      updateData.items = items;
+    }
+    return { data: updateData, id: quotation.id };
+  }
+
+  const createData: QuotationCreate = {
+    quotation_no: formData.quotation_no || undefined,
+    customer_id: formData.customer_id,
+    quotation_date: new Date(formData.quotation_date).toISOString(),
+    valid_until: new Date(formData.valid_until).toISOString(),
+    status: formData.status,
+    grand_total: grandTotal,
+    currency: formData.currency,
+    remarks: formData.remarks || undefined,
+    items,
+  };
+  return { data: createData };
+}
+
+function getAvailableStatuses(isEdit: boolean, currentStatus: QuotationStatus): QuotationStatus[] {
+  if (!isEdit) return ['draft'];
+  if (currentStatus === 'draft') return ['draft', 'sent'];
+  if (currentStatus === 'sent') return ['sent', 'accepted', 'rejected', 'expired'];
+  return [currentStatus];
+}
+
 export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving }: QuotationDialogProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const isEdit = !!quotation;
 
-  const [formData, setFormData] = React.useState({
+  const [formData, setFormData] = React.useState<FormState>({
     quotation_no: '',
     customer_id: '',
     quotation_date: new Date().toISOString().slice(0, 10),
-    valid_until:new Date().toISOString().slice(0, 10),
+    valid_until: new Date().toISOString().slice(0, 10),
     currency: 'INR',
-    status: 'draft' as QuotationStatus,
+    status: 'draft',
     remarks: '',
   });
 
@@ -56,7 +117,6 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
 
   const customers = customersData?.customers ?? [];
 
-  // Initialize form data from quotation
   const initializeFormData = React.useCallback(() => {
     if (quotation) {
       setFormData({
@@ -68,13 +128,8 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         status: quotation.status,
         remarks: quotation.remarks || '',
       });
-      
       const lineItems = quotation.items || quotation.line_items || [];
-      if (lineItems.length > 0) {
-        setItems(lineItems as QuotationLineItemCreate[]);
-      } else {
-        setItems([{ ...emptyItem, sort_order: 1 }]);
-      }
+      setItems(lineItems.length > 0 ? (lineItems as QuotationLineItemCreate[]) : [{ ...emptyItem, sort_order: 1 }]);
     } else {
       setFormData({
         quotation_no: '',
@@ -101,64 +156,19 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
     return items.reduce((sum, item) => sum + Number(item.total_amount || item.amount || 0), 0);
   }, [items]);
 
-  const isLineItemEditingDisabled = isEdit && (formData.status === 'sent' || formData.status === 'accepted' || formData.status === 'rejected' || formData.status === 'expired');
-
-  // Validation helper
-  const validateForm = (): string | null => {
-    if (!formData.customer_id) return 'Please select a customer';
-    if (items.length === 0 || items.some(item => !item.item_id)) return 'Please add at least one line item with a valid item';
-    if (items.some(item => Number(item.qty) <= 0 || Number(item.rate) < 0)) return 'All line items must have positive quantities and non-negative rates';
-    if (new Date(formData.valid_until) < new Date(formData.quotation_date)) return 'Valid until date must be after quotation date';
-    return null;
-  };
+  const isLineItemEditingDisabled = isEdit && LOCKED_STATUSES.includes(formData.status);
+  const availableStatuses = React.useMemo(() => getAvailableStatuses(isEdit, formData.status), [isEdit, formData.status]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const validationError = validateForm();
+    const validationError = validateQuotationForm(formData, items);
     if (validationError) {
       alert(validationError);
       return;
     }
-
-    if (isEdit) {
-      const updateData: QuotationUpdate = {
-        quotation_date: new Date(formData.quotation_date).toISOString(),
-        valid_until: new Date(formData.valid_until).toISOString(),
-        status: formData.status,
-        remarks: formData.remarks || undefined,
-      };
-
-      if (!isLineItemEditingDisabled) {
-        updateData.items = items;
-      }
-
-      await onSave(updateData, quotation.id);
-    } else {
-      const createData: QuotationCreate = {
-        quotation_no: formData.quotation_no || undefined,
-        customer_id: formData.customer_id,
-        quotation_date: new Date(formData.quotation_date).toISOString(),
-        valid_until: new Date(formData.valid_until).toISOString(),
-        status: formData.status,
-        grand_total: grandTotal,
-        currency: formData.currency,
-        remarks: formData.remarks || undefined,
-        items: items,
-      };
-      await onSave(createData);
-    }
+    const { data, id } = buildSavePayload(formData, items, grandTotal, quotation, isLineItemEditingDisabled);
+    await onSave(data, id);
   };
-
-  const canChangeStatus = isEdit && quotation;
-  const availableStatuses: QuotationStatus[] = React.useMemo(() => {
-    if (!canChangeStatus) return ['draft'];
-
-    const current = formData.status;
-    if (current === 'draft') return ['draft', 'sent'];
-    if (current === 'sent') return ['sent', 'accepted', 'rejected', 'expired'];
-    return [current]; // Terminal statuses can't change
-  }, [canChangeStatus, formData.status]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -168,23 +178,14 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <QuotationFormFields formData={formData}
-            customers={customers}
-            isEdit={isEdit}
-            availableStatuses={availableStatuses}
-            onFieldChange={handleChange}/>
+          <QuotationFormFields formData={formData} customers={customers} isEdit={isEdit} availableStatuses={availableStatuses} onFieldChange={handleChange} />
 
-          {/* Line Items */}
           <Separator />
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Line Items</h3>
-            <QuotationLineItemsTable items={items}
-              onItemsChange={setItems}
-              disabled={isLineItemEditingDisabled}
-              currency={formData.currency}/>
+            <QuotationLineItemsTable items={items} onItemsChange={setItems} disabled={isLineItemEditingDisabled} currency={formData.currency} />
           </div>
 
-          {/* Grand Total */}
           <div className="flex justify-end">
             <div className="w-64 space-y-2">
               <div className="flex justify-between items-center text-lg font-semibold">

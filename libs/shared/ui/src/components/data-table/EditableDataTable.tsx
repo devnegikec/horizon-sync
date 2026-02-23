@@ -1,14 +1,6 @@
 import * as React from 'react';
 
-import { type ColumnDef } from '@tanstack/react-table';
-
 import { DataTable, type DataTableProps } from './DataTable';
-
-// Define table meta interface for type safety
-interface TableMeta<TData = unknown> {
-  updateData?: (rowIndex: number, columnId: string, value: unknown) => void;
-  deleteRow?: (rowIndex: number) => void;
-}
 
 export interface EditableDataTableProps<TData, TValue>
   extends Omit<DataTableProps<TData, TValue>, 'data'> {
@@ -36,16 +28,12 @@ export function EditableDataTable<TData, TValue>({
     setTableData(data);
   }, [data]);
 
-  // Update function that will be passed to table meta
   const updateData = React.useCallback(
     (rowIndex: number, columnId: string, value: unknown) => {
       setTableData((old) => {
         const newData = old.map((row, index) => {
           if (index === rowIndex) {
-            return {
-              ...row,
-              [columnId]: value,
-            };
+            return { ...row, [columnId]: value };
           }
           return row;
         });
@@ -73,14 +61,15 @@ export function EditableDataTable<TData, TValue>({
     [tableData, onDataChange]
   );
 
-  // Enhanced config with meta for updateData
+  // Merge consumer meta with our updateData/deleteRow meta
   const enhancedConfig = React.useMemo(
     () => ({
       ...config,
       meta: {
+        ...(config?.meta || {}),
         updateData,
         deleteRow: enableDeleteRow ? deleteRow : undefined,
-      } as TableMeta<TData>,
+      },
     }),
     [config, updateData, deleteRow, enableDeleteRow]
   );
@@ -98,12 +87,7 @@ export function EditableDataTable<TData, TValue>({
           </button>
         </div>
       )}
-      <DataTable
-        data={tableData}
-        columns={columns}
-        config={enhancedConfig}
-        {...props}
-      />
+      <DataTable data={tableData} columns={columns} config={enhancedConfig} {...props} />
     </div>
   );
 }
