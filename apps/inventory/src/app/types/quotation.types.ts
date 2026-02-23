@@ -46,10 +46,18 @@ export interface QuotationLineItem {
 }
 
 export interface CustomerInfo {
-  customer_code: string;
-  customer_name: string;
+  code: string;
+  name: string;
   email?: string;
   phone?: string;
+  address?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  tax_number?: string;
 }
 
 export interface Quotation {

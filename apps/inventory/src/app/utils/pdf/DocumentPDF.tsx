@@ -234,6 +234,7 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
           {data.companyAddress && <Text style={styles.companyDetails}>{data.companyAddress}</Text>}
           {data.companyPhone && <Text style={styles.companyDetails}>Phone: {data.companyPhone}</Text>}
           {data.companyEmail && <Text style={styles.companyDetails}>Email: {data.companyEmail}</Text>}
+          {data.companyTaxId && <Text style={styles.companyDetails}>Tax ID: {data.companyTaxId}</Text>}
         </View>
 
         {/* Document Title */}
@@ -286,6 +287,7 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
             {data.customerAddress && <Text style={styles.companyDetails}>{data.customerAddress}</Text>}
             {data.customerPhone && <Text style={styles.companyDetails}>Phone: {data.customerPhone}</Text>}
             {data.customerEmail && <Text style={styles.companyDetails}>Email: {data.customerEmail}</Text>}
+            {data.customerTaxNumber && <Text style={styles.companyDetails}>Tax No: {data.customerTaxNumber}</Text>}
           </View>
         </View>
 

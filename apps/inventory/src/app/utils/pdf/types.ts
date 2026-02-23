@@ -16,13 +16,15 @@ export interface PDFDocumentData {
   companyPhone?: string;
   companyEmail?: string;
   companyLogo?: string;
-  
+  companyTaxId?: string;
+
   // Customer/Supplier info
   customerName: string;
   customerCode?: string;
   customerAddress?: string;
   customerPhone?: string;
   customerEmail?: string;
+  customerTaxNumber?: string;
   
   // Line items
   lineItems: PDFLineItem[];
