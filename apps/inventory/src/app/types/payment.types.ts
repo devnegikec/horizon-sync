@@ -35,6 +35,9 @@ export interface PaymentEntry {
   payment_type: PaymentType;
   party_id: string;
   party_name?: string;
+  party_code?: string;
+  party_email?: string;
+  party_phone?: string;
   amount: number;
   currency_code: string;
   payment_date: string;

@@ -18,16 +18,21 @@ import { useUserStore } from '@horizon-sync/store';
 // Payments API is on core-service (port 8001), not identity-service (port 8000)
 const API_BASE_URL = process.env['NX_API_URL'] || 'http://localhost:8001';
 
+function getAccessToken(): string {
+  const fromStore = useUserStore.getState().accessToken;
+  if (fromStore) return fromStore;
+  const fromStorage = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
+  if (fromStorage) return fromStorage;
+  throw new Error('No access token found');
+}
+
 /**
  * Fetch payments with optional filters
  */
 export async function fetchPayments(
   filters?: PaymentFilters
 ): Promise<PaymentsResponse> {
-  const accessToken = useUserStore.getState().accessToken;
-  if (!accessToken) {
-    throw new Error('No access token found');
-  }
+  const accessToken = getAccessToken();
 
   const params = new URLSearchParams();
 
@@ -69,11 +74,7 @@ export async function fetchPayments(
  * Fetch a single payment by ID
  */
 export async function fetchPaymentById(id: string): Promise<PaymentEntry> {
-  const accessToken = localStorage.getItem('access_token');
-  if (!accessToken) {
-    throw new Error('No access token found');
-  }
-
+  const accessToken = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/v1/payments/${id}`, {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
@@ -98,11 +99,7 @@ export async function fetchPaymentById(id: string): Promise<PaymentEntry> {
 export async function createPaymentEntry(
   data: CreatePaymentPayload
 ): Promise<PaymentEntry> {
-  const accessToken = localStorage.getItem('access_token');
-  if (!accessToken) {
-    throw new Error('No access token found');
-  }
-
+  const accessToken = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/v1/payments`, {
     method: 'POST',
     headers: {
@@ -127,11 +124,7 @@ export async function updatePaymentEntry(
   id: string,
   data: UpdatePaymentPayload
 ): Promise<PaymentEntry> {
-  const accessToken = localStorage.getItem('access_token');
-  if (!accessToken) {
-    throw new Error('No access token found');
-  }
-
+  const accessToken = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/v1/payments/${id}`, {
     method: 'PUT',
     headers: {
@@ -156,11 +149,7 @@ export async function updatePaymentEntry(
  * Confirm a payment entry
  */
 export async function confirmPaymentEntry(id: string): Promise<PaymentEntry> {
-  const accessToken = localStorage.getItem('access_token');
-  if (!accessToken) {
-    throw new Error('No access token found');
-  }
-
+  const accessToken = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/v1/payments/${id}/confirm`, {
     method: 'POST',
     headers: {
@@ -170,11 +159,12 @@ export async function confirmPaymentEntry(id: string): Promise<PaymentEntry> {
   });
 
   if (!response.ok) {
-    if (response.status === 409) {
-      throw new Error('Payment cannot be confirmed');
-    }
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to confirm payment');
+    const error = await response.json().catch(() => ({}));
+    const message =
+      typeof error.detail === 'string'
+        ? error.detail
+        : error.detail?.message ?? 'Failed to confirm payment';
+    throw new Error(message);
   }
 
   return response.json();
@@ -187,11 +177,7 @@ export async function cancelPaymentEntry(
   id: string,
   reason: string
 ): Promise<PaymentEntry> {
-  const accessToken = localStorage.getItem('access_token');
-  if (!accessToken) {
-    throw new Error('No access token found');
-  }
-
+  const accessToken = getAccessToken();
   const payload: CancelPaymentPayload = {
     cancellation_reason: reason,
   };
@@ -223,11 +209,7 @@ export async function createAllocation(
   paymentId: string,
   data: AllocationCreate
 ): Promise<PaymentReference> {
-  const accessToken = localStorage.getItem('access_token');
-  if (!accessToken) {
-    throw new Error('No access token found');
-  }
-
+  const accessToken = getAccessToken();
   const response = await fetch(
     `${API_BASE_URL}/api/v1/payments/${paymentId}/allocations`,
     {
@@ -241,8 +223,15 @@ export async function createAllocation(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to create allocation');
+    const error = await response.json().catch(() => ({}));
+    const detail = error.detail;
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((e: { msg?: string }) => e.msg || JSON.stringify(e)).join('; ')
+          : error.message || 'Failed to create allocation';
+    throw new Error(message);
   }
 
   return response.json();
@@ -252,11 +241,7 @@ export async function createAllocation(
  * Delete an allocation
  */
 export async function deleteAllocation(allocationId: string): Promise<void> {
-  const accessToken = localStorage.getItem('access_token');
-  if (!accessToken) {
-    throw new Error('No access token found');
-  }
-
+  const accessToken = getAccessToken();
   const response = await fetch(
     `${API_BASE_URL}/api/v1/payments/allocations/${allocationId}`,
     {

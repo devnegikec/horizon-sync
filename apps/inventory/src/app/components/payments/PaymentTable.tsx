@@ -1,6 +1,6 @@
 import { useMemo, useCallback, memo } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, Eye, Edit, CheckCircle, XCircle } from 'lucide-react';
+import { MoreHorizontal, Eye, Edit, CheckCircle, XCircle, Building2 } from 'lucide-react';
 import {
   DataTable,
   Button,
@@ -108,7 +108,13 @@ export const PaymentTable = memo(function PaymentTable({
         header: 'Receipt Number',
         cell: ({ row }) => {
           const receiptNumber = row.original.receipt_number;
-          return <div className="font-medium">{receiptNumber || '-'}</div>;
+          const display =
+            receiptNumber != null && String(receiptNumber).trim() !== ''
+              ? receiptNumber
+              : row.original.status === 'Draft'
+                ? 'Draft'
+                : '—';
+          return <div className="font-medium">{display}</div>;
         },
       },
       {
@@ -118,10 +124,38 @@ export const PaymentTable = memo(function PaymentTable({
       },
       {
         accessorKey: 'party_name',
-        header: 'Party',
+        header: 'Customer',
         cell: ({ row }) => {
-          const partyDisplay = row.original.party_name || row.original.party_id;
-          return <div className="max-w-[200px] truncate">{partyDisplay}</div>;
+          const p = row.original;
+          const name = p.party_name || p.party_id;
+          const code = p.party_code;
+          return (
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <Building2 className="h-5 w-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-medium truncate max-w-[180px]">{name}</p>
+                {code && <code className="text-xs text-muted-foreground">{code}</code>}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'party_contact',
+        header: 'Contact',
+        cell: ({ row }) => {
+          const p = row.original;
+          const email = p.party_email;
+          const phone = p.party_phone;
+          if (!email && !phone) return <span className="text-muted-foreground">—</span>;
+          return (
+            <div className="text-sm">
+              {email && <p className="truncate max-w-[200px]">{email}</p>}
+              {phone && <p className="text-muted-foreground">{phone}</p>}
+            </div>
+          );
         },
       },
       {
@@ -171,7 +205,7 @@ export const PaymentTable = memo(function PaymentTable({
   }
 
   if (loading) {
-    return <TableSkeleton columns={7} rows={5} />;
+    return <TableSkeleton columns={8} rows={5} />;
   }
 
   return (

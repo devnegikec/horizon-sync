@@ -1,12 +1,15 @@
 import { useState, useMemo, useCallback } from 'react';
 import { DollarSign, Plus } from 'lucide-react';
 import { Button } from '@horizon-sync/ui/components';
+import { useToast } from '@horizon-sync/ui/hooks';
 import { usePayments } from '../../hooks/usePayments';
 import { usePaymentActions } from '../../hooks/usePaymentActions';
+import { paymentApi } from '../../utility/api';
 import { getStatIconColors } from '../../utils/payment.utils';
 import { PaymentTable } from './PaymentTable';
 import { PaymentFilters } from './PaymentFilters';
 import { PaymentDialog } from './PaymentDialog';
+import { PaymentDetailDialog } from './PaymentDetailDialog';
 import { StatCard } from './StatCard';
 import type { PaymentEntry, PaymentFilters as Filters } from '../../types/payment.types';
 import type { Invoice } from '../../types/invoice';
@@ -35,8 +38,12 @@ export function PaymentManagement({
 
   const { payments, loading, error, totalCount, refetch } = usePayments(filters);
   const { confirmPayment, cancelPayment } = usePaymentActions();
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentEntry | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [paymentForDetail, setPaymentForDetail] = useState<PaymentEntry | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // Memoize expensive stats calculation
   const paymentStats = useMemo(() => ({
@@ -52,10 +59,25 @@ export function PaymentManagement({
     setDialogOpen(true);
   }, []);
 
-  const handleViewPayment = useCallback((payment: PaymentEntry) => {
-    // TODO: Implement view details dialog
-    console.log('View payment:', payment);
-  }, []);
+  const handleViewPayment = useCallback(
+    async (payment: PaymentEntry) => {
+      setPaymentForDetail(payment);
+      setDetailDialogOpen(true);
+      setDetailLoading(true);
+      try {
+        const fullPayment = await paymentApi.fetchPaymentById(payment.id);
+        setPaymentForDetail(fullPayment);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load payment details';
+        toast({ title: 'Error', description: message, variant: 'destructive' });
+        setDetailDialogOpen(false);
+        setPaymentForDetail(null);
+      } finally {
+        setDetailLoading(false);
+      }
+    },
+    [toast]
+  );
 
   const handleEditPayment = useCallback((payment: PaymentEntry) => {
     setSelectedPayment(payment);
@@ -85,6 +107,66 @@ export function PaymentManagement({
   const handleDialogSuccess = useCallback(() => {
     refetch();
   }, [refetch]);
+
+  const handleDetailEdit = useCallback(() => {
+    if (paymentForDetail) {
+      setDetailDialogOpen(false);
+      setSelectedPayment(paymentForDetail);
+      setDialogOpen(true);
+      setPaymentForDetail(null);
+    }
+  }, [paymentForDetail]);
+
+  const handleDetailConfirm = useCallback(
+    async () => {
+      if (!paymentForDetail) return;
+      const paymentIdentifier = paymentForDetail.receipt_number || paymentForDetail.id;
+      if (window.confirm(`Are you sure you want to confirm payment ${paymentIdentifier}?`)) {
+        const result = await confirmPayment(paymentForDetail.id);
+        if (result) {
+          setDetailDialogOpen(false);
+          setPaymentForDetail(null);
+          refetch();
+        }
+      }
+    },
+    [paymentForDetail, confirmPayment, refetch]
+  );
+
+  const handleDetailCancel = useCallback(
+    async () => {
+      if (!paymentForDetail) return;
+      const reason = window.prompt('Please enter cancellation reason:');
+      if (reason) {
+        const result = await cancelPayment(paymentForDetail.id, reason);
+        if (result) {
+          setDetailDialogOpen(false);
+          setPaymentForDetail(null);
+          refetch();
+        }
+      }
+    },
+    [paymentForDetail, cancelPayment, refetch]
+  );
+
+  const handleDetailClose = useCallback((open: boolean) => {
+    if (!open) {
+      setPaymentForDetail(null);
+    }
+    setDetailDialogOpen(open);
+  }, []);
+
+  const handleDetailAllocationChange = useCallback(async () => {
+    if (paymentForDetail?.id) {
+      try {
+        const fullPayment = await paymentApi.fetchPaymentById(paymentForDetail.id);
+        setPaymentForDetail(fullPayment);
+        refetch();
+      } catch {
+        refetch();
+      }
+    }
+  }, [paymentForDetail?.id, refetch]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -149,13 +231,27 @@ export function PaymentManagement({
         onCancel={handleCancelPayment}
       />
 
-      {/* Dialog */}
+      {/* Create/Edit Dialog */}
       <PaymentDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         payment={selectedPayment}
         onSuccess={handleDialogSuccess}
       />
+
+      {/* View Details Dialog */}
+      {paymentForDetail && (
+        <PaymentDetailDialog
+          open={detailDialogOpen}
+          onOpenChange={handleDetailClose}
+          payment={paymentForDetail}
+          onEdit={handleDetailEdit}
+          onConfirm={handleDetailConfirm}
+          onCancel={handleDetailCancel}
+          onAllocationChange={handleDetailAllocationChange}
+          loading={detailLoading}
+        />
+      )}
     </div>
   );
 }

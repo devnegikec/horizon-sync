@@ -171,7 +171,7 @@ export const accountApi = {
   }>) =>
     apiRequest<DefaultAccountUpdateResponse>('/chart-of-accounts/config/defaults', accessToken, {
       method: 'PUT',
-      body: defaults,
+      body: { defaults },
     }),
 
   getAccountCodeFormat: (accessToken: string) =>

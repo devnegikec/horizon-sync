@@ -7,6 +7,7 @@ import {
 } from '@horizon-sync/ui/components';
 import { PaymentForm } from './PaymentForm';
 import { usePaymentActions } from '../../hooks/usePaymentActions';
+import { toDateInputValue } from '../../utils/payment.utils';
 import type { PaymentEntry, CreatePaymentPayload, UpdatePaymentPayload } from '../../types/payment.types';
 
 interface PaymentDialogProps {
@@ -45,7 +46,7 @@ export function PaymentDialog({ open, onOpenChange, payment, onSuccess }: Paymen
         party_id: payment.party_id,
         amount: payment.amount,
         currency_code: payment.currency_code,
-        payment_date: payment.payment_date,
+        payment_date: toDateInputValue(payment.payment_date),
         payment_mode: payment.payment_mode,
         reference_no: payment.reference_no,
       }
