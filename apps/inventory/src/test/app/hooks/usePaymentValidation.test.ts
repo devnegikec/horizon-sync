@@ -1,7 +1,9 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import { usePaymentValidation } from './usePaymentValidation';
-import type { PaymentFormData } from './usePaymentValidation';
+import {
+  usePaymentValidation,
+  type PaymentFormData,
+} from '../../../app/hooks/usePaymentValidation';
 
 describe('usePaymentValidation', () => {
   describe('amount validation', () => {

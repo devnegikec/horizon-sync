@@ -1,8 +1,8 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { usePaymentActions } from './usePaymentActions';
-import { paymentApi } from '../utility/api';
-import type { PaymentEntry, CreatePaymentPayload } from '../types/payment.types';
+import { usePaymentActions } from '../../../app/hooks/usePaymentActions';
+import { paymentApi } from '../../../app/utility/api';
+import type { PaymentEntry, CreatePaymentPayload } from '../../../app/types/payment.types';
 
 const mockToast = vi.fn();
 
@@ -14,7 +14,7 @@ vi.mock('@horizon-sync/ui/hooks', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-vi.mock('../utility/api', () => ({
+vi.mock('../../../app/utility/api', () => ({
   paymentApi: {
     createPaymentEntry: vi.fn(),
     updatePaymentEntry: vi.fn(),

@@ -1,14 +1,14 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { usePayments } from './usePayments';
-import { paymentApi } from '../utility/api';
-import type { PaymentsResponse } from '../types/payment.types';
+import { usePayments } from '../../../app/hooks/usePayments';
+import { paymentApi } from '../../../app/utility/api';
+import type { PaymentsResponse } from '../../../app/types/payment.types';
 
 vi.mock('@horizon-sync/store', () => ({
   useUserStore: vi.fn((selector) => selector({ accessToken: 'test-token' })),
 }));
 
-vi.mock('../utility/api', () => ({
+vi.mock('../../../app/utility/api', () => ({
   paymentApi: {
     fetchPayments: vi.fn(),
   },
