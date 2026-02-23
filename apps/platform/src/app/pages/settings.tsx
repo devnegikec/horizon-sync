@@ -4,9 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { useUserStore } from '@horizon-sync/store';
 
-// import { CurrencySettings } from '../features/organization/components/CurrencySettings';
 import { OrganizationConfigSettings } from '../features/organization/components/OrganizationConfigSettings';
-import { OrganizationSettings } from '../features/organization/components/OrganizationSettings';
 import { hasPermissionFromStore } from '../features/organization/utils/permissions';
 import { useAuth } from '../hooks';
 
@@ -72,9 +70,6 @@ export function SettingsPage() {
       {/* Settings Content */}
       {/* Requirement 10.1, 10.2, 10.3: Responsive layout */}
       <div className="space-y-6">
-        {/* Organization Basic Information */}
-        <OrganizationSettings organizationId={organizationId} accessToken={accessToken} canEdit={canEdit} />
-
         {/* Organization Configuration Settings (Currencies, Naming Series, Address) */}
         <OrganizationConfigSettings organizationId={organizationId} accessToken={accessToken} canEdit={canEdit} />
       </div>

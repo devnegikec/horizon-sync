@@ -1,10 +1,17 @@
-import type { Quotation } from '../../types/quotation.types';
 import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
+import type { Quotation } from '../../types/quotation.types';
 
 import type { PDFDocumentData, PDFLineItem } from './types';
 
 export const convertQuotationToPDFData = (quotation: Quotation): PDFDocumentData => {
+  console.log('=== PDF CONVERSION DEBUG ===');
+  console.log('1. Full quotation object:', JSON.stringify(quotation, null, 2));
+  console.log('2. quotation.items:', quotation.items);
+  console.log('3. quotation.line_items:', quotation.line_items);
+  
   const lineItems = quotation.items || quotation.line_items || [];
+  console.log('4. Selected lineItems array:', lineItems);
+  console.log('5. lineItems.length:', lineItems.length);
 
   // Get currency symbol
   const getCurrencySymbol = (currencyCode: string): string => {
@@ -13,26 +20,32 @@ export const convertQuotationToPDFData = (quotation: Quotation): PDFDocumentData
   };
 
   // Convert line items
-  const pdfLineItems: PDFLineItem[] = lineItems.map((item, index) => ({
-    index: index + 1,
-    itemName: item.item_name || '',
-    itemCode: item.item_code || item.item_sku,
-    quantity: Number(item.qty),
-    uom: item.uom,
-    rate: Number(item.rate),
-    amount: Number(item.amount),
-    taxAmount: item.tax_amount ? Number(item.tax_amount) : undefined,
-    totalAmount: Number(item.total_amount || item.amount),
-    taxInfo: item.tax_info
-      ? {
-          templateName: item.tax_info.template_name,
-          breakup: item.tax_info.breakup.map((tax) => ({
-            rule_name: tax.rule_name,
-            rate: tax.rate,
-          })),
-        }
-      : undefined,
-  }));
+  const pdfLineItems: PDFLineItem[] = lineItems.map((item, index) => {
+    console.log(`6. Processing item ${index}:`, item);
+    return {
+      index: index + 1,
+      itemName: item.item_name || '',
+      itemCode: item.item_code || item.item_sku,
+      quantity: Number(item.qty),
+      uom: item.uom,
+      rate: Number(item.rate),
+      amount: Number(item.amount),
+      taxAmount: item.tax_amount ? Number(item.tax_amount) : undefined,
+      totalAmount: Number(item.total_amount || item.amount),
+      taxInfo: item.tax_info
+        ? {
+            templateName: item.tax_info.template_name,
+            breakup: item.tax_info.breakup.map((tax) => ({
+              rule_name: tax.rule_name,
+              rate: tax.rate,
+            })),
+          }
+        : undefined,
+    };
+  });
+
+  console.log('7. Converted pdfLineItems:', pdfLineItems);
+  console.log('8. pdfLineItems.length:', pdfLineItems.length);
 
   // Calculate totals
   const subtotal = lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
@@ -71,7 +84,7 @@ export const convertQuotationToPDFData = (quotation: Quotation): PDFDocumentData
     }
   });
 
-  return {
+  const pdfData: PDFDocumentData = {
     type: 'quotation',
     documentNo: quotation.quotation_no,
     date: quotation.quotation_date,
@@ -106,4 +119,10 @@ export const convertQuotationToPDFData = (quotation: Quotation): PDFDocumentData
     // Additional info
     remarks: quotation.remarks,
   };
+
+  console.log('9. Final PDFDocumentData:', JSON.stringify(pdfData, null, 2));
+  console.log('10. Final lineItems in PDFDocumentData:', pdfData.lineItems);
+  console.log('=== END PDF CONVERSION DEBUG ===');
+
+  return pdfData;
 };

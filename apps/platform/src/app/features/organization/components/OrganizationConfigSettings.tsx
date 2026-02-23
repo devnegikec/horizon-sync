@@ -1,21 +1,18 @@
 import * as React from 'react';
 import { useState } from 'react';
 
-import { Save, AlertCircle } from 'lucide-react';
-
-import { useUserStore } from '@horizon-sync/store';
-import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
+import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { OrganizationService } from '../../../services/organization.service';
 import type { OrganizationSettings as OrganizationSettingsType } from '../../../types/organization-settings.types';
 import { DEFAULT_ORGANIZATION_SETTINGS } from '../../../types/organization-settings.types';
-import { validateOrganizationSettings } from '../../../utils/organization-settings.utils';
+import { useOrganization } from '../hooks/useOrganization';
 
 import { AddressSettings } from './AddressSettings';
-import { CurrencySettings } from './CurrencySettings';
-import { NamingSeriesSettings } from './NamingSeriesSettings';
+import { OrganizationDetailsSection } from './OrganizationDetailsSection';
+import { OrganizationSettings } from './OrganizationSettings';
 
 interface OrganizationConfigSettingsProps {
   organizationId: string;
@@ -25,11 +22,11 @@ interface OrganizationConfigSettingsProps {
 
 export function OrganizationConfigSettings({ organizationId, accessToken, canEdit }: OrganizationConfigSettingsProps) {
   const { toast } = useToast();
-  const { updateOrganization } = useUserStore();
   const [settings, setSettings] = useState<OrganizationSettingsType>(DEFAULT_ORGANIZATION_SETTINGS);
-  const [saving, setSaving] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Fetch organization data
+  const { organization, loading: orgLoading, error: orgError } = useOrganization(organizationId, accessToken);
 
   // Fetch settings from API on mount
   React.useEffect(() => {
@@ -76,127 +73,54 @@ export function OrganizationConfigSettings({ organizationId, accessToken, canEdi
     fetchSettings();
   }, [organizationId, accessToken, toast]);
 
-  const handleSave = async () => {
-    // Validate settings
-    const validation = validateOrganizationSettings(settings);
-    if (!validation.valid) {
-      toast({
-        title: 'Validation Error',
-        description: validation.errors.join(', '),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      // Update organization with new settings
-      const updatedOrganization = await OrganizationService.updateOrganization(
-        organizationId,
-        { settings: settings as unknown as Record<string, unknown> },
-        accessToken
-      );
-      
-      // Update global store with new organization data
-      updateOrganization({ settings: updatedOrganization.settings });
-      
-      toast({
-        title: 'Success',
-        description: 'Organization settings saved successfully',
-      });
-      setHasChanges(false);
-    } catch (error) {
-      console.error('Failed to save organization settings:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to save settings',
-        variant: 'destructive',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCurrenciesChange = (currencies: OrganizationSettingsType['currencies']) => {
-    setSettings({ ...settings, currencies });
-    setHasChanges(true);
-  };
-
-  const handleNamingSeriesChange = (namingSeries: OrganizationSettingsType['naming_series']) => {
-    setSettings({ ...settings, naming_series: namingSeries });
-    setHasChanges(true);
-  };
-
   const handleAddressChange = (address: OrganizationSettingsType['address']) => {
     setSettings({ ...settings, address });
-    setHasChanges(true);
   };
 
-  if (loading) {
-    return <div>Loading settings...</div>;
+  const handleSettingsChange = (newSettings: OrganizationSettingsType) => {
+    setSettings(newSettings);
+  };
+
+  if (loading || orgLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (orgError) {
+    return (
+      <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
+        <p className="text-sm text-destructive">Failed to load organization: {orgError}</p>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Configuration Settings</h2>
-          <p className="text-muted-foreground">
-            Configure currencies, document numbering, and organization details
-          </p>
-        </div>
-        {canEdit && (
-          <Button onClick={handleSave} disabled={saving || !hasChanges} className="gap-2">
-            <Save className="h-4 w-4" />
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
-        )}
+      {/* Organization Details and Address - Side by Side */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Organization Information Card */}
+        <OrganizationDetailsSection organization={organization}
+          loading={orgLoading}
+          error={orgError}/>
+
+        {/* Address Settings Card */}
+        <AddressSettings address={settings.address}
+          onChange={handleAddressChange}
+          disabled={!canEdit}/>
       </div>
 
-      {hasChanges && (
-        <div className="rounded-lg border border-amber-500 bg-amber-50 dark:bg-amber-950/20 p-4">
-          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-400">
-            <AlertCircle className="h-4 w-4" />
-            <p className="text-sm font-medium">You have unsaved changes</p>
-          </div>
-        </div>
-      )}
-
-      {/* Currency Settings */}
-      <CurrencySettings
-        currencies={settings.currencies}
-        onChange={handleCurrenciesChange}
-        disabled={saving || !canEdit}
-      />
-
       <Separator />
 
-      {/* Naming Series Settings */}
-      <NamingSeriesSettings
-        namingSeries={settings.naming_series}
-        onChange={handleNamingSeriesChange}
-        disabled={saving || !canEdit}
-      />
-
-      <Separator />
-
-      {/* Address Settings */}
-      <AddressSettings
-        address={settings.address}
-        onChange={handleAddressChange}
-        disabled={saving || !canEdit}
-      />
-
-      {/* Save Button (Bottom) */}
-      {canEdit && (
-        <div className="flex justify-end pt-6 border-t">
-          <Button onClick={handleSave} disabled={saving || !hasChanges} size="lg" className="gap-2">
-            <Save className="h-4 w-4" />
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </div>
-      )}
+      {/* Configuration Settings (Currencies and Naming Series) */}
+      <OrganizationSettings organizationId={organizationId}
+        accessToken={accessToken}
+        canEdit={canEdit}
+        initialSettings={settings}
+        onSettingsChange={handleSettingsChange}/>
     </div>
   );
 }
