@@ -27,6 +27,35 @@ export interface SalesOrderLineItem {
   created_at: string;
   updated_at: string;
   extra_data?: Record<string, unknown>;
+  tax_info?: {
+    id: string;
+    template_name: string;
+    template_code: string;
+    is_compound: boolean;
+    breakup: Array<{
+      rule_name: string;
+      tax_type: string;
+      rate: number;
+      is_compound: boolean;
+    }>;
+  };
+  tax_amount?: number;
+  total_amount?: number;
+}
+
+export interface CustomerDetails {
+  customer_name?: string;
+  customer_code?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  tax_number?: string;
 }
 
 export interface SalesOrder {
@@ -50,6 +79,7 @@ export interface SalesOrder {
   created_at: string;
   updated_at: string;
   extra_data?: Record<string, unknown>;
+  customer?: CustomerDetails;
 }
 
 export interface SalesOrderListItem {
