@@ -29,5 +29,8 @@ export { landedCostApi } from './landed-costs';
 // ERP APIs
 export { accountApi } from './accounts';
 
+// Payment APIs
+export * as paymentApi from './payments';
+
 // Communication APIs
 export { communicationApi } from './communications';
