@@ -1,7 +1,7 @@
 export { InvoiceManagement } from './InvoiceManagement';
-export { InvoicesTable } from './InvoicesTable';
+export { InvoiceManagementHeader } from './InvoiceManagementHeader';
 export { InvoiceManagementFilters } from './InvoiceManagementFilters';
-export type { InvoiceFilters } from './InvoiceManagementFilters';
-export { InvoiceDialog } from './InvoiceDialog';
-export { InvoiceLineItemTable } from './InvoiceLineItemTable';
-export { SendInvoiceEmailDialog } from './SendInvoiceEmailDialog';
+export { InvoiceStats } from './InvoiceStats';
+export { InvoicesTable } from './InvoicesTable';
+export { InvoiceStatusBadge } from './InvoiceStatusBadge';
+export { InvoiceDetailDialog } from './InvoiceDetailDialog';

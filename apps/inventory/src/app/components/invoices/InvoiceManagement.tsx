@@ -1,31 +1,18 @@
 import * as React from 'react';
 
+import { AlertTriangle } from 'lucide-react';
+
+import { Card, CardContent } from '@horizon-sync/ui/components';
+
 import { useInvoiceManagement } from '../../hooks/useInvoiceManagement';
-import type { Invoice } from '../../types/invoice';
-import { DeleteConfirmationDialog } from '../common';
+
 import { InvoiceDetailDialog } from './InvoiceDetailDialog';
-import { InvoiceDialog } from './InvoiceDialog';
 import { InvoiceManagementFilters } from './InvoiceManagementFilters';
 import { InvoiceManagementHeader } from './InvoiceManagementHeader';
-import { InvoicesTable } from './InvoicesTable';
 import { InvoiceStats } from './InvoiceStats';
-import { SendInvoiceEmailDialog } from './SendInvoiceEmailDialog';
+import { InvoicesTable } from './InvoicesTable';
 
-interface InvoiceManagementProps {
-  onRecordPayment?: (invoice: Invoice) => void;
-  pendingInvoiceId?: string | null;
-  onClearPendingInvoiceId?: () => void;
-  onNavigateToSalesOrder?: (salesOrderId: string) => void;
-  onNavigateToPayment?: (paymentId: string) => void;
-}
-
-export function InvoiceManagement({ 
-  onRecordPayment,
-  pendingInvoiceId,
-  onClearPendingInvoiceId,
-  onNavigateToSalesOrder,
-  onNavigateToPayment,
-}: InvoiceManagementProps) {
+export function InvoiceManagement() {
   const {
     filters,
     setFilters,
@@ -38,131 +25,72 @@ export function InvoiceManagement({
     setDetailDialogOpen,
     createDialogOpen,
     setCreateDialogOpen,
-    emailDialogOpen,
-    setEmailDialogOpen,
-    deleteDialogOpen,
-    setDeleteDialogOpen,
     selectedInvoice,
-    editInvoice,
-    invoiceToDelete,
     tableInstance,
     handleView,
     handleCreate,
-    handleEdit,
     handleDelete,
-    handleConfirmDelete,
-    handleSendEmail,
-    handleGeneratePDF,
+    handleMarkAsPaid,
     handleTableReady,
-    handleSave,
-    handleEmailSend,
     serverPaginationConfig,
   } = useInvoiceManagement();
 
-  const hasActiveFilters = filters.search !== '' || filters.status !== 'all' || filters.date_from !== undefined || filters.date_to !== undefined;
-
-  // Handle pending invoice ID from cross-document navigation
-  React.useEffect(() => {
-    if (pendingInvoiceId) {
-      // Find the invoice and open its detail dialog
-      const invoice = invoices.find(inv => inv.id === pendingInvoiceId);
-      if (invoice) {
-        handleView(invoice);
-      }
-      onClearPendingInvoiceId?.();
-    }
-  }, [pendingInvoiceId, invoices, handleView, onClearPendingInvoiceId]);
+  // Error display component
+  const ErrorDisplay = React.useMemo(() => {
+    if (!error) return null;
+    return (
+      <Card className="border-destructive">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="text-sm font-medium">Error loading invoices: {error}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }, [error]);
 
   return (
-    <div className="space-y-6">
-      <InvoiceManagementHeader
-        isLoading={loading}
-        onRefresh={refetch}
-        onCreateInvoice={handleCreate}
-      />
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header */}
+      <InvoiceManagementHeader onRefresh={refetch} onCreateInvoice={handleCreate} isLoading={loading} />
 
+      {/* Error State */}
+      {ErrorDisplay}
+
+      {/* Stats Cards */}
       <InvoiceStats
         total={stats.total}
         draft={stats.draft}
-        submitted={stats.submitted}
+        pending={stats.pending}
         paid={stats.paid}
         overdue={stats.overdue}
-        totalOutstanding={stats.total_outstanding}
       />
 
-      <InvoiceManagementFilters
-        filters={filters}
-        setFilters={setFilters}
-        tableInstance={tableInstance}
-      />
+      {/* Filters */}
+      <InvoiceManagementFilters filters={filters} setFilters={setFilters} tableInstance={tableInstance} />
 
+      {/* Invoices Table */}
       <InvoicesTable
         invoices={invoices}
         loading={loading}
         error={error}
-        hasActiveFilters={hasActiveFilters}
+        hasActiveFilters={!!filters.search || filters.status !== 'all' || filters.invoice_type !== 'all'}
         onView={handleView}
-        onEdit={handleEdit}
         onDelete={handleDelete}
-        onSendEmail={handleSendEmail}
+        onMarkAsPaid={handleMarkAsPaid}
         onCreateInvoice={handleCreate}
         onTableReady={handleTableReady}
         serverPagination={serverPaginationConfig}
       />
 
       {/* Detail Dialog */}
-      <InvoiceDetailDialog
-        open={detailDialogOpen}
-        onOpenChange={setDetailDialogOpen}
-        invoice={selectedInvoice}
-        onEdit={handleEdit}
-        onRecordPayment={(invoice) => {
-          setDetailDialogOpen(false);
-          onRecordPayment?.(invoice);
-        }}
-        onGeneratePDF={handleGeneratePDF}
-        onSendEmail={handleSendEmail}
-        onViewSalesOrder={(salesOrderId) => {
-          setDetailDialogOpen(false);
-          onNavigateToSalesOrder?.(salesOrderId);
-        }}
-        onViewPayment={(paymentId) => {
-          setDetailDialogOpen(false);
-          onNavigateToPayment?.(paymentId);
-        }}
-      />
+      <InvoiceDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} invoice={selectedInvoice} />
 
-      {/* Create/Edit Dialog */}
-      <InvoiceDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        invoice={editInvoice}
-        onSave={handleSave}
-        saving={false}
-      />
-
-      {/* Send Email Dialog */}
-      <SendInvoiceEmailDialog
-        open={emailDialogOpen}
-        onOpenChange={setEmailDialogOpen}
-        invoice={selectedInvoice}
-        onSend={handleEmailSend}
-        sending={false}
-      />
-
-      {/* Delete Confirmation Dialog */}
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleConfirmDelete}
-        title="Delete Invoice"
-        description={
-          invoiceToDelete
-            ? `Are you sure you want to delete invoice ${invoiceToDelete.invoice_number}? This action cannot be undone.`
-            : 'Are you sure you want to delete this invoice?'
-        }
-      />
+      {/* TODO: Create Dialog */}
+      {createDialogOpen && (
+        <div>Create Invoice Dialog - To be implemented</div>
+      )}
     </div>
   );
 }
-

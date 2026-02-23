@@ -1,18 +1,18 @@
-import { FileText, FilePlus, FileCheck, FileX } from 'lucide-react';
+import { FileText, FilePlus, Loader, FileCheck } from 'lucide-react';
 
 import { StatCard } from '../shared';
 
-interface QuotationStatsProps {
+interface PickListStatsProps {
   total: number;
   draft: number;
-  sent: number;
-  accepted: number;
+  inProgress: number;
+  completed: number;
 }
 
-export function PickListStats({ total, draft, sent, accepted }: QuotationStatsProps) {
+export function PickListStats({ total, draft, inProgress, completed }: PickListStatsProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard title="Total Quotations"
+      <StatCard title="Total Pick Lists"
         value={total}
         icon={FileText}
         iconBg="bg-slate-100 dark:bg-slate-800"
@@ -22,14 +22,14 @@ export function PickListStats({ total, draft, sent, accepted }: QuotationStatsPr
         icon={FilePlus}
         iconBg="bg-amber-100 dark:bg-amber-900/20"
         iconColor="text-amber-600 dark:text-amber-400"/>
-      <StatCard title="Sent"
-        value={sent}
-        icon={FileCheck}
+      <StatCard title="In Progress"
+        value={inProgress}
+        icon={Loader}
         iconBg="bg-blue-100 dark:bg-blue-900/20"
         iconColor="text-blue-600 dark:text-blue-400"/>
-      <StatCard title="Accepted"
-        value={accepted}
-        icon={FileX}
+      <StatCard title="Completed"
+        value={completed}
+        icon={FileCheck}
         iconBg="bg-emerald-100 dark:bg-emerald-900/20"
         iconColor="text-emerald-600 dark:text-emerald-400"/>
     </div>

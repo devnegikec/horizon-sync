@@ -1,29 +1,26 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { FileText, Plus, MoreHorizontal, Eye, Edit, Trash2, User } from 'lucide-react';
+import { FileText, MoreHorizontal, Eye, Trash2, Package } from 'lucide-react';
 
 import { Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
-import type { Quotation } from '../../types/quotation.types';
+import type { PickList } from '../../types/pick-list.types';
 import { formatDate } from '../../utility/formatDate';
 
-// import { StatusBadge } from './StatusBadge';
+import { PickListStatusBadge } from './PickListStatusBadge';
 
 export interface PickListTableProps {
-  quotations: Quotation[];
+  pickLists: PickList[];
   loading: boolean;
   error: string | null;
   hasActiveFilters: boolean;
-  onView: (quotation: Quotation) => void;
-  onEdit: (quotation: Quotation) => void;
-  onDelete: (quotation: Quotation) => void;
-  onConvert?: (quotation: Quotation) => void;
-  onCreateQuotation: () => void;
-  onTableReady?: (table: Table<Quotation>) => void;
+  onView: (pickList: PickList) => void;
+  onDelete: (pickList: PickList) => void;
+  onTableReady?: (table: Table<PickList>) => void;
   serverPagination?: {
     pageIndex: number;
     pageSize: number;
@@ -33,19 +30,16 @@ export interface PickListTableProps {
 }
 
 export function PickListTable({
-  quotations,
+  pickLists,
   loading,
   error,
   hasActiveFilters,
   onView,
-  onEdit,
   onDelete,
-  onConvert,
-  onCreateQuotation,
   onTableReady,
   serverPagination
 }: PickListTableProps) {
-  const [tableInstance, setTableInstance] = React.useState<Table<Quotation> | null>(null);
+  const [tableInstance, setTableInstance] = React.useState<Table<PickList> | null>(null);
 
   // Call onTableReady when table instance changes
   React.useEffect(() => {
@@ -54,7 +48,7 @@ export function PickListTable({
     }
   }, [tableInstance, onTableReady]);
 
-  const renderViewOptions = (table: Table<Quotation>) => {
+  const renderViewOptions = (table: Table<PickList>) => {
     // Set table instance in state, which will trigger useEffect
     if (table !== tableInstance) {
       setTableInstance(table);
@@ -75,22 +69,22 @@ export function PickListTable({
     };
   }, [serverPagination]);
 
-  const columns: ColumnDef<Quotation, unknown>[] = React.useMemo(
+  const columns: ColumnDef<PickList, unknown>[] = React.useMemo(
     () => [
       {
-        accessorKey: 'quotation_no',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Quotation #" />,
+        accessorKey: 'pick_list_no',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Pick List #" />,
         cell: ({ row }) => {
-          const quotation = row.original;
+          const pickList = row.original;
           return (
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <FileText className="h-5 w-5 text-primary" />
+                <Package className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="font-medium font-mono text-sm">{quotation.quotation_no}</p>
+                <p className="font-medium font-mono text-sm">{pickList.pick_list_no}</p>
                 <p className="text-xs text-muted-foreground">
-                  {formatDate(quotation.created_at, 'DD-MMM-YY')}
+                  {formatDate(pickList.created_at, 'DD-MMM-YY')}
                 </p>
               </div>
             </div>
@@ -98,20 +92,14 @@ export function PickListTable({
         },
       },
       {
-        accessorKey: 'customer_name',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
+        accessorKey: 'sales_order_no',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Sales Order" />,
         cell: ({ row }) => {
-          const customer = row.original.customer;
-          const customerName = row.original.customer_name || customer?.customer_name;
-          return customerName ? (
+          const pickList = row.original;
+          return pickList.sales_order_no ? (
             <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="font-medium text-sm">{customerName}</p>
-                {customer?.customer_code && (
-                  <p className="text-xs text-muted-foreground">{customer.customer_code}</p>
-                )}
-              </div>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <p className="font-medium text-sm font-mono">{pickList.sales_order_no}</p>
             </div>
           ) : (
             <span className="text-muted-foreground">—</span>
@@ -119,46 +107,33 @@ export function PickListTable({
         },
       },
       {
-        accessorKey: 'quotation_date',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Quotation Date" />,
+        accessorKey: 'items_count',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Items" />,
         cell: ({ row }) => {
-          return <span className="text-sm">{formatDate(row.original.quotation_date, 'DD-MMM-YY')}</span>;
-        },
-      },
-      {
-        accessorKey: 'valid_until',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Valid Until" />,
-        cell: ({ row }) => {
-          return <span className="text-sm">{formatDate(row.original.valid_until, 'DD-MMM-YY')}</span>;
-        },
-      },
-      {
-        accessorKey: 'grand_total',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Grand Total" />,
-        cell: ({ row }) => {
-          const quotation = row.original;
-          return (
-            <div className="text-right">
-              <p className="font-semibold">{quotation.currency} {Number(quotation.grand_total).toFixed(2)}</p>
-            </div>
-          );
+          const itemsCount = row.original.items?.length || 0;
+          return <span className="text-sm">{itemsCount} item{itemsCount !== 1 ? 's' : ''}</span>;
         },
       },
       {
         accessorKey: 'status',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => {
-          // return <StatusBadge status={row.original.status} />;
+          return <PickListStatusBadge status={row.original.status} />;
+        },
+      },
+      {
+        accessorKey: 'created_at',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Created" />,
+        cell: ({ row }) => {
+          return <span className="text-sm">{formatDate(row.original.created_at, 'DD-MMM-YY', { includeTime: true })}</span>;
         },
       },
       {
         id: 'actions',
         header: () => <span className="sr-only">Actions</span>,
         cell: ({ row }) => {
-          const quotation = row.original;
-          const canEdit = quotation.status !== 'accepted' && quotation.status !== 'rejected' && quotation.status !== 'expired';
-          const canDelete = quotation.status === 'draft';
-          const canConvert = quotation.status === 'accepted';
+          const pickList = row.original;
+          const canDelete = pickList.status === 'draft';
 
           return (
             <div className="text-right">
@@ -169,30 +144,17 @@ export function PickListTable({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onView(quotation)}>
+                  <DropdownMenuItem onClick={() => onView(pickList)}>
                     <Eye className="mr-2 h-4 w-4" />
                     View Details
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onEdit(quotation)} disabled={!canEdit}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit Quotation
-                  </DropdownMenuItem>
-                  {canConvert && onConvert && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onConvert(quotation)}>
-                        <FileText className="mr-2 h-4 w-4" />
-                        Convert to Sales Order
-                      </DropdownMenuItem>
-                    </>
-                  )}
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onDelete(quotation)}
+                      <DropdownMenuItem onClick={() => onDelete(pickList)}
                         className="text-destructive focus:text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Quotation
+                        Delete Pick List
                       </DropdownMenuItem>
                     </>
                   )}
@@ -204,10 +166,8 @@ export function PickListTable({
         enableSorting: false,
       },
     ],
-    [onView, onEdit, onDelete, onConvert],
+    [onView, onDelete],
   );
-
-
 
   if (error) {
     return (
@@ -223,31 +183,23 @@ export function PickListTable({
     return (
       <Card>
         <CardContent className="p-0">
-          <TableSkeleton columns={7} rows={10} showHeader={true} />
+          <TableSkeleton columns={6} rows={10} showHeader={true} />
         </CardContent>
       </Card>
     );
   }
 
-  if (quotations.length === 0) {
+  if (pickLists.length === 0) {
     return (
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState icon={<FileText className="h-12 w-12" />}
-              title="No quotations found"
+            <EmptyState icon={<Package className="h-12 w-12" />}
+              title="No pick lists found"
               description={
                 hasActiveFilters
                   ? 'Try adjusting your search or filters'
-                  : 'Get started by creating your first quotation'
-              }
-              action={
-                !hasActiveFilters ? (
-                  <Button onClick={onCreateQuotation} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    New Quotation
-                  </Button>
-                ) : undefined
+                  : 'Pick lists are created from confirmed sales orders'
               }/>
           </div>
         </CardContent>
@@ -259,7 +211,7 @@ export function PickListTable({
     <Card>
       <CardContent className="p-0">
         <DataTable columns={columns}
-          data={quotations}
+          data={pickLists}
           config={{
             showSerialNumber: true,
             showPagination: true,
@@ -270,7 +222,7 @@ export function PickListTable({
             initialPageSize: serverPagination?.pageSize ?? 20,
             serverPagination: serverPaginationConfig,
           }}
-          filterPlaceholder="Search by quotation #, customer..."
+          filterPlaceholder="Search by pick list #, sales order..."
           renderViewOptions={renderViewOptions}
           fixedHeader
           maxHeight="auto"/>

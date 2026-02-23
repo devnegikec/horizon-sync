@@ -82,10 +82,20 @@ export function DeliveryNoteManagement() {
     return { total, draft, shipped, cancelled };
   }, [deliveryNotes, pagination]);
 
-  const handleView = React.useCallback((note: DeliveryNote) => {
-    setSelectedNote(note);
-    setDetailDialogOpen(true);
-  }, []);
+  const handleView = React.useCallback(async (note: DeliveryNote) => {
+    if (!accessToken) return;
+    try {
+      const fullNote = await deliveryNoteApi.get(accessToken, note.id) as DeliveryNote;
+      setSelectedNote(fullNote);
+      setDetailDialogOpen(true);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load delivery note details',
+        variant: 'destructive',
+      });
+    }
+  }, [accessToken, toast]);
 
   const handleCreate = () => {
     setEditNote(null);

@@ -6,6 +6,8 @@ import type { Table } from '@tanstack/react-table';
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { salesOrderApi } from '../utility/api/sales-orders';
+import { stockLevelApi } from '../utility/api/stock';
+import { warehouseApi } from '../utility/api/warehouses';
 import type {
   SalesOrder,
   SalesOrderCreate,
@@ -13,7 +15,10 @@ import type {
   SalesOrderListResponse,
   ConvertToInvoiceRequest,
   ConvertToInvoiceResponse,
+  ConvertToDeliveryNoteResponse,
 } from '../types/sales-order.types';
+import type { StockLevelsResponse, StockLevel } from '../types/stock.types';
+import type { WarehousesResponse } from '../types/warehouse.types';
 
 export interface SalesOrderFilters {
   search: string;
@@ -80,6 +85,68 @@ function useSalesOrders(
   return { salesOrders, pagination, loading, error, refetch: fetchSalesOrders };
 }
 
+/**
+ * Update stock levels when a sales order is confirmed or cancelled.
+ * - confirm: increase quantity_reserved, decrease quantity_available
+ * - cancel: decrease quantity_reserved, increase quantity_available
+ */
+async function updateStockLevelsForOrder(
+  accessToken: string,
+  salesOrder: SalesOrder,
+  action: 'confirm' | 'cancel',
+) {
+  // Find the default warehouse
+  const warehousesData = await warehouseApi.list(accessToken, 1, 100) as WarehousesResponse;
+  const defaultWarehouse = warehousesData.warehouses?.find((w) => w.is_default);
+  if (!defaultWarehouse) {
+    console.warn('No default warehouse found — skipping stock level update');
+    return;
+  }
+
+  const warehouseId = defaultWarehouse.id;
+
+  for (const item of salesOrder.items) {
+    const qty = Number(item.qty);
+    if (qty <= 0) continue;
+
+    try {
+      // Fetch current stock level for this item + warehouse
+      const stockData = await stockLevelApi.getByLocation(
+        accessToken,
+        item.item_id,
+        warehouseId,
+      ) as StockLevelsResponse;
+
+      const currentStock: StockLevel | undefined = stockData.stock_levels?.[0];
+      if (!currentStock) {
+        console.warn(`No stock level found for item ${item.item_id} in warehouse ${warehouseId}`);
+        continue;
+      }
+
+      const onHand = Number(currentStock.quantity_on_hand);
+      let reserved = Number(currentStock.quantity_reserved);
+      let available = Number(currentStock.quantity_available);
+
+      if (action === 'confirm') {
+        reserved += qty;
+        available -= qty;
+      } else {
+        // cancel — reverse the reservation
+        reserved = Math.max(0, reserved - qty);
+        available += qty;
+      }
+
+      await stockLevelApi.updateByLocation(accessToken, item.item_id, warehouseId, {
+        quantity_on_hand: onHand,
+        quantity_reserved: reserved,
+        quantity_available: available,
+      });
+    } catch (err) {
+      console.error(`Failed to update stock for item ${item.item_id}:`, err);
+    }
+  }
+}
+
 export function useSalesOrderManagement() {
   const accessToken = useUserStore((s) => s.accessToken);
   const queryClient = useQueryClient();
@@ -95,6 +162,7 @@ export function useSalesOrderManagement() {
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = React.useState(false);
+  const [deliveryNoteDialogOpen, setDeliveryNoteDialogOpen] = React.useState(false);
   const [selectedSalesOrder, setSelectedSalesOrder] = React.useState<SalesOrder | null>(null);
   const [editSalesOrder, setEditSalesOrder] = React.useState<SalesOrder | null>(null);
   const [tableInstance, setTableInstance] = React.useState<Table<SalesOrder> | null>(null);
@@ -204,6 +272,22 @@ export function useSalesOrderManagement() {
     }
   }, [accessToken, toast]);
 
+  const handleCreateDeliveryNote = React.useCallback(async (salesOrder: SalesOrder) => {
+    if (!accessToken) return;
+    try {
+      const fullSalesOrder = await salesOrderApi.get(accessToken, salesOrder.id) as SalesOrder;
+      setSelectedSalesOrder(fullSalesOrder);
+      setDetailDialogOpen(false);
+      setDeliveryNoteDialogOpen(true);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load sales order details',
+        variant: 'destructive',
+      });
+    }
+  }, [accessToken, toast]);
+
   const handleTableReady = React.useCallback((table: Table<SalesOrder>) => {
     setTableInstance(table);
   }, []);
@@ -213,13 +297,29 @@ export function useSalesOrderManagement() {
 
     try {
       if (id) {
+        // Detect status change for stock level updates
+        const previousStatus = editSalesOrder?.status;
+        const newStatus = (data as SalesOrderUpdate).status;
+        const statusChanged = previousStatus && newStatus && previousStatus !== newStatus;
+
         await salesOrderApi.update(accessToken, id, data);
         toast({ title: 'Success', description: 'Sales order updated successfully' });
+
+        // Update stock levels on status transitions
+        if (statusChanged && editSalesOrder?.items) {
+          const isConfirming = previousStatus === 'draft' && newStatus === 'confirmed';
+          const isCancelling = newStatus === 'cancelled' && (previousStatus === 'confirmed' || previousStatus === 'partially_delivered');
+
+          if (isConfirming || isCancelling) {
+            await updateStockLevelsForOrder(accessToken, editSalesOrder, isConfirming ? 'confirm' : 'cancel');
+          }
+        }
       } else {
         await salesOrderApi.create(accessToken, data);
         toast({ title: 'Success', description: 'Sales order created successfully' });
       }
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-levels'] });
       setCreateDialogOpen(false);
       refetch();
     } catch (err) {
@@ -230,7 +330,7 @@ export function useSalesOrderManagement() {
       });
       throw err;
     }
-  }, [accessToken, toast, queryClient, refetch]);
+  }, [accessToken, toast, queryClient, refetch, editSalesOrder]);
 
   const handleConvertToInvoice = React.useCallback(async (salesOrderId: string, data: ConvertToInvoiceRequest) => {
     if (!accessToken) return;
@@ -248,6 +348,52 @@ export function useSalesOrderManagement() {
       toast({
         title: 'Error',
         description: err instanceof Error ? err.message : 'Failed to create invoice',
+        variant: 'destructive',
+      });
+      throw err;
+    }
+  }, [accessToken, toast, queryClient, refetch]);
+
+  const handleConvertToDeliveryNote = React.useCallback(async (
+    salesOrderId: string,
+    data: { items: { item_id: string; qty_to_deliver: number; warehouse_id: string }[] },
+  ) => {
+    if (!accessToken) return;
+
+    try {
+      // Group items by warehouse — create one delivery note per warehouse
+      const warehouseMap = new Map<string, { item_id: string; qty_to_deliver: number }[]>();
+      for (const item of data.items) {
+        const existing = warehouseMap.get(item.warehouse_id) || [];
+        existing.push({ item_id: item.item_id, qty_to_deliver: item.qty_to_deliver });
+        warehouseMap.set(item.warehouse_id, existing);
+      }
+
+      const results: ConvertToDeliveryNoteResponse[] = [];
+      for (const [, items] of warehouseMap) {
+        const result = await salesOrderApi.convertToDeliveryNote(
+          accessToken,
+          salesOrderId,
+          { items },
+        ) as ConvertToDeliveryNoteResponse;
+        results.push(result);
+      }
+
+      const noteCount = results.length;
+      toast({
+        title: 'Success',
+        description: noteCount > 1
+          ? `${noteCount} delivery notes created successfully`
+          : results[0]?.message || 'Delivery note created successfully',
+      });
+      setDeliveryNoteDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['delivery-notes'] });
+      refetch();
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to create delivery note',
         variant: 'destructive',
       });
       throw err;
@@ -279,6 +425,8 @@ export function useSalesOrderManagement() {
     setCreateDialogOpen,
     invoiceDialogOpen,
     setInvoiceDialogOpen,
+    deliveryNoteDialogOpen,
+    setDeliveryNoteDialogOpen,
     selectedSalesOrder,
     setSelectedSalesOrder,
     editSalesOrder,
@@ -290,9 +438,11 @@ export function useSalesOrderManagement() {
     handleEdit,
     handleDelete,
     handleCreateInvoice,
+    handleCreateDeliveryNote,
     handleTableReady,
     handleSave,
     handleConvertToInvoice,
+    handleConvertToDeliveryNote,
     serverPaginationConfig,
   };
 }

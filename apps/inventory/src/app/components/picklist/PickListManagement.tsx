@@ -3,49 +3,33 @@ import * as React from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 import { Card, CardContent } from '@horizon-sync/ui/components';
-import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
-import { useQuotationManagement } from '../../hooks/useQuotationManagement';
+import { usePickListManagement } from '../../hooks/usePickListManagement';
 
-import { PickListStats } from './PickListStats';
+import { PickListDetailDialog } from './PickListDetailDialog';
 import { PickListManagementFilters } from './PickListManagementFilters';
 import { PickListManagementHeader } from './PickListManagementHeader';
+import { PickListStats } from './PickListStats';
 import { PickListTable } from './PickListTable';
 
-
-
 export function PickListManagement() {
-  const { toast } = useToast();
   const {
     filters,
     setFilters,
-    quotations,
+    pickLists,
     loading,
     error,
     refetch,
     stats,
     detailDialogOpen,
     setDetailDialogOpen,
-    createDialogOpen,
-    setCreateDialogOpen,
-    selectedQuotation,
-    editQuotation,
+    selectedPickList,
     tableInstance,
     handleView,
-    handleCreate,
-    handleEdit,
     handleDelete,
-    handleConvert,
-    handleConvertConfirm,
-    convertDialogOpen,
-    setConvertDialogOpen,
-    converting,
     handleTableReady,
-    handleSave,
     serverPaginationConfig,
-  } = useQuotationManagement();
-
-  console.log({selectedQuotation})
+  } = usePickListManagement();
 
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
@@ -55,7 +39,7 @@ export function PickListManagement() {
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm font-medium">Error loading quotations: {error}</span>
+            <span className="text-sm font-medium">Error loading pick lists: {error}</span>
           </div>
         </CardContent>
       </Card>
@@ -65,9 +49,7 @@ export function PickListManagement() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <PickListManagementHeader onRefresh={refetch}
-        onCreateQuotation={handleCreate}
-        isLoading={loading}/>
+      <PickListManagementHeader onRefresh={refetch} isLoading={loading} />
 
       {/* Error State */}
       {ErrorDisplay}
@@ -75,26 +57,28 @@ export function PickListManagement() {
       {/* Stats Cards */}
       <PickListStats total={stats.total}
         draft={stats.draft}
-        sent={stats.sent}
-        accepted={stats.accepted}/>
+        inProgress={stats.inProgress}
+        completed={stats.completed}/>
 
       {/* Filters */}
       <PickListManagementFilters filters={filters}
         setFilters={setFilters}
         tableInstance={tableInstance}/>
 
-      {/* Quotations Table */}
-      <PickListTable quotations={quotations}
+      {/* Pick Lists Table */}
+      <PickListTable pickLists={pickLists}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.status !== 'all'}
         onView={handleView}
-        onEdit={handleEdit}
         onDelete={handleDelete}
-        onConvert={handleConvert}
-        onCreateQuotation={handleCreate}
         onTableReady={handleTableReady}
         serverPagination={serverPaginationConfig}/>
+
+      {/* Detail Dialog */}
+      <PickListDetailDialog open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        pickList={selectedPickList}/>
     </div>
   );
 }
