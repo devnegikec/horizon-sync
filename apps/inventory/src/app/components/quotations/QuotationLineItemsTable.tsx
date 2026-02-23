@@ -7,6 +7,7 @@ import { useUserStore } from '@horizon-sync/store';
 import { Button, EditableCell, EditableDataTable, EditableNumberCell } from '@horizon-sync/ui/components';
 
 import { environment } from '../../../environments/environment';
+import { getCurrencySymbol } from '../../types/currency.types';
 import type { QuotationLineItemCreate, QuotationLineItem } from '../../types/quotation.types';
 
 import { ItemPickerSelect } from './ItemPickerSelect';
@@ -83,33 +84,33 @@ function QtyHints({ itemData }: { itemData: QuotationLineItem | undefined }) {
   return <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">{parts.join(' · ')}</div>;
 }
 
-function QtyValidationError({ qty, itemData }: { qty: number; itemData: QuotationLineItem | undefined }) {
-  if (!itemData || qty === 0) return null;
+function getQtyError(qty: number, itemData: QuotationLineItem): { message: string; color: string } | null {
   const min = itemData.min_order_qty;
+  const max = itemData.max_order_qty;
   const available = itemData.stock_levels?.quantity_available;
-  if (min != null && min > 0 && qty < min) {
-    return (
-      <div className="flex items-center gap-1 text-[10px] text-destructive leading-tight mt-0.5">
-        <AlertTriangle className="h-3 w-3" />
-        <span>Below min ({min})</span>
-      </div>
-    );
-  }
-  if (available != null && qty > available) {
-    return (
-      <div className="flex items-center gap-1 text-[10px] text-orange-600 leading-tight mt-0.5">
-        <AlertTriangle className="h-3 w-3" />
-        <span>Exceeds available ({available})</span>
-      </div>
-    );
-  }
+  if (min != null && min > 0 && qty < min) return { message: `Below min (${min})`, color: 'hsl(0 84% 60%)' };
+  if (max != null && max > 0 && qty > max) return { message: `Exceeds max (${max})`, color: 'hsl(0 84% 60%)' };
+  if (available != null && qty > available) return { message: `Exceeds available (${available})`, color: 'hsl(25 95% 53%)' };
   return null;
+}
+
+function QtyValidationError({ qty, itemData }: { qty: number; itemData: QuotationLineItem | undefined }) {
+  if (!itemData || !qty || qty <= 0) return null;
+  const error = getQtyError(qty, itemData);
+  if (!error) return null;
+  return (
+    <div className="flex items-center gap-1 text-[10px] leading-tight mt-0.5" style={{ color: error.color }}>
+      <AlertTriangle className="h-3 w-3 shrink-0" />
+      <span>{error.message}</span>
+    </div>
+  );
 }
 
 // Quantity cell: editable number + hints + validation
 function QuantityCellComponent({ getValue, row, column, table, cell, renderValue }: CellContext<QuotationLineItemCreate, unknown>) {
   const meta = table.options.meta as TableMeta | undefined;
-  const itemData = meta?.getItemData?.(row.original.item_id);
+  const itemId = row.original.item_id;
+  const itemData = meta?.getItemData?.(itemId);
   const qty = Number(getValue()) || 0;
   const cellProps = { getValue, row, column, table, cell, renderValue };
 
@@ -117,25 +118,33 @@ function QuantityCellComponent({ getValue, row, column, table, cell, renderValue
     <div>
       <EditableNumberCell {...cellProps} />
       <QtyHints itemData={itemData} />
-      <QtyValidationError qty={qty} itemData={itemData} />
+      {itemData && qty > 0 && <QtyValidationError qty={qty} itemData={itemData} />}
     </div>
   );
 }
 
-// Tax breakup display for compound taxes
-function TaxBreakupDisplay({ itemData, currency, amount }: { itemData: QuotationLineItem | undefined; currency: string; amount: number }) {
+// Tax breakup: percentages only (shown under Tax % column)
+function TaxBreakupPercent({ itemData }: { itemData: QuotationLineItem | undefined }) {
+  const breakup = itemData?.tax_info?.breakup;
+  if (!breakup || breakup.length <= 1) return null;
+  return (
+    <div className="text-[10px] text-muted-foreground leading-tight mt-0.5 space-y-px">
+      {breakup.map((tax) => (
+        <div key={tax.rule_name} className="text-left">{tax.rule_name} {tax.rate}%</div>
+      ))}
+    </div>
+  );
+}
+
+// Tax breakup: amounts only (shown under Tax Amt column)
+function TaxBreakupAmount({ itemData, symbol, amount }: { itemData: QuotationLineItem | undefined; symbol: string; amount: number }) {
   const breakup = itemData?.tax_info?.breakup;
   if (!breakup || breakup.length <= 1) return null;
   return (
     <div className="text-[10px] text-muted-foreground leading-tight mt-0.5 space-y-px">
       {breakup.map((tax) => {
         const taxAmt = (amount * tax.rate) / 100;
-        return (
-          <div key={tax.rule_name} className="flex justify-between gap-2">
-            <span>{tax.rule_name} ({tax.rate}%)</span>
-            <span>{currency} {taxAmt.toFixed(2)}</span>
-          </div>
-        );
+        return <div key={tax.rule_name} className="text-left">{symbol}{taxAmt.toFixed(2)}</div>;
       })}
     </div>
   );
@@ -145,6 +154,18 @@ function TaxBreakupDisplay({ itemData, currency, amount }: { itemData: Quotation
 export function QuotationLineItemsTable({ items, onItemsChange, disabled = false, currency = 'INR' }: QuotationLineItemsTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const itemsCacheRef = React.useRef<Map<string, QuotationLineItem>>(new Map());
+
+  // Seed cache from existing items (edit mode — items carry full QuotationLineItem fields at runtime)
+  React.useEffect(() => {
+    items.forEach((item) => {
+      if (item.item_id && !itemsCacheRef.current.has(item.item_id)) {
+        const full = item as unknown as QuotationLineItem;
+        if (full.item_name) {
+          itemsCacheRef.current.set(item.item_id, full);
+        }
+      }
+    });
+  }, [items]);
 
   const searchItems = React.useCallback(async (query: string): Promise<QuotationLineItem[]> => {
     if (!accessToken) return [];
@@ -197,18 +218,37 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
       const value = Number(props.getValue()) || 0;
       const itemData = meta?.getItemData?.(props.row.original.item_id);
       const amount = Number(props.row.original.amount) || 0;
+      const sym = getCurrencySymbol(currency);
       return (
-        <div className="text-right">
-          <div>{currency} {value.toFixed(2)}</div>
-          <TaxBreakupDisplay itemData={itemData} currency={currency} amount={amount} />
+        <div className="text-left">
+          <div>{sym}{value.toFixed(2)}</div>
+          <TaxBreakupAmount itemData={itemData} symbol={sym} amount={amount} />
         </div>
       );
     },
     [currency]
   );
 
+  // Tax rate cell with breakup percentages
+  const taxRateCell = React.useCallback(
+    (props: CellContext<QuotationLineItemCreate, unknown>) => {
+      const meta = props.table.options.meta as TableMeta | undefined;
+      const v = Number(props.getValue()) || 0;
+      const itemData = meta?.getItemData?.(props.row.original.item_id);
+      return (
+        <div className="text-left">
+          <div>{v > 0 ? `${v.toFixed(1)}%` : '-'}</div>
+          <TaxBreakupPercent itemData={itemData} />
+        </div>
+      );
+    },
+    []
+  );
+
   const columns = React.useMemo<ColumnDef<QuotationLineItemCreate, unknown>[]>(
-    () => [
+    () => {
+      const sym = getCurrencySymbol(currency);
+      return [
       { accessorKey: 'item_id', header: 'Item', cell: ItemPickerCellComponent, size: 250 },
       { accessorKey: 'qty', header: 'Quantity', cell: disabled ? undefined : QuantityCellComponent, size: 120 },
       { accessorKey: 'uom', header: 'UOM', cell: disabled ? undefined : EditableCell, size: 80 },
@@ -217,22 +257,16 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
         accessorKey: 'amount', header: 'Amount', size: 120,
         cell: ({ getValue }: CellContext<QuotationLineItemCreate, unknown>) => {
           const v = Number(getValue()) || 0;
-          return <div className="text-right font-medium">{currency} {v.toFixed(2)}</div>;
+          return <div className="text-left font-medium">{sym}{v.toFixed(2)}</div>;
         },
       },
-      {
-        accessorKey: 'tax_rate', header: 'Tax %', size: 80,
-        cell: ({ getValue }: CellContext<QuotationLineItemCreate, unknown>) => {
-          const v = Number(getValue()) || 0;
-          return <div className="text-right">{v > 0 ? `${v.toFixed(1)}%` : '-'}</div>;
-        },
-      },
+      { accessorKey: 'tax_rate', header: 'Tax %', size: 80, cell: taxRateCell },
       { accessorKey: 'tax_amount', header: 'Tax Amt', size: 120, cell: taxAmountCell },
       {
         accessorKey: 'total_amount', header: 'Total', size: 120,
         cell: ({ getValue }: CellContext<QuotationLineItemCreate, unknown>) => {
           const v = Number(getValue()) || 0;
-          return <div className="text-right font-semibold">{currency} {v.toFixed(2)}</div>;
+          return <div className="text-left font-semibold">{sym}{v.toFixed(2)}</div>;
         },
       },
       {
@@ -247,8 +281,9 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
           );
         },
       },
-    ],
-    [disabled, currency, taxAmountCell]
+    ];
+    },
+    [disabled, currency, taxAmountCell, taxRateCell]
   );
 
   const newRowTemplate: QuotationLineItemCreate = React.useMemo(
