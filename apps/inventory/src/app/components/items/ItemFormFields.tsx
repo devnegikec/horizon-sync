@@ -1,12 +1,13 @@
 import * as React from 'react';
+
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 
-import type { ApiItemGroup } from '../../types/item-groups.types';
 import type { CreateItemGroupResponse } from '../../types/item-group-creation.types';
-import type { ItemFormData } from '../../utility/item-payload-builders';
+import type { ApiItemGroup } from '../../types/item-groups.types';
 import type { TaxTemplate } from '../../types/tax-template.types';
+import type { ItemFormData } from '../../utility/item-payload-builders';
 
 import { CreateItemGroupModal } from './CreateItemGroupModal';
 import { MultiStepFormProvider, useMultiStepForm } from './MultiStepFormContext';
@@ -52,23 +53,19 @@ function ItemFormContent({
     switch (currentStep) {
       case 1:
         return (
-          <Step1BasicInventory
-            formData={formData}
+          <Step1BasicInventory formData={formData}
             setFormData={setFormData}
-            itemGroups={itemGroups}
-          />
+            itemGroups={itemGroups}/>
         );
       case 2:
         return <Step2PricingOrdering formData={formData} setFormData={setFormData} />;
       case 3:
         return (
-          <Step3TaxAdditional
-            formData={formData}
+          <Step3TaxAdditional formData={formData}
             setFormData={setFormData}
             salesTaxTemplates={salesTaxTemplates}
             purchaseTaxTemplates={purchaseTaxTemplates}
-            isLoadingTaxTemplates={isLoadingTaxTemplates}
-          />
+            isLoadingTaxTemplates={isLoadingTaxTemplates}/>
         );
       default:
         return null;
@@ -82,12 +79,10 @@ function ItemFormContent({
       <div className="min-h-[400px]">{currentStepComponent}</div>
 
       <div className="flex justify-between pt-6 border-t mt-4">
-        <Button
-          type="button"
+        <Button type="button"
           variant="outline"
           onClick={previousStep}
-          disabled={isFirstStep}
-        >
+          disabled={isFirstStep}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Previous
         </Button>
@@ -104,11 +99,9 @@ function ItemFormContent({
         )}
       </div>
 
-      <CreateItemGroupModal
-        open={createGroupModalOpen}
+      <CreateItemGroupModal open={createGroupModalOpen}
         onOpenChange={setCreateGroupModalOpen}
-        onItemGroupCreated={handleItemGroupCreated}
-      />
+        onItemGroupCreated={handleItemGroupCreated}/>
     </>
   );
 }
@@ -120,12 +113,10 @@ export function ItemFormFields(props: Omit<ItemFormFieldsProps, 'salesTaxTemplat
 }) {
   return (
     <MultiStepFormProvider totalSteps={3}>
-      <ItemFormContent
-        {...props}
+      <ItemFormContent {...props}
         salesTaxTemplates={props.salesTaxTemplates || []}
         purchaseTaxTemplates={props.purchaseTaxTemplates || []}
-        isLoadingTaxTemplates={props.isLoadingTaxTemplates || false}
-      />
+        isLoadingTaxTemplates={props.isLoadingTaxTemplates || false}/>
     </MultiStepFormProvider>
   );
 }

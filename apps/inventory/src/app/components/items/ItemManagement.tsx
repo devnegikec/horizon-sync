@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 
+import type { SearchResult } from '@horizon-sync/search';
 import { useUserStore, hasOrganization } from '@horizon-sync/store';
 import { CreateOrganizationModal, OrganizationService, type CreateOrganizationPayload } from '@horizon-sync/ui/components';
-import type { SearchResult } from '@horizon-sync/search';
 
 import { environment } from '../../../environments/environment';
 import { useItemManagement } from '../../hooks/useItemManagement';
@@ -153,16 +153,13 @@ export function ItemManagement() {
 
       <ItemStats totalItems={stats.totalItems} activeItems={stats.activeItems} />
 
-      <ItemManagementFilters 
-        filters={filters} 
+      <ItemManagementFilters filters={filters} 
         setFilters={setFilters} 
         itemGroups={itemGroups} 
         tableInstance={tableInstance}
-        onSearchResults={handleSearchResults}
-      />
+        onSearchResults={handleSearchResults}/>
 
-      <ItemsTable 
-        items={displayedItems} 
+      <ItemsTable items={displayedItems} 
         loading={loading} 
         error={error} 
         hasActiveFilters={isSearchActive || !!filters.search || filters.groupId !== 'all' || filters.status !== 'all'} 
@@ -173,8 +170,7 @@ export function ItemManagement() {
         onBulkUpload={handleBulkUpload}
         onCreateOrganization={() => setCreateOrgModalOpen(true)}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
       <ItemDialog open={itemDialogOpen} 
         onOpenChange={setItemDialogOpen} 
@@ -189,13 +185,11 @@ export function ItemManagement() {
         onOpenChange={setDetailDialogOpen} 
         item={selectedItemAsItem}/>
 
-      <CreateOrganizationModal
-        open={createOrgModalOpen}
+      <CreateOrganizationModal open={createOrgModalOpen}
         onOpenChange={setCreateOrgModalOpen}
         onSubmit={handleCreateOrganization}
         title="Create Organization"
-        description="You need to create an organization before you can manage inventory items."
-      />
+        description="You need to create an organization before you can manage inventory items."/>
     </div>
   );
 }

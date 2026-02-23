@@ -179,10 +179,12 @@ export function ItemsTable({
   );
 
   // Callback to capture table instance from DataTable
-  const handleTableReady = React.useCallback((table: Table<ApiItem>) => {
-    setTableInstance(table);
-    return <DataTableViewOptions table={table} />;
-  }, []);
+  const handleTableReady = (table: Table<ApiItem>) => {
+    if (table !== tableInstance) {
+      setTableInstance(table);
+    }
+    return null;
+  };
 
   // Check if error is related to organization
   const isOrganizationError = error && (
@@ -219,8 +221,7 @@ export function ItemsTable({
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState 
-              icon={<Package className="h-12 w-12" />} 
+            <EmptyState icon={<Package className="h-12 w-12" />} 
               title={isOrgError ? "Organization Required" : "No items found"} 
               description={
                 isOrgError 
@@ -257,8 +258,7 @@ export function ItemsTable({
                     Add Item
                   </Button>
                 ) : undefined
-              } 
-            />
+              }/>
           </div>
         </CardContent>
       </Card>
