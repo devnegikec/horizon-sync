@@ -1,5 +1,5 @@
 import { useState, useCallback, memo } from 'react';
-import { FileText, Edit, CheckCircle, XCircle, Download, ExternalLink } from 'lucide-react';
+import { FileText, Edit, CheckCircle, XCircle, Download } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -19,8 +19,11 @@ import {
 import { formatCurrency, formatDate, getPaymentModeLabel } from '../../utils/payment.utils';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { AllocationList } from './AllocationList';
+import { InvoiceLinker } from './InvoiceLinker';
 import { PaymentAuditTrail } from './PaymentAuditTrail';
 import { ReceiptViewer } from './ReceiptViewer';
+import { useInvoiceAllocations } from '../../hooks/useInvoiceAllocations';
+import { useOutstandingInvoicesForAllocation } from '../../hooks/useOutstandingInvoicesForAllocation';
 import type { PaymentEntry } from '../../types/payment.types';
 
 interface PaymentDetailDialogProps {
@@ -30,7 +33,7 @@ interface PaymentDetailDialogProps {
   onEdit?: () => void;
   onConfirm?: () => void;
   onCancel?: () => void;
-  onRemoveAllocation?: (allocationId: string) => void;
+  onAllocationChange?: () => void;
   loading?: boolean;
 }
 
@@ -41,7 +44,7 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
   onEdit,
   onConfirm,
   onCancel,
-  onRemoveAllocation,
+  onAllocationChange,
   loading = false,
 }: PaymentDetailDialogProps) {
   const [receiptViewerOpen, setReceiptViewerOpen] = useState(false);
@@ -50,9 +53,36 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
   const isConfirmed = payment.status === 'Confirmed';
   const isCancelled = payment.status === 'Cancelled';
 
+  const paymentId = open && payment?.id ? payment.id : null;
+  const {
+    allocations: allocationList,
+    createAllocation,
+    removeAllocation,
+    actionLoading: allocationActionLoading,
+    refetch: refetchAllocations,
+  } = useInvoiceAllocations(paymentId);
+
+  const { invoices: outstandingInvoices, loading: invoicesLoading } =
+    useOutstandingInvoicesForAllocation(
+      isDraft && payment?.party_id ? payment.party_id : null,
+      payment?.payment_type === 'Supplier_Payment' ? 'Supplier_Payment' : 'Customer_Payment'
+    );
+
   const handleViewReceipt = useCallback(() => {
     setReceiptViewerOpen(true);
   }, []);
+
+  const handleSaveAllocations = useCallback(
+    async (allocs: Array<{ invoice_id: string; allocated_amount: number }>) => {
+      if (!payment?.id) return;
+      for (const a of allocs) {
+        if (a.allocated_amount <= 0) continue;
+        await createAllocation({ invoice_id: a.invoice_id, allocated_amount: a.allocated_amount });
+      }
+      onAllocationChange?.();
+    },
+    [payment?.id, createAllocation, onAllocationChange]
+  );
 
   return (
     <>
@@ -101,7 +131,14 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Party</p>
-                      <p className="font-medium">{payment.party_name || payment.party_id}</p>
+                      <p className="font-medium">
+                        {payment.party_name || payment.party_id}
+                        {(payment.party_email || payment.party_phone) && (
+                          <span className="block text-sm font-normal text-muted-foreground mt-0.5">
+                            {[payment.party_email, payment.party_phone].filter(Boolean).join(' · ')}
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Reference Number</p>
@@ -184,12 +221,31 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
             {/* Allocations Tab */}
             <TabsContent value="allocations" className="space-y-4">
               <AllocationList
-                allocations={payment.payment_references || []}
+                allocations={allocationList}
                 paymentCurrency={payment.currency_code}
                 isDraft={isDraft}
-                onRemove={onRemoveAllocation || (() => {})}
-                loading={loading}
+                onRemove={removeAllocation}
+                loading={loading || allocationActionLoading}
               />
+              {isDraft && (
+                <>
+                  <Separator className="my-4" />
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Add allocation</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Allocate this payment to one or more invoices. At least one allocation is required before confirming.
+                    </p>
+                    <InvoiceLinker
+                      invoices={outstandingInvoices}
+                      paymentAmount={Number(payment.amount)}
+                      paymentCurrency={payment.currency_code}
+                      existingAllocations={allocationList}
+                      onSave={handleSaveAllocations}
+                      loading={allocationActionLoading || invoicesLoading}
+                    />
+                  </div>
+                </>
+              )}
             </TabsContent>
 
             {/* Audit Trail Tab */}

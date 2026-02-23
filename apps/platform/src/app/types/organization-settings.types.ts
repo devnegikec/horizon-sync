@@ -29,7 +29,8 @@ export type DocumentType =
   | 'material_request'
   | 'delivery_note'
   | 'purchase_receipt'
-  | 'payment';
+  | 'payment'
+  | 'item';
 
 export interface NamingSeriesConfig {
   prefix: string; // e.g., 'INV-', 'SO-', 'QT-'
@@ -147,6 +148,12 @@ export const DEFAULT_ORGANIZATION_SETTINGS: OrganizationSettings = {
     },
     payment: {
       prefix: 'PAY-',
+      current_number: 0,
+      padding: 4,
+      separator: '-',
+    },
+    item: {
+      prefix: 'ITM-',
       current_number: 0,
       padding: 4,
       separator: '-',

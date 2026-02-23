@@ -23,6 +23,7 @@ const DOCUMENT_TYPES: { type: DocumentType; label: string; description: string }
   { type: 'rfq', label: 'RFQ', description: 'Request for quotations to suppliers' },
   { type: 'material_request', label: 'Material Request', description: 'Internal material requisitions' },
   { type: 'purchase_receipt', label: 'Purchase Receipt', description: 'Goods received from suppliers' },
+  { type: 'item', label: 'Item', description: 'Inventory item numbers / item codes' },
 ];
 
 export function NamingSeriesSettings({ namingSeries, onChange, disabled }: NamingSeriesSettingsProps) {

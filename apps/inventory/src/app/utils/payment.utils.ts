@@ -18,6 +18,23 @@ export function formatDate(date: string | Date): string {
 }
 
 /**
+ * Normalize API date (ISO or other) to YYYY-MM-DD for <input type="date">.
+ * Returns empty string if value is missing or invalid.
+ */
+export function toDateInputValue(value: string | undefined): string {
+  if (value == null || value === '') return '';
+  const s = typeof value === 'string' ? value.trim() : '';
+  const dateOnly = s.split('T')[0];
+  if (dateOnly && /^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return dateOnly;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
  * Get status badge color classes
  */
 export function getStatusColor(status: PaymentStatus): string {

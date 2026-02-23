@@ -38,10 +38,10 @@ const AllocationRow = memo(({
         </div>
         <p className="text-sm text-muted-foreground">
           Allocated: {formatAllocationAmount(allocation.allocated_amount, paymentCurrency)}
-          {allocation.allocated_amount_invoice_currency &&
-            allocation.allocated_amount_invoice_currency !== allocation.allocated_amount && (
+          {allocation.allocated_amount_invoice_currency != null &&
+            Number(allocation.allocated_amount_invoice_currency) !== Number(allocation.allocated_amount) && (
               <span className="ml-2">
-                (Invoice Currency: {allocation.allocated_amount_invoice_currency.toFixed(2)})
+                (Invoice Currency: {Number(allocation.allocated_amount_invoice_currency).toFixed(2)})
               </span>
             )}
         </p>
@@ -70,9 +70,9 @@ export const AllocationList = memo(function AllocationList({
   onRemove,
   loading = false,
 }: AllocationListProps) {
-  // Memoize total calculation
-  const totalAllocated = useMemo(() => 
-    allocations.reduce((sum, allocation) => sum + allocation.allocated_amount, 0),
+  // Memoize total calculation (coerce amounts to number; API may return string from Decimal)
+  const totalAllocated = useMemo(() =>
+    allocations.reduce((sum, allocation) => sum + Number(allocation.allocated_amount ?? 0), 0),
     [allocations]
   );
 

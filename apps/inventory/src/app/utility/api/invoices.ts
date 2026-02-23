@@ -1,6 +1,6 @@
 import { apiRequest, buildPaginationParams } from './core';
 
-import type { InvoiceCreateRequest, InvoiceUpdateRequest, MarkAsPaidRequest } from '../../types/invoice.types';
+import type { InvoiceCreateRequest, InvoiceUpdateRequest, InvoiceResponse, MarkAsPaidRequest } from '../../types/invoice.types';
 
 // Invoices API helpers
 export const invoiceApi = {
@@ -12,16 +12,18 @@ export const invoiceApi = {
       invoice_type?: string;
       status?: string;
       search?: string;
+      party_id?: string;
       sort_by?: string;
       sort_order?: 'asc' | 'desc';
     }
-  ) =>
-    apiRequest('/invoices', accessToken, {
+  ): Promise<InvoiceResponse> =>
+    apiRequest<InvoiceResponse>('/invoices', accessToken, {
       params: {
         ...buildPaginationParams(page, pageSize, filters?.sort_by || 'posting_date', filters?.sort_order || 'desc'),
         invoice_type: filters?.invoice_type,
         status: filters?.status,
         search: filters?.search,
+        party_id: filters?.party_id,
       },
     }),
 

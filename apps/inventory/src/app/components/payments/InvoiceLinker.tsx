@@ -30,6 +30,14 @@ interface AllocationInput {
   error?: string;
 }
 
+// Allow only digits and at most one decimal point for allocation amount
+function filterNumericInput(raw: string): string {
+  let filtered = raw.replace(/[^\d.]/g, '');
+  const parts = filtered.split('.');
+  if (parts.length > 2) filtered = parts[0] + '.' + parts.slice(1).join('');
+  return filtered;
+}
+
 // Memoize the allocation input cell to prevent unnecessary re-renders
 const AllocationInputCell = memo(({ 
   invoiceId, 
@@ -43,16 +51,17 @@ const AllocationInputCell = memo(({
   loading: boolean;
 }) => {
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onAllocationChange(invoiceId, e.target.value);
+    const filtered = filterNumericInput(e.target.value);
+    onAllocationChange(invoiceId, filtered);
   }, [invoiceId, onAllocationChange]);
 
   return (
     <div className="space-y-1">
       <Input
-        type="number"
-        step="0.01"
+        type="text"
+        inputMode="decimal"
         placeholder="0.00"
-        value={input?.allocated_amount || ''}
+        value={input?.allocated_amount ?? ''}
         onChange={handleChange}
         className={input?.error ? 'border-destructive' : ''}
         disabled={loading}

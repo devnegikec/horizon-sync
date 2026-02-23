@@ -43,6 +43,9 @@ export function PaymentAllocationTable({
 }: PaymentAllocationTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
 
+  // Keep draft string per invoice so user can type "1." or "0.5" without losing input
+  const [draftAmounts, setDraftAmounts] = React.useState<Record<string, string>>({});
+
   // Fetch outstanding invoices for the selected party
   const { data: outstandingInvoices, isLoading } = useQuery<OutstandingInvoice[]>({
     queryKey: ['outstanding-invoices', partyId, partyType],
@@ -108,7 +111,7 @@ export function PaymentAllocationTable({
     for (const invoice of sortedInvoices) {
       if (remainingAmount <= 0) break;
 
-      const allocateAmount = Math.min(remainingAmount, invoice.outstanding_amount);
+      const allocateAmount = Math.min(remainingAmount, Number(invoice.outstanding_amount ?? 0));
       newAllocations.push({
         invoice_id: invoice.id,
         allocated_amount: allocateAmount,
@@ -119,10 +122,35 @@ export function PaymentAllocationTable({
     onAllocationsChange(newAllocations);
   };
 
-  // Get allocation amount for an invoice
+  // Get allocation amount for an invoice (coerce to number; API may return string from Decimal)
   const getAllocationAmount = (invoiceId: string): number => {
     const allocation = allocations.find((a) => a.invoice_id === invoiceId);
-    return allocation?.allocated_amount ?? 0;
+    return Number(allocation?.allocated_amount ?? 0);
+  };
+
+  // Display value: draft string while typing, otherwise number (empty when 0)
+  const getInputValue = (invoiceId: string): string => {
+    if (draftAmounts[invoiceId] !== undefined) return draftAmounts[invoiceId];
+    const amount = getAllocationAmount(invoiceId);
+    return amount === 0 ? '' : String(amount);
+  };
+
+  const handleAmountChange = (invoiceId: string, raw: string) => {
+    // Allow only digits and at most one decimal point
+    let filtered = raw.replace(/[^\d.]/g, '');
+    const parts = filtered.split('.');
+    if (parts.length > 2) filtered = parts[0] + '.' + parts.slice(1).join('');
+    setDraftAmounts((prev) => ({ ...prev, [invoiceId]: filtered }));
+    const num = parseFloat(filtered);
+    handleAllocationChange(invoiceId, Number.isNaN(num) ? 0 : num);
+  };
+
+  const handleAmountBlur = (invoiceId: string) => {
+    setDraftAmounts((prev) => {
+      const next = { ...prev };
+      delete next[invoiceId];
+      return next;
+    });
   };
 
   // Check if invoice is selected
@@ -130,8 +158,8 @@ export function PaymentAllocationTable({
     return allocations.some((a) => a.invoice_id === invoiceId);
   };
 
-  // Calculate total allocated
-  const totalAllocated = allocations.reduce((sum, a) => sum + a.allocated_amount, 0);
+  // Calculate total allocated (coerce amounts to number; API may return string from Decimal)
+  const totalAllocated = allocations.reduce((sum, a) => sum + Number(a.allocated_amount ?? 0), 0);
   const unallocated = totalAmount - totalAllocated;
 
   if (!partyId) {
@@ -204,7 +232,7 @@ export function PaymentAllocationTable({
             {invoices.map((invoice) => {
               const allocationAmount = getAllocationAmount(invoice.id);
               const isSelected = isInvoiceSelected(invoice.id);
-              const isOverAllocated = allocationAmount > invoice.outstanding_amount;
+              const isOverAllocated = allocationAmount > Number(invoice.outstanding_amount ?? 0);
               
               return (
                 <TableRow key={invoice.id}>
@@ -224,21 +252,19 @@ export function PaymentAllocationTable({
                     {new Date(invoice.posting_date).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    {currency} {invoice.grand_total.toFixed(2)}
+                    {currency} {Number(invoice.grand_total ?? 0).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {currency} {invoice.outstanding_amount.toFixed(2)}
+                    {currency} {Number(invoice.outstanding_amount ?? 0).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right">
                     <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max={invoice.outstanding_amount}
-                      value={allocationAmount}
-                      onChange={(e) => 
-                        handleAllocationChange(invoice.id, parseFloat(e.target.value) || 0)
-                      }
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={getInputValue(invoice.id)}
+                      onChange={(e) => handleAmountChange(invoice.id, e.target.value)}
+                      onBlur={() => handleAmountBlur(invoice.id)}
                       disabled={disabled || !isSelected}
                       className={`w-32 text-right ${isOverAllocated ? 'border-red-500' : ''}`}
                     />
@@ -261,11 +287,11 @@ export function PaymentAllocationTable({
         </span>
         <div className="space-x-4">
           <span>
-            Total Allocated: <span className="font-medium">{currency} {totalAllocated.toFixed(2)}</span>
+            Total Allocated: <span className="font-medium">{currency} {Number(totalAllocated).toFixed(2)}</span>
           </span>
           <span>
             Unallocated: <span className={`font-medium ${unallocated < 0 ? 'text-red-600' : ''}`}>
-              {currency} {unallocated.toFixed(2)}
+              {currency} {Number(unallocated).toFixed(2)}
             </span>
           </span>
         </div>
