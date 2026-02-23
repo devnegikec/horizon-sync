@@ -3,14 +3,22 @@ import * as React from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Trash2 } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Button, EditableCell, EditableDataTable, EditableNumberCell } from '@horizon-sync/ui/components';
 
-import type { QuotationLineItemCreate } from '../../types/quotation.types';
+import { environment } from '../../../environments/environment';
+import type { QuotationLineItemCreate, QuotationLineItem } from '../../types/quotation.types';
+
+import { ItemPickerSelect } from './ItemPickerSelect';
 
 // Define table meta interface
 interface TableMeta {
   updateData?: (rowIndex: number, columnId: string, value: unknown) => void;
   deleteRow?: (rowIndex: number) => void;
+}
+
+interface PickerResponse {
+  items: QuotationLineItem[];
 }
 
 interface QuotationLineItemsTableProps {
@@ -26,13 +34,55 @@ export function QuotationLineItemsTable({
   disabled = false,
   currency = 'INR',
 }: QuotationLineItemsTableProps) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [itemsCache, setItemsCache] = React.useState<Map<string, QuotationLineItem>>(new Map());
+
+  // Search function for ItemPickerSelect
+  const searchItems = React.useCallback(async (query: string): Promise<QuotationLineItem[]> => {
+    if (!accessToken) return [];
+
+    const response = await fetch(`${environment.apiCoreUrl}/items/picker?search=${encodeURIComponent(query)}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('Failed to fetch items');
+    const data: PickerResponse = await response.json();
+
+    // Cache the items for later use
+    setItemsCache(prevCache => {
+      const newCache = new Map(prevCache);
+      data.items.forEach(item => {
+        newCache.set(item.id, item);
+      });
+      return newCache;
+    });
+
+    return data.items;
+  }, [accessToken]);
+
+  // Label formatter
+  const itemLabelFormatter = React.useCallback(
+    (item: QuotationLineItem) => `${item.item_name} (${item.item_code})`,
+    []
+  );
   // Auto-calculate amounts when qty, rate, or tax_rate changes
   const handleDataChange = React.useCallback(
     (newData: QuotationLineItemCreate[]) => {
       const updatedData = newData.map((item) => {
         const qty = Number(item.qty) || 0;
         const rate = Number(item.rate) || 0;
-        const taxRate = Number(item.tax_rate) || 0;
+        
+        // Get item data from cache to apply tax
+        const itemData = itemsCache.get(item.item_id);
+        let taxRate = 0;
+        let taxTemplateId: string | null = null;
+
+        if (itemData?.tax_info) {
+          taxTemplateId = itemData.tax_info.id;
+          taxRate = itemData.tax_info.breakup.reduce((sum, tax) => sum + tax.rate, 0);
+        }
 
         const amount = qty * rate;
         const taxAmount = (amount * taxRate) / 100;
@@ -43,6 +93,7 @@ export function QuotationLineItemsTable({
           qty,
           rate,
           amount,
+          tax_template_id: taxTemplateId,
           tax_rate: taxRate,
           tax_amount: taxAmount,
           total_amount: totalAmount,
@@ -50,16 +101,62 @@ export function QuotationLineItemsTable({
       });
       onItemsChange(updatedData);
     },
-    [onItemsChange]
+    [onItemsChange, itemsCache]
   );
+
+  // Custom cell for item picker
+  const ItemPickerCell = React.useCallback(({ getValue, row, column, table }: {
+    getValue: () => unknown;
+    row: { index: number; original: QuotationLineItemCreate };
+    column: { id: string };
+    table: { options: { meta?: TableMeta } };
+  }) => {
+    const itemId = getValue() as string;
+    const itemData = itemsCache.get(itemId);
+
+    if (disabled) {
+      return <div className="px-2 py-1">{itemData ? itemLabelFormatter(itemData) : itemId}</div>;
+    }
+
+    return (
+      <ItemPickerSelect value={itemId}
+        onValueChange={(newItemId) => {
+          const meta = table.options.meta as TableMeta;
+          if (meta?.updateData) {
+            // First update the item_id
+            meta.updateData(row.index, column.id, newItemId);
+            
+            // Then auto-populate other fields
+            const selectedItem = itemsCache.get(newItemId);
+            if (selectedItem) {
+              // Use setTimeout to ensure the item_id update is processed first
+              setTimeout(() => {
+                if (meta.updateData) {
+                  meta.updateData(row.index, 'uom', selectedItem.uom);
+                  meta.updateData(row.index, 'rate', parseFloat(selectedItem.standard_rate || '0') || 0);
+                  meta.updateData(row.index, 'qty', selectedItem.min_order_qty || 1);
+                }
+              }, 0);
+            }
+          }
+        }}
+        searchItems={searchItems}
+        labelFormatter={itemLabelFormatter}
+        valueKey="id"
+        placeholder="Select item..."
+        searchPlaceholder="Search items..."
+        minSearchLength={2}
+        selectedItemData={itemData || null}/>
+    );
+  }, [disabled, itemsCache, searchItems, itemLabelFormatter]);
 
   const columns = React.useMemo<ColumnDef<QuotationLineItemCreate>[]>(
     () => [
       {
         accessorKey: 'item_id',
-        header: 'Item ID',
-        cell: disabled ? undefined : EditableCell,
-        size: 200,
+        header: 'Item',
+        cell: ItemPickerCell,
+        size: 250,
       },
       {
         accessorKey: 'qty',
@@ -142,7 +239,7 @@ export function QuotationLineItemsTable({
         size: 60,
       },
     ],
-    [disabled, currency]
+    [disabled, currency, ItemPickerCell]
   );
 
   const newRowTemplate: QuotationLineItemCreate = React.useMemo(

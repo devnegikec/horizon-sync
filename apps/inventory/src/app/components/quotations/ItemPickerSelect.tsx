@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ChevronsUpDown, Search, X, Loader2 } from 'lucide-react';
 import { cn } from '@horizon-sync/ui/lib';
 
@@ -32,7 +33,9 @@ export function ItemPickerSelect<T extends Record<string, any>>({
   const [items, setItems] = React.useState<T[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState<T | null>(selectedItemData || null);
+  const [dropdownPosition, setDropdownPosition] = React.useState({ top: 0, left: 0, width: 0 });
   const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Debounced search
@@ -80,10 +83,27 @@ export function ItemPickerSelect<T extends Record<string, any>>({
     }
   }, [value, items, valueKey, selectedItemData]);
 
+  // Update dropdown position when opening
+  React.useEffect(() => {
+    if (open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  }, [open]);
+
   // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
         setOpen(false);
         setSearchQuery('');
       }
@@ -96,8 +116,9 @@ export function ItemPickerSelect<T extends Record<string, any>>({
   }, [open]);
 
   return (
-    <div ref={dropdownRef} className="relative">
+    <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => !disabled && setOpen(!open)}
         disabled={disabled}
@@ -112,8 +133,16 @@ export function ItemPickerSelect<T extends Record<string, any>>({
         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </button>
 
-      {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in">
+      {open && createPortal(
+        <div
+          ref={dropdownRef}
+          className="fixed z-50 rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in"
+          style={{
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`,
+            width: `${dropdownPosition.width}px`,
+          }}
+        >
           <div className="flex items-center border-b px-3">
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
             <input
@@ -179,7 +208,8 @@ export function ItemPickerSelect<T extends Record<string, any>>({
               })
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

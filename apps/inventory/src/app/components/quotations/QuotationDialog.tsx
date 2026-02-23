@@ -162,7 +162,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Quotation' : 'Create Quotation'}</DialogTitle>
         </DialogHeader>
@@ -178,12 +178,10 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
           <Separator />
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Line Items</h3>
-            <QuotationLineItemsTable
-              items={items}
+            <QuotationLineItemsTable items={items}
               onItemsChange={setItems}
               disabled={isLineItemEditingDisabled}
-              currency={formData.currency}
-            />
+              currency={formData.currency}/>
           </div>
 
           {/* Grand Total */}
