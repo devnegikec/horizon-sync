@@ -32,6 +32,7 @@ export interface DataTableConfig {
   enableFiltering?: boolean;
   initialPageSize?: number;
   serverPagination?: ServerPaginationConfig;
+  meta?: Record<string, unknown>;
 }
 
 export interface UseDataTableProps<TData, TValue> {
@@ -138,6 +139,7 @@ export function useDataTable<TData, TValue>({ data, columns, config = {} }: UseD
   const table = useReactTable({
     data: safeData,
     columns: finalColumns,
+    ...(config?.meta ? { meta: config.meta } : {}),
     state: {
       sorting: enableSorting ? sorting : undefined,
       columnFilters: enableFiltering ? columnFilters : undefined,

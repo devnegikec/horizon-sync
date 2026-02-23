@@ -3,6 +3,7 @@ import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { Users, MoreHorizontal, Eye, Edit, Key, Mail, Shield, Clock, UserPlus } from 'lucide-react';
 
+import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import { Avatar, AvatarFallback, AvatarImage } from '@horizon-sync/ui/components/ui/avatar';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -16,7 +17,6 @@ import {
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import { TableSkeleton } from '@horizon-sync/ui/components/ui/table-skeleton';
-import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 
 import type { User } from '../../types/user.types';
 import { formatDate, getStatusBadgeProps, getUserInitials, getUserTypeBadge } from '../../utility/user-utils';
