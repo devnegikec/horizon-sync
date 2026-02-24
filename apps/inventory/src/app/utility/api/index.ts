@@ -26,6 +26,9 @@ export { purchaseOrderApi } from './purchase-orders';
 export { purchaseReceiptApi } from './purchase-receipts';
 export { landedCostApi } from './landed-costs';
 
+// Item Group APIs
+export { itemGroupApi } from './item-groups';
+
 // ERP APIs
 export { accountApi } from './accounts';
 
