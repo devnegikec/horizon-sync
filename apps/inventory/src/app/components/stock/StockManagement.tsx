@@ -11,6 +11,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import {
@@ -22,17 +23,22 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
 import { cn } from '@horizon-sync/ui/lib';
 
+ 
+
+import { useStockEntryMutations } from '../../hooks/useStock';
 import { useStockEntries } from '../../hooks/useStockEntries';
 import { useStockLevels } from '../../hooks/useStockLevels';
 import { useStockMovements } from '../../hooks/useStockMovements';
 import { useStockReconciliations } from '../../hooks/useStockReconciliations';
-import { formatQuantity } from '../../utility';
 import type {
+  StockEntry,
   StockLevelStats,
   StockMovementStats,
   StockEntryStats,
   StockReconciliationStats,
 } from '../../types/stock.types';
+import { formatQuantity } from '../../utility';
+import { stockEntryApi } from '../../utility/api/stock';
 
 import { StockEntriesTable } from './StockEntriesTable';
 import { StockEntryDialog } from './StockEntryDialog';
@@ -201,6 +207,9 @@ interface TabPanelsProps {
   reconciliationsData: ReturnType<typeof useStockReconciliations>;
   reconciliationsFilters: { page: number; pageSize: number };
   onReconciliationsPagination: (pageIndex: number, pageSize: number) => void;
+  onViewEntry?: (entry: StockEntry) => void;
+  onEditEntry?: (entry: StockEntry) => void;
+  onDeleteEntry?: (entry: StockEntry) => void;
 }
 
 function TabPanels({
@@ -216,6 +225,9 @@ function TabPanels({
   reconciliationsData,
   reconciliationsFilters,
   onReconciliationsPagination,
+  onViewEntry,
+  onEditEntry,
+  onDeleteEntry,
 }: TabPanelsProps) {
   return (
     <>
@@ -248,6 +260,9 @@ function TabPanels({
           loading={entriesData.loading}
           error={entriesData.error}
           hasActiveFilters={false}
+          onView={onViewEntry}
+          onEdit={onEditEntry}
+          onDelete={onDeleteEntry}
           serverPagination={{
             pageIndex: entriesFilters.page - 1,
             pageSize: entriesFilters.pageSize,
@@ -272,6 +287,65 @@ function TabPanels({
 }
 
 /* ------------------------------------------------------------------ */
+/*  Hook: stock entry actions (view / edit / delete)                   */
+/* ------------------------------------------------------------------ */
+
+function useStockEntryActions(refetch: () => void) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const { deleteEntry } = useStockEntryMutations();
+  const [selectedEntry, setSelectedEntry] = React.useState<StockEntry | null>(null);
+  const [fetchingEntry, setFetchingEntry] = React.useState(false);
+
+  const fetchFullEntry = React.useCallback(
+    async (id: string): Promise<StockEntry | null> => {
+      if (!accessToken) return null;
+      setFetchingEntry(true);
+      try {
+        return (await stockEntryApi.get(accessToken, id)) as StockEntry;
+      } catch {
+        return null;
+      } finally {
+        setFetchingEntry(false);
+      }
+    },
+    [accessToken],
+  );
+
+  const handleView = React.useCallback(
+    async (entry: StockEntry) => {
+      const full = await fetchFullEntry(entry.id);
+      if (full) setSelectedEntry(full);
+    },
+    [fetchFullEntry],
+  );
+
+  const handleEdit = React.useCallback(
+    async (entry: StockEntry) => {
+      const full = await fetchFullEntry(entry.id);
+      if (full) setSelectedEntry(full);
+    },
+    [fetchFullEntry],
+  );
+
+  const handleDelete = React.useCallback(
+    async (entry: StockEntry) => {
+      if (!window.confirm(`Delete stock entry "${entry.stock_entry_no}"?`)) return;
+      try {
+        await deleteEntry(entry.id);
+        refetch();
+      } catch {
+        /* error handled by hook */
+      }
+    },
+    [deleteEntry, refetch],
+  );
+
+  const clearSelected = React.useCallback(() => setSelectedEntry(null), []);
+
+  return { selectedEntry, fetchingEntry, handleView, handleEdit, handleDelete, clearSelected };
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -288,6 +362,8 @@ export function StockManagement() {
   const movementsData = useStockMovements({ page: movementsFilters.page, pageSize: movementsFilters.pageSize });
   const entriesData = useStockEntries({ page: entriesFilters.page, pageSize: entriesFilters.pageSize });
   const reconciliationsData = useStockReconciliations({ page: reconciliationsFilters.page, pageSize: reconciliationsFilters.pageSize });
+
+  const entryActions = useStockEntryActions(entriesData.refetch);
 
   const handleTabChange = React.useCallback((newTab: string) => {
     setActiveTab(newTab as ActiveTab);
@@ -314,14 +390,28 @@ export function StockManagement() {
     return buildReconciliationsStats(reconciliationsData.stats);
   }, [activeTab, levelsData.stats, movementsData.stats, entriesData.stats, reconciliationsData.stats]);
 
+  const handleNewEntry = React.useCallback(() => {
+    entryActions.clearSelected();
+    setStockEntryDialogOpen(true);
+  }, [entryActions]);
+
+  const handleViewOrEdit = React.useCallback(
+    async (entry: StockEntry) => {
+      await entryActions.handleView(entry);
+      setStockEntryDialogOpen(true);
+    },
+    [entryActions],
+  );
+
   const handleDialogClose = React.useCallback(() => {
     setStockEntryDialogOpen(false);
+    entryActions.clearSelected();
     entriesData.refetch();
-  }, [entriesData]);
+  }, [entryActions, entriesData]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <StockManagementHeader onNewEntry={() => setStockEntryDialogOpen(true)} />
+      <StockManagementHeader onNewEntry={handleNewEntry} />
       <StatsGrid stats={activeStats} />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
@@ -342,11 +432,15 @@ export function StockManagement() {
           onEntriesPagination={makePaginationHandler(setEntriesFilters)}
           reconciliationsData={reconciliationsData}
           reconciliationsFilters={reconciliationsFilters}
-          onReconciliationsPagination={makePaginationHandler(setReconciliationsFilters)} />
+          onReconciliationsPagination={makePaginationHandler(setReconciliationsFilters)}
+          onViewEntry={handleViewOrEdit}
+          onEditEntry={handleViewOrEdit}
+          onDeleteEntry={entryActions.handleDelete} />
       </Tabs>
 
       <StockEntryDialog open={stockEntryDialogOpen}
         onOpenChange={setStockEntryDialogOpen}
+        entry={entryActions.selectedEntry}
         onCreated={handleDialogClose}
         onUpdated={handleDialogClose} />
     </div>

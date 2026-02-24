@@ -99,6 +99,11 @@ export const stockEntryApi = {
     apiRequest(`/stock-entries/${id}`, accessToken, {
       method: 'DELETE',
     }),
+
+  submit: (accessToken: string, id: string) =>
+    apiRequest(`/stock-entries/${id}/submit`, accessToken, {
+      method: 'POST',
+    }),
 };
 
 // Stock Reconciliations API helpers

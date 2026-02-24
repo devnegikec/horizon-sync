@@ -2,6 +2,8 @@ import * as React from 'react';
 
 import { Loader2, FileText } from 'lucide-react';
 
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
   Dialog,
@@ -26,6 +28,7 @@ import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 import { useStockEntryMutations } from '../../hooks/useStock';
 import { useWarehouses } from '../../hooks/useWarehouses';
 import type { StockEntry, StockEntryStatus } from '../../types/stock.types';
+import { stockEntryApi } from '../../utility/api/stock';
 
 import { StockEntryCsvImport } from './StockEntryCsvImport';
 import type { StockEntryLineRow } from './StockEntryLineItemsTable';
@@ -126,44 +129,72 @@ function buildPayload(form: FormState, lines: StockEntryLineRow[]) {
 /*  Sub-component: Header fields (entry no, type, date)                */
 /* ------------------------------------------------------------------ */
 
+const STATUS_OPTIONS = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'submitted', label: 'Submitted' },
+  { value: 'cancelled', label: 'Cancelled' },
+] as const;
+
 interface HeaderFieldsProps {
   form: FormState;
+  isEditing: boolean;
   onFieldChange: (field: keyof FormState, value: string) => void;
 }
 
-function HeaderFields({ form, onFieldChange }: HeaderFieldsProps) {
+function HeaderFields({ form, isEditing, onFieldChange }: HeaderFieldsProps) {
   return (
-    <div className="grid grid-cols-3 gap-4">
-      <div className="space-y-2">
-        <Label htmlFor="stock_entry_no">Entry No.</Label>
-        <Input id="stock_entry_no"
-          value={form.stock_entry_no}
-          onChange={(e) => onFieldChange('stock_entry_no', e.target.value)}
-          placeholder="Auto-generated" />
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="stock_entry_no">Entry No.</Label>
+          <Input id="stock_entry_no"
+            value={form.stock_entry_no}
+            onChange={(e) => onFieldChange('stock_entry_no', e.target.value)}
+            placeholder="Auto-generated"
+            disabled />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="stock_entry_type">Entry Type</Label>
+          <Select value={form.stock_entry_type}
+            onValueChange={(v) => onFieldChange('stock_entry_type', v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {ENTRY_TYPE_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="stock_entry_type">Entry Type</Label>
-        <Select value={form.stock_entry_type}
-          onValueChange={(v) => onFieldChange('stock_entry_type', v)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select type" />
-          </SelectTrigger>
-          <SelectContent>
-            {ENTRY_TYPE_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="posting_date">Posting Date</Label>
-        <Input id="posting_date"
-          type="date"
-          value={form.posting_date}
-          onChange={(e) => onFieldChange('posting_date', e.target.value)}
-          required />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="status">Status</Label>
+          <Select value={form.status}
+            onValueChange={(v) => onFieldChange('status', v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="posting_date">Posting Date</Label>
+          <Input id="posting_date"
+            type="date"
+            value={form.posting_date}
+            onChange={(e) => onFieldChange('posting_date', e.target.value)}
+            required />
+        </div>
       </div>
     </div>
   );
@@ -262,6 +293,25 @@ function WarehouseFields({ form, onFieldChange }: WarehouseFieldsProps) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Pure helper: save entry (create or update)                         */
+/* ------------------------------------------------------------------ */
+
+async function saveEntry(
+  isEditing: boolean,
+  entry: StockEntry | null | undefined,
+  payload: ReturnType<typeof buildPayload>,
+  createEntry: (data: ReturnType<typeof buildPayload>) => Promise<{ id: string }>,
+  updateEntry: (id: string, data: ReturnType<typeof buildPayload>) => Promise<{ id: string }>,
+): Promise<string> {
+  if (isEditing && entry) {
+    const updated = await updateEntry(entry.id, payload);
+    return updated.id;
+  }
+  const created = await createEntry(payload);
+  return created.id;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main dialog component                                              */
 /* ------------------------------------------------------------------ */
 
@@ -281,6 +331,7 @@ export function StockEntryDialog({
   onUpdated,
 }: StockEntryDialogProps) {
   const { createEntry, updateEntry, loading } = useStockEntryMutations();
+  const accessToken = useUserStore((s) => s.accessToken);
   const isEditing = !!entry;
 
   const [form, setForm] = React.useState<FormState>({ ...DEFAULT_FORM });
@@ -324,13 +375,19 @@ export function StockEntryDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
-    const payload = buildPayload(form, lineItems);
+    const wantsSubmit = form.status === 'submitted';
+    const payload = buildPayload(
+      wantsSubmit ? { ...form, status: 'draft' } : form,
+      lineItems,
+    );
     try {
-      if (isEditing && entry) {
-        await updateEntry(entry.id, payload);
+      const savedId = await saveEntry(isEditing, entry, payload, createEntry, updateEntry);
+      if (wantsSubmit && accessToken) {
+        await stockEntryApi.submit(accessToken, savedId);
+      }
+      if (isEditing) {
         onUpdated?.();
       } else {
-        await createEntry(payload);
         onCreated?.();
       }
       onOpenChange(false);
@@ -362,7 +419,7 @@ export function StockEntryDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <HeaderFields form={form} onFieldChange={handleFieldChange} />
+          <HeaderFields form={form} isEditing={isEditing} onFieldChange={handleFieldChange} />
           <WarehouseFields form={form} onFieldChange={handleFieldChange} />
 
           <div className="space-y-2">
