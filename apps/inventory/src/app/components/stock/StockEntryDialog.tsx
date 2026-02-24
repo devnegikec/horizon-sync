@@ -1,21 +1,269 @@
 import * as React from 'react';
 
-import { Loader2, FileText, Plus, Trash2 } from 'lucide-react';
+import { Loader2, FileText } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
-import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@horizon-sync/ui/components/ui/select';
+import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
-import { useItems } from '../../hooks/useItems';
 import { useStockEntryMutations } from '../../hooks/useStock';
 import { useWarehouses } from '../../hooks/useWarehouses';
-import type { ApiItem } from '../../types/items-api.types';
-import type { StockEntry, StockEntryItem, StockEntryStatus } from '../../types/stock.types';
-import type { Warehouse } from '../../types/warehouse.types';
+import type { StockEntry, StockEntryStatus } from '../../types/stock.types';
+
+import { StockEntryCsvImport } from './StockEntryCsvImport';
+import type { StockEntryLineRow } from './StockEntryLineItemsTable';
+import { StockEntryLineItemsTable } from './StockEntryLineItemsTable';
+
+/* ------------------------------------------------------------------ */
+/*  Constants & types                                                  */
+/* ------------------------------------------------------------------ */
+
+const ENTRY_TYPE_OPTIONS = [
+  { value: 'material_receipt', label: 'Material Receipt' },
+  { value: 'material_issue', label: 'Material Issue' },
+  { value: 'material_transfer', label: 'Material Transfer' },
+  { value: 'manufacture', label: 'Manufacture' },
+  { value: 'repack', label: 'Repack' },
+] as const;
+
+interface FormState {
+  stock_entry_no: string;
+  stock_entry_type: string;
+  from_warehouse_id: string;
+  to_warehouse_id: string;
+  posting_date: string;
+  status: StockEntryStatus;
+  remarks: string;
+}
+
+const DEFAULT_FORM: FormState = {
+  stock_entry_no: '',
+  stock_entry_type: 'material_receipt',
+  from_warehouse_id: '',
+  to_warehouse_id: '',
+  posting_date: new Date().toISOString().split('T')[0],
+  status: 'draft',
+  remarks: '',
+};
+
+const EMPTY_LINE: StockEntryLineRow = {
+  item_id: '',
+  qty: 1,
+  uom: 'pcs',
+  basic_rate: 0,
+  amount: 0,
+  sort_order: 1,
+};
+
+/* ------------------------------------------------------------------ */
+/*  Pure helpers                                                       */
+/* ------------------------------------------------------------------ */
+
+function buildFormFromEntry(entry: StockEntry): FormState {
+  return {
+    stock_entry_no: entry.stock_entry_no,
+    stock_entry_type: entry.stock_entry_type,
+    from_warehouse_id: entry.from_warehouse_id || '',
+    to_warehouse_id: entry.to_warehouse_id || '',
+    posting_date: entry.posting_date.split('T')[0],
+    status: entry.status || 'draft',
+    remarks: entry.remarks || '',
+  };
+}
+
+function buildLinesFromEntry(entry: StockEntry): StockEntryLineRow[] {
+  if (!entry.items || entry.items.length === 0) return [{ ...EMPTY_LINE }];
+  return entry.items.map((item, idx) => ({
+    item_id: item.item_id,
+    qty: item.qty || 0,
+    uom: item.uom || 'pcs',
+    basic_rate: item.basic_rate || 0,
+    amount: (item.qty || 0) * (item.basic_rate || 0),
+    sort_order: idx + 1,
+  }));
+}
+
+function buildPayload(form: FormState, lines: StockEntryLineRow[]) {
+  const items = lines
+    .filter((row) => !!row.item_id)
+    .map((row) => ({
+      item_id: row.item_id,
+      qty: row.qty || 0,
+      uom: row.uom || 'pcs',
+      basic_rate: row.basic_rate || 0,
+    }));
+
+  return {
+    stock_entry_no: form.stock_entry_no || undefined,
+    stock_entry_type: form.stock_entry_type,
+    from_warehouse_id: form.from_warehouse_id || undefined,
+    to_warehouse_id: form.to_warehouse_id || undefined,
+    posting_date: new Date(form.posting_date).toISOString(),
+    status: form.status,
+    remarks: form.remarks || undefined,
+    items,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sub-component: Header fields (entry no, type, date)                */
+/* ------------------------------------------------------------------ */
+
+interface HeaderFieldsProps {
+  form: FormState;
+  onFieldChange: (field: keyof FormState, value: string) => void;
+}
+
+function HeaderFields({ form, onFieldChange }: HeaderFieldsProps) {
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="stock_entry_no">Entry No.</Label>
+        <Input id="stock_entry_no"
+          value={form.stock_entry_no}
+          onChange={(e) => onFieldChange('stock_entry_no', e.target.value)}
+          placeholder="Auto-generated" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="stock_entry_type">Entry Type</Label>
+        <Select value={form.stock_entry_type}
+          onValueChange={(v) => onFieldChange('stock_entry_type', v)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select type" />
+          </SelectTrigger>
+          <SelectContent>
+            {ENTRY_TYPE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="posting_date">Posting Date</Label>
+        <Input id="posting_date"
+          type="date"
+          value={form.posting_date}
+          onChange={(e) => onFieldChange('posting_date', e.target.value)}
+          required />
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sub-component: Warehouse selector                                  */
+/* ------------------------------------------------------------------ */
+
+interface WarehouseSelectorProps {
+  label: string;
+  htmlId: string;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+function WarehouseSelector({ label, htmlId, value, onChange }: WarehouseSelectorProps) {
+  const { warehouses, loading } = useWarehouses(1, 100);
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={htmlId}>{label}</Label>
+      <Select value={value || 'none'}
+        onValueChange={(v) => onChange(v === 'none' ? '' : v)}>
+        <SelectTrigger>
+          <SelectValue placeholder="Select warehouse" />
+        </SelectTrigger>
+        <SelectContent>
+          <div className="max-h-[200px] overflow-y-auto">
+            <SelectItem value="none">None</SelectItem>
+            {loading ? (
+              <div className="p-2 text-xs text-muted-foreground text-center">Loading...</div>
+            ) : (
+              warehouses.map((w) => (
+                <SelectItem key={w.id} value={w.id}>
+                  {w.name} ({w.code})
+                </SelectItem>
+              ))
+            )}
+          </div>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sub-component: Conditional warehouse fields by entry type          */
+/* ------------------------------------------------------------------ */
+
+interface WarehouseFieldsProps {
+  form: FormState;
+  onFieldChange: (field: keyof FormState, value: string) => void;
+}
+
+function WarehouseFields({ form, onFieldChange }: WarehouseFieldsProps) {
+  const entryType = form.stock_entry_type;
+
+  // Material Receipt → only "To Warehouse"
+  if (entryType === 'material_receipt') {
+    return (
+      <div className="grid grid-cols-2 gap-4">
+        <WarehouseSelector label="To Warehouse (Destination)"
+          htmlId="to_warehouse_id"
+          value={form.to_warehouse_id}
+          onChange={(v) => onFieldChange('to_warehouse_id', v)} />
+      </div>
+    );
+  }
+
+  // Material Issue → only "From Warehouse"
+  if (entryType === 'material_issue') {
+    return (
+      <div className="grid grid-cols-2 gap-4">
+        <WarehouseSelector label="From Warehouse (Source)"
+          htmlId="from_warehouse_id"
+          value={form.from_warehouse_id}
+          onChange={(v) => onFieldChange('from_warehouse_id', v)} />
+      </div>
+    );
+  }
+
+  // Transfer, Manufacture, Repack → both warehouses
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <WarehouseSelector label="From Warehouse (Source)"
+        htmlId="from_warehouse_id"
+        value={form.from_warehouse_id}
+        onChange={(v) => onFieldChange('from_warehouse_id', v)} />
+      <WarehouseSelector label="To Warehouse (Destination)"
+        htmlId="to_warehouse_id"
+        value={form.to_warehouse_id}
+        onChange={(v) => onFieldChange('to_warehouse_id', v)} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main dialog component                                              */
+/* ------------------------------------------------------------------ */
 
 interface StockEntryDialogProps {
   open: boolean;
@@ -25,239 +273,58 @@ interface StockEntryDialogProps {
   onUpdated?: () => void;
 }
 
-const entryTypeOptions = [
-  { value: 'material_receipt', label: 'Material Receipt' },
-  { value: 'material_issue', label: 'Material Issue' },
-  { value: 'material_transfer', label: 'Material Transfer' },
-  { value: 'manufacture', label: 'Manufacture' },
-  { value: 'repack', label: 'Repack' },
-];
-
-interface ItemLineProps {
-  item: Partial<StockEntryItem>;
-  index: number;
-  warehouses: Warehouse[];
-  items: ApiItem[];
-  itemsLoading: boolean;
-  warehousesLoading: boolean;
-  onItemSearch: (search: string) => void;
-  onWarehouseSearch: (search: string) => void;
-  onChange: (index: number, field: string, value: string | number) => void;
-  onRemove: (index: number) => void;
-}
-
-function ItemLine({ item, index, warehouses, items, itemsLoading, warehousesLoading, onItemSearch, onWarehouseSearch, onChange, onRemove }: ItemLineProps) {
-  const [itemSearchOpen, setItemSearchOpen] = React.useState(false);
-  const [sourceWhSearchOpen, setSourceWhSearchOpen] = React.useState(false);
-  const [targetWhSearchOpen, setTargetWhSearchOpen] = React.useState(false);
-
-  return (
-    <div className="grid grid-cols-12 gap-2 items-end border-b pb-3">
-      <div className="col-span-3 space-y-1">
-        <Label className="text-xs">Item</Label>
-        <div className="relative">
-          <Select value={item.item_id || ''} onValueChange={(value) => onChange(index, 'item_id', value)} open={itemSearchOpen} onOpenChange={setItemSearchOpen}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Select item" />
-            </SelectTrigger>
-            <SelectContent>
-              <div className="p-2 border-b">
-                <SearchInput placeholder="Search items..." onSearch={onItemSearch} className="h-8 text-xs" />
-              </div>
-              <div className="max-h-[200px] overflow-y-auto">
-                {itemsLoading ? (
-                  <div className="p-2 text-xs text-muted-foreground text-center">Loading...</div>
-                ) : items.length === 0 ? (
-                  <div className="p-2 text-xs text-muted-foreground text-center">No items found</div>
-                ) : (
-                  items.map((i) => (
-                    <SelectItem key={i.id} value={i.id} className="text-xs">
-                      {i.item_name} ({i.item_code})
-                    </SelectItem>
-                  ))
-                )}
-              </div>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="col-span-2 space-y-1">
-        <Label className="text-xs">Source WH</Label>
-        <Select value={item.source_warehouse_id || 'none'}
-          onValueChange={(value) => onChange(index, 'source_warehouse_id', value === 'none' ? '' : value)}
-          open={sourceWhSearchOpen}
-          onOpenChange={setSourceWhSearchOpen}>
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue placeholder="Select" />
-          </SelectTrigger>
-          <SelectContent>
-            <div className="p-2 border-b">
-              <SearchInput placeholder="Search warehouses..." onSearch={onWarehouseSearch} className="h-8 text-xs" />
-            </div>
-            <div className="max-h-[200px] overflow-y-auto">
-              <SelectItem value="none" className="text-xs">None</SelectItem>
-              {warehousesLoading ? (
-                <div className="p-2 text-xs text-muted-foreground text-center">Loading...</div>
-              ) : (
-                warehouses.map((w) => (
-                  <SelectItem key={w.id} value={w.id} className="text-xs">
-                    {w.name} ({w.code})
-                  </SelectItem>
-                ))
-              )}
-            </div>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="col-span-2 space-y-1">
-        <Label className="text-xs">Target WH</Label>
-        <Select value={item.target_warehouse_id || 'none'}
-          onValueChange={(value) => onChange(index, 'target_warehouse_id', value === 'none' ? '' : value)}
-          open={targetWhSearchOpen}
-          onOpenChange={setTargetWhSearchOpen}>
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue placeholder="Select" />
-          </SelectTrigger>
-          <SelectContent>
-            <div className="p-2 border-b">
-              <SearchInput placeholder="Search warehouses..." onSearch={onWarehouseSearch} className="h-8 text-xs" />
-            </div>
-            <div className="max-h-[200px] overflow-y-auto">
-              <SelectItem value="none" className="text-xs">None</SelectItem>
-              {warehousesLoading ? (
-                <div className="p-2 text-xs text-muted-foreground text-center">Loading...</div>
-              ) : (
-                warehouses.map((w) => (
-                  <SelectItem key={w.id} value={w.id} className="text-xs">
-                    {w.name} ({w.code})
-                  </SelectItem>
-                ))
-              )}
-            </div>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="col-span-2 space-y-1">
-        <Label className="text-xs">Qty</Label>
-        <Input type="number"
-          className="h-8 text-xs"
-          value={item.qty || ''}
-          onChange={(e) => onChange(index, 'qty', parseFloat(e.target.value) || 0)}
-          placeholder="0"/>
-      </div>
-      <div className="col-span-2 space-y-1">
-        <Label className="text-xs">Rate</Label>
-        <Input type="number"
-          step="0.01"
-          className="h-8 text-xs"
-          value={item.basic_rate || ''}
-          onChange={(e) => onChange(index, 'basic_rate', parseFloat(e.target.value) || 0)}
-          placeholder="0.00"/>
-      </div>
-      <div className="col-span-1">
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => onRemove(index)}>
-          <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-export function StockEntryDialog({ open, onOpenChange, entry, onCreated, onUpdated }: StockEntryDialogProps) {
+export function StockEntryDialog({
+  open,
+  onOpenChange,
+  entry,
+  onCreated,
+  onUpdated,
+}: StockEntryDialogProps) {
   const { createEntry, updateEntry, loading } = useStockEntryMutations();
-  
-  // Fetch warehouses and items with search
-  const [warehouseSearch, setWarehouseSearch] = React.useState('');
-  const [itemSearch, setItemSearch] = React.useState('');
-  
-  const { warehouses, loading: warehousesLoading } = useWarehouses(1, 100, { search: warehouseSearch });
-  const { items, loading: itemsLoading } = useItems(1, 100, { search: itemSearch });
-  
-  const [formData, setFormData] = React.useState({
-    stock_entry_no: '',
-    stock_entry_type: 'material_receipt',
-    from_warehouse_id: '',
-    to_warehouse_id: '',
-    posting_date: new Date().toISOString().split('T')[0],
-    status: 'draft' as StockEntryStatus,
-    remarks: '',
-  });
-  const [lineItems, setLineItems] = React.useState<Partial<StockEntryItem>[]>([{ item_id: '', qty: 0, basic_rate: 0 }]);
-  const [submitError, setSubmitError] = React.useState<string | null>(null);
-
   const isEditing = !!entry;
 
+  const [form, setForm] = React.useState<FormState>({ ...DEFAULT_FORM });
+  const [lineItems, setLineItems] = React.useState<StockEntryLineRow[]>([{ ...EMPTY_LINE }]);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+
+  /* Reset form when dialog opens / entry changes */
   React.useEffect(() => {
     if (entry) {
-      setFormData({
-        stock_entry_no: entry.stock_entry_no,
-        stock_entry_type: entry.stock_entry_type,
-        from_warehouse_id: entry.from_warehouse_id || '',
-        to_warehouse_id: entry.to_warehouse_id || '',
-        posting_date: entry.posting_date.split('T')[0],
-        status: (entry.status as StockEntryStatus) || 'draft',
-        remarks: entry.remarks || '',
-      });
-      setLineItems(entry.items && entry.items.length > 0 ? entry.items : [{ item_id: '', qty: 0, basic_rate: 0 }]);
+      setForm(buildFormFromEntry(entry));
+      setLineItems(buildLinesFromEntry(entry));
     } else {
-      setFormData({
-        stock_entry_no: '',
-        stock_entry_type: 'material_receipt',
-        from_warehouse_id: '',
-        to_warehouse_id: '',
-        posting_date: new Date().toISOString().split('T')[0],
-        status: 'draft',
-        remarks: '',
-      });
-      setLineItems([{ item_id: '', qty: 0, basic_rate: 0 }]);
+      setForm({ ...DEFAULT_FORM, posting_date: new Date().toISOString().split('T')[0] });
+      setLineItems([{ ...EMPTY_LINE }]);
     }
     setSubmitError(null);
   }, [entry, open]);
 
-  const handleItemChange = (index: number, field: string, value: string | number) => {
-    setLineItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
-  };
+  /* Field change handler — clears irrelevant warehouse on type switch */
+  const handleFieldChange = React.useCallback((field: keyof FormState, value: string) => {
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === 'stock_entry_type') {
+        if (value === 'material_receipt') next.from_warehouse_id = '';
+        if (value === 'material_issue') next.to_warehouse_id = '';
+      }
+      return next;
+    });
+  }, []);
 
-  const handleAddItem = () => {
-    setLineItems((prev) => [...prev, { item_id: '', qty: 0, basic_rate: 0 }]);
-  };
-
-  const handleRemoveItem = (index: number) => {
-    if (lineItems.length > 1) {
-      setLineItems((prev) => prev.filter((_, i) => i !== index));
-    }
-  };
-
-  const getPayload = () => {
-    const items = lineItems
-      .filter((item): item is StockEntryItem => !!item.item_id)
-      .map((item) => ({
-        item_id: item.item_id,
-        source_warehouse_id: item.source_warehouse_id || undefined,
-        target_warehouse_id: item.target_warehouse_id || undefined,
-        qty: item.qty || 0,
-        basic_rate: item.basic_rate || 0,
-        uom: item.uom,
-      }));
-
-    return {
-      stock_entry_no: formData.stock_entry_no || undefined,
-      stock_entry_type: formData.stock_entry_type,
-      from_warehouse_id: formData.from_warehouse_id || undefined,
-      to_warehouse_id: formData.to_warehouse_id || undefined,
-      posting_date: new Date(formData.posting_date).toISOString(),
-      status: formData.status,
-      remarks: formData.remarks || undefined,
-      items,
-    };
-  };
+  /* CSV import handler — appends imported rows to existing items */
+  const handleCsvImport = React.useCallback((rows: StockEntryLineRow[]) => {
+    setLineItems((prev) => {
+      const existing = prev.filter((r) => !!r.item_id);
+      const offset = existing.length;
+      const imported = rows.map((r, i) => ({ ...r, sort_order: offset + i + 1 }));
+      return existing.length > 0 ? [...existing, ...imported] : imported;
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
-
-    const payload = getPayload();
-
+    const payload = buildPayload(form, lineItems);
     try {
       if (isEditing && entry) {
         await updateEntry(entry.id, payload);
@@ -272,9 +339,14 @@ export function StockEntryDialog({ open, onOpenChange, entry, onCreated, onUpdat
     }
   };
 
+  const grandTotal = React.useMemo(
+    () => lineItems.reduce((sum, r) => sum + (r.amount || 0), 0),
+    [lineItems],
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -288,140 +360,44 @@ export function StockEntryDialog({ open, onOpenChange, entry, onCreated, onUpdat
             </div>
           </div>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="stock_entry_no">Entry No.</Label>
-                <Input id="stock_entry_no"
-                  value={formData.stock_entry_no}
-                  onChange={(e) => setFormData({ ...formData, stock_entry_no: e.target.value })}
-                  placeholder="Auto-generated"/>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="stock_entry_type">Entry Type</Label>
-                <Select value={formData.stock_entry_type} onValueChange={(value) => setFormData({ ...formData, stock_entry_type: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {entryTypeOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="posting_date">Posting Date</Label>
-                <Input id="posting_date"
-                  type="date"
-                  value={formData.posting_date}
-                  onChange={(e) => setFormData({ ...formData, posting_date: e.target.value })}
-                  required/>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="from_warehouse_id">From Warehouse</Label>
-                <Select value={formData.from_warehouse_id || 'none'}
-                  onValueChange={(value) => setFormData({ ...formData, from_warehouse_id: value === 'none' ? '' : value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select warehouse" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <div className="p-2 border-b">
-                      <SearchInput placeholder="Search warehouses..." onSearch={setWarehouseSearch} className="h-8 text-xs" />
-                    </div>
-                    <div className="max-h-[200px] overflow-y-auto">
-                      <SelectItem value="none">None</SelectItem>
-                      {warehousesLoading ? (
-                        <div className="p-2 text-xs text-muted-foreground text-center">Loading...</div>
-                      ) : warehouses.length === 0 ? (
-                        <div className="p-2 text-xs text-muted-foreground text-center">No warehouses found</div>
-                      ) : (
-                        warehouses.map((w) => (
-                          <SelectItem key={w.id} value={w.id}>
-                            {w.name} ({w.code})
-                          </SelectItem>
-                        ))
-                      )}
-                    </div>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="to_warehouse_id">To Warehouse</Label>
-                <Select value={formData.to_warehouse_id || 'none'}
-                  onValueChange={(value) => setFormData({ ...formData, to_warehouse_id: value === 'none' ? '' : value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select warehouse" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <div className="p-2 border-b">
-                      <SearchInput placeholder="Search warehouses..." onSearch={setWarehouseSearch} className="h-8 text-xs" />
-                    </div>
-                    <div className="max-h-[200px] overflow-y-auto">
-                      <SelectItem value="none">None</SelectItem>
-                      {warehousesLoading ? (
-                        <div className="p-2 text-xs text-muted-foreground text-center">Loading...</div>
-                      ) : warehouses.length === 0 ? (
-                        <div className="p-2 text-xs text-muted-foreground text-center">No warehouses found</div>
-                      ) : (
-                        warehouses.map((w) => (
-                          <SelectItem key={w.id} value={w.id}>
-                            {w.name} ({w.code})
-                          </SelectItem>
-                        ))
-                      )}
-                    </div>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <HeaderFields form={form} onFieldChange={handleFieldChange} />
+          <WarehouseFields form={form} onFieldChange={handleFieldChange} />
 
-            <div className="space-y-2">
-              <Label htmlFor="remarks">Remarks</Label>
-              <Textarea id="remarks"
-                value={formData.remarks}
-                onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                placeholder="Additional remarks..."
-                rows={2}/>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="remarks">Remarks</Label>
+            <Textarea id="remarks"
+              value={form.remarks}
+              onChange={(e) => handleFieldChange('remarks', e.target.value)}
+              placeholder="Additional remarks..."
+              rows={2} />
+          </div>
 
-            {/* Line Items */}
-            <div className="border-t pt-4 mt-2">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium">Line Items</h4>
-                <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Item
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {lineItems.map((item, index) => (
-                  <ItemLine key={index}
-                    item={item}
-                    index={index}
-                    warehouses={warehouses}
-                    items={items}
-                    itemsLoading={itemsLoading}
-                    warehousesLoading={warehousesLoading}
-                    onItemSearch={setItemSearch}
-                    onWarehouseSearch={setWarehouseSearch}
-                    onChange={handleItemChange}
-                    onRemove={handleRemoveItem}/>
-                ))}
-              </div>
+          <Separator />
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">Line Items</h4>
+              <StockEntryCsvImport onImport={handleCsvImport} />
+            </div>
+            <StockEntryLineItemsTable items={lineItems}
+              onItemsChange={setLineItems} />
+          </div>
+
+          <div className="flex justify-end">
+            <div className="text-sm text-muted-foreground">
+              Total: <span className="font-semibold text-foreground">{grandTotal.toFixed(2)}</span>
             </div>
           </div>
 
-          {submitError && <p className="text-sm text-destructive mb-4">{submitError}</p>}
+          {submitError && <p className="text-sm text-destructive">{submitError}</p>}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+            <Button type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
