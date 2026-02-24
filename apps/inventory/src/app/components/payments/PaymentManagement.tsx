@@ -15,11 +15,8 @@ import { getStatIconColors } from '../../utils/payment.utils';
 import { PaymentDialog } from './PaymentDialog';
 import { PaymentDetailDialog } from './PaymentDetailDialog';
 import { StatCard } from './StatCard';
-import type { PaymentEntry, PaymentFilters as Filters } from '../../types/payment.types';
-import type { Invoice } from '../../types/invoice';
 import { PaymentFilters } from './PaymentFilters';
 import { PaymentTable } from './PaymentTable';
-import { StatCard } from './StatCard';
 
 export interface PaymentManagementProps {
   preSelectedInvoice?: Invoice | null;
@@ -52,11 +49,25 @@ export function PaymentManagement({
   const [paymentForDetail, setPaymentForDetail] = useState<PaymentEntry | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  // Memoize event handlers to prevent unnecessary re-renders
-  const handleViewPayment = useCallback((payment: PaymentEntry) => {
-    // TODO: Implement view details dialog
-    console.log('View payment:', payment);
-  }, []);
+  const handleViewPayment = useCallback(
+    async (payment: PaymentEntry) => {
+      setPaymentForDetail(payment);
+      setDetailDialogOpen(true);
+      setDetailLoading(true);
+      try {
+        const fullPayment = await paymentApi.fetchPaymentById(payment.id);
+        setPaymentForDetail(fullPayment);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load payment details';
+        toast({ title: 'Error', description: message, variant: 'destructive' });
+        setDetailDialogOpen(false);
+        setPaymentForDetail(null);
+      } finally {
+        setDetailLoading(false);
+      }
+    },
+    [toast]
+  );
 
   // Handle pre-selected invoice (for recording payment from invoice)
   useEffect(() => {
@@ -85,31 +96,10 @@ export function PaymentManagement({
     cancelled: payments.filter((p) => p.status === 'Cancelled').length,
   }), [totalCount, payments]);
 
-  // Memoize event handlers to prevent unnecessary re-renders
   const handleCreatePayment = useCallback(() => {
     setSelectedPayment(null);
     setDialogOpen(true);
   }, []);
-
-  const handleViewPayment = useCallback(
-    async (payment: PaymentEntry) => {
-      setPaymentForDetail(payment);
-      setDetailDialogOpen(true);
-      setDetailLoading(true);
-      try {
-        const fullPayment = await paymentApi.fetchPaymentById(payment.id);
-        setPaymentForDetail(fullPayment);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to load payment details';
-        toast({ title: 'Error', description: message, variant: 'destructive' });
-        setDetailDialogOpen(false);
-        setPaymentForDetail(null);
-      } finally {
-        setDetailLoading(false);
-      }
-    },
-    [toast]
-  );
 
   const handleEditPayment = useCallback((payment: PaymentEntry) => {
     setSelectedPayment(payment);
