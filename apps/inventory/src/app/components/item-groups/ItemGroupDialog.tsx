@@ -37,6 +37,106 @@ const DEFAULT_FORM = {
   is_active: true,
 };
 
+type FormData = typeof DEFAULT_FORM;
+type SetField = (key: keyof FormData, value: string | boolean) => void;
+
+interface FormFieldsProps {
+  formData: FormData;
+  set: SetField;
+  isEditing: boolean;
+  parentOptions: ItemGroupListItem[];
+}
+
+function ItemGroupFormFields({ formData, set, isEditing, parentOptions }: FormFieldsProps) {
+  return (
+    <div className="grid gap-4 py-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="ig-name">Name *</Label>
+          <Input id="ig-name"
+            value={formData.name}
+            onChange={(e) => set('name', e.target.value)}
+            placeholder="e.g., Electronics"
+            required />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="ig-status">Status</Label>
+          <Select value={formData.is_active ? 'active' : 'inactive'}
+            onValueChange={(v) => set('is_active', v === 'active')}>
+            <SelectTrigger id="ig-status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {isEditing && (
+        <div className="space-y-2">
+          <Label htmlFor="ig-code">Code</Label>
+          <Input id="ig-code"
+            value={formData.code}
+            readOnly
+            className="bg-muted cursor-not-allowed" />
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="ig-description">Description</Label>
+        <Textarea id="ig-description"
+          value={formData.description}
+          onChange={(e) => set('description', e.target.value)}
+          placeholder="Optional description"
+          rows={2} />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="ig-parent">Parent Group</Label>
+        <Select value={formData.parent_id || 'none'}
+          onValueChange={(v) => set('parent_id', v === 'none' ? '' : v)}>
+          <SelectTrigger id="ig-parent">
+            <SelectValue placeholder="None (top-level)" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None (top-level)</SelectItem>
+            {parentOptions.map((g) => (
+              <SelectItem key={g.id} value={g.id}>{g.name} ({g.code})</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="ig-valuation">Valuation Method</Label>
+          <Select value={formData.default_valuation_method || 'none'}
+            onValueChange={(v) => set('default_valuation_method', v === 'none' ? '' : v)}>
+            <SelectTrigger id="ig-valuation">
+              <SelectValue placeholder="Default" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Default</SelectItem>
+              {VALUATION_METHODS.map((m) => (
+                <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="ig-uom">Default UOM</Label>
+          <Input id="ig-uom"
+            value={formData.default_uom}
+            onChange={(e) => set('default_uom', e.target.value)}
+            placeholder="e.g., Pieces" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ItemGroupDialog({ open, onOpenChange, itemGroup, allItemGroups, onCreated, onUpdated }: ItemGroupDialogProps) {
   const { createItemGroup, updateItemGroup, loading } = useItemGroupMutations();
   const [formData, setFormData] = React.useState(DEFAULT_FORM);
@@ -61,7 +161,7 @@ export function ItemGroupDialog({ open, onOpenChange, itemGroup, allItemGroups, 
     setSubmitError(null);
   }, [itemGroup, open]);
 
-  const set = (key: keyof typeof DEFAULT_FORM, value: string | boolean) =>
+  const set: SetField = (key, value) =>
     setFormData((prev) => ({ ...prev, [key]: value }));
 
   const buildPayload = () => ({
@@ -109,89 +209,7 @@ export function ItemGroupDialog({ open, onOpenChange, itemGroup, allItemGroups, 
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="ig-name">Name *</Label>
-                <Input id="ig-name"
-                  value={formData.name}
-                  onChange={(e) => set('name', e.target.value)}
-                  placeholder="e.g., Electronics"
-                  required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ig-status">Status</Label>
-                <Select value={formData.is_active ? 'active' : 'inactive'}
-                  onValueChange={(v) => set('is_active', v === 'active')}>
-                  <SelectTrigger id="ig-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="ig-code">Code</Label>
-              <Input id="ig-code"
-                value={formData.code}
-                onChange={(e) => set('code', e.target.value)}
-                placeholder="e.g., ELEC (optional)" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="ig-description">Description</Label>
-              <Textarea id="ig-description"
-                value={formData.description}
-                onChange={(e) => set('description', e.target.value)}
-                placeholder="Optional description"
-                rows={2} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="ig-parent">Parent Group</Label>
-              <Select value={formData.parent_id || 'none'}
-                onValueChange={(v) => set('parent_id', v === 'none' ? '' : v)}>
-                <SelectTrigger id="ig-parent">
-                  <SelectValue placeholder="None (top-level)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None (top-level)</SelectItem>
-                  {parentOptions.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>{g.name} ({g.code})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="ig-valuation">Valuation Method</Label>
-                <Select value={formData.default_valuation_method || 'none'}
-                  onValueChange={(v) => set('default_valuation_method', v === 'none' ? '' : v)}>
-                  <SelectTrigger id="ig-valuation">
-                    <SelectValue placeholder="Default" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Default</SelectItem>
-                    {VALUATION_METHODS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ig-uom">Default UOM</Label>
-                <Input id="ig-uom"
-                  value={formData.default_uom}
-                  onChange={(e) => set('default_uom', e.target.value)}
-                  placeholder="e.g., Pieces" />
-              </div>
-            </div>
-          </div>
+          <ItemGroupFormFields formData={formData} set={set} isEditing={isEditing} parentOptions={parentOptions} />
 
           {submitError && <p className="text-sm text-destructive mb-4">{submitError}</p>}
 

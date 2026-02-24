@@ -1,7 +1,9 @@
 import * as React from 'react';
+
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
+
 import type { TaxTemplate } from '../../../types/tax-template.types';
 import type { ItemFormData } from '../../../utility/item-payload-builders';
 
@@ -35,11 +37,9 @@ export function Step3TaxAdditional({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Sales Tax Template</Label>
-            <Select
-              value={formData.salesTaxTemplateId || ''}
+            <Select value={formData.salesTaxTemplateId || ''}
               onValueChange={(value) => onUpdate({ salesTaxTemplateId: value || null })}
-              disabled={isLoadingTaxTemplates}
-            >
+              disabled={isLoadingTaxTemplates}>
               <SelectTrigger>
                 <SelectValue placeholder="Select sales tax template" />
               </SelectTrigger>
@@ -55,11 +55,9 @@ export function Step3TaxAdditional({
 
           <div className="space-y-2">
             <Label>Purchase Tax Template</Label>
-            <Select
-              value={formData.purchaseTaxTemplateId || ''}
+            <Select value={formData.purchaseTaxTemplateId || ''}
               onValueChange={(value) => onUpdate({ purchaseTaxTemplateId: value || null })}
-              disabled={isLoadingTaxTemplates}
-            >
+              disabled={isLoadingTaxTemplates}>
               <SelectTrigger>
                 <SelectValue placeholder="Select purchase tax template" />
               </SelectTrigger>
@@ -80,8 +78,7 @@ export function Step3TaxAdditional({
         
         <div className="space-y-2">
           <Label htmlFor="customFields">Custom Fields (JSON)</Label>
-          <Textarea
-            id="customFields"
+          <Textarea id="customFields"
             value={JSON.stringify(formData.customFields, null, 2)}
             onChange={(e) => {
               try {
@@ -92,8 +89,7 @@ export function Step3TaxAdditional({
               }
             }}
             placeholder='{"key": "value"}'
-            rows={6}
-          />
+            rows={6}/>
           <p className="text-xs text-muted-foreground">Enter valid JSON format</p>
         </div>
       </div>
