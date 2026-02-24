@@ -30,6 +30,9 @@ const emptyItem: QuotationLineItemCreate = {
   uom: 'pcs',
   rate: 0,
   amount: 0,
+  discount_type: 'percentage',
+  discount_value: 0,
+  discount_amount: 0,
   tax_template_id: null,
   tax_rate: 0,
   tax_amount: 0,
@@ -124,24 +127,36 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
     return undefined;
   };
 
+  const computeDiscountAmount = (amount: number, discountType: string, discountValue: number): number => {
+    if (!discountValue || discountValue <= 0) return 0;
+    if (discountType === 'percentage') {
+      return Number((amount * discountValue / 100).toFixed(2));
+    }
+    return Math.min(discountValue, amount);
+  };
+
   const calculateTaxAndTotal = (item: QuotationLineItemCreate, itemData?: QuotationLineItem): QuotationLineItemCreate => {
     const amount = Number(item.qty) * Number(item.rate);
+    const discountType = (item.discount_type || 'percentage') as 'flat' | 'percentage';
+    const discountVal = Number(item.discount_value ?? 0);
+    const discountAmount = computeDiscountAmount(amount, discountType, discountVal);
+    const netAmount = amount - discountAmount;
+
     let taxRate = 0;
     let taxTemplateId: string | null = null;
-
-    // Get tax info from item data if available
     if (itemData?.tax_info) {
       taxTemplateId = itemData.tax_info.id;
-      // Calculate total tax rate from breakup
-      taxRate = itemData.tax_info.breakup.reduce((sum: number, tax: any) => sum + tax.rate, 0);
+      taxRate = itemData.tax_info.breakup.reduce((sum: number, tax: { rate: number }) => sum + tax.rate, 0);
     }
-
-    const taxAmount = (amount * taxRate) / 100;
-    const totalAmount = amount + taxAmount;
+    const taxAmount = (netAmount * taxRate) / 100;
+    const totalAmount = netAmount + taxAmount;
 
     return {
       ...item,
       amount,
+      discount_type: discountType,
+      discount_value: discountVal,
+      discount_amount: Number(discountAmount.toFixed(2)),
       tax_template_id: taxTemplateId,
       tax_rate: taxRate,
       tax_amount: Number(taxAmount.toFixed(2)),
@@ -165,8 +180,8 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
       }
     }
 
-    // Recalculate amounts when qty or rate changes
-    if (field === 'qty' || field === 'rate') {
+    // Recalculate when qty, rate, or discount changes
+    if (field === 'qty' || field === 'rate' || field === 'discount_type' || field === 'discount_value') {
       const itemData = itemsCache.get(updated[index].item_id);
       updated[index] = calculateTaxAndTotal(updated[index], itemData);
     }
@@ -304,7 +319,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                 </div>
               </div>
 
-              {/* Row 3: Rate, Tax */}
+              {/* Row 3: Rate, Discount */}
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Rate *</Label>
@@ -316,6 +331,40 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                     disabled={disabled}
                     required/>
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Discount</Label>
+                  <div className="flex gap-2">
+                    <select
+                      className="flex h-9 w-[100px] rounded-md border border-input bg-background px-3 py-1 text-sm"
+                      value={(item.discount_type || 'percentage') as string}
+                      onChange={(e) => handleItemChange(index, 'discount_type', e.target.value as 'flat' | 'percentage')}
+                      disabled={disabled}
+                    >
+                      <option value="percentage">%</option>
+                      <option value="flat">Flat</option>
+                    </select>
+                    <Input
+                      type="number"
+                      min="0"
+                      step={item.discount_type === 'percentage' ? '1' : '0.01'}
+                      value={item.discount_value ?? ''}
+                      onChange={(e) => handleItemChange(index, 'discount_value', e.target.value === '' ? 0 : Number(e.target.value))}
+                      disabled={disabled}
+                      placeholder={item.discount_type === 'percentage' ? '0' : '0.00'}
+                      className="flex-1"
+                    />
+                  </div>
+                  {(item.discount_amount && Number(item.discount_amount) > 0) && (
+                    <p className="text-xs text-muted-foreground">
+                      Discount: −₹{Number(item.discount_amount).toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 4: Tax */}
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1" />
                 <div className="space-y-1">
                   <Label className="text-xs">Tax ({item.tax_rate ? `${item.tax_rate}%` : '0%'})</Label>
                   <div className="space-y-1">
@@ -339,10 +388,10 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                 </div>
               </div>
 
-              {/* Row 4: Amount (before tax), Total Amount */}
+              {/* Row 5: Amount (before discount/tax), Total Amount */}
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1">
-                  <Label className="text-xs">Amount (Before Tax)</Label>
+                  <Label className="text-xs">Amount (Before discount & tax)</Label>
                   <Input value={Number(baseAmount).toFixed(2)}
                     disabled
                     className="font-medium bg-muted"/>

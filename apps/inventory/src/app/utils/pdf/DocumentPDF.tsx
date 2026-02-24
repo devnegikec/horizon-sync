@@ -99,6 +99,11 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
+  discountText: {
+    fontSize: 7,
+    color: '#666',
+    marginTop: 2,
+  },
   totalsSection: {
     marginTop: 20,
     alignItems: 'flex-end',
@@ -329,7 +334,12 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
                 <Text style={styles.col3}>{item.quantity.toFixed(3)}</Text>
                 <Text style={styles.col4}>{item.uom}</Text>
                 <Text style={styles.col5}>{formatCurrency(item.rate)}</Text>
-                <Text style={styles.col6}>{formatCurrency(item.amount)}</Text>
+                <View style={styles.col6}>
+                  <Text>{formatCurrency(item.amount)}</Text>
+                  {item.discountAmount != null && item.discountAmount > 0 && (
+                    <Text style={styles.discountText}>Disc: −{formatCurrency(item.discountAmount)}</Text>
+                  )}
+                </View>
                 <Text style={styles.col7}>{item.taxAmount ? formatCurrency(item.taxAmount) : '—'}</Text>
                 <Text style={styles.col8}>{formatCurrency(item.totalAmount)}</Text>
               </View>

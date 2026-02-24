@@ -66,8 +66,9 @@ function buildTaxSummary(lineItems: Quotation['items']) {
     const summary = taxSummary.get(key);
     if (summary) {
       summary.amount += Number(item.tax_amount || 0);
+      const netAmount = Number(item.amount || 0) - Number(item.discount_amount || 0);
       item.tax_info.breakup.forEach((t, idx) => {
-        summary.breakup[idx].amount += (Number(item.amount) * t.rate) / 100;
+        summary.breakup[idx].amount += (netAmount * t.rate) / 100;
       });
     }
   });
@@ -83,6 +84,7 @@ function toLineItem(item: NonNullable<Quotation['items']>[number], index: number
     uom: item.uom,
     rate: Number(item.rate),
     amount: Number(item.amount),
+    discountAmount: item.discount_amount != null && Number(item.discount_amount) > 0 ? Number(item.discount_amount) : undefined,
     taxAmount: item.tax_amount ? Number(item.tax_amount) : undefined,
     totalAmount: Number(item.total_amount || item.amount),
     taxInfo: item.tax_info

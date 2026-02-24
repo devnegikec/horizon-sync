@@ -20,6 +20,9 @@ export interface SalesOrderLineItem {
   rate: number | string;
   amount: number | string;
   sort_order: number;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number | string;
+  discount_amount?: number | string;
   billed_qty: number | string;
   delivered_qty: number | string;
   pending_billing_qty: number | string;
@@ -106,6 +109,13 @@ export interface SalesOrderItemCreate {
   rate: number;
   amount: number;
   sort_order: number;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
+  discount_amount?: number;
+  tax_template_id?: string | null;
+  tax_rate?: number;
+  tax_amount?: number;
+  total_amount?: number;
 }
 
 export interface SalesOrderCreate {

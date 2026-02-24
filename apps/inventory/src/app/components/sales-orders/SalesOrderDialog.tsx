@@ -9,6 +9,8 @@ import { environment } from '../../../environments/environment';
 import type { CustomerResponse } from '../../types/customer.types';
 import type { QuotationLineItemCreate } from '../../types/quotation.types';
 import type { SalesOrder, SalesOrderCreate, SalesOrderItemCreate, SalesOrderStatus, SalesOrderUpdate } from '../../types/sales-order.types';
+
+type SalesOrderFormItem = QuotationLineItemCreate & Partial<Pick<SalesOrderItemCreate, 'discount_type' | 'discount_value' | 'discount_amount'>>;
 import { customerApi } from '../../utility/api/customers';
 import { EditableLineItemsTable, type ItemData } from '../common';
 
@@ -95,13 +97,20 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
         }));
         setInitialItemsData(itemsData);
 
-        setItems(salesOrder.items.map((item) => ({
+        setItems(salesOrder.items.map((item): SalesOrderFormItem => ({
           item_id: item.item_id,
           qty: Number(item.qty),
           uom: item.uom,
           rate: Number(item.rate),
           amount: Number(item.amount),
           sort_order: item.sort_order,
+          discount_type: item.discount_type ?? 'percentage',
+          discount_value: Number(item.discount_value ?? 0),
+          discount_amount: Number(item.discount_amount ?? 0),
+          tax_template_id: (item as { tax_template_id?: string | null }).tax_template_id ?? null,
+          tax_rate: (item as { tax_rate?: number }).tax_rate,
+          tax_amount: (item as { tax_amount?: number }).tax_amount,
+          total_amount: (item as { total_amount?: number }).total_amount,
         })));
       } else {
         setInitialItemsData([]);
@@ -162,13 +171,16 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
       };
 
       if (!isLineItemEditingDisabled) {
-        updateData.items = items.map(item => ({
+        updateData.items = items.map((item): SalesOrderItemCreate => ({
           item_id: item.item_id,
           qty: Number(item.qty),
           uom: item.uom,
           rate: Number(item.rate),
           amount: Number(item.amount),
           sort_order: item.sort_order,
+          discount_type: item.discount_type ?? 'percentage',
+          discount_value: Number(item.discount_value ?? 0),
+          discount_amount: Number(item.discount_amount ?? 0),
         }));
       }
 
@@ -183,13 +195,16 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
         grand_total: grandTotal,
         currency: formData.currency,
         remarks: formData.remarks || null,
-        items: items.map(item => ({
+        items: items.map((item): SalesOrderItemCreate => ({
           item_id: item.item_id,
           qty: Number(item.qty),
           uom: item.uom,
           rate: Number(item.rate),
           amount: Number(item.amount),
           sort_order: item.sort_order,
+          discount_type: item.discount_type ?? 'percentage',
+          discount_value: Number(item.discount_value ?? 0),
+          discount_amount: Number(item.discount_amount ?? 0),
         })),
       };
       await onSave(createData);

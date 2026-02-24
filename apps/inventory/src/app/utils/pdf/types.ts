@@ -58,6 +58,7 @@ export interface PDFLineItem {
   uom: string;
   rate: number;
   amount: number;
+  discountAmount?: number;
   taxAmount?: number;
   totalAmount: number;
   taxInfo?: {

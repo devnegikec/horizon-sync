@@ -14,8 +14,7 @@ export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentD
   // Convert line items with tax information
   const pdfLineItems: PDFLineItem[] = lineItems.map((item, index) => {
     const amount = Number(item.amount);
-    
-    // Get tax info from item directly or from extra_data
+    const discountAmount = item.discount_amount != null && Number(item.discount_amount) > 0 ? Number(item.discount_amount) : undefined;
     const taxInfo = item.tax_info || (item.extra_data?.tax_info as typeof item.tax_info);
     const taxAmount = item.tax_amount || Number(item.extra_data?.tax_amount || 0);
     const totalAmount = item.total_amount || Number(item.extra_data?.total_amount || amount);
@@ -28,6 +27,7 @@ export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentD
       uom: item.uom || 'Unit',
       rate: Number(item.rate),
       amount,
+      discountAmount,
       taxAmount: taxAmount > 0 ? taxAmount : undefined,
       totalAmount: totalAmount || amount,
       taxInfo: taxInfo ? {
