@@ -180,17 +180,26 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const subtotal = React.useMemo(() => {
-    return items.reduce((sum, item) => sum + Number(item.total_amount ?? item.amount ?? 0), 0);
-  }, [items]);
+  const subtotalAmount = React.useMemo(
+    () => items.reduce((sum, item) => sum + Number(item.amount ?? 0), 0),
+    [items]
+  );
+  const subtotalTax = React.useMemo(
+    () => items.reduce((sum, item) => sum + Number(item.tax_amount ?? 0), 0),
+    [items]
+  );
+  const subtotalTotal = React.useMemo(
+    () => items.reduce((sum, item) => sum + Number(item.total_amount ?? item.amount ?? 0), 0),
+    [items]
+  );
 
   const totalDiscountAmount = React.useMemo(() => {
-    return computeDocumentDiscount(subtotal, formData.discount_type, Number(formData.discount_value) || 0);
-  }, [subtotal, formData.discount_type, formData.discount_value]);
+    return computeDocumentDiscount(subtotalTotal, formData.discount_type, Number(formData.discount_value) || 0);
+  }, [subtotalTotal, formData.discount_type, formData.discount_value]);
 
   const grandTotal = React.useMemo(() => {
-    return Math.max(0, Number((subtotal - totalDiscountAmount).toFixed(2)));
-  }, [subtotal, totalDiscountAmount]);
+    return Math.max(0, Number((subtotalTotal - totalDiscountAmount).toFixed(2)));
+  }, [subtotalTotal, totalDiscountAmount]);
 
   const isLineItemEditingDisabled = isEdit && LOCKED_STATUSES.includes(formData.status);
   const availableStatuses = React.useMemo(() => getAvailableStatuses(isEdit, formData.status), [isEdit, formData.status]);
@@ -202,7 +211,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
       alert(validationError);
       return;
     }
-    const { data, id } = buildSavePayload(formData, items, subtotal, totalDiscountAmount, grandTotal, quotation, isLineItemEditingDisabled);
+    const { data, id } = buildSavePayload(formData, items, subtotalTotal, totalDiscountAmount, grandTotal, quotation, isLineItemEditingDisabled);
     await onSave(data, id);
   };
 
@@ -219,48 +228,26 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
           <Separator />
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Line Items</h3>
-            <QuotationLineItemsTable items={items} onItemsChange={setItems} disabled={isLineItemEditingDisabled} currency={formData.currency} />
-          </div>
-
-          <div className="flex justify-end">
-            <div className="w-72 space-y-2">
-              <div className="flex justify-between items-center text-sm">
-                <span>Subtotal:</span>
-                <span>{formData.currency} {subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span>Discount on total:</span>
-                <select
-                  className="h-8 w-14 rounded-md border border-input bg-background px-1.5 text-xs"
-                  value={formData.discount_type}
-                  onChange={(e) => handleChange('discount_type', e.target.value as 'flat' | 'percentage')}
-                  aria-label="Discount type on total"
-                >
-                  <option value="percentage">%</option>
-                  <option value="flat">Flat</option>
-                </select>
-                <input
-                  type="number"
-                  min={0}
-                  step={formData.discount_type === 'percentage' ? 1 : 0.01}
-                  className="h-8 w-20 rounded-md border border-input bg-background px-2 text-sm"
-                  value={formData.discount_value}
-                  onChange={(e) => handleChange('discount_value', e.target.value)}
-                  placeholder="0"
-                  aria-label="Discount value on total"
-                />
-              </div>
-              {totalDiscountAmount > 0 && (
-                <div className="flex justify-between items-center text-sm text-muted-foreground">
-                  <span>Discount amount:</span>
-                  <span>−{formData.currency} {totalDiscountAmount.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex justify-between items-center text-lg font-semibold border-t pt-2">
-                <span>Grand Total:</span>
-                <span>{formData.currency} {grandTotal.toFixed(2)}</span>
-              </div>
-            </div>
+            <QuotationLineItemsTable
+              items={items}
+              onItemsChange={setItems}
+              disabled={isLineItemEditingDisabled}
+              currency={formData.currency}
+              summary={{
+                subtotalAmount,
+                subtotalTax,
+                subtotalTotal,
+                discountAmount: totalDiscountAmount,
+                grandTotal,
+                documentDiscount: {
+                  type: formData.discount_type,
+                  value: formData.discount_value,
+                  onTypeChange: (v) => handleChange('discount_type', v),
+                  onValueChange: (v) => handleChange('discount_value', v),
+                  disabled: isLineItemEditingDisabled,
+                },
+              }}
+            />
           </div>
 
           <DialogFooter>
