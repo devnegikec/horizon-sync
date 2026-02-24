@@ -239,6 +239,7 @@ export function useQuotationManagement() {
       });
       setConvertDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
       await refetch();
     } catch (err) {
       toast({

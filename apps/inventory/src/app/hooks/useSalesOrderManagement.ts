@@ -25,39 +25,39 @@ export interface SalesOrderFilters {
   status: string;
 }
 
+const salesOrdersQueryKey = ['sales-orders'] as const;
+
 function useSalesOrders(
   initialPage: number,
   initialPageSize: number,
   filters?: { search?: string; status?: string }
 ) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [salesOrders, setSalesOrders] = React.useState<SalesOrder[]>([]);
-  const [pagination, setPagination] = React.useState<{
-    total_items: number;
-    total_pages: number;
-    page: number;
-    page_size: number;
-    has_next: boolean;
-    has_prev: boolean;
-  } | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
   const memoizedFilters = React.useMemo(
     () => filters,
     [filters?.search, filters?.status]
   );
 
-  const fetchSalesOrders = React.useCallback(async () => {
-    if (!accessToken) {
-      setSalesOrders([]);
-      setPagination(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
+  const queryKey = React.useMemo(
+    () => [
+      ...salesOrdersQueryKey,
+      initialPage,
+      initialPageSize,
+      memoizedFilters?.status ?? 'all',
+      memoizedFilters?.search ?? '',
+    ] as const,
+    [initialPage, initialPageSize, memoizedFilters?.status, memoizedFilters?.search]
+  );
+
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+    refetch,
+  } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!accessToken) return { sales_orders: [], pagination: null };
       const data = await salesOrderApi.list(
         accessToken,
         initialPage,
@@ -67,22 +67,16 @@ function useSalesOrders(
           search: memoizedFilters?.search || undefined,
         }
       ) as SalesOrderListResponse;
-      setSalesOrders((data.sales_orders ?? []) as unknown as SalesOrder[]);
-      setPagination(data.pagination ?? null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load sales orders');
-      setSalesOrders([]);
-      setPagination(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken, initialPage, initialPageSize, memoizedFilters]);
+      return data;
+    },
+    enabled: !!accessToken,
+  });
 
-  React.useEffect(() => {
-    fetchSalesOrders();
-  }, [fetchSalesOrders]);
+  const salesOrders = (data?.sales_orders ?? []) as unknown as SalesOrder[];
+  const pagination = data?.pagination ?? null;
+  const error = queryError ? (queryError instanceof Error ? queryError.message : 'Failed to load sales orders') : null;
 
-  return { salesOrders, pagination, loading, error, refetch: fetchSalesOrders };
+  return { salesOrders, pagination, loading, error, refetch };
 }
 
 /**

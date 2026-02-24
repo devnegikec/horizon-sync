@@ -62,6 +62,7 @@ export interface Invoice {
   grand_total: number;
   outstanding_amount: number;
   currency: string;
+  discount_amount?: number;
   reference_type?: string | null;
   reference_id?: string | null;
   remarks?: string | null;

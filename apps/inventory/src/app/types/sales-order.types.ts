@@ -70,6 +70,9 @@ export interface SalesOrder {
   order_date: string;
   delivery_date?: string | null;
   grand_total: string | number;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number | string;
+  discount_amount?: number | string;
   currency: string;
   status: SalesOrderStatus;
   reference_type?: string | null;
@@ -126,6 +129,9 @@ export interface SalesOrderCreate {
   status?: SalesOrderStatus;
   grand_total?: number;
   currency?: string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
+  discount_amount?: number;
   reference_type?: string | null;
   reference_id?: string | null;
   remarks?: string | null;
@@ -137,6 +143,9 @@ export interface SalesOrderUpdate {
   delivery_date?: string | null;
   status?: SalesOrderStatus | null;
   remarks?: string | null;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
+  discount_amount?: number;
   items?: SalesOrderItemCreate[] | null;
 }
 

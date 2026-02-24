@@ -208,25 +208,71 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                 getItemTaxInfo={getItemTaxInfo}
                 getItemTaxAmount={getItemTaxAmount}
                 getItemTotalAmount={getItemTotalAmount}
-                renderFooter={(items) => (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-3 text-right text-sm font-medium">Subtotal:</td>
-                    <td className="px-4 py-3 text-right text-sm font-semibold">
-                      {currencySymbol} {items.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2)}
-                    </td>
-                    {hasTaxInfo && (
-                      <td className="px-4 py-3 text-right text-sm font-semibold">
-                        {currencySymbol} {items.reduce((sum, item) => sum + getItemTaxAmount(item), 0).toFixed(2)}
-                      </td>
-                    )}
-                    {hasTaxInfo && (
-                      <td className="px-4 py-3 text-right text-sm font-bold">
-                        {currencySymbol} {items.reduce((sum, item) => sum + getItemTotalAmount(item), 0).toFixed(2)}
-                      </td>
-                    )}
-                    <td colSpan={2} />
-                  </tr>
-                )} />
+                renderFooter={(items) => {
+                  const safeItems = items ?? [];
+                  const subtotalAmount = safeItems.reduce((s, item) => s + Number(item.amount || 0), 0);
+                  const subtotalTax = safeItems.reduce((s, item) => s + getItemTaxAmount(item), 0);
+                  const subtotalTotal = safeItems.reduce((s, item) => s + getItemTotalAmount(item), 0);
+                  const discountAmount = Number(salesOrder.discount_amount ?? 0);
+                  const grandTotal = Number(salesOrder.grand_total ?? 0);
+                  const sym = currencySymbol;
+                  return (
+                    <>
+                      <tr>
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3 text-sm font-medium">Subtotal:</td>
+                        <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalAmount.toFixed(2)}</td>
+                        {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTax.toFixed(2)}</td>}
+                        {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTotal.toFixed(2)}</td>}
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3 text-sm font-medium">Discount:</td>
+                        {!hasTaxInfo ? (
+                          <td className="px-4 py-3 text-right text-sm text-muted-foreground">
+                            {discountAmount > 0 ? `−${sym}${discountAmount.toFixed(2)}` : '—'}
+                          </td>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3" />
+                            <td className="px-4 py-3" />
+                            <td className="px-4 py-3 text-right text-sm text-muted-foreground">
+                              {discountAmount > 0 ? `−${sym}${discountAmount.toFixed(2)}` : '—'}
+                            </td>
+                          </>
+                        )}
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                      </tr>
+                      <tr className="border-t-2 font-semibold">
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3 text-sm font-semibold">Grand Total:</td>
+                        {!hasTaxInfo ? (
+                          <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3" />
+                            <td className="px-4 py-3" />
+                            <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
+                          </>
+                        )}
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                      </tr>
+                    </>
+                  );
+                }} />
             </div>
 
             {/* Related Invoices */}
