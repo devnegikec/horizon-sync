@@ -1,21 +1,35 @@
-import * as React from 'react';
+import { useEffect } from 'react';
+
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
+
 import { ITEM_TYPE_OPTIONS, ITEM_STATUS_OPTIONS } from '../../../constants/item-type-constants';
-import { UNIT_OF_MEASURE_OPTIONS } from '../../../constants/item-constants';
+import { useUOMOptions } from '../../../hooks/useUOMOptions';
 import type { ApiItemGroup } from '../../../types/item-groups.types';
 import type { ItemFormData } from '../../../utility/item-payload-builders';
+import { SearchableSelect } from '../../shared/SearchableSelect';
 
 interface Step1BasicInfoProps {
   formData: ItemFormData;
   onUpdate: (data: Partial<ItemFormData>) => void;
   itemGroups: ApiItemGroup[];
+  accessToken: string;
 }
 
-export function Step1BasicInfo({ formData, onUpdate, itemGroups }: Step1BasicInfoProps) {
+export function Step1BasicInfo({ formData, onUpdate, itemGroups, accessToken }: Step1BasicInfoProps) {
   const hasItemGroups = itemGroups.length > 0;
+  const { options: uomOptions, loading: uomLoading } = useUOMOptions(accessToken);
+
+  // Auto-select defaults on mount
+  useEffect(() => {
+    const updates: Partial<ItemFormData> = {};
+    if (!formData.itemType) updates.itemType = 'stock';
+    if (!formData.status) updates.status = 'ACTIVE';
+    if (Object.keys(updates).length > 0) onUpdate(updates);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -28,41 +42,32 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups }: Step1BasicInf
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="itemCode">
-            Item Code <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="itemCode"
+          <Label htmlFor="itemCode">Item Code</Label>
+          <Input id="itemCode"
             value={formData.itemCode}
-            onChange={(e) => onUpdate({ itemCode: e.target.value })}
-            placeholder="e.g., ITEM-001"
-            required
-          />
+            disabled
+            placeholder="Auto-generated"/>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="itemName">
             Item Name <span className="text-red-500">*</span>
           </Label>
-          <Input
-            id="itemName"
+          <Input id="itemName"
             value={formData.name}
             onChange={(e) => onUpdate({ name: e.target.value })}
             placeholder="Enter item name"
-            required
-          />
+            required/>
         </div>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
+        <Textarea id="description"
           value={formData.description}
           onChange={(e) => onUpdate({ description: e.target.value })}
           placeholder="Enter item description"
-          rows={3}
-        />
+          rows={3}/>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -71,10 +76,7 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups }: Step1BasicInf
             Item Group <span className="text-red-500">*</span>
           </Label>
           {hasItemGroups ? (
-            <Select
-              value={formData.itemGroupId}
-              onValueChange={(value) => onUpdate({ itemGroupId: value })}
-            >
+            <Select value={formData.itemGroupId} onValueChange={(value) => onUpdate({ itemGroupId: value })}>
               <SelectTrigger>
                 <SelectValue placeholder="Select group" />
               </SelectTrigger>
@@ -97,10 +99,7 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups }: Step1BasicInf
           <Label>
             Item Type <span className="text-red-500">*</span>
           </Label>
-          <Select
-            value={formData.itemType}
-            onValueChange={(value) => onUpdate({ itemType: value })}
-          >
+          <Select value={formData.itemType} onValueChange={(value) => onUpdate({ itemType: value })}>
             <SelectTrigger>
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
@@ -120,31 +119,18 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups }: Step1BasicInf
           <Label>
             Unit of Measure <span className="text-red-500">*</span>
           </Label>
-          <Select
-            value={formData.unitOfMeasure}
+          <SearchableSelect value={formData.unitOfMeasure}
             onValueChange={(value) => onUpdate({ unitOfMeasure: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select unit" />
-            </SelectTrigger>
-            <SelectContent>
-              {UNIT_OF_MEASURE_OPTIONS.map((unit) => (
-                <SelectItem key={unit} value={unit}>
-                  {unit}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            options={uomOptions}
+            placeholder="Select unit"
+            loading={uomLoading}/>
         </div>
 
         <div className="space-y-2">
           <Label>
             Status <span className="text-red-500">*</span>
           </Label>
-          <Select
-            value={formData.status}
-            onValueChange={(value) => onUpdate({ status: value })}
-          >
+          <Select value={formData.status} onValueChange={(value) => onUpdate({ status: value })}>
             <SelectTrigger>
               <SelectValue placeholder="Select status" />
             </SelectTrigger>

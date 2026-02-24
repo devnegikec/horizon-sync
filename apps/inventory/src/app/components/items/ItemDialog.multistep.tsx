@@ -1,9 +1,12 @@
-import * as React from 'react';
+// eslint-disable-next-line @nx/enforce-module-boundaries
+import { useUserStore } from '@horizon-sync/store';
+
 import { useItemSubmission } from '../../hooks/useItemSubmission';
 import { useTaxTemplates } from '../../hooks/useTaxTemplates';
 import type { ApiItemGroup } from '../../types/item-groups.types';
 import type { Item } from '../../types/item.types';
 import type { ItemFormData } from '../../utility/item-payload-builders';
+
 import { ItemMultiStepDialog } from './multi-step/ItemMultiStepDialog';
 
 interface ItemDialogMultiStepProps {
@@ -22,14 +25,13 @@ export function ItemDialogMultiStep({
   onOpenChange,
   item,
   itemGroups,
-  onSave,
   onCreated,
   onUpdated,
-  onItemGroupsRefresh
 }: ItemDialogMultiStepProps) {
+  const { accessToken } = useUserStore();
   const { salesTaxTemplates, purchaseTaxTemplates, isLoading: isLoadingTaxTemplates } = useTaxTemplates();
 
-  const { handleSubmit, isLoading, error } = useItemSubmission({
+  const { handleSubmit } = useItemSubmission({
     item,
     itemGroups,
     onCreated,
@@ -42,14 +44,13 @@ export function ItemDialogMultiStep({
   };
 
   return (
-    <ItemMultiStepDialog
-      open={open}
+    <ItemMultiStepDialog open={open}
       onOpenChange={onOpenChange}
       itemGroups={itemGroups}
+      accessToken={accessToken || ''}
       salesTaxTemplates={salesTaxTemplates}
       purchaseTaxTemplates={purchaseTaxTemplates}
       isLoadingTaxTemplates={isLoadingTaxTemplates}
-      onSave={handleSave}
-    />
+      onSave={handleSave}/>
   );
 }
