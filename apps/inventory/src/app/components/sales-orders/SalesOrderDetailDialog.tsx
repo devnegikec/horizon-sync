@@ -33,7 +33,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
   const isClosedOrCancelled = salesOrder.status === 'closed' || salesOrder.status === 'cancelled';
   const canCreateInvoice = salesOrder.status === 'confirmed' || salesOrder.status === 'partially_delivered' || salesOrder.status === 'delivered';
   const canCreateDeliveryNote = (salesOrder.status === 'confirmed' || salesOrder.status === 'partially_delivered');
-    // && salesOrder.items?.some(item => Number(item.qty) - Number(item.delivered_qty) > 0);
+  // && salesOrder.items?.some(item => Number(item.qty) - Number(item.delivered_qty) > 0);
 
   const getCurrencySymbol = (currencyCode: string): string => {
     const currency = SUPPORTED_CURRENCIES.find((c: { code: string; symbol: string }) => c.code === currencyCode);
@@ -134,7 +134,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-3">
@@ -226,7 +226,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                     )}
                     <td colSpan={2} />
                   </tr>
-                )}/>
+                )} />
             </div>
 
             {/* Related Invoices */}
@@ -331,7 +331,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
         onSuccess={() => {
           setEmailDialogOpen(false);
           setPdfAttachment(null);
-        }}/>
+        }} />
     </>
   );
 }
