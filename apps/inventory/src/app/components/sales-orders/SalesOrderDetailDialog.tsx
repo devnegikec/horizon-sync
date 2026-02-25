@@ -11,6 +11,7 @@ import type { SalesOrder } from '../../types/sales-order.types';
 import { convertSalesOrderToPDFData } from '../../utils/pdf/salesOrderToPDF';
 import { EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
 import { StatusBadge } from '../quotations/StatusBadge';
+import { Console } from 'console';
 
 interface SalesOrderDetailDialogProps {
   open: boolean;
@@ -63,6 +64,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
   const handlePreviewPDF = async () => {
     try {
       const pdfData = convertSalesOrderToPDFData(salesOrder);
+      console.log('pdfData', pdfData);
       await preview(pdfData);
     } catch (error) {
       toast({ title: 'Preview Failed', description: error instanceof Error ? error.message : 'Failed to preview PDF', variant: 'destructive' });
@@ -208,6 +210,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                 getItemTaxInfo={getItemTaxInfo}
                 getItemTaxAmount={getItemTaxAmount}
                 getItemTotalAmount={getItemTotalAmount}
+                getItemDiscountAmount={(item) => Number(item.discount_amount ?? 0)}
                 renderFooter={(items) => {
                   const safeItems = items ?? [];
                   const subtotalAmount = safeItems.reduce((s, item) => s + Number(item.amount || 0), 0);
@@ -225,6 +228,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                         <td className="px-4 py-3" />
                         <td className="px-4 py-3 text-sm font-medium">Subtotal:</td>
                         <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalAmount.toFixed(2)}</td>
+                        <td className="px-4 py-3" />
                         {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTax.toFixed(2)}</td>}
                         {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTotal.toFixed(2)}</td>}
                         <td className="px-4 py-3" />
@@ -236,13 +240,14 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                         <td className="px-4 py-3" />
                         <td className="px-4 py-3" />
                         <td className="px-4 py-3 text-sm font-medium">Discount:</td>
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
                         {!hasTaxInfo ? (
                           <td className="px-4 py-3 text-right text-sm text-muted-foreground">
                             {discountAmount > 0 ? `−${sym}${discountAmount.toFixed(2)}` : '—'}
                           </td>
                         ) : (
                           <>
-                            <td className="px-4 py-3" />
                             <td className="px-4 py-3" />
                             <td className="px-4 py-3 text-right text-sm text-muted-foreground">
                               {discountAmount > 0 ? `−${sym}${discountAmount.toFixed(2)}` : '—'}
@@ -258,11 +263,12 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                         <td className="px-4 py-3" />
                         <td className="px-4 py-3" />
                         <td className="px-4 py-3 text-sm font-semibold">Grand Total:</td>
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
                         {!hasTaxInfo ? (
                           <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
                         ) : (
                           <>
-                            <td className="px-4 py-3" />
                             <td className="px-4 py-3" />
                             <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
                           </>

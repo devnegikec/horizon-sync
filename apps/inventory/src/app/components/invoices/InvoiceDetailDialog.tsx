@@ -235,6 +235,7 @@ function InvoiceContent({ invoice, currencySymbol }: { invoice: Invoice; currenc
               hasTaxInfo
               getItemSKU={(item: InvoiceLineItem) => item.item_code}
               getItemTotalAmount={(item: InvoiceLineItem) => Number(item.total_amount || item.amount || 0)}
+              getItemDiscountAmount={(item: InvoiceLineItem) => Number(item.discount_amount ?? 0)}
               renderFooter={(items) => {
                 const safeItems = items ?? [];
                 const subtotalAmount = safeItems.reduce((s, item) => s + Number(item.amount || 0), 0);
@@ -252,6 +253,7 @@ function InvoiceContent({ invoice, currencySymbol }: { invoice: Invoice; currenc
                       <td className="px-4 py-3" />
                       <td className="px-4 py-3 text-sm font-medium">Subtotal:</td>
                       <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalAmount.toFixed(2)}</td>
+                      <td className="px-4 py-3" />
                       <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTax.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTotal.toFixed(2)}</td>
                     </tr>
@@ -261,6 +263,7 @@ function InvoiceContent({ invoice, currencySymbol }: { invoice: Invoice; currenc
                       <td className="px-4 py-3" />
                       <td className="px-4 py-3" />
                       <td className="px-4 py-3 text-sm font-medium">Discount:</td>
+                      <td className="px-4 py-3" />
                       <td className="px-4 py-3" />
                       <td className="px-4 py-3" />
                       <td className="px-4 py-3 text-right text-sm text-muted-foreground">
@@ -273,6 +276,7 @@ function InvoiceContent({ invoice, currencySymbol }: { invoice: Invoice; currenc
                       <td className="px-4 py-3" />
                       <td className="px-4 py-3" />
                       <td className="px-4 py-3 text-sm font-semibold">Grand Total:</td>
+                      <td className="px-4 py-3" />
                       <td className="px-4 py-3" />
                       <td className="px-4 py-3" />
                       <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>

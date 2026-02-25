@@ -1,12 +1,23 @@
 import * as React from 'react';
 import { useMemo, useEffect } from 'react';
-import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import type { Table } from '@tanstack/react-table';
 
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { quotationApi } from '../utility/api';
 import type { Quotation, QuotationCreate, QuotationUpdate, QuotationResponse } from '../types/quotation.types';
+
+export const QUOTATIONS_QUERY_KEY = ['quotations'] as const;
+
+export type QuotationsPagination = {
+  total_items: number;
+  total_pages: number;
+  page: number;
+  page_size: number;
+  has_next: boolean;
+  has_prev: boolean;
+};
 
 export interface QuotationFilters {
   search: string;
@@ -17,7 +28,7 @@ interface UseQuotationManagementResult {
   filters: QuotationFilters;
   setFilters: React.Dispatch<React.SetStateAction<QuotationFilters>>;
   quotations: Quotation[];
-  pagination: ReturnType<typeof useQuotations>['pagination'];
+  pagination: QuotationsPagination | null;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -52,65 +63,54 @@ interface UseQuotationManagementResult {
   };
 }
 
-// Import useQuotations locally to avoid circular dependency
+async function fetchQuotations(
+  accessToken: string,
+  page: number,
+  pageSize: number,
+  filters: { search?: string; status?: string }
+): Promise<QuotationResponse> {
+  const result = await quotationApi.list(accessToken, page, pageSize, {
+    status: filters?.status !== 'all' ? filters?.status : undefined,
+    search: filters?.search || undefined,
+  });
+  return result as QuotationResponse;
+}
+
 function useQuotations(
   initialPage: number,
   initialPageSize: number,
   filters?: { search?: string; status?: string }
 ) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [quotations, setQuotations] = React.useState<Quotation[]>([]);
-  const [pagination, setPagination] = React.useState<{
-    total_items: number;
-    total_pages: number;
-    page: number;
-    page_size: number;
-    has_next: boolean;
-    has_prev: boolean;
-  } | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
   const memoizedFilters = React.useMemo(
     () => filters,
     [filters?.search, filters?.status]
   );
 
-  const fetchQuotations = React.useCallback(async () => {
-    if (!accessToken) {
-      setQuotations([]);
-      setPagination(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await quotationApi.list(
-        accessToken,
-        initialPage,
-        initialPageSize,
-        {
-          status: memoizedFilters?.status !== 'all' ? memoizedFilters?.status : undefined,
-          search: memoizedFilters?.search || undefined,
-        }
-      ) as QuotationResponse;
-      setQuotations(data.quotations ?? []);
-      setPagination(data.pagination ?? null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load quotations');
-      setQuotations([]);
-      setPagination(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken, initialPage, initialPageSize, memoizedFilters]);
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+    refetch: queryRefetch,
+  } = useQuery({
+    queryKey: [...QUOTATIONS_QUERY_KEY, initialPage, initialPageSize, memoizedFilters],
+    queryFn: () =>
+      fetchQuotations(accessToken!, initialPage, initialPageSize, memoizedFilters ?? {}),
+    enabled: !!accessToken,
+    placeholderData: (previousData) => previousData,
+  });
 
-  React.useEffect(() => {
-    fetchQuotations();
-  }, [fetchQuotations]);
+  const quotations: Quotation[] = data?.quotations ?? [];
+  const pagination: QuotationsPagination | null = data?.pagination ?? null;
+  const error: string | null = queryError
+    ? (queryError instanceof Error ? queryError.message : 'Failed to load quotations')
+    : null;
 
-  return { quotations, pagination, loading, error, refetch: fetchQuotations };
+  const refetch = React.useCallback(async () => {
+    await queryRefetch();
+  }, [queryRefetch]);
+
+  return { quotations, pagination, loading, error, refetch };
 }
 
 export function useQuotationManagement() {
@@ -150,9 +150,10 @@ export function useQuotationManagement() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => quotationApi.delete(accessToken || '', id),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({ title: 'Success', description: 'Quotation deleted successfully' });
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: QUOTATIONS_QUERY_KEY });
+      await refetch();
     },
     onError: (err) => {
       toast({
@@ -238,7 +239,7 @@ export function useQuotationManagement() {
         description: result.message || `Quotation converted to sales order ${result.sales_order_no} successfully`,
       });
       setConvertDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: QUOTATIONS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
       await refetch();
     } catch (err) {
@@ -268,8 +269,9 @@ export function useQuotationManagement() {
         await quotationApi.create(accessToken, data);
         toast({ title: 'Success', description: 'Quotation created successfully' });
       }
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: QUOTATIONS_QUERY_KEY });
       setCreateDialogOpen(false);
+      await refetch();
     } catch (err) {
       toast({
         title: 'Error',
@@ -278,7 +280,7 @@ export function useQuotationManagement() {
       });
       throw err;
     }
-  }, [accessToken, toast, queryClient]);
+  }, [accessToken, toast, queryClient, refetch]);
 
   const serverPaginationConfig = useMemo(() => ({
     pageIndex: page - 1,

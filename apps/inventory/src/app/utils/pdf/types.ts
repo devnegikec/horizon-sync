@@ -31,8 +31,8 @@ export interface PDFDocumentData {
   
   // Totals
   subtotal: number;
-  /** Document-level discount amount (e.g. quotation/sales order discount) */
-  discountAmount?: number;
+  /** Document-level / organization discount amount (always set for consistent PDF layout) */
+  discountAmount: number;
   totalTax: number;
   grandTotal: number;
   

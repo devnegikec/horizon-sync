@@ -6,7 +6,7 @@ import { getCurrencySymbolForPDF } from './pdfCurrency';
 export const convertInvoiceToPDFData = (invoice: Invoice): PDFDocumentData => {
   const lineItems = invoice.line_items || [];
 
-  // Convert line items
+  // Convert line items (include line-level discount when present)
   const pdfLineItems: PDFLineItem[] = lineItems.map((item, index) => ({
     index: index + 1,
     itemName: item.item_name || '',
@@ -15,6 +15,7 @@ export const convertInvoiceToPDFData = (invoice: Invoice): PDFDocumentData => {
     uom: item.uom || 'Unit',
     rate: Number(item.unit_price),
     amount: Number(item.amount),
+    discountAmount: item.discount_amount != null && Number(item.discount_amount) > 0 ? Number(item.discount_amount) : undefined,
     taxAmount: item.tax_amount ? Number(item.tax_amount) : undefined,
     totalAmount: Number(item.total_amount),
   }));
@@ -48,7 +49,7 @@ export const convertInvoiceToPDFData = (invoice: Invoice): PDFDocumentData => {
 
     // Totals
     subtotal,
-    discountAmount: discountAmount > 0 ? discountAmount : undefined,
+    discountAmount,
     totalTax,
     grandTotal: Number(invoice.grand_total),
 

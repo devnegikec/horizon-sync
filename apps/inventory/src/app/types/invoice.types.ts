@@ -13,6 +13,7 @@ export interface InvoiceLineItem {
   quantity: number;
   unit_price: number;
   amount: number;
+  discount_amount?: number;
   tax_amount?: number;
   total_amount: number;
   uom?: string;

@@ -37,6 +37,7 @@ export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentD
 
   // Calculate totals
   const subtotal = lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const totalItemDiscount = lineItems.reduce((sum, item) => sum + Number(item.discount_amount ?? 0), 0);
   const totalTax = lineItems.reduce((sum, item) => {
     const taxAmount = item.tax_amount || Number(item.extra_data?.tax_amount || 0);
     return sum + taxAmount;
@@ -81,7 +82,7 @@ export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentD
 
     // Totals
     subtotal,
-    discountAmount: discountAmount > 0 ? discountAmount : undefined,
+    discountAmount: discountAmount > 0 ? discountAmount : 0,
     totalTax,
     grandTotal: Number(salesOrder.grand_total),
 

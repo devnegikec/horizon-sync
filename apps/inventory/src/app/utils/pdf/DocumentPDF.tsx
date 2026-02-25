@@ -78,14 +78,15 @@ const styles = StyleSheet.create({
     borderBottom: '1 solid #eee',
     fontSize: 9,
   },
-  col1: { width: '5%' },
-  col2: { width: '30%' },
-  col3: { width: '10%', textAlign: 'right' },
-  col4: { width: '10%' },
-  col5: { width: '12%', textAlign: 'right' },
-  col6: { width: '12%', textAlign: 'right' },
+  col1: { width: '4%' },
+  col2: { width: '26%' },
+  col3: { width: '8%', textAlign: 'right' },
+  col4: { width: '8%' },
+  col5: { width: '10%', textAlign: 'right' },
+  col6: { width: '10%', textAlign: 'right' },
   col7: { width: '10%', textAlign: 'right' },
-  col8: { width: '11%', textAlign: 'right' },
+  col8: { width: '10%', textAlign: 'right' },
+  col9: { width: '14%', textAlign: 'right' },
   itemName: {
     fontWeight: 'bold',
     marginBottom: 2,
@@ -95,11 +96,6 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   taxInfo: {
-    fontSize: 7,
-    color: '#666',
-    marginTop: 2,
-  },
-  discountText: {
     fontSize: 7,
     color: '#666',
     marginTop: 2,
@@ -203,8 +199,10 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
     });
   };
 
-  const formatCurrency = (amount: number) => {
-    return `${data.currencySymbol} ${amount.toFixed(2)}`;
+  const formatCurrency = (amount: unknown): string => {
+    const num = typeof amount === 'number' && Number.isFinite(amount) ? amount : Number(amount ?? 0);
+    if (!Number.isFinite(num)) return `${data.currencySymbol} 0.00`;
+    return `${data.currencySymbol} ${num.toFixed(2)}`;
   };
 
   const getDocumentTitle = () => {
@@ -305,8 +303,9 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
             <Text style={styles.col4}>UOM</Text>
             <Text style={styles.col5}>Rate</Text>
             <Text style={styles.col6}>Amount</Text>
-            <Text style={styles.col7}>Tax</Text>
-            <Text style={styles.col8}>Total</Text>
+            <Text style={styles.col7}>Discount</Text>
+            <Text style={styles.col8}>Tax</Text>
+            <Text style={styles.col9}>Total</Text>
           </View>
 
           {(!data.lineItems || data.lineItems.length === 0) && (
@@ -331,17 +330,17 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
                     </Text>
                   )}
                 </View>
-                <Text style={styles.col3}>{item.quantity.toFixed(3)}</Text>
+                <Text style={styles.col3}>{Number(item.quantity ?? 0).toFixed(3)}</Text>
                 <Text style={styles.col4}>{item.uom}</Text>
                 <Text style={styles.col5}>{formatCurrency(item.rate)}</Text>
-                <View style={styles.col6}>
-                  <Text>{formatCurrency(item.amount)}</Text>
-                  {item.discountAmount != null && item.discountAmount > 0 && (
-                    <Text style={styles.discountText}>Disc: −{formatCurrency(item.discountAmount)}</Text>
-                  )}
-                </View>
-                <Text style={styles.col7}>{item.taxAmount ? formatCurrency(item.taxAmount) : '—'}</Text>
-                <Text style={styles.col8}>{formatCurrency(item.totalAmount)}</Text>
+                <Text style={styles.col6}>{formatCurrency(item.amount)}</Text>
+                <Text style={styles.col7}>
+                  {item.discountAmount != null && item.discountAmount > 0
+                    ? `−${formatCurrency(item.discountAmount)}`
+                    : '—'}
+                </Text>
+                <Text style={styles.col8}>{item.taxAmount ? formatCurrency(item.taxAmount) : '—'}</Text>
+                <Text style={styles.col9}>{formatCurrency(item.totalAmount)}</Text>
               </View>
             );
           })}
@@ -372,18 +371,16 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
           </View>
         )}
 
-        {/* Totals */}
+        {/* Totals: Subtotal → Organization Discount → Total Tax → Grand Total */}
         <View style={styles.totalsSection}>
           <View style={styles.totalRow}>
             <Text>Subtotal:</Text>
             <Text>{formatCurrency(data.subtotal)}</Text>
           </View>
-          {data.discountAmount != null && data.discountAmount > 0 && (
-            <View style={styles.totalRow}>
-              <Text>Discount:</Text>
-              <Text>−{formatCurrency(data.discountAmount)}</Text>
-            </View>
-          )}
+          <View style={styles.totalRow}>
+            <Text>Organization Discount:</Text>
+            <Text>{data.discountAmount > 0 ? `−${formatCurrency(data.discountAmount)}` : formatCurrency(0)}</Text>
+          </View>
           <View style={styles.totalRow}>
             <Text>Total Tax:</Text>
             <Text>{formatCurrency(data.totalTax)}</Text>

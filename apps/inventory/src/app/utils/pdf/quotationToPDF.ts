@@ -135,7 +135,7 @@ export function convertQuotationToPDFData(quotation: Quotation, orgContext?: Org
     ...buildCustomerFields(quotation),
     lineItems: safeLineItems.map((item, i) => toLineItem(item, i)),
     subtotal,
-    discountAmount: discountAmount > 0 ? discountAmount : undefined,
+    discountAmount,
     totalTax,
     grandTotal,
     taxSummary: buildTaxSummary(safeLineItems),

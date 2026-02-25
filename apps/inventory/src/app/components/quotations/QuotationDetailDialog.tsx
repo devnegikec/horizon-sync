@@ -79,7 +79,7 @@ function CustomerAddressBlock({ quotation }: { quotation: Quotation }) {
   );
 }
 
-// Footer rows aligned with table columns: #, Item, Qty, UOM, Rate, Amount, Tax, Total (8 columns when hasTaxInfo)
+// Footer rows aligned with table columns: #, Item, Qty, UOM, Rate, Amount, Discount, Tax, Total (9 when showDiscount)
 function LineItemsFooterRows({
   items,
   quotation,
@@ -99,7 +99,7 @@ function LineItemsFooterRows({
 
   return (
     <>
-      {/* Subtotal: label under Rate column; amounts under Amount, Tax, Total */}
+      {/* Subtotal: label under Rate; amounts under Amount, Discount(col), Tax, Total */}
       <tr>
         <td className="px-4 py-3" />
         <td className="px-4 py-3" />
@@ -107,16 +107,18 @@ function LineItemsFooterRows({
         <td className="px-4 py-3" />
         <td className="px-4 py-3 text-right text-sm font-medium">Subtotal:</td>
         <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalAmount.toFixed(2)}</td>
+        <td className="px-4 py-3" />
         <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTax.toFixed(2)}</td>
         <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTotal.toFixed(2)}</td>
       </tr>
-      {/* Discount: label under Rate; discount amount under Total column */}
+      {/* Discount: label under Rate; document discount under Total column */}
       <tr>
         <td className="px-4 py-3" />
         <td className="px-4 py-3" />
         <td className="px-4 py-3" />
         <td className="px-4 py-3" />
         <td className="px-4 py-3 text-right text-sm font-medium">Discount:</td>
+        <td className="px-4 py-3" />
         <td className="px-4 py-3" />
         <td className="px-4 py-3" />
         <td className="px-4 py-3 text-right text-sm text-muted-foreground">
@@ -130,6 +132,7 @@ function LineItemsFooterRows({
         <td className="px-4 py-3" />
         <td className="px-4 py-3" />
         <td className="px-4 py-3 text-right text-sm font-bold">Grand Total:</td>
+        <td className="px-4 py-3" />
         <td className="px-4 py-3" />
         <td className="px-4 py-3" />
         <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
@@ -149,6 +152,7 @@ function QuotationLineItemsSection({ quotation, currencySymbol }: { quotation: Q
         hasTaxInfo
         getItemSKU={(item) => item.item_code}
         getItemTotalAmount={(item) => Number(item.total_amount || item.amount || 0)}
+        getItemDiscountAmount={(item) => Number(item.discount_amount ?? 0)}
         renderFooter={(items) => (
           <LineItemsFooterRows items={items} quotation={quotation} currencySymbol={currencySymbol} />
         )}
