@@ -9,7 +9,7 @@ import { ITEM_TYPE_OPTIONS, ITEM_STATUS_OPTIONS } from '../../../constants/item-
 import { useUOMOptions } from '../../../hooks/useUOMOptions';
 import type { ApiItemGroup } from '../../../types/item-groups.types';
 import type { ItemFormData } from '../../../utility/item-payload-builders';
-import { SearchableSelect } from '../../shared/SearchableSelect';
+import { FilterSelect } from '../../shared/FilterSelect';
 
 interface Step1BasicInfoProps {
   formData: ItemFormData;
@@ -25,8 +25,8 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups, accessToken }: 
   // Auto-select defaults on mount
   useEffect(() => {
     const updates: Partial<ItemFormData> = {};
-    if (!formData.itemType) updates.itemType = 'stock';
-    if (!formData.status) updates.status = 'ACTIVE';
+    if (!formData.itemType) updates.itemType = ITEM_TYPE_OPTIONS[0];
+    if (!formData.status) updates.status = ITEM_STATUS_OPTIONS[0];
     if (Object.keys(updates).length > 0) onUpdate(updates);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -119,7 +119,7 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups, accessToken }: 
           <Label>
             Unit of Measure <span className="text-red-500">*</span>
           </Label>
-          <SearchableSelect value={formData.unitOfMeasure}
+          <FilterSelect value={formData.unitOfMeasure}
             onValueChange={(value) => onUpdate({ unitOfMeasure: value })}
             options={uomOptions}
             placeholder="Select unit"
