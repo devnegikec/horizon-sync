@@ -37,6 +37,7 @@ interface TableMeta {
   disabled?: boolean;
   showSourceWarehouse?: boolean;
   showTargetWarehouse?: boolean;
+  warehouseId?: string;
 }
 
 /** Row shape for the editable table */
@@ -53,6 +54,8 @@ interface StockEntryLineItemsTableProps {
   items: StockEntryLineRow[];
   onItemsChange: (items: StockEntryLineRow[]) => void;
   disabled?: boolean;
+  /** When set, picker searches are scoped to this warehouse */
+  warehouseId?: string;
 }
 
 const defaultLabelFormatter = (item: PickerItem) => item.item_name ?? '';
@@ -104,6 +107,14 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<StockEntr
     return meta ? <DisabledItemCell itemId={itemId} meta={meta} /> : <div className="px-2 py-1">{itemId}</div>;
   }
 
+  if (!meta.warehouseId) {
+    return (
+      <div className="px-2 py-1 text-sm text-muted-foreground italic">
+        Select a warehouse first
+      </div>
+    );
+  }
+
   const itemData = meta.getItemData?.(itemId);
 
   return (
@@ -119,20 +130,21 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<StockEntr
   );
 }
 
-export function StockEntryLineItemsTable({ items, onItemsChange, disabled = false }: StockEntryLineItemsTableProps) {
+export function StockEntryLineItemsTable({ items, onItemsChange, disabled = false, warehouseId }: StockEntryLineItemsTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const itemsCacheRef = React.useRef<Map<string, PickerItem>>(new Map());
 
   const searchItems = React.useCallback(async (query: string): Promise<PickerItem[]> => {
-    if (!accessToken) return [];
-    const response = await fetch(`${environment.apiCoreUrl}/items/picker?search=${encodeURIComponent(query)}`, {
+    if (!accessToken || !warehouseId) return [];
+    const url = `${environment.apiCoreUrl}/items/picker?search=${encodeURIComponent(query)}&warehouse_id=${encodeURIComponent(warehouseId)}`;
+    const response = await fetch(url, {
       headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     });
     if (!response.ok) throw new Error('Failed to fetch items');
     const data: PickerResponse = await response.json();
     data.items.forEach(item => { itemsCacheRef.current.set(item.id, item); });
     return data.items;
-  }, [accessToken]);
+  }, [accessToken, warehouseId]);
 
   const itemLabelFormatter = React.useCallback(
     (item: PickerItem) => `${item.item_name} (${item.item_code})`,
@@ -194,9 +206,9 @@ export function StockEntryLineItemsTable({ items, onItemsChange, disabled = fals
     () => ({
       showPagination: false,
       enableColumnVisibility: false,
-      meta: { getItemData, searchItems, itemLabelFormatter, disabled },
+      meta: { getItemData, searchItems, itemLabelFormatter, disabled, warehouseId },
     }),
-    [getItemData, searchItems, itemLabelFormatter, disabled]
+    [getItemData, searchItems, itemLabelFormatter, disabled, warehouseId]
   );
 
   return (

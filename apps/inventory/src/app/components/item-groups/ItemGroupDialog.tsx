@@ -12,9 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
 import { useItemGroupMutations } from '../../hooks/useItemGroups';
-import { useUOMOptions } from '../../hooks/useUOMOptions';
 import type { ItemGroupListItem } from '../../types/item-group.types';
-import { FilterSelect } from '../shared/FilterSelect';
+import { UOMSelect } from '../shared/UOMSelect';
 
 interface ItemGroupDialogProps {
   open: boolean;
@@ -49,11 +48,9 @@ interface FormFieldsProps {
   set: SetField;
   isEditing: boolean;
   parentOptions: ItemGroupListItem[];
-  uomOptions: { label: string; value: string }[];
-  uomLoading: boolean;
 }
 
-function ItemGroupFormFields({ formData, set, isEditing, parentOptions, uomOptions, uomLoading }: FormFieldsProps) {
+function ItemGroupFormFields({ formData, set, isEditing, parentOptions }: FormFieldsProps) {
   return (
     <div className="grid gap-4 py-4">
       <div className="grid grid-cols-2 gap-4">
@@ -133,12 +130,9 @@ function ItemGroupFormFields({ formData, set, isEditing, parentOptions, uomOptio
         </div>
         <div className="space-y-2">
           <Label htmlFor="ig-uom">Unit of Measure</Label>
-          <FilterSelect value={formData.default_uom}
+          <UOMSelect value={formData.default_uom}
             onValueChange={(v) => set('default_uom', v)}
-            options={uomOptions}
-            placeholder="Select UOM"
-            loading={uomLoading}
-            listMaxHeight="max-h-40"/>
+            placeholder="Select UOM"/>
         </div>
       </div>
     </div>
@@ -147,8 +141,6 @@ function ItemGroupFormFields({ formData, set, isEditing, parentOptions, uomOptio
 
 export function ItemGroupDialog({ open, onOpenChange, itemGroup, allItemGroups, onCreated, onUpdated }: ItemGroupDialogProps) {
   const { createItemGroup, updateItemGroup, loading } = useItemGroupMutations();
-  const { accessToken } = useUserStore();
-  const { options: uomOptions, loading: uomLoading } = useUOMOptions(accessToken ?? '');
   const [formData, setFormData] = React.useState(DEFAULT_FORM);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
 
@@ -219,7 +211,7 @@ export function ItemGroupDialog({ open, onOpenChange, itemGroup, allItemGroups, 
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
-          <ItemGroupFormFields formData={formData} set={set} isEditing={isEditing} parentOptions={parentOptions} uomOptions={uomOptions} uomLoading={uomLoading}/>
+          <ItemGroupFormFields formData={formData} set={set} isEditing={isEditing} parentOptions={parentOptions}/>
 
           {submitError && <p className="text-sm text-destructive mb-4">{submitError}</p>}
 

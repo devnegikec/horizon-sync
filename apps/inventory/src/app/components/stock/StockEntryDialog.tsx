@@ -439,7 +439,12 @@ export function StockEntryDialog({
               <StockEntryCsvImport onImport={handleCsvImport} />
             </div>
             <StockEntryLineItemsTable items={lineItems}
-              onItemsChange={setLineItems} />
+              onItemsChange={setLineItems}
+              warehouseId={
+                form.stock_entry_type === 'material_receipt'
+                  ? form.to_warehouse_id
+                  : form.from_warehouse_id
+              } />
           </div>
 
           <div className="flex justify-end">
