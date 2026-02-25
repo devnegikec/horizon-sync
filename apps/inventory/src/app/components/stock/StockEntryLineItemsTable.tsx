@@ -8,7 +8,6 @@ import { useUserStore } from '@horizon-sync/store';
 import { Button, EditableDataTable, EditableNumberCell, EditableCell } from '@horizon-sync/ui/components';
 
 import { environment } from '../../../environments/environment';
-import type { StockEntryItem } from '../../types/stock.types';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 
 /** Minimal item shape returned by the /items/picker endpoint */
@@ -18,6 +17,11 @@ interface PickerItem {
   item_name: string;
   uom: string | null;
   standard_rate: string | null;
+  stock_levels?: {
+    quantity_on_hand: number;
+    quantity_reserved: number;
+    quantity_available: number;
+  };
 }
 
 interface PickerResponse {
@@ -69,6 +73,27 @@ function DisabledItemCell({ itemId, meta }: { itemId: string; meta: TableMeta })
   const itemData = meta.getItemData?.(itemId);
   const label = itemData ? (meta.itemLabelFormatter ?? defaultLabelFormatter)(itemData) : itemId;
   return <div className="px-2 py-1">{label}</div>;
+}
+
+function QtyCellComponent({ getValue, row, table, ...rest }: CellContext<StockEntryLineRow, unknown>) {
+  const meta = table.options.meta as TableMeta | undefined;
+  const itemId = row.original.item_id;
+  const stockLevels = itemId ? meta?.getItemData?.(itemId)?.stock_levels : undefined;
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      {meta?.disabled ? (
+        <div className="px-2 py-1">{String(getValue() ?? '')}</div>
+      ) : (
+        <EditableNumberCell getValue={getValue} row={row} table={table} {...rest} />
+      )}
+      {stockLevels !== undefined && (
+        <span className="px-2 text-[10px] text-muted-foreground leading-tight">
+          Avail: {stockLevels.quantity_available}
+        </span>
+      )}
+    </div>
+  );
 }
 
 function ItemPickerCellComponent({ getValue, row, table }: CellContext<StockEntryLineRow, unknown>) {
@@ -134,7 +159,7 @@ export function StockEntryLineItemsTable({ items, onItemsChange, disabled = fals
   const columns = React.useMemo<ColumnDef<StockEntryLineRow, unknown>[]>(
     () => [
       { accessorKey: 'item_id', header: 'Item', cell: ItemPickerCellComponent, size: 250 },
-      { accessorKey: 'qty', header: 'Quantity', cell: disabled ? undefined : EditableNumberCell, size: 100 },
+      { accessorKey: 'qty', header: 'Quantity', cell: QtyCellComponent, size: 100 },
       { accessorKey: 'uom', header: 'UOM', cell: disabled ? undefined : EditableCell, size: 80 },
       { accessorKey: 'basic_rate', header: 'Rate', cell: disabled ? undefined : EditableNumberCell, size: 120 },
       {
