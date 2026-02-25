@@ -22,11 +22,17 @@ import {
   Textarea,
 } from '@horizon-sync/ui/components';
 
-import type { Invoice, InvoiceType, PartyType } from '../../types/invoice';
+import type { Invoice } from '../../types/invoice';
 import type { CustomerResponse } from '../../types/customer.types';
 import { customerApi } from '../../utility/api';
 import { InvoiceLineItemTable } from './InvoiceLineItemTable';
 import { invoiceFormSchema, type InvoiceFormData, type InvoiceLineItemFormData } from '../../utils/validation';
+
+function computeDocumentDiscount(subtotal: number, discountType: string, discountValue: number): number {
+  if (!discountValue || discountValue <= 0) return 0;
+  if (discountType === 'percentage') return Number((subtotal * discountValue / 100).toFixed(2));
+  return Math.min(discountValue, subtotal);
+}
 
 interface InvoiceDialogProps {
   open: boolean;
@@ -59,6 +65,8 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
       invoice_type: 'Sales',
       status: 'Draft',
       remarks: '',
+      discount_type: 'percentage',
+      discount_value: '',
       line_items: [],
     },
   });
@@ -78,10 +86,12 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
         due_date: new Date(invoice.due_date),
         currency: invoice.currency,
         invoice_type: invoice.invoice_type,
-        status: ['Draft', 'Submitted', 'Cancelled'].includes(invoice.status) 
+        status: ['Draft', 'Submitted', 'Cancelled'].includes(invoice.status)
           ? (invoice.status as 'Draft' | 'Submitted' | 'Cancelled')
           : 'Draft',
         remarks: invoice.remarks || '',
+        discount_type: (invoice.discount_type as 'flat' | 'percentage') || 'percentage',
+        discount_value: String(invoice.discount_value ?? 0),
         line_items: invoice.line_items && invoice.line_items.length > 0
           ? invoice.line_items.map((item) => ({
               item_id: item.item_id,
@@ -103,36 +113,54 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
         invoice_type: 'Sales',
         status: 'Draft',
         remarks: '',
+        discount_type: 'percentage',
+        discount_value: '',
         line_items: [],
       });
     }
   }, [invoice, open, reset]);
 
+  const discountType = watch('discount_type') ?? 'percentage';
+  const discountValueStr = watch('discount_value');
+  const discountValue = Number(discountValueStr) || 0;
+
   // Calculate totals
-  const { subtotal, totalTax, grandTotal } = React.useMemo(() => {
-    const subtotal = lineItems.reduce((sum, item) => {
+  const { subtotal, totalTax, subtotalBeforeDiscount, totalDiscountAmount, grandTotal } = React.useMemo(() => {
+    const sub = lineItems.reduce((sum, item) => {
       const amount = item.quantity * item.rate;
       return sum + amount;
     }, 0);
 
-    const totalTax = lineItems.reduce((sum, item) => {
+    const tax = lineItems.reduce((sum, item) => {
       const amount = item.quantity * item.rate;
-      // Tax calculation will be implemented when tax templates are available
-      // For now, we'll use 0 as placeholder
       const taxAmount = 0;
       return sum + taxAmount;
     }, 0);
 
-    const grandTotal = subtotal + totalTax;
+    const beforeDiscount = sub + tax;
+    const discountAmt = computeDocumentDiscount(beforeDiscount, discountType, discountValue);
+    const grand = Math.max(0, Number((beforeDiscount - discountAmt).toFixed(2)));
 
-    return { subtotal, totalTax, grandTotal };
-  }, [lineItems]);
+    return {
+      subtotal: sub,
+      totalTax: tax,
+      subtotalBeforeDiscount: beforeDiscount,
+      totalDiscountAmount: discountAmt,
+      grandTotal: grand,
+    };
+  }, [lineItems, discountType, discountValue]);
 
   const onSubmit = async (data: InvoiceFormData) => {
+    const payload = {
+      ...data,
+      discount_amount: totalDiscountAmount,
+      grand_total: grandTotal,
+      outstanding_amount: grandTotal,
+    } as InvoiceFormData & { discount_amount: number; grand_total: number; outstanding_amount: number };
     if (isEdit && invoice) {
-      await onSave(data, invoice.id);
+      await onSave(payload, invoice.id);
     } else {
-      await onSave(data);
+      await onSave(payload);
     }
   };
 
@@ -362,27 +390,64 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
             )}
           </div>
 
-          {/* Totals */}
+          {/* Totals with document discount */}
           <div className="flex justify-end">
-            <div className="w-64 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Subtotal:</span>
-                <span className="text-sm font-medium">
-                  {currency} {subtotal.toFixed(2)}
-                </span>
+            <div className="w-80 space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span>Subtotal:</span>
+                <span>{currency} {subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Total Tax:</span>
-                <span className="text-sm font-medium">
-                  {currency} {totalTax.toFixed(2)}
+              <div className="flex justify-between items-center text-sm">
+                <span>Total Tax:</span>
+                <span>{currency} {totalTax.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center gap-4">
+                <span className="text-sm">Discount:</span>
+                <div className="flex items-center gap-2">
+                  <Controller
+                    name="discount_type"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ?? 'percentage'}
+                        onValueChange={field.onChange}
+                        disabled={isLineItemEditingDisabled}
+                      >
+                        <SelectTrigger className="w-28">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentage">%</SelectItem>
+                          <SelectItem value="flat">Flat</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <Controller
+                    name="discount_value"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        type="number"
+                        min={0}
+                        step={discountType === 'percentage' ? 1 : 0.01}
+                        className="w-24 text-right"
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        disabled={isLineItemEditingDisabled}
+                        placeholder={discountType === 'percentage' ? '%' : 'Amount'}
+                      />
+                    )}
+                  />
+                </div>
+                <span className="text-sm text-muted-foreground w-24 text-right">
+                  −{currency} {totalDiscountAmount.toFixed(2)}
                 </span>
               </div>
               <Separator />
               <div className="flex justify-between items-center text-lg font-semibold">
                 <span>Grand Total:</span>
-                <span>
-                  {currency} {grandTotal.toFixed(2)}
-                </span>
+                <span>{currency} {grandTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>

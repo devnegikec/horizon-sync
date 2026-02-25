@@ -62,6 +62,8 @@ export interface Invoice {
   grand_total: number;
   outstanding_amount: number;
   currency: string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
   discount_amount?: number;
   reference_type?: string | null;
   reference_id?: string | null;
@@ -113,6 +115,9 @@ export interface InvoiceCreateRequest {
   grand_total: number;
   outstanding_amount: number;
   currency: string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
+  discount_amount?: number;
   reference_type?: string | null;
   reference_id?: string | null;
   remarks?: string | null;
@@ -123,6 +128,11 @@ export interface InvoiceUpdateRequest {
   due_date?: string;
   status?: InvoiceStatus;
   remarks?: string | null;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
+  discount_amount?: number;
+  grand_total?: number;
+  outstanding_amount?: number;
 }
 
 export interface MarkAsPaidRequest {
