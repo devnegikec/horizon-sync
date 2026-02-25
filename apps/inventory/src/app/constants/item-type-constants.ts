@@ -4,7 +4,7 @@ export const VALUATION_METHOD_OPTIONS = ['FIFO', 'LIFO', 'Moving Average'] as co
 
 export const WEIGHT_UOM_OPTIONS = ['kg', 'g', 'lb', 'oz'] as const;
 
-export const ITEM_STATUS_OPTIONS = ['ACTIVE', 'INACTIVE'] as const;
+export const ITEM_STATUS_OPTIONS = ['active', 'inactive'] as const;
 
 export type ItemType = typeof ITEM_TYPE_OPTIONS[number];
 export type ValuationMethod = typeof VALUATION_METHOD_OPTIONS[number];

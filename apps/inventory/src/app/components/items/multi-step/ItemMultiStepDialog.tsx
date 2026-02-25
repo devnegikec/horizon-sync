@@ -56,7 +56,7 @@ const getInitialFormData = (initialData?: Partial<ItemFormData>): ItemFormData =
   name: '',
   description: '',
   itemGroupId: '',
-  itemType: 'product',
+  itemType: 'stock',
   unitOfMeasure: 'unit',
   status: 'active',
   defaultPrice: '',

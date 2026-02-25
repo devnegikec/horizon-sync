@@ -123,7 +123,7 @@ export function WarehouseManagement() {
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button onClick={handleCreateWarehouse} className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
+          <Button onClick={handleCreateWarehouse} className="gap-2 text-primary-foreground shadow-lg">
             <Plus className="h-4 w-4" />
             Add Warehouse
           </Button>

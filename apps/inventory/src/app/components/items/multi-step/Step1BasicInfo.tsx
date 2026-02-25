@@ -23,13 +23,13 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups, accessToken }: 
   const { options: uomOptions, loading: uomLoading } = useUOMOptions(accessToken);
 
   // Auto-select defaults on mount
-  useEffect(() => {
-    const updates: Partial<ItemFormData> = {};
-    if (!formData.itemType) updates.itemType = ITEM_TYPE_OPTIONS[0];
-    if (!formData.status) updates.status = ITEM_STATUS_OPTIONS[0];
-    if (Object.keys(updates).length > 0) onUpdate(updates);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // useEffect(() => {
+  //   if (!formData.itemType) formData.itemType = ITEM_TYPE_OPTIONS[0];
+  //   if (!formData.status) formData.status = ITEM_STATUS_OPTIONS[0];
+  //   // if (Object.keys(updates).length > 0) onUpdate(updates);
+  //   console.log(formData, ITEM_TYPE_OPTIONS)
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []);
 
   return (
     <div className="space-y-6">
@@ -61,15 +61,6 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups, accessToken }: 
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Textarea id="description"
-          value={formData.description}
-          onChange={(e) => onUpdate({ description: e.target.value })}
-          placeholder="Enter item description"
-          rows={3}/>
-      </div>
-
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>
@@ -94,12 +85,25 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups, accessToken }: 
             </div>
           )}
         </div>
+        <div className="space-y-2">
+          <Label>
+            Unit of Measure <span className="text-red-500">*</span>
+          </Label>
+          <FilterSelect value={formData.unitOfMeasure}
+            onValueChange={(value) => onUpdate({ unitOfMeasure: value })}
+            options={uomOptions}
+            placeholder="Select unit"
+            listMaxHeight="max-h-32"
+            loading={uomLoading}/>
+        </div>
+      </div>
 
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>
             Item Type <span className="text-red-500">*</span>
           </Label>
-          <Select value={formData.itemType} onValueChange={(value) => onUpdate({ itemType: value })}>
+          <Select value={formData.itemType || ITEM_TYPE_OPTIONS[0]} onValueChange={(value) => onUpdate({ itemType: value })}>
             <SelectTrigger>
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
@@ -112,37 +116,33 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups, accessToken }: 
             </SelectContent>
           </Select>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>
-            Unit of Measure <span className="text-red-500">*</span>
-          </Label>
-          <FilterSelect value={formData.unitOfMeasure}
-            onValueChange={(value) => onUpdate({ unitOfMeasure: value })}
-            options={uomOptions}
-            placeholder="Select unit"
-            loading={uomLoading}/>
-        </div>
 
         <div className="space-y-2">
           <Label>
             Status <span className="text-red-500">*</span>
           </Label>
-          <Select value={formData.status} onValueChange={(value) => onUpdate({ status: value })}>
+          <Select value={formData.status || ITEM_STATUS_OPTIONS[0]} onValueChange={(value) => onUpdate({ status: value })}>
             <SelectTrigger>
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
             <SelectContent>
               {ITEM_STATUS_OPTIONS.map((status) => (
                 <SelectItem key={status} value={status}>
-                  {status}
+                  {status.toLocaleUpperCase()}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Textarea id="description"
+          value={formData.description}
+          onChange={(e) => onUpdate({ description: e.target.value })}
+          placeholder="Enter item description"
+          rows={3}/>
       </div>
     </div>
   );

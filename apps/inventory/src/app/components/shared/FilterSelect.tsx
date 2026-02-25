@@ -17,6 +17,8 @@ interface FilterSelectProps {
   disabled?: boolean;
   loading?: boolean;
   className?: string;
+  /** Tailwind max-height class for the dropdown list, e.g. 'max-h-48', 'max-h-60' */
+  listMaxHeight?: string;
 }
 
 function normalise(options: string[] | SelectOption[]): SelectOption[] {
@@ -34,6 +36,7 @@ export function FilterSelect({
   disabled = false,
   loading = false,
   className,
+  listMaxHeight = 'max-h-48',
 }: FilterSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -128,7 +131,7 @@ export function FilterSelect({
               className="h-8"/>
           </div>
           <ul id="filter-select-list"
-            className="max-h-48 overflow-y-auto py-1"
+            className={cn('overflow-y-auto py-1', listMaxHeight)}
             role="listbox">
             {loading ? (
               <li className="px-3 py-2 text-sm text-muted-foreground">Loading...</li>
