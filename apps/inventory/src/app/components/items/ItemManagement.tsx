@@ -22,7 +22,7 @@ export function ItemManagement() {
   const [createOrgModalOpen, setCreateOrgModalOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearchActive, setIsSearchActive] = useState(false);
-  
+
   const {
     filters,
     setFilters,
@@ -119,7 +119,7 @@ export function ItemManagement() {
   // Handle search results from LocalSearch component
   const handleSearchResults = useCallback((results: SearchResult[]) => {
     console.log('[ItemManagement] Received search results:', results.length);
-    
+
     if (results.length > 0) {
       // Search returned results
       setSearchResults(results);
@@ -153,36 +153,36 @@ export function ItemManagement() {
 
       <ItemStats totalItems={stats.totalItems} activeItems={stats.activeItems} />
 
-      <ItemManagementFilters filters={filters} 
-        setFilters={setFilters} 
-        itemGroups={itemGroups} 
+      <ItemManagementFilters filters={filters}
+        setFilters={setFilters}
+        itemGroups={itemGroups}
         tableInstance={tableInstance}
         onSearchResults={handleSearchResults}/>
 
-      <ItemsTable items={displayedItems} 
-        loading={loading} 
-        error={error} 
-        hasActiveFilters={isSearchActive || !!filters.search || filters.groupId !== 'all' || filters.status !== 'all'} 
-        onView={handleViewItem} 
-        onEdit={handleEditItem} 
-        onToggleStatus={handleToggleStatus} 
+      <ItemsTable items={displayedItems}
+        loading={loading}
+        error={error}
+        hasActiveFilters={isSearchActive || !!filters.search || filters.groupId !== 'all' || filters.status !== 'all'}
+        onView={handleViewItem}
+        onEdit={handleEditItem}
+        onToggleStatus={handleToggleStatus}
         onCreateItem={handleCreateItemWithOrgCheck}
         onBulkUpload={handleBulkUpload}
         onCreateOrganization={() => setCreateOrgModalOpen(true)}
         onTableReady={handleTableReady}
         serverPagination={serverPaginationConfig}/>
 
-      <ItemDialog open={itemDialogOpen} 
-        onOpenChange={setItemDialogOpen} 
-        item={selectedItemAsItem} 
-        itemGroups={itemGroups} 
-        onSave={handleSaveItem} 
-        onCreated={refetch} 
+      <ItemDialog open={itemDialogOpen}
+        onOpenChange={setItemDialogOpen}
+        item={selectedItemAsItem}
+        itemGroups={itemGroups}
+        onSave={handleSaveItem}
+        onCreated={refetch}
         onUpdated={refetch}
         onItemGroupsRefresh={refetchItemGroups}/>
-      
-      <ItemDetailDialog open={detailDialogOpen} 
-        onOpenChange={setDetailDialogOpen} 
+
+      <ItemDetailDialog open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
         item={selectedItemAsItem}/>
 
       <CreateOrganizationModal open={createOrgModalOpen}

@@ -169,7 +169,7 @@ function StockManagementHeader({ onNewEntry }: HeaderProps) {
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
+            <Button className="gap-2 text-primary-foreground shadow-lg">
               <Plus className="h-4 w-4" />
               New
             </Button>

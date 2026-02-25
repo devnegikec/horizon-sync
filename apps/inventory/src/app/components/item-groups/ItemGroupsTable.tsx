@@ -16,6 +16,7 @@ export interface ItemGroupsTableProps {
   loading: boolean;
   error: string | null;
   hasActiveFilters: boolean;
+  onView: (group: ItemGroupListItem) => void;
   onEdit: (group: ItemGroupListItem) => void;
   onDelete: (group: ItemGroupListItem) => void;
   onCreateGroup: () => void;
@@ -28,7 +29,7 @@ export interface ItemGroupsTableProps {
   };
 }
 
-export function ItemGroupsTable({ itemGroups, loading, error, hasActiveFilters, onEdit, onDelete, onCreateGroup, onTableReady, serverPagination }: ItemGroupsTableProps) {
+export function ItemGroupsTable({ itemGroups, loading, error, hasActiveFilters, onView, onEdit, onDelete, onCreateGroup, onTableReady, serverPagination }: ItemGroupsTableProps) {
   const [tableInstance, setTableInstance] = React.useState<Table<ItemGroupListItem> | null>(null);
 
   React.useEffect(() => {
@@ -113,6 +114,10 @@ export function ItemGroupsTable({ itemGroups, loading, error, hasActiveFilters, 
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onView(group)}>
+                  <Eye className="mr-2 h-4 w-4" />View Details
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onEdit(group)}>
                   <Edit className="mr-2 h-4 w-4" />Edit
                 </DropdownMenuItem>
@@ -126,7 +131,7 @@ export function ItemGroupsTable({ itemGroups, loading, error, hasActiveFilters, 
         );
       },
     },
-  ], [onEdit, onDelete]);
+  ], [onView, onEdit, onDelete]);
 
   const renderViewOptions = (table: Table<ItemGroupListItem>) => {
     if (table !== tableInstance) setTableInstance(table);
