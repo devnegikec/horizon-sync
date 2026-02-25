@@ -4,6 +4,7 @@ import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { Quotation, CustomerInfo } from '../../types/quotation.types';
 
 import type { PDFDocumentData, PDFLineItem } from './types';
+import { getCurrencySymbolForPDF } from './pdfCurrency';
 
 interface OrgContext {
   organization: Organization | null;
@@ -97,9 +98,6 @@ function toLineItem(item: NonNullable<Quotation['items']>[number], index: number
   };
 }
 
-function getCurrencySymbol(code: string): string {
-  return SUPPORTED_CURRENCIES.find((c) => c.code === code)?.symbol || code;
-}
 
 function buildCustomerFields(quotation: Quotation) {
   const customer = quotation.customer;
@@ -119,8 +117,9 @@ export function convertQuotationToPDFData(quotation: Quotation, orgContext?: Org
   const subtotal = safeLineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const totalTax = safeLineItems.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0);
   const company = buildCompanyInfo(orgContext?.organization ?? null);
+  const discountAmount = Number(quotation.discount_amount ?? 0);
   const grandTotalNum = Number(quotation.grand_total);
-  const grandTotal = Number.isFinite(grandTotalNum) ? grandTotalNum : subtotal + totalTax;
+  const grandTotal = Number.isFinite(grandTotalNum) ? grandTotalNum : subtotal - discountAmount + totalTax;
   const dateStr = quotation.quotation_date != null ? String(quotation.quotation_date) : new Date().toISOString().slice(0, 10);
   const validUntilStr = quotation.valid_until != null ? String(quotation.valid_until) : undefined;
 
@@ -130,12 +129,13 @@ export function convertQuotationToPDFData(quotation: Quotation, orgContext?: Org
     date: dateStr,
     validUntil: validUntilStr,
     currency: String(quotation.currency ?? 'INR'),
-    currencySymbol: getCurrencySymbol(String(quotation.currency ?? 'INR')),
+    currencySymbol: getCurrencySymbolForPDF(String(quotation.currency ?? 'INR')),
     status: quotation.status,
     ...company,
     ...buildCustomerFields(quotation),
     lineItems: safeLineItems.map((item, i) => toLineItem(item, i)),
     subtotal,
+    discountAmount: discountAmount > 0 ? discountAmount : undefined,
     totalTax,
     grandTotal,
     taxSummary: buildTaxSummary(safeLineItems),

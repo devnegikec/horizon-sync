@@ -1,15 +1,10 @@
-import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { SalesOrder } from '../../types/sales-order.types';
 
 import type { PDFDocumentData, PDFLineItem } from './types';
+import { getCurrencySymbolForPDF } from './pdfCurrency';
 
 export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentData => {
   const lineItems = salesOrder.items || [];
-
-  const getCurrencySymbol = (currencyCode: string): string => {
-    const currency = SUPPORTED_CURRENCIES.find((c: { code: string; symbol: string }) => c.code === currencyCode);
-    return currency?.symbol || currencyCode;
-  };
 
   // Convert line items with tax information
   const pdfLineItems: PDFLineItem[] = lineItems.map((item, index) => {
@@ -46,6 +41,7 @@ export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentD
     const taxAmount = item.tax_amount || Number(item.extra_data?.tax_amount || 0);
     return sum + taxAmount;
   }, 0);
+  const discountAmount = Number(salesOrder.discount_amount ?? 0);
 
   // Get customer details
   const customer = salesOrder.customer;
@@ -56,7 +52,7 @@ export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentD
     date: salesOrder.order_date,
     dueDate: salesOrder.delivery_date || undefined,
     currency: salesOrder.currency,
-    currencySymbol: getCurrencySymbol(salesOrder.currency),
+    currencySymbol: getCurrencySymbolForPDF(salesOrder.currency ?? 'INR'),
     status: salesOrder.status,
 
     // Company info - you can customize this based on your organization data
@@ -85,6 +81,7 @@ export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentD
 
     // Totals
     subtotal,
+    discountAmount: discountAmount > 0 ? discountAmount : undefined,
     totalTax,
     grandTotal: Number(salesOrder.grand_total),
 

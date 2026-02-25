@@ -378,6 +378,12 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
             <Text>Subtotal:</Text>
             <Text>{formatCurrency(data.subtotal)}</Text>
           </View>
+          {data.discountAmount != null && data.discountAmount > 0 && (
+            <View style={styles.totalRow}>
+              <Text>Discount:</Text>
+              <Text>−{formatCurrency(data.discountAmount)}</Text>
+            </View>
+          )}
           <View style={styles.totalRow}>
             <Text>Total Tax:</Text>
             <Text>{formatCurrency(data.totalTax)}</Text>
