@@ -1,18 +1,12 @@
-import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { Invoice } from '../../types/invoice.types';
 
 import type { PDFDocumentData, PDFLineItem } from './types';
+import { getCurrencySymbolForPDF } from './pdfCurrency';
 
 export const convertInvoiceToPDFData = (invoice: Invoice): PDFDocumentData => {
   const lineItems = invoice.line_items || [];
 
-  // Get currency symbol
-  const getCurrencySymbol = (currencyCode: string): string => {
-    const currency = SUPPORTED_CURRENCIES.find((c: { code: string; symbol: string }) => c.code === currencyCode);
-    return currency?.symbol || currencyCode;
-  };
-
-  // Convert line items
+  // Convert line items (include line-level discount when present)
   const pdfLineItems: PDFLineItem[] = lineItems.map((item, index) => ({
     index: index + 1,
     itemName: item.item_name || '',
@@ -21,6 +15,7 @@ export const convertInvoiceToPDFData = (invoice: Invoice): PDFDocumentData => {
     uom: item.uom || 'Unit',
     rate: Number(item.unit_price),
     amount: Number(item.amount),
+    discountAmount: item.discount_amount != null && Number(item.discount_amount) > 0 ? Number(item.discount_amount) : undefined,
     taxAmount: item.tax_amount ? Number(item.tax_amount) : undefined,
     totalAmount: Number(item.total_amount),
   }));
@@ -28,6 +23,7 @@ export const convertInvoiceToPDFData = (invoice: Invoice): PDFDocumentData => {
   // Calculate totals
   const subtotal = lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const totalTax = lineItems.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0);
+  const discountAmount = Number(invoice.discount_amount ?? 0);
 
   return {
     type: 'invoice',
@@ -35,7 +31,7 @@ export const convertInvoiceToPDFData = (invoice: Invoice): PDFDocumentData => {
     date: invoice.posting_date,
     dueDate: invoice.due_date,
     currency: invoice.currency,
-    currencySymbol: getCurrencySymbol(invoice.currency),
+    currencySymbol: getCurrencySymbolForPDF(invoice.currency ?? 'INR'),
     status: invoice.status,
 
     // Company info - you can customize this based on your organization data
@@ -53,6 +49,7 @@ export const convertInvoiceToPDFData = (invoice: Invoice): PDFDocumentData => {
 
     // Totals
     subtotal,
+    discountAmount,
     totalTax,
     grandTotal: Number(invoice.grand_total),
 

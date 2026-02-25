@@ -10,6 +10,9 @@ export interface QuotationLineItem {
   uom: string;
   rate: number | string;
   amount: number | string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number | string;
+  discount_amount?: number | string;
   tax_template_id?: string | null;
   tax_rate?: number | string;
   tax_amount?: number | string;
@@ -73,6 +76,9 @@ export interface Quotation {
   currency: string;
   status: QuotationStatus;
   remarks?: string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number | string;
+  discount_amount?: number | string;
   line_items?: QuotationLineItem[];
   items?: QuotationLineItem[]; // API returns 'items' instead of 'line_items'
   converted_to_sales_order?: boolean;
@@ -104,6 +110,9 @@ export interface QuotationLineItemCreate {
   uom: string;
   rate: number | string;
   amount: number | string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number | string;
+  discount_amount?: number | string;
   tax_template_id?: string | null;
   tax_rate?: number | string;
   tax_amount?: number | string;
@@ -120,6 +129,9 @@ export interface QuotationCreate {
   grand_total?: number;
   currency: string;
   remarks?: string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
+  discount_amount?: number;
   items: QuotationLineItemCreate[];
 }
 
@@ -128,6 +140,9 @@ export interface QuotationUpdate {
   valid_until?: string;
   status?: QuotationStatus;
   remarks?: string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
+  discount_amount?: number;
   items?: QuotationLineItemCreate[];
 }
 

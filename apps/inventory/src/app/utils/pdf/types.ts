@@ -31,6 +31,8 @@ export interface PDFDocumentData {
   
   // Totals
   subtotal: number;
+  /** Document-level / organization discount amount (always set for consistent PDF layout) */
+  discountAmount: number;
   totalTax: number;
   grandTotal: number;
   
@@ -58,6 +60,7 @@ export interface PDFLineItem {
   uom: string;
   rate: number;
   amount: number;
+  discountAmount?: number;
   taxAmount?: number;
   totalAmount: number;
   taxInfo?: {

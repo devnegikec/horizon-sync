@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { FileText, Plus, MoreHorizontal, Eye, Edit, Trash2, User, Lock } from 'lucide-react';
+import { Download, Eye, Edit, FileText, Mail, MoreHorizontal, Plus, Trash2, User, Lock } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -22,6 +22,9 @@ export interface QuotationsTableProps {
   onEdit: (quotation: Quotation) => void;
   onDelete: (quotation: Quotation) => void;
   onConvert?: (quotation: Quotation) => void;
+  onPreviewPDF?: (quotation: Quotation) => void;
+  onDownloadPDF?: (quotation: Quotation) => void;
+  onSendEmail?: (quotation: Quotation) => void;
   onCreateQuotation: () => void;
   onTableReady?: (table: Table<Quotation>) => void;
   serverPagination?: {
@@ -41,6 +44,9 @@ export function QuotationsTable({
   onEdit,
   onDelete,
   onConvert,
+  onPreviewPDF,
+  onDownloadPDF,
+  onSendEmail,
   onCreateQuotation,
   onTableReady,
   serverPagination
@@ -178,18 +184,36 @@ export function QuotationsTable({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onView(quotation)}>
+                  <DropdownMenuItem onSelect={() => onView(quotation)}>
                     <Eye className="mr-2 h-4 w-4" />
                     View Details
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onEdit(quotation)} disabled={!canEdit}>
+                  <DropdownMenuItem onSelect={() => onEdit(quotation)} disabled={!canEdit}>
                     <Edit className="mr-2 h-4 w-4" />
                     Edit Quotation
                   </DropdownMenuItem>
+                  {onPreviewPDF && (
+                    <DropdownMenuItem onSelect={() => onPreviewPDF(quotation)}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Preview PDF
+                    </DropdownMenuItem>
+                  )}
+                  {onDownloadPDF && (
+                    <DropdownMenuItem onSelect={() => onDownloadPDF(quotation)}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download PDF
+                    </DropdownMenuItem>
+                  )}
+                  {onSendEmail && (
+                    <DropdownMenuItem onSelect={() => onSendEmail(quotation)}>
+                      <Mail className="mr-2 h-4 w-4" />
+                      Send Email
+                    </DropdownMenuItem>
+                  )}
                   {canConvert && onConvert && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onConvert(quotation)}>
+                      <DropdownMenuItem onSelect={() => onConvert(quotation)}>
                         <FileText className="mr-2 h-4 w-4" />
                         Convert to Sales Order
                       </DropdownMenuItem>
@@ -198,7 +222,7 @@ export function QuotationsTable({
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onDelete(quotation)}
+                      <DropdownMenuItem onSelect={() => onDelete(quotation)}
                         className="text-destructive focus:text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Quotation
@@ -213,7 +237,7 @@ export function QuotationsTable({
         enableSorting: false,
       },
     ],
-    [onView, onEdit, onDelete, onConvert],
+    [onView, onEdit, onDelete, onConvert, onPreviewPDF, onDownloadPDF, onSendEmail],
   );
 
 

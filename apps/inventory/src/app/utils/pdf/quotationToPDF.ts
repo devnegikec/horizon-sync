@@ -4,6 +4,7 @@ import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { Quotation, CustomerInfo } from '../../types/quotation.types';
 
 import type { PDFDocumentData, PDFLineItem } from './types';
+import { getCurrencySymbolForPDF } from './pdfCurrency';
 
 interface OrgContext {
   organization: Organization | null;
@@ -66,8 +67,9 @@ function buildTaxSummary(lineItems: Quotation['items']) {
     const summary = taxSummary.get(key);
     if (summary) {
       summary.amount += Number(item.tax_amount || 0);
+      const netAmount = Number(item.amount || 0) - Number(item.discount_amount || 0);
       item.tax_info.breakup.forEach((t, idx) => {
-        summary.breakup[idx].amount += (Number(item.amount) * t.rate) / 100;
+        summary.breakup[idx].amount += (netAmount * t.rate) / 100;
       });
     }
   });
@@ -75,25 +77,27 @@ function buildTaxSummary(lineItems: Quotation['items']) {
 }
 
 function toLineItem(item: NonNullable<Quotation['items']>[number], index: number): PDFLineItem {
+  const qty = Number(item.qty);
+  const rate = Number(item.rate);
+  const amount = Number(item.amount || 0);
+  const totalAmount = Number(item.total_amount ?? item.amount ?? 0);
   return {
     index: index + 1,
-    itemName: item.item_name || '',
-    itemCode: item.item_code || item.item_sku,
-    quantity: Number(item.qty),
-    uom: item.uom,
-    rate: Number(item.rate),
-    amount: Number(item.amount),
-    taxAmount: item.tax_amount ? Number(item.tax_amount) : undefined,
-    totalAmount: Number(item.total_amount || item.amount),
-    taxInfo: item.tax_info
-      ? { templateName: item.tax_info.template_name, breakup: item.tax_info.breakup.map((t) => ({ rule_name: t.rule_name, rate: t.rate })) }
+    itemName: String(item.item_name ?? ''),
+    itemCode: item.item_code ?? item.item_sku ?? undefined,
+    quantity: Number.isFinite(qty) ? qty : 0,
+    uom: String(item.uom ?? ''),
+    rate: Number.isFinite(rate) ? rate : 0,
+    amount: Number.isFinite(amount) ? amount : 0,
+    discountAmount: item.discount_amount != null && Number(item.discount_amount) > 0 ? Number(item.discount_amount) : undefined,
+    taxAmount: item.tax_amount != null && Number(item.tax_amount) > 0 ? Number(item.tax_amount) : undefined,
+    totalAmount: Number.isFinite(totalAmount) ? totalAmount : amount,
+    taxInfo: item.tax_info?.breakup?.length
+      ? { templateName: item.tax_info.template_name ?? '', breakup: item.tax_info.breakup.map((t) => ({ rule_name: t.rule_name, rate: Number(t.rate) || 0 })) }
       : undefined,
   };
 }
 
-function getCurrencySymbol(code: string): string {
-  return SUPPORTED_CURRENCIES.find((c) => c.code === code)?.symbol || code;
-}
 
 function buildCustomerFields(quotation: Quotation) {
   const customer = quotation.customer;
@@ -108,26 +112,33 @@ function buildCustomerFields(quotation: Quotation) {
 }
 
 export function convertQuotationToPDFData(quotation: Quotation, orgContext?: OrgContext): PDFDocumentData {
-  const lineItems = quotation.items || quotation.line_items || [];
-  const subtotal = lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const totalTax = lineItems.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0);
+  const lineItems = quotation.items ?? quotation.line_items ?? [];
+  const safeLineItems = Array.isArray(lineItems) ? lineItems : [];
+  const subtotal = safeLineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const totalTax = safeLineItems.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0);
   const company = buildCompanyInfo(orgContext?.organization ?? null);
+  const discountAmount = Number(quotation.discount_amount ?? 0);
+  const grandTotalNum = Number(quotation.grand_total);
+  const grandTotal = Number.isFinite(grandTotalNum) ? grandTotalNum : subtotal - discountAmount + totalTax;
+  const dateStr = quotation.quotation_date != null ? String(quotation.quotation_date) : new Date().toISOString().slice(0, 10);
+  const validUntilStr = quotation.valid_until != null ? String(quotation.valid_until) : undefined;
 
   return {
     type: 'quotation',
-    documentNo: quotation.quotation_no,
-    date: quotation.quotation_date,
-    validUntil: quotation.valid_until,
-    currency: quotation.currency,
-    currencySymbol: getCurrencySymbol(quotation.currency),
+    documentNo: String(quotation.quotation_no ?? ''),
+    date: dateStr,
+    validUntil: validUntilStr,
+    currency: String(quotation.currency ?? 'INR'),
+    currencySymbol: getCurrencySymbolForPDF(String(quotation.currency ?? 'INR')),
     status: quotation.status,
     ...company,
     ...buildCustomerFields(quotation),
-    lineItems: lineItems.map(toLineItem),
+    lineItems: safeLineItems.map((item, i) => toLineItem(item, i)),
     subtotal,
+    discountAmount,
     totalTax,
-    grandTotal: Number(quotation.grand_total),
-    taxSummary: buildTaxSummary(lineItems),
-    remarks: quotation.remarks,
+    grandTotal,
+    taxSummary: buildTaxSummary(safeLineItems),
+    remarks: quotation.remarks ?? undefined,
   };
 }

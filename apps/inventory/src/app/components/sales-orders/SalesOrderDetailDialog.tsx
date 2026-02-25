@@ -11,6 +11,7 @@ import type { SalesOrder } from '../../types/sales-order.types';
 import { convertSalesOrderToPDFData } from '../../utils/pdf/salesOrderToPDF';
 import { EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
 import { StatusBadge } from '../quotations/StatusBadge';
+import { Console } from 'console';
 
 interface SalesOrderDetailDialogProps {
   open: boolean;
@@ -33,7 +34,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
   const isClosedOrCancelled = salesOrder.status === 'closed' || salesOrder.status === 'cancelled';
   const canCreateInvoice = salesOrder.status === 'confirmed' || salesOrder.status === 'partially_delivered' || salesOrder.status === 'delivered';
   const canCreateDeliveryNote = (salesOrder.status === 'confirmed' || salesOrder.status === 'partially_delivered');
-    // && salesOrder.items?.some(item => Number(item.qty) - Number(item.delivered_qty) > 0);
+  // && salesOrder.items?.some(item => Number(item.qty) - Number(item.delivered_qty) > 0);
 
   const getCurrencySymbol = (currencyCode: string): string => {
     const currency = SUPPORTED_CURRENCIES.find((c: { code: string; symbol: string }) => c.code === currencyCode);
@@ -63,6 +64,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
   const handlePreviewPDF = async () => {
     try {
       const pdfData = convertSalesOrderToPDFData(salesOrder);
+      console.log('pdfData', pdfData);
       await preview(pdfData);
     } catch (error) {
       toast({ title: 'Preview Failed', description: error instanceof Error ? error.message : 'Failed to preview PDF', variant: 'destructive' });
@@ -134,7 +136,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-3">
@@ -208,25 +210,75 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                 getItemTaxInfo={getItemTaxInfo}
                 getItemTaxAmount={getItemTaxAmount}
                 getItemTotalAmount={getItemTotalAmount}
-                renderFooter={(items) => (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-3 text-right text-sm font-medium">Subtotal:</td>
-                    <td className="px-4 py-3 text-right text-sm font-semibold">
-                      {currencySymbol} {items.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2)}
-                    </td>
-                    {hasTaxInfo && (
-                      <td className="px-4 py-3 text-right text-sm font-semibold">
-                        {currencySymbol} {items.reduce((sum, item) => sum + getItemTaxAmount(item), 0).toFixed(2)}
-                      </td>
-                    )}
-                    {hasTaxInfo && (
-                      <td className="px-4 py-3 text-right text-sm font-bold">
-                        {currencySymbol} {items.reduce((sum, item) => sum + getItemTotalAmount(item), 0).toFixed(2)}
-                      </td>
-                    )}
-                    <td colSpan={2} />
-                  </tr>
-                )}/>
+                getItemDiscountAmount={(item) => Number(item.discount_amount ?? 0)}
+                renderFooter={(items) => {
+                  const safeItems = items ?? [];
+                  const subtotalAmount = safeItems.reduce((s, item) => s + Number(item.amount || 0), 0);
+                  const subtotalTax = safeItems.reduce((s, item) => s + getItemTaxAmount(item), 0);
+                  const subtotalTotal = safeItems.reduce((s, item) => s + getItemTotalAmount(item), 0);
+                  const discountAmount = Number(salesOrder.discount_amount ?? 0);
+                  const grandTotal = Number(salesOrder.grand_total ?? 0);
+                  const sym = currencySymbol;
+                  return (
+                    <>
+                      <tr>
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3 text-sm font-medium">Subtotal:</td>
+                        <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalAmount.toFixed(2)}</td>
+                        <td className="px-4 py-3" />
+                        {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTax.toFixed(2)}</td>}
+                        {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTotal.toFixed(2)}</td>}
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3 text-sm font-medium">Discount:</td>
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        {!hasTaxInfo ? (
+                          <td className="px-4 py-3 text-right text-sm text-muted-foreground">
+                            {discountAmount > 0 ? `−${sym}${discountAmount.toFixed(2)}` : '—'}
+                          </td>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3" />
+                            <td className="px-4 py-3 text-right text-sm text-muted-foreground">
+                              {discountAmount > 0 ? `−${sym}${discountAmount.toFixed(2)}` : '—'}
+                            </td>
+                          </>
+                        )}
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                      </tr>
+                      <tr className="border-t-2 font-semibold">
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3 text-sm font-semibold">Grand Total:</td>
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                        {!hasTaxInfo ? (
+                          <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3" />
+                            <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
+                          </>
+                        )}
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3" />
+                      </tr>
+                    </>
+                  );
+                }} />
             </div>
 
             {/* Related Invoices */}
@@ -331,7 +383,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
         onSuccess={() => {
           setEmailDialogOpen(false);
           setPdfAttachment(null);
-        }}/>
+        }} />
     </>
   );
 }

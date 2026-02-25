@@ -9,10 +9,19 @@ import { environment } from '../../../environments/environment';
 import type { CustomerResponse } from '../../types/customer.types';
 import type { QuotationLineItemCreate } from '../../types/quotation.types';
 import type { SalesOrder, SalesOrderCreate, SalesOrderItemCreate, SalesOrderStatus, SalesOrderUpdate } from '../../types/sales-order.types';
+
+type SalesOrderFormItem = QuotationLineItemCreate & Partial<Pick<SalesOrderItemCreate, 'discount_type' | 'discount_value' | 'discount_amount'>>;
 import { customerApi } from '../../utility/api/customers';
 import { EditableLineItemsTable, type ItemData } from '../common';
 
 import { SalesOrderFormFields } from './SalesOrderFormFields';
+import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
+
+function computeDocumentDiscount(subtotal: number, discountType: string, discountValue: number): number {
+  if (!discountValue || discountValue <= 0) return 0;
+  if (discountType === 'percentage') return Number((subtotal * discountValue / 100).toFixed(2));
+  return Math.min(discountValue, subtotal);
+}
 
 interface SalesOrderDialogProps {
   open: boolean;
@@ -43,6 +52,8 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
     currency: 'INR',
     status: 'draft' as SalesOrderStatus,
     remarks: '',
+    discount_type: 'percentage' as 'flat' | 'percentage',
+    discount_value: '',
   });
 
   const [items, setItems] = React.useState<QuotationLineItemCreate[]>([{ ...emptyItem, sort_order: 1 }]);
@@ -82,6 +93,8 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
         currency: salesOrder.currency,
         status: salesOrder.status || 'draft',
         remarks: salesOrder.remarks || '',
+        discount_type: (salesOrder.discount_type as 'flat' | 'percentage') || 'percentage',
+        discount_value: String(salesOrder.discount_value ?? 0),
       });
       
       if (salesOrder.items && salesOrder.items.length > 0) {
@@ -95,13 +108,20 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
         }));
         setInitialItemsData(itemsData);
 
-        setItems(salesOrder.items.map((item) => ({
+        setItems(salesOrder.items.map((item): SalesOrderFormItem => ({
           item_id: item.item_id,
           qty: Number(item.qty),
           uom: item.uom,
           rate: Number(item.rate),
           amount: Number(item.amount),
           sort_order: item.sort_order,
+          discount_type: item.discount_type ?? 'percentage',
+          discount_value: Number(item.discount_value ?? 0),
+          discount_amount: Number(item.discount_amount ?? 0),
+          tax_template_id: (item as { tax_template_id?: string | null }).tax_template_id ?? null,
+          tax_rate: (item as { tax_rate?: number }).tax_rate,
+          tax_amount: (item as { tax_amount?: number }).tax_amount,
+          total_amount: (item as { total_amount?: number }).total_amount,
         })));
       } else {
         setInitialItemsData([]);
@@ -115,6 +135,8 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
         currency: 'INR',
         status: 'draft',
         remarks: '',
+        discount_type: 'percentage',
+        discount_value: '',
       });
       setItems([{ ...emptyItem, sort_order: 1 }]);
       setInitialItemsData([]);
@@ -129,9 +151,18 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const grandTotal = React.useMemo(() => {
-    return items.reduce((sum, item) => sum + Number(item.amount), 0);
-  }, [items]);
+  const subtotalTotal = React.useMemo(
+    () => items.reduce((sum, item) => sum + Number((item as { total_amount?: number }).total_amount ?? item.amount ?? 0), 0),
+    [items]
+  );
+  const totalDiscountAmount = React.useMemo(
+    () => computeDocumentDiscount(subtotalTotal, formData.discount_type, Number(formData.discount_value) || 0),
+    [subtotalTotal, formData.discount_type, formData.discount_value]
+  );
+  const grandTotal = React.useMemo(
+    () => Math.max(0, Number((subtotalTotal - totalDiscountAmount).toFixed(2))),
+    [subtotalTotal, totalDiscountAmount]
+  );
 
   const isLineItemEditingDisabled = isEdit && formData.status !== 'draft';
 
@@ -159,16 +190,22 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
         delivery_date: formData.delivery_date ? new Date(formData.delivery_date).toISOString() : null,
         status: formData.status,
         remarks: formData.remarks || null,
+        discount_type: formData.discount_type,
+        discount_value: Number(formData.discount_value) || 0,
+        discount_amount: totalDiscountAmount,
       };
 
       if (!isLineItemEditingDisabled) {
-        updateData.items = items.map(item => ({
+        updateData.items = items.map((item): SalesOrderItemCreate => ({
           item_id: item.item_id,
           qty: Number(item.qty),
           uom: item.uom,
           rate: Number(item.rate),
           amount: Number(item.amount),
           sort_order: item.sort_order,
+          discount_type: item.discount_type ?? 'percentage',
+          discount_value: Number(item.discount_value ?? 0),
+          discount_amount: Number(item.discount_amount ?? 0),
         }));
       }
 
@@ -183,13 +220,19 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
         grand_total: grandTotal,
         currency: formData.currency,
         remarks: formData.remarks || null,
-        items: items.map(item => ({
+        discount_type: formData.discount_type,
+        discount_value: Number(formData.discount_value) || 0,
+        discount_amount: totalDiscountAmount,
+        items: items.map((item): SalesOrderItemCreate => ({
           item_id: item.item_id,
           qty: Number(item.qty),
           uom: item.uom,
           rate: Number(item.rate),
           amount: Number(item.amount),
           sort_order: item.sort_order,
+          discount_type: item.discount_type ?? 'percentage',
+          discount_value: Number(item.discount_value ?? 0),
+          discount_amount: Number(item.discount_amount ?? 0),
         })),
       };
       await onSave(createData);
@@ -281,10 +324,45 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
             </>
           )}
 
-          {/* Grand Total */}
+          {/* Totals with document discount */}
           <div className="flex justify-end">
-            <div className="w-64 space-y-2">
-              <div className="flex justify-between items-center text-lg font-semibold">
+            <div className="w-80 space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span>Subtotal:</span>
+                <span>{formData.currency} {subtotalTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center gap-4">
+                <span className="text-sm">Discount:</span>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={formData.discount_type}
+                    onValueChange={(v) => handleChange('discount_type', v)}
+                    disabled={isLineItemEditingDisabled}
+                  >
+                    <SelectTrigger className="w-28">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentage">%</SelectItem>
+                      <SelectItem value="flat">Flat</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={formData.discount_type === 'percentage' ? 1 : 0.01}
+                    className="w-24 text-right"
+                    value={formData.discount_value}
+                    onChange={(e) => handleChange('discount_value', e.target.value)}
+                    disabled={isLineItemEditingDisabled}
+                    placeholder={formData.discount_type === 'percentage' ? '%' : 'Amount'}
+                  />
+                </div>
+                <span className="text-sm text-muted-foreground w-24 text-right">
+                  −{formData.currency} {totalDiscountAmount.toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-lg font-semibold border-t pt-2">
                 <span>Grand Total:</span>
                 <span>{formData.currency} {grandTotal.toFixed(2)}</span>
               </div>

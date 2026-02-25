@@ -61,6 +61,9 @@ export interface Invoice {
   grand_total: number;
   paid_amount: number;
   outstanding_amount: number;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
+  discount_amount?: number;
   remarks: string | null;
   reference_type: string | null; // 'Sales Order'
   reference_id: string | null;

@@ -19,6 +19,8 @@ export const invoiceFormSchema = z.object({
   invoice_type: z.enum(['Sales', 'Purchase', 'Debit Note', 'Credit Note']),
   status: z.enum(['Draft', 'Submitted', 'Cancelled']),
   remarks: z.string(),
+  discount_type: z.enum(['flat', 'percentage']).optional(),
+  discount_value: z.union([z.string(), z.number()]).optional(),
   line_items: z.array(invoiceLineItemSchema).min(1, 'At least one line item is required'),
 }).refine(
   (data) => data.due_date >= data.posting_date,

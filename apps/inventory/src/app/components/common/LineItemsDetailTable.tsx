@@ -17,6 +17,8 @@ export interface LineItemsDetailTableProps<T> {
   getItemTotalAmount?: (item: T) => number;
   getItemBilledQty?: (item: T) => number;
   getItemDeliveredQty?: (item: T) => number;
+  /** When provided, a Discount column is shown for each line item */
+  getItemDiscountAmount?: (item: T) => number;
 }
 
 export function LineItemsDetailTable<T>({
@@ -36,7 +38,9 @@ export function LineItemsDetailTable<T>({
   getItemTotalAmount = (item: any) => Number(item.total_amount || item.amount || 0),
   getItemBilledQty = (item: any) => Number(item.billed_qty || 0),
   getItemDeliveredQty = (item: any) => Number(item.delivered_qty || 0),
+  getItemDiscountAmount,
 }: LineItemsDetailTableProps<T>) {
+  const showDiscount = getItemDiscountAmount != null;
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground">No line items</p>;
   }
@@ -53,6 +57,7 @@ export function LineItemsDetailTable<T>({
               <th className="px-4 py-3 text-left text-sm font-medium">UOM</th>
               <th className="px-4 py-3 text-right text-sm font-medium">Rate</th>
               <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
+              {showDiscount && <th className="px-4 py-3 text-right text-sm font-medium">Discount</th>}
               {hasTaxInfo && <th className="px-4 py-3 text-right text-sm font-medium">Tax</th>}
               {hasTaxInfo && <th className="px-4 py-3 text-right text-sm font-medium">Total</th>}
               {showBilledDelivered && <th className="px-4 py-3 text-right text-sm font-medium">Billed</th>}
@@ -70,6 +75,7 @@ export function LineItemsDetailTable<T>({
               const taxAmount = getItemTaxAmount(item);
               const totalAmount = getItemTotalAmount(item);
               const sku = getItemSKU(item);
+              const discountAmount = showDiscount ? getItemDiscountAmount!(item) : 0;
 
               return (
                 <tr key={(item as any).id || index} className="hover:bg-muted/30">
@@ -84,6 +90,11 @@ export function LineItemsDetailTable<T>({
                   <td className="px-4 py-3 text-sm">{getItemUOM(item)}</td>
                   <td className="px-4 py-3 text-sm text-right">{currencySymbol} {getItemRate(item).toFixed(2)}</td>
                   <td className="px-4 py-3 text-sm text-right">{currencySymbol} {getItemAmount(item).toFixed(2)}</td>
+                  {showDiscount && (
+                    <td className="px-4 py-3 text-sm text-right text-muted-foreground">
+                      {discountAmount > 0 ? `−${currencySymbol} ${discountAmount.toFixed(2)}` : '—'}
+                    </td>
+                  )}
                   {hasTaxInfo && (
                     <td className="px-4 py-3 text-right">
                       {taxInfo ? (

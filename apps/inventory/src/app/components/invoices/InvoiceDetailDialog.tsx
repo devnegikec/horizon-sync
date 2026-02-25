@@ -235,23 +235,55 @@ function InvoiceContent({ invoice, currencySymbol }: { invoice: Invoice; currenc
               hasTaxInfo
               getItemSKU={(item: InvoiceLineItem) => item.item_code}
               getItemTotalAmount={(item: InvoiceLineItem) => Number(item.total_amount || item.amount || 0)}
-              renderFooter={(items) => (
-                <tr>
-                  <td colSpan={5} className="px-4 py-3 text-right text-sm font-medium">
-                    Subtotal:
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm font-semibold">
-                    {currencySymbol} {items.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm font-semibold">
-                    {currencySymbol} {items.reduce((sum, item) => sum + Number(item.tax_amount || 0), 0).toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm font-bold">
-                    {currencySymbol}{' '}
-                    {items.reduce((sum, item) => sum + Number(item.total_amount || item.amount), 0).toFixed(2)}
-                  </td>
-                </tr>
-              )}/>
+              getItemDiscountAmount={(item: InvoiceLineItem) => Number(item.discount_amount ?? 0)}
+              renderFooter={(items) => {
+                const safeItems = items ?? [];
+                const subtotalAmount = safeItems.reduce((s, item) => s + Number(item.amount || 0), 0);
+                const subtotalTax = safeItems.reduce((s, item) => s + Number(item.tax_amount || 0), 0);
+                const subtotalTotal = safeItems.reduce((s, item) => s + Number(item.total_amount || item.amount || 0), 0);
+                const discountAmount = Number(invoice.discount_amount ?? 0);
+                const grandTotal = Number(invoice.grand_total ?? 0);
+                const sym = currencySymbol;
+                return (
+                  <>
+                    <tr>
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3 text-sm font-medium">Subtotal:</td>
+                      <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalAmount.toFixed(2)}</td>
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTax.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTotal.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3 text-sm font-medium">Discount:</td>
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3 text-right text-sm text-muted-foreground">
+                        {discountAmount > 0 ? `−${sym}${discountAmount.toFixed(2)}` : '—'}
+                      </td>
+                    </tr>
+                    <tr className="border-t-2 font-semibold">
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3 text-sm font-semibold">Grand Total:</td>
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3" />
+                      <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
+                    </tr>
+                  </>
+                );
+              }}/>
           </div>
         </>
       )}

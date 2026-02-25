@@ -2,15 +2,12 @@ import * as React from 'react';
 
 import { Edit, FileText, Mail, Download, Eye } from 'lucide-react';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
-import { useUserStore } from '@horizon-sync/store';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
-import { usePDFGeneration } from '../../hooks/usePDFGeneration';
+import { useQuotationPDFActions } from '../../hooks/useQuotationPDFActions';
 import { getCurrencySymbol } from '../../types/currency.types';
 import type { Quotation } from '../../types/quotation.types';
-import { convertQuotationToPDFData } from '../../utils/pdf/quotationToPDF';
 import { EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
 
 import { StatusBadge } from './StatusBadge';
@@ -82,21 +79,65 @@ function CustomerAddressBlock({ quotation }: { quotation: Quotation }) {
   );
 }
 
-function LineItemsFooterRow({ items, currencySymbol }: { items: Quotation['items']; currencySymbol: string }) {
+// Footer rows aligned with table columns: #, Item, Qty, UOM, Rate, Amount, Discount, Tax, Total (9 when showDiscount)
+function LineItemsFooterRows({
+  items,
+  quotation,
+  currencySymbol,
+}: {
+  items: Quotation['items'];
+  quotation: Quotation;
+  currencySymbol: string;
+}) {
   const safeItems = items ?? [];
+  const subtotalAmount = safeItems.reduce((s, i) => s + Number(i.amount || 0), 0);
+  const subtotalTax = safeItems.reduce((s, i) => s + Number(i.tax_amount || 0), 0);
+  const subtotalTotal = safeItems.reduce((s, i) => s + Number(i.total_amount || i.amount || 0), 0);
+  const discountAmount = Number(quotation.discount_amount ?? 0);
+  const grandTotal = Number(quotation.grand_total ?? 0);
+  const sym = currencySymbol;
+
   return (
-    <tr>
-      <td colSpan={5} className="px-4 py-3 text-right text-sm font-medium">Subtotal:</td>
-      <td className="px-4 py-3 text-right text-sm font-semibold">
-        {currencySymbol} {safeItems.reduce((s, i) => s + Number(i.amount || 0), 0).toFixed(2)}
-      </td>
-      <td className="px-4 py-3 text-right text-sm font-semibold">
-        {currencySymbol} {safeItems.reduce((s, i) => s + Number(i.tax_amount || 0), 0).toFixed(2)}
-      </td>
-      <td className="px-4 py-3 text-right text-sm font-bold">
-        {currencySymbol} {safeItems.reduce((s, i) => s + Number(i.total_amount || i.amount), 0).toFixed(2)}
-      </td>
-    </tr>
+    <>
+      {/* Subtotal: label under Rate; amounts under Amount, Discount(col), Tax, Total */}
+      <tr>
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3 text-right text-sm font-medium">Subtotal:</td>
+        <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalAmount.toFixed(2)}</td>
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTax.toFixed(2)}</td>
+        <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTotal.toFixed(2)}</td>
+      </tr>
+      {/* Discount: label under Rate; document discount under Total column */}
+      <tr>
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3 text-right text-sm font-medium">Discount:</td>
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3 text-right text-sm text-muted-foreground">
+          {discountAmount > 0 ? `−${sym}${discountAmount.toFixed(2)}` : '—'}
+        </td>
+      </tr>
+      {/* Grand Total: label under Rate; value under Total */}
+      <tr className="border-t-2 font-semibold">
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3 text-right text-sm font-bold">Grand Total:</td>
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3" />
+        <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
+      </tr>
+    </>
   );
 }
 
@@ -105,52 +146,19 @@ function QuotationLineItemsSection({ quotation, currencySymbol }: { quotation: Q
   return (
     <div>
       <h3 className="text-lg font-medium mb-4">Line Items</h3>
-      <LineItemsDetailTable items={lineItems}
+      <LineItemsDetailTable
+        items={lineItems}
         currencySymbol={currencySymbol}
         hasTaxInfo
         getItemSKU={(item) => item.item_code}
         getItemTotalAmount={(item) => Number(item.total_amount || item.amount || 0)}
-        renderFooter={(items) => <LineItemsFooterRow items={items} currencySymbol={currencySymbol} />} />
+        getItemDiscountAmount={(item) => Number(item.discount_amount ?? 0)}
+        renderFooter={(items) => (
+          <LineItemsFooterRows items={items} quotation={quotation} currencySymbol={currencySymbol} />
+        )}
+      />
     </div>
   );
-}
-
-// ── PDF actions hook ──────────────────────────────────────────────────────────
-
-function useQuotationPDFActions(quotation: Quotation) {
-  const { toast } = useToast();
-  const { loading, download, preview, generateBase64 } = usePDFGeneration();
-  const organization = useUserStore((s) => s.organization);
-
-  const getPDFData = () => convertQuotationToPDFData(quotation, { organization });
-
-  const handleDownload = async () => {
-    try {
-      await download(getPDFData(), `${quotation.quotation_no}.pdf`);
-      toast({ title: 'PDF Downloaded', description: `${quotation.quotation_no}.pdf has been downloaded` });
-    } catch (error) {
-      toast({ title: 'Download Failed', description: error instanceof Error ? error.message : 'Failed to download PDF', variant: 'destructive' });
-    }
-  };
-
-  const handlePreview = async () => {
-    try {
-      await preview(getPDFData());
-    } catch (error) {
-      toast({ title: 'Preview Failed', description: error instanceof Error ? error.message : 'Failed to preview PDF', variant: 'destructive' });
-    }
-  };
-
-  const handleGenerateBase64 = async () => {
-    try {
-      return await generateBase64(getPDFData());
-    } catch (error) {
-      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to prepare email', variant: 'destructive' });
-      return null;
-    }
-  };
-
-  return { loading, handleDownload, handlePreview, handleGenerateBase64 };
 }
 
 // ── Dialog footer buttons ─────────────────────────────────────────────────────
@@ -208,12 +216,12 @@ function QuotationDialogBody({ quotation, onOpenChange, onEdit, onConvert }: Quo
   const [emailDialogOpen, setEmailDialogOpen] = React.useState(false);
   const [pdfAttachment, setPdfAttachment] = React.useState<{ filename: string; content: string; content_type: string } | null>(null);
   const { toast } = useToast();
-  const { loading: pdfLoading, handleDownload, handlePreview, handleGenerateBase64 } = useQuotationPDFActions(quotation);
+  const { loading: pdfLoading, handleDownload, handlePreview, handleGenerateBase64 } = useQuotationPDFActions();
 
   const currencySymbol = getCurrencySymbol(quotation.currency);
 
   const handleSendEmail = async () => {
-    const base64Content = await handleGenerateBase64();
+    const base64Content = await handleGenerateBase64(quotation);
     if (base64Content) {
       setPdfAttachment({ filename: `${quotation.quotation_no}.pdf`, content: base64Content, content_type: 'application/pdf' });
       setEmailDialogOpen(true);
@@ -289,8 +297,8 @@ function QuotationDialogBody({ quotation, onOpenChange, onEdit, onConvert }: Quo
         <DialogFooterButtons quotation={quotation}
           pdfLoading={pdfLoading}
           onClose={() => onOpenChange(false)}
-          onPreview={handlePreview}
-          onDownload={handleDownload}
+          onPreview={() => handlePreview(quotation)}
+          onDownload={() => handleDownload(quotation)}
           onSendEmail={handleSendEmail}
           onEdit={onEdit}
           onConvert={onConvert} />

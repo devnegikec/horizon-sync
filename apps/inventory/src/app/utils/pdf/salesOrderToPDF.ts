@@ -1,21 +1,15 @@
-import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { SalesOrder } from '../../types/sales-order.types';
 
 import type { PDFDocumentData, PDFLineItem } from './types';
+import { getCurrencySymbolForPDF } from './pdfCurrency';
 
 export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentData => {
   const lineItems = salesOrder.items || [];
 
-  const getCurrencySymbol = (currencyCode: string): string => {
-    const currency = SUPPORTED_CURRENCIES.find((c: { code: string; symbol: string }) => c.code === currencyCode);
-    return currency?.symbol || currencyCode;
-  };
-
   // Convert line items with tax information
   const pdfLineItems: PDFLineItem[] = lineItems.map((item, index) => {
     const amount = Number(item.amount);
-    
-    // Get tax info from item directly or from extra_data
+    const discountAmount = item.discount_amount != null && Number(item.discount_amount) > 0 ? Number(item.discount_amount) : undefined;
     const taxInfo = item.tax_info || (item.extra_data?.tax_info as typeof item.tax_info);
     const taxAmount = item.tax_amount || Number(item.extra_data?.tax_amount || 0);
     const totalAmount = item.total_amount || Number(item.extra_data?.total_amount || amount);
@@ -28,6 +22,7 @@ export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentD
       uom: item.uom || 'Unit',
       rate: Number(item.rate),
       amount,
+      discountAmount,
       taxAmount: taxAmount > 0 ? taxAmount : undefined,
       totalAmount: totalAmount || amount,
       taxInfo: taxInfo ? {
@@ -42,10 +37,12 @@ export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentD
 
   // Calculate totals
   const subtotal = lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const totalItemDiscount = lineItems.reduce((sum, item) => sum + Number(item.discount_amount ?? 0), 0);
   const totalTax = lineItems.reduce((sum, item) => {
     const taxAmount = item.tax_amount || Number(item.extra_data?.tax_amount || 0);
     return sum + taxAmount;
   }, 0);
+  const discountAmount = Number(salesOrder.discount_amount ?? 0);
 
   // Get customer details
   const customer = salesOrder.customer;
@@ -56,7 +53,7 @@ export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentD
     date: salesOrder.order_date,
     dueDate: salesOrder.delivery_date || undefined,
     currency: salesOrder.currency,
-    currencySymbol: getCurrencySymbol(salesOrder.currency),
+    currencySymbol: getCurrencySymbolForPDF(salesOrder.currency ?? 'INR'),
     status: salesOrder.status,
 
     // Company info - you can customize this based on your organization data
@@ -85,6 +82,7 @@ export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentD
 
     // Totals
     subtotal,
+    discountAmount: discountAmount > 0 ? discountAmount : 0,
     totalTax,
     grandTotal: Number(salesOrder.grand_total),
 

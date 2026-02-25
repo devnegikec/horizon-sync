@@ -28,6 +28,8 @@ interface FormState {
   currency: string;
   status: QuotationStatus;
   remarks: string;
+  discount_type: 'flat' | 'percentage';
+  discount_value: string;
 }
 
 const emptyItem: QuotationLineItemCreate = {
@@ -36,6 +38,9 @@ const emptyItem: QuotationLineItemCreate = {
   uom: 'pcs',
   rate: 0,
   amount: 0,
+  discount_type: 'percentage',
+  discount_value: 0,
+  discount_amount: 0,
   tax_rate: 0,
   tax_amount: 0,
   total_amount: 0,
@@ -52,19 +57,33 @@ function validateQuotationForm(formData: FormState, items: QuotationLineItemCrea
   return null;
 }
 
+function computeDocumentDiscount(subtotal: number, discountType: string, discountValue: number): number {
+  if (!discountValue || discountValue <= 0) return 0;
+  if (discountType === 'percentage') return Number((subtotal * discountValue / 100).toFixed(2));
+  return Math.min(discountValue, subtotal);
+}
+
 function buildSavePayload(
   formData: FormState,
   items: QuotationLineItemCreate[],
+  subtotal: number,
+  totalDiscountAmount: number,
   grandTotal: number,
   quotation: Quotation | null,
   isLineItemEditingDisabled: boolean
 ): { data: QuotationCreate | QuotationUpdate; id?: string } {
+  const discountType = (formData.discount_type || 'percentage') as 'flat' | 'percentage';
+  const discountValue = Number(formData.discount_value) || 0;
+
   if (quotation) {
     const updateData: QuotationUpdate = {
       quotation_date: new Date(formData.quotation_date).toISOString(),
       valid_until: new Date(formData.valid_until).toISOString(),
       status: formData.status,
       remarks: formData.remarks || undefined,
+      discount_type: discountType,
+      discount_value: discountValue,
+      discount_amount: totalDiscountAmount,
     };
     if (!isLineItemEditingDisabled) {
       updateData.items = items;
@@ -81,6 +100,9 @@ function buildSavePayload(
     grand_total: grandTotal,
     currency: formData.currency,
     remarks: formData.remarks || undefined,
+    discount_type: discountType,
+    discount_value: discountValue,
+    discount_amount: totalDiscountAmount,
     items,
   };
   return { data: createData };
@@ -105,6 +127,8 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
     currency: 'INR',
     status: 'draft',
     remarks: '',
+    discount_type: 'percentage',
+    discount_value: '0',
   });
 
   const [items, setItems] = React.useState<QuotationLineItemCreate[]>([{ ...emptyItem, sort_order: 1 }]);
@@ -127,6 +151,8 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         currency: quotation.currency,
         status: quotation.status,
         remarks: quotation.remarks || '',
+        discount_type: (quotation.discount_type as 'flat' | 'percentage') || 'percentage',
+        discount_value: String(quotation.discount_value ?? 0),
       });
       const lineItems = quotation.items || quotation.line_items || [];
       setItems(lineItems.length > 0 ? (lineItems as QuotationLineItemCreate[]) : [{ ...emptyItem, sort_order: 1 }]);
@@ -139,6 +165,8 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         currency: 'INR',
         status: 'draft',
         remarks: '',
+        discount_type: 'percentage',
+        discount_value: '0',
       });
       setItems([{ ...emptyItem, sort_order: 1 }]);
     }
@@ -152,9 +180,26 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const subtotalAmount = React.useMemo(
+    () => items.reduce((sum, item) => sum + Number(item.amount ?? 0), 0),
+    [items]
+  );
+  const subtotalTax = React.useMemo(
+    () => items.reduce((sum, item) => sum + Number(item.tax_amount ?? 0), 0),
+    [items]
+  );
+  const subtotalTotal = React.useMemo(
+    () => items.reduce((sum, item) => sum + Number(item.total_amount ?? item.amount ?? 0), 0),
+    [items]
+  );
+
+  const totalDiscountAmount = React.useMemo(() => {
+    return computeDocumentDiscount(subtotalTotal, formData.discount_type, Number(formData.discount_value) || 0);
+  }, [subtotalTotal, formData.discount_type, formData.discount_value]);
+
   const grandTotal = React.useMemo(() => {
-    return items.reduce((sum, item) => sum + Number(item.total_amount || item.amount || 0), 0);
-  }, [items]);
+    return Math.max(0, Number((subtotalTotal - totalDiscountAmount).toFixed(2)));
+  }, [subtotalTotal, totalDiscountAmount]);
 
   const isLineItemEditingDisabled = isEdit && LOCKED_STATUSES.includes(formData.status);
   const availableStatuses = React.useMemo(() => getAvailableStatuses(isEdit, formData.status), [isEdit, formData.status]);
@@ -166,7 +211,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
       alert(validationError);
       return;
     }
-    const { data, id } = buildSavePayload(formData, items, grandTotal, quotation, isLineItemEditingDisabled);
+    const { data, id } = buildSavePayload(formData, items, subtotalTotal, totalDiscountAmount, grandTotal, quotation, isLineItemEditingDisabled);
     await onSave(data, id);
   };
 
@@ -183,16 +228,26 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
           <Separator />
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Line Items</h3>
-            <QuotationLineItemsTable items={items} onItemsChange={setItems} disabled={isLineItemEditingDisabled} currency={formData.currency} />
-          </div>
-
-          <div className="flex justify-end">
-            <div className="w-64 space-y-2">
-              <div className="flex justify-between items-center text-lg font-semibold">
-                <span>Grand Total:</span>
-                <span>{formData.currency} {grandTotal.toFixed(2)}</span>
-              </div>
-            </div>
+            <QuotationLineItemsTable
+              items={items}
+              onItemsChange={setItems}
+              disabled={isLineItemEditingDisabled}
+              currency={formData.currency}
+              summary={{
+                subtotalAmount,
+                subtotalTax,
+                subtotalTotal,
+                discountAmount: totalDiscountAmount,
+                grandTotal,
+                documentDiscount: {
+                  type: formData.discount_type,
+                  value: formData.discount_value,
+                  onTypeChange: (v) => handleChange('discount_type', v),
+                  onValueChange: (v) => handleChange('discount_value', v),
+                  disabled: isLineItemEditingDisabled,
+                },
+              }}
+            />
           </div>
 
           <DialogFooter>
