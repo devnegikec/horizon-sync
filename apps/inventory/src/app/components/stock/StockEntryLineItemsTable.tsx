@@ -9,7 +9,6 @@ import { Button, EditableDataTable, EditableNumberCell, EditableCell } from '@ho
 
 import { environment } from '../../../environments/environment';
 import type { StockEntryItem } from '../../types/stock.types';
-
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 
 /** Minimal item shape returned by the /items/picker endpoint */
