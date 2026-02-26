@@ -16,6 +16,8 @@ interface UOMSelectProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** Max height of the dropdown list in px. Defaults to 100. */
+  listHeight?: number;
 }
 
 interface UOMListProps {
@@ -64,6 +66,7 @@ export function UOMSelect({
   placeholder = 'Select UOM...',
   disabled = false,
   className,
+  listHeight = 100,
 }: UOMSelectProps) {
   const { accessToken } = useUserStore();
   const { options, loading } = useUOMOptions(accessToken ?? '');
