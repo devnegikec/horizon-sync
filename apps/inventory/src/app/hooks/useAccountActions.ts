@@ -64,7 +64,7 @@ export function useAccountActions() {
     }
   };
 
-  const toggleAccountStatus = async (id: string, currentStatus: boolean) => {
+  const toggleAccountStatus = async (id: string, isActive: boolean) => {
     if (!accessToken) {
       throw new Error('No access token available');
     }
@@ -72,8 +72,7 @@ export function useAccountActions() {
     try {
       setLoading(true);
       setError(null);
-      // If currently active, deactivate. If currently inactive, activate.
-      if (currentStatus) {
+      if (isActive) {
         await accountApi.deactivate(accessToken, id);
       } else {
         await accountApi.activate(accessToken, id);
