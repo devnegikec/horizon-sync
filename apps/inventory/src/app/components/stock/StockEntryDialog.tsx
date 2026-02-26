@@ -19,6 +19,7 @@ import { useStockEntryMutations } from '../../hooks/useStock';
 import type { StockEntry, StockEntryFormState } from '../../types/stock.types';
 import { stockEntryApi } from '../../utility/api/stock';
 import { parseStockEntryCsv, STOCK_ENTRY_SAMPLE_CSV } from '../../utility/stockEntryCsvParser';
+import type { BulkUploadResult } from '../shared/CsvImporter';
 import { CsvImporter } from '../shared/CsvImporter';
 import { StockEntryHeader, StockEntryFooter } from '../stock-entry';
 
@@ -139,6 +140,7 @@ export function StockEntryDialog({
   const [form, setForm] = React.useState<StockEntryFormState>({ ...DEFAULT_FORM });
   const [lineItems, setLineItems] = React.useState<StockEntryLineRow[]>([{ ...EMPTY_LINE }]);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [csvPreviewActive, setCsvPreviewActive] = React.useState(false);
 
   /* Reset form when dialog opens / entry changes */
   React.useEffect(() => {
@@ -174,16 +176,12 @@ export function StockEntryDialog({
     });
   }, []);
 
-  const handleBulkUpload = React.useCallback(async (file: File) => {
-    if (!accessToken) return;
-    try {
-      await stockEntryApi.bulkUpload(accessToken, file);
-      onCreated?.();
-      onOpenChange(false);
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Bulk upload failed');
-    }
-  }, [accessToken, onCreated, onOpenChange]);
+  const handleBulkUpload = React.useCallback(async (file: File): Promise<BulkUploadResult> => {
+    if (!accessToken) throw new Error('Not authenticated');
+    const result = await stockEntryApi.bulkUpload(accessToken, file) as BulkUploadResult;
+    onCreated?.();
+    return result;
+  }, [accessToken, onCreated]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -248,20 +246,30 @@ export function StockEntryDialog({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium">Line Items</h4>
-              <CsvImporter parseRows={parseStockEntryCsv}
+              <CsvImporter<StockEntryLineRow> parseRows={parseStockEntryCsv}
                 onImport={handleCsvImport}
                 onFileSelected={handleBulkUpload}
+                onPreviewChange={setCsvPreviewActive}
                 columnsHint="Columns: Stock Entry Type, Item Code, Quantity, UOM, Basic Rate, ..."
                 sampleCsv={STOCK_ENTRY_SAMPLE_CSV}
-                sampleFileName="stock-entry-sample.csv" />
+                sampleFileName="stock-entry-sample.csv"
+                previewColumns={[
+                  { key: 'item_id', label: 'Item Code' },
+                  { key: 'qty', label: 'Qty' },
+                  { key: 'uom', label: 'UOM' },
+                  { key: 'basic_rate', label: 'Basic Rate' },
+                  { key: 'amount', label: 'Amount' },
+                ]} />
             </div>
-            <StockEntryLineItemsTable items={lineItems}
-              onItemsChange={setLineItems}
-              warehouseId={
-                form.stock_entry_type === 'material_receipt'
-                  ? form.to_warehouse_id
-                  : form.from_warehouse_id
-              } />
+            {!csvPreviewActive && (
+              <StockEntryLineItemsTable items={lineItems}
+                onItemsChange={setLineItems}
+                warehouseId={
+                  form.stock_entry_type === 'material_receipt'
+                    ? form.to_warehouse_id
+                    : form.from_warehouse_id
+                } />
+            )}
           </div>
 
           <StockEntryFooter onCancel={() => onOpenChange(false)}
