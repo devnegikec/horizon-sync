@@ -1,10 +1,11 @@
 import * as React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 
+import { useQuery } from '@tanstack/react-query';
+import { Plus, Trash2 } from 'lucide-react';
+
+import { SearchableSelect } from '@horizon-sync/search';
 import { useUserStore } from '@horizon-sync/store';
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
-import { SearchableSelect } from '@horizon-sync/search';
 
 import type { InvoiceLineItemFormData } from '../../types/invoice';
 import { itemApi } from '../../utility/api';
@@ -145,14 +146,12 @@ export function InvoiceLineItemTable({ items, onItemsChange, readonly = false, d
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">Item #{index + 1}</span>
               {items.length > 1 && (
-                <Button 
-                  type="button" 
+                <Button type="button" 
                   variant="ghost" 
                   size="sm" 
                   onClick={() => removeItem(index)} 
                   disabled={disabled}
-                  aria-label={`Remove item ${index + 1}`}
-                >
+                  aria-label={`Remove item ${index + 1}`}>
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               )}
@@ -160,8 +159,7 @@ export function InvoiceLineItemTable({ items, onItemsChange, readonly = false, d
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-1">
                 <Label className="text-xs">Item *</Label>
-                <SearchableSelect
-                  entityType="items"
+                <SearchableSelect entityType="items"
                   value={item.item_id}
                   onValueChange={(v) => handleItemChange(index, 'item_id', v)}
                   listFetcher={itemListFetcher}
@@ -170,61 +168,50 @@ export function InvoiceLineItemTable({ items, onItemsChange, readonly = false, d
                   placeholder="Select an item..."
                   disabled={disabled}
                   isLoading={isLoading}
-                  items={availableItems}
-                />
+                  items={availableItems}/>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Description</Label>
-                <Input
-                  value={item.description}
+                <Input value={item.description}
                   onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                   placeholder="Item description"
-                  disabled={disabled}
-                />
+                  disabled={disabled}/>
               </div>
             </div>
             <div className="grid gap-3 md:grid-cols-5">
               <div className="space-y-1">
                 <Label className="text-xs">Quantity *</Label>
-                <Input
-                  type="number"
+                <Input type="number"
                   min="0.01"
                   step="0.01"
                   value={item.quantity}
                   onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
                   disabled={disabled}
-                  required
-                />
+                  required/>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">UOM *</Label>
-                <Input
-                  value={item.uom}
+                <Input value={item.uom}
                   onChange={(e) => handleItemChange(index, 'uom', e.target.value)}
                   placeholder="pcs"
                   disabled={disabled}
-                  required
-                />
+                  required/>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Rate *</Label>
-                <Input
-                  type="number"
+                <Input type="number"
                   min="0"
                   step="0.01"
                   value={item.rate}
                   onChange={(e) => handleItemChange(index, 'rate', Number(e.target.value))}
                   disabled={disabled}
-                  required
-                />
+                  required/>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Tax Template</Label>
-                <Select
-                  value={item.tax_template_id || 'none'}
+                <Select value={item.tax_template_id || 'none'}
                   onValueChange={(v) => handleItemChange(index, 'tax_template_id', v === 'none' ? null : v)}
-                  disabled={disabled}
-                >
+                  disabled={disabled}>
                   <SelectTrigger>
                     <SelectValue placeholder="None" />
                   </SelectTrigger>

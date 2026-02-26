@@ -25,29 +25,25 @@ export function Step2PricingOrdering({ formData, setFormData }: Step2PricingOrde
                         <Label htmlFor="standardRate">
                             Standard Rate <span className="text-red-500">*</span>
                         </Label>
-                        <Input
-                            id="standardRate"
+                        <Input id="standardRate"
                             type="number"
                             step="0.01"
                             min="0"
                             value={formData.defaultPrice}
                             onChange={(e) => setFormData((prev) => ({ ...prev, defaultPrice: e.target.value }))}
                             placeholder="0.00"
-                            required
-                        />
+                            required/>
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="valuationRate">Valuation Rate</Label>
-                        <Input
-                            id="valuationRate"
+                        <Input id="valuationRate"
                             type="number"
                             step="0.01"
                             min="0"
                             value={formData.valuationRate}
                             onChange={(e) => setFormData((prev) => ({ ...prev, valuationRate: e.target.value }))}
-                            placeholder="0.00"
-                        />
+                            placeholder="0.00"/>
                     </div>
                 </div>
             </div>
@@ -59,23 +55,19 @@ export function Step2PricingOrdering({ formData, setFormData }: Step2PricingOrde
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="weightPerUnit">Weight Per Unit</Label>
-                        <Input
-                            id="weightPerUnit"
+                        <Input id="weightPerUnit"
                             type="number"
                             step="0.001"
                             min="0"
                             value={formData.weightPerUnit}
                             onChange={(e) => setFormData((prev) => ({ ...prev, weightPerUnit: e.target.value }))}
-                            placeholder="0.000"
-                        />
+                            placeholder="0.000"/>
                     </div>
 
                     <div className="space-y-2">
                         <Label>Weight UOM</Label>
-                        <Select
-                            value={formData.weightUom}
-                            onValueChange={(value) => setFormData((prev) => ({ ...prev, weightUom: value }))}
-                        >
+                        <Select value={formData.weightUom}
+                            onValueChange={(value) => setFormData((prev) => ({ ...prev, weightUom: value }))}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select unit" />
                             </SelectTrigger>
@@ -96,13 +88,11 @@ export function Step2PricingOrdering({ formData, setFormData }: Step2PricingOrde
                 <h3 className="text-base font-semibold border-b pb-2">Reordering</h3>
                 
                 <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="enableAutoReorder"
+                    <Checkbox id="enableAutoReorder"
                         checked={formData.enableAutoReorder}
                         onCheckedChange={(checked) =>
                             setFormData((prev) => ({ ...prev, enableAutoReorder: checked === true }))
-                        }
-                    />
+                        }/>
                     <Label htmlFor="enableAutoReorder" className="cursor-pointer">
                         Enable Auto Reorder
                     </Label>
@@ -112,26 +102,22 @@ export function Step2PricingOrdering({ formData, setFormData }: Step2PricingOrde
                     <div className="grid grid-cols-2 gap-4 pl-6 border-l-2 border-muted">
                         <div className="space-y-2">
                             <Label htmlFor="reorderLevel">Reorder Level</Label>
-                            <Input
-                                id="reorderLevel"
+                            <Input id="reorderLevel"
                                 type="number"
                                 min="0"
                                 value={formData.reorderLevel}
                                 onChange={(e) => setFormData((prev) => ({ ...prev, reorderLevel: parseInt(e.target.value) || 0 }))}
-                                placeholder="0"
-                            />
+                                placeholder="0"/>
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="reorderQty">Reorder Quantity</Label>
-                            <Input
-                                id="reorderQty"
+                            <Input id="reorderQty"
                                 type="number"
                                 min="0"
                                 value={formData.reorderQty}
                                 onChange={(e) => setFormData((prev) => ({ ...prev, reorderQty: parseInt(e.target.value) || 0 }))}
-                                placeholder="0"
-                            />
+                                placeholder="0"/>
                         </div>
                     </div>
                 )}
@@ -139,26 +125,22 @@ export function Step2PricingOrdering({ formData, setFormData }: Step2PricingOrde
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="minOrderQty">Minimum Order Quantity</Label>
-                        <Input
-                            id="minOrderQty"
+                        <Input id="minOrderQty"
                             type="number"
                             min="0"
                             value={formData.minOrderQty}
                             onChange={(e) => setFormData((prev) => ({ ...prev, minOrderQty: parseInt(e.target.value) || 0 }))}
-                            placeholder="1"
-                        />
+                            placeholder="1"/>
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="maxOrderQty">Maximum Order Quantity</Label>
-                        <Input
-                            id="maxOrderQty"
+                        <Input id="maxOrderQty"
                             type="number"
                             min="0"
                             value={formData.maxOrderQty}
                             onChange={(e) => setFormData((prev) => ({ ...prev, maxOrderQty: parseInt(e.target.value) || 0 }))}
-                            placeholder="0 (unlimited)"
-                        />
+                            placeholder="0 (unlimited)"/>
                     </div>
                 </div>
             </div>
@@ -169,26 +151,22 @@ export function Step2PricingOrdering({ formData, setFormData }: Step2PricingOrde
                 
                 <div className="space-y-3">
                     <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="inspectionRequiredBeforePurchase"
+                        <Checkbox id="inspectionRequiredBeforePurchase"
                             checked={formData.inspectionRequiredBeforePurchase}
                             onCheckedChange={(checked) =>
                                 setFormData((prev) => ({ ...prev, inspectionRequiredBeforePurchase: checked === true }))
-                            }
-                        />
+                            }/>
                         <Label htmlFor="inspectionRequiredBeforePurchase" className="cursor-pointer">
                             Inspection Required Before Purchase
                         </Label>
                     </div>
 
                     <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="inspectionRequiredBeforeDelivery"
+                        <Checkbox id="inspectionRequiredBeforeDelivery"
                             checked={formData.inspectionRequiredBeforeDelivery}
                             onCheckedChange={(checked) =>
                                 setFormData((prev) => ({ ...prev, inspectionRequiredBeforeDelivery: checked === true }))
-                            }
-                        />
+                            }/>
                         <Label htmlFor="inspectionRequiredBeforeDelivery" className="cursor-pointer">
                             Inspection Required Before Delivery
                         </Label>
@@ -198,14 +176,12 @@ export function Step2PricingOrdering({ formData, setFormData }: Step2PricingOrde
                 {(formData.inspectionRequiredBeforePurchase || formData.inspectionRequiredBeforeDelivery) && (
                     <div className="space-y-2 pl-6 border-l-2 border-muted">
                         <Label htmlFor="qualityInspectionTemplate">Quality Inspection Template ID</Label>
-                        <Input
-                            id="qualityInspectionTemplate"
+                        <Input id="qualityInspectionTemplate"
                             value={formData.qualityInspectionTemplate || ''}
                             onChange={(e) =>
                                 setFormData((prev) => ({ ...prev, qualityInspectionTemplate: e.target.value || null }))
                             }
-                            placeholder="Enter template ID"
-                        />
+                            placeholder="Enter template ID"/>
                         <p className="text-xs text-muted-foreground">
                             Optional: Specify a quality inspection template to use for this item
                         </p>
