@@ -1,9 +1,34 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUserStore } from '@horizon-sync/store';
 import { accountApi } from '../utility/api/accounts';
-import type { AccountListItem, AccountFilters, AccountPaginationResponse } from '../types/account.types';
+import type { AccountListItem, AccountFilters, AccountPaginationResponse, AccountType } from '../types/account.types';
 
 const MAX_PAGE_SIZE = 100;
+
+/** Normalize API account_type to frontend AccountType (e.g. INCOME -> REVENUE) */
+function normalizeAccountType(t: string | undefined): AccountType {
+  if (!t) return 'ASSET';
+  const u = String(t).toUpperCase();
+  if (u === 'INCOME') return 'REVENUE';
+  if (['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'].includes(u)) return u as AccountType;
+  return 'ASSET';
+}
+
+/** Normalize a list item from API for consistent display and edit */
+function normalizeAccountListItem(raw: Record<string, unknown>): AccountListItem {
+  return {
+    id: String(raw.id ?? ''),
+    account_code: String(raw.account_code ?? ''),
+    account_name: String(raw.account_name ?? ''),
+    account_type: normalizeAccountType(raw.account_type as string),
+    parent_account_id: raw.parent_account_id != null ? String(raw.parent_account_id) : null,
+    currency: String(raw.currency ?? 'USD'),
+    level: Number(raw.level ?? 1),
+    is_group: Boolean(raw.is_group),
+    is_active: raw.is_active === true || String(raw.status ?? '').toUpperCase() === 'ACTIVE',
+    created_at: String(raw.created_at ?? ''),
+  };
+}
 const MIN_PAGE_SIZE = 1;
 
 const normalizePageSize = (pageSize: number) => Math.min(Math.max(pageSize, MIN_PAGE_SIZE), MAX_PAGE_SIZE);
@@ -43,7 +68,8 @@ export function useAccounts(
         currentSortBy,
         currentSortOrder
       ) as AccountPaginationResponse;
-      setAccounts(response.chart_of_accounts || []);
+      const rawList = response.chart_of_accounts || [];
+      setAccounts(rawList.map((a) => normalizeAccountListItem(a as unknown as Record<string, unknown>)));
       setPagination(response.pagination || null);
     } catch (err) {
       console.error('Error fetching accounts:', err);

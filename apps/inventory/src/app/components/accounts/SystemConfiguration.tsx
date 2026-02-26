@@ -23,12 +23,20 @@ const DEFAULT_ACCOUNT_TYPES: Array<{
   description: string;
   accountType: AccountType;
 }> = [
+  // Payment & Receivable Accounts
   {
     transaction_type: 'accounts_receivable',
     label: 'Accounts Receivable',
     description: 'Used when confirming customer payments (receivables side of journal)',
     accountType: 'ASSET',
   },
+  {
+    transaction_type: 'accounts_payable',
+    label: 'Accounts Payable',
+    description: 'Used when confirming supplier payments (payables side of journal)',
+    accountType: 'LIABILITY',
+  },
+  // Cash & Bank Accounts
   {
     transaction_type: 'cash',
     label: 'Cash',
@@ -47,11 +55,103 @@ const DEFAULT_ACCOUNT_TYPES: Array<{
     description: 'Default account for check payments',
     accountType: 'ASSET',
   },
+  // Revenue & Sales Accounts
   {
-    transaction_type: 'accounts_payable',
-    label: 'Accounts Payable',
-    description: 'Used when confirming supplier payments (payables side of journal)',
+    transaction_type: 'sales_revenue',
+    label: 'Sales Revenue',
+    description: 'Default account for recording sales revenue',
+    accountType: 'REVENUE',
+  },
+  {
+    transaction_type: 'cost_of_goods_sold',
+    label: 'Cost of Goods Sold',
+    description: 'Default account for inventory cost when items are sold',
+    accountType: 'EXPENSE',
+  },
+  // Inventory & Stock Accounts
+  {
+    transaction_type: 'inventory',
+    label: 'Inventory',
+    description: 'Default account for inventory/stock valuation',
+    accountType: 'ASSET',
+  },
+  {
+    transaction_type: 'purchase_variance',
+    label: 'Purchase Price Variance',
+    description: 'Account for differences between expected and actual purchase costs',
+    accountType: 'EXPENSE',
+  },
+  // Discount & Adjustment Accounts
+  {
+    transaction_type: 'payment_discount_received',
+    label: 'Payment Discount Received',
+    description: 'Early payment discounts received from suppliers',
+    accountType: 'REVENUE',
+  },
+  {
+    transaction_type: 'payment_discount_given',
+    label: 'Payment Discount Given',
+    description: 'Early payment discounts given to customers',
+    accountType: 'EXPENSE',
+  },
+  {
+    transaction_type: 'rounding_adjustment',
+    label: 'Rounding Adjustment',
+    description: 'Account for small rounding differences in calculations',
+    accountType: 'EXPENSE',
+  },
+  // Foreign Exchange Accounts
+  {
+    transaction_type: 'exchange_rate_gain',
+    label: 'Foreign Exchange Gain',
+    description: 'Gains from foreign currency exchange rate differences',
+    accountType: 'REVENUE',
+  },
+  {
+    transaction_type: 'exchange_rate_loss',
+    label: 'Foreign Exchange Loss',
+    description: 'Losses from foreign currency exchange rate differences',
+    accountType: 'EXPENSE',
+  },
+  // Bad Debt & Write-offs
+  {
+    transaction_type: 'bad_debt',
+    label: 'Bad Debt Expense',
+    description: 'Write-offs of uncollectible customer receivables',
+    accountType: 'EXPENSE',
+  },
+  // Prepayments & Accruals
+  {
+    transaction_type: 'prepaid_expenses',
+    label: 'Prepaid Expenses',
+    description: 'Advance payments for future expenses',
+    accountType: 'ASSET',
+  },
+  {
+    transaction_type: 'accrued_expenses',
+    label: 'Accrued Expenses',
+    description: 'Expenses incurred but not yet paid',
     accountType: 'LIABILITY',
+  },
+  // Tax Accounts
+  {
+    transaction_type: 'tax_payable',
+    label: 'Sales Tax Payable',
+    description: 'Sales tax/VAT collected and payable to authorities',
+    accountType: 'LIABILITY',
+  },
+  {
+    transaction_type: 'tax_receivable',
+    label: 'Input Tax Receivable',
+    description: 'Input tax/VAT paid on purchases, recoverable from authorities',
+    accountType: 'ASSET',
+  },
+  // Equity Account
+  {
+    transaction_type: 'retained_earnings',
+    label: 'Retained Earnings',
+    description: 'Default account for profit/loss postings and retained earnings',
+    accountType: 'EQUITY',
   },
 ];
 

@@ -306,26 +306,31 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
               <Label htmlFor="account_type" className="text-sm">
                 Account Type <span className="text-destructive">*</span>
               </Label>
-              <Select
-                value={formData.account_type}
-                onValueChange={(value) => setFormData({ ...formData, account_type: value as AccountType })}
-                disabled={isEditing}
-              >
-                <SelectTrigger className={validationErrors.account_type ? 'border-destructive' : ''}>
-                  <SelectValue placeholder="Select account type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACCOUNT_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {isEditing && (
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Account type cannot be changed after creation
-                </p>
+              {isEditing ? (
+                <div className="space-y-2">
+                  <div className="px-3 py-2 border rounded-md bg-muted text-sm">
+                    {ACCOUNT_TYPES.find(type => type.value === formData.account_type)?.label || formData.account_type}
+                  </div>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Account type cannot be changed after creation
+                  </p>
+                </div>
+              ) : (
+                <Select
+                  value={formData.account_type}
+                  onValueChange={(value) => setFormData({ ...formData, account_type: value as AccountType })}
+                >
+                  <SelectTrigger className={validationErrors.account_type ? 'border-destructive' : ''}>
+                    <SelectValue placeholder="Select account type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACCOUNT_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
               {validationErrors.account_type && (
                 <p className="text-xs sm:text-sm text-destructive">{validationErrors.account_type}</p>
