@@ -17,6 +17,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 
 import { useAuth } from '../hooks';
+import { GlobalSearch } from '../features/search/components/GlobalSearch';
+import { useKeyboardShortcut } from '../features/search/hooks/useKeyboardShortcut';
 
 interface TopbarProps {
   sidebarCollapsed: boolean;
@@ -28,10 +30,39 @@ interface TopbarProps {
 export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [isSearchOpen, setIsSearchOpen] = React.useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  // Register keyboard shortcut for opening search (Ctrl+K or Cmd+K)
+  useKeyboardShortcut('k', { ctrl: true, meta: true }, () => {
+    setIsSearchOpen(true);
+  });
+
+  // Handle navigation from search results
+  const handleNavigate = (entityType: string, entityId: string) => {
+    console.log('[Topbar] Navigating to:', { entityType, entityId });
+    
+    // Map entity types to routes
+    // Note: Detail pages may not exist yet, so we navigate to the list page
+    const routeMap: Record<string, string> = {
+      items: '/inventory', // Navigate to inventory page (detail page not implemented yet)
+      customers: '/customers',
+      suppliers: '/suppliers',
+      invoices: '/invoices',
+      warehouses: '/warehouses',
+      stock_entries: '/inventory',
+    };
+
+    const route = routeMap[entityType] || `/${entityType}`;
+    
+    // TODO: Once detail pages are implemented, use: `${route}/${entityId}`
+    // For now, just navigate to the list page
+    console.log('[Topbar] Navigating to route:', route);
+    navigate(route);
   };
 
   // Get user initials for avatar fallback
@@ -64,15 +95,17 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
         </Button>
 
         {/* Search */}
-        <div className="hidden sm:flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-muted-foreground transition-colors focus-within:bg-muted">
+        <button
+          onClick={() => setIsSearchOpen(true)}
+          className="hidden sm:flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-muted-foreground transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+          aria-label="Open search"
+        >
           <Search className="h-4 w-4" />
-          <input type="text"
-            placeholder="Search anything..."
-            className="bg-transparent text-sm outline-none w-[200px] lg:w-[300px] placeholder:text-muted-foreground"/>
+          <span className="text-sm w-[200px] lg:w-[300px] text-left">Search anything...</span>
           <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border bg-background px-1.5 text-[10px] font-medium text-muted-foreground">
             ⌘K
           </kbd>
-        </div>
+        </button>
       </div>
 
       {/* Right Section */}
@@ -120,6 +153,13 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Global Search Modal */}
+      <GlobalSearch
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onNavigate={handleNavigate}
+      />
     </header>
   );
 }

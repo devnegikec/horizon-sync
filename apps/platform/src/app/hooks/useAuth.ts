@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useUserStore, type User } from '@horizon-sync/store';
 
 import { AuthService } from '../services/auth.service';
@@ -10,7 +11,7 @@ function userFromApi(u: UserType): User {
     first_name: u.first_name ?? '',
     last_name: u.last_name ?? '',
     phone: u.phone ?? '',
-    display_name: `${u.display_name} ?? (${u.first_name ?? ''}.trim() + ' ' + ${u.last_name ?? ''}.trim()) || ${u.email}`,
+    display_name: u.display_name || `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || u.email,
     avatar_url: u.avatar_url ?? null,
     user_type: u.user_type ?? 'user',
     status: u.status ?? 'active',
@@ -33,7 +34,7 @@ function userFromApi(u: UserType): User {
 export function useAuth() {
   const { user, accessToken, refreshToken, setAuth, updateUser, clearAuth } = useUserStore();
 
-  const login = (
+  const login = useCallback((
     token: string,
     refresh: string,
     userData: Partial<User> & Pick<User, 'id' | 'email'>, // Require id and email, allow other fields to be partial
@@ -65,7 +66,7 @@ export function useAuth() {
     };
     
     setAuth(completeUser, token, refresh);
-  };
+  }, [setAuth]);
 
   const logout = async () => {
     try {
@@ -80,25 +81,34 @@ export function useAuth() {
   };
 
   /**
-   * Restore session from HttpOnly refresh cookie (e.g. after tab reopen when "Remember Me" was used).
-   * Access token is stored in memory only; refresh token stays in cookie.
-   * If refreshToken is available in store, sends it in body as fallback (backward compatibility).
+   * Restore session using refresh token.
+   * If a refresh token exists in the store, it's used.
+   * Otherwise, the backend will attempt to use HttpOnly cookies.
    */
-  const restoreSession = async (): Promise<boolean> => {
+  const restoreSession = useCallback(async (): Promise<boolean> => {
     try {
-      // Try with refresh token from store if available (backward compatibility),
-      // otherwise rely on cookie (preferred approach)
+      console.log('Attempting to restore session');
+      
+      // Use the refresh token (if any) to get a new access token
+      // AuthService.refresh will also use cookies via credentials: 'include'
       const data = await AuthService.refresh(refreshToken || undefined);
+      
       const userData = data.user
         ? userFromApi(data.user)
         : userFromApi(await AuthService.getUserProfile(data.access_token));
-      // If backend returns refresh_token in response, store it; otherwise keep empty (cookie-based)
-      setAuth(userData, data.access_token, '');
+      
+      // Store the new tokens
+      // If we don't get a new refresh token from API, we keep the current one
+      const newRefreshToken = data.refresh_token || refreshToken || '';
+      setAuth(userData, data.access_token, newRefreshToken);
+      
+      console.log('Session restored successfully');
       return true;
-    } catch {
+    } catch (error) {
+      console.error('Failed to restore session:', error);
       return false;
     }
-  };
+  }, [refreshToken, setAuth]);
 
   const fetchUserProfile = async () => {
     if (!accessToken) {

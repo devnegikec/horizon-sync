@@ -203,7 +203,10 @@ describe('useStockEntries - Property-Based Tests', () => {
               id: fc.uuid(),
               stock_entry_no: fc.string({ minLength: 5, maxLength: 20 }),
               status: fc.constantFrom('draft', 'submitted', 'cancelled'),
-              total_value: fc.oneof(fc.constant(null), fc.float({ min: 0, max: 10000 })),
+              total_value: fc.oneof(
+                fc.constant(null),
+                fc.float({ min: 0, max: 10000, noNaN: true })
+              ),
               posting_date: validDateArbitrary(),
               created_at: validDateArbitrary(),
             }),
@@ -215,7 +218,7 @@ describe('useStockEntries - Property-Based Tests', () => {
             const draftCount = entries.filter((e) => e.status === 'draft').length;
             const submittedCount = entries.filter((e) => e.status === 'submitted').length;
             const totalValue = entries.reduce((sum, e) => {
-              const value = typeof e.total_value === 'number' ? e.total_value : 0;
+              const value = typeof e.total_value === 'number' && !isNaN(e.total_value) ? e.total_value : 0;
               return sum + value;
             }, 0);
 

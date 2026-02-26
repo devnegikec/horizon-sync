@@ -158,16 +158,23 @@ export class AuthService {
   }
 
   /**
-   * Refresh access token using refresh token from cookie (HttpOnly) or body (fallback).
-   * Backend should read refresh token from cookie (preferred) or body (backward compatibility).
+   * Refresh access token using refresh token from body.
+   * The refresh token must be provided either from the store or from a secure source.
    * Returns new access_token in body.
    * 
-   * @param refreshToken - Optional refresh token to send in body (for backward compatibility).
-   *                       If not provided, backend should read from HttpOnly cookie.
+   * @param refreshToken - Refresh token to send in body (required).
    */
   static async refresh(refreshToken?: string): Promise<RefreshResponse> {
     const url = `${API_BASE_URL}/identity/refresh`;
-    const body = refreshToken ? { refresh_token: refreshToken } : {};
+    
+    // Prepare the request body with refresh_token
+    const body: { refresh_token?: string } = {};
+    if (refreshToken) {
+      body.refresh_token = refreshToken;
+    }
+    
+    console.log('Refresh request:', { url, hasRefreshToken: !!refreshToken });
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -175,13 +182,17 @@ export class AuthService {
       credentials: 'include',
     });
 
+    console.log('Refresh response status:', response.status);
+
     if (!response.ok) {
       const err = new Error('Session expired or invalid.');
       (err as Error & { status?: number }).status = response.status;
       throw err;
     }
 
-    return response.json() as Promise<RefreshResponse>;
+    const data = await response.json();
+    console.log('Refresh response data:', data);
+    return data as RefreshResponse;
   }
 
   /**
@@ -205,6 +216,6 @@ export class AuthService {
   }
 
   static async getUserProfile(token: string): Promise<UserType> {
-    return apiRequest<UserType>('/identity/profile', 'GET', undefined, token);
+    return apiRequest<UserType>('/identity/users/me', 'GET', undefined, token);
   }
 }

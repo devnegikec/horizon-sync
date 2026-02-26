@@ -25,8 +25,16 @@ export function LoginForm() {
     success,
     rememberMe,
     setRememberMe,
+    isLocal,
     formState: { errors },
   } = useLoginForm();
+
+  React.useEffect(() => {
+    // Debug: trace login form state to help diagnose persistent loader
+    // Remove or disable this in production once the issue is resolved
+    // eslint-disable-next-line no-console
+    console.debug('LoginForm state:', { loading, error, success, rememberMe });
+  }, [loading, error, success, rememberMe]);
 
   return (
     <Card className="w-full max-w-md border-none shadow-2xl">
@@ -73,16 +81,18 @@ export function LoginForm() {
             {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox id="remember-me"
-              checked={rememberMe}
-              onCheckedChange={(checked) => setRememberMe(checked === true)}
-              aria-label="Remember me" />
-            <Label htmlFor="remember-me"
-              className="text-sm font-normal cursor-pointer select-none">
-              Remember me
-            </Label>
-          </div>
+          {!isLocal && (
+            <div className="flex items-center space-x-2">
+              <Checkbox id="remember-me"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked === true)}
+                aria-label="Remember me" />
+              <Label htmlFor="remember-me"
+                className="text-sm font-normal cursor-pointer select-none">
+                Remember me
+              </Label>
+            </div>
+          )}
 
           {success && <StatusAlert message={success} variant="success" />}
           {error && <StatusAlert message={error} variant="error" />}

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
+import type { SearchResult } from '@horizon-sync/search';
 import { useUserStore, hasOrganization } from '@horizon-sync/store';
 import { CreateOrganizationModal, OrganizationService, type CreateOrganizationPayload } from '@horizon-sync/ui/components';
 
@@ -8,7 +9,9 @@ import { useItemManagement } from '../../hooks/useItemManagement';
 import { apiItemToItem } from '../../utility';
 
 import { ItemDetailDialog } from './ItemDetailDialog';
-import { ItemDialog } from './ItemDialog';
+// import { ItemDialog } from './ItemDialog';
+// import { ItemDialogSimple as ItemDialog } from './ItemDialog.simple';
+import { ItemDialogMultiStep as ItemDialog } from './ItemDialog.multistep';
 import { ItemManagementFilters } from './ItemManagementFilters';
 import { ItemManagementHeader } from './ItemManagementHeader';
 import { ItemsTable } from './ItemsTable';
@@ -17,7 +20,9 @@ import { ItemStats } from './ItemStats';
 export function ItemManagement() {
   const { user, accessToken, updateUser } = useUserStore();
   const [createOrgModalOpen, setCreateOrgModalOpen] = useState(false);
-  
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearchActive, setIsSearchActive] = useState(false);
+
   const {
     filters,
     setFilters,
@@ -111,50 +116,80 @@ export function ItemManagement() {
     }
   };
 
+  // Handle search results from LocalSearch component
+  const handleSearchResults = useCallback((results: SearchResult[]) => {
+    console.log('[ItemManagement] Received search results:', results.length);
+
+    if (results.length > 0) {
+      // Search returned results
+      setSearchResults(results);
+      setIsSearchActive(true);
+    } else if (results.length === 0 && isSearchActive) {
+      // Empty search results (no matches)
+      setSearchResults([]);
+      setIsSearchActive(true);
+    } else {
+      // Search was cleared
+      setSearchResults([]);
+      setIsSearchActive(false);
+    }
+  }, [isSearchActive]);
+
+  // Filter items based on search results
+  const displayedItems = isSearchActive && searchResults.length > 0
+    ? items.filter(item => searchResults.some(result => result.entity_id === item.id))
+    : items;
+
+  console.log('[ItemManagement] Display state:', {
+    isSearchActive,
+    searchResultsCount: searchResults.length,
+    totalItems: items.length,
+    displayedItems: displayedItems.length
+  });
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <ItemManagementHeader onCreateItem={handleCreateItemWithOrgCheck} />
 
       <ItemStats totalItems={stats.totalItems} activeItems={stats.activeItems} />
 
-      <ItemManagementFilters filters={filters} 
-        setFilters={setFilters} 
-        itemGroups={itemGroups} 
-        tableInstance={tableInstance}/>
+      <ItemManagementFilters filters={filters}
+        setFilters={setFilters}
+        itemGroups={itemGroups}
+        tableInstance={tableInstance}
+        onSearchResults={handleSearchResults}/>
 
-      <ItemsTable items={items} 
-        loading={loading} 
-        error={error} 
-        hasActiveFilters={!!filters.search || filters.groupId !== 'all' || filters.status !== 'all'} 
-        onView={handleViewItem} 
-        onEdit={handleEditItem} 
-        onToggleStatus={handleToggleStatus} 
+      <ItemsTable items={displayedItems}
+        loading={loading}
+        error={error}
+        hasActiveFilters={isSearchActive || !!filters.search || filters.groupId !== 'all' || filters.status !== 'all'}
+        onView={handleViewItem}
+        onEdit={handleEditItem}
+        onToggleStatus={handleToggleStatus}
         onCreateItem={handleCreateItemWithOrgCheck}
         onBulkUpload={handleBulkUpload}
         onCreateOrganization={() => setCreateOrgModalOpen(true)}
         onTableReady={handleTableReady}
         serverPagination={serverPaginationConfig}/>
 
-      <ItemDialog open={itemDialogOpen} 
-        onOpenChange={setItemDialogOpen} 
-        item={selectedItemAsItem} 
-        itemGroups={itemGroups} 
-        onSave={handleSaveItem} 
-        onCreated={refetch} 
+      <ItemDialog open={itemDialogOpen}
+        onOpenChange={setItemDialogOpen}
+        item={selectedItemAsItem}
+        itemGroups={itemGroups}
+        onSave={handleSaveItem}
+        onCreated={refetch}
         onUpdated={refetch}
         onItemGroupsRefresh={refetchItemGroups}/>
-      
-      <ItemDetailDialog open={detailDialogOpen} 
-        onOpenChange={setDetailDialogOpen} 
+
+      <ItemDetailDialog open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
         item={selectedItemAsItem}/>
 
-      <CreateOrganizationModal
-        open={createOrgModalOpen}
+      <CreateOrganizationModal open={createOrgModalOpen}
         onOpenChange={setCreateOrgModalOpen}
         onSubmit={handleCreateOrganization}
         title="Create Organization"
-        description="You need to create an organization before you can manage inventory items."
-      />
+        description="You need to create an organization before you can manage inventory items."/>
     </div>
   );
 }

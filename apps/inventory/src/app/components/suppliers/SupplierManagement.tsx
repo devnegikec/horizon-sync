@@ -18,19 +18,12 @@ import {
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useItems } from '../../hooks/useItems';
+import { useSuppliers } from '../../hooks/useSuppliers';
 import { useItemSuppliers, useItemSupplierMutations } from '../../hooks/useItemSuppliers';
 import type { ItemSupplier, ItemSupplierFilters } from '../../types/supplier.types';
 
 import { ItemSupplierDialog } from './ItemSupplierDialog';
 import { SuppliersTable } from './SuppliersTable';
-
-// Mock suppliers for demonstration - in production this would come from a suppliers API
-const mockSuppliers = [
-  { id: 'sup-001', name: 'Acme Corporation', code: 'ACME' },
-  { id: 'sup-002', name: 'Global Supplies Inc', code: 'GSI' },
-  { id: 'sup-003', name: 'Tech Parts Ltd', code: 'TPL' },
-  { id: 'sup-004', name: 'Industrial Materials Co', code: 'IMC' },
-];
 
 interface StatCardProps {
   title: string;
@@ -60,6 +53,7 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 
 export function SupplierManagement() {
   const { items } = useItems(1, 100);
+  const { suppliers, loading: suppliersLoading } = useSuppliers(1, 100);
   const [filters, setFilters] = useState<ItemSupplierFilters>({
     search: '',
     supplierId: 'all',
@@ -97,9 +91,9 @@ export function SupplierManagement() {
 
   const supplierMap = useMemo(() => {
     const map = new Map<string, string>();
-    mockSuppliers.forEach((s) => map.set(s.id, s.name));
+    suppliers.forEach((s) => map.set(s.id, s.supplier_name));
     return map;
-  }, []);
+  }, [suppliers]);
 
   const stats = useMemo(() => {
     const total = pagination?.total_items ?? 0;
@@ -207,9 +201,9 @@ export function SupplierManagement() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Suppliers</SelectItem>
-                {mockSuppliers.map((s) => (
+                {suppliers.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.name}
+                    {s.supplier_name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -246,13 +240,19 @@ export function SupplierManagement() {
         serverPagination={serverPaginationConfig}/>
 
       {/* Dialog */}
-      <ItemSupplierDialog open={dialogOpen}
+      <ItemSupplierDialog 
+        open={dialogOpen}
         onOpenChange={setDialogOpen}
         itemSupplier={selectedItemSupplier}
         items={items}
-        suppliers={mockSuppliers}
+        suppliers={suppliers.map(s => ({ 
+          id: s.id, 
+          name: s.supplier_name, 
+          code: s.supplier_code 
+        }))}
         onCreated={refetch}
-        onUpdated={refetch}/>
+        onUpdated={refetch}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { Package, Boxes, DollarSign, AlertTriangle } from 'lucide-react';
 
-import { StatCard } from './StatCard';
+import { StatCard } from '../shared';
 
 interface ItemStatsProps {
   totalItems: number;

@@ -4,12 +4,14 @@ import { Dialog, DialogContent } from '@horizon-sync/ui/components/ui/dialog';
 
 import { useItemForm } from '../../hooks/useItemForm';
 import { useItemSubmission } from '../../hooks/useItemSubmission';
+import { useTaxTemplates } from '../../hooks/useTaxTemplates';
 import type { ApiItemGroup } from '../../types/item-groups.types';
 import type { Item } from '../../types/item.types';
 
 import { ItemDialogFooter } from './ItemDialogFooter';
 import { ItemDialogHeader } from './ItemDialogHeader';
 import { ItemFormFields } from './ItemFormFields';
+
 
 interface ItemDialogProps {
   open: boolean;
@@ -22,19 +24,20 @@ interface ItemDialogProps {
   onItemGroupsRefresh?: () => void;
 }
 
-export function ItemDialog({ 
-  open, 
-  onOpenChange, 
-  item, 
-  itemGroups, 
-  onSave, 
-  onCreated, 
-  onUpdated, 
-  onItemGroupsRefresh 
+export function ItemDialog({
+  open,
+  onOpenChange,
+  item,
+  itemGroups,
+  onSave,
+  onCreated,
+  onUpdated,
+  onItemGroupsRefresh
 }: ItemDialogProps) {
   const isEditing = !!item;
 
   const { formData, setFormData } = useItemForm({ item, open });
+  const { salesTaxTemplates, purchaseTaxTemplates, isLoading: isLoadingTaxTemplates } = useTaxTemplates();
 
   const { handleSubmit, isLoading, error } = useItemSubmission({
     item,
@@ -59,18 +62,18 @@ export function ItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <ItemDialogHeader isEditing={isEditing} />
 
         <form onSubmit={handleFormSubmit}>
-          <ItemFormFields 
-            formData={formData} 
-            setFormData={setFormData} 
+          <ItemFormFields formData={formData}
+            setFormData={setFormData}
             itemGroups={itemGroups}
             onItemGroupsRefresh={onItemGroupsRefresh}
-          />
-
-          <ItemDialogFooter isEditing={isEditing} isLoading={isLoading} onCancel={handleCancel} submitError={error} />
+            isLoading={isLoading}
+            salesTaxTemplates={salesTaxTemplates}
+            purchaseTaxTemplates={purchaseTaxTemplates}
+            isLoadingTaxTemplates={isLoadingTaxTemplates}/>
         </form>
       </DialogContent>
     </Dialog>

@@ -47,6 +47,22 @@ export function useStockMovements(options: {
     if (options.pageSize !== undefined) setCurrentPageSize(options.pageSize);
   }, [options.pageSize]);
 
+  // Extract filter values to prevent unnecessary re-renders
+  const itemId = filters?.item_id;
+  const warehouseId = filters?.warehouse_id;
+  const movementType = filters?.movement_type;
+  const referenceType = filters?.reference_type;
+  const search = filters?.search;
+
+  // Memoize filters to prevent unnecessary re-renders
+  const memoizedFilters = React.useMemo(() => filters, [
+    itemId,
+    warehouseId,
+    movementType,
+    referenceType,
+    search,
+  ]);
+
   const fetchStockMovements = React.useCallback(async () => {
     if (!accessToken) {
       setStockMovements([]);
@@ -61,7 +77,7 @@ export function useStockMovements(options: {
     setError(null);
 
     try {
-      const params = buildStockMovementsParams(currentPage, currentPageSize, filters);
+      const params = buildStockMovementsParams(currentPage, currentPageSize, memoizedFilters);
       const url = buildUrl('/stock-movements', params);
 
       const res = await fetch(url, {
@@ -96,7 +112,7 @@ export function useStockMovements(options: {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, currentPage, currentPageSize, filters]);
+  }, [accessToken, currentPage, currentPageSize, memoizedFilters]);
 
   React.useEffect(() => {
     fetchStockMovements();

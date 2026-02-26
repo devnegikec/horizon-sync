@@ -4,7 +4,7 @@ import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { Package, Plus, MoreHorizontal, Eye, Edit, Power, PowerOff, Building2, Upload } from 'lucide-react';
 
 import { TableSkeleton, Badge, Button, Card, CardContent } from '@horizon-sync/ui/components'
-import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
+import { DataTable, DataTableColumnHeader, DataTableViewOptions } from '@horizon-sync/ui/components/data-table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,12 +51,14 @@ export function ItemsTable({
   onTableReady, 
   serverPagination 
 }: ItemsTableProps) {
-  const tableReadyRef = React.useRef<((table: Table<ApiItem>) => void) | undefined>(onTableReady);
+  const [tableInstance, setTableInstance] = React.useState<Table<ApiItem> | null>(null);
 
-  // Update ref when onTableReady changes
+  // Call onTableReady when table instance is available
   React.useEffect(() => {
-    tableReadyRef.current = onTableReady;
-  }, [onTableReady]);
+    if (tableInstance && onTableReady) {
+      onTableReady(tableInstance);
+    }
+  }, [tableInstance, onTableReady]);
 
   // Create server pagination config for DataTable
   const serverPaginationConfig = React.useMemo(() => {
@@ -176,13 +178,13 @@ export function ItemsTable({
     [onView, onEdit, onToggleStatus],
   );
 
-  const renderViewOptions = React.useCallback((table: Table<ApiItem>) => {
-    // Call onTableReady callback if provided
-    if (tableReadyRef.current) {
-      tableReadyRef.current(table);
+  // Callback to capture table instance from DataTable
+  const handleTableReady = (table: Table<ApiItem>) => {
+    if (table !== tableInstance) {
+      setTableInstance(table);
     }
-    return null; // Don't render anything in the table
-  }, []);
+    return null;
+  };
 
   // Check if error is related to organization
   const isOrganizationError = error && (
@@ -219,8 +221,7 @@ export function ItemsTable({
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState 
-              icon={<Package className="h-12 w-12" />} 
+            <EmptyState icon={<Package className="h-12 w-12" />} 
               title={isOrgError ? "Organization Required" : "No items found"} 
               description={
                 isOrgError 
@@ -257,8 +258,7 @@ export function ItemsTable({
                     Add Item
                   </Button>
                 ) : undefined
-              } 
-            />
+              }/>
           </div>
         </CardContent>
       </Card>
@@ -280,7 +280,7 @@ export function ItemsTable({
             initialPageSize: serverPagination?.pageSize ?? 20,
             serverPagination: serverPaginationConfig,
           }}
-          renderViewOptions={renderViewOptions}
+          renderViewOptions={handleTableReady}
           fixedHeader
           maxHeight="600px"/>
       </CardContent>
