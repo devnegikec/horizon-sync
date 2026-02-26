@@ -1,62 +1,33 @@
 import * as React from 'react';
-
-import { Loader2, FileText } from 'lucide-react';
+import { FileText } from 'lucide-react';
 
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { useUserStore } from '@horizon-sync/store';
-import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@horizon-sync/ui/components/ui/dialog';
-import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@horizon-sync/ui/components/ui/select';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
 import { useStockEntryMutations } from '../../hooks/useStock';
-import { useWarehouses } from '../../hooks/useWarehouses';
-import type { StockEntry, StockEntryStatus } from '../../types/stock.types';
+import type { StockEntry, StockEntryFormState } from '../../types/stock.types';
 import { stockEntryApi } from '../../utility/api/stock';
 
+import { StockEntryHeader, StockEntryFooter } from '../stock-entry';
 import { StockEntryCsvImport } from './StockEntryCsvImport';
 import type { StockEntryLineRow } from './StockEntryLineItemsTable';
 import { StockEntryLineItemsTable } from './StockEntryLineItemsTable';
 
 /* ------------------------------------------------------------------ */
-/*  Constants & types                                                  */
+/*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const ENTRY_TYPE_OPTIONS = [
-  { value: 'material_receipt', label: 'Material Receipt' },
-  { value: 'material_issue', label: 'Material Issue' },
-  { value: 'material_transfer', label: 'Material Transfer' },
-  { value: 'manufacture', label: 'Manufacture' },
-  { value: 'repack', label: 'Repack' },
-] as const;
-
-interface FormState {
-  stock_entry_no: string;
-  stock_entry_type: string;
-  from_warehouse_id: string;
-  to_warehouse_id: string;
-  posting_date: string;
-  status: StockEntryStatus;
-  remarks: string;
-}
-
-const DEFAULT_FORM: FormState = {
+const DEFAULT_FORM: StockEntryFormState = {
   stock_entry_no: '',
   stock_entry_type: 'material_receipt',
   from_warehouse_id: '',
@@ -79,7 +50,7 @@ const EMPTY_LINE: StockEntryLineRow = {
 /*  Pure helpers                                                       */
 /* ------------------------------------------------------------------ */
 
-function buildFormFromEntry(entry: StockEntry): FormState {
+function buildFormFromEntry(entry: StockEntry): StockEntryFormState {
   return {
     stock_entry_no: entry.stock_entry_no,
     stock_entry_type: entry.stock_entry_type,
@@ -103,7 +74,7 @@ function buildLinesFromEntry(entry: StockEntry): StockEntryLineRow[] {
   }));
 }
 
-function buildPayload(form: FormState, lines: StockEntryLineRow[]) {
+function buildPayload(form: StockEntryFormState, lines: StockEntryLineRow[]) {
   const items = lines
     .filter((row) => !!row.item_id)
     .map((row) => ({
@@ -124,177 +95,6 @@ function buildPayload(form: FormState, lines: StockEntryLineRow[]) {
     items,
   };
 }
-
-/* ------------------------------------------------------------------ */
-/*  Sub-component: Header fields (entry no, type, date)                */
-/* ------------------------------------------------------------------ */
-
-const STATUS_OPTIONS = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'submitted', label: 'Submitted' },
-  { value: 'cancelled', label: 'Cancelled' },
-] as const;
-
-interface HeaderFieldsProps {
-  form: FormState;
-  isEditing: boolean;
-  onFieldChange: (field: keyof FormState, value: string) => void;
-}
-
-function HeaderFields({ form, isEditing, onFieldChange }: HeaderFieldsProps) {
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="stock_entry_no">Entry No.</Label>
-          <Input id="stock_entry_no"
-            value={form.stock_entry_no}
-            onChange={(e) => onFieldChange('stock_entry_no', e.target.value)}
-            placeholder="Auto-generated"
-            disabled />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="stock_entry_type">Entry Type</Label>
-          <Select value={form.stock_entry_type}
-            onValueChange={(v) => onFieldChange('stock_entry_type', v)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              {ENTRY_TYPE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="status">Status</Label>
-          <Select value={form.status}
-            onValueChange={(v) => onFieldChange('status', v)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="posting_date">Posting Date</Label>
-          <Input id="posting_date"
-            type="date"
-            value={form.posting_date}
-            onChange={(e) => onFieldChange('posting_date', e.target.value)}
-            required />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Sub-component: Warehouse selector                                  */
-/* ------------------------------------------------------------------ */
-
-interface WarehouseSelectorProps {
-  label: string;
-  htmlId: string;
-  value: string;
-  onChange: (value: string) => void;
-}
-
-function WarehouseSelector({ label, htmlId, value, onChange }: WarehouseSelectorProps) {
-  const { warehouses, loading } = useWarehouses(1, 100);
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={htmlId}>{label}</Label>
-      <Select value={value || 'none'}
-        onValueChange={(v) => onChange(v === 'none' ? '' : v)}>
-        <SelectTrigger>
-          <SelectValue placeholder="Select warehouse" />
-        </SelectTrigger>
-        <SelectContent>
-          <div className="max-h-[200px] overflow-y-auto">
-            <SelectItem value="none">None</SelectItem>
-            {loading ? (
-              <div className="p-2 text-xs text-muted-foreground text-center">Loading...</div>
-            ) : (
-              warehouses.map((w) => (
-                <SelectItem key={w.id} value={w.id}>
-                  {w.name} ({w.code})
-                </SelectItem>
-              ))
-            )}
-          </div>
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Sub-component: Conditional warehouse fields by entry type          */
-/* ------------------------------------------------------------------ */
-
-interface WarehouseFieldsProps {
-  form: FormState;
-  onFieldChange: (field: keyof FormState, value: string) => void;
-}
-
-function WarehouseFields({ form, onFieldChange }: WarehouseFieldsProps) {
-  const entryType = form.stock_entry_type;
-
-  // Material Receipt → only "To Warehouse"
-  if (entryType === 'material_receipt') {
-    return (
-      <div className="grid grid-cols-2 gap-4">
-        <WarehouseSelector label="To Warehouse (Destination)"
-          htmlId="to_warehouse_id"
-          value={form.to_warehouse_id}
-          onChange={(v) => onFieldChange('to_warehouse_id', v)} />
-      </div>
-    );
-  }
-
-  // Material Issue → only "From Warehouse"
-  if (entryType === 'material_issue') {
-    return (
-      <div className="grid grid-cols-2 gap-4">
-        <WarehouseSelector label="From Warehouse (Source)"
-          htmlId="from_warehouse_id"
-          value={form.from_warehouse_id}
-          onChange={(v) => onFieldChange('from_warehouse_id', v)} />
-      </div>
-    );
-  }
-
-  // Transfer, Manufacture, Repack → both warehouses
-  return (
-    <div className="grid grid-cols-2 gap-4">
-      <WarehouseSelector label="From Warehouse (Source)"
-        htmlId="from_warehouse_id"
-        value={form.from_warehouse_id}
-        onChange={(v) => onFieldChange('from_warehouse_id', v)} />
-      <WarehouseSelector label="To Warehouse (Destination)"
-        htmlId="to_warehouse_id"
-        value={form.to_warehouse_id}
-        onChange={(v) => onFieldChange('to_warehouse_id', v)} />
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Pure helper: save entry (create or update)                         */
-/* ------------------------------------------------------------------ */
 
 async function saveEntry(
   isEditing: boolean,
@@ -334,7 +134,7 @@ export function StockEntryDialog({
   const accessToken = useUserStore((s) => s.accessToken);
   const isEditing = !!entry;
 
-  const [form, setForm] = React.useState<FormState>({ ...DEFAULT_FORM });
+  const [form, setForm] = React.useState<StockEntryFormState>({ ...DEFAULT_FORM });
   const [lineItems, setLineItems] = React.useState<StockEntryLineRow[]>([{ ...EMPTY_LINE }]);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
 
@@ -351,7 +151,7 @@ export function StockEntryDialog({
   }, [entry, open]);
 
   /* Field change handler — clears irrelevant warehouse on type switch */
-  const handleFieldChange = React.useCallback((field: keyof FormState, value: string) => {
+  const handleFieldChange = React.useCallback((field: keyof StockEntryFormState, value: string) => {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
       if (field === 'stock_entry_type') {
@@ -419,8 +219,7 @@ export function StockEntryDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <HeaderFields form={form} isEditing={isEditing} onFieldChange={handleFieldChange} />
-          <WarehouseFields form={form} onFieldChange={handleFieldChange} />
+          <StockEntryHeader form={form} isEditing={isEditing} onFieldChange={handleFieldChange} />
 
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>
@@ -447,34 +246,13 @@ export function StockEntryDialog({
               } />
           </div>
 
-          <div className="flex justify-end">
-            <div className="text-sm text-muted-foreground">
-              Total: <span className="font-semibold text-foreground">{grandTotal.toFixed(2)}</span>
-            </div>
-          </div>
-
-          {submitError && <p className="text-sm text-destructive">{submitError}</p>}
-
-          <DialogFooter>
-            <Button type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isEditing ? 'Saving...' : 'Creating...'}
-                </>
-              ) : isEditing ? (
-                'Save Changes'
-              ) : (
-                'Create Entry'
-              )}
-            </Button>
-          </DialogFooter>
+          <StockEntryFooter 
+            onCancel={() => onOpenChange(false)}
+            loading={loading}
+            isEditing={isEditing}
+            submitError={submitError}
+            grandTotal={grandTotal}
+          />
         </form>
       </DialogContent>
     </Dialog>

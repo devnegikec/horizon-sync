@@ -16,7 +16,7 @@ import { stockMovementApi, stockEntryApi, stockReconciliationApi } from '../util
 // Export query hooks from their individual files
 export { useStockLevels } from './useStockLevels';
 export { useStockMovements } from './useStockMovements';
-export { useStockEntries } from './useStockEntries';
+export { useStockEntries } from '../components/stock-entry';
 export { useStockReconciliations } from './useStockReconciliations';
 
 // Stock Movement Mutations Hook

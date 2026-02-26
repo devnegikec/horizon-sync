@@ -276,6 +276,16 @@ export interface StockMovementFilters {
   reference_type: string;
 }
 
+export interface StockEntryFormState {
+  stock_entry_no: string;
+  stock_entry_type: string;
+  from_warehouse_id: string;
+  to_warehouse_id: string;
+  posting_date: string;
+  status: StockEntryStatus;
+  remarks: string;
+}
+
 export interface StockEntryFilters {
   search: string;
   stock_entry_type: string;
