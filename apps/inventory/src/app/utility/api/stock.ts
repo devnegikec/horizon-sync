@@ -104,6 +104,22 @@ export const stockEntryApi = {
     apiRequest(`/stock-entries/${id}/submit`, accessToken, {
       method: 'POST',
     }),
+
+  bulkUpload: async (accessToken: string, file: File): Promise<unknown> => {
+    const { buildUrl } = await import('./core');
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(buildUrl('/stock-entries/bulk/upload'), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: formData,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `HTTP ${response.status}`);
+    }
+    return response.status === 204 ? {} : response.json();
+  },
 };
 
 // Stock Reconciliations API helpers

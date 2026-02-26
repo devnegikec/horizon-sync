@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { FileText } from 'lucide-react';
 
 // eslint-disable-next-line @nx/enforce-module-boundaries
@@ -17,9 +18,10 @@ import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 import { useStockEntryMutations } from '../../hooks/useStock';
 import type { StockEntry, StockEntryFormState } from '../../types/stock.types';
 import { stockEntryApi } from '../../utility/api/stock';
-
+import { parseStockEntryCsv, STOCK_ENTRY_SAMPLE_CSV } from '../../utility/stockEntryCsvParser';
+import { CsvImporter } from '../shared/CsvImporter';
 import { StockEntryHeader, StockEntryFooter } from '../stock-entry';
-import { StockEntryCsvImport } from './StockEntryCsvImport';
+
 import type { StockEntryLineRow } from './StockEntryLineItemsTable';
 import { StockEntryLineItemsTable } from './StockEntryLineItemsTable';
 
@@ -172,6 +174,17 @@ export function StockEntryDialog({
     });
   }, []);
 
+  const handleBulkUpload = React.useCallback(async (file: File) => {
+    if (!accessToken) return;
+    try {
+      await stockEntryApi.bulkUpload(accessToken, file);
+      onCreated?.();
+      onOpenChange(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Bulk upload failed');
+    }
+  }, [accessToken, onCreated, onOpenChange]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
@@ -235,7 +248,12 @@ export function StockEntryDialog({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium">Line Items</h4>
-              <StockEntryCsvImport onImport={handleCsvImport} />
+              <CsvImporter parseRows={parseStockEntryCsv}
+                onImport={handleCsvImport}
+                onFileSelected={handleBulkUpload}
+                columnsHint="Columns: Stock Entry Type, Item Code, Quantity, UOM, Basic Rate, ..."
+                sampleCsv={STOCK_ENTRY_SAMPLE_CSV}
+                sampleFileName="stock-entry-sample.csv" />
             </div>
             <StockEntryLineItemsTable items={lineItems}
               onItemsChange={setLineItems}
@@ -246,13 +264,11 @@ export function StockEntryDialog({
               } />
           </div>
 
-          <StockEntryFooter 
-            onCancel={() => onOpenChange(false)}
+          <StockEntryFooter onCancel={() => onOpenChange(false)}
             loading={loading}
             isEditing={isEditing}
             submitError={submitError}
-            grandTotal={grandTotal}
-          />
+            grandTotal={grandTotal}/>
         </form>
       </DialogContent>
     </Dialog>

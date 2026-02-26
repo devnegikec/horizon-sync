@@ -14,6 +14,8 @@ export interface CsvImporterProps<T> {
   parseRows: (text: string) => { rows: T[]; errors: ParseError[] };
   /** Called with successfully parsed rows */
   onImport: (rows: T[]) => void;
+  /** If provided, also called with the raw File so callers can POST it to an API */
+  onFileSelected?: (file: File) => void;
   /** Human-readable hint shown next to the button, e.g. "Columns: item_id, qty" */
   columnsHint?: string;
   /** Sample CSV content to download. If omitted, the Download button is hidden. */
@@ -35,6 +37,7 @@ function downloadCsv(content: string, filename: string) {
 export function CsvImporter<T>({
   parseRows,
   onImport,
+  onFileSelected,
   columnsHint,
   sampleCsv,
   sampleFileName = 'sample.csv',
@@ -58,6 +61,7 @@ export function CsvImporter<T>({
       if (rows.length > 0) onImport(rows);
     };
     reader.readAsText(file);
+    onFileSelected?.(file);
     e.target.value = '';
   };
 

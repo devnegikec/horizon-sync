@@ -1,0 +1,2 @@
+Stock Entry Type,Posting Date,Posting Time,From Warehouse Code,To Warehouse Code,Item Code,Description,Remarks,Quantity,UOM,Basic Rate,Valuation Rate,Batch Number
+material_receipt,2026-02-25,09:00,,WH-MXR-02,ITM-2026-00001,test description,no remarks,10,KG,908.00,807.50,BT-008
