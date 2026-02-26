@@ -4,9 +4,15 @@ import { Route, Routes } from 'react-router-dom';
 
 import { DashboardLayout, DashboardHome, AuthGuard, PublicRoute } from './components';
 import { PlaceholderPage } from './components/PlaceholderPage';
-import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage } from './pages';
+import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage } from './pages';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
+const RevenuePage = React.lazy(() => import('inventory/RevenuePage'));
+const SourcingPage = React.lazy(() => import('inventory/SourcingPage'));
+const BooksPage = React.lazy(() => import('inventory/BooksPage'));
+const TaxChargesPage = React.lazy(() => import('inventory/TaxChargesPage'));
+const PaymentsPage = React.lazy(() => import('inventory/PaymentsPage'));
 
 export function AppRoutes() {
   return (
@@ -41,12 +47,17 @@ function ProtectedRouteWrapper() {
           <Route path="/" element={<DashboardHome />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/inventory" element={<Inventory />} />
+          <Route path="/revenue" element={<RevenuePage />} />
+          <Route path="/sourcing" element={<SourcingPage />} />
+          <Route path="/books" element={<BooksPage />} />
+          <Route path="/payments" element={<PaymentsPage />} />
+          <Route path="/tax-charges" element={<TaxChargesPage />} />
           <Route path="/subscriptions" element={<SubscriptionManagementPage />} />
           <Route path="/analytics" element={<AnalyticsPlaceholder />} />
           <Route path="/users" element={<UserManagementPage />} />
-          <Route path="/users/roles" element={<RoleManagementPage />} />
+          <Route path="/roles" element={<RoleManagementPage />} />
           <Route path="/reports" element={<ReportsPlaceholder />} />
-          <Route path="/settings" element={<SettingsPlaceholder />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/help" element={<HelpPlaceholder />} />
         </Routes>
       </DashboardLayout>
@@ -60,10 +71,6 @@ function AnalyticsPlaceholder() {
 
 function ReportsPlaceholder() {
   return <PlaceholderPage title="Reports" description="Generate and view reports" />;
-}
-
-function SettingsPlaceholder() {
-  return <PlaceholderPage title="Settings" description="Configure your platform settings" />;
 }
 
 function HelpPlaceholder() {

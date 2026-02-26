@@ -68,13 +68,20 @@ export function ItemSupplierDialog({ open, onOpenChange, itemSupplier, items, su
     e.preventDefault();
     setSubmitError(null);
 
+    // Ensure all string values are defined to prevent toLowerCase errors
     const payload: CreateItemSupplierPayload = {
-      item_id: formData.item_id,
-      supplier_id: formData.supplier_id,
-      supplier_part_no: formData.supplier_part_no || undefined,
+      item_id: formData.item_id || '',
+      supplier_id: formData.supplier_id || '',
+      supplier_part_no: formData.supplier_part_no?.trim() || undefined,
       lead_time_days: formData.lead_time_days ? parseInt(formData.lead_time_days, 10) : undefined,
       is_default: formData.is_default,
     };
+
+    // Validate required fields
+    if (!payload.item_id || !payload.supplier_id) {
+      setSubmitError('Item and Supplier are required fields');
+      return;
+    }
 
     try {
       if (isEditing && itemSupplier) {
@@ -141,19 +148,25 @@ export function ItemSupplierDialog({ open, onOpenChange, itemSupplier, items, su
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="supplier_part_no">Supplier Part No.</Label>
-                <Input id="supplier_part_no"
+                <Input 
+                  id="supplier_part_no"
                   value={formData.supplier_part_no}
                   onChange={(e) => setFormData({ ...formData, supplier_part_no: e.target.value })}
-                  placeholder="e.g., SUP-001"/>
+                  onKeyDown={(e) => e.stopPropagation()}
+                  placeholder="e.g., SUP-001"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lead_time_days">Lead Time (Days)</Label>
-                <Input id="lead_time_days"
+                <Input 
+                  id="lead_time_days"
                   type="number"
                   min="0"
                   value={formData.lead_time_days}
                   onChange={(e) => setFormData({ ...formData, lead_time_days: e.target.value })}
-                  placeholder="0"/>
+                  onKeyDown={(e) => e.stopPropagation()}
+                  placeholder="0"
+                />
               </div>
             </div>
 

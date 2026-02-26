@@ -74,24 +74,41 @@ export function StockMovementsTable({ stockMovements, loading, error, hasActiveF
         },
       },
       {
-        accessorKey: 'product_name',
+        accessorFn: (row) => row.product?.name || row.product_name || '',
+        id: 'product_name',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Item" />,
         cell: ({ row }) => {
           const movement = row.original;
+          // Use nested product object if available, otherwise fall back to flat fields
+          const productName = movement.product?.name || movement.product_name || 'Unknown Item';
+          const productCode = movement.product?.code || movement.product_code || 'N/A';
           return (
             <div>
-              <p className="font-medium text-sm">{movement.product_name || 'Unknown Item'}</p>
-              <code className="text-xs text-muted-foreground">{movement.product_code || 'N/A'}</code>
+              <p className="font-medium text-sm">{productName}</p>
+              <code className="text-xs text-muted-foreground">{productCode}</code>
             </div>
           );
         },
       },
       {
-        accessorKey: 'warehouse_name',
+        accessorFn: (row) => row.warehouse?.name || row.warehouse_name || '',
+        id: 'warehouse_name',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Warehouse" />,
         cell: ({ row }) => {
-          const warehouseName = row.original.warehouse_name;
-          return warehouseName ? <span className="text-sm">{warehouseName}</span> : <span className="text-muted-foreground">—</span>;
+          const movement = row.original;
+          // Use nested warehouse object if available, otherwise fall back to flat fields
+          const warehouseName = movement.warehouse?.name || movement.warehouse_name;
+          const warehouseCode = movement.warehouse?.code;
+          return warehouseName ? (
+            <div>
+              <span className="text-sm">{warehouseName}</span>
+              {warehouseCode && (
+                <code className="text-xs text-muted-foreground block">{warehouseCode}</code>
+              )}
+            </div>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          );
         },
       },
       {

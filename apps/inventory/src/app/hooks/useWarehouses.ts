@@ -32,6 +32,13 @@ export function useWarehouses(initialPage = 1, initialPageSize = 20, filters?: {
   const [currentPage, setCurrentPage] = React.useState(initialPage);
   const [currentPageSize, setCurrentPageSize] = React.useState(initialPageSize);
 
+  // Memoize filters to prevent unnecessary re-renders
+  const memoizedFilters = React.useMemo(() => filters, [
+    filters?.search,
+    filters?.warehouseType,
+    filters?.status,
+  ]);
+
   const fetchWarehouses = React.useCallback(async () => {
     if (!accessToken) {
       setWarehouses([]);
@@ -52,11 +59,11 @@ export function useWarehouses(initialPage = 1, initialPageSize = 20, filters?: {
         sort_order: 'desc',
       })
       // Add filters to API params if provided
-      if (filters?.search) {
-        params.append('search', filters.search);
+      if (memoizedFilters?.search) {
+        params.append('search', memoizedFilters.search);
       }
-      if (filters?.warehouseType && filters.warehouseType !== 'all') {
-        params.append('warehouse_type', filters.warehouseType);
+      if (memoizedFilters?.warehouseType && memoizedFilters.warehouseType !== 'all') {
+        params.append('warehouse_type', memoizedFilters.warehouseType);
       }
 
       const res = await fetch(`${WAREHOUSE_URL}?${params}`, {
@@ -85,7 +92,7 @@ export function useWarehouses(initialPage = 1, initialPageSize = 20, filters?: {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, currentPage, currentPageSize, filters]);
+  }, [accessToken, currentPage, currentPageSize, memoizedFilters]);
 
   React.useEffect(() => {
     fetchWarehouses();
