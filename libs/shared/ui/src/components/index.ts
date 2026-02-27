@@ -7,6 +7,7 @@ export * from './ui/dialog';
 export * from './ui/dropdown-menu';
 export * from './ui/popover';
 export * from './ui/empty-state';
+export * from './ui/date-picker';
 export * from './ui/input';
 export * from './ui/label';
 export * from './ui/search-input';
