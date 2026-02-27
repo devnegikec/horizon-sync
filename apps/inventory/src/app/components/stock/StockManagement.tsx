@@ -26,7 +26,7 @@ import { cn } from '@horizon-sync/ui/lib';
  
 
 import { useStockEntryMutations } from '../../hooks/useStock';
-import { useStockEntries } from '../../hooks/useStockEntries';
+import { useStockEntries } from '../stock-entry';
 import { useStockLevels } from '../../hooks/useStockLevels';
 import { useStockMovements } from '../../hooks/useStockMovements';
 import { useStockReconciliations } from '../../hooks/useStockReconciliations';

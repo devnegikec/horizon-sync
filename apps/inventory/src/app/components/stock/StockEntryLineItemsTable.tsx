@@ -5,7 +5,7 @@ import { Trash2 } from 'lucide-react';
 
 // eslint-disable-next-line @nx/enforce-module-boundaries
 import { useUserStore } from '@horizon-sync/store';
-import { Button, EditableDataTable, EditableNumberCell, EditableCell } from '@horizon-sync/ui/components';
+import { Button, EditableDataTable, EditableNumberCell } from '@horizon-sync/ui/components';
 
 import { environment } from '../../../environments/environment';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
@@ -172,7 +172,11 @@ export function StockEntryLineItemsTable({ items, onItemsChange, disabled = fals
     () => [
       { accessorKey: 'item_id', header: 'Item', cell: ItemPickerCellComponent, size: 250 },
       { accessorKey: 'qty', header: 'Quantity', cell: QtyCellComponent, size: 100 },
-      { accessorKey: 'uom', header: 'UOM', cell: disabled ? undefined : EditableCell, size: 80 },
+      { accessorKey: 'uom', header: 'UOM', size: 80,
+        cell: ({ getValue }: CellContext<StockEntryLineRow, unknown>) => (
+          <div className="px-2 py-1 text-sm text-muted-foreground">{String(getValue() ?? '')}</div>
+        ),
+      },
       { accessorKey: 'basic_rate', header: 'Rate', cell: disabled ? undefined : EditableNumberCell, size: 120 },
       {
         accessorKey: 'amount', header: 'Amount', size: 120,
