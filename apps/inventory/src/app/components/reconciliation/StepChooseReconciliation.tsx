@@ -121,9 +121,11 @@ export function StepChooseReconciliation({
     selectedReconciliationId ?? 'create-new',
   );
 
+  const draftFilters = React.useMemo(() => ({ status: 'draft' }), []);
+
   const { data: reconciliations, loading, error } = useStockReconciliations({
     pageSize: 50,
-    filters: { status: 'draft' },
+    filters: draftFilters,
   });
 
   const filtered = React.useMemo(() => {
@@ -140,13 +142,6 @@ export function StepChooseReconciliation({
     setChoice(id);
     onSelect(id === 'create-new' ? null : id);
   };
-
-  // Default to "create-new" if nothing selected yet
-  React.useEffect(() => {
-    if (choice === 'create-new') {
-      onSelect(null);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const canProceed = choice === 'create-new' || choice.length > 0;
 

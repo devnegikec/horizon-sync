@@ -218,13 +218,17 @@ export function StepUploadVerify({ warehouseName, warehouseId, reconciliationId,
 
   const handleConfirm = () => {
     if (!preview) return;
-    confirmMutation.mutate(preview.id, {
+    // Resolve the reconciliation ID: try upload response fields, then fall back to the prop
+    const resolvedId = preview.id ?? reconciliationId;
+    if (!resolvedId) return;
+    confirmMutation.mutate(resolvedId, {
       onSuccess: () => onFinish(),
     });
   };
 
   const isUploading = uploadMutation.isPending;
   const isConfirming = confirmMutation.isPending;
+  const hasConfirmableId = !!(preview?.id ?? reconciliationId);
 
   return (
     <div className="space-y-5">
@@ -257,7 +261,7 @@ export function StepUploadVerify({ warehouseName, warehouseId, reconciliationId,
           Back
         </Button>
         <Button onClick={handleConfirm}
-          disabled={!preview || isConfirming}
+          disabled={!preview || !hasConfirmableId || isConfirming}
           className="gap-2">
           {isConfirming ? (
             <Loader2 className="h-4 w-4 animate-spin" />
