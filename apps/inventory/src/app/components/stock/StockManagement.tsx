@@ -26,7 +26,6 @@ import { cn } from '@horizon-sync/ui/lib';
  
 
 import { useStockEntryMutations } from '../../hooks/useStock';
-import { useStockEntries } from '../stock-entry';
 import { useStockLevels } from '../../hooks/useStockLevels';
 import { useStockMovements } from '../../hooks/useStockMovements';
 import { useStockReconciliations } from '../../hooks/useStockReconciliations';
@@ -39,6 +38,9 @@ import type {
 } from '../../types/stock.types';
 import { formatQuantity } from '../../utility';
 import { stockEntryApi } from '../../utility/api/stock';
+import { ReconciliationWizard } from '../reconciliation';
+import { useStockEntries } from '../stock-entry';
+
 
 import { StockEntriesTable } from './StockEntriesTable';
 import { StockEntryDialog } from './StockEntryDialog';
@@ -151,9 +153,10 @@ function StatsGrid({ stats }: { stats: StatDef[] }) {
 
 interface HeaderProps {
   onNewEntry: () => void;
+  onReconciliation: () => void;
 }
 
-function StockManagementHeader({ onNewEntry }: HeaderProps) {
+function StockManagementHeader({ onNewEntry, onReconciliation }: HeaderProps) {
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
@@ -182,6 +185,10 @@ function StockManagementHeader({ onNewEntry }: HeaderProps) {
             <DropdownMenuItem onSelect={onNewEntry}>
               <FileText className="mr-2 h-4 w-4" />
               Stock Entry
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={onReconciliation}>
+              <FileText className="mr-2 h-4 w-4" />
+              Reconciliation
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -352,6 +359,7 @@ function useStockEntryActions(refetch: () => void) {
 export function StockManagement() {
   const [activeTab, setActiveTab] = React.useState<ActiveTab>('levels');
   const [stockEntryDialogOpen, setStockEntryDialogOpen] = React.useState(false);
+  const [reconciliationOpen, setReconciliationOpen] = React.useState(false);
 
   const [levelsFilters, setLevelsFilters] = React.useState({ ...DEFAULT_PAGINATION });
   const [movementsFilters, setMovementsFilters] = React.useState({ ...DEFAULT_PAGINATION });
@@ -395,6 +403,10 @@ export function StockManagement() {
     setStockEntryDialogOpen(true);
   }, [entryActions]);
 
+  const handleNewReconciliation = React.useCallback(() => {
+    setReconciliationOpen(true);
+  }, []);
+
   const handleViewOrEdit = React.useCallback(
     async (entry: StockEntry) => {
       await entryActions.handleView(entry);
@@ -411,7 +423,7 @@ export function StockManagement() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <StockManagementHeader onNewEntry={handleNewEntry} />
+      <StockManagementHeader onNewEntry={handleNewEntry} onReconciliation={handleNewReconciliation}/>
       <StatsGrid stats={activeStats} />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
@@ -443,6 +455,10 @@ export function StockManagement() {
         entry={entryActions.selectedEntry}
         onCreated={handleDialogClose}
         onUpdated={handleDialogClose} />
+
+      <ReconciliationWizard open={reconciliationOpen}
+        onOpenChange={setReconciliationOpen}
+        onCompleted={reconciliationsData.refetch} />
     </div>
   );
 }
