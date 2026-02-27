@@ -80,8 +80,29 @@ interface DiscrepancyPreviewProps {
   onReset: () => void;
 }
 
+/** Safely resolve the items array regardless of field name the API uses */
+function resolveItems(data: ReconciliationUploadResponse): ReconciliationLineItem[] {
+  return data.items ?? data.line_items ?? [];
+}
+
+/** Normalise difference value — API may use `difference` or `qty_difference` */
+function getDifference(li: ReconciliationLineItem): number {
+  return li.difference ?? li.qty_difference ?? 0;
+}
+
+function getSystemQty(li: ReconciliationLineItem): number {
+  return li.system_qty ?? li.current_qty ?? 0;
+}
+
+function getActualQty(li: ReconciliationLineItem): number {
+  return li.actual_qty ?? li.qty ?? 0;
+}
+
 function DiscrepancyPreview({ data, onReset }: DiscrepancyPreviewProps) {
-  const discrepancies = data.line_items.filter((li) => li.difference !== 0);
+  const allItems = resolveItems(data);
+  const discrepancies = allItems.filter((li) => getDifference(li) !== 0);
+  const totalItems = data.total_items ?? data.items_count ?? allItems.length;
+  const discrepancyCount = data.items_with_discrepancy ?? discrepancies.length;
 
   return (
     <div className="space-y-4">
@@ -91,10 +112,10 @@ function DiscrepancyPreview({ data, onReset }: DiscrepancyPreviewProps) {
           <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-emerald-800 dark:text-emerald-200">
-              File verified — {data.reconciliation_no}
+              File verified{data.reconciliation_no ? ` — ${data.reconciliation_no}` : ''}
             </p>
             <p className="text-sm text-emerald-700 dark:text-emerald-300 mt-0.5">
-              {data.total_items} item(s) parsed · {data.items_with_discrepancy} discrepanc{data.items_with_discrepancy === 1 ? 'y' : 'ies'} found
+              {totalItems} item(s) parsed · {discrepancyCount} discrepanc{discrepancyCount === 1 ? 'y' : 'ies'} found
             </p>
           </div>
           <button type="button"
@@ -143,20 +164,21 @@ function DiscrepancyPreview({ data, onReset }: DiscrepancyPreviewProps) {
 }
 
 function DiscrepancyRow({ item }: { item: ReconciliationLineItem }) {
-  const isPositive = item.difference > 0;
+  const diff = getDifference(item);
+  const isPositive = diff > 0;
   return (
     <tr className="border-t">
       <td className="px-4 py-2">
-        <div className="font-medium">{item.item_name}</div>
-        <div className="text-xs text-muted-foreground">{item.item_code} · {item.uom}</div>
+        <div className="font-medium">{item.item_name ?? item.item_id}</div>
+        <div className="text-xs text-muted-foreground">{item.item_code ?? ''}{item.uom ? ` · ${item.uom}` : ''}</div>
       </td>
-      <td className="text-right px-4 py-2 tabular-nums">{item.system_qty}</td>
-      <td className="text-right px-4 py-2 tabular-nums">{item.actual_qty}</td>
+      <td className="text-right px-4 py-2 tabular-nums">{getSystemQty(item)}</td>
+      <td className="text-right px-4 py-2 tabular-nums">{getActualQty(item)}</td>
       <td className={cn(
           'text-right px-4 py-2 tabular-nums font-medium',
           isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
         )}>
-        {isPositive ? '+' : ''}{item.difference}
+        {isPositive ? '+' : ''}{diff}
       </td>
     </tr>
   );
