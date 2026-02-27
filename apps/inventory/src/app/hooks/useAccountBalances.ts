@@ -28,11 +28,14 @@ export function useAccountBalances({
 
   const fetchBalances = async () => {
     if (!enabled || accountIds.length === 0) {
+      setBalances(new Map());
+      setLoading(false);
       return;
     }
 
     if (!accessToken) {
       setError('No access token available');
+      setLoading(false);
       return;
     }
 
@@ -40,7 +43,10 @@ export function useAccountBalances({
     setError(null);
 
     try {
+      console.log('Fetching balances for accounts:', accountIds);
+      
       const response = await accountApi.getBalances(accessToken, accountIds, asOfDate);
+      console.log('Balance API response:', response);
 
       // Convert array to map for easy lookup
       const balanceMap = new Map<string, AccountBalance>();
@@ -48,12 +54,16 @@ export function useAccountBalances({
         response.forEach((balance: AccountBalance) => {
           balanceMap.set(balance.account_id, balance);
         });
+      } else {
+        console.warn('Balance response is not an array:', response);
       }
 
+      console.log('Processed balances map:', balanceMap);
       setBalances(balanceMap);
     } catch (err) {
       console.error('Failed to fetch account balances:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch balances');
+      setBalances(new Map());
     } finally {
       setLoading(false);
     }

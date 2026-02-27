@@ -14,6 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@horizon-sync/ui/components/ui/alert-dialog';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useAccounts } from '../../hooks/useAccounts';
@@ -69,9 +79,19 @@ export function AccountManagement() {
     currentPageSize,
   } = useAccounts(1, 20, filters);
 
-  const { toggleAccountStatus } = useAccountActions();
+  const accountActions = useAccountActions();
+  const { 
+    toggleAccountStatus, 
+    loading: actionLoading 
+  } = accountActions;
+  
+  // Explicitly type deleteAccount to ensure TypeScript recognizes the force parameter
+  const deleteAccount: (id: string, force?: boolean) => Promise<void> = accountActions.deleteAccount;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<AccountListItem | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<AccountListItem | null>(null);
+  const [forceDelete, setForceDelete] = useState(false);
   const [tableInstance, setTableInstance] = useState<Table<AccountListItem> | null>(null);
 
   const stats = useMemo(() => {
@@ -105,6 +125,31 @@ export function AccountManagement() {
         // Error handled in hook
       }
     }
+  };
+
+  const handleDeleteAccount = (account: AccountListItem) => {
+    setAccountToDelete(account);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!accountToDelete) return;
+    
+    try {
+      await deleteAccount(accountToDelete.id, forceDelete);
+      setDeleteDialogOpen(false);
+      setAccountToDelete(null);
+      setForceDelete(false);
+      refetch();
+    } catch {
+      // Error handled in hook
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setAccountToDelete(null);
+    setForceDelete(false);
   };
 
   const handleTableReady = useCallback((table: Table<AccountListItem>) => {
@@ -230,6 +275,7 @@ export function AccountManagement() {
         hasActiveFilters={!!filters.search || filters.account_type !== 'all' || filters.status !== 'all'}
         onEdit={handleEditAccount}
         onToggleStatus={handleToggleStatus}
+        onDelete={handleDeleteAccount}
         onCreateAccount={handleCreateAccount}
         onTableReady={handleTableReady}
         serverPagination={serverPaginationConfig}
@@ -243,6 +289,42 @@ export function AccountManagement() {
         onCreated={refetch}
         onUpdated={refetch}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Account</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the account "{accountToDelete?.account_name}" ({accountToDelete?.account_code})?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex items-center space-x-2 px-6 pb-4">
+            <input
+              type="checkbox"
+              id="force-delete"
+              checked={forceDelete}
+              onChange={(e) => setForceDelete(e.target.checked)}
+              className="rounded border border-input"
+            />
+            <label htmlFor="force-delete" className="text-sm text-muted-foreground">
+              Force delete (even if account has child accounts)
+            </label>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDelete} disabled={actionLoading}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={actionLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {actionLoading ? 'Deleting...' : 'Delete Account'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
