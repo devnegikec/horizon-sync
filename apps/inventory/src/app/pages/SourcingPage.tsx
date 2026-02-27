@@ -7,12 +7,12 @@ import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { SupplierManagement } from '../components/suppliers';
+import { LandedCostManagement } from '../components/landed-costs';
 import { MaterialRequestManagement } from '../components/material-requests';
-import { RFQManagement } from '../components/rfqs';
 import { PurchaseOrderManagement } from '../components/purchase-orders';
 import { PurchaseReceiptManagement } from '../components/purchase-receipts';
-import { LandedCostManagement } from '../components/landed-costs';
+import { RFQManagement } from '../components/rfqs';
+import { SupplierManagement } from '../components/suppliers';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -45,7 +45,7 @@ export function SourcingPage() {
 
       <div className="min-h-screen bg-background">
               {/* Top Navigation Bar */}
-        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="sticky top-0 z-50 w-full border-b bg-background">
           <div className="container flex h-16 items-center px-4">
             <nav className="flex items-center gap-2">
               <NavItem icon={Truck} label="Suppliers" isActive={activeView === 'suppliers'} onClick={() => setActiveView('suppliers')} />
