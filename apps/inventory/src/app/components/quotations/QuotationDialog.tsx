@@ -228,8 +228,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
           <Separator />
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Line Items</h3>
-            <QuotationLineItemsTable
-              items={items}
+            <QuotationLineItemsTable items={items}
               onItemsChange={setItems}
               disabled={isLineItemEditingDisabled}
               currency={formData.currency}
@@ -246,8 +245,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
                   onValueChange: (v) => handleChange('discount_value', v),
                   disabled: isLineItemEditingDisabled,
                 },
-              }}
-            />
+              }}/>
           </div>
 
           <DialogFooter>

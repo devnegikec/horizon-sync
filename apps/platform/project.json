@@ -60,7 +60,7 @@
       "options": {
         "buildTarget": "platform:build",
         "hmr": true,
-        "port": 4200
+        "port": 3000
       },
       "configurations": {
         "development": {
