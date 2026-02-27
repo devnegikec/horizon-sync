@@ -36,22 +36,18 @@ export function QuotationFormFields({
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="quotation_no">Quotation #</Label>
-            <Input
-              id="quotation_no"
+            <Input id="quotation_no"
               value={formData.quotation_no}
               onChange={(e) => onFieldChange('quotation_no', e.target.value)}
               disabled={isEdit}
-              placeholder={isEdit ? '' : 'Auto-generated if left blank'}
-            />
+              placeholder={isEdit ? '' : 'Auto-generated if left blank'}/>
           </div>
           <div className="space-y-2">
             <Label htmlFor="customer_id">Customer *</Label>
-            <Select
-              value={formData.customer_id || undefined}
+            <Select value={formData.customer_id || undefined}
               onValueChange={(v) => onFieldChange('customer_id', v)}
               disabled={isEdit}
-              required
-            >
+              required>
               <SelectTrigger>
                 <SelectValue placeholder="Select customer" />
               </SelectTrigger>
@@ -69,42 +65,36 @@ export function QuotationFormFields({
         <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="quotation_date">Quotation Date *</Label>
-            <Input
-              id="quotation_date"
+            <Input id="quotation_date"
               type="date"
               value={formData.quotation_date}
               onChange={(e) => onFieldChange('quotation_date', e.target.value)}
               required
-            />
+              className="[color-scheme:light] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-70 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+              style={{ accentColor: 'hsl(var(--primary))' }}/>
           </div>
           <div className="space-y-2">
             <Label htmlFor="valid_until">Valid Until *</Label>
-            <Input
-              id="valid_until"
+            <Input id="valid_until"
               type="date"
               value={formData.valid_until}
               onChange={(e) => onFieldChange('valid_until', e.target.value)}
-              required
-            />
+              required/>
           </div>
           <div className="space-y-2">
             <Label htmlFor="currency">Currency *</Label>
-            <CurrencySelect
-              value={formData.currency}
+            <CurrencySelect value={formData.currency}
               onValueChange={(v) => onFieldChange('currency', v)}
-              disabled={isEdit}
-            />
+              disabled={isEdit}/>
           </div>
         </div>
 
         {isEdit && (
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
-            <StatusSelect
-              value={formData.status}
+            <StatusSelect value={formData.status}
               onValueChange={(v) => onFieldChange('status', v)}
-              availableStatuses={availableStatuses}
-            />
+              availableStatuses={availableStatuses}/>
           </div>
         )}
       </div>
@@ -112,13 +102,11 @@ export function QuotationFormFields({
       {/* Remarks */}
       <div className="space-y-2">
         <Label htmlFor="remarks">Remarks</Label>
-        <Textarea
-          id="remarks"
+        <Textarea id="remarks"
           value={formData.remarks}
           onChange={(e) => onFieldChange('remarks', e.target.value)}
           placeholder="Additional notes..."
-          rows={2}
-        />
+          rows={2}/>
       </div>
     </>
   );
