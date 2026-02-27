@@ -150,4 +150,42 @@ export const stockReconciliationApi = {
     apiRequest(`/stock-reconciliations/${id}`, accessToken, {
       method: 'DELETE',
     }),
+
+  /** GET /stock-reconciliations/template?warehouse_id={uuid} — download CSV */
+  downloadTemplate: async (accessToken: string, warehouseId: string): Promise<Blob> => {
+    const { buildUrl } = await import('./core');
+    const url = buildUrl('/stock-reconciliations/template', { warehouse_id: warehouseId });
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `HTTP ${response.status}`);
+    }
+    return response.blob();
+  },
+
+  /** POST /stock-reconciliations/upload — multipart form (warehouse_id + CSV) */
+  upload: async (accessToken: string, warehouseId: string, file: File): Promise<unknown> => {
+    const { buildUrl } = await import('./core');
+    const formData = new FormData();
+    formData.append('warehouse_id', warehouseId);
+    formData.append('file', file);
+    const response = await fetch(buildUrl('/stock-reconciliations/upload'), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: formData,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `HTTP ${response.status}`);
+    }
+    return response.json();
+  },
+
+  /** POST /stock-reconciliations/{id}/confirm — commit adjustments */
+  confirm: (accessToken: string, id: string) =>
+    apiRequest(`/stock-reconciliations/${id}/confirm`, accessToken, {
+      method: 'POST',
+    }),
 };

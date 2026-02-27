@@ -26,21 +26,17 @@ function WarehouseCard({ warehouse, isSelected, onSelect }: WarehouseCardProps) 
     .join(', ');
 
   return (
-    <button
-      type="button"
+    <button type="button"
       onClick={onSelect}
       className={cn(
         'w-full text-left rounded-lg border-2 p-4 transition-all hover:border-primary/50 hover:bg-accent',
         isSelected ? 'border-primary bg-primary/5' : 'border-border bg-card',
-      )}
-    >
+      )}>
       <div className="flex items-start gap-3">
-        <div
-          className={cn(
+        <div className={cn(
             'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
             isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
-          )}
-        >
+          )}>
           <Building2 className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
@@ -109,15 +105,13 @@ export function StepSelectWarehouse({
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search warehouses..."
+        <Input placeholder="Search warehouses..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+          className="pl-9"/>
       </div>
 
-      <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+      <div className="overflow-y-auto space-y-2 pr-1" style={{ maxHeight: 'calc(80vh - 280px)' }}>
         {loading && (
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -138,12 +132,10 @@ export function StepSelectWarehouse({
 
         {!loading &&
           filtered.map((warehouse) => (
-            <WarehouseCard
-              key={warehouse.id}
+            <WarehouseCard key={warehouse.id}
               warehouse={warehouse}
               isSelected={selectedWarehouseId === warehouse.id}
-              onSelect={() => onSelect(warehouse.id, warehouse.name)}
-            />
+              onSelect={() => onSelect(warehouse.id, warehouse.name)}/>
           ))}
       </div>
 

@@ -132,7 +132,7 @@ export function ReconciliationWizard({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>Stock Reconciliation</DialogTitle>
         </DialogHeader>
@@ -154,6 +154,7 @@ export function ReconciliationWizard({
 
         {currentStep === 3 && (
           <StepUploadVerify warehouseName={wizardState.selectedWarehouseName}
+            warehouseId={wizardState.selectedWarehouseId}
             onBack={handleBack}
             onFinish={handleFinish}/>
         )}

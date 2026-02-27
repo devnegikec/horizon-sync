@@ -1,8 +1,10 @@
 import * as React from 'react';
 
-import { Download, FileSpreadsheet, Info } from 'lucide-react';
+import { Download, FileSpreadsheet, Info, Loader2 } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
+
+import { useDownloadReconciliationTemplate } from '../../hooks/useReconciliation';
 
 /* ------------------------------------------------------------------ */
 /*  Step component                                                     */
@@ -17,27 +19,18 @@ interface StepTemplateDownloadProps {
 
 export function StepTemplateDownload({
   warehouseName,
+  warehouseId,
   onNext,
   onBack,
 }: StepTemplateDownloadProps) {
   const [downloaded, setDownloaded] = React.useState(false);
+  const downloadMutation = useDownloadReconciliationTemplate();
 
   const handleDownload = () => {
-    // Generate a minimal CSV template with headers
-    const csvContent = [
-      'Item Code,Item Name,UOM,System Count,Physical Count,Difference,Notes',
-      '# Fill in the Physical Count column with your actual counted quantities',
-      '# Do not modify Item Code, Item Name, UOM, or System Count columns',
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `stock-reconciliation-${warehouseName.replace(/\s+/g, '-').toLowerCase()}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-    setDownloaded(true);
+    downloadMutation.mutate(
+      { warehouseId, warehouseName },
+      { onSuccess: () => setDownloaded(true) },
+    );
   };
 
   return (
@@ -58,9 +51,13 @@ export function StepTemplateDownload({
           <p className="font-semibold">Stock Reconciliation Template</p>
           <p className="text-sm text-muted-foreground mt-1">{warehouseName} · CSV format</p>
         </div>
-        <Button onClick={handleDownload} className="gap-2" size="lg">
-          <Download className="h-4 w-4" />
-          Download Current Stock Template
+        <Button onClick={handleDownload} className="gap-2" size="lg" disabled={downloadMutation.isPending}>
+          {downloadMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          {downloadMutation.isPending ? 'Downloading...' : 'Download Current Stock Template'}
         </Button>
         {downloaded && (
           <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
