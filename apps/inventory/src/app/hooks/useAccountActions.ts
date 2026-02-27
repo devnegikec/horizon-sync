@@ -3,7 +3,14 @@ import { useUserStore } from '@horizon-sync/store';
 import { accountApi } from '../utility/api/accounts';
 import type { CreateAccountPayload, UpdateAccountPayload } from '../types/account.types';
 
-export function useAccountActions() {
+export function useAccountActions(): {
+  createAccount: (data: CreateAccountPayload) => Promise<any>;
+  updateAccount: (id: string, data: UpdateAccountPayload) => Promise<any>;
+  deleteAccount: (id: string, force?: boolean) => Promise<void>;
+  toggleAccountStatus: (id: string, isActive: boolean) => Promise<void>;
+  loading: boolean;
+  error: string | null;
+} {
   const { accessToken } = useUserStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +53,7 @@ export function useAccountActions() {
     }
   };
 
-  const deleteAccount = async (id: string) => {
+  const deleteAccount = async (id: string, force = false) => {
     if (!accessToken) {
       throw new Error('No access token available');
     }
@@ -54,7 +61,7 @@ export function useAccountActions() {
     try {
       setLoading(true);
       setError(null);
-      await accountApi.delete(accessToken, id);
+      await accountApi.delete(accessToken, id, force);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete account';
       setError(errorMessage);
