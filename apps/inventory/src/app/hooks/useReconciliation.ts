@@ -57,9 +57,9 @@ export function useUploadReconciliation() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ warehouseId, file }: { warehouseId: string; file: File }) => {
+    mutationFn: async ({ warehouseId, file, reconciliationId }: { warehouseId: string; file: File; reconciliationId?: string }) => {
       if (!accessToken) throw new Error('Not authenticated');
-      const result = await stockReconciliationApi.upload(accessToken, warehouseId, file);
+      const result = await stockReconciliationApi.upload(accessToken, warehouseId, file, reconciliationId);
       return result as ReconciliationUploadResponse;
     },
     onError: (err) => {

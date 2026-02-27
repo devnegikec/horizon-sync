@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Building2, CheckCircle2, Download, Upload } from 'lucide-react';
+import { Building2, CheckCircle2, ClipboardList, Download, Upload } from 'lucide-react';
 
 import {
   Dialog,
@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@horizon-sync/ui/components/ui/dialog';
 
+import { StepChooseReconciliation } from './StepChooseReconciliation';
 import { StepSelectWarehouse } from './StepSelectWarehouse';
 import { StepTemplateDownload } from './StepTemplateDownload';
 import { StepUploadVerify } from './StepUploadVerify';
@@ -17,11 +18,13 @@ import { StepUploadVerify } from './StepUploadVerify';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-export type WizardStep = 1 | 2 | 3;
+export type WizardStep = 1 | 2 | 3 | 4;
 
 export interface WizardState {
   selectedWarehouseId: string;
   selectedWarehouseName: string;
+  /** null = "Create New", string = existing draft id */
+  selectedReconciliationId: string | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -29,9 +32,10 @@ export interface WizardState {
 /* ------------------------------------------------------------------ */
 
 const STEPS = [
-  { id: 1, label: 'Select Warehouse', icon: Building2 },
-  { id: 2, label: 'Template Download', icon: Download },
-  { id: 3, label: 'Upload & Verify', icon: Upload },
+  { id: 1, label: 'Warehouse', icon: Building2 },
+  { id: 2, label: 'Reconciliation', icon: ClipboardList },
+  { id: 3, label: 'Template', icon: Download },
+  { id: 4, label: 'Upload & Verify', icon: Upload },
 ] as const;
 
 /* ------------------------------------------------------------------ */
@@ -103,27 +107,26 @@ export function ReconciliationWizard({
   const [wizardState, setWizardState] = React.useState<WizardState>({
     selectedWarehouseId: '',
     selectedWarehouseName: '',
+    selectedReconciliationId: null,
   });
 
   // Reset on open
   React.useEffect(() => {
     if (open) {
       setCurrentStep(1);
-      setWizardState({ selectedWarehouseId: '', selectedWarehouseName: '' });
+      setWizardState({ selectedWarehouseId: '', selectedWarehouseName: '', selectedReconciliationId: null });
     }
   }, [open]);
 
   const handleWarehouseSelected = (id: string, name: string) => {
-    setWizardState({ selectedWarehouseId: id, selectedWarehouseName: name });
+    setWizardState((s) => ({ ...s, selectedWarehouseId: id, selectedWarehouseName: name }));
   };
 
-  const handleNext = () => {
-    if (currentStep < 3) setCurrentStep((s) => (s + 1) as WizardStep);
+  const handleReconciliationSelected = (id: string | null) => {
+    setWizardState((s) => ({ ...s, selectedReconciliationId: id }));
   };
 
-  const handleBack = () => {
-    if (currentStep > 1) setCurrentStep((s) => (s - 1) as WizardStep);
-  };
+  const goTo = (step: WizardStep) => setCurrentStep(step);
 
   const handleFinish = () => {
     onOpenChange(false);
@@ -142,20 +145,31 @@ export function ReconciliationWizard({
         {currentStep === 1 && (
           <StepSelectWarehouse selectedWarehouseId={wizardState.selectedWarehouseId}
             onSelect={handleWarehouseSelected}
-            onNext={handleNext}/>
+            onNext={() => goTo(2)}/>
         )}
 
         {currentStep === 2 && (
-          <StepTemplateDownload warehouseName={wizardState.selectedWarehouseName}
-            warehouseId={wizardState.selectedWarehouseId}
-            onNext={handleNext}
-            onBack={handleBack}/>
+          <StepChooseReconciliation warehouseId={wizardState.selectedWarehouseId}
+            warehouseName={wizardState.selectedWarehouseName}
+            selectedReconciliationId={wizardState.selectedReconciliationId}
+            onSelect={handleReconciliationSelected}
+            onNext={() => goTo(3)}
+            onBack={() => goTo(1)}/>
         )}
 
         {currentStep === 3 && (
+          <StepTemplateDownload warehouseName={wizardState.selectedWarehouseName}
+            warehouseId={wizardState.selectedWarehouseId}
+            onNext={() => goTo(4)}
+            onSkip={() => goTo(4)}
+            onBack={() => goTo(2)}/>
+        )}
+
+        {currentStep === 4 && (
           <StepUploadVerify warehouseName={wizardState.selectedWarehouseName}
             warehouseId={wizardState.selectedWarehouseId}
-            onBack={handleBack}
+            reconciliationId={wizardState.selectedReconciliationId}
+            onBack={() => goTo(3)}
             onFinish={handleFinish}/>
         )}
       </DialogContent>

@@ -165,12 +165,15 @@ export const stockReconciliationApi = {
     return response.blob();
   },
 
-  /** POST /stock-reconciliations/upload — multipart form (warehouse_id + CSV) */
-  upload: async (accessToken: string, warehouseId: string, file: File): Promise<unknown> => {
+  /** POST /stock-reconciliations/upload — multipart form (warehouse_id + CSV + optional reconciliation_id) */
+  upload: async (accessToken: string, warehouseId: string, file: File, reconciliationId?: string): Promise<unknown> => {
     const { buildUrl } = await import('./core');
     const formData = new FormData();
     formData.append('warehouse_id', warehouseId);
     formData.append('file', file);
+    if (reconciliationId) {
+      formData.append('reconciliation_id', reconciliationId);
+    }
     const response = await fetch(buildUrl('/stock-reconciliations/upload'), {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },

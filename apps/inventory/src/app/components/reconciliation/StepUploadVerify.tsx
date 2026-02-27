@@ -191,11 +191,13 @@ function DiscrepancyRow({ item }: { item: ReconciliationLineItem }) {
 interface StepUploadVerifyProps {
   warehouseName: string;
   warehouseId: string;
+  /** null = create new reconciliation on upload, string = use existing draft */
+  reconciliationId: string | null;
   onBack: () => void;
   onFinish: () => void;
 }
 
-export function StepUploadVerify({ warehouseName, warehouseId, onBack, onFinish }: StepUploadVerifyProps) {
+export function StepUploadVerify({ warehouseName, warehouseId, reconciliationId, onBack, onFinish }: StepUploadVerifyProps) {
   const uploadMutation = useUploadReconciliation();
   const confirmMutation = useConfirmReconciliation();
 
@@ -204,7 +206,7 @@ export function StepUploadVerify({ warehouseName, warehouseId, onBack, onFinish 
   const handleFileSelected = (file: File) => {
     setPreview(null);
     uploadMutation.mutate(
-      { warehouseId, file },
+      { warehouseId, file, reconciliationId: reconciliationId ?? undefined },
       { onSuccess: (data) => setPreview(data) },
     );
   };

@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Download, FileSpreadsheet, Info, Loader2 } from 'lucide-react';
+import { Download, FileSpreadsheet, Info, Loader2, SkipForward } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 
@@ -14,6 +14,7 @@ interface StepTemplateDownloadProps {
   warehouseName: string;
   warehouseId: string;
   onNext: () => void;
+  onSkip: () => void;
   onBack: () => void;
 }
 
@@ -21,6 +22,7 @@ export function StepTemplateDownload({
   warehouseName,
   warehouseId,
   onNext,
+  onSkip,
   onBack,
 }: StepTemplateDownloadProps) {
   const [downloaded, setDownloaded] = React.useState(false);
@@ -64,6 +66,14 @@ export function StepTemplateDownload({
             ✓ Template downloaded
           </p>
         )}
+
+        {/* Skip link */}
+        <button type="button"
+          onClick={onSkip}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <SkipForward className="h-3.5 w-3.5" />
+          Already have a template
+        </button>
       </div>
 
       {/* Instruction note */}
