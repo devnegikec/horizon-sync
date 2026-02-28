@@ -1,3 +1,5 @@
+export { CustomerAddressBlock } from './CustomerAddressBlock';
+export type { CustomerAddressData } from './CustomerAddressBlock';
 export { CurrencySelect } from './CurrencySelect';
 export { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 export { EditableLineItemsTable } from './EditableLineItemsTable';

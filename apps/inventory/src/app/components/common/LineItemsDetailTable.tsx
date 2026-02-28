@@ -15,8 +15,6 @@ export interface LineItemsDetailTableProps<T> {
   getItemTaxInfo?: (item: T) => { template_name: string; template_code: string; breakup: Array<{ rule_name: string; tax_type: string; rate: number; is_compound: boolean }> } | null | undefined;
   getItemTaxAmount?: (item: T) => number;
   getItemTotalAmount?: (item: T) => number;
-  getItemBilledQty?: (item: T) => number;
-  getItemDeliveredQty?: (item: T) => number;
   /** When provided, a Discount column is shown for each line item */
   getItemDiscountAmount?: (item: T) => number;
 }
@@ -36,8 +34,6 @@ export function LineItemsDetailTable<T>({
   getItemTaxInfo = (item: any) => item.tax_info,
   getItemTaxAmount = (item: any) => Number(item.tax_amount || 0),
   getItemTotalAmount = (item: any) => Number(item.total_amount || item.amount || 0),
-  getItemBilledQty = (item: any) => Number(item.billed_qty || 0),
-  getItemDeliveredQty = (item: any) => Number(item.delivered_qty || 0),
   getItemDiscountAmount,
 }: LineItemsDetailTableProps<T>) {
   const showDiscount = getItemDiscountAmount != null;
@@ -60,17 +56,11 @@ export function LineItemsDetailTable<T>({
               {showDiscount && <th className="px-4 py-3 text-right text-sm font-medium">Discount</th>}
               {hasTaxInfo && <th className="px-4 py-3 text-right text-sm font-medium">Tax</th>}
               {hasTaxInfo && <th className="px-4 py-3 text-right text-sm font-medium">Total</th>}
-              {showBilledDelivered && <th className="px-4 py-3 text-right text-sm font-medium">Billed</th>}
-              {showBilledDelivered && <th className="px-4 py-3 text-right text-sm font-medium">Delivered</th>}
             </tr>
           </thead>
           <tbody className="divide-y">
             {items.map((item, index) => {
               const qty = getItemQty(item);
-              const billedQty = getItemBilledQty(item);
-              const deliveredQty = getItemDeliveredQty(item);
-              const billedPct = qty > 0 ? Math.min((billedQty / qty) * 100, 100) : 0;
-              const deliveredPct = qty > 0 ? Math.min((deliveredQty / qty) * 100, 100) : 0;
               const taxInfo = getItemTaxInfo(item);
               const taxAmount = getItemTaxAmount(item);
               const totalAmount = getItemTotalAmount(item);
@@ -115,26 +105,6 @@ export function LineItemsDetailTable<T>({
                   )}
                   {hasTaxInfo && (
                     <td className="px-4 py-3 text-sm text-right font-semibold">{currencySymbol} {totalAmount.toFixed(2)}</td>
-                  )}
-                  {showBilledDelivered && (
-                    <td className="px-4 py-3 text-sm text-right">
-                      <div className="flex flex-col items-end gap-1">
-                        <span>{billedQty} / {qty}</span>
-                        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-500 rounded-full" style={{ width: `${billedPct}%` }} />
-                        </div>
-                      </div>
-                    </td>
-                  )}
-                  {showBilledDelivered && (
-                    <td className="px-4 py-3 text-sm text-right">
-                      <div className="flex flex-col items-end gap-1">
-                        <span>{deliveredQty} / {qty}</span>
-                        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-green-500 rounded-full" style={{ width: `${deliveredPct}%` }} />
-                        </div>
-                      </div>
-                    </td>
                   )}
                 </tr>
               );

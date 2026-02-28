@@ -9,9 +9,8 @@ import { usePDFGeneration } from '../../hooks/usePDFGeneration';
 import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { SalesOrder } from '../../types/sales-order.types';
 import { convertSalesOrderToPDFData } from '../../utils/pdf/salesOrderToPDF';
-import { EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
+import { CustomerAddressBlock, EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
 import { StatusBadge } from '../quotations/StatusBadge';
-import { Console } from 'console';
 
 interface SalesOrderDetailDialogProps {
   open: boolean;
@@ -136,7 +135,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-3">
@@ -154,10 +153,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                 <p className="text-sm text-muted-foreground">Sales Order Number</p>
                 <p className="text-lg font-semibold">{salesOrder.sales_order_no}</p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Customer</p>
-                <p className="text-lg font-semibold">{salesOrder.customer_name || salesOrder.customer_id}</p>
-              </div>
+              <CustomerAddressBlock customerName={salesOrder.customer_name} customer={salesOrder.customer} />
             </div>
 
             {/* Dates and Currency */}
@@ -231,8 +227,6 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                         <td className="px-4 py-3" />
                         {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTax.toFixed(2)}</td>}
                         {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTotal.toFixed(2)}</td>}
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
                       </tr>
                       <tr>
                         <td className="px-4 py-3" />
@@ -254,8 +248,6 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                             </td>
                           </>
                         )}
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
                       </tr>
                       <tr className="border-t-2 font-semibold">
                         <td className="px-4 py-3" />
@@ -273,8 +265,6 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                             <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
                           </>
                         )}
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
                       </tr>
                     </>
                   );

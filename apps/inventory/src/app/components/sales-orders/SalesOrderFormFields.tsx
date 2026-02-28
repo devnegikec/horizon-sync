@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@horizon-sync/ui/components';
+import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, DatePicker } from '@horizon-sync/ui/components';
 
 import type { SalesOrderStatus } from '../../types/sales-order.types';
 import { CurrencySelect, StatusSelect } from '../common';
@@ -38,22 +38,18 @@ export function SalesOrderFormFields({
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="sales_order_no">Sales Order #</Label>
-            <Input
-              id="sales_order_no"
+            <Input id="sales_order_no"
               value={formData.sales_order_no}
-              onChange={(e) => onFieldChange('sales_order_no', e.target.value)}
-              disabled={isEdit}
-              placeholder={isEdit ? '' : 'Auto-generated if left blank'}
-            />
+              disabled
+              placeholder="Auto-generated"
+              className="cursor-not-allowed opacity-60"/>
           </div>
           <div className="space-y-2">
             <Label htmlFor="customer_id">Customer *</Label>
-            <Select
-              value={formData.customer_id}
+            <Select value={formData.customer_id}
               onValueChange={(v) => onFieldChange('customer_id', v)}
               disabled={isEdit}
-              required
-            >
+              required>
               <SelectTrigger>
                 <SelectValue placeholder="Select customer" />
               </SelectTrigger>
@@ -71,42 +67,33 @@ export function SalesOrderFormFields({
         <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="order_date">Order Date *</Label>
-            <Input
-              id="order_date"
-              type="date"
+            <DatePicker id="order_date"
               value={formData.order_date}
-              onChange={(e) => onFieldChange('order_date', e.target.value)}
-              required
-            />
+              onChange={(v) => onFieldChange('order_date', v)}
+              required/>
           </div>
           <div className="space-y-2">
             <Label htmlFor="delivery_date">Delivery Date</Label>
-            <Input
-              id="delivery_date"
-              type="date"
+            <DatePicker id="delivery_date"
               value={formData.delivery_date}
-              onChange={(e) => onFieldChange('delivery_date', e.target.value)}
-            />
+              onChange={(v) => onFieldChange('delivery_date', v)}
+              required/>
           </div>
           <div className="space-y-2">
             <Label htmlFor="currency">Currency *</Label>
-            <CurrencySelect
-              value={formData.currency}
+            <CurrencySelect value={formData.currency}
               onValueChange={(v) => onFieldChange('currency', v)}
-              disabled={isEdit}
-            />
+              disabled={isEdit}/>
           </div>
         </div>
 
         {isEdit && (
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
-            <StatusSelect
-              value={formData.status}
+            <StatusSelect value={formData.status}
               onValueChange={(v) => onFieldChange('status', v)}
               availableStatuses={availableStatuses}
-              statusLabels={statusLabels}
-            />
+              statusLabels={statusLabels}/>
           </div>
         )}
       </div>
@@ -114,13 +101,11 @@ export function SalesOrderFormFields({
       {/* Remarks */}
       <div className="space-y-2">
         <Label htmlFor="remarks">Remarks</Label>
-        <Textarea
-          id="remarks"
+        <Textarea id="remarks"
           value={formData.remarks}
           onChange={(e) => onFieldChange('remarks', e.target.value)}
           placeholder="Additional notes..."
-          rows={2}
-        />
+          rows={2}/>
       </div>
     </>
   );

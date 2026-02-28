@@ -37,10 +37,10 @@ export function QuotationFormFields({
           <div className="space-y-2">
             <Label htmlFor="quotation_no">Quotation #</Label>
             <Input id="quotation_no"
-              value={formData.quotation_no}
-              onChange={(e) => onFieldChange('quotation_no', e.target.value)}
-              disabled={isEdit}
-              placeholder={isEdit ? '' : 'Auto-generated if left blank'}/>
+                value={formData.quotation_no}
+                disabled
+                placeholder="Auto-generated"
+                className="cursor-not-allowed opacity-60"/>
           </div>
           <div className="space-y-2">
             <Label htmlFor="customer_id">Customer *</Label>

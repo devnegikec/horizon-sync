@@ -47,6 +47,9 @@ export interface SalesOrderLineItem {
 }
 
 export interface CustomerDetails {
+  id?: string;
+  name?: string;
+  code?: string;
   customer_name?: string;
   customer_code?: string;
   email?: string;
