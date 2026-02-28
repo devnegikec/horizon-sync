@@ -31,6 +31,7 @@ import { useStockMovements } from '../../hooks/useStockMovements';
 import { useStockReconciliations } from '../../hooks/useStockReconciliations';
 import type {
   StockEntry,
+  StockReconciliation,
   StockLevelStats,
   StockMovementStats,
   StockEntryStats,
@@ -38,7 +39,7 @@ import type {
 } from '../../types/stock.types';
 import { formatQuantity } from '../../utility';
 import { stockEntryApi } from '../../utility/api/stock';
-import { ReconciliationWizard } from '../reconciliation';
+import { ReconciliationWizard, ReconciliationDetailDialog } from '../reconciliation';
 import { useStockEntries } from '../stock-entry';
 
 
@@ -178,16 +179,12 @@ function StockManagementHeader({ onNewEntry, onReconciliation }: HeaderProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>
-              <ArrowRightLeft className="mr-2 h-4 w-4" />
-              Record Movement
-            </DropdownMenuItem>
             <DropdownMenuItem onSelect={onNewEntry}>
               <FileText className="mr-2 h-4 w-4" />
               Stock Entry
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onReconciliation}>
-              <FileText className="mr-2 h-4 w-4" />
+              <ArrowRightLeft className="mr-2 h-4 w-4" />
               Reconciliation
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -217,6 +214,7 @@ interface TabPanelsProps {
   onViewEntry?: (entry: StockEntry) => void;
   onEditEntry?: (entry: StockEntry) => void;
   onDeleteEntry?: (entry: StockEntry) => void;
+  onViewReconciliation?: (reconciliation: StockReconciliation) => void;
 }
 
 function TabPanels({
@@ -235,6 +233,7 @@ function TabPanels({
   onViewEntry,
   onEditEntry,
   onDeleteEntry,
+  onViewReconciliation,
 }: TabPanelsProps) {
   return (
     <>
@@ -282,6 +281,7 @@ function TabPanels({
           loading={reconciliationsData.loading}
           error={reconciliationsData.error}
           hasActiveFilters={false}
+          onView={onViewReconciliation}
           serverPagination={{
             pageIndex: reconciliationsFilters.page - 1,
             pageSize: reconciliationsFilters.pageSize,
@@ -360,6 +360,8 @@ export function StockManagement() {
   const [activeTab, setActiveTab] = React.useState<ActiveTab>('levels');
   const [stockEntryDialogOpen, setStockEntryDialogOpen] = React.useState(false);
   const [reconciliationOpen, setReconciliationOpen] = React.useState(false);
+  const [selectedReconciliation, setSelectedReconciliation] = React.useState<StockReconciliation | null>(null);
+  const [reconciliationDetailOpen, setReconciliationDetailOpen] = React.useState(false);
 
   const [levelsFilters, setLevelsFilters] = React.useState({ ...DEFAULT_PAGINATION });
   const [movementsFilters, setMovementsFilters] = React.useState({ ...DEFAULT_PAGINATION });
@@ -415,6 +417,14 @@ export function StockManagement() {
     [entryActions],
   );
 
+  const handleViewReconciliation = React.useCallback(
+    (reconciliation: StockReconciliation) => {
+      setSelectedReconciliation(reconciliation);
+      setReconciliationDetailOpen(true);
+    },
+    [],
+  );
+
   const handleDialogClose = React.useCallback(() => {
     setStockEntryDialogOpen(false);
     entryActions.clearSelected();
@@ -447,7 +457,8 @@ export function StockManagement() {
           onReconciliationsPagination={makePaginationHandler(setReconciliationsFilters)}
           onViewEntry={handleViewOrEdit}
           onEditEntry={handleViewOrEdit}
-          onDeleteEntry={entryActions.handleDelete} />
+          onDeleteEntry={entryActions.handleDelete}
+          onViewReconciliation={handleViewReconciliation} />
       </Tabs>
 
       <StockEntryDialog open={stockEntryDialogOpen}
@@ -459,6 +470,10 @@ export function StockManagement() {
       <ReconciliationWizard open={reconciliationOpen}
         onOpenChange={setReconciliationOpen}
         onCompleted={reconciliationsData.refetch} />
+
+      <ReconciliationDetailDialog open={reconciliationDetailOpen}
+        onOpenChange={setReconciliationDetailOpen}
+        reconciliation={selectedReconciliation} />
     </div>
   );
 }
