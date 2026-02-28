@@ -98,11 +98,16 @@ export function SalesOrdersTable({
         accessorKey: 'customer_name',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
         cell: ({ row }) => {
-          const customerName = row.original.customer_name;
+          const so = row.original;
+          const customerName = so.customer?.name || so.customer_name;
+          const customerCode = so.customer?.code || so.customer?.customer_code;
           return customerName ? (
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
-              <p className="font-medium text-sm">{customerName}</p>
+              <div>
+                <p className="font-medium text-sm">{customerName}</p>
+                {customerCode && <p className="text-xs text-muted-foreground">{customerCode}</p>}
+              </div>
             </div>
           ) : (
             <span className="text-muted-foreground">—</span>
