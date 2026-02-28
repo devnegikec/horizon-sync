@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import { Console } from 'console';
+
 import { Edit, FileText, ShoppingCart, Receipt, ExternalLink, Mail, Download, Eye, Truck } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
@@ -11,7 +13,6 @@ import type { SalesOrder } from '../../types/sales-order.types';
 import { convertSalesOrderToPDFData } from '../../utils/pdf/salesOrderToPDF';
 import { EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
 import { StatusBadge } from '../quotations/StatusBadge';
-import { Console } from 'console';
 
 interface SalesOrderDetailDialogProps {
   open: boolean;
@@ -136,7 +137,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-3">

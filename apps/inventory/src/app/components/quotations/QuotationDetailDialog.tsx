@@ -146,8 +146,7 @@ function QuotationLineItemsSection({ quotation, currencySymbol }: { quotation: Q
   return (
     <div>
       <h3 className="text-lg font-medium mb-4">Line Items</h3>
-      <LineItemsDetailTable
-        items={lineItems}
+      <LineItemsDetailTable items={lineItems}
         currencySymbol={currencySymbol}
         hasTaxInfo
         getItemSKU={(item) => item.item_code}
@@ -155,8 +154,7 @@ function QuotationLineItemsSection({ quotation, currencySymbol }: { quotation: Q
         getItemDiscountAmount={(item) => Number(item.discount_amount ?? 0)}
         renderFooter={(items) => (
           <LineItemsFooterRows items={items} quotation={quotation} currencySymbol={currencySymbol} />
-        )}
-      />
+        )}/>
     </div>
   );
 }
@@ -237,7 +235,7 @@ function QuotationDialogBody({ quotation, onOpenChange, onEdit, onConvert }: Quo
 
   return (
     <>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-3">

@@ -4,18 +4,18 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
+import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 
 import { environment } from '../../../environments/environment';
 import type { CustomerResponse } from '../../types/customer.types';
 import type { QuotationLineItemCreate } from '../../types/quotation.types';
 import type { SalesOrder, SalesOrderCreate, SalesOrderItemCreate, SalesOrderStatus, SalesOrderUpdate } from '../../types/sales-order.types';
-
-type SalesOrderFormItem = QuotationLineItemCreate & Partial<Pick<SalesOrderItemCreate, 'discount_type' | 'discount_value' | 'discount_amount'>>;
 import { customerApi } from '../../utility/api/customers';
 import { EditableLineItemsTable, type ItemData } from '../common';
 
 import { SalesOrderFormFields } from './SalesOrderFormFields';
-import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
+
+type SalesOrderFormItem = QuotationLineItemCreate & Partial<Pick<SalesOrderItemCreate, 'discount_type' | 'discount_value' | 'discount_amount'>>;
 
 function computeDocumentDiscount(subtotal: number, discountType: string, discountValue: number): number {
   if (!discountValue || discountValue <= 0) return 0;
@@ -262,33 +262,29 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Sales Order' : 'Create Sales Order'}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <SalesOrderFormFields
-            formData={formData}
+          <SalesOrderFormFields formData={formData}
             customers={customers}
             isEdit={isEdit}
             availableStatuses={availableStatuses}
             statusLabels={statusLabels}
-            onFieldChange={handleChange}
-          />
+            onFieldChange={handleChange}/>
 
           {/* Line Items */}
           <Separator />
-          <EditableLineItemsTable
-            items={items}
+          <EditableLineItemsTable items={items}
             onItemsChange={setItems}
             disabled={isLineItemEditingDisabled}
             initialItemsData={initialItemsData}
             searchItems={searchItems}
             emptyItem={emptyItem}
             showTax={true}
-            showItemGroup={true}
-          />
+            showItemGroup={true}/>
 
           {/* Fulfillment Info (edit mode only) */}
           {isEdit && salesOrder?.items && salesOrder.items.some(i => Number(i.billed_qty) > 0 || Number(i.delivered_qty) > 0) && (
@@ -334,11 +330,9 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
               <div className="flex justify-between items-center gap-4">
                 <span className="text-sm">Discount:</span>
                 <div className="flex items-center gap-2">
-                  <Select
-                    value={formData.discount_type}
+                  <Select value={formData.discount_type}
                     onValueChange={(v) => handleChange('discount_type', v)}
-                    disabled={isLineItemEditingDisabled}
-                  >
+                    disabled={isLineItemEditingDisabled}>
                     <SelectTrigger className="w-28">
                       <SelectValue />
                     </SelectTrigger>
@@ -347,16 +341,14 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
                       <SelectItem value="flat">Flat</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Input
-                    type="number"
+                  <Input type="number"
                     min={0}
                     step={formData.discount_type === 'percentage' ? 1 : 0.01}
                     className="w-24 text-right"
                     value={formData.discount_value}
                     onChange={(e) => handleChange('discount_value', e.target.value)}
                     disabled={isLineItemEditingDisabled}
-                    placeholder={formData.discount_type === 'percentage' ? '%' : 'Amount'}
-                  />
+                    placeholder={formData.discount_type === 'percentage' ? '%' : 'Amount'}/>
                 </div>
                 <span className="text-sm text-muted-foreground w-24 text-right">
                   −{formData.currency} {totalDiscountAmount.toFixed(2)}
