@@ -232,8 +232,6 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                         <td className="px-4 py-3" />
                         {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTax.toFixed(2)}</td>}
                         {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTotal.toFixed(2)}</td>}
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
                       </tr>
                       <tr>
                         <td className="px-4 py-3" />
@@ -255,8 +253,6 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                             </td>
                           </>
                         )}
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
                       </tr>
                       <tr className="border-t-2 font-semibold">
                         <td className="px-4 py-3" />
@@ -274,8 +270,6 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                             <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
                           </>
                         )}
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
                       </tr>
                     </>
                   );

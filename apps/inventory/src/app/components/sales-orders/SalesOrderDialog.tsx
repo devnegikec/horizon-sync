@@ -81,12 +81,10 @@ function getAvailableStatuses(isEdit: boolean, currentStatus: SalesOrderStatus):
 
 function mapSalesOrderLineItems(soItems: SalesOrder['items']): SalesOrderFormItem[] {
   return soItems.map((item): SalesOrderFormItem => ({
-    item_id: item.item_id,
+    ...item as unknown as SalesOrderFormItem,
     qty: Number(item.qty),
-    uom: item.uom,
     rate: Number(item.rate),
     amount: Number(item.amount),
-    sort_order: item.sort_order,
     discount_type: item.discount_type ?? 'percentage',
     discount_value: Number(item.discount_value ?? 0),
     discount_amount: Number(item.discount_amount ?? 0),

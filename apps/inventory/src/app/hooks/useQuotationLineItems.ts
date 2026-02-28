@@ -13,8 +13,8 @@ export function useQuotationLineItems(
   const accessToken = useUserStore((s) => s.accessToken);
   const itemsCacheRef = React.useRef<Map<string, QuotationLineItem>>(new Map());
 
-  // Seed cache from existing items (edit mode — items carry full QuotationLineItem fields at runtime)
-  React.useEffect(() => {
+  // Seed cache synchronously from items that already carry item_name (edit mode — API returns enriched data)
+  React.useMemo(() => {
     items.forEach((item) => {
       if (item.item_id && !itemsCacheRef.current.has(item.item_id)) {
         const full = item as unknown as QuotationLineItem;
