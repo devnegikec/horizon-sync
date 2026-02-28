@@ -201,24 +201,70 @@ function DialogFooterButtons({ quotation, pdfLoading, onClose, onPreview, onDown
   );
 }
 
-// ── Dialog body (rendered only when quotation is non-null) ────────────────────
+// ── Detail content (inside DialogContent) ─────────────────────────────────────
 
-interface QuotationDialogBodyProps {
-  quotation: Quotation;
-  onOpenChange: (open: boolean) => void;
-  onEdit: (quotation: Quotation) => void;
-  onConvert: (quotation: Quotation) => void;
+function QuotationDetailContent({ quotation, currencySymbol }: { quotation: Quotation; currencySymbol: string }) {
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
+          <p className="text-sm text-muted-foreground">Quotation Number</p>
+          <p className="text-lg font-semibold">{quotation.quotation_no}</p>
+        </div>
+        <CustomerAddressBlock quotation={quotation} />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <div>
+          <p className="text-sm text-muted-foreground">Quotation Date</p>
+          <p className="font-medium">{formatDate(quotation.quotation_date)}</p>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">Valid Until</p>
+          <p className="font-medium">{formatDate(quotation.valid_until)}</p>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">Currency</p>
+          <p className="font-medium">{quotation.currency}</p>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">Grand Total</p>
+          <p className="font-medium">{currencySymbol} {Number(quotation.grand_total).toFixed(2)}</p>
+        </div>
+      </div>
+
+      <Separator />
+      <QuotationLineItemsSection quotation={quotation} currencySymbol={currencySymbol} />
+      <TaxSummaryCollapsible taxSummary={buildTaxSummaryMap(quotation)} currencySymbol={currencySymbol} />
+
+      {quotation.remarks && (
+        <div>
+          <p className="text-sm text-muted-foreground mb-1">Remarks</p>
+          <p className="text-sm">{quotation.remarks}</p>
+        </div>
+      )}
+
+      <Separator />
+      <div className="grid gap-4 md:grid-cols-2 text-sm text-muted-foreground">
+        <div><p>Created: {formatDate(quotation.created_at)}</p></div>
+        {quotation.updated_at && <div><p>Updated: {formatDate(quotation.updated_at)}</p></div>}
+      </div>
+    </div>
+  );
 }
 
-function QuotationDialogBody({ quotation, onOpenChange, onEdit, onConvert }: QuotationDialogBodyProps) {
+// ── Public export ─────────────────────────────────────────────────────────────
+
+export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, onConvert }: QuotationDetailDialogProps) {
   const [emailDialogOpen, setEmailDialogOpen] = React.useState(false);
   const [pdfAttachment, setPdfAttachment] = React.useState<{ filename: string; content: string; content_type: string } | null>(null);
   const { toast } = useToast();
   const { loading: pdfLoading, handleDownload, handlePreview, handleGenerateBase64 } = useQuotationPDFActions();
 
-  const currencySymbol = getCurrencySymbol(quotation.currency);
+  const currencySymbol = quotation ? getCurrencySymbol(quotation.currency) : '';
 
   const handleSendEmail = async () => {
+    if (!quotation) return;
     const base64Content = await handleGenerateBase64(quotation);
     if (base64Content) {
       setPdfAttachment({ filename: `${quotation.quotation_no}.pdf`, content: base64Content, content_type: 'application/pdf' });
@@ -235,101 +281,48 @@ function QuotationDialogBody({ quotation, onOpenChange, onEdit, onConvert }: Quo
 
   return (
     <>
-      <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-3">
-              <FileText className="h-5 w-5" />
-              Quotation Details
-            </DialogTitle>
-            <StatusBadge status={quotation.status} />
-          </div>
-        </DialogHeader>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        {quotation && (
+          <DialogContent className="!w-[90vw] !max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="flex items-center gap-3">
+                  <FileText className="h-5 w-5" />
+                  Quotation Details
+                </DialogTitle>
+                <StatusBadge status={quotation.status} />
+              </div>
+            </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <p className="text-sm text-muted-foreground">Quotation Number</p>
-              <p className="text-lg font-semibold">{quotation.quotation_no}</p>
-            </div>
-            <CustomerAddressBlock quotation={quotation} />
-          </div>
+            <QuotationDetailContent quotation={quotation} currencySymbol={currencySymbol} />
 
-          <div className="grid gap-4 md:grid-cols-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Quotation Date</p>
-              <p className="font-medium">{formatDate(quotation.quotation_date)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Valid Until</p>
-              <p className="font-medium">{formatDate(quotation.valid_until)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Currency</p>
-              <p className="font-medium">{quotation.currency}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Grand Total</p>
-              <p className="font-medium">{currencySymbol} {Number(quotation.grand_total).toFixed(2)}</p>
-            </div>
-          </div>
+            <DialogFooterButtons quotation={quotation}
+              pdfLoading={pdfLoading}
+              onClose={() => onOpenChange(false)}
+              onPreview={() => handlePreview(quotation)}
+              onDownload={() => handleDownload(quotation)}
+              onSendEmail={handleSendEmail}
+              onEdit={onEdit}
+              onConvert={onConvert} />
+          </DialogContent>
+        )}
+      </Dialog>
 
-          <Separator />
-          <QuotationLineItemsSection quotation={quotation} currencySymbol={currencySymbol} />
-          <TaxSummaryCollapsible taxSummary={buildTaxSummaryMap(quotation)} currencySymbol={currencySymbol} />
-
-          {quotation.remarks && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Remarks</p>
-              <p className="text-sm">{quotation.remarks}</p>
-            </div>
-          )}
-
-          <Separator />
-          <div className="grid gap-4 md:grid-cols-2 text-sm text-muted-foreground">
-            <div><p>Created: {formatDate(quotation.created_at)}</p></div>
-            {quotation.updated_at && <div><p>Updated: {formatDate(quotation.updated_at)}</p></div>}
-          </div>
-        </div>
-
-        <DialogFooterButtons quotation={quotation}
-          pdfLoading={pdfLoading}
-          onClose={() => onOpenChange(false)}
-          onPreview={() => handlePreview(quotation)}
-          onDownload={() => handleDownload(quotation)}
-          onSendEmail={handleSendEmail}
-          onEdit={onEdit}
-          onConvert={onConvert} />
-      </DialogContent>
-
-      <EmailComposer open={emailDialogOpen}
-        onOpenChange={handleEmailClose}
-        docType="quotation"
-        docId={quotation.id}
-        docNo={quotation.quotation_no}
-        defaultRecipient={quotation.customer?.email || ''}
-        defaultSubject={`Quotation ${quotation.quotation_no}`}
-        defaultMessage={`Dear ${quotation.customer_name || quotation.customer?.name || 'Customer'},\n\nPlease find attached quotation ${quotation.quotation_no} for your review.\n\nBest regards`}
-        defaultAttachments={pdfAttachment ? [pdfAttachment] : undefined}
-        onSuccess={() => {
-          setEmailDialogOpen(false);
-          setPdfAttachment(null);
-        }} />
-    </>
-  );
-}
-
-// ── Public export ─────────────────────────────────────────────────────────────
-
-export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, onConvert }: QuotationDetailDialogProps) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
       {quotation && (
-        <QuotationDialogBody quotation={quotation}
-          onOpenChange={onOpenChange}
-          onEdit={onEdit}
-          onConvert={onConvert} />
+        <EmailComposer open={emailDialogOpen}
+          onOpenChange={handleEmailClose}
+          docType="quotation"
+          docId={quotation.id}
+          docNo={quotation.quotation_no}
+          defaultRecipient={quotation.customer?.email || ''}
+          defaultSubject={`Quotation ${quotation.quotation_no}`}
+          defaultMessage={`Dear ${quotation.customer_name || quotation.customer?.name || 'Customer'},\n\nPlease find attached quotation ${quotation.quotation_no} for your review.\n\nBest regards`}
+          defaultAttachments={pdfAttachment ? [pdfAttachment] : undefined}
+          onSuccess={() => {
+            setEmailDialogOpen(false);
+            setPdfAttachment(null);
+          }} />
       )}
-    </Dialog>
+    </>
   );
 }

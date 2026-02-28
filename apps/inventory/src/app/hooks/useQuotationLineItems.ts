@@ -1,9 +1,9 @@
 import * as React from 'react';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
+
 import { useUserStore } from '@horizon-sync/store';
 
-import { environment } from '../../../environments/environment';
+import { environment } from '../../environments/environment';
 import type { QuotationLineItem, QuotationLineItemCreate, PickerResponse } from '../types/quotation.types';
 
 export function useQuotationLineItems(

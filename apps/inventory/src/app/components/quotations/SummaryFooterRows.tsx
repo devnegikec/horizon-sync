@@ -3,8 +3,7 @@ import * as React from 'react';
 import { Input, TableCell, TableRow } from '@horizon-sync/ui/components';
 
 import { getCurrencySymbol } from '../../types/currency.types';
-
-import type { QuotationSummary } from './QuotationLineItemsTable';
+import type { QuotationSummary } from '../../types/quotation.types';
 
 function emptyCells(count: number, keyStart: number) {
   return Array.from({ length: count }, (_, i) => <TableCell key={keyStart + i} />);
