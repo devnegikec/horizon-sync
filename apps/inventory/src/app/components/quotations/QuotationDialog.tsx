@@ -87,7 +87,17 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
     [items]
   );
   const subtotalTotal = React.useMemo(
-    () => items.reduce((sum, item) => sum + Number(item.total_amount ?? item.amount ?? 0), 0),
+    () => items.reduce((sum, item) => {
+      const total = Number(item.total_amount) || 0;
+      // If total_amount is zero but amount exists, recompute from amount - discount + tax
+      if (total === 0 && Number(item.amount) > 0) {
+        const amt = Number(item.amount) || 0;
+        const disc = Number(item.discount_amount) || 0;
+        const tax = Number(item.tax_amount) || 0;
+        return sum + (amt - disc + tax);
+      }
+      return sum + total;
+    }, 0),
     [items]
   );
   const subtotalLineDiscount = React.useMemo(

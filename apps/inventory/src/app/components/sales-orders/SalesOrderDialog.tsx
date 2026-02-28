@@ -79,20 +79,40 @@ function getAvailableStatuses(isEdit: boolean, currentStatus: SalesOrderStatus):
   return [currentStatus];
 }
 
+function computeLineTotal(amount: number, discountAmount: number, taxRate: number): { taxAmount: number; totalAmount: number } {
+  const netAmount = Math.max(0, amount - discountAmount);
+  const taxAmount = Number(((netAmount * taxRate) / 100).toFixed(2));
+  return { taxAmount, totalAmount: Number((netAmount + taxAmount).toFixed(2)) };
+}
+
+function normalizeLineNumbers(item: SalesOrder['items'][number]) {
+  const qty = Number(item.qty) || 0;
+  const rate = Number(item.rate) || 0;
+  const amount = Number(item.amount) || qty * rate;
+  const discountAmount = Number(item.discount_amount ?? 0);
+  const taxRate = item.tax_info?.breakup?.reduce((s, t) => s + t.rate, 0) ?? 0;
+  return { qty, rate, amount, discountAmount, taxRate };
+}
+
 function mapSalesOrderLineItems(soItems: SalesOrder['items']): SalesOrderFormItem[] {
-  return soItems.map((item): SalesOrderFormItem => ({
-    ...item as unknown as SalesOrderFormItem,
-    qty: Number(item.qty),
-    rate: Number(item.rate),
-    amount: Number(item.amount),
-    discount_type: item.discount_type ?? 'percentage',
-    discount_value: Number(item.discount_value ?? 0),
-    discount_amount: Number(item.discount_amount ?? 0),
-    tax_template_id: (item as unknown as { tax_template_id?: string | null }).tax_template_id ?? null,
-    tax_rate: item.tax_info?.breakup?.reduce((s, t) => s + t.rate, 0),
-    tax_amount: item.tax_amount,
-    total_amount: item.total_amount,
-  }));
+  return soItems.map((item): SalesOrderFormItem => {
+    const nums = normalizeLineNumbers(item);
+    const { taxAmount, totalAmount } = computeLineTotal(nums.amount, nums.discountAmount, nums.taxRate);
+
+    return {
+      ...item as unknown as SalesOrderFormItem,
+      qty: nums.qty,
+      rate: nums.rate,
+      amount: nums.amount,
+      discount_type: item.discount_type ?? 'percentage',
+      discount_value: Number(item.discount_value ?? 0),
+      discount_amount: nums.discountAmount,
+      tax_template_id: (item as unknown as { tax_template_id?: string | null }).tax_template_id ?? null,
+      tax_rate: nums.taxRate,
+      tax_amount: taxAmount,
+      total_amount: totalAmount,
+    };
+  });
 }
 
 function buildUpdatePayload(
@@ -232,7 +252,16 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
   // computed totals
   const subtotalAmount = React.useMemo(() => items.reduce((s, i) => s + Number(i.amount ?? 0), 0), [items]);
   const subtotalTax = React.useMemo(() => items.reduce((s, i) => s + Number(i.tax_amount ?? 0), 0), [items]);
-  const subtotalTotal = React.useMemo(() => items.reduce((s, i) => s + Number(i.total_amount ?? i.amount ?? 0), 0), [items]);
+  const subtotalTotal = React.useMemo(() => items.reduce((s, i) => {
+    const total = Number(i.total_amount) || 0;
+    if (total === 0 && Number(i.amount) > 0) {
+      const amt = Number(i.amount) || 0;
+      const disc = Number(i.discount_amount) || 0;
+      const tax = Number(i.tax_amount) || 0;
+      return s + (amt - disc + tax);
+    }
+    return s + total;
+  }, 0), [items]);
   const subtotalLineDiscount = React.useMemo(() => items.reduce((s, i) => s + Number(i.discount_amount ?? 0), 0), [items]);
   const totalDiscountAmount = React.useMemo(() => computeDocumentDiscount(subtotalTotal, formData.discount_type, Number(formData.discount_value) || 0), [subtotalTotal, formData.discount_type, formData.discount_value]);
   const grandTotal = React.useMemo(() => Math.max(0, Number((subtotalTotal - totalDiscountAmount).toFixed(2))), [subtotalTotal, totalDiscountAmount]);
