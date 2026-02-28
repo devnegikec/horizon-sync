@@ -1,4 +1,4 @@
-import type { Quotation, QuotationCreate, QuotationLineItemCreate, QuotationStatus, QuotationUpdate, QuotationFormState } from '../../types/quotation.types';
+import type { Quotation, QuotationCreate, QuotationLineItemCreate, QuotationStatus, QuotationUpdate, QuotationFormState, TableMeta, QuotationLineItem } from '../../types/quotation.types';
 
 export const emptyItem: QuotationLineItemCreate = {
   item_id: '',
@@ -81,4 +81,35 @@ export function getAvailableStatuses(isEdit: boolean, currentStatus: QuotationSt
   if (currentStatus === 'draft') return ['draft', 'sent'];
   if (currentStatus === 'sent') return ['sent', 'accepted', 'rejected', 'expired'];
   return [currentStatus];
+}
+
+export function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId: string) {
+  meta.updateData?.(rowIndex, 'item_id', newItemId);
+  const selectedItem = meta.getItemData?.(newItemId);
+  if (selectedItem) {
+    setTimeout(() => {
+      meta.updateData?.(rowIndex, 'uom', selectedItem.uom);
+      meta.updateData?.(rowIndex, 'rate', parseFloat(selectedItem.standard_rate || '0') || 0);
+      meta.updateData?.(rowIndex, 'qty', selectedItem.min_order_qty || 1);
+    }, 0);
+  }
+}
+
+export const defaultLabelFormatter = (item: QuotationLineItem) => item.item_name ?? '';
+export const defaultSearchItems = async () => [] as QuotationLineItem[];
+
+export function getQtyError(qty: number, itemData: QuotationLineItem): { message: string; color: string } | null {
+  const min = itemData.min_order_qty;
+  const max = itemData.max_order_qty;
+  const available = itemData.stock_levels?.quantity_available;
+  if (min != null && min > 0 && qty < min) return { message: `Below min (${min})`, color: 'hsl(0 84% 60%)' };
+  if (max != null && max > 0 && qty > max) return { message: `Exceeds max (${max})`, color: 'hsl(0 84% 60%)' };
+  if (available != null && qty > available) return { message: `Exceeds available (${available})`, color: 'hsl(25 95% 53%)' };
+  return null;
+}
+
+export function computeLineDiscountAmount(lineAmount: number, discountType: string, discountValue: number): number {
+  if (!discountValue || discountValue <= 0) return 0;
+  if (discountType === 'percentage') return Number((lineAmount * discountValue / 100).toFixed(2));
+  return Math.min(discountValue, lineAmount);
 }

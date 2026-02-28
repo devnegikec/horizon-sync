@@ -3,78 +3,15 @@ import * as React from 'react';
 import { type CellContext, type ColumnDef } from '@tanstack/react-table';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
 import { Button, EditableCell, EditableDataTable, EditableNumberCell, Input } from '@horizon-sync/ui/components';
 
-import { environment } from '../../../environments/environment';
+import { useQuotationLineItems } from '../../hooks/useQuotationLineItems';
 import { getCurrencySymbol } from '../../types/currency.types';
-import type { QuotationLineItemCreate, QuotationLineItem } from '../../types/quotation.types';
+import type { QuotationLineItemCreate, QuotationLineItem, TableMeta, QuotationLineItemsTableProps } from '../../types/quotation.types';
 
+import { computeLineDiscountAmount, defaultLabelFormatter, defaultSearchItems, getQtyError, handleItemSelection } from './quotation.helpers';
 import { ItemPickerSelect } from './ItemPickerSelect';
 import { SummaryFooterRows } from './SummaryFooterRows';
-
-interface TableMeta {
-  updateData?: (rowIndex: number, columnId: string, value: unknown) => void;
-  deleteRow?: (rowIndex: number) => void;
-  getItemData?: (itemId: string) => QuotationLineItem | undefined;
-  searchItems?: (query: string) => Promise<QuotationLineItem[]>;
-  itemLabelFormatter?: (item: QuotationLineItem) => string;
-  disabled?: boolean;
-  currency?: string;
-}
-
-interface PickerResponse {
-  items: QuotationLineItem[];
-}
-
-export interface DocumentDiscountControls {
-  type: 'flat' | 'percentage';
-  value: string;
-  onTypeChange: (value: string) => void;
-  onValueChange: (value: string) => void;
-  disabled?: boolean;
-}
-
-export interface QuotationSummary {
-  /** Sum of line amounts (qty × rate) */
-  subtotalAmount: number;
-  /** Sum of line tax amounts */
-  subtotalTax: number;
-  /** Sum of line totals (before document-level discount) */
-  subtotalTotal: number;
-  /** Sum of line-level discount amounts */
-  subtotalLineDiscount: number;
-  /** Document-level discount amount (computed) */
-  discountAmount: number;
-  /** After document discount */
-  grandTotal: number;
-  /** When provided, discount-on-total dropdown + input are rendered in the footer Discount column */
-  documentDiscount?: DocumentDiscountControls;
-}
-
-interface QuotationLineItemsTableProps {
-  items: QuotationLineItemCreate[];
-  onItemsChange: (items: QuotationLineItemCreate[]) => void;
-  disabled?: boolean;
-  currency?: string;
-  /** When provided, footer rows (Subtotal, Discount, Grand Total) are shown aligned with table columns */
-  summary?: QuotationSummary;
-}
-
-function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId: string) {
-  meta.updateData?.(rowIndex, 'item_id', newItemId);
-  const selectedItem = meta.getItemData?.(newItemId);
-  if (selectedItem) {
-    setTimeout(() => {
-      meta.updateData?.(rowIndex, 'uom', selectedItem.uom);
-      meta.updateData?.(rowIndex, 'rate', parseFloat(selectedItem.standard_rate || '0') || 0);
-      meta.updateData?.(rowIndex, 'qty', selectedItem.min_order_qty || 1);
-    }, 0);
-  }
-}
-
-const defaultLabelFormatter = (item: QuotationLineItem) => item.item_name ?? '';
-const defaultSearchItems = async () => [] as QuotationLineItem[];
 
 // --- Sub-components for cells ---
 
@@ -113,16 +50,6 @@ function QtyHints({ itemData }: { itemData: QuotationLineItem | undefined }) {
   return <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">{parts.join(' · ')}</div>;
 }
 
-function getQtyError(qty: number, itemData: QuotationLineItem): { message: string; color: string } | null {
-  const min = itemData.min_order_qty;
-  const max = itemData.max_order_qty;
-  const available = itemData.stock_levels?.quantity_available;
-  if (min != null && min > 0 && qty < min) return { message: `Below min (${min})`, color: 'hsl(0 84% 60%)' };
-  if (max != null && max > 0 && qty > max) return { message: `Exceeds max (${max})`, color: 'hsl(0 84% 60%)' };
-  if (available != null && qty > available) return { message: `Exceeds available (${available})`, color: 'hsl(25 95% 53%)' };
-  return null;
-}
-
 function QtyValidationError({ qty, itemData }: { qty: number; itemData: QuotationLineItem | undefined }) {
   if (!itemData || !qty || qty <= 0) return null;
   const error = getQtyError(qty, itemData);
@@ -150,13 +77,6 @@ function QuantityCellComponent({ getValue, row, column, table, cell, renderValue
       {itemData && qty > 0 && <QtyValidationError qty={qty} itemData={itemData} />}
     </div>
   );
-}
-
-// Compute line discount amount from type, value and line amount (so display is always correct)
-function computeLineDiscountAmount(lineAmount: number, discountType: string, discountValue: number): number {
-  if (!discountValue || discountValue <= 0) return 0;
-  if (discountType === 'percentage') return Number((lineAmount * discountValue / 100).toFixed(2));
-  return Math.min(discountValue, lineAmount);
 }
 
 // Editable discount: type (%, flat) + value; show computed amount below so it reflects correctly
@@ -226,84 +146,11 @@ function TaxBreakupAmount({ itemData, symbol, amount }: { itemData: QuotationLin
 }
 
 export function QuotationLineItemsTable({ items, onItemsChange, disabled = false, currency = 'INR', summary }: QuotationLineItemsTableProps) {
-  const accessToken = useUserStore((s) => s.accessToken);
-  const itemsCacheRef = React.useRef<Map<string, QuotationLineItem>>(new Map());
-
-  // Seed cache from existing items (edit mode — items carry full QuotationLineItem fields at runtime)
-  React.useEffect(() => {
-    items.forEach((item) => {
-      if (item.item_id && !itemsCacheRef.current.has(item.item_id)) {
-        const full = item as unknown as QuotationLineItem;
-        if (full.item_name) {
-          itemsCacheRef.current.set(item.item_id, full);
-        }
-      }
-    });
-  }, [items]);
-
-  const searchItems = React.useCallback(async (query: string): Promise<QuotationLineItem[]> => {
-    if (!accessToken) return [];
-    const response = await fetch(`${environment.apiCoreUrl}/items/picker?search=${encodeURIComponent(query)}`, {
-      headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error('Failed to fetch items');
-    const data: PickerResponse = await response.json();
-    data.items.forEach(item => { itemsCacheRef.current.set(item.id, item); });
-    return data.items;
-  }, [accessToken]);
+  const { searchItems, getItemData, handleDataChange } = useQuotationLineItems(items, onItemsChange);
 
   const itemLabelFormatter = React.useCallback(
     (item: QuotationLineItem) => `${item.item_name} (${item.item_code})`,
     []
-  );
-
-  const getItemData = React.useCallback(
-    (itemId: string) => itemsCacheRef.current.get(itemId),
-    []
-  );
-
-  const computeDiscountAmount = (amount: number, discountType: string, discountValue: number): number => {
-    if (!discountValue || discountValue <= 0) return 0;
-    if (discountType === 'percentage') return Number((amount * discountValue / 100).toFixed(2));
-    return Math.min(discountValue, amount);
-  };
-
-  const handleDataChange = React.useCallback(
-    (newData: QuotationLineItemCreate[]) => {
-      const updatedData = newData.map((item) => {
-        const qty = Number(item.qty) || 0;
-        const rate = Number(item.rate) || 0;
-        const cachedItem = itemsCacheRef.current.get(item.item_id);
-        let taxRate = 0;
-        let taxTemplateId: string | null = null;
-        if (cachedItem?.tax_info) {
-          taxTemplateId = cachedItem.tax_info.id;
-          taxRate = cachedItem.tax_info.breakup.reduce((sum, tax) => sum + tax.rate, 0);
-        }
-        const amount = qty * rate;
-        const discountType = (item.discount_type || 'percentage') as 'flat' | 'percentage';
-        const discountVal = Number(item.discount_value ?? 0);
-        const discountAmount = computeDiscountAmount(amount, discountType, discountVal);
-        const netAmount = amount - discountAmount;
-        const taxAmount = (netAmount * taxRate) / 100;
-        const totalAmount = netAmount + taxAmount;
-        return {
-          ...item,
-          qty,
-          rate,
-          amount,
-          discount_type: discountType,
-          discount_value: discountVal,
-          discount_amount: Number(discountAmount.toFixed(2)),
-          tax_template_id: taxTemplateId,
-          tax_rate: taxRate,
-          tax_amount: Number(taxAmount.toFixed(2)),
-          total_amount: Number(totalAmount.toFixed(2)),
-        };
-      });
-      onItemsChange(updatedData);
-    },
-    [onItemsChange]
   );
 
   // Currency-aware tax amount cell — tax is on net (amount - discount), breakup uses net amount

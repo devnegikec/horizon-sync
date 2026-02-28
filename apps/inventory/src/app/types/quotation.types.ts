@@ -48,6 +48,54 @@ export interface QuotationLineItem {
   extra_data?: Record<string, unknown>;
 }
 
+export interface TableMeta {
+  updateData?: (rowIndex: number, columnId: string, value: unknown) => void;
+  deleteRow?: (rowIndex: number) => void;
+  getItemData?: (itemId: string) => QuotationLineItem | undefined;
+  searchItems?: (query: string) => Promise<QuotationLineItem[]>;
+  itemLabelFormatter?: (item: QuotationLineItem) => string;
+  disabled?: boolean;
+  currency?: string;
+}
+
+export interface PickerResponse {
+  items: QuotationLineItem[];
+}
+
+export interface DocumentDiscountControls {
+  type: 'flat' | 'percentage';
+  value: string;
+  onTypeChange: (value: string) => void;
+  onValueChange: (value: string) => void;
+  disabled?: boolean;
+}
+
+export interface QuotationSummary {
+  /** Sum of line amounts (qty × rate) */
+  subtotalAmount: number;
+  /** Sum of line tax amounts */
+  subtotalTax: number;
+  /** Sum of line totals (before document-level discount) */
+  subtotalTotal: number;
+  /** Sum of line-level discount amounts */
+  subtotalLineDiscount: number;
+  /** Document-level discount amount (computed) */
+  discountAmount: number;
+  /** After document discount */
+  grandTotal: number;
+  /** When provided, discount-on-total dropdown + input are rendered in the footer Discount column */
+  documentDiscount?: DocumentDiscountControls;
+}
+
+export interface QuotationLineItemsTableProps {
+  items: QuotationLineItemCreate[];
+  onItemsChange: (items: QuotationLineItemCreate[]) => void;
+  disabled?: boolean;
+  currency?: string;
+  /** When provided, footer rows (Subtotal, Discount, Grand Total) are shown aligned with table columns */
+  summary?: QuotationSummary;
+}
+
 export interface CustomerInfo {
   code: string;
   name: string;
