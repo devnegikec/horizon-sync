@@ -96,6 +96,14 @@ export interface QuotationLineItemsTableProps {
   summary?: QuotationSummary;
 }
 
+export interface QuotationDetailDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  quotation: Quotation | null;
+  onEdit: (quotation: Quotation) => void;
+  onConvert: (quotation: Quotation) => void;
+}
+
 export interface CustomerInfo {
   code: string;
   name: string;

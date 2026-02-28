@@ -113,3 +113,31 @@ export function computeLineDiscountAmount(lineAmount: number, discountType: stri
   if (discountType === 'percentage') return Number((lineAmount * discountValue / 100).toFixed(2));
   return Math.min(discountValue, lineAmount);
 }
+
+export function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+export function buildTaxSummaryMap(quotation: Quotation) {
+  const lineItems = quotation.items || quotation.line_items || [];
+  const map = new Map<string, { name: string; amount: number; breakup: Array<{ rule_name: string; rate: number; amount: number }> }>();
+  lineItems.forEach((item) => {
+    if (!item.tax_info) return;
+    const key = item.tax_info.template_code;
+    if (!map.has(key)) {
+      map.set(key, {
+        name: item.tax_info.template_name,
+        amount: 0,
+        breakup: item.tax_info.breakup.map((t) => ({ rule_name: t.rule_name, rate: t.rate, amount: 0 })),
+      });
+    }
+    const entry = map.get(key);
+    if (entry) {
+      entry.amount += Number(item.tax_amount || 0);
+      item.tax_info.breakup.forEach((t, idx) => {
+        entry.breakup[idx].amount += (Number(item.amount) * t.rate) / 100;
+      });
+    }
+  });
+  return map;
+}

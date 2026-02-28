@@ -7,48 +7,11 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { useQuotationPDFActions } from '../../hooks/useQuotationPDFActions';
 import { getCurrencySymbol } from '../../types/currency.types';
-import type { Quotation } from '../../types/quotation.types';
+import type { Quotation, QuotationDetailDialogProps } from '../../types/quotation.types';
 import { EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
 
+import { buildTaxSummaryMap, formatDate } from './quotation.helpers';
 import { StatusBadge } from './StatusBadge';
-
-interface QuotationDetailDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  quotation: Quotation | null;
-  onEdit: (quotation: Quotation) => void;
-  onConvert: (quotation: Quotation) => void;
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
-function buildTaxSummaryMap(quotation: Quotation) {
-  const lineItems = quotation.items || quotation.line_items || [];
-  const map = new Map<string, { name: string; amount: number; breakup: Array<{ rule_name: string; rate: number; amount: number }> }>();
-  lineItems.forEach((item) => {
-    if (!item.tax_info) return;
-    const key = item.tax_info.template_code;
-    if (!map.has(key)) {
-      map.set(key, {
-        name: item.tax_info.template_name,
-        amount: 0,
-        breakup: item.tax_info.breakup.map((t) => ({ rule_name: t.rule_name, rate: t.rate, amount: 0 })),
-      });
-    }
-    const entry = map.get(key);
-    if (entry) {
-      entry.amount += Number(item.tax_amount || 0);
-      item.tax_info.breakup.forEach((t, idx) => {
-        entry.breakup[idx].amount += (Number(item.amount) * t.rate) / 100;
-      });
-    }
-  });
-  return map;
-}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -282,30 +245,32 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        {quotation && (
-          <DialogContent className="!w-[90vw] !max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <div className="flex items-center justify-between">
-                <DialogTitle className="flex items-center gap-3">
-                  <FileText className="h-5 w-5" />
-                  Quotation Details
-                </DialogTitle>
-                <StatusBadge status={quotation.status} />
-              </div>
-            </DialogHeader>
+        <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
+          {quotation && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center justify-between">
+                  <DialogTitle className="flex items-center gap-3">
+                    <FileText className="h-5 w-5" />
+                    Quotation Details
+                  </DialogTitle>
+                  <StatusBadge status={quotation.status} />
+                </div>
+              </DialogHeader>
 
-            <QuotationDetailContent quotation={quotation} currencySymbol={currencySymbol} />
+              <QuotationDetailContent quotation={quotation} currencySymbol={currencySymbol} />
 
-            <DialogFooterButtons quotation={quotation}
-              pdfLoading={pdfLoading}
-              onClose={() => onOpenChange(false)}
-              onPreview={() => handlePreview(quotation)}
-              onDownload={() => handleDownload(quotation)}
-              onSendEmail={handleSendEmail}
-              onEdit={onEdit}
-              onConvert={onConvert} />
-          </DialogContent>
-        )}
+              <DialogFooterButtons quotation={quotation}
+                pdfLoading={pdfLoading}
+                onClose={() => onOpenChange(false)}
+                onPreview={() => handlePreview(quotation)}
+                onDownload={() => handleDownload(quotation)}
+                onSendEmail={handleSendEmail}
+                onEdit={onEdit}
+                onConvert={onConvert} />
+            </>
+          )}
+        </DialogContent>
       </Dialog>
 
       {quotation && (
