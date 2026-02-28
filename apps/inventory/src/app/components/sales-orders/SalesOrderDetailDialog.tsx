@@ -1,7 +1,5 @@
 import * as React from 'react';
 
-import { Console } from 'console';
-
 import { Edit, FileText, ShoppingCart, Receipt, ExternalLink, Mail, Download, Eye, Truck } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
@@ -11,7 +9,7 @@ import { usePDFGeneration } from '../../hooks/usePDFGeneration';
 import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { SalesOrder } from '../../types/sales-order.types';
 import { convertSalesOrderToPDFData } from '../../utils/pdf/salesOrderToPDF';
-import { EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
+import { CustomerAddressBlock, EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
 import { StatusBadge } from '../quotations/StatusBadge';
 
 interface SalesOrderDetailDialogProps {
@@ -155,10 +153,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                 <p className="text-sm text-muted-foreground">Sales Order Number</p>
                 <p className="text-lg font-semibold">{salesOrder.sales_order_no}</p>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Customer</p>
-                <p className="text-lg font-semibold">{salesOrder.customer_name || salesOrder.customer_id}</p>
-              </div>
+              <CustomerAddressBlock customerName={salesOrder.customer_name} customer={salesOrder.customer} />
             </div>
 
             {/* Dates and Currency */}

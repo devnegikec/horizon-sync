@@ -8,39 +8,12 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { useQuotationPDFActions } from '../../hooks/useQuotationPDFActions';
 import { getCurrencySymbol } from '../../types/currency.types';
 import type { Quotation, QuotationDetailDialogProps } from '../../types/quotation.types';
-import { EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
+import { CustomerAddressBlock, EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
 
 import { buildTaxSummaryMap, formatDate } from './quotation.helpers';
 import { StatusBadge } from './StatusBadge';
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-function CustomerAddressLines({ quotation }: { quotation: Quotation }) {
-  const { customer } = quotation;
-  if (!customer) return null;
-  const cityLine = [customer.city, customer.state, customer.postal_code].filter(Boolean).join(', ');
-  return (
-    <div className="text-sm text-muted-foreground mt-1 space-y-0.5">
-      {customer.address_line1 && <p>{customer.address_line1}</p>}
-      {customer.address_line2 && <p>{customer.address_line2}</p>}
-      {cityLine && <p>{cityLine}</p>}
-      {customer.country && <p>{customer.country}</p>}
-      {customer.phone && <p>{customer.phone}</p>}
-      {customer.email && <p>{customer.email}</p>}
-      {customer.tax_number && <p className="text-xs">Tax No: {customer.tax_number}</p>}
-    </div>
-  );
-}
-
-function CustomerAddressBlock({ quotation }: { quotation: Quotation }) {
-  return (
-    <div>
-      <p className="text-sm text-muted-foreground">Customer</p>
-      <p className="text-lg font-semibold">{quotation.customer_name || quotation.customer?.name || 'N/A'}</p>
-      <CustomerAddressLines quotation={quotation} />
-    </div>
-  );
-}
 
 // Footer rows aligned with table columns: #, Item, Qty, UOM, Rate, Amount, Discount, Tax, Total (9 when showDiscount)
 function LineItemsFooterRows({
@@ -174,7 +147,7 @@ function QuotationDetailContent({ quotation, currencySymbol }: { quotation: Quot
           <p className="text-sm text-muted-foreground">Quotation Number</p>
           <p className="text-lg font-semibold">{quotation.quotation_no}</p>
         </div>
-        <CustomerAddressBlock quotation={quotation} />
+        <CustomerAddressBlock customerName={quotation.customer_name || quotation.customer?.name} customer={quotation.customer} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
