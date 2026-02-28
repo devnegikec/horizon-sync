@@ -28,7 +28,9 @@ export function SummaryFooterRows({
         {emptyCells(3, 0)}
         <TableCell className="font-medium">Subtotal:</TableCell>
         <TableCell className="text-left font-medium">{sym}{summary.subtotalAmount.toFixed(2)}</TableCell>
-        <TableCell />
+        <TableCell className="text-left font-medium">
+          {summary.subtotalLineDiscount > 0 ? `−${sym}${summary.subtotalLineDiscount.toFixed(2)}` : null}
+        </TableCell>
         <TableCell />
         <TableCell className="text-left font-medium">{sym}{summary.subtotalTax.toFixed(2)}</TableCell>
         <TableCell className="text-left font-medium">{sym}{summary.subtotalTotal.toFixed(2)}</TableCell>

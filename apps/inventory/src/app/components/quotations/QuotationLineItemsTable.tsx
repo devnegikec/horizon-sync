@@ -42,6 +42,8 @@ export interface QuotationSummary {
   subtotalTax: number;
   /** Sum of line totals (before document-level discount) */
   subtotalTotal: number;
+  /** Sum of line-level discount amounts */
+  subtotalLineDiscount: number;
   /** Document-level discount amount (computed) */
   discountAmount: number;
   /** After document discount */

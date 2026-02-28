@@ -192,6 +192,10 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
     () => items.reduce((sum, item) => sum + Number(item.total_amount ?? item.amount ?? 0), 0),
     [items]
   );
+  const subtotalLineDiscount = React.useMemo(
+    () => items.reduce((sum, item) => sum + Number(item.discount_amount ?? 0), 0),
+    [items]
+  );
 
   const totalDiscountAmount = React.useMemo(() => {
     return computeDocumentDiscount(subtotalTotal, formData.discount_type, Number(formData.discount_value) || 0);
@@ -236,6 +240,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
                 subtotalAmount,
                 subtotalTax,
                 subtotalTotal,
+                subtotalLineDiscount,
                 discountAmount: totalDiscountAmount,
                 grandTotal,
                 documentDiscount: {
