@@ -225,8 +225,6 @@ function TaxBreakupAmount({ itemData, symbol, amount }: { itemData: QuotationLin
   );
 }
 
-
-
 export function QuotationLineItemsTable({ items, onItemsChange, disabled = false, currency = 'INR', summary }: QuotationLineItemsTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const itemsCacheRef = React.useRef<Map<string, QuotationLineItem>>(new Map());

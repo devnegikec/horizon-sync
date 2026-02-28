@@ -155,6 +155,26 @@ export interface PaginationInfo {
   has_prev: boolean;
 }
 
+export interface QuotationFormState {
+  quotation_no: string;
+  customer_id: string;
+  quotation_date: string;
+  valid_until: string;
+  currency: string;
+  status: QuotationStatus;
+  remarks: string;
+  discount_type: 'flat' | 'percentage';
+  discount_value: string;
+}
+
+export interface QuotationDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  quotation: Quotation | null;
+  onSave: (data: QuotationCreate | QuotationUpdate, id?: string) => Promise<void>;
+  saving: boolean;
+}
+
 export interface ServerPaginationConfig {
   pageIndex: number;
   pageSize: number;
