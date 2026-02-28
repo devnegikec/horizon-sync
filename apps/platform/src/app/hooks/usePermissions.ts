@@ -99,6 +99,10 @@ export function usePermissions() {
     return NavigationPermissions.subscriptions.view(permissionsData.permissions);
   }, [permissionsData.permissions]);
 
+  const canViewBanking = React.useCallback(() => {
+    return NavigationPermissions.banking.view(permissionsData.permissions);
+  }, [permissionsData.permissions]);
+
   // Filter navigation items based on permissions
   const filterNavigation = React.useCallback(<T extends { href: string; title: string }>(
     navigationItems: T[]
@@ -135,6 +139,7 @@ export function usePermissions() {
     canViewInventory,
     canViewRevenue,
     canViewSubscriptions,
+    canViewBanking,
 
     // Navigation filtering
     filterNavigation,

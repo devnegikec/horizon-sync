@@ -6,6 +6,7 @@ import { DashboardLayout, DashboardHome, AuthGuard, PublicRoute } from './compon
 import { PlaceholderPage } from './components/PlaceholderPage';
 import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage } from './pages';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import BankingRoutes from './features/banking/BankingRoutes';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 const RevenuePage = React.lazy(() => import('inventory/RevenuePage'));
@@ -27,7 +28,7 @@ export function AppRoutes() {
           <AuthGuard>
             <OnBoarding />
           </AuthGuard>
-        }/>
+        } />
 
       {/* Protected routes */}
       <Route path="/*" element={<ProtectedRouteWrapper />} />
@@ -50,6 +51,7 @@ function ProtectedRouteWrapper() {
           <Route path="/revenue" element={<RevenuePage />} />
           <Route path="/sourcing" element={<SourcingPage />} />
           <Route path="/books" element={<BooksPage />} />
+          <Route path="/banking/*" element={<BankingRoutes />} />
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="/tax-charges" element={<TaxChargesPage />} />
           <Route path="/subscriptions" element={<SubscriptionManagementPage />} />
