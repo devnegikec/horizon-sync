@@ -1,6 +1,10 @@
 export interface DeliveryNoteItem {
   id: string;
-  item_id: string;
+  item: {
+    id: string;
+    name: string;
+    code: string;
+  };
   qty: string;
   uom: string;
   rate: string;
@@ -10,6 +14,8 @@ export interface DeliveryNoteItem {
   serial_nos: string[] | null;
   sort_order: number;
   extra_data: Record<string, unknown> | null;
+  // Legacy field for backward compatibility
+  item_id?: string;
 }
 
 export interface DeliveryNoteCustomer {
@@ -22,6 +28,13 @@ export interface DeliveryNoteCustomer {
 export interface DeliveryNoteWarehouse {
   warehouse_name: string;
   warehouse_code: string;
+}
+
+export interface DeliveryNoteReference {
+  id: string;
+  reference_type: string;
+  name: string;
+  code: string;
 }
 
 // Legacy shape kept for backward compat with list view
@@ -65,6 +78,7 @@ export interface DeliveryNote {
   pick_list_id: string | null;
   reference_type: string | null;
   reference_id: string | null;
+  reference?: DeliveryNoteReference;
   delivery_date: string | null;
   submitted_at: string | null;
   status: 'draft' | 'submitted' | 'cancelled';

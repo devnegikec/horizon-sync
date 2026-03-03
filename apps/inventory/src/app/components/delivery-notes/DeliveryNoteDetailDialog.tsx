@@ -116,10 +116,11 @@ function ReferencesPanel({ dn }: { dn: DeliveryNote }) {
         <h3 className="text-lg font-bold">References</h3>
       </div>
       <div className="grid gap-4">
-        <InfoRow icon={FileText} label="Reference Type" value={dn.reference_type ?? '—'} />
-        <InfoRow icon={Hash} label="Reference ID" value={dn.reference_id ?? '—'} />
+        <InfoRow icon={FileText} label="Reference Type" value={dn.reference?.reference_type ?? dn.reference_type ?? '—'} />
+        <InfoRow icon={Hash} label="Reference Name" value={dn.reference?.name ?? '—'} />
+        <InfoRow icon={Hash} label="Reference Code" value={dn.reference?.code ?? '—'} />
         <InfoRow icon={Truck} label="Pick List ID" value={dn.pick_list_id ?? '—'} />
-        <InfoRow icon={MapPin} label="Remarks" value={dn.remarks ?? '—'} />
+        {dn.remarks && <InfoRow icon={MapPin} label="Remarks" value={dn.remarks} />}
       </div>
     </div>
   );
@@ -203,7 +204,7 @@ function LineItemsSection({ items, grandTotal }: { items: import('../../types/de
           <TableHeader>
             <TableRow>
               <TableHead>#</TableHead>
-              <TableHead>Item ID</TableHead>
+              <TableHead>Item</TableHead>
               <TableHead className="text-right">Qty</TableHead>
               <TableHead>UOM</TableHead>
               <TableHead className="text-right">Rate</TableHead>
@@ -216,7 +217,10 @@ function LineItemsSection({ items, grandTotal }: { items: import('../../types/de
               <TableRow key={item.id}>
                 <TableCell className="text-muted-foreground text-sm">{idx + 1}</TableCell>
                 <TableCell>
-                  <p className="text-xs font-mono text-muted-foreground">{item.item_id}</p>
+                  <div>
+                    <p className="text-sm font-medium">{item.item?.name ?? '—'}</p>
+                    <p className="text-xs font-mono text-muted-foreground">{item.item?.code ?? '—'}</p>
+                  </div>
                 </TableCell>
                 <TableCell className="text-right font-medium">{Number(item.qty).toFixed(3)}</TableCell>
                 <TableCell>
