@@ -30,4 +30,10 @@ export const deliveryNoteApi = {
     apiRequest(`/delivery-notes/${id}`, accessToken, {
       method: 'DELETE',
     }),
+
+  convertToInvoice: (accessToken: string, deliveryNoteId: string, data: { items: { item_id: string; qty_to_bill: number }[]; due_date?: string; remarks?: string }) =>
+    apiRequest(`/delivery-notes/${deliveryNoteId}/convert-to-invoice`, accessToken, {
+      method: 'POST',
+      body: data,
+    }),
 };

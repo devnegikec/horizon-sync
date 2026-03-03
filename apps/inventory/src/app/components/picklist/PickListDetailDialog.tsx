@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Package, FileText, Warehouse } from 'lucide-react';
+import { Package, FileText, Truck, Warehouse } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 
@@ -13,10 +13,13 @@ interface PickListDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pickList: PickList | null;
+  onCreateDeliveryNote?: (pickList: PickList) => void;
 }
 
-export function PickListDetailDialog({ open, onOpenChange, pickList }: PickListDetailDialogProps) {
+export function PickListDetailDialog({ open, onOpenChange, pickList, onCreateDeliveryNote }: PickListDetailDialogProps) {
   if (!pickList) return null;
+
+  const canCreateDeliveryNote = pickList.status === 'draft' || pickList.status === 'in_progress';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -27,7 +30,15 @@ export function PickListDetailDialog({ open, onOpenChange, pickList }: PickListD
               <Package className="h-5 w-5" />
               Pick List Details
             </DialogTitle>
-            <PickListStatusBadge status={pickList.status} />
+            <div className="flex items-center gap-2">
+              <PickListStatusBadge status={pickList.status} />
+              {onCreateDeliveryNote && canCreateDeliveryNote && (
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => onCreateDeliveryNote(pickList)}>
+                  <Truck className="h-4 w-4" />
+                  Create Delivery Note
+                </Button>
+              )}
+            </div>
           </div>
         </DialogHeader>
 
