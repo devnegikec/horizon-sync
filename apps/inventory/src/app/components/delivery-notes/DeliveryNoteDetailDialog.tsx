@@ -3,18 +3,16 @@ import * as React from 'react';
 import {
   Truck,
   MapPin,
+  Mail,
   Phone,
   User,
-  Package,
-  Hash,
   Calendar,
-  ExternalLink,
-  Weight,
-  Boxes,
-  Printer,
   FileText,
   Pencil,
-  Clock,
+  Warehouse,
+  DollarSign,
+  Hash,
+  Link2,
 } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
@@ -45,18 +43,87 @@ function getStatusBadge(status: DeliveryNote['status']) {
     case 'draft':
       return { variant: 'secondary' as const, label: 'Draft' };
     case 'submitted':
-      return { variant: 'success' as const, label: 'Shipped' };
+      return { variant: 'success' as const, label: 'Submitted' };
     case 'cancelled':
       return { variant: 'destructive' as const, label: 'Cancelled' };
   }
 }
 
-function getTimelineIcon(action: string) {
-  if (action.toLowerCase().includes('created')) return 'bg-blue-500';
-  if (action.toLowerCase().includes('packed')) return 'bg-amber-500';
-  if (action.toLowerCase().includes('shipped')) return 'bg-emerald-500';
-  if (action.toLowerCase().includes('delivered')) return 'bg-primary';
-  return 'bg-muted-foreground';
+function formatDate(dateStr: string | null | undefined) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+function formatDateTime(dateStr: string | null | undefined) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatCurrency(value: string | number | null | undefined) {
+  if (value == null) return '—';
+  return `$${Number(value).toFixed(2)}`;
+}
+
+function CustomerPanel({ customer }: { customer: DeliveryNote['customer'] }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <User className="h-5 w-5 text-primary" />
+        <h3 className="text-lg font-bold">Customer</h3>
+      </div>
+      <div className="grid gap-4">
+        <InfoRow icon={User} label="Name" value={customer?.customer_name ?? '—'} />
+        <InfoRow icon={Hash} label="Code" value={customer?.customer_code ?? '—'} />
+        <InfoRow icon={Phone} label="Phone" value={customer?.phone ?? '—'} />
+        <InfoRow icon={Mail} label="Email" value={customer?.email ?? '—'} />
+      </div>
+    </div>
+  );
+}
+
+function WarehousePanel({ dn }: { dn: DeliveryNote }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Warehouse className="h-5 w-5 text-primary" />
+        <h3 className="text-lg font-bold">Warehouse & Delivery</h3>
+      </div>
+      <div className="grid gap-4">
+        <InfoRow icon={Warehouse} label="Warehouse" value={dn.warehouse?.warehouse_name ?? '—'} />
+        <InfoRow icon={Hash} label="Warehouse Code" value={dn.warehouse?.warehouse_code ?? '—'} />
+        <InfoRow icon={Calendar} label="Delivery Date" value={formatDate(dn.delivery_date)} />
+        <InfoRow icon={Calendar} label="Submitted At" value={formatDateTime(dn.submitted_at)} />
+      </div>
+    </div>
+  );
+}
+
+function ReferencesPanel({ dn }: { dn: DeliveryNote }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Link2 className="h-5 w-5 text-primary" />
+        <h3 className="text-lg font-bold">References</h3>
+      </div>
+      <div className="grid gap-4">
+        <InfoRow icon={FileText} label="Reference Type" value={dn.reference?.reference_type ?? dn.reference_type ?? '—'} />
+        <InfoRow icon={Hash} label="Reference Name" value={dn.reference?.name ?? '—'} />
+        <InfoRow icon={Hash} label="Reference Code" value={dn.reference?.code ?? '—'} />
+        <InfoRow icon={Truck} label="Pick List ID" value={dn.pick_list_id ?? '—'} />
+        {dn.remarks && <InfoRow icon={MapPin} label="Remarks" value={dn.remarks} />}
+      </div>
+    </div>
+  );
 }
 
 export function DeliveryNoteDetailDialog({
@@ -69,6 +136,7 @@ export function DeliveryNoteDetailDialog({
   if (!deliveryNote) return null;
 
   const statusBadge = getStatusBadge(deliveryNote.status);
+  const grandTotal = (deliveryNote.items ?? []).reduce((sum, item) => sum + Number(item.amount), 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,18 +151,10 @@ export function DeliveryNoteDetailDialog({
             </div>
             <p className="text-sm text-muted-foreground mt-1.5 flex items-center gap-1.5 font-medium">
               <Calendar className="h-3.5 w-3.5" />
-              {deliveryNote.shipping_date ? new Date(deliveryNote.shipping_date).toLocaleDateString(undefined, {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              }) : '—'}
+              {formatDate(deliveryNote.delivery_date)}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Printer className="h-4 w-4" />
-              Print Packing Slip
-            </Button>
             {onConvertToInvoice && (
               <Button variant="outline" size="sm" className="gap-2" onClick={() => onConvertToInvoice(deliveryNote.id)}>
                 <FileText className="h-4 w-4" />
@@ -113,168 +173,21 @@ export function DeliveryNoteDetailDialog({
         <Separator />
 
         <div className="p-8 space-y-8">
-          {/* Information Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Customer Details */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <User className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-bold">Customer Details</h3>
-              </div>
-              <div className="grid gap-4">
-                <InfoRow icon={User} label="Customer Name" value={deliveryNote.customer_name || '—'} />
-                <InfoRow icon={MapPin} label="Shipping Address" value={deliveryNote.shipping_address || '—'} />
-                <InfoRow icon={Phone} label="Contact" value={deliveryNote.contact_person ? `${deliveryNote.contact_person}${deliveryNote.contact_phone ? ` - ${deliveryNote.contact_phone}` : ''}` : '—'} />
-              </div>
-            </div>
-
-            {/* Logistics */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Truck className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-bold">Logistics</h3>
-              </div>
-              <div className="grid gap-4">
-                <InfoRow icon={Truck} label="Carrier" value={deliveryNote.carrier_name || '—'} />
-                <div className="flex gap-3">
-                  <div className="mt-1 bg-primary/10 p-2 rounded-lg">
-                    <Hash className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Tracking Number</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-sm font-medium">{deliveryNote.tracking_number}</p>
-                      {deliveryNote.tracking_number && (
-                        <a
-                          href={`https://www.google.com/search?q=${encodeURIComponent(deliveryNote.tracking_number)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline inline-flex items-center gap-1 text-xs font-medium"
-                        >
-                          Track <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <InfoRow icon={Calendar} label="Shipping Date" value={deliveryNote.shipping_date ? new Date(deliveryNote.shipping_date).toLocaleDateString() : '—'} />
-              </div>
-            </div>
-
-            {/* References */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Package className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-bold">References</h3>
-              </div>
-              <div className="grid gap-4">
-                <InfoRow icon={FileText} label="Sales Order #" value={deliveryNote.sales_order_number || '—'} />
-                <InfoRow icon={Weight} label="Total Weight" value={deliveryNote.total_weight != null ? `${deliveryNote.total_weight} kg` : '—'} />
-                <InfoRow icon={Boxes} label="Total Packages" value={deliveryNote.total_packages != null ? String(deliveryNote.total_packages) : '—'} />
-              </div>
-            </div>
+            <CustomerPanel customer={deliveryNote.customer} />
+            <WarehousePanel dn={deliveryNote} />
+            <ReferencesPanel dn={deliveryNote} />
           </div>
 
           <Separator />
 
-          {/* Line Items Table */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-bold">Line Items</h3>
-            <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[60px]">Image</TableHead>
-                    <TableHead>Item Name / SKU</TableHead>
-                    <TableHead className="text-right">Qty Ordered</TableHead>
-                    <TableHead className="text-right">Qty Shipped</TableHead>
-                    <TableHead>Warehouse Location</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(deliveryNote.line_items ?? []).map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        {item.item_image ? (
-                          <img
-                            src={item.item_image}
-                            alt={item.item_name}
-                            className="h-10 w-10 rounded-md object-cover border"
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center">
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-sm">{item.item_name}</p>
-                          <p className="text-xs text-muted-foreground">{item.item_sku}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">{item.quantity_ordered}</TableCell>
-                      <TableCell className="text-right">
-                        <span className={item.quantity_shipped < item.quantity_ordered ? 'text-amber-600 font-semibold' : 'font-medium'}>
-                          {item.quantity_shipped}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs font-medium">
-                          {item.warehouse_location}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {(deliveryNote.line_items ?? []).length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                        No line items
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
+          <LineItemsSection items={deliveryNote.items ?? []} grandTotal={grandTotal} />
 
           <Separator />
 
-          {/* Timeline / Audit Trail */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              <h3 className="text-lg font-bold">Timeline</h3>
-            </div>
-            <div className="relative pl-6 space-y-6">
-              {(deliveryNote.timeline ?? []).map((entry, index) => (
-                <div key={entry.id} className="relative flex gap-4">
-                  <div className="absolute -left-6 mt-1.5">
-                    <div className={`h-3 w-3 rounded-full ${getTimelineIcon(entry.action)}`} />
-                    {index < (deliveryNote.timeline ?? []).length - 1 && (
-                      <div className="absolute left-1.5 top-3 w-px h-[calc(100%+12px)] bg-border" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{entry.action}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {entry.performed_by} &middot;{' '}
-                      {new Date(entry.timestamp).toLocaleString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                    {entry.notes && <p className="text-xs text-muted-foreground mt-1">{entry.notes}</p>}
-                  </div>
-                </div>
-              ))}
-              {(deliveryNote.timeline ?? []).length === 0 && (
-                <p className="text-sm text-muted-foreground">No timeline entries</p>
-              )}
-            </div>
+          <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+            <div><span className="font-medium">Created:</span> {formatDateTime(deliveryNote.created_at)}</div>
+            <div><span className="font-medium">Updated:</span> {formatDateTime(deliveryNote.updated_at)}</div>
           </div>
         </div>
       </DialogContent>
@@ -282,15 +195,84 @@ export function DeliveryNoteDetailDialog({
   );
 }
 
-function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
+function LineItemsSection({ items, grandTotal }: { items: import('../../types/delivery-note.types').DeliveryNoteItem[]; grandTotal: number }) {
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-bold">Line Items</h3>
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>#</TableHead>
+              <TableHead>Item</TableHead>
+              <TableHead className="text-right">Qty</TableHead>
+              <TableHead>UOM</TableHead>
+              <TableHead className="text-right">Rate</TableHead>
+              <TableHead className="text-right">Amount</TableHead>
+              <TableHead>Batch / Serial</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((item, idx) => (
+              <TableRow key={item.id}>
+                <TableCell className="text-muted-foreground text-sm">{idx + 1}</TableCell>
+                <TableCell>
+                  <div>
+                    <p className="text-sm font-medium">{item.item?.name ?? '—'}</p>
+                    <p className="text-xs font-mono text-muted-foreground">{item.item?.code ?? '—'}</p>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-medium">{Number(item.qty).toFixed(3)}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="text-xs">{item.uom}</Badge>
+                </TableCell>
+                <TableCell className="text-right">{formatCurrency(item.rate)}</TableCell>
+                <TableCell className="text-right font-semibold">{formatCurrency(item.amount)}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {item.batch_no ?? (item.serial_nos?.length ? item.serial_nos.join(', ') : '—')}
+                </TableCell>
+              </TableRow>
+            ))}
+            {items.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                  No line items
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      {items.length > 0 && (
+        <div className="flex justify-end">
+          <div className="flex items-center gap-3 bg-muted/50 rounded-lg px-6 py-3">
+            <DollarSign className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-muted-foreground">Grand Total</span>
+            <span className="text-lg font-bold">{formatCurrency(grandTotal)}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="flex gap-3">
-      <div className="mt-1 bg-primary/10 p-2 rounded-lg">
+      <div className="mt-1 bg-primary/10 p-2 rounded-lg shrink-0">
         <Icon className="h-4 w-4 text-primary" />
       </div>
-      <div>
+      <div className="min-w-0">
         <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{label}</p>
-        <p className="text-sm font-medium mt-0.5">{value}</p>
+        <p className="text-sm font-medium mt-0.5 break-all">{value}</p>
       </div>
     </div>
   );

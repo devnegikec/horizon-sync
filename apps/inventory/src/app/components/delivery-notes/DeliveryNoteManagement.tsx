@@ -23,6 +23,7 @@ import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteResponse, DeliveryNo
 import { deliveryNoteApi } from '../../utility/api';
 import { StatCard } from '../shared';
 
+import { ConvertDNToInvoiceDialog } from './ConvertDNToInvoiceDialog';
 import { DeliveryNoteDetailDialog } from './DeliveryNoteDetailDialog';
 import { DeliveryNoteDialog } from './DeliveryNoteDialog';
 import { DeliveryNotesTable } from './DeliveryNotesTable';
@@ -50,6 +51,9 @@ export function DeliveryNoteManagement() {
   const [editNote, setEditNote] = useState<DeliveryNote | null>(null);
   const [saving, setSaving] = useState(false);
   const [tableInstance, setTableInstance] = useState<Table<DeliveryNote> | null>(null);
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [invoiceNote, setInvoiceNote] = useState<DeliveryNote | null>(null);
+  const [convertingInvoice, setConvertingInvoice] = useState(false);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -146,6 +150,41 @@ export function DeliveryNoteManagement() {
     }
   }), [page, pageSize, pagination?.total_items]);
 
+  const handleConvertToInvoice = React.useCallback((id: string) => {
+    // The selectedNote should already be loaded from handleView
+    if (selectedNote && selectedNote.id === id) {
+      setInvoiceNote(selectedNote);
+    }
+    setDetailDialogOpen(false);
+    setInvoiceDialogOpen(true);
+  }, [selectedNote]);
+
+  const handleConvertToInvoiceSubmit = React.useCallback(async (
+    deliveryNoteId: string,
+    data: { items: { item_id: string; qty_to_bill: number }[]; due_date?: string; remarks?: string },
+  ) => {
+    if (!accessToken) return;
+    setConvertingInvoice(true);
+    try {
+      const result = await deliveryNoteApi.convertToInvoice(accessToken, deliveryNoteId, data) as { invoice_id: string; invoice_no: string; grand_total: number; message: string };
+      toast({
+        title: 'Success',
+        description: `Invoice ${result.invoice_no} created with total ${result.grand_total.toFixed(2)}`,
+      });
+      setInvoiceDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['delivery-notes'] });
+      refetch();
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to convert to invoice',
+        variant: 'destructive',
+      });
+    } finally {
+      setConvertingInvoice(false);
+    }
+  }, [accessToken, toast, queryClient, refetch]);
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
@@ -231,7 +270,7 @@ export function DeliveryNoteManagement() {
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         deliveryNote={selectedNote}
-        onConvertToInvoice={(id) => console.log('Convert to invoice:', id)}
+        onConvertToInvoice={handleConvertToInvoice}
         onEdit={handleEdit} />
 
       <DeliveryNoteDialog
@@ -240,6 +279,14 @@ export function DeliveryNoteManagement() {
         deliveryNote={editNote}
         onSave={handleSave}
         saving={saving} />
+
+      {/* Convert to Invoice Dialog */}
+      <ConvertDNToInvoiceDialog
+        open={invoiceDialogOpen}
+        onOpenChange={setInvoiceDialogOpen}
+        deliveryNote={invoiceNote}
+        onConvert={handleConvertToInvoiceSubmit}
+        converting={convertingInvoice} />
     </div>
   );
 }

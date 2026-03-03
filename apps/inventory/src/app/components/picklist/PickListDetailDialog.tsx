@@ -1,11 +1,10 @@
 import * as React from 'react';
 
-import { Package, FileText, Warehouse } from 'lucide-react';
+import { Package, FileText, Truck, Warehouse, Calendar, Hash, Link2 } from 'lucide-react';
 
-import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
+import { Badge, Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 
-import type { PickList } from '../../types/pick-list.types';
-import { formatDate } from '../../utility/formatDate';
+import type { PickList, PickListItem } from '../../types/pick-list.types';
 
 import { PickListStatusBadge } from './PickListStatusBadge';
 
@@ -13,106 +12,244 @@ interface PickListDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pickList: PickList | null;
+  onCreateDeliveryNote?: (pickList: PickList) => void;
 }
 
-export function PickListDetailDialog({ open, onOpenChange, pickList }: PickListDetailDialogProps) {
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex gap-3">
+      <div className="mt-1 bg-primary/10 p-2 rounded-lg shrink-0">
+        <Icon className="h-4 w-4 text-primary" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{label}</p>
+        <p className="text-sm font-medium mt-0.5 break-all">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function formatDateTime(dateStr: string | null | undefined) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function ItemCell({ item }: { item: PickListItem }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Package className="h-4 w-4 text-muted-foreground" />
+      <div>
+        <p className="text-sm font-medium">{item.item?.name ?? item.item_name ?? '—'}</p>
+        <p className="text-xs text-muted-foreground font-mono">{item.item?.code ?? item.item_code ?? '—'}</p>
+      </div>
+    </div>
+  );
+}
+
+function WarehouseCell({ item }: { item: PickListItem }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Warehouse className="h-4 w-4 text-muted-foreground" />
+      <div>
+        <p className="text-sm font-medium">{item.warehouse?.name ?? item.warehouse_name ?? '—'}</p>
+        <p className="text-xs text-muted-foreground font-mono">{item.warehouse?.code ?? item.warehouse_code ?? '—'}</p>
+      </div>
+    </div>
+  );
+}
+
+function ItemRow({ item, index }: { item: PickListItem; index: number }) {
+  return (
+    <tr className="hover:bg-muted/30">
+      <td className="px-4 py-3 text-sm text-muted-foreground">{index + 1}</td>
+      <td className="px-4 py-3">
+        <ItemCell item={item} />
+      </td>
+      <td className="px-4 py-3">
+        <WarehouseCell item={item} />
+      </td>
+      <td className="px-4 py-3 text-right text-sm font-medium">{Number(item.qty).toFixed(3)}</td>
+      <td className="px-4 py-3 text-right text-sm">{Number(item.picked_qty).toFixed(3)}</td>
+      <td className="px-4 py-3">
+        <Badge variant="outline" className="text-xs">{item.uom}</Badge>
+      </td>
+      <td className="px-4 py-3 text-xs text-muted-foreground">{item.batch_no ?? '—'}</td>
+    </tr>
+  );
+}
+
+function ItemsTable({ items }: { items: PickListItem[] }) {
+  if (!items || items.length === 0) {
+    return (
+      <div className="rounded-lg border">
+        <div className="px-4 py-8 text-center text-muted-foreground">
+          No items in this pick list
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border overflow-hidden">
+      <table className="w-full">
+        <thead className="bg-muted/50">
+          <tr>
+            <th className="px-4 py-3 text-left text-sm font-medium">#</th>
+            <th className="px-4 py-3 text-left text-sm font-medium">Item</th>
+            <th className="px-4 py-3 text-left text-sm font-medium">Warehouse</th>
+            <th className="px-4 py-3 text-right text-sm font-medium">Quantity</th>
+            <th className="px-4 py-3 text-right text-sm font-medium">Picked</th>
+            <th className="px-4 py-3 text-left text-sm font-medium">UOM</th>
+            <th className="px-4 py-3 text-left text-sm font-medium">Batch</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {items.map((item, index) => (
+            <ItemRow key={item.id} item={item} index={index} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function WarehouseSection({ pickList }: { pickList: PickList }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Warehouse className="h-5 w-5 text-primary" />
+        <h3 className="text-lg font-bold">Warehouse</h3>
+      </div>
+      <div className="grid gap-4">
+        <InfoRow icon={Warehouse} label="Name" value={pickList.warehouse?.name ?? '—'} />
+        <InfoRow icon={Hash} label="Code" value={pickList.warehouse?.code ?? '—'} />
+      </div>
+    </div>
+  );
+}
+
+function ReferenceSection({ pickList }: { pickList: PickList }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Link2 className="h-5 w-5 text-primary" />
+        <h3 className="text-lg font-bold">Reference</h3>
+      </div>
+      <div className="grid gap-4">
+        <InfoRow icon={FileText} label="Type" value={pickList.reference?.reference_type ?? pickList.reference_type ?? '—'} />
+        <InfoRow icon={Hash} label="Number" value={pickList.reference?.name ?? '—'} />
+        <InfoRow icon={Hash} label="Code" value={pickList.reference?.code ?? '—'} />
+      </div>
+    </div>
+  );
+}
+
+function TimelineSection({ pickList }: { pickList: PickList }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Calendar className="h-5 w-5 text-primary" />
+        <h3 className="text-lg font-bold">Timeline</h3>
+      </div>
+      <div className="grid gap-4">
+        <InfoRow icon={Calendar} label="Pick Date" value={formatDateTime(pickList.pick_date)} />
+        <InfoRow icon={Calendar} label="Completed At" value={formatDateTime(pickList.completed_at)} />
+      </div>
+    </div>
+  );
+}
+
+function InfoPanel({ pickList }: { pickList: PickList }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <WarehouseSection pickList={pickList} />
+      <ReferenceSection pickList={pickList} />
+      <TimelineSection pickList={pickList} />
+    </div>
+  );
+}
+
+export function PickListDetailDialog({ open, onOpenChange, pickList, onCreateDeliveryNote }: PickListDetailDialogProps) {
   if (!pickList) return null;
+
+  const canCreateDeliveryNote = pickList.status === 'draft' || pickList.status === 'in_progress';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-3">
-              <Package className="h-5 w-5" />
-              Pick List Details
-            </DialogTitle>
-            <PickListStatusBadge status={pickList.status} />
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogHeader className="flex flex-row items-center justify-between space-y-0 p-8 pb-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              <DialogTitle className="text-2xl font-bold">{pickList.pick_list_no}</DialogTitle>
+              <PickListStatusBadge status={pickList.status} />
+            </div>
+            <p className="text-sm text-muted-foreground mt-1.5 flex items-center gap-1.5 font-medium">
+              <Calendar className="h-3.5 w-3.5" />
+              {formatDateTime(pickList.pick_date)}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {onCreateDeliveryNote && canCreateDeliveryNote && (
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => onCreateDeliveryNote(pickList)}>
+                <Truck className="h-4 w-4" />
+                Create Delivery Note
+              </Button>
+            )}
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Header Information */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <p className="text-sm text-muted-foreground">Pick List Number</p>
-              <p className="text-lg font-semibold font-mono">{pickList.pick_list_no}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Sales Order</p>
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <p className="text-lg font-semibold font-mono">{pickList.sales_order_no || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
+        <Separator />
 
-          {/* Timestamps */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <p className="text-sm text-muted-foreground">Created</p>
-              <p className="font-medium">{formatDate(pickList.created_at, 'DD-MMM-YY', { includeTime: true })}</p>
-            </div>
-            {pickList.updated_at && (
-              <div>
-                <p className="text-sm text-muted-foreground">Updated</p>
-                <p className="font-medium">{formatDate(pickList.updated_at, 'DD-MMM-YY', { includeTime: true })}</p>
-              </div>
-            )}
-          </div>
+        <div className="p-8 space-y-8">
+          <InfoPanel pickList={pickList} />
+
+          <Separator />
 
           {/* Line Items */}
-          <Separator />
-          <div>
-            <h3 className="text-lg font-medium mb-4">Items to Pick</h3>
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium">#</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Item</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Warehouse</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Quantity</th>
-                    <th className="px-4 py-3 text-right text-sm font-medium">Picked</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">UOM</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {pickList.items?.map((item, index) => (
-                    <tr key={item.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3 text-sm">{index + 1}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{item.item_id}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Warehouse className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{item.warehouse_id}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm font-medium">{item.qty}</td>
-                      <td className="px-4 py-3 text-right text-sm">{item.picked_qty || 0}</td>
-                      <td className="px-4 py-3 text-sm">{item.uom}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold">Items to Pick ({pickList.items?.length ?? 0})</h3>
+            <ItemsTable items={pickList.items ?? []} />
           </div>
 
           {/* Remarks */}
           {pickList.remarks && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Remarks</p>
-              <p className="text-sm">{pickList.remarks}</p>
-            </div>
+            <>
+              <Separator />
+              <div>
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">Remarks</h3>
+                <p className="text-sm">{pickList.remarks}</p>
+              </div>
+            </>
           )}
+
+          <Separator />
+
+          {/* Audit Info */}
+          <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+            <div>
+              <span className="font-medium">Created:</span> {formatDateTime(pickList.created_at)}
+            </div>
+            <div>
+              <span className="font-medium">Updated:</span> {formatDateTime(pickList.updated_at)}
+            </div>
+          </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="p-6">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
