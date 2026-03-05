@@ -10,17 +10,23 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Card,
+  CardContent,
+  Checkbox,
 } from '@horizon-sync/ui/components';
 import { usePaymentValidation, type PaymentFormData } from '../../hooks/usePaymentValidation';
 import { toDateInputValue } from '../../utils/payment.utils';
 import { customerApi } from '../../utility/api';
 import { supplierApi } from '../../utility/api';
+import { useOutstandingInvoicesForAllocation } from '../../hooks/useOutstandingInvoicesForAllocation';
 import type { CustomerResponse } from '../../types/customer.types';
 import type { SuppliersResponse } from '../../types/supplier.types';
-import type { PaymentType, PaymentMode, CreatePaymentPayload, UpdatePaymentPayload } from '../../types/payment.types';
+import type { PaymentType, PaymentMode, CreatePaymentPayload, UpdatePaymentPayload, InvoiceForAllocation } from '../../types/payment.types';
+import { FileText, AlertCircle } from 'lucide-react';
 
 interface PaymentFormProps {
   initialData?: Partial<CreatePaymentPayload>;
+  preselectedInvoiceId?: string | null;
   onSubmit: (data: CreatePaymentPayload | UpdatePaymentPayload) => void;
   onCancel: () => void;
   loading?: boolean;
@@ -36,7 +42,7 @@ function getAccessTokenForApi(): string | null {
   return null;
 }
 
-export const PaymentForm = memo(function PaymentForm({ initialData, onSubmit, onCancel, loading, mode }: PaymentFormProps) {
+export const PaymentForm = memo(function PaymentForm({ initialData, preselectedInvoiceId, onSubmit, onCancel, loading, mode }: PaymentFormProps) {
   const accessTokenFromStore = useUserStore((s) => s.accessToken);
   const accessToken = accessTokenFromStore ?? getAccessTokenForApi();
 
@@ -53,6 +59,21 @@ export const PaymentForm = memo(function PaymentForm({ initialData, onSubmit, on
     payment_mode: initialData?.payment_mode,
     reference_no: initialData?.reference_no,
   });
+
+  // Allocation state (only for create mode)
+  const [allocationType, setAllocationType] = useState<'single' | 'multiple'>(
+    preselectedInvoiceId ? 'single' : 'multiple'
+  );
+  const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(
+    preselectedInvoiceId ? new Set([preselectedInvoiceId]) : new Set()
+  );
+  const [allocationAmounts, setAllocationAmounts] = useState<Record<string, number>>({});
+
+  // Fetch outstanding invoices for allocation
+  const { invoices: outstandingInvoices, loading: invoicesLoading } = useOutstandingInvoicesForAllocation(
+    formData.party_id || null,
+    formData.payment_type || 'Customer_Payment'
+  );
 
   const {
     data: customersData,
@@ -106,10 +127,12 @@ export const PaymentForm = memo(function PaymentForm({ initialData, onSubmit, on
     }
   }, [requiresReferenceNo]);
 
-  // Sync form when initialData changes (e.g. Edit dialog opened with a payment)
+  // Sync form when initialData changes (for both edit and create modes)
   useEffect(() => {
-    if (mode === 'edit' && initialData) {
-      const dateVal = toDateInputValue(initialData.payment_date) || new Date().toISOString().split('T')[0];
+    if (initialData) {
+      const dateVal = initialData.payment_date 
+        ? toDateInputValue(initialData.payment_date) || new Date().toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
       setFormData({
         payment_type: initialData.payment_type,
         party_id: initialData.party_id,
@@ -120,7 +143,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, onSubmit, on
         reference_no: initialData.reference_no,
       });
     }
-  }, [mode, initialData?.payment_date, initialData?.amount, initialData?.payment_mode, initialData?.reference_no, initialData?.currency_code, initialData?.party_id, initialData?.payment_type]);
+  }, [initialData?.payment_date, initialData?.amount, initialData?.payment_mode, initialData?.reference_no, initialData?.currency_code, initialData?.party_id, initialData?.payment_type]);
 
   // Backend expects ISO datetime (e.g. with "T"), not date-only "YYYY-MM-DD"
   const toPaymentDateTime = useCallback((dateStr: string): string => {
@@ -186,6 +209,44 @@ export const PaymentForm = memo(function PaymentForm({ initialData, onSubmit, on
   const handleReferenceChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, reference_no: e.target.value }));
   }, []);
+
+  // Allocation handlers
+  const handleAllocationTypeChange = useCallback((value: string) => {
+    setAllocationType(value as 'single' | 'multiple');
+    if (value === 'single' && preselectedInvoiceId) {
+      setSelectedInvoices(new Set([preselectedInvoiceId]));
+    } else {
+      setSelectedInvoices(new Set());
+    }
+    setAllocationAmounts({});
+  }, [preselectedInvoiceId]);
+
+  const handleInvoiceToggle = useCallback((invoiceId: string, checked: boolean) => {
+    setSelectedInvoices(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(invoiceId);
+      } else {
+        newSet.delete(invoiceId);
+        setAllocationAmounts(amounts => {
+          const { [invoiceId]: _, ...rest } = amounts;
+          return rest;
+        });
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleAllocationAmountChange = useCallback((invoiceId: string, value: string) => {
+    const numValue = parseFloat(value) || 0;
+    setAllocationAmounts(prev => ({ ...prev, [invoiceId]: numValue }));
+  }, []);
+
+  const totalAllocated = useMemo(() => {
+    return Object.values(allocationAmounts).reduce((sum, amt) => sum + amt, 0);
+  }, [allocationAmounts]);
+
+  const showAllocationSection = mode === 'create' && formData.party_id && outstandingInvoices.length > 0;
 
   return (
     <form id="payment-form" onSubmit={handleSubmit} className="space-y-4">
@@ -283,6 +344,160 @@ export const PaymentForm = memo(function PaymentForm({ initialData, onSubmit, on
           <p className="text-sm text-destructive">{errors.amount}</p>
         )}
       </div>
+
+      {/* Allocation Section */}
+      {showAllocationSection && (
+        <Card className="border-2">
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">Invoice Allocation</Label>
+                {totalAllocated > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    Allocated: {formData.currency_code} {totalAllocated.toFixed(2)}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="radio"
+                    id="single"
+                    name="allocationType"
+                    value="single"
+                    checked={allocationType === 'single'}
+                    onChange={(e) => handleAllocationTypeChange(e.target.value)}
+                    className="h-4 w-4 cursor-pointer"
+                  />
+                  <Label htmlFor="single" className="font-normal cursor-pointer">
+                    Single Invoice {preselectedInvoiceId && '(Pre-selected)'}
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="radio"
+                    id="multiple"
+                    name="allocationType"
+                    value="multiple"
+                    checked={allocationType === 'multiple'}
+                    onChange={(e) => handleAllocationTypeChange(e.target.value)}
+                    className="h-4 w-4 cursor-pointer"
+                  />
+                  <Label htmlFor="multiple" className="font-normal cursor-pointer">
+                    Multiple Invoices
+                  </Label>
+                </div>
+              </div>
+
+              {invoicesLoading ? (
+                <div className="text-sm text-muted-foreground py-4">Loading invoices...</div>
+              ) : outstandingInvoices.length === 0 ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>No outstanding invoices found for this party</span>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto border rounded-md p-3">
+                  {allocationType === 'single' ? (
+                    // Single invoice selection
+                    <div className="space-y-2">
+                      {outstandingInvoices.map((invoice) => {
+                        const isSelected = selectedInvoices.has(invoice.id);
+                        return (
+                          <div key={invoice.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded border">
+                            <div className="flex items-center space-x-3 flex-1">
+                              <input
+                                type="radio"
+                                id={`invoice-${invoice.id}`}
+                                name="singleInvoice"
+                                value={invoice.id}
+                                checked={isSelected}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                  const value = e.target.value;
+                                  setSelectedInvoices(new Set([value]));
+                                  const selectedInvoice = outstandingInvoices.find(inv => inv.id === value);
+                                  if (selectedInvoice) {
+                                    setAllocationAmounts({ [value]: selectedInvoice.balance_due });
+                                    setFormData(prev => ({ ...prev, amount: selectedInvoice.balance_due }));
+                                  }
+                                }}
+                                className="h-4 w-4 cursor-pointer"
+                              />
+                              <Label htmlFor={`invoice-${invoice.id}`} className="flex items-center gap-2 cursor-pointer flex-1">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm">{invoice.invoice_no}</p>
+                                  <p className="text-xs text-muted-foreground">{invoice.invoice_date}</p>
+                                </div>
+                              </Label>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold">
+                                {invoice.currency} {invoice.balance_due.toFixed(2)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Due</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    // Multiple invoice selection with allocation amounts
+                    <div className="space-y-2">
+                      {outstandingInvoices.map((invoice) => {
+                        const isSelected = selectedInvoices.has(invoice.id);
+                        return (
+                          <div key={invoice.id} className="border rounded-md p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3 flex-1">
+                                <Checkbox
+                                  id={`invoice-multi-${invoice.id}`}
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => handleInvoiceToggle(invoice.id, checked as boolean)}
+                                />
+                                <Label htmlFor={`invoice-multi-${invoice.id}`} className="flex items-center gap-2 cursor-pointer flex-1">
+                                  <FileText className="h-4 w-4 text-muted-foreground" />
+                                  <div className="flex-1">
+                                    <p className="font-medium text-sm">{invoice.invoice_no}</p>
+                                    <p className="text-xs text-muted-foreground">{invoice.invoice_date}</p>
+                                  </div>
+                                </Label>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-semibold">
+                                  {invoice.currency} {invoice.balance_due.toFixed(2)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">Due</p>
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <div className="pl-9">
+                                <Label htmlFor={`amount-${invoice.id}`} className="text-xs text-muted-foreground">
+                                  Allocation Amount
+                                </Label>
+                                <Input
+                                  id={`amount-${invoice.id}`}
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00"
+                                  value={allocationAmounts[invoice.id] || ''}
+                                  onChange={(e) => handleAllocationAmountChange(invoice.id, e.target.value)}
+                                  className="mt-1"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="currency_code">Currency *</Label>
