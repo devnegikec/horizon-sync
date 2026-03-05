@@ -56,9 +56,9 @@ export function PaymentAllocationTable({
   const invoices = outstandingInvoices ?? [];
 
   // Handle allocation amount change
-  const handleAllocationChange = (invoiceId: string, amount: number) => {
+  const handleAllocationChange = React.useCallback((invoiceId: string, amount: number) => {
     const existingIndex = allocations.findIndex((a) => a.invoice_id === invoiceId);
-    
+
     if (existingIndex >= 0) {
       // Update existing allocation
       const newAllocations = [...allocations];
@@ -74,10 +74,10 @@ export function PaymentAllocationTable({
         { invoice_id: invoiceId, allocated_amount: amount },
       ]);
     }
-  };
+  }, [allocations, onAllocationsChange]);
 
   // Handle invoice selection
-  const handleInvoiceSelect = (invoiceId: string, selected: boolean) => {
+  const handleInvoiceSelect = React.useCallback((invoiceId: string, selected: boolean) => {
     if (selected) {
       // Add allocation with 0 amount if not already present
       const existingAllocation = allocations.find((a) => a.invoice_id === invoiceId);
@@ -94,14 +94,14 @@ export function PaymentAllocationTable({
       // Remove allocation
       onAllocationsChange(allocations.filter((a) => a.invoice_id !== invoiceId));
     }
-  };
+  }, [allocations, invoices, onAllocationsChange]);
 
   // Auto-allocate button handler
-  const handleAutoAllocate = () => {
+  const handleAutoAllocate = React.useCallback(() => {
     if (!invoices.length) return;
 
     // Sort invoices by due date (oldest first)
-    const sortedInvoices = [...invoices].sort((a, b) => 
+    const sortedInvoices = [...invoices].sort((a, b) =>
       new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
     );
 
@@ -120,22 +120,27 @@ export function PaymentAllocationTable({
     }
 
     onAllocationsChange(newAllocations);
-  };
+  }, [invoices, totalAmount, onAllocationsChange]);
 
   // Get allocation amount for an invoice (coerce to number; API may return string from Decimal)
-  const getAllocationAmount = (invoiceId: string): number => {
+  const getAllocationAmount = React.useCallback((invoiceId: string): number => {
     const allocation = allocations.find((a) => a.invoice_id === invoiceId);
     return Number(allocation?.allocated_amount ?? 0);
-  };
+  }, [allocations]);
+
+  // Check if invoice is selected
+  const isInvoiceSelected = React.useCallback((invoiceId: string): boolean => {
+    return allocations.some((a) => a.invoice_id === invoiceId);
+  }, [allocations]);
 
   // Display value: draft string while typing, otherwise number (empty when 0)
-  const getInputValue = (invoiceId: string): string => {
+  const getInputValue = React.useCallback((invoiceId: string): string => {
     if (draftAmounts[invoiceId] !== undefined) return draftAmounts[invoiceId];
     const amount = getAllocationAmount(invoiceId);
     return amount === 0 ? '' : String(amount);
-  };
+  }, [draftAmounts, getAllocationAmount]);
 
-  const handleAmountChange = (invoiceId: string, raw: string) => {
+  const handleAmountChange = React.useCallback((invoiceId: string, raw: string) => {
     // Allow only digits and at most one decimal point
     let filtered = raw.replace(/[^\d.]/g, '');
     const parts = filtered.split('.');
@@ -143,20 +148,15 @@ export function PaymentAllocationTable({
     setDraftAmounts((prev) => ({ ...prev, [invoiceId]: filtered }));
     const num = parseFloat(filtered);
     handleAllocationChange(invoiceId, Number.isNaN(num) ? 0 : num);
-  };
+  }, [handleAllocationChange]);
 
-  const handleAmountBlur = (invoiceId: string) => {
+  const handleAmountBlur = React.useCallback((invoiceId: string) => {
     setDraftAmounts((prev) => {
       const next = { ...prev };
       delete next[invoiceId];
       return next;
     });
-  };
-
-  // Check if invoice is selected
-  const isInvoiceSelected = (invoiceId: string): boolean => {
-    return allocations.some((a) => a.invoice_id === invoiceId);
-  };
+  }, []);
 
   // Calculate total allocated (coerce amounts to number; API may return string from Decimal)
   const totalAllocated = allocations.reduce((sum, a) => sum + Number(a.allocated_amount ?? 0), 0);
@@ -233,13 +233,13 @@ export function PaymentAllocationTable({
               const allocationAmount = getAllocationAmount(invoice.id);
               const isSelected = isInvoiceSelected(invoice.id);
               const isOverAllocated = allocationAmount > Number(invoice.outstanding_amount ?? 0);
-              
+
               return (
                 <TableRow key={invoice.id}>
                   <TableCell>
                     <Checkbox
                       checked={isSelected}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         handleInvoiceSelect(invoice.id, checked as boolean)
                       }
                       disabled={disabled || invoice.id === preSelectedInvoiceId}
