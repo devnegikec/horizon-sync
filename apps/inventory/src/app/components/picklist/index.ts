@@ -5,4 +5,5 @@ export { PickListStats } from './PickListStats';
 export { PickListTable } from './PickListTable';
 export { PickListStatusBadge } from './PickListStatusBadge';
 export { PickListDetailDialog } from './PickListDetailDialog';
+export { PickListDialog } from './PickListDialog';
 

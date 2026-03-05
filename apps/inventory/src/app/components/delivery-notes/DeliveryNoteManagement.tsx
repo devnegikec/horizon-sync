@@ -23,7 +23,6 @@ import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteResponse, DeliveryNo
 import { deliveryNoteApi } from '../../utility/api';
 import { StatCard } from '../shared';
 
-import { ConvertDNToInvoiceDialog } from './ConvertDNToInvoiceDialog';
 import { DeliveryNoteDetailDialog } from './DeliveryNoteDetailDialog';
 import { DeliveryNoteDialog } from './DeliveryNoteDialog';
 import { DeliveryNotesTable } from './DeliveryNotesTable';
@@ -51,8 +50,6 @@ export function DeliveryNoteManagement() {
   const [editNote, setEditNote] = useState<DeliveryNote | null>(null);
   const [saving, setSaving] = useState(false);
   const [tableInstance, setTableInstance] = useState<Table<DeliveryNote> | null>(null);
-  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
-  const [invoiceNote, setInvoiceNote] = useState<DeliveryNote | null>(null);
   const [convertingInvoice, setConvertingInvoice] = useState(false);
 
   // Reset to first page when filters change
@@ -150,16 +147,7 @@ export function DeliveryNoteManagement() {
     }
   }), [page, pageSize, pagination?.total_items]);
 
-  const handleConvertToInvoice = React.useCallback((id: string) => {
-    // The selectedNote should already be loaded from handleView
-    if (selectedNote && selectedNote.id === id) {
-      setInvoiceNote(selectedNote);
-    }
-    setDetailDialogOpen(false);
-    setInvoiceDialogOpen(true);
-  }, [selectedNote]);
-
-  const handleConvertToInvoiceSubmit = React.useCallback(async (
+  const handleConvertToInvoice = React.useCallback(async (
     deliveryNoteId: string,
     data: { items: { item_id: string; qty_to_bill: number }[]; due_date?: string; remarks?: string },
   ) => {
@@ -171,7 +159,7 @@ export function DeliveryNoteManagement() {
         title: 'Success',
         description: `Invoice ${result.invoice_no} created with total ${result.grand_total.toFixed(2)}`,
       });
-      setInvoiceDialogOpen(false);
+      setDetailDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['delivery-notes'] });
       refetch();
     } catch (err) {
@@ -271,6 +259,7 @@ export function DeliveryNoteManagement() {
         onOpenChange={setDetailDialogOpen}
         deliveryNote={selectedNote}
         onConvertToInvoice={handleConvertToInvoice}
+        convertingInvoice={convertingInvoice}
         onEdit={handleEdit} />
 
       <DeliveryNoteDialog
@@ -279,14 +268,6 @@ export function DeliveryNoteManagement() {
         deliveryNote={editNote}
         onSave={handleSave}
         saving={saving} />
-
-      {/* Convert to Invoice Dialog */}
-      <ConvertDNToInvoiceDialog
-        open={invoiceDialogOpen}
-        onOpenChange={setInvoiceDialogOpen}
-        deliveryNote={invoiceNote}
-        onConvert={handleConvertToInvoiceSubmit}
-        converting={convertingInvoice} />
     </div>
   );
 }

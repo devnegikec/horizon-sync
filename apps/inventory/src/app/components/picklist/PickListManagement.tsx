@@ -8,10 +8,12 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { usePickListManagement } from '../../hooks/usePickListManagement';
 import type { PickList } from '../../types/pick-list.types';
+import { pickListApi } from '../../utility/api/pick-lists';
 import { smartPickingApi } from '../../utility/api/smart-picking';
 
 import { CreateDeliveryFromPickListDialog } from './CreateDeliveryFromPickListDialog';
 import { PickListDetailDialog } from './PickListDetailDialog';
+import { PickListDialog } from './PickListDialog';
 import { PickListManagementFilters } from './PickListManagementFilters';
 import { PickListManagementHeader } from './PickListManagementHeader';
 import { PickListStats } from './PickListStats';
@@ -41,6 +43,24 @@ export function PickListManagement() {
   const [deliveryDialogOpen, setDeliveryDialogOpen] = React.useState(false);
   const [deliveryPickList, setDeliveryPickList] = React.useState<PickList | null>(null);
   const [creatingDelivery, setCreatingDelivery] = React.useState(false);
+
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [editPickList, setEditPickList] = React.useState<PickList | null>(null);
+
+  const handleEdit = React.useCallback(async (pickList: PickList) => {
+    if (!accessToken) return;
+    try {
+      const fullPickList = await pickListApi.get(accessToken, pickList.id) as PickList;
+      setEditPickList(fullPickList);
+      setEditDialogOpen(true);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load pick list details',
+        variant: 'destructive',
+      });
+    }
+  }, [accessToken, toast]);
 
   const handleCreateDeliveryNote = React.useCallback((pickList: PickList) => {
     setDeliveryPickList(pickList);
@@ -110,6 +130,7 @@ export function PickListManagement() {
         error={error}
         hasActiveFilters={!!filters.search || filters.status !== 'all'}
         onView={handleView}
+        onEdit={handleEdit}
         onDelete={handleDelete}
         onTableReady={handleTableReady}
         serverPagination={serverPaginationConfig}/>
@@ -121,12 +142,17 @@ export function PickListManagement() {
         onCreateDeliveryNote={handleCreateDeliveryNote}/>
 
       {/* Create Delivery Note from Pick List Dialog */}
-      <CreateDeliveryFromPickListDialog
-        open={deliveryDialogOpen}
+      <CreateDeliveryFromPickListDialog open={deliveryDialogOpen}
         onOpenChange={setDeliveryDialogOpen}
         pickList={deliveryPickList}
         onCreateDelivery={handleCreateDeliverySubmit}
         creating={creatingDelivery}/>
+
+      {/* Edit Pick List Dialog */}
+      <PickListDialog open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        pickList={editPickList}
+        onSaved={refetch}/>
     </div>
   );
 }
