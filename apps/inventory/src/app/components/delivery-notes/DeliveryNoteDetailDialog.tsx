@@ -34,7 +34,13 @@ interface DeliveryNoteDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   deliveryNote: DeliveryNote | null;
-  onConvertToInvoice?: (id: string) => void;
+  onConvertToInvoice?: (
+    deliveryNoteId: string,
+    data: {
+      items: { item_id: string; qty_to_bill: number }[];
+    },
+  ) => Promise<void>;
+  convertingInvoice?: boolean;
   onEdit?: (deliveryNote: DeliveryNote) => void;
 }
 
@@ -131,12 +137,26 @@ export function DeliveryNoteDetailDialog({
   onOpenChange,
   deliveryNote,
   onConvertToInvoice,
+  convertingInvoice,
   onEdit,
 }: DeliveryNoteDetailDialogProps) {
   if (!deliveryNote) return null;
 
   const statusBadge = getStatusBadge(deliveryNote.status);
   const grandTotal = (deliveryNote.items ?? []).reduce((sum, item) => sum + Number(item.amount), 0);
+
+  const handleConvertToInvoice = async () => {
+    if (!onConvertToInvoice || !deliveryNote) return;
+
+    const items = (deliveryNote.items ?? []).map((item) => ({
+      item_id: item.id,
+      qty_to_bill: Number(item.qty),
+    }));
+
+    if (items.length === 0) return;
+
+    await onConvertToInvoice(deliveryNote.id, { items });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -156,9 +176,9 @@ export function DeliveryNoteDetailDialog({
           </div>
           <div className="flex items-center gap-2">
             {onConvertToInvoice && (
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => onConvertToInvoice(deliveryNote.id)}>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleConvertToInvoice} disabled={convertingInvoice}>
                 <FileText className="h-4 w-4" />
-                Convert to Invoice
+                {convertingInvoice ? 'Converting...' : 'Convert to Invoice'}
               </Button>
             )}
             {onEdit && (

@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { FileText, MoreHorizontal, Eye, Trash2, Package } from 'lucide-react';
+import { FileText, MoreHorizontal, Eye, Pencil, Trash2, Package } from 'lucide-react';
 
 import { Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -19,6 +19,7 @@ export interface PickListTableProps {
   error: string | null;
   hasActiveFilters: boolean;
   onView: (pickList: PickList) => void;
+  onEdit?: (pickList: PickList) => void;
   onDelete: (pickList: PickList) => void;
   onTableReady?: (table: Table<PickList>) => void;
   serverPagination?: {
@@ -35,6 +36,7 @@ export function PickListTable({
   error,
   hasActiveFilters,
   onView,
+  onEdit,
   onDelete,
   onTableReady,
   serverPagination
@@ -134,6 +136,7 @@ export function PickListTable({
         cell: ({ row }) => {
           const pickList = row.original;
           const canDelete = pickList.status === 'draft';
+          const canEdit = pickList.status === 'draft' || pickList.status === 'in_progress';
 
           return (
             <div className="text-right">
@@ -148,6 +151,12 @@ export function PickListTable({
                     <Eye className="mr-2 h-4 w-4" />
                     View Details
                   </DropdownMenuItem>
+                  {canEdit && onEdit && (
+                    <DropdownMenuItem onClick={() => onEdit(pickList)}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit Pick List
+                    </DropdownMenuItem>
+                  )}
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
@@ -166,7 +175,7 @@ export function PickListTable({
         enableSorting: false,
       },
     ],
-    [onView, onDelete],
+    [onView, onEdit, onDelete],
   );
 
   if (error) {
