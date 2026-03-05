@@ -14,10 +14,12 @@ interface PaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   payment?: PaymentEntry | null;
+  initialData?: Partial<CreatePaymentPayload> | null;
+  preselectedInvoiceId?: string | null;
   onSuccess: () => void;
 }
 
-export function PaymentDialog({ open, onOpenChange, payment, onSuccess }: PaymentDialogProps) {
+export function PaymentDialog({ open, onOpenChange, payment, initialData, preselectedInvoiceId, onSuccess }: PaymentDialogProps) {
   const { createPayment, updatePayment, loading } = usePaymentActions();
   const isEditMode = !!payment;
 
@@ -40,7 +42,7 @@ export function PaymentDialog({ open, onOpenChange, payment, onSuccess }: Paymen
     onOpenChange(false);
   };
 
-  const initialData = payment
+  const formInitialData = payment
     ? {
         payment_type: payment.payment_type,
         party_id: payment.party_id,
@@ -50,7 +52,7 @@ export function PaymentDialog({ open, onOpenChange, payment, onSuccess }: Paymen
         payment_mode: payment.payment_mode,
         reference_no: payment.reference_no,
       }
-    : undefined;
+    : initialData || undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -66,7 +68,8 @@ export function PaymentDialog({ open, onOpenChange, payment, onSuccess }: Paymen
           </DialogDescription>
         </DialogHeader>
         <PaymentForm
-          initialData={initialData}
+          initialData={formInitialData}
+          preselectedInvoiceId={preselectedInvoiceId}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           loading={loading}

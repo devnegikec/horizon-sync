@@ -5,12 +5,15 @@ import { AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@horizon-sync/ui/components';
 
 import { useInvoiceManagement } from '../../hooks/useInvoiceManagement';
+import { PaymentType, type CreatePaymentPayload } from '../../types/payment.types';
+import type { Invoice } from '../../types/invoice.types';
 
 import { InvoiceDetailDialog } from './InvoiceDetailDialog';
 import { InvoiceManagementFilters } from './InvoiceManagementFilters';
 import { InvoiceManagementHeader } from './InvoiceManagementHeader';
 import { InvoiceStats } from './InvoiceStats';
 import { InvoicesTable } from './InvoicesTable';
+import { PaymentDialog } from '../payments/PaymentDialog';
 
 export function InvoiceManagement() {
   const {
@@ -34,6 +37,27 @@ export function InvoiceManagement() {
     handleTableReady,
     serverPaginationConfig,
   } = useInvoiceManagement();
+
+  // Payment dialog state
+  const [paymentDialogOpen, setPaymentDialogOpen] = React.useState(false);
+  const [paymentInitialData, setPaymentInitialData] = React.useState<Partial<CreatePaymentPayload> | null>(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = React.useState<string | null>(null);
+
+  // Handle create payment from invoice
+  const handleCreatePayment = React.useCallback((invoice: Invoice) => {
+    const payment_type = invoice.invoice_type === 'sales' 
+      ? PaymentType.CUSTOMER_PAYMENT 
+      : PaymentType.SUPPLIER_PAYMENT;
+    setPaymentInitialData({
+      payment_type,
+      party_id: invoice.party_id,
+      amount: invoice.outstanding_amount,
+      currency_code: invoice.currency,
+      payment_date: new Date().toISOString().split('T')[0],
+    });
+    setSelectedInvoiceId(invoice.id);
+    setPaymentDialogOpen(true);
+  }, []);
 
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
@@ -79,6 +103,7 @@ export function InvoiceManagement() {
         onView={handleView}
         onDelete={handleDelete}
         onMarkAsPaid={handleMarkAsPaid}
+        onCreatePayment={handleCreatePayment}
         onCreateInvoice={handleCreate}
         onTableReady={handleTableReady}
         serverPagination={serverPaginationConfig}
@@ -86,6 +111,20 @@ export function InvoiceManagement() {
 
       {/* Detail Dialog */}
       <InvoiceDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} invoice={selectedInvoice} />
+
+      {/* Payment Dialog */}
+      <PaymentDialog
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        payment={null}
+        initialData={paymentInitialData}
+        preselectedInvoiceId={selectedInvoiceId}
+        onSuccess={() => {
+          setPaymentDialogOpen(false);
+          setSelectedInvoiceId(null);
+          refetch();
+        }}
+      />
 
       {/* TODO: Create Dialog */}
       {createDialogOpen && (
