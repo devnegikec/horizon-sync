@@ -5,3 +5,8 @@ export { InvoiceStats } from './InvoiceStats';
 export { InvoicesTable } from './InvoicesTable';
 export { InvoiceStatusBadge } from './InvoiceStatusBadge';
 export { InvoiceDetailDialog } from './InvoiceDetailDialog';
+export { InvoiceContent } from './InvoiceContent';
+export { InvoiceHeader } from './InvoiceHeader';
+export { InvoiceDates } from './InvoiceDates';
+export { InvoicePartyInfo } from './InvoicePartyInfo';
+export { InvoiceAmountsSummary } from './InvoiceAmountsSummary';
