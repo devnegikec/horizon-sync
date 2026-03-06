@@ -1,4 +1,5 @@
 export * from './ui/alert-dialog';
+export * from './ui/confirmation-dialog';
 export * from './ui/avatar';
 export * from './ui/badge';
 export * from './ui/button';
@@ -22,6 +23,7 @@ export * from './ui/textarea';
 export * from './ui/toast';
 export * from './ui/toaster';
 export * from './ui/tooltip';
+export * from './ui/currency-select';
 export * from './data-table';
 export * from './organization';
 export * from './email';

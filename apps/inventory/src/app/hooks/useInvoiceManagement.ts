@@ -100,6 +100,10 @@ export function useInvoiceManagement() {
   const [selectedInvoice, setSelectedInvoice] = React.useState<Invoice | null>(null);
   const [tableInstance, setTableInstance] = React.useState<Table<Invoice> | null>(null);
 
+  // Confirmation dialog state for Mark as Paid
+  const [confirmMarkAsPaidOpen, setConfirmMarkAsPaidOpen] = React.useState(false);
+  const [invoiceToMarkPaid, setInvoiceToMarkPaid] = React.useState<Invoice | null>(null);
+
   // Reset to first page when filters change
   useEffect(() => {
     setPage(1);
@@ -133,7 +137,11 @@ export function useInvoiceManagement() {
   });
 
   const markAsPaidMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data?: any }) => invoiceApi.markAsPaid(accessToken || '', id, data),
+    mutationFn: ({ id }: { id: string }) =>
+      invoiceApi.update(accessToken || '', id, {
+        status: 'paid',
+        outstanding_amount: 0,
+      }),
     onSuccess: () => {
       toast({ title: 'Success', description: 'Invoice marked as paid' });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
@@ -199,12 +207,24 @@ export function useInvoiceManagement() {
         return;
       }
 
-      if (window.confirm(`Mark invoice ${invoice.invoice_no} as paid?`)) {
-        markAsPaidMutation.mutate({ id: invoice.id });
-      }
+      setInvoiceToMarkPaid(invoice);
+      setConfirmMarkAsPaidOpen(true);
     },
-    [markAsPaidMutation, toast]
+    [toast]
   );
+
+  const confirmMarkAsPaid = React.useCallback(() => {
+    if (!invoiceToMarkPaid) return;
+    markAsPaidMutation.mutate(
+      { id: invoiceToMarkPaid.id },
+      {
+        onSettled: () => {
+          setConfirmMarkAsPaidOpen(false);
+          setInvoiceToMarkPaid(null);
+        },
+      }
+    );
+  }, [invoiceToMarkPaid, markAsPaidMutation]);
 
   const handleTableReady = React.useCallback((table: Table<Invoice>) => {
     setTableInstance(table);
@@ -246,5 +266,10 @@ export function useInvoiceManagement() {
     handleMarkAsPaid,
     handleTableReady,
     serverPaginationConfig,
+    confirmMarkAsPaidOpen,
+    setConfirmMarkAsPaidOpen,
+    invoiceToMarkPaid,
+    confirmMarkAsPaid,
+    isMarkingAsPaid: markAsPaidMutation.isPending,
   };
 }

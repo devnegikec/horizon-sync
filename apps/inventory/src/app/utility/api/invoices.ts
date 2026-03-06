@@ -1,6 +1,7 @@
+import type { InvoiceCreateRequest, InvoiceUpdateRequest, InvoiceResponse, MarkAsPaidRequest } from '../../types/invoice.types';
+
 import { apiRequest, buildPaginationParams } from './core';
 
-import type { InvoiceCreateRequest, InvoiceUpdateRequest, InvoiceResponse, MarkAsPaidRequest } from '../../types/invoice.types';
 
 // Invoices API helpers
 export const invoiceApi = {
@@ -44,12 +45,6 @@ export const invoiceApi = {
   delete: (accessToken: string, id: string) =>
     apiRequest(`/invoices/${id}`, accessToken, {
       method: 'DELETE',
-    }),
-
-  markAsPaid: (accessToken: string, id: string, data?: MarkAsPaidRequest) =>
-    apiRequest(`/invoices/${id}/mark-paid`, accessToken, {
-      method: 'POST',
-      body: data || {},
     }),
 
   sendEmail: (accessToken: string, id: string, emailData: { to: string; subject?: string; message?: string }) =>

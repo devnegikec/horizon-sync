@@ -116,20 +116,11 @@ export function OrganizationSettings({
       )}
 
       {/* Currency Settings */}
-      <CurrencySettings
-        currencies={settings.currencies}
+      <CurrencySettings currencies={settings.currencies}
         onChange={handleCurrenciesChange}
-        disabled={saving || !canEdit}
-      />
+        disabled={saving || !canEdit}/>
 
       <Separator />
-
-      {/* Naming Series Settings */}
-      <NamingSeriesSettings
-        namingSeries={settings.naming_series}
-        onChange={handleNamingSeriesChange}
-        disabled={saving || !canEdit}
-      />
 
       {/* Save Button (Bottom) */}
       {canEdit && (
