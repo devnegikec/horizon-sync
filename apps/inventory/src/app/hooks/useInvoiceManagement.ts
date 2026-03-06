@@ -137,7 +137,11 @@ export function useInvoiceManagement() {
   });
 
   const markAsPaidMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data?: any }) => invoiceApi.markAsPaid(accessToken || '', id, data),
+    mutationFn: ({ id }: { id: string }) =>
+      invoiceApi.update(accessToken || '', id, {
+        status: 'paid',
+        outstanding_amount: 0,
+      }),
     onSuccess: () => {
       toast({ title: 'Success', description: 'Invoice marked as paid' });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
