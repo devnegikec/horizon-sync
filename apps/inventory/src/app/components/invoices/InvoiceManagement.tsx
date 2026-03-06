@@ -2,18 +2,18 @@ import * as React from 'react';
 
 import { AlertTriangle } from 'lucide-react';
 
-import { Card, CardContent } from '@horizon-sync/ui/components';
+import { Card, CardContent, ConfirmationDialog } from '@horizon-sync/ui/components';
 
 import { useInvoiceManagement } from '../../hooks/useInvoiceManagement';
-import { PaymentType, type CreatePaymentPayload } from '../../types/payment.types';
 import type { Invoice } from '../../types/invoice.types';
+import { PaymentType, type CreatePaymentPayload } from '../../types/payment.types';
+import { PaymentDialog } from '../payments/PaymentDialog';
 
 import { InvoiceDetailDialog } from './InvoiceDetailDialog';
 import { InvoiceManagementFilters } from './InvoiceManagementFilters';
 import { InvoiceManagementHeader } from './InvoiceManagementHeader';
-import { InvoiceStats } from './InvoiceStats';
 import { InvoicesTable } from './InvoicesTable';
-import { PaymentDialog } from '../payments/PaymentDialog';
+import { InvoiceStats } from './InvoiceStats';
 
 export function InvoiceManagement() {
   const {
@@ -36,6 +36,11 @@ export function InvoiceManagement() {
     handleMarkAsPaid,
     handleTableReady,
     serverPaginationConfig,
+    confirmMarkAsPaidOpen,
+    setConfirmMarkAsPaidOpen,
+    invoiceToMarkPaid,
+    confirmMarkAsPaid,
+    isMarkingAsPaid,
   } = useInvoiceManagement();
 
   // Payment dialog state
@@ -83,20 +88,17 @@ export function InvoiceManagement() {
       {ErrorDisplay}
 
       {/* Stats Cards */}
-      <InvoiceStats
-        total={stats.total}
+      <InvoiceStats total={stats.total}
         draft={stats.draft}
         pending={stats.pending}
         paid={stats.paid}
-        overdue={stats.overdue}
-      />
+        overdue={stats.overdue}/>
 
       {/* Filters */}
       <InvoiceManagementFilters filters={filters} setFilters={setFilters} tableInstance={tableInstance} />
 
       {/* Invoices Table */}
-      <InvoicesTable
-        invoices={invoices}
+      <InvoicesTable invoices={invoices}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.status !== 'all' || filters.invoice_type !== 'all'}
@@ -106,15 +108,13 @@ export function InvoiceManagement() {
         onCreatePayment={handleCreatePayment}
         onCreateInvoice={handleCreate}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
       {/* Detail Dialog */}
       <InvoiceDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} invoice={selectedInvoice} />
 
       {/* Payment Dialog */}
-      <PaymentDialog
-        open={paymentDialogOpen}
+      <PaymentDialog open={paymentDialogOpen}
         onOpenChange={setPaymentDialogOpen}
         payment={null}
         initialData={paymentInitialData}
@@ -123,13 +123,22 @@ export function InvoiceManagement() {
           setPaymentDialogOpen(false);
           setSelectedInvoiceId(null);
           refetch();
-        }}
-      />
+        }}/>
 
       {/* TODO: Create Dialog */}
       {createDialogOpen && (
         <div>Create Invoice Dialog - To be implemented</div>
       )}
+
+      {/* Mark as Paid Confirmation */}
+      <ConfirmationDialog open={confirmMarkAsPaidOpen}
+        onOpenChange={setConfirmMarkAsPaidOpen}
+        title="Mark Invoice as Paid"
+        description={`Are you sure you want to mark invoice ${invoiceToMarkPaid?.invoice_no ?? ''} as paid? This action cannot be undone.`}
+        confirmLabel="Mark as Paid"
+        cancelLabel="Cancel"
+        loading={isMarkingAsPaid}
+        onConfirm={confirmMarkAsPaid}/>
     </div>
   );
 }
