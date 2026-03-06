@@ -1,6 +1,9 @@
 import * as React from 'react';
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
+import { useCurrencyStore, useUserStore } from '@horizon-sync/store';
+import { CurrencySelect as SharedCurrencySelect } from '@horizon-sync/ui/components';
+
+import { environment } from '../../../environments/environment';
 
 interface CurrencySelectProps {
   value: string;
@@ -8,21 +11,21 @@ interface CurrencySelectProps {
   disabled?: boolean;
 }
 
-const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'] as const;
-
 export function CurrencySelect({ value, onValueChange, disabled = false }: CurrencySelectProps) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const { currencies, fetchCurrencies } = useCurrencyStore();
+
+  React.useEffect(() => {
+    if (accessToken) {
+      fetchCurrencies(environment.apiCoreUrl, accessToken);
+    }
+  }, [accessToken, fetchCurrencies]);
+
   return (
-    <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      <SelectTrigger>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {CURRENCIES.map((currency) => (
-          <SelectItem key={currency} value={currency}>
-            {currency}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <SharedCurrencySelect
+      value={value}
+      onChange={onValueChange}
+      currencies={currencies}
+      disabled={disabled} />
   );
 }
