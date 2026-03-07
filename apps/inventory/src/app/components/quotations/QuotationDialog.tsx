@@ -3,11 +3,12 @@ import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
+import { Separator } from '@horizon-sync/ui/components';
 
 import type { CustomerResponse } from '../../types/customer.types';
-import type { Quotation, QuotationCreate, QuotationDialogProps, QuotationFormState, QuotationLineItemCreate, QuotationUpdate } from '../../types/quotation.types';
+import type { QuotationDialogProps, QuotationFormState, QuotationLineItemCreate } from '../../types/quotation.types';
 import { customerApi } from '../../utility/api';
+import { FormDialog } from '../containers';
 
 import { buildSavePayload, computeDocumentDiscount, emptyItem, getAvailableStatuses, LOCKED_STATUSES, validateQuotationForm } from './quotation.helpers';
 import { QuotationFormFields } from './QuotationFormFields';
@@ -128,49 +129,38 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit Quotation' : 'Create Quotation'}</DialogTitle>
-        </DialogHeader>
+    <FormDialog open={open}
+      onOpenChange={onOpenChange}
+      title={isEdit ? 'Edit Quotation' : 'Create Quotation'}
+      size="full"
+      onSubmit={handleSubmit}
+      submitLabel={isEdit ? 'Update Quotation' : 'Create Quotation'}
+      saving={saving}>
+      <QuotationFormFields formData={formData} customers={customers} isEdit={isEdit} availableStatuses={availableStatuses} onFieldChange={handleChange} />
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <QuotationFormFields formData={formData} customers={customers} isEdit={isEdit} availableStatuses={availableStatuses} onFieldChange={handleChange} />
-
-          <Separator />
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium">Line Items</h3>
-            <QuotationLineItemsTable items={items}
-              onItemsChange={setItems}
-              disabled={isLineItemEditingDisabled}
-              currency={formData.currency}
-              summary={{
-                subtotalAmount,
-                subtotalTax,
-                subtotalTotal,
-                subtotalLineDiscount,
-                discountAmount: totalDiscountAmount,
-                grandTotal,
-                documentDiscount: {
-                  type: formData.discount_type,
-                  value: formData.discount_value,
-                  onTypeChange: (v) => handleChange('discount_type', v),
-                  onValueChange: (v) => handleChange('discount_value', v),
-                  disabled: isLineItemEditingDisabled,
-                },
-              }}/>
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? 'Saving...' : isEdit ? 'Update Quotation' : 'Create Quotation'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <Separator />
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium">Line Items</h3>
+        <QuotationLineItemsTable items={items}
+          onItemsChange={setItems}
+          disabled={isLineItemEditingDisabled}
+          currency={formData.currency}
+          summary={{
+            subtotalAmount,
+            subtotalTax,
+            subtotalTotal,
+            subtotalLineDiscount,
+            discountAmount: totalDiscountAmount,
+            grandTotal,
+            documentDiscount: {
+              type: formData.discount_type,
+              value: formData.discount_value,
+              onTypeChange: (v) => handleChange('discount_type', v),
+              onValueChange: (v) => handleChange('discount_value', v),
+              disabled: isLineItemEditingDisabled,
+            },
+          }}/>
+      </div>
+    </FormDialog>
   );
 }
