@@ -56,10 +56,10 @@ function QtyInfoIcon({ qty, itemData }: { qty: number; itemData: QuotationLineIt
   const error = qty > 0 && itemData ? getQtyError(qty, itemData) : null;
   if (hints.length === 0 && !error) return null;
 
-  // Icon color: red for error, orange for warning (exceeds available), default muted
+  // Icon color: red for any error, default muted
   let iconColor = 'text-muted-foreground';
   if (error) {
-    iconColor = error.color.includes('25 95%') ? 'text-orange-500' : 'text-destructive';
+    iconColor = 'text-destructive';
   }
 
   return (
