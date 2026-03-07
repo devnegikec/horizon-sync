@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, Eye, Edit, Power, PowerOff, Pause, Building2, AlertTriangle } from 'lucide-react';
+import { MoreHorizontal, Eye, Edit, Power, PowerOff, Pause, Building2, AlertTriangle, MapPin } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 import { cn } from '@horizon-sync/ui/lib';
 
 import type { Customer } from '../../types/customer.types';
@@ -71,11 +72,28 @@ export function createCustomerColumns({ onViewCustomer, onEditCustomer, onToggle
       header: 'Location',
       cell: ({ row }) => {
         const customer = row.original;
+        const fullAddress = customer.address;
+        const city = customer.city;
+
+        if (!city && !fullAddress) {
+          return <span className="text-muted-foreground text-sm">—</span>;
+        }
+
         return (
-          <div className="text-sm">
-            <p>{customer.city}</p>
-            {customer.address && <p className="text-muted-foreground text-xs line-clamp-1">{customer.address}</p>}
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 cursor-default">
+                  <span className="text-sm">{city || '—'}</span>
+                </div>
+              </TooltipTrigger>
+              {fullAddress && (
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p className="text-xs">{fullAddress}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         );
       },
     },
@@ -152,18 +170,18 @@ export function createCustomerColumns({ onViewCustomer, onEditCustomer, onToggle
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onViewCustomer(customer)}>
                 <Eye className="mr-2 h-4 w-4" />
-                View Details
+                View
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onEditCustomer(customer)}>
                 <Edit className="mr-2 h-4 w-4" />
-                Edit Customer
+                Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {customer.status === 'active' && (
                 <>
                   <DropdownMenuItem onClick={() => onToggleStatus(customer, 'blocked')}>
                     <Pause className="mr-2 h-4 w-4" />
-                    Block Customer
+                    Block
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onToggleStatus(customer, 'inactive')}>
                     <PowerOff className="mr-2 h-4 w-4" />

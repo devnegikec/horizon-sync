@@ -7,6 +7,7 @@ import { DataTable } from '@horizon-sync/ui/components/data-table/DataTable';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
+import { TableSkeleton } from '@horizon-sync/ui/components/ui/table-skeleton';
 
 import type { Customer } from '../../types/customer.types';
 
@@ -76,7 +77,7 @@ export function CustomersTable({
     return (
       <Card>
         <CardContent className="p-0">
-          <div className="py-12 text-center text-muted-foreground">Loading…</div>
+          <TableSkeleton columns={8} rows={10} showHeader={true} />
         </CardContent>
       </Card>
     );
