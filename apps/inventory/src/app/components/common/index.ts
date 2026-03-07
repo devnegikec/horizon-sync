@@ -1,5 +1,7 @@
 export { CustomerAddressBlock } from './CustomerAddressBlock';
 export type { CustomerAddressData } from './CustomerAddressBlock';
+export { PartyInfoCard } from './PartyInfoCard';
+export type { PartyInfoData } from './PartyInfoCard';
 export { CurrencySelect } from './CurrencySelect';
 export { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 export { EditableLineItemsTable } from './EditableLineItemsTable';

@@ -8,7 +8,7 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { useQuotationPDFActions } from '../../hooks/useQuotationPDFActions';
 import { getCurrencySymbol } from '../../types/currency.types';
 import type { Quotation, QuotationDetailDialogProps } from '../../types/quotation.types';
-import { CustomerAddressBlock, EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
+import { EmailComposer, LineItemsDetailTable, PartyInfoCard, TaxSummaryCollapsible } from '../common';
 
 import { buildTaxSummaryMap, formatDate } from './quotation.helpers';
 import { StatusBadge } from './StatusBadge';
@@ -142,14 +142,6 @@ function DialogFooterButtons({ quotation, pdfLoading, onClose, onPreview, onDown
 function QuotationDetailContent({ quotation, currencySymbol }: { quotation: Quotation; currencySymbol: string }) {
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <p className="text-sm text-muted-foreground">Quotation Number</p>
-          <p className="text-lg font-semibold">{quotation.quotation_no}</p>
-        </div>
-        <CustomerAddressBlock customerName={quotation.customer_name || quotation.customer?.name} customer={quotation.customer} />
-      </div>
-
       <div className="grid gap-4 md:grid-cols-4">
         <div>
           <p className="text-sm text-muted-foreground">Quotation Date</p>
@@ -168,6 +160,15 @@ function QuotationDetailContent({ quotation, currencySymbol }: { quotation: Quot
           <p className="font-medium">{currencySymbol} {Number(quotation.grand_total).toFixed(2)}</p>
         </div>
       </div>
+      <div>
+        {/* <div>
+          <p className="text-sm text-muted-foreground">Quotation Number</p>
+          <p className="text-lg font-semibold">{quotation.quotation_no}</p>
+        </div> */}
+        <PartyInfoCard label="Customer" party={quotation.customer} fallbackName={quotation.customer_name || quotation.customer?.name} />
+      </div>
+
+      
 
       <Separator />
       <QuotationLineItemsSection quotation={quotation} currencySymbol={currencySymbol} />
@@ -225,7 +226,7 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
                 <div className="flex items-center justify-between">
                   <DialogTitle className="flex items-center gap-3">
                     <FileText className="h-5 w-5" />
-                    Quotation Details
+                    {quotation.quotation_no}
                   </DialogTitle>
                   <StatusBadge status={quotation.status} />
                 </div>

@@ -54,7 +54,7 @@ export function InvoiceDetailDialog({ open, onOpenChange, invoice }: InvoiceDeta
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-3">
                 <FileText className="h-5 w-5" />
-                Invoice Details
+                {invoice.invoice_no}
               </DialogTitle>
               <InvoiceStatusBadge status={invoice.status} />
             </div>
