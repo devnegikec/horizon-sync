@@ -9,7 +9,7 @@ import { usePDFGeneration } from '../../hooks/usePDFGeneration';
 import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { SalesOrder } from '../../types/sales-order.types';
 import { convertSalesOrderToPDFData } from '../../utils/pdf/salesOrderToPDF';
-import { CustomerAddressBlock, EmailComposer, LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
+import { EmailComposer, LineItemsDetailTable, PartyInfoCard, TaxSummaryCollapsible } from '../common';
 import { StatusBadge } from '../quotations/StatusBadge';
 
 interface SalesOrderDetailDialogProps {
@@ -137,27 +137,16 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="flex items-center gap-3">
-                <ShoppingCart className="h-5 w-5" />
-                Sales Order Details
-              </DialogTitle>
+            <DialogTitle className="flex items-center gap-3">
+              <ShoppingCart className="h-5 w-5" />
+              {salesOrder.sales_order_no}
               <StatusBadge status={salesOrder.status} />
-            </div>
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Header Information */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <p className="text-sm text-muted-foreground">Sales Order Number</p>
-                <p className="text-lg font-semibold">{salesOrder.sales_order_no}</p>
-              </div>
-              <CustomerAddressBlock customerName={salesOrder.customer_name} customer={salesOrder.customer} />
-            </div>
-
-            {/* Dates and Currency */}
-            <div className="grid gap-4 md:grid-cols-3">
+            {/* Dates, Currency & Grand Total */}
+            <div className="grid gap-4 md:grid-cols-4">
               <div>
                 <p className="text-sm text-muted-foreground">Order Date</p>
                 <p className="font-medium">{formatDate(salesOrder.order_date)}</p>
@@ -170,32 +159,28 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                 <p className="text-sm text-muted-foreground">Currency</p>
                 <p className="font-medium">{salesOrder.currency}</p>
               </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Grand Total</p>
+                <p className="font-medium">{currencySymbol} {Number(salesOrder.grand_total).toFixed(2)}</p>
+              </div>
             </div>
 
+            {/* Customer Info */}
+            <PartyInfoCard label="Customer" party={salesOrder.customer} fallbackName={salesOrder.customer_name} />
+
             {/* Reference */}
-            {salesOrder.reference_type === 'Quotation' && salesOrder.reference_id && (
+            {salesOrder.reference_type && salesOrder.reference_id && (
               <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-3 text-sm">
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                   <span className="text-blue-900 dark:text-blue-100">
-                    Created from Quotation (Ref: {salesOrder.reference_id.slice(0, 8)}...)
+                    Created from {salesOrder.reference_type} (Ref: {salesOrder.reference_id.slice(0, 8)}...)
                   </span>
                 </div>
               </div>
             )}
 
-            {/* Tax Summary */}
-            <TaxSummaryCollapsible taxSummary={taxSummary} currencySymbol={currencySymbol} defaultCollapsed />
-
-            {/* Grand Total */}
-            <div className="rounded-lg bg-muted/50 p-4">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-medium">Grand Total</span>
-                <span className="text-2xl font-bold">{currencySymbol} {Number(salesOrder.grand_total).toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Line Items */}
+            
             <Separator />
             <div>
               <h3 className="text-lg font-medium mb-4">Line Items</h3>
@@ -270,6 +255,8 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
                   );
                 }} />
             </div>
+            {/* Tax Summary */}
+            <TaxSummaryCollapsible taxSummary={taxSummary} currencySymbol={currencySymbol} defaultCollapsed />
 
             {/* Related Invoices */}
             {salesOrder.items && salesOrder.items.some(item => Number(item.billed_qty) > 0) && (
@@ -366,7 +353,7 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
         docType="sales_order"
         docId={salesOrder.id}
         docNo={salesOrder.sales_order_no}
-        defaultRecipient=""
+        defaultRecipient={salesOrder.customer?.email || ''}
         defaultSubject={`Sales Order ${salesOrder.sales_order_no}`}
         defaultMessage={`Dear ${salesOrder.customer_name || 'Customer'},\n\nPlease find attached sales order ${salesOrder.sales_order_no} for your reference.\n\nBest regards`}
         defaultAttachments={pdfAttachment ? [pdfAttachment] : undefined}

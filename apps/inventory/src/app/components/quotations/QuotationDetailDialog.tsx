@@ -161,10 +161,6 @@ function QuotationDetailContent({ quotation, currencySymbol }: { quotation: Quot
         </div>
       </div>
       <div>
-        {/* <div>
-          <p className="text-sm text-muted-foreground">Quotation Number</p>
-          <p className="text-lg font-semibold">{quotation.quotation_no}</p>
-        </div> */}
         <PartyInfoCard label="Customer" party={quotation.customer} fallbackName={quotation.customer_name || quotation.customer?.name} />
       </div>
 
@@ -223,13 +219,11 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
           {quotation && (
             <>
               <DialogHeader>
-                <div className="flex items-center justify-between">
-                  <DialogTitle className="flex items-center gap-3">
-                    <FileText className="h-5 w-5" />
-                    {quotation.quotation_no}
-                  </DialogTitle>
+                <DialogTitle className="flex items-center gap-3">
+                  <FileText className="h-5 w-5" />
+                  {quotation.quotation_no}
                   <StatusBadge status={quotation.status} />
-                </div>
+                </DialogTitle>
               </DialogHeader>
 
               <QuotationDetailContent quotation={quotation} currencySymbol={currencySymbol} />
