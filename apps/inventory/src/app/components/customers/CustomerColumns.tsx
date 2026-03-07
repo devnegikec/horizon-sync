@@ -198,7 +198,7 @@ export function createCustomerColumns({ onViewCustomer, onEditCustomer, onToggle
               {customer.status === 'blocked' && (
                 <DropdownMenuItem onClick={() => onToggleStatus(customer, 'active')}>
                   <Power className="mr-2 h-4 w-4" />
-                  Remove Hold
+                  Unblock
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
