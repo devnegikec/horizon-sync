@@ -32,7 +32,6 @@ export function QuotationFormFields({
     <>
       {/* Basic Information */}
       <div className="space-y-4">
-        <h3 className="text-lg font-medium">Basic Information</h3>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="quotation_no">Quotation #</Label>
