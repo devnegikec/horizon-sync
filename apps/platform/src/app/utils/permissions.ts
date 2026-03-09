@@ -143,12 +143,20 @@ export const NavigationPermissions = {
 };
 
 /**
- * Get filtered navigation items based on user permissions
+ * Get filtered navigation items based on user permissions.
+ * If organizationId is null/undefined the user hasn't registered an org yet
+ * and is treated as the owner — show all navigation items.
  */
 export function filterNavigationByPermissions<T extends { href: string; title: string }>(
   navigationItems: T[],
-  userPermissions: Permission[]
+  userPermissions: Permission[],
+  organizationId?: string | null
 ): T[] {
+  // User without an organization is the owner of a new org — grant full access
+  if (!organizationId) {
+    return navigationItems;
+  }
+
   return navigationItems.filter(item => {
     switch (item.href) {
       case '/users':
