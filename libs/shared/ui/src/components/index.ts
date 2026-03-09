@@ -1,4 +1,5 @@
 export * from './ui/alert-dialog';
+export * from './ui/alert';
 export * from './ui/confirmation-dialog';
 export * from './ui/avatar';
 export * from './ui/badge';
@@ -12,6 +13,7 @@ export * from './ui/empty-state';
 export * from './ui/date-picker';
 export * from './ui/input';
 export * from './ui/label';
+export * from './ui/progress';
 export * from './ui/search-input';
 export * from './ui/select';
 export * from './ui/separator';

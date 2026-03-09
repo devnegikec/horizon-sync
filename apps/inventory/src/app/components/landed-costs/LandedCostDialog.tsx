@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+
 import type {
   LandedCostVoucherListItem,
   CreateLandedCostVoucherPayload,
@@ -96,42 +97,36 @@ export function LandedCostDialog({
                   <label htmlFor="voucher_no" className="block text-sm font-medium text-gray-700">
                     Voucher No *
                   </label>
-                  <input
-                    type="text"
+                  <input type="text"
                     id="voucher_no"
                     required
                     disabled={editMode}
                     value={formData.voucher_no}
                     onChange={(e) => setFormData({ ...formData, voucher_no: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100"
-                  />
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100"/>
                 </div>
 
                 <div>
                   <label htmlFor="posting_date" className="block text-sm font-medium text-gray-700">
                     Posting Date *
                   </label>
-                  <input
-                    type="date"
+                  <input type="date"
                     id="posting_date"
                     required
                     value={formData.posting_date}
                     onChange={(e) => setFormData({ ...formData, posting_date: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"/>
                 </div>
 
                 <div>
                   <label htmlFor="status" className="block text-sm font-medium text-gray-700">
                     Status *
                   </label>
-                  <select
-                    id="status"
+                  <select id="status"
                     required
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as 'draft' | 'submitted' | 'cancelled' })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  >
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                     <option value="draft">Draft</option>
                     <option value="submitted">Submitted</option>
                     <option value="cancelled">Cancelled</option>
@@ -142,31 +137,25 @@ export function LandedCostDialog({
                   <label htmlFor="remarks" className="block text-sm font-medium text-gray-700">
                     Remarks
                   </label>
-                  <textarea
-                    id="remarks"
+                  <textarea id="remarks"
                     rows={3}
                     value={formData.remarks}
                     onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"/>
                 </div>
               </div>
             </div>
 
             <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-              <button
-                type="submit"
+              <button type="submit"
                 disabled={loading}
-                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                 {loading ? 'Saving...' : editMode ? 'Update' : 'Create'}
               </button>
-              <button
-                type="button"
+              <button type="button"
                 onClick={() => onClose()}
                 disabled={loading}
-                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                 Cancel
               </button>
             </div>

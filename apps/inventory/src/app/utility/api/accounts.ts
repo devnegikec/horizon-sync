@@ -1,4 +1,3 @@
-import { apiRequest, buildPaginationParams } from './core';
 import type {
   Account,
   AccountBalanceHistoryResponse,
@@ -10,6 +9,8 @@ import type {
   DefaultAccountUpdateResponse,
   UpdateAccountPayload,
 } from '../../types/account.types';
+
+import { apiRequest, buildPaginationParams } from './core';
 
 const ACCOUNT_TYPE_API_MAP: Record<string, string> = {
   ASSET: 'asset',

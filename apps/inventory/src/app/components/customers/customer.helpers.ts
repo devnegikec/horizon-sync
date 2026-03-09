@@ -1,4 +1,5 @@
 import type { Customer } from '../../types/customer.types';
+
 import type { CustomerFormData } from './types';
 
 export const EMPTY_FORM: CustomerFormData = {

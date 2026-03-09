@@ -1,10 +1,10 @@
 import type { Table } from '@tanstack/react-table';
 
 import { DataTableViewOptions } from '@horizon-sync/ui/components/data-table/DataTableViewOptions';
-import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
+import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 
 import type { Payment } from '../../types/payment';
 
@@ -37,16 +37,12 @@ export function PaymentManagementFilters({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <SearchInput
-            className="sm:w-80"
+          <SearchInput className="sm:w-80"
             placeholder="Search by payment #, party..."
-            onSearch={handleSearch}
-          />
+            onSearch={handleSearch}/>
           <div className="flex gap-3">
-            <Select
-              value={filters.status}
-              onValueChange={(status) => setFilters((prev) => ({ ...prev, status }))}
-            >
+            <Select value={filters.status}
+              onValueChange={(status) => setFilters((prev) => ({ ...prev, status }))}>
               <SelectTrigger className="w-[180px]" aria-label="Filter by status">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
@@ -58,10 +54,8 @@ export function PaymentManagementFilters({
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            <Select
-              value={filters.payment_mode}
-              onValueChange={(payment_mode) => setFilters((prev) => ({ ...prev, payment_mode }))}
-            >
+            <Select value={filters.payment_mode}
+              onValueChange={(payment_mode) => setFilters((prev) => ({ ...prev, payment_mode }))}>
               <SelectTrigger className="w-[180px]" aria-label="Filter by payment mode">
                 <SelectValue placeholder="All Payment Modes" />
               </SelectTrigger>
@@ -74,10 +68,8 @@ export function PaymentManagementFilters({
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
-            <Select
-              value={filters.reconciliation_status}
-              onValueChange={(reconciliation_status) => setFilters((prev) => ({ ...prev, reconciliation_status }))}
-            >
+            <Select value={filters.reconciliation_status}
+              onValueChange={(reconciliation_status) => setFilters((prev) => ({ ...prev, reconciliation_status }))}>
               <SelectTrigger className="w-[180px]" aria-label="Filter by reconciliation status">
                 <SelectValue placeholder="Reconciliation Status" />
               </SelectTrigger>
@@ -100,8 +92,7 @@ export function PaymentManagementFilters({
           <Label htmlFor="date-from" className="text-sm font-medium">
             Payment Date From
           </Label>
-          <Input
-            id="date-from"
+          <Input id="date-from"
             type="date"
             className="w-[180px]"
             value={filters.date_from || ''}
@@ -110,15 +101,13 @@ export function PaymentManagementFilters({
                 ...prev, 
                 date_from: e.target.value || undefined 
               }))
-            }
-          />
+            }/>
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="date-to" className="text-sm font-medium">
             Payment Date To
           </Label>
-          <Input
-            id="date-to"
+          <Input id="date-to"
             type="date"
             className="w-[180px]"
             value={filters.date_to || ''}
@@ -127,8 +116,7 @@ export function PaymentManagementFilters({
                 ...prev, 
                 date_to: e.target.value || undefined 
               }))
-            }
-          />
+            }/>
         </div>
       </div>
     </div>

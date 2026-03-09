@@ -17,6 +17,8 @@ export function useBankingOverview() {
         queryFn: bankingOverviewService.getBankingOverview,
         staleTime: 2 * 60 * 1000, // 2 minutes
         refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+        enabled: false, // Disabled until backend endpoint is implemented
+        retry: false,
     });
 }
 
@@ -27,6 +29,8 @@ export function useAccountBalances(accountIds?: string[]) {
         queryFn: () => bankingOverviewService.getAccountBalances(accountIds),
         staleTime: 1 * 60 * 1000, // 1 minute
         refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
+        enabled: false, // Disabled until backend endpoint is implemented
+        retry: false,
     });
 }
 
@@ -39,8 +43,9 @@ export function useBankingAnalytics(params: {
     return useQuery({
         queryKey: BANKING_OVERVIEW_KEYS.analytics(params),
         queryFn: () => bankingOverviewService.getBankingAnalytics(params),
-        enabled: !!params.start_date && !!params.end_date,
+        enabled: false, // Disabled until backend endpoint is implemented
         staleTime: 10 * 60 * 1000, // 10 minutes - analytics don't change often
+        retry: false,
     });
 }
 
@@ -51,5 +56,7 @@ export function useRecentActivity(limit = 10) {
         queryFn: () => bankingOverviewService.getRecentActivity(limit),
         staleTime: 1 * 60 * 1000, // 1 minute
         refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
+        enabled: false, // Disabled until backend endpoint is implemented
+        retry: false,
     });
 }

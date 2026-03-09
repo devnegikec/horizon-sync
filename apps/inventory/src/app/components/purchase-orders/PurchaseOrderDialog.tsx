@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+
 import { Plus, Trash2, Loader2 } from 'lucide-react';
+
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
   Dialog,
@@ -18,10 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
-import { usePurchaseOrderActions } from '../../hooks/usePurchaseOrderActions';
-import { useSuppliers } from '../../hooks/useSuppliers';
+
 import { useItems } from '../../hooks/useItems';
+import { usePurchaseOrderActions } from '../../hooks/usePurchaseOrderActions';
 import { useRFQs } from '../../hooks/useRFQs';
+import { useSuppliers } from '../../hooks/useSuppliers';
 import type { PurchaseOrder, CreatePurchaseOrderPayload } from '../../types/purchase-order.types';
 
 interface PurchaseOrderDialogProps {
@@ -206,10 +209,8 @@ export function PurchaseOrderDialog({
                 <div key={index} className="grid grid-cols-12 gap-4 p-4 border rounded-lg">
                   <div className="col-span-5">
                     <Label htmlFor={`item-${index}`}>Item</Label>
-                    <Select
-                      value={item.item_id}
-                      onValueChange={(value) => handleLineItemChange(index, 'item_id', value)}
-                    >
+                    <Select value={item.item_id}
+                      onValueChange={(value) => handleLineItemChange(index, 'item_id', value)}>
                       <SelectTrigger id={`item-${index}`}>
                         <SelectValue placeholder="Select item" />
                       </SelectTrigger>
@@ -225,25 +226,21 @@ export function PurchaseOrderDialog({
 
                   <div className="col-span-2">
                     <Label htmlFor={`quantity-${index}`}>Quantity</Label>
-                    <Input
-                      id={`quantity-${index}`}
+                    <Input id={`quantity-${index}`}
                       type="number"
                       min="1"
                       value={item.quantity}
-                      onChange={(e) => handleLineItemChange(index, 'quantity', parseFloat(e.target.value))}
-                    />
+                      onChange={(e) => handleLineItemChange(index, 'quantity', parseFloat(e.target.value))}/>
                   </div>
 
                   <div className="col-span-2">
                     <Label htmlFor={`price-${index}`}>Unit Price</Label>
-                    <Input
-                      id={`price-${index}`}
+                    <Input id={`price-${index}`}
                       type="number"
                       min="0"
                       step="0.01"
                       value={item.unit_price}
-                      onChange={(e) => handleLineItemChange(index, 'unit_price', parseFloat(e.target.value))}
-                    />
+                      onChange={(e) => handleLineItemChange(index, 'unit_price', parseFloat(e.target.value))}/>
                   </div>
 
                   <div className="col-span-2">
@@ -256,13 +253,11 @@ export function PurchaseOrderDialog({
                   </div>
 
                   <div className="col-span-1 flex items-end">
-                    <Button
-                      type="button"
+                    <Button type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRemoveLineItem(index)}
-                      disabled={lineItems.length === 1}
-                    >
+                      disabled={lineItems.length === 1}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
@@ -275,27 +270,23 @@ export function PurchaseOrderDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="tax">Tax Rate (%)</Label>
-              <Input
-                id="tax"
+              <Input id="tax"
                 type="number"
                 min="0"
                 max="100"
                 step="0.01"
                 value={taxRate}
-                onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
-              />
+                onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}/>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="discount">Discount Amount</Label>
-              <Input
-                id="discount"
+              <Input id="discount"
                 type="number"
                 min="0"
                 step="0.01"
                 value={discountAmount}
-                onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
-              />
+                onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}/>
             </div>
           </div>
 

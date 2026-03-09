@@ -1,16 +1,20 @@
 import * as React from 'react';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
-import type { TaxTemplate, TaxTemplateCreate, TaxTemplateUpdate } from '../../types/tax-template.types';
 import { taxTemplateApi } from '../../api/tax-templates';
-import { TaxTemplateManagementHeader } from './TaxTemplateManagementHeader';
-import { TaxTemplateManagementFilters } from './TaxTemplateManagementFilters';
-import { TaxTemplatesTable } from './TaxTemplatesTable';
-import { TaxTemplateDialog } from './TaxTemplateDialog';
-import { TaxTemplateDetailDialog } from './TaxTemplateDetailDialog';
+import type { TaxTemplate, TaxTemplateCreate, TaxTemplateUpdate } from '../../types/tax-template.types';
 import { DeleteConfirmationDialog } from '../common/DeleteConfirmationDialog';
+
+import { TaxTemplateDetailDialog } from './TaxTemplateDetailDialog';
+import { TaxTemplateDialog } from './TaxTemplateDialog';
+import { TaxTemplateManagementFilters } from './TaxTemplateManagementFilters';
+import { TaxTemplateManagementHeader } from './TaxTemplateManagementHeader';
+import { TaxTemplatesTable } from './TaxTemplatesTable';
+
 
 export function TaxTemplateManagement() {
   const accessToken = useUserStore((s) => s.accessToken);
@@ -136,8 +140,7 @@ export function TaxTemplateManagement() {
 
       <TaxTemplateManagementFilters filters={filters} onFilterChange={handleFilterChange} />
 
-      <TaxTemplatesTable
-        templates={templates}
+      <TaxTemplatesTable templates={templates}
         loading={isLoading}
         error={error?.message || null}
         onView={handleView}
@@ -145,31 +148,24 @@ export function TaxTemplateManagement() {
         onDelete={handleDelete}
         onCreateTemplate={handleCreate}
         pagination={pagination}
-        onPageChange={handlePageChange}
-      />
+        onPageChange={handlePageChange}/>
 
-      <TaxTemplateDialog
-        open={createDialogOpen}
+      <TaxTemplateDialog open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         template={editTemplate}
         onSave={handleSave}
-        saving={createMutation.isPending || updateMutation.isPending}
-      />
+        saving={createMutation.isPending || updateMutation.isPending}/>
 
-      <TaxTemplateDetailDialog
-        open={detailDialogOpen}
+      <TaxTemplateDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         template={selectedTemplate}
-        onEdit={handleEdit}
-      />
+        onEdit={handleEdit}/>
 
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
+      <DeleteConfirmationDialog open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleConfirmDelete}
         title="Delete Tax Template"
-        description={`Are you sure you want to delete tax template "${selectedTemplate?.template_name}"? This action cannot be undone.`}
-      />
+        description={`Are you sure you want to delete tax template "${selectedTemplate?.template_name}"? This action cannot be undone.`}/>
     </div>
   );
 }

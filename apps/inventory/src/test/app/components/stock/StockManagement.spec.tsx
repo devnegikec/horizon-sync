@@ -1,9 +1,9 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 
 import { StockManagement } from '../../../../app/components/stock/StockManagement';
+import { useStockEntries } from '../../../../app/components/StockEntry';
 import { useStockLevels } from '../../../../app/hooks/useStockLevels';
 import { useStockMovements } from '../../../../app/hooks/useStockMovements';
-import { useStockEntries } from '../../../../app/components/StockEntry';
 import { useStockReconciliations } from '../../../../app/hooks/useStockReconciliations';
 
 // Mock the hooks

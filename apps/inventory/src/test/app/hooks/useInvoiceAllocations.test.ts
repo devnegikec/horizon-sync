@@ -1,8 +1,9 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { useInvoiceAllocations } from '../../../app/hooks/useInvoiceAllocations';
-import { paymentApi } from '../../../app/utility/api';
 import type { PaymentEntry, PaymentReference } from '../../../app/types/payment.types';
+import { paymentApi } from '../../../app/utility/api';
 
 const mockToast = vi.fn();
 

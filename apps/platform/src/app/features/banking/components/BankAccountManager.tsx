@@ -13,7 +13,7 @@ interface BankAccountManagerProps {
     glAccountId?: string;
 }
 
-export function BankAccountManager({ glAccountId = 'default-gl-account' }: BankAccountManagerProps) {
+export function BankAccountManager({ glAccountId = '00000000-0000-0000-0000-000000000000' }: BankAccountManagerProps) {
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
     const [searchTerm, setSearchTerm] = useState('');

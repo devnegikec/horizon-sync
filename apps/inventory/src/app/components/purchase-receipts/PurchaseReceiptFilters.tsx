@@ -1,5 +1,7 @@
 import { Search } from 'lucide-react';
+
 import { Input } from '@horizon-sync/ui/components/ui/input';
+
 import type { PurchaseReceiptFilters as Filters } from '../../types/purchase-receipt.types';
 
 interface PurchaseReceiptFiltersProps {
@@ -17,12 +19,10 @@ export function PurchaseReceiptFilters({ filters, setFilters }: PurchaseReceiptF
       <div className="flex flex-1 items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by Purchase Order ID..."
+          <Input placeholder="Search by Purchase Order ID..."
             value={filters.reference_id || ''}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-9"
-          />
+            className="pl-9"/>
         </div>
       </div>
     </div>

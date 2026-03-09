@@ -1,4 +1,5 @@
 import { useState } from 'react';
+
 import { Download, FileText, FileJson, FileSpreadsheet, FileType } from 'lucide-react';
 
 import {
@@ -139,24 +140,20 @@ export function ExportDialog({ open, onOpenChange, filters }: ExportDialogProps)
               const Icon = option.icon;
               return (
                 <div key={option.value} className="flex items-start space-x-3">
-                  <input
-                    type="radio"
+                  <input type="radio"
                     name="export-format"
                     id={option.value}
                     value={option.value}
                     checked={selectedFormat === option.value}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSelectedFormat(e.target.value as ExportFormat)}
-                    className="mt-1 h-4 w-4"
-                  />
-                  <Label
-                    htmlFor={option.value}
+                    className="mt-1 h-4 w-4"/>
+                  <Label htmlFor={option.value}
                     className={cn(
                       'flex-1 cursor-pointer rounded-lg border p-4 transition-colors',
                       selectedFormat === option.value
                         ? 'border-primary bg-primary/5'
                         : 'border-border hover:border-primary/50'
-                    )}
-                  >
+                    )}>
                     <div className="flex items-start gap-3">
                       <Icon className="mt-0.5 h-5 w-5 text-muted-foreground" />
                       <div className="space-y-1">

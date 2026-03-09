@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+
 import { StatusBadge } from '../../../../app/components/quotations/StatusBadge';
 
 describe('StatusBadge', () => {

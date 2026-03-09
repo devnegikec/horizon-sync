@@ -1,7 +1,9 @@
 import * as React from 'react';
+
 import { Eye, Edit, Trash2, Plus } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components';
+
 import type { ChargeTemplate } from '../../types/charge-template.types';
 
 interface ChargeTemplatesTableProps {
@@ -121,23 +123,19 @@ export function ChargeTemplatesTable({
             {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} templates
           </p>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
+            <Button variant="outline"
               size="sm"
               onClick={() => onPageChange(pagination.page - 1)}
-              disabled={pagination.page === 1}
-            >
+              disabled={pagination.page === 1}>
               Previous
             </Button>
             <span className="text-sm">
               Page {pagination.page} of {pagination.pages}
             </span>
-            <Button
-              variant="outline"
+            <Button variant="outline"
               size="sm"
               onClick={() => onPageChange(pagination.page + 1)}
-              disabled={pagination.page === pagination.pages}
-            >
+              disabled={pagination.page === pagination.pages}>
               Next
             </Button>
           </div>

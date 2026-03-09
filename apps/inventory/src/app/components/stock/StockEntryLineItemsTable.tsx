@@ -3,7 +3,7 @@ import * as React from 'react';
 import { type CellContext, type ColumnDef } from '@tanstack/react-table';
 import { Trash2 } from 'lucide-react';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
+ 
 import { useUserStore } from '@horizon-sync/store';
 import { Button, EditableDataTable, EditableNumberCell } from '@horizon-sync/ui/components';
 

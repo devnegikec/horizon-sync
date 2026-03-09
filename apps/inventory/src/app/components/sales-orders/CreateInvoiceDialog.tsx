@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { Receipt } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Separator } from '@horizon-sync/ui/components';
@@ -154,16 +155,14 @@ export function CreateInvoiceDialog({ open, onOpenChange, salesOrder, onCreateIn
                           <td className="px-4 py-3 text-sm text-right">{billedQty}</td>
                           <td className="px-4 py-3 text-sm text-right font-medium">{item.max_qty}</td>
                           <td className="px-4 py-3 text-sm text-right">
-                            <Input
-                              type="number"
+                            <Input type="number"
                               min="0"
                               max={item.max_qty}
                               step="0.01"
                               value={item.qty_to_bill}
                               onChange={(e) => handleQtyChange(index, Number(e.target.value))}
                               className={`w-24 text-right ml-auto ${isOverBilled ? 'border-red-500' : ''}`}
-                              disabled={item.max_qty === 0}
-                            />
+                              disabled={item.max_qty === 0}/>
                             {isOverBilled && (
                               <p className="text-xs text-red-500 mt-1">Exceeds available</p>
                             )}

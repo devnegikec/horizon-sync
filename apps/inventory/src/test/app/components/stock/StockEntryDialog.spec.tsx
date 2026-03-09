@@ -1,6 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
 import '@testing-library/jest-dom';
 import * as React from 'react';
+
 import { StockEntryDialog } from '../../../../app/components/stock/StockEntryDialog';
 import { useStockEntryMutations } from '../../../../app/hooks/useStock';
 import type { StockEntry } from '../../../../app/types/stock.types';
@@ -30,14 +32,12 @@ jest.mock('@horizon-sync/ui/components/ui/button', () => ({
 
 jest.mock('@horizon-sync/ui/components/ui/input', () => ({
   Input: ({ value, onChange, placeholder, type, id }: any) => (
-    <input
-      id={id}
+    <input id={id}
       value={value}
       onChange={onChange}
       placeholder={placeholder}
       type={type}
-      data-testid={id || placeholder}
-    />
+      data-testid={id || placeholder}/>
   ),
 }));
 

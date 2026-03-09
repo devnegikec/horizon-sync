@@ -79,33 +79,27 @@ export function CreateItemGroupModal({
               </DialogDescription>
             </div>
           </div>
-          <Button
-            variant="ghost"
+          <Button variant="ghost"
             size="icon"
             className="absolute right-4 top-4"
-            onClick={handleCancel}
-          >
+            onClick={handleCancel}>
             <X className="h-4 w-4" />
           </Button>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
-          <CreateItemGroupForm 
-            formData={formData}
-            setFormData={setFormData}
-          />
+          <CreateItemGroupForm formData={formData}
+            setFormData={setFormData}/>
 
           {submitError && (
             <p className="text-sm text-destructive mb-4">{submitError}</p>
           )}
 
           <DialogFooter>
-            <Button 
-              type="button" 
+            <Button type="button" 
               variant="outline" 
               onClick={handleCancel}
-              disabled={loading}
-            >
+              disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>

@@ -1,5 +1,6 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, jest } from '@jest/globals';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
 import '@testing-library/jest-dom';
 import { InvoiceManagementFilters } from '../../../../app/components/invoices/InvoiceManagementFilters';
 import type { InvoiceFilters } from '../../../../app/components/invoices/InvoiceManagementFilters';
@@ -13,11 +14,9 @@ describe('InvoiceManagementFilters', () => {
 
   it('renders search input with correct placeholder', () => {
     render(
-      <InvoiceManagementFilters
-        filters={defaultFilters}
+      <InvoiceManagementFilters filters={defaultFilters}
         setFilters={mockSetFilters}
-        tableInstance={null}
-      />
+        tableInstance={null}/>
     );
 
     expect(screen.getByPlaceholderText('Search by invoice #, customer...')).toBeInTheDocument();
@@ -25,11 +24,9 @@ describe('InvoiceManagementFilters', () => {
 
   it('renders status dropdown with all status options', () => {
     render(
-      <InvoiceManagementFilters
-        filters={defaultFilters}
+      <InvoiceManagementFilters filters={defaultFilters}
         setFilters={mockSetFilters}
-        tableInstance={null}
-      />
+        tableInstance={null}/>
     );
 
     const statusTrigger = screen.getByRole('combobox');
@@ -47,11 +44,9 @@ describe('InvoiceManagementFilters', () => {
 
   it('calls setFilters when status is changed', () => {
     render(
-      <InvoiceManagementFilters
-        filters={defaultFilters}
+      <InvoiceManagementFilters filters={defaultFilters}
         setFilters={mockSetFilters}
-        tableInstance={null}
-      />
+        tableInstance={null}/>
     );
 
     const statusTrigger = screen.getByRole('combobox');
@@ -65,11 +60,9 @@ describe('InvoiceManagementFilters', () => {
 
   it('calls setFilters when search input changes', async () => {
     render(
-      <InvoiceManagementFilters
-        filters={defaultFilters}
+      <InvoiceManagementFilters filters={defaultFilters}
         setFilters={mockSetFilters}
-        tableInstance={null}
-      />
+        tableInstance={null}/>
     );
 
     const searchInput = screen.getByPlaceholderText('Search by invoice #, customer...');
@@ -88,11 +81,9 @@ describe('InvoiceManagementFilters', () => {
 
   it('renders date range inputs', () => {
     render(
-      <InvoiceManagementFilters
-        filters={defaultFilters}
+      <InvoiceManagementFilters filters={defaultFilters}
         setFilters={mockSetFilters}
-        tableInstance={null}
-      />
+        tableInstance={null}/>
     );
 
     expect(screen.getByLabelText('Posting Date From')).toBeInTheDocument();
@@ -101,11 +92,9 @@ describe('InvoiceManagementFilters', () => {
 
   it('calls setFilters when date from is changed', () => {
     render(
-      <InvoiceManagementFilters
-        filters={defaultFilters}
+      <InvoiceManagementFilters filters={defaultFilters}
         setFilters={mockSetFilters}
-        tableInstance={null}
-      />
+        tableInstance={null}/>
     );
 
     const dateFromInput = screen.getByLabelText('Posting Date From');
@@ -116,11 +105,9 @@ describe('InvoiceManagementFilters', () => {
 
   it('calls setFilters when date to is changed', () => {
     render(
-      <InvoiceManagementFilters
-        filters={defaultFilters}
+      <InvoiceManagementFilters filters={defaultFilters}
         setFilters={mockSetFilters}
-        tableInstance={null}
-      />
+        tableInstance={null}/>
     );
 
     const dateToInput = screen.getByLabelText('Posting Date To');
@@ -138,11 +125,9 @@ describe('InvoiceManagementFilters', () => {
     };
 
     render(
-      <InvoiceManagementFilters
-        filters={filtersWithValues}
+      <InvoiceManagementFilters filters={filtersWithValues}
         setFilters={mockSetFilters}
-        tableInstance={null}
-      />
+        tableInstance={null}/>
     );
 
     const dateFromInput = screen.getByLabelText('Posting Date From') as HTMLInputElement;

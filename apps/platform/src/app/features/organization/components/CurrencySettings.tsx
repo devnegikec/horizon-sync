@@ -62,7 +62,7 @@ export function CurrencySettings({ currencies, onChange, disabled }: CurrencySet
     onChange(updated);
   };
 
-  const handleUpdateCurrency = (index: number, field: keyof CurrencyConfig, value: any) => {
+  const handleUpdateCurrency = (index: number, field: keyof CurrencyConfig, value: string | number | boolean) => {
     const updated = [...currencies];
     updated[index] = { ...updated[index], [field]: value };
     onChange(updated);
@@ -147,7 +147,7 @@ export function CurrencySettings({ currencies, onChange, disabled }: CurrencySet
                 <Input value={currency.symbol}
                   onChange={(e) => handleUpdateCurrency(index, 'symbol', e.target.value)}
                   disabled={disabled}
-                  placeholder="$"/>
+                  placeholder="$" />
               </div>
 
               <div className="space-y-2">
@@ -156,7 +156,7 @@ export function CurrencySettings({ currencies, onChange, disabled }: CurrencySet
                   onChange={(e) => handleUpdateCurrency(index, 'code', e.target.value.toUpperCase())}
                   disabled={disabled}
                   placeholder="USD"
-                  maxLength={3}/>
+                  maxLength={3} />
               </div>
 
               <div className="space-y-2">
@@ -170,16 +170,17 @@ export function CurrencySettings({ currencies, onChange, disabled }: CurrencySet
                   </SelectTrigger>
                   <SelectContent>
                     {COMMON_CURRENCIES.map((c) => {
-                      let example = c.precision === 0 ? '100' : 
-                                    c.precision === 2 ? '100.00' : 
-                                    c.precision === 3 ? '100.000' : 
-                                    '100.0000';
-                        example = `${c.symbol} ${example}`
+                      let example = c.precision === 0 ? '100' :
+                        c.precision === 2 ? '100.00' :
+                          c.precision === 3 ? '100.000' :
+                            '100.0000';
+                      example = `${c.symbol} ${example}`
                       return (
-                      <SelectItem key={c.code} value={c.code}>
-                        {c.precision} (e.g., {example})
-                      </SelectItem>
-                    )})}
+                        <SelectItem key={c.code} value={c.code}>
+                          {c.precision} (e.g., {example})
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
               </div>

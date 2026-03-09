@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+
 import { FileText, Eye, Calendar, DollarSign } from 'lucide-react';
+
 import {
   Card,
   CardContent,
@@ -12,8 +14,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@horizon-sync/ui/components';
-import { formatCurrency, formatDate } from '../../utils/payment.utils';
+
 import { journalEntriesApi, type JournalEntry } from '../../utility/api/journal-entries';
+import { formatCurrency, formatDate } from '../../utils/payment.utils';
 
 export function JournalEntries() {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
@@ -129,12 +132,10 @@ export function JournalEntries() {
                   )}
                 </div>
 
-                <Button
-                  variant="outline"
+                <Button variant="outline"
                   size="sm"
                   onClick={() => handleViewDetails(entry)}
-                  className="ml-4"
-                >
+                  className="ml-4">
                   <Eye className="h-4 w-4 mr-2" />
                   View Details
                 </Button>

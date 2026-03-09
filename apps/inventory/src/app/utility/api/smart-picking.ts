@@ -1,4 +1,3 @@
-import { apiRequest } from './core';
 import type {
   AllocationSuggestionResponse,
   SmartPickListCreate,
@@ -6,6 +5,8 @@ import type {
   DeliveryNoteFromPickListRequest,
   DeliveryNoteFromPickListResponse,
 } from '../../types/smart-picking.types';
+
+import { apiRequest } from './core';
 
 export const smartPickingApi = {
   suggestAllocation: (accessToken: string, salesOrderId: string) =>

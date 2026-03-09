@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
-import { apiRequest } from '../utility/api';
+
 import type { ReportFilters } from '../types/account.types';
+import { apiRequest } from '../utility/api';
 
 interface ChartOfAccountsReport {
   report_type: string;

@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
-import { purchaseOrderApi } from '../utility/api';
+
 import type { PurchaseOrderListItem, PurchaseOrderFilters } from '../types/purchase-order.types';
+import { purchaseOrderApi } from '../utility/api';
 
 export function usePurchaseOrders(initialFilters: Partial<PurchaseOrderFilters> = {}) {
   const accessToken = useUserStore((s) => s.accessToken);

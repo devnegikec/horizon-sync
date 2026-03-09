@@ -174,16 +174,14 @@ export function ConvertDNToInvoiceDialog({
                           <td className="px-4 py-3 text-sm">{item.item_name}</td>
                           <td className="px-4 py-3 text-sm text-right font-medium">{item.qty_delivered}</td>
                           <td className="px-4 py-3 text-sm text-right">
-                            <Input
-                              type="number"
+                            <Input type="number"
                               min="0"
                               max={item.qty_delivered}
                               step="1"
                               value={item.qty_to_bill}
                               onChange={(e) => handleQtyChange(index, Number(e.target.value))}
                               className={`w-24 text-right ml-auto ${isOverBilled ? 'border-red-500' : ''}`}
-                              disabled={item.qty_delivered === 0}
-                            />
+                              disabled={item.qty_delivered === 0}/>
                             {isOverBilled && (
                               <p className="text-xs text-red-500 mt-1">Exceeds delivered</p>
                             )}
@@ -201,20 +199,16 @@ export function ConvertDNToInvoiceDialog({
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Due Date (optional)</Label>
-              <Input
-                type="date"
+              <Input type="date"
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
+                onChange={(e) => setDueDate(e.target.value)}/>
             </div>
             <div className="space-y-2">
               <Label>Remarks (optional)</Label>
-              <Textarea
-                value={remarks}
+              <Textarea value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 rows={2}
-                placeholder="Invoice notes..."
-              />
+                placeholder="Invoice notes..."/>
             </div>
           </div>
 

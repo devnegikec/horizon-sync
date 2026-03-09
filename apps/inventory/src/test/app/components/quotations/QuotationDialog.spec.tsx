@@ -1,5 +1,6 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
 import { QuotationDialog } from '../../../../app/components/quotations/QuotationDialog';
 import type { Quotation } from '../../../../app/types/quotation.types';
 
@@ -65,13 +66,11 @@ describe('QuotationDialog', () => {
   describe('Create mode', () => {
     it('should open form in create mode with empty fields', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -95,13 +94,11 @@ describe('QuotationDialog', () => {
 
     it('should display customer options in dropdown', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -117,13 +114,11 @@ describe('QuotationDialog', () => {
 
     it('should have default currency set to INR', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -138,13 +133,11 @@ describe('QuotationDialog', () => {
 
     it('should not display status field in create mode', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -202,13 +195,11 @@ describe('QuotationDialog', () => {
 
     it('should open form in edit mode with pre-filled data', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={mockQuotation}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -232,13 +223,11 @@ describe('QuotationDialog', () => {
 
     it('should pre-fill line items from quotation', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={mockQuotation}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -252,13 +241,11 @@ describe('QuotationDialog', () => {
 
     it('should disable customer selection in edit mode', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={mockQuotation}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -273,13 +260,11 @@ describe('QuotationDialog', () => {
 
     it('should disable currency selection in edit mode', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={mockQuotation}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -295,13 +280,11 @@ describe('QuotationDialog', () => {
 
     it('should display status field in edit mode', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={mockQuotation}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -347,13 +330,11 @@ describe('QuotationDialog', () => {
 
     it('should disable line item editing when status is SENT', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={sentQuotation}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -375,13 +356,11 @@ describe('QuotationDialog', () => {
   describe('Form validation', () => {
     it('should have required customer field', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -395,13 +374,11 @@ describe('QuotationDialog', () => {
 
     it('should have required date fields', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -418,13 +395,11 @@ describe('QuotationDialog', () => {
 
     it('should display line items section', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -481,13 +456,11 @@ describe('QuotationDialog', () => {
       };
 
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={mockQuotation}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -503,13 +476,11 @@ describe('QuotationDialog', () => {
   describe('Form submission', () => {
     it('should disable submit button while saving', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={null}
           onSave={mockOnSave}
-          saving={true}
-        />
+          saving={true}/>
       );
 
       await waitFor(() => {
@@ -522,13 +493,11 @@ describe('QuotationDialog', () => {
 
     it('should show correct button text in create mode', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -571,13 +540,11 @@ describe('QuotationDialog', () => {
       };
 
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={mockQuotation}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -592,13 +559,11 @@ describe('QuotationDialog', () => {
   describe('Dialog controls', () => {
     it('should call onOpenChange when cancel button is clicked', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -613,13 +578,11 @@ describe('QuotationDialog', () => {
 
     it('should disable cancel button while saving', async () => {
       renderWithQueryClient(
-        <QuotationDialog
-          open={true}
+        <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={null}
           onSave={mockOnSave}
-          saving={true}
-        />
+          saving={true}/>
       );
 
       await waitFor(() => {

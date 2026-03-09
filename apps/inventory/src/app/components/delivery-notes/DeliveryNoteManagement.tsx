@@ -254,16 +254,14 @@ export function DeliveryNoteManagement() {
         serverPagination={serverPaginationConfig} />
 
       {/* Detail Dialog */}
-      <DeliveryNoteDetailDialog
-        open={detailDialogOpen}
+      <DeliveryNoteDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         deliveryNote={selectedNote}
         onConvertToInvoice={handleConvertToInvoice}
         convertingInvoice={convertingInvoice}
         onEdit={handleEdit} />
 
-      <DeliveryNoteDialog
-        open={createDialogOpen}
+      <DeliveryNoteDialog open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         deliveryNote={editNote}
         onSave={handleSave}

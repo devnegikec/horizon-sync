@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
+
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 import {
@@ -277,14 +278,12 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
               <Label htmlFor="account_code" className="text-sm">
                 Account Code <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="account_code"
+              <Input id="account_code"
                 value={formData.account_code}
                 onChange={(e) => setFormData({ ...formData, account_code: e.target.value })}
                 placeholder="e.g., 1000-01"
                 disabled={isEditing}
-                className={validationErrors.account_code ? 'border-destructive' : ''}
-              />
+                className={validationErrors.account_code ? 'border-destructive' : ''}/>
               {validationErrors.account_code && (
                 <p className="text-xs sm:text-sm text-destructive">{validationErrors.account_code}</p>
               )}
@@ -295,13 +294,11 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
               <Label htmlFor="account_name" className="text-sm">
                 Account Name <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="account_name"
+              <Input id="account_name"
                 value={formData.account_name}
                 onChange={(e) => setFormData({ ...formData, account_name: e.target.value })}
                 placeholder="e.g., Cash in Bank"
-                className={validationErrors.account_name ? 'border-destructive' : ''}
-              />
+                className={validationErrors.account_name ? 'border-destructive' : ''}/>
               {validationErrors.account_name && (
                 <p className="text-xs sm:text-sm text-destructive">{validationErrors.account_name}</p>
               )}
@@ -312,11 +309,9 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
               <Label htmlFor="account_type" className="text-sm">
                 Account Type <span className="text-destructive">*</span>
               </Label>
-              <Select
-                value={formData.account_type}
+              <Select value={formData.account_type}
                 onValueChange={(value) => setFormData({ ...formData, account_type: value as AccountType })}
-                disabled={isEditing}
-              >
+                disabled={isEditing}>
                 <SelectTrigger className={validationErrors.account_type ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select account type" />
                 </SelectTrigger>
@@ -343,10 +338,8 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
               <Label htmlFor="currency" className="text-sm">
                 Currency <span className="text-destructive">*</span>
               </Label>
-              <Select
-                value={formData.currency}
-                onValueChange={(value) => setFormData({ ...formData, currency: value })}
-              >
+              <Select value={formData.currency}
+                onValueChange={(value) => setFormData({ ...formData, currency: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select currency" />
                 </SelectTrigger>
@@ -365,20 +358,16 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
               <Label htmlFor="parent_account" className="text-sm">Parent Account (Optional)</Label>
               <div className="space-y-2">
                 {/* Search input for filtering */}
-                <Input
-                  placeholder="Search parent accounts..."
+                <Input placeholder="Search parent accounts..."
                   value={parentSearchTerm}
                   onChange={(e) => setParentSearchTerm(e.target.value)}
                   disabled={accountsLoading}
-                  className="text-sm"
-                />
+                  className="text-sm"/>
 
                 {/* Parent account dropdown */}
-                <Select
-                  value={formData.parent_account_id || 'none'}
+                <Select value={formData.parent_account_id || 'none'}
                   onValueChange={handleParentChange}
-                  disabled={accountsLoading}
-                >
+                  disabled={accountsLoading}>
                   <SelectTrigger>
                     <SelectValue placeholder="No parent account">
                       {formData.parent_account_id && currentParentAccount ? (
@@ -430,18 +419,14 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
               {/* Warning when parent is selected */}
               {showParentWarning && (
                 <div className="mt-2 p-2 sm:p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md flex gap-2">
-                  <svg
-                    className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5"
+                  <svg className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5"
                     fill="none"
                     viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
+                    stroke="currentColor">
+                    <path strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                   </svg>
                   <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-200">
                     This account will become a non-posting account (group account) and cannot receive direct transactions.
@@ -454,24 +439,20 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
             {!isEditing && (
               <div className="space-y-2">
                 <Label htmlFor="opening_balance" className="text-sm">Opening Balance</Label>
-                <Input
-                  id="opening_balance"
+                <Input id="opening_balance"
                   type="number"
                   step="0.01"
                   value={formData.opening_balance}
                   onChange={(e) => setFormData({ ...formData, opening_balance: parseFloat(e.target.value) || 0 })}
-                  placeholder="0.00"
-                />
+                  placeholder="0.00"/>
               </div>
             )}
 
             {/* Status */}
             <div className="space-y-2">
               <Label htmlFor="is_active" className="text-sm">Status</Label>
-              <Select
-                value={formData.is_active ? 'active' : 'inactive'}
-                onValueChange={(value) => setFormData({ ...formData, is_active: value === 'active' })}
-              >
+              <Select value={formData.is_active ? 'active' : 'inactive'}
+                onValueChange={(value) => setFormData({ ...formData, is_active: value === 'active' })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

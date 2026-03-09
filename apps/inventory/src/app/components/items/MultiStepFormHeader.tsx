@@ -1,5 +1,7 @@
 import * as React from 'react';
+
 import { Check } from 'lucide-react';
+
 import { useMultiStepForm } from './MultiStepFormContext';
 
 const STEP_TITLES = [
@@ -23,8 +25,7 @@ export const MultiStepFormHeader = React.memo(function MultiStepFormHeader() {
                     return (
                         <React.Fragment key={stepNumber}>
                             <div className="flex flex-col items-center flex-1">
-                                <button
-                                    type="button"
+                                <button type="button"
                                     onClick={() => isClickable && goToStep(stepNumber)}
                                     disabled={!isClickable}
                                     className={`
@@ -37,16 +38,14 @@ export const MultiStepFormHeader = React.memo(function MultiStepFormHeader() {
                                                 : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
                                         }
                     ${isClickable ? 'cursor-pointer' : 'cursor-not-allowed'}
-                  `}
-                                >
+                  `}>
                                     {isCompleted ? (
                                         <Check className="w-5 h-5" />
                                     ) : (
                                         stepNumber
                                     )}
                                 </button>
-                                <span
-                                    className={`
+                                <span className={`
                     mt-2 text-xs font-medium text-center
                     ${isActive
                                             ? 'text-blue-600 dark:text-blue-400'
@@ -54,22 +53,19 @@ export const MultiStepFormHeader = React.memo(function MultiStepFormHeader() {
                                                 ? 'text-green-600 dark:text-green-400'
                                                 : 'text-gray-500 dark:text-gray-400'
                                         }
-                  `}
-                                >
+                  `}>
                                     {STEP_TITLES[index]}
                                 </span>
                             </div>
 
                             {stepNumber < totalSteps && (
-                                <div
-                                    className={`
+                                <div className={`
                     flex-1 h-0.5 mx-2 -mt-8
                     ${stepNumber < currentStep
                                             ? 'bg-green-600'
                                             : 'bg-gray-200 dark:bg-gray-700'
                                         }
-                  `}
-                                />
+                  `}/>
                             )}
                         </React.Fragment>
                     );

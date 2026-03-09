@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import { useLandedCosts } from '../../hooks/useLandedCosts';
+
 import { useLandedCostActions } from '../../hooks/useLandedCostActions';
-import { LandedCostHeader } from './LandedCostHeader';
-import { LandedCostFilters } from './LandedCostFilters';
-import { LandedCostTable } from './LandedCostTable';
-import { LandedCostDialog } from './LandedCostDialog';
-import { LandedCostDetailDialog } from './LandedCostDetailDialog';
+import { useLandedCosts } from '../../hooks/useLandedCosts';
 import type { LandedCostVoucherListItem } from '../../types/landed-cost.types';
+
+import { LandedCostDetailDialog } from './LandedCostDetailDialog';
+import { LandedCostDialog } from './LandedCostDialog';
+import { LandedCostFilters } from './LandedCostFilters';
+import { LandedCostHeader } from './LandedCostHeader';
+import { LandedCostTable } from './LandedCostTable';
+
 
 export function LandedCostManagement() {
   const { landedCosts, loading, error, totalCount, filters, setFilters, refetch } = useLandedCosts();
@@ -69,32 +72,26 @@ export function LandedCostManagement() {
         </div>
       )}
 
-      <LandedCostTable
-        landedCosts={landedCosts}
+      <LandedCostTable landedCosts={landedCosts}
         loading={loading}
         totalCount={totalCount}
         filters={filters}
         setFilters={setFilters}
         onView={handleView}
         onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+        onDelete={handleDelete}/>
 
-      <LandedCostDialog
-        open={dialogOpen}
+      <LandedCostDialog open={dialogOpen}
         onClose={handleDialogClose}
         voucher={selectedVoucher}
         editMode={editMode}
         createLandedCost={createLandedCost}
         updateLandedCost={updateLandedCost}
-        loading={actionLoading}
-      />
+        loading={actionLoading}/>
 
-      <LandedCostDetailDialog
-        open={detailDialogOpen}
+      <LandedCostDetailDialog open={detailDialogOpen}
         onClose={handleDetailDialogClose}
-        voucherId={selectedVoucher?.id}
-      />
+        voucherId={selectedVoucher?.id}/>
     </div>
   );
 }

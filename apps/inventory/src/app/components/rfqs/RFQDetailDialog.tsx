@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { Edit, FileText } from 'lucide-react';
 
 import { Badge, Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
@@ -184,8 +185,7 @@ export function RFQDetailDialog({
             Close
           </Button>
           {canEdit && (
-            <Button 
-              variant="default" 
+            <Button variant="default" 
               onClick={() => {
                 // Convert RFQ to RFQListItem for onEdit
                 const rfqListItem: RFQListItem = {
@@ -201,8 +201,7 @@ export function RFQDetailDialog({
                 };
                 onEdit(rfqListItem);
               }} 
-              className="gap-2"
-            >
+              className="gap-2">
               <Edit className="h-4 w-4" />
               Edit RFQ
             </Button>

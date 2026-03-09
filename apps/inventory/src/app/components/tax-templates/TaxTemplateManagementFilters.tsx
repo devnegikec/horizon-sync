@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { Search } from 'lucide-react';
 
 import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
@@ -22,13 +23,11 @@ export function TaxTemplateManagementFilters({
         <Label htmlFor="search">Search</Label>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            id="search"
+          <Input id="search"
             placeholder="Search by template code or name..."
             value={filters.search}
             onChange={(e) => onFilterChange('search', e.target.value)}
-            className="pl-9"
-          />
+            className="pl-9"/>
         </div>
       </div>
 

@@ -1,5 +1,7 @@
 import { useState } from 'react';
+
 import { FileText, Download, Filter, Printer, TrendingUp, DollarSign, AlertCircle } from 'lucide-react';
+
 import {
   Card,
   CardContent,
@@ -14,8 +16,10 @@ import {
   Badge,
 } from '@horizon-sync/ui/components';
 import { DataTable } from '@horizon-sync/ui/components/data-table';
+
 import { usePaymentReports, ReconciliationFilters } from '../../hooks/usePaymentReports';
 import { formatCurrency, formatDate } from '../../utils/payment.utils';
+
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { StatCard } from './StatCard';
 
@@ -154,39 +158,33 @@ export function ReconciliationReport() {
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-2 block">From Date</label>
-              <input
-                type="date"
+              <input type="date"
                 value={filters.date_from}
                 onChange={(e) =>
                   setFilters((prev) => ({ ...prev, date_from: e.target.value }))
                 }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"/>
             </div>
 
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-2 block">To Date</label>
-              <input
-                type="date"
+              <input type="date"
                 value={filters.date_to}
                 onChange={(e) =>
                   setFilters((prev) => ({ ...prev, date_to: e.target.value }))
                 }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"/>
             </div>
 
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-2 block">Payment Mode</label>
-              <Select
-                value={filters.payment_mode || 'all'}
+              <Select value={filters.payment_mode || 'all'}
                 onValueChange={(value) =>
                   setFilters((prev) => ({
                     ...prev,
                     payment_mode: value === 'all' ? undefined : value,
                   }))
-                }
-              >
+                }>
                 <SelectTrigger>
                   <SelectValue placeholder="All Modes" />
                 </SelectTrigger>
@@ -201,15 +199,13 @@ export function ReconciliationReport() {
 
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-2 block">Status</label>
-              <Select
-                value={filters.status || 'all'}
+              <Select value={filters.status || 'all'}
                 onValueChange={(value) =>
                   setFilters((prev) => ({
                     ...prev,
                     status: value === 'all' ? undefined : value,
                   }))
-                }
-              >
+                }>
                 <SelectTrigger>
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
@@ -235,27 +231,21 @@ export function ReconciliationReport() {
       {/* Summary Statistics */}
       {reportData && (
         <div className="grid gap-4 md:grid-cols-3">
-          <StatCard
-            title="Total Payments"
+          <StatCard title="Total Payments"
             value={formatCurrency(reportData.total_payments_received, 'USD')}
             icon={DollarSign}
             iconBg="bg-blue-100 dark:bg-blue-900/20"
-            iconColor="text-blue-600 dark:text-blue-400"
-          />
-          <StatCard
-            title="Total Allocated"
+            iconColor="text-blue-600 dark:text-blue-400"/>
+          <StatCard title="Total Allocated"
             value={formatCurrency(reportData.total_allocated, 'USD')}
             icon={TrendingUp}
             iconBg="bg-green-100 dark:bg-green-900/20"
-            iconColor="text-green-600 dark:text-green-400"
-          />
-          <StatCard
-            title="Total Unallocated"
+            iconColor="text-green-600 dark:text-green-400"/>
+          <StatCard title="Total Unallocated"
             value={formatCurrency(reportData.total_unallocated, 'USD')}
             icon={AlertCircle}
             iconBg="bg-orange-100 dark:bg-orange-900/20"
-            iconColor="text-orange-600 dark:text-orange-400"
-          />
+            iconColor="text-orange-600 dark:text-orange-400"/>
         </div>
       )}
 
@@ -280,10 +270,8 @@ export function ReconciliationReport() {
             <div className="text-center py-8 text-red-600">Error loading report: {error}</div>
           )}
           {reportData && (
-            <DataTable
-              columns={columns}
-              data={reportData.payments}
-            />
+            <DataTable columns={columns}
+              data={reportData.payments}/>
           )}
         </CardContent>
       </Card>

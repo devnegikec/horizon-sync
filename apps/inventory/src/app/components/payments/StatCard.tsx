@@ -1,4 +1,5 @@
 import { memo } from 'react';
+
 import { Card, CardContent } from '@horizon-sync/ui/components';
 import { cn } from '@horizon-sync/ui/lib';
 

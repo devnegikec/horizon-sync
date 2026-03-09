@@ -9,8 +9,8 @@ import { useQuotationLineItems } from '../../hooks/useQuotationLineItems';
 import { getCurrencySymbol } from '../../types/currency.types';
 import type { QuotationLineItemCreate, QuotationLineItem, TableMeta, QuotationLineItemsTableProps } from '../../types/quotation.types';
 
-import { computeLineDiscountAmount, defaultLabelFormatter, defaultSearchItems, getQtyError, handleItemSelection } from './quotation.helpers';
 import { ItemPickerSelect } from './ItemPickerSelect';
+import { computeLineDiscountAmount, defaultLabelFormatter, defaultSearchItems, getQtyError, handleItemSelection } from './quotation.helpers';
 import { SummaryFooterRows } from './SummaryFooterRows';
 
 // --- Sub-components for cells ---

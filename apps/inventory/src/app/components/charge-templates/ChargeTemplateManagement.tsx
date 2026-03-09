@@ -1,16 +1,20 @@
 import * as React from 'react';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
-import type { ChargeTemplate, ChargeTemplateCreate, ChargeTemplateUpdate } from '../../types/charge-template.types';
 import { chargeTemplateApi } from '../../api/charge-templates';
-import { ChargeTemplateManagementHeader } from './ChargeTemplateManagementHeader';
-import { ChargeTemplateManagementFilters } from './ChargeTemplateManagementFilters';
-import { ChargeTemplatesTable } from './ChargeTemplatesTable';
-import { ChargeTemplateDialog } from './ChargeTemplateDialog';
-import { ChargeTemplateDetailDialog } from './ChargeTemplateDetailDialog';
+import type { ChargeTemplate, ChargeTemplateCreate, ChargeTemplateUpdate } from '../../types/charge-template.types';
 import { DeleteConfirmationDialog } from '../common/DeleteConfirmationDialog';
+
+import { ChargeTemplateDetailDialog } from './ChargeTemplateDetailDialog';
+import { ChargeTemplateDialog } from './ChargeTemplateDialog';
+import { ChargeTemplateManagementFilters } from './ChargeTemplateManagementFilters';
+import { ChargeTemplateManagementHeader } from './ChargeTemplateManagementHeader';
+import { ChargeTemplatesTable } from './ChargeTemplatesTable';
+
 
 export function ChargeTemplateManagement() {
   const accessToken = useUserStore((s) => s.accessToken);
@@ -136,8 +140,7 @@ export function ChargeTemplateManagement() {
 
       <ChargeTemplateManagementFilters filters={filters} onFilterChange={handleFilterChange} />
 
-      <ChargeTemplatesTable
-        templates={templates}
+      <ChargeTemplatesTable templates={templates}
         loading={isLoading}
         error={error?.message || null}
         onView={handleView}
@@ -145,31 +148,24 @@ export function ChargeTemplateManagement() {
         onDelete={handleDelete}
         onCreateTemplate={handleCreate}
         pagination={pagination}
-        onPageChange={handlePageChange}
-      />
+        onPageChange={handlePageChange}/>
 
-      <ChargeTemplateDialog
-        open={createDialogOpen}
+      <ChargeTemplateDialog open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         template={editTemplate}
         onSave={handleSave}
-        saving={createMutation.isPending || updateMutation.isPending}
-      />
+        saving={createMutation.isPending || updateMutation.isPending}/>
 
-      <ChargeTemplateDetailDialog
-        open={detailDialogOpen}
+      <ChargeTemplateDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         template={selectedTemplate}
-        onEdit={handleEdit}
-      />
+        onEdit={handleEdit}/>
 
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
+      <DeleteConfirmationDialog open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleConfirmDelete}
         title="Delete Charge Template"
-        description={`Are you sure you want to delete charge template "${selectedTemplate?.template_name}"? This action cannot be undone.`}
-      />
+        description={`Are you sure you want to delete charge template "${selectedTemplate?.template_name}"? This action cannot be undone.`}/>
     </div>
   );
 }
