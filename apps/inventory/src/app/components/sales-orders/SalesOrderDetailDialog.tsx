@@ -1,16 +1,18 @@
 import * as React from 'react';
 
-import { Edit, FileText, ShoppingCart, Receipt, ExternalLink, Mail, Download, Eye, Truck } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 
-import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
+import { useEmailWithPdfAttachment } from '../../hooks/useEmailWithPdfAttachment';
 import { usePDFGeneration } from '../../hooks/usePDFGeneration';
 import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { SalesOrder } from '../../types/sales-order.types';
 import { convertSalesOrderToPDFData } from '../../utils/pdf/salesOrderToPDF';
-import { EmailComposer, LineItemsDetailTable, PartyInfoCard, TaxSummaryCollapsible } from '../common';
-import { StatusBadge } from '../quotations/StatusBadge';
+import { DetailDialogContainer, EmailComposer } from '../common';
+
+import { SalesOrderDetailContent } from './SalesOrderDetailContent';
+import { SalesOrderDetailFooter } from './SalesOrderDetailFooter';
 
 interface SalesOrderDetailDialogProps {
   open: boolean;
@@ -22,35 +24,11 @@ interface SalesOrderDetailDialogProps {
   onViewInvoice?: (invoiceId: string) => void;
 }
 
-export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit, onCreateInvoice, onCreateDeliveryNote, onViewInvoice }: SalesOrderDetailDialogProps) {
-  const [emailDialogOpen, setEmailDialogOpen] = React.useState(false);
-  const [pdfAttachment, setPdfAttachment] = React.useState<{ filename: string; content: string; content_type: string } | null>(null);
+function useSalesOrderPDFActions() {
   const { toast } = useToast();
-  const { loading: pdfLoading, download, preview, generateBase64 } = usePDFGeneration();
+  const { loading, download, preview, generateBase64 } = usePDFGeneration();
 
-  if (!salesOrder) return null;
-
-  const isClosedOrCancelled = salesOrder.status === 'closed' || salesOrder.status === 'cancelled';
-  const canCreateInvoice = salesOrder.status === 'confirmed' || salesOrder.status === 'partially_delivered' || salesOrder.status === 'delivered';
-  const canCreateDeliveryNote = (salesOrder.status === 'confirmed' || salesOrder.status === 'partially_delivered');
-  // && salesOrder.items?.some(item => Number(item.qty) - Number(item.delivered_qty) > 0);
-
-  const getCurrencySymbol = (currencyCode: string): string => {
-    const currency = SUPPORTED_CURRENCIES.find((c: { code: string; symbol: string }) => c.code === currencyCode);
-    return currency?.symbol || currencyCode;
-  };
-
-  const currencySymbol = getCurrencySymbol(salesOrder.currency);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const handleDownloadPDF = async () => {
+  const handleDownload = async (salesOrder: SalesOrder) => {
     try {
       const pdfData = convertSalesOrderToPDFData(salesOrder);
       await download(pdfData, `${salesOrder.sales_order_no}.pdf`);
@@ -60,307 +38,85 @@ export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit,
     }
   };
 
-  const handlePreviewPDF = async () => {
+  const handlePreview = async (salesOrder: SalesOrder) => {
     try {
       const pdfData = convertSalesOrderToPDFData(salesOrder);
-      console.log('pdfData', pdfData);
       await preview(pdfData);
     } catch (error) {
       toast({ title: 'Preview Failed', description: error instanceof Error ? error.message : 'Failed to preview PDF', variant: 'destructive' });
     }
   };
 
-  const handleSendEmail = async () => {
-    try {
-      const pdfData = convertSalesOrderToPDFData(salesOrder);
-      const base64Content = await generateBase64(pdfData);
-      if (base64Content) {
-        setPdfAttachment({ filename: `${salesOrder.sales_order_no}.pdf`, content: base64Content, content_type: 'application/pdf' });
-        setEmailDialogOpen(true);
-      } else {
-        toast({ title: 'PDF Generation Failed', description: 'Could not generate PDF attachment', variant: 'destructive' });
-      }
-    } catch (error) {
-      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to prepare email', variant: 'destructive' });
-    }
+  const handleGenerateBase64 = async (salesOrder: SalesOrder): Promise<string | null> => {
+    const pdfData = convertSalesOrderToPDFData(salesOrder);
+    return generateBase64(pdfData);
   };
 
-  // Extract tax info from line items (future-proof: items may have tax_info via extra_data)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getItemTaxInfo = (item: any) => {
-    return (item.tax_info || item.extra_data?.tax_info) as {
-      template_name: string;
-      template_code: string;
-      breakup: Array<{ rule_name: string; tax_type: string; rate: number; is_compound: boolean }>;
-    } | null | undefined;
+  return { loading, handleDownload, handlePreview, handleGenerateBase64 };
+}
+
+function SalesOrderEmailComposer({ salesOrder, emailDialogOpen, pdfAttachment, onOpenChange, onSuccess }: {
+  salesOrder: SalesOrder;
+  emailDialogOpen: boolean;
+  pdfAttachment: { filename: string; content: string; content_type: string } | null;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+}) {
+  return (
+    <EmailComposer open={emailDialogOpen}
+      onOpenChange={onOpenChange}
+      docType="sales_order"
+      docId={salesOrder.id}
+      docNo={salesOrder.sales_order_no}
+      defaultRecipient={salesOrder.customer?.email || ''}
+      defaultSubject={`Sales Order ${salesOrder.sales_order_no}`}
+      defaultMessage={`Dear ${salesOrder.customer_name || 'Customer'},\n\nPlease find attached sales order ${salesOrder.sales_order_no} for your reference.\n\nBest regards`}
+      defaultAttachments={pdfAttachment ? [pdfAttachment] : undefined}
+      onSuccess={onSuccess} />
+  );
+}
+
+export function SalesOrderDetailDialog({ open, onOpenChange, salesOrder, onEdit, onCreateInvoice, onCreateDeliveryNote, onViewInvoice }: SalesOrderDetailDialogProps) {
+  const { loading: pdfLoading, handleDownload, handlePreview, handleGenerateBase64 } = useSalesOrderPDFActions();
+  const { emailDialogOpen, pdfAttachment, openEmailWithPdf, handleEmailClose, handleEmailSuccess } = useEmailWithPdfAttachment();
+
+  const currencySymbol = React.useMemo(() => {
+    if (!salesOrder) return '';
+    const currency = SUPPORTED_CURRENCIES.find((c: { code: string; symbol: string }) => c.code === salesOrder.currency);
+    return currency?.symbol || salesOrder.currency;
+  }, [salesOrder]);
+
+  const handleSendEmail = () => {
+    if (!salesOrder) return;
+    openEmailWithPdf(() => handleGenerateBase64(salesOrder), `${salesOrder.sales_order_no}.pdf`);
   };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getItemTaxAmount = (item: any): number => {
-    return Number(item.tax_amount || item.extra_data?.tax_amount || 0);
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getItemTotalAmount = (item: any): number => {
-    return Number(item.total_amount || item.extra_data?.total_amount || item.amount || 0);
-  };
-
-  // Build tax summary
-  const lineItems = salesOrder.items || [];
-  const taxSummary = new Map<string, { name: string; amount: number; breakup: Array<{ rule_name: string; rate: number; amount: number }> }>();
-  const hasTaxInfo = lineItems.some(item => getItemTaxInfo(item));
-
-  lineItems.forEach(item => {
-    const taxInfo = getItemTaxInfo(item);
-    if (taxInfo) {
-      const templateKey = taxInfo.template_code;
-      if (!taxSummary.has(templateKey)) {
-        taxSummary.set(templateKey, {
-          name: taxInfo.template_name,
-          amount: 0,
-          breakup: taxInfo.breakup.map(tax => ({ rule_name: tax.rule_name, rate: tax.rate, amount: 0 })),
-        });
-      }
-      const summary = taxSummary.get(templateKey);
-      if (summary) {
-        summary.amount += getItemTaxAmount(item);
-        taxInfo.breakup.forEach((tax, idx) => {
-          const taxComponentAmount = (Number(item.amount) * tax.rate) / 100;
-          summary.breakup[idx].amount += taxComponentAmount;
-        });
-      }
-    }
-  });
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <ShoppingCart className="h-5 w-5" />
-              {salesOrder.sales_order_no}
-              <StatusBadge status={salesOrder.status} />
-            </DialogTitle>
-          </DialogHeader>
+      <DetailDialogContainer open={open} onOpenChange={onOpenChange} icon={ShoppingCart} title={salesOrder?.sales_order_no ?? ''} status={salesOrder?.status ?? ''}>
+        {salesOrder && (
+          <>
+            <SalesOrderDetailContent salesOrder={salesOrder} currencySymbol={currencySymbol} onViewInvoice={onViewInvoice} />
+            <SalesOrderDetailFooter salesOrder={salesOrder}
+              pdfLoading={pdfLoading}
+              onClose={() => onOpenChange(false)}
+              onPreview={() => handlePreview(salesOrder)}
+              onDownload={() => handleDownload(salesOrder)}
+              onSendEmail={handleSendEmail}
+              onEdit={onEdit}
+              onCreateInvoice={onCreateInvoice}
+              onCreateDeliveryNote={onCreateDeliveryNote} />
+          </>
+        )}
+      </DetailDialogContainer>
 
-          <div className="space-y-6">
-            {/* Dates, Currency & Grand Total */}
-            <div className="grid gap-4 md:grid-cols-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Order Date</p>
-                <p className="font-medium">{formatDate(salesOrder.order_date)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Delivery Date</p>
-                <p className="font-medium">{salesOrder.delivery_date ? formatDate(salesOrder.delivery_date) : 'Not set'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Currency</p>
-                <p className="font-medium">{salesOrder.currency}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Grand Total</p>
-                <p className="font-medium">{currencySymbol} {Number(salesOrder.grand_total).toFixed(2)}</p>
-              </div>
-            </div>
-
-            {/* Customer Info */}
-            <PartyInfoCard label="Customer" party={salesOrder.customer} fallbackName={salesOrder.customer_name} />
-
-            {/* Reference */}
-            {salesOrder.reference_type && salesOrder.reference_id && (
-              <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-blue-900 dark:text-blue-100">
-                    Created from {salesOrder.reference_type} (Ref: {salesOrder.reference_id.slice(0, 8)}...)
-                  </span>
-                </div>
-              </div>
-            )}
-
-            
-            <Separator />
-            <div>
-              <h3 className="text-lg font-medium mb-4">Line Items</h3>
-              <LineItemsDetailTable items={lineItems}
-                currencySymbol={currencySymbol}
-                hasTaxInfo={hasTaxInfo}
-                showBilledDelivered
-                getItemTaxInfo={getItemTaxInfo}
-                getItemTaxAmount={getItemTaxAmount}
-                getItemTotalAmount={getItemTotalAmount}
-                getItemDiscountAmount={(item) => Number(item.discount_amount ?? 0)}
-                renderFooter={(items) => {
-                  const safeItems = items ?? [];
-                  const subtotalAmount = safeItems.reduce((s, item) => s + Number(item.amount || 0), 0);
-                  const subtotalTax = safeItems.reduce((s, item) => s + getItemTaxAmount(item), 0);
-                  const subtotalTotal = safeItems.reduce((s, item) => s + getItemTotalAmount(item), 0);
-                  const discountAmount = Number(salesOrder.discount_amount ?? 0);
-                  const grandTotal = Number(salesOrder.grand_total ?? 0);
-                  const sym = currencySymbol;
-                  return (
-                    <>
-                      <tr>
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3 text-sm font-medium">Subtotal:</td>
-                        <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalAmount.toFixed(2)}</td>
-                        <td className="px-4 py-3" />
-                        {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTax.toFixed(2)}</td>}
-                        {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTotal.toFixed(2)}</td>}
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3 text-sm font-medium">Discount:</td>
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
-                        {!hasTaxInfo ? (
-                          <td className="px-4 py-3 text-right text-sm text-muted-foreground">
-                            {discountAmount > 0 ? `−${sym}${discountAmount.toFixed(2)}` : '—'}
-                          </td>
-                        ) : (
-                          <>
-                            <td className="px-4 py-3" />
-                            <td className="px-4 py-3 text-right text-sm text-muted-foreground">
-                              {discountAmount > 0 ? `−${sym}${discountAmount.toFixed(2)}` : '—'}
-                            </td>
-                          </>
-                        )}
-                      </tr>
-                      <tr className="border-t-2 font-semibold">
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3 text-sm font-semibold">Grand Total:</td>
-                        <td className="px-4 py-3" />
-                        <td className="px-4 py-3" />
-                        {!hasTaxInfo ? (
-                          <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
-                        ) : (
-                          <>
-                            <td className="px-4 py-3" />
-                            <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
-                          </>
-                        )}
-                      </tr>
-                    </>
-                  );
-                }} />
-            </div>
-            {/* Tax Summary */}
-            <TaxSummaryCollapsible taxSummary={taxSummary} currencySymbol={currencySymbol} defaultCollapsed />
-
-            {/* Related Invoices */}
-            {salesOrder.items && salesOrder.items.some(item => Number(item.billed_qty) > 0) && (
-              <>
-                <Separator />
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Related Invoices</h3>
-                  <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Receipt className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        <span className="text-blue-900 dark:text-blue-100">This sales order has been invoiced</span>
-                      </div>
-                      {onViewInvoice && (
-                        <Button variant="ghost"
-                          size="sm"
-                          onClick={() => console.log('View invoices for sales order:', salesOrder.id)}
-                          className="h-7 gap-1 text-blue-600 dark:text-blue-400">
-                          View Invoices
-                          <ExternalLink className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Remarks */}
-            {salesOrder.remarks && (
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Remarks</p>
-                <p className="text-sm">{salesOrder.remarks}</p>
-              </div>
-            )}
-
-            {/* Timestamps */}
-            <Separator />
-            <div className="grid gap-4 md:grid-cols-2 text-sm text-muted-foreground">
-              <div>
-                <p>Created: {formatDate(salesOrder.created_at)}</p>
-              </div>
-              {salesOrder.updated_at && (
-                <div>
-                  <p>Updated: {formatDate(salesOrder.updated_at)}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Close
-            </Button>
-            <Button variant="outline" onClick={handlePreviewPDF} disabled={pdfLoading} className="gap-2">
-              <Eye className="h-4 w-4" />
-              Preview PDF
-            </Button>
-            <Button variant="outline" onClick={handleDownloadPDF} disabled={pdfLoading} className="gap-2">
-              <Download className="h-4 w-4" />
-              Download PDF
-            </Button>
-            <Button variant="outline" onClick={handleSendEmail} disabled={pdfLoading} className="gap-2">
-              <Mail className="h-4 w-4" />
-              Send Email
-            </Button>
-            {canCreateInvoice && (
-              <Button variant="default" onClick={() => onCreateInvoice(salesOrder)} className="gap-2">
-                <Receipt className="h-4 w-4" />
-                Create Invoice
-              </Button>
-            )}
-            {canCreateDeliveryNote && (
-              <Button variant="default" onClick={() => onCreateDeliveryNote(salesOrder)} className="gap-2">
-                <Truck className="h-4 w-4" />
-                Create Delivery Note
-              </Button>
-            )}
-            {!isClosedOrCancelled && (
-              <Button variant="default" onClick={() => onEdit(salesOrder)} className="gap-2">
-                <Edit className="h-4 w-4" />
-                Edit
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <EmailComposer open={emailDialogOpen}
-        onOpenChange={(isOpen) => {
-          setEmailDialogOpen(isOpen);
-          if (!isOpen) setPdfAttachment(null);
-        }}
-        docType="sales_order"
-        docId={salesOrder.id}
-        docNo={salesOrder.sales_order_no}
-        defaultRecipient={salesOrder.customer?.email || ''}
-        defaultSubject={`Sales Order ${salesOrder.sales_order_no}`}
-        defaultMessage={`Dear ${salesOrder.customer_name || 'Customer'},\n\nPlease find attached sales order ${salesOrder.sales_order_no} for your reference.\n\nBest regards`}
-        defaultAttachments={pdfAttachment ? [pdfAttachment] : undefined}
-        onSuccess={() => {
-          setEmailDialogOpen(false);
-          setPdfAttachment(null);
-        }} />
+      {salesOrder && (
+        <SalesOrderEmailComposer salesOrder={salesOrder}
+          emailDialogOpen={emailDialogOpen}
+          pdfAttachment={pdfAttachment}
+          onOpenChange={handleEmailClose}
+          onSuccess={handleEmailSuccess} />
+      )}
     </>
   );
 }

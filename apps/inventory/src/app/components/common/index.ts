@@ -12,3 +12,5 @@ export { LineItemsDetailTable } from './LineItemsDetailTable';
 export type { LineItemsDetailTableProps } from './LineItemsDetailTable';
 export { StatusSelect } from './StatusSelect';
 export { TaxSummaryCollapsible } from './TaxSummaryCollapsible';
+export { DetailDialogContainer } from './DetailDialogContainer';
+export type { DetailDialogContainerProps } from './DetailDialogContainer';
