@@ -104,7 +104,7 @@ export function getQtyError(qty: number, itemData: QuotationLineItem): { message
   const available = itemData.stock_levels?.quantity_available;
   if (min != null && min > 0 && qty < min) return { message: `Below min (${min})`, color: 'hsl(0 84% 60%)' };
   if (max != null && max > 0 && qty > max) return { message: `Exceeds max (${max})`, color: 'hsl(0 84% 60%)' };
-  if (available != null && qty > available) return { message: `Exceeds available (${available})`, color: 'hsl(25 95% 53%)' };
+  if (available != null && qty > available) return { message: `Exceeds available (${available})`, color: 'hsl(0 84% 60%)' };
   return null;
 }
 

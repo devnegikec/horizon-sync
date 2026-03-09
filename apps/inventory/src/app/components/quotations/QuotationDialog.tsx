@@ -140,7 +140,6 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
 
       <Separator />
       <div className="space-y-2">
-        <h3 className="text-sm font-medium">Line Items</h3>
         <QuotationLineItemsTable items={items}
           onItemsChange={setItems}
           disabled={isLineItemEditingDisabled}

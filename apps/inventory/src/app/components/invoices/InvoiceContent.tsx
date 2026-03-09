@@ -98,13 +98,13 @@ export function InvoiceContent({ invoice, currencySymbol }: { invoice: Invoice; 
 
   return (
     <div className="space-y-6">
-      <InvoiceHeader invoice={invoice} />
-      <InvoicePartyInfo invoice={invoice} />
+      {/* <InvoiceHeader invoice={invoice} /> */}
       <InvoiceDates invoice={invoice} />
+      <Separator />
+      <InvoicePartyInfo invoice={invoice} />
+      
 
       {lineItems.length > 0 && (
-        <>
-          <Separator />
           <div>
             <h3 className="text-lg font-medium mb-4">Line Items</h3>
             <LineItemsDetailTable items={lineItems}
@@ -117,7 +117,6 @@ export function InvoiceContent({ invoice, currencySymbol }: { invoice: Invoice; 
                 <LineItemsFooter items={items} invoice={invoice} currencySymbol={currencySymbol} />
               )}/>
           </div>
-        </>
       )}
 
       <Separator />
