@@ -46,6 +46,8 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
     const [glAccounts, setGlAccounts] = useState<GLAccount[]>([]);
     const [loadingGlAccounts, setLoadingGlAccounts] = useState(true);
+    const [selectedAccountType, setSelectedAccountType] = useState<string>('asset');
+    const [showAccountTypeWarning, setShowAccountTypeWarning] = useState(false);
 
     const {
         register,
@@ -74,23 +76,23 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
         }
     });
 
-    // Fetch GL Accounts on mount
+    // Fetch GL Accounts on mount and when account type changes
     useEffect(() => {
         const fetchGlAccounts = async () => {
             try {
                 setLoadingGlAccounts(true);
-                // Fetch ASSET type accounts (bank accounts are typically assets)
+                // Fetch accounts based on selected account type
                 const response = await glAccountService.getGLAccounts({
-                    account_type: 'asset',
+                    account_type: selectedAccountType,
                     status: 'active',
                     page_size: 100
                 });
                 
-                setGlAccounts(response.items || []);
+                setGlAccounts(response.chart_of_accounts || []);
                 
                 // If no glAccountId was provided and we have accounts, use the first one
-                if ((!glAccountId || glAccountId === '00000000-0000-0000-0000-000000000000') && response.items && response.items.length > 0) {
-                    setValue('gl_account_id', response.items[0].id);
+                if ((!glAccountId || glAccountId === '00000000-0000-0000-0000-000000000000') && response.chart_of_accounts && response.chart_of_accounts.length > 0) {
+                    setValue('gl_account_id', response.chart_of_accounts[0].id);
                 }
             } catch (error) {
                 console.error('Failed to fetch GL accounts:', error);
@@ -103,9 +105,17 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
         };
 
         fetchGlAccounts();
-    }, [glAccountId, setValue]);
+    }, [glAccountId, setValue, selectedAccountType]); // Re-fetch when selectedAccountType changes
 
-    // Watch country code changes
+    // Watch for account type changes to show/hide warning
+    useEffect(() => {
+        // Show warning for non-standard account types
+        if (selectedAccountType !== 'asset' && selectedAccountType !== 'liability') {
+            setShowAccountTypeWarning(true);
+        } else {
+            setShowAccountTypeWarning(false);
+        }
+    }, [selectedAccountType]);
     const countryCode = watch('country_code');
 
     // Auto-set currency when country changes
@@ -259,55 +269,106 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                         }
                     )(e);
                 }} className="space-y-6">
-                    {/* GL Account Selection */}
-                    <div className="space-y-2">
-                        <Label htmlFor="gl_account_id">GL Account (Chart of Accounts) *</Label>
-                        <Controller
-                            name="gl_account_id"
-                            control={control}
-                            render={({ field }) => (
-                                <Select
-                                    value={field.value}
-                                    onValueChange={field.onChange}
-                                    disabled={loadingGlAccounts || glAccounts.length === 0}
-                                >
-                                    <SelectTrigger className={errors.gl_account_id ? 'border-red-500' : ''}>
-                                        <SelectValue placeholder={
-                                            loadingGlAccounts 
-                                                ? "Loading accounts..." 
-                                                : glAccounts.length === 0 
-                                                    ? "No GL accounts available" 
-                                                    : "Select GL Account"
-                                        } />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {glAccounts.length === 0 ? (
-                                            <div className="p-2 text-sm text-muted-foreground">
-                                                No GL accounts found. Please create Chart of Accounts first.
-                                            </div>
-                                        ) : (
-                                            glAccounts.map(account => (
-                                                <SelectItem key={account.id} value={account.id}>
-                                                    {account.account_code} - {account.account_name}
-                                                </SelectItem>
-                                            ))
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                            )}
-                        />
-                        {errors.gl_account_id && (
-                            <p className="text-sm text-red-600">{errors.gl_account_id.message}</p>
-                        )}
-                        {glAccounts.length === 0 && !loadingGlAccounts && (
-                            <Alert className="mt-2">
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertDescription>
-                                    No GL accounts found. Please create Chart of Accounts entries first, or contact your administrator.
+                    {/* GL Account Selection - Two-step filter */}
+                    <div className="space-y-4 border-t pt-4">
+                        <h3 className="text-lg font-semibold">GL Account (Chart of Accounts) *</h3>
+                        
+                        {/* Warning for non-standard account types */}
+                        {showAccountTypeWarning && (
+                            <Alert className="border-yellow-500 bg-yellow-50">
+                                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                <AlertDescription className="text-yellow-800">
+                                    <strong>Unusual Account Type:</strong> Bank accounts are typically linked to ASSET (for regular bank accounts) or LIABILITY (for credit cards/overdrafts) accounts. 
+                                    Linking to {selectedAccountType.toUpperCase()} accounts is uncommon and may affect financial reporting.
                                 </AlertDescription>
                             </Alert>
                         )}
-                        <p className="text-xs text-muted-foreground">Select the GL account to link this bank account to</p>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Account Type Filter */}
+                            <div className="space-y-2">
+                                <Label htmlFor="account_type_filter">Account Type *</Label>
+                                <Select
+                                    value={selectedAccountType}
+                                    onValueChange={(value) => {
+                                        setSelectedAccountType(value);
+                                        // Reset GL account selection when type changes
+                                        setValue('gl_account_id', '');
+                                    }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select account type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="asset">Asset</SelectItem>
+                                        <SelectItem value="liability">Liability</SelectItem>
+                                        <SelectItem value="equity">Equity</SelectItem>
+                                        <SelectItem value="income">Income</SelectItem>
+                                        <SelectItem value="expense">Expense</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">
+                                    {selectedAccountType === 'asset' && 'Bank accounts are typically ASSET accounts'}
+                                    {selectedAccountType === 'liability' && 'Use for credit cards, loans, or overdrafts'}
+                                    {selectedAccountType === 'equity' && 'Owner\'s equity or retained earnings'}
+                                    {selectedAccountType === 'income' && 'Revenue or income accounts'}
+                                    {selectedAccountType === 'expense' && 'Expense or cost accounts'}
+                                </p>
+                            </div>
+
+                            {/* GL Account Dropdown */}
+                            <div className="space-y-2">
+                                <Label htmlFor="gl_account_id">GL Account *</Label>
+                                <Controller
+                                    name="gl_account_id"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select
+                                            value={field.value}
+                                            onValueChange={field.onChange}
+                                            disabled={loadingGlAccounts || glAccounts.length === 0}
+                                        >
+                                            <SelectTrigger className={errors.gl_account_id ? 'border-red-500' : ''}>
+                                                <SelectValue placeholder={
+                                                    loadingGlAccounts 
+                                                        ? "Loading accounts..." 
+                                                        : glAccounts.length === 0 
+                                                            ? `No ${selectedAccountType} accounts available` 
+                                                            : "Select GL Account"
+                                                } />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {glAccounts.length === 0 ? (
+                                                    <div className="p-2 text-sm text-muted-foreground">
+                                                        No {selectedAccountType} accounts found. Please create Chart of Accounts first.
+                                                    </div>
+                                                ) : (
+                                                    glAccounts.map(account => (
+                                                        <SelectItem key={account.id} value={account.id}>
+                                                            {account.account_code} - {account.account_name}
+                                                        </SelectItem>
+                                                    ))
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                                {errors.gl_account_id && (
+                                    <p className="text-sm text-red-600">{errors.gl_account_id.message}</p>
+                                )}
+                                {glAccounts.length === 0 && !loadingGlAccounts && (
+                                    <Alert className="mt-2">
+                                        <AlertCircle className="h-4 w-4" />
+                                        <AlertDescription>
+                                            No {selectedAccountType} accounts found. Please create Chart of Accounts entries first.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+                                <p className="text-xs text-muted-foreground">
+                                    Showing {glAccounts.length} {selectedAccountType} account{glAccounts.length !== 1 ? 's' : ''}
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Basic Information */}

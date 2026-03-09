@@ -8,23 +8,29 @@ export interface GLAccount {
 }
 
 export interface GLAccountListResponse {
-    items: GLAccount[];
-    total: number;
-    page: number;
-    page_size: number;
+    chart_of_accounts: GLAccount[];
+    pagination: {
+        page: number;
+        page_size: number;
+        total: number;
+        total_pages: number;
+        has_next: boolean;
+        has_prev: boolean;
+    };
 }
+import { useUserStore } from '@horizon-sync/store';
 
 // API Base URL - should come from environment config
-const API_BASE_URL = process.env['NX_API_BASE_URL'] || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env['NX_API_URL'] || 'http://localhost:8001';
 
 class GLAccountService {
     private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
         const url = `${API_BASE_URL}${endpoint}`;
-
+        const accessToken = this.getAccessToken();
         const response = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.getAuthToken()}`,
+                'Authorization': `Bearer ${accessToken}`,
                 ...options?.headers,
             },
             ...options,
@@ -36,10 +42,6 @@ class GLAccountService {
         }
 
         return response.json();
-    }
-
-    private getAuthToken(): string {
-        return localStorage.getItem('auth_token') || '';
     }
 
     // Get GL Accounts (Chart of Accounts)
@@ -57,7 +59,15 @@ class GLAccountService {
         if (params?.page_size) searchParams.append('page_size', params.page_size.toString());
 
         const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
-        return this.request<GLAccountListResponse>(`/chart-of-accounts${query}`);
+        return this.request<GLAccountListResponse>(`/api/v1/chart-of-accounts${query}`);
+    }
+
+    private getAccessToken(): string {
+        const fromStore = useUserStore.getState().accessToken;
+        if (fromStore) return fromStore;
+        const fromStorage = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
+        if (fromStorage) return fromStorage;
+        throw new Error('No access token found');
     }
 }
 
