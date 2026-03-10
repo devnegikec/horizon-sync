@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { type CellContext, type ColumnDef } from '@tanstack/react-table';
 import { Trash2 } from 'lucide-react';
 
-import { EditableCell, EditableDataTable } from '@horizon-sync/ui/components';
+import { ConfirmationDialog, EditableCell, EditableDataTable } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
@@ -27,13 +27,12 @@ const EMPTY_ROW: CurrencyRow = { id: '', code: '', name: '', symbol: '', isNew: 
 
 function DeleteCell<TData>({ row, table }: CellContext<TData, unknown>) {
   const meta = table.options.meta as { deleteRow?: (index: number) => void } | undefined;
-  const isNew = (row.original as CurrencyRow).isNew;
-  if (!meta?.deleteRow && !isNew) return null;
+  if (!meta?.deleteRow) return null;
   return (
     <Button type="button"
-variant="ghost"
-size="sm"
-      onClick={() => meta?.deleteRow?.(row.index)}>
+      variant="ghost"
+      size="sm"
+      onClick={() => meta.deleteRow?.(row.index)}>
       <Trash2 className="h-4 w-4 text-destructive" />
     </Button>
   );
@@ -44,6 +43,7 @@ export function CurrencySettings({ accessToken, disabled }: CurrencySettingsProp
   const [currencies, setCurrencies] = useState<CurrencyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ index: number; row: CurrencyRow } | null>(null);
 
   const fetchCurrencies = useCallback(async () => {
     try {
@@ -102,7 +102,7 @@ export function CurrencySettings({ accessToken, disabled }: CurrencySettingsProp
     }
   }, [accessToken, fetchCurrencies, toast]);
 
-  const handleDeleteRow = useCallback(async (index: number) => {
+  const handleDeleteRow = useCallback((index: number) => {
     const row = currencies[index];
     if (!row) return;
 
@@ -111,10 +111,18 @@ export function CurrencySettings({ accessToken, disabled }: CurrencySettingsProp
       return;
     }
 
+    setDeleteTarget({ index, row });
+  }, [currencies]);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    const { row } = deleteTarget;
+
     setSaving(true);
     try {
       await CurrencyService.delete(row.id, accessToken);
       toast({ title: 'Success', description: `Currency ${row.code} deleted` });
+      setDeleteTarget(null);
       await fetchCurrencies();
     } catch (err) {
       toast({
@@ -125,7 +133,7 @@ export function CurrencySettings({ accessToken, disabled }: CurrencySettingsProp
     } finally {
       setSaving(false);
     }
-  }, [currencies, accessToken, fetchCurrencies, toast]);
+  }, [deleteTarget, accessToken, fetchCurrencies, toast]);
 
   const columns: ColumnDef<CurrencyRow, string>[] = useMemo(() => [
     {
@@ -190,7 +198,7 @@ export function CurrencySettings({ accessToken, disabled }: CurrencySettingsProp
           config={config}
           onDataChange={handleDataChange}
           enableAddRow={!disabled}
-          enableDeleteRow={!disabled}
+          enableDeleteRow={false}
           newRowTemplate={EMPTY_ROW}
           addRowLabel="Add Currency"
           heading=""/>
@@ -198,6 +206,14 @@ export function CurrencySettings({ accessToken, disabled }: CurrencySettingsProp
           <div className="text-muted-foreground text-sm mt-2">Saving...</div>
         )}
       </CardContent>
+      <ConfirmationDialog open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title="Delete Currency"
+        description={`Are you sure you want to delete ${deleteTarget?.row.code ?? ''} (${deleteTarget?.row.name ?? ''})? This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        loading={saving}
+        onConfirm={handleConfirmDelete}/>
     </Card>
   );
 }
