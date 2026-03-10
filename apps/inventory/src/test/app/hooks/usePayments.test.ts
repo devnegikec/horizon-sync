@@ -1,8 +1,11 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+import { useUserStore } from '@horizon-sync/store';
+
 import { usePayments } from '../../../app/hooks/usePayments';
-import { paymentApi } from '../../../app/utility/api';
 import type { PaymentsResponse } from '../../../app/types/payment.types';
+import { paymentApi } from '../../../app/utility/api';
 
 vi.mock('@horizon-sync/store', () => ({
   useUserStore: vi.fn((selector) => selector({ accessToken: 'test-token' })),
@@ -134,7 +137,6 @@ describe('usePayments', () => {
   });
 
   it('should not fetch when accessToken is missing', async () => {
-    const { useUserStore } = await import('@horizon-sync/store');
     vi.mocked(useUserStore).mockImplementation((selector: any) =>
       selector({ accessToken: null })
     );

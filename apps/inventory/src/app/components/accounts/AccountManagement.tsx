@@ -19,6 +19,7 @@ import { cn } from '@horizon-sync/ui/lib';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useAccountActions } from '../../hooks/useAccountActions';
 import type { AccountListItem, AccountFilters } from '../../types/account.types';
+import { ACCOUNT_TYPE_COLORS } from '../../utils/accountColors';
 
 import { AccountDialog } from './AccountDialog';
 import { AccountsTable } from './AccountsTable';
@@ -174,8 +175,8 @@ export function AccountManagement() {
           title="Liabilities"
           value={stats.byType.LIABILITY || 0}
           icon={Wallet}
-          iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"
+          iconBg="bg-red-100 dark:bg-red-900/20"
+          iconColor="text-red-600 dark:text-red-400"
         />
       </div>
 

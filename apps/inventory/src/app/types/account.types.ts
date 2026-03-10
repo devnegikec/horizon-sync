@@ -34,14 +34,22 @@ export interface Account {
 
 export interface AccountListItem {
   id: string;
+  organization_id: string;
   account_code: string;
   account_name: string;
   account_type: AccountType;
   parent_account_id: string | null;
+  parent?: {
+    id: string;
+    account_code: string;
+    account_name: string;
+  } | null;
   currency: string;
   level: number;
   is_group: boolean;
   is_active: boolean;
+  status: string;
+  is_posting_account: boolean;
   created_at: string;
 }
 

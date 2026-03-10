@@ -76,7 +76,7 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
         .slice(0, 2)
     : 'U';
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-card/80 backdrop-blur-sm px-4 gap-4">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4 gap-4">
       {/* Left Section */}
       <div className="flex items-center gap-3">
         {/* Desktop Toggle */}

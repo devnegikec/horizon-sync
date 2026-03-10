@@ -65,7 +65,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <Topbar sidebarCollapsed={sidebarCollapsed} onToggleSidebar={handleToggleSidebar} />
 
             {/* Page Content */}
-            <main className="flex-1 overflow-y-auto">
+            <main className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               <div className="p-6">{children}</div>
             </main>
           </div>

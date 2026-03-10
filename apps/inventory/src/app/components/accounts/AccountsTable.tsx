@@ -34,6 +34,7 @@ export interface AccountsTableProps {
   onEdit: (account: AccountListItem) => void;
   onToggleStatus: (account: AccountListItem) => void;
   onViewDetails?: (account: AccountListItem) => void;
+  onDelete?: (account: AccountListItem) => void;
   onCreateAccount: () => void;
   onTableReady?: (table: Table<AccountListItem>) => void;
   serverPagination?: {
@@ -59,8 +60,7 @@ export function AccountsTable({
   hasActiveFilters,
   onEdit,
   onToggleStatus,
-  onViewDetails,
-  onCreateAccount,
+  onViewDetails,  onDelete,  onCreateAccount,
   onTableReady,
   serverPagination,
   sortBy,
@@ -370,6 +370,17 @@ export function AccountsTable({
                       </>
                     )}
                   </DropdownMenuItem>
+                  {onDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => onDelete(account)}
+                        className="text-destructive focus:text-destructive">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Account
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -378,7 +389,7 @@ export function AccountsTable({
         enableSorting: false,
       },
     ],
-    [onEdit, onToggleStatus, onViewDetails, balances, balancesLoading, SortableHeader, actionLoading]
+    [onEdit, onToggleStatus, onViewDetails, onDelete, balances, balancesLoading, SortableHeader, actionLoading]
   );
 
   const renderViewOptions = React.useCallback(

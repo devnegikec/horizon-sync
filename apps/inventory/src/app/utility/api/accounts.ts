@@ -57,7 +57,8 @@ export const accountApi = {
       params.account_type = accountType;
     }
     if (filters?.status && filters.status !== 'all') {
-      params.is_active = filters.status === 'active' ? 'true' : 'false';
+      // Backend expects 'active' or 'inactive' status values, not boolean is_active
+      params.status = filters.status;
     }
     if (filters?.currency && filters.currency !== 'all') {
       params.currency = filters.currency;
@@ -84,10 +85,16 @@ export const accountApi = {
       body: data,
     }),
 
-  delete: (accessToken: string, id: string) =>
-    apiRequest(`/chart-of-accounts/${id}`, accessToken, {
+  delete: (accessToken: string, id: string, force?: boolean) => {
+    const params: Record<string, string> = {};
+    if (force) {
+      params.force = 'true';
+    }
+    return apiRequest(`/chart-of-accounts/${id}`, accessToken, {
       method: 'DELETE',
-    }),
+      params,
+    });
+  },
 
   activate: (accessToken: string, id: string) =>
     apiRequest(`/chart-of-accounts/${id}/activate`, accessToken, {
@@ -116,6 +123,15 @@ export const accountApi = {
         as_of_date: asOfDate,
       },
     }),
+
+  // Alternative single balance endpoint for fallback
+  getSingleBalance: (accessToken: string, accountId: string, asOfDate?: string) => {
+    const params: Record<string, string> = {};
+    if (asOfDate) {
+      params.as_of_date = asOfDate;
+    }
+    return apiRequest(`/chart-of-accounts/${accountId}/balance`, accessToken, { params });
+  },
 
   getBalanceHistory: (accessToken: string, id: string, startDate: string, endDate: string) =>
     apiRequest<AccountBalanceHistoryResponse>(`/chart-of-accounts/${id}/balance/history`, accessToken, {

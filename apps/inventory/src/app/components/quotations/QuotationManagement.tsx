@@ -2,10 +2,10 @@ import * as React from 'react';
 
 import { AlertTriangle } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Card, CardContent } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
-import { useUserStore } from '@horizon-sync/store';
 import { useQuotationManagement } from '../../hooks/useQuotationManagement';
 import { useQuotationPDFActions } from '../../hooks/useQuotationPDFActions';
 import type { Quotation } from '../../types/quotation.types';
@@ -188,8 +188,7 @@ export function QuotationManagement() {
         converting={converting}/>
 
       {/* Send Email (from table row) */}
-      <EmailComposer
-        open={emailDialogOpen}
+      <EmailComposer open={emailDialogOpen}
         onOpenChange={(open) => {
           setEmailDialogOpen(open);
           if (!open) {
@@ -212,8 +211,7 @@ export function QuotationManagement() {
           setEmailDialogOpen(false);
           setEmailAttachment(null);
           setQuotationForEmail(null);
-        }}
-      />
+        }}/>
     </div>
   );
 }

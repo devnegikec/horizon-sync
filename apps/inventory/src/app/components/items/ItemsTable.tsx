@@ -282,7 +282,7 @@ export function ItemsTable({
           }}
           renderViewOptions={handleTableReady}
           fixedHeader
-          maxHeight="600px"/>
+          maxHeight="auto"/>
       </CardContent>
     </Card>
   );

@@ -99,12 +99,17 @@ export function usePermissions() {
     return NavigationPermissions.subscriptions.view(permissionsData.permissions);
   }, [permissionsData.permissions]);
 
+  const canViewBanking = React.useCallback(() => {
+    return NavigationPermissions.banking.view(permissionsData.permissions);
+  }, [permissionsData.permissions]);
+
   // Filter navigation items based on permissions
+  // When user has no organization_id, they're a new owner — show all nav
   const filterNavigation = React.useCallback(<T extends { href: string; title: string }>(
     navigationItems: T[]
   ): T[] => {
-    return filterNavigationByPermissions(navigationItems, permissionsData.permissions);
-  }, [permissionsData.permissions]);
+    return filterNavigationByPermissions(navigationItems, permissionsData.permissions, user?.organization_id);
+  }, [permissionsData.permissions, user?.organization_id]);
 
   return {
     // Permissions data from global store
@@ -135,6 +140,7 @@ export function usePermissions() {
     canViewInventory,
     canViewRevenue,
     canViewSubscriptions,
+    canViewBanking,
 
     // Navigation filtering
     filterNavigation,

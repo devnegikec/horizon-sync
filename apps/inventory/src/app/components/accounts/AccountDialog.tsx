@@ -147,6 +147,12 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
     });
   }, [allAccounts, account, formData.account_type, parentSearchTerm]);
 
+  // Get current parent account info for display
+  const currentParentAccount = useMemo(() => {
+    if (!formData.parent_account_id) return null;
+    return allAccounts.find(a => a.id === formData.parent_account_id);
+  }, [formData.parent_account_id, allAccounts]);
+
   useEffect(() => {
     if (open) {
       if (account) {
@@ -374,10 +380,32 @@ export function AccountDialog({ open, onOpenChange, account, onCreated, onUpdate
                   disabled={accountsLoading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="No parent account" />
+                    <SelectValue placeholder="No parent account">
+                      {formData.parent_account_id && currentParentAccount ? (
+                        `${currentParentAccount.account_code} - ${currentParentAccount.account_name}`
+                      ) : (
+                        "No parent account"
+                      )}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="max-h-[200px] sm:max-h-[300px]">
                     <SelectItem value="none">No parent account</SelectItem>
+                    
+                    {/* Show current parent account if not in eligible list (for editing) */}
+                    {formData.parent_account_id && currentParentAccount && 
+                     !eligibleParentAccounts.find(a => a.id === currentParentAccount.id) && (
+                      <SelectItem key={currentParentAccount.id} value={currentParentAccount.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-xs sm:text-sm">
+                            {currentParentAccount.account_code} - {currentParentAccount.account_name}
+                          </span>
+                          <span className="text-[10px] sm:text-xs text-muted-foreground">
+                            (Current) {buildAccountPath(currentParentAccount, allAccounts)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    )}
+                    
                     {eligibleParentAccounts.length === 0 && parentSearchTerm && (
                       <div className="px-2 py-1.5 text-xs sm:text-sm text-muted-foreground">
                         No matching accounts found

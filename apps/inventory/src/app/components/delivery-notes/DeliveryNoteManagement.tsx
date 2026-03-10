@@ -50,6 +50,7 @@ export function DeliveryNoteManagement() {
   const [editNote, setEditNote] = useState<DeliveryNote | null>(null);
   const [saving, setSaving] = useState(false);
   const [tableInstance, setTableInstance] = useState<Table<DeliveryNote> | null>(null);
+  const [convertingInvoice, setConvertingInvoice] = useState(false);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -146,6 +147,32 @@ export function DeliveryNoteManagement() {
     }
   }), [page, pageSize, pagination?.total_items]);
 
+  const handleConvertToInvoice = React.useCallback(async (
+    deliveryNoteId: string,
+    data: { items: { item_id: string; qty_to_bill: number }[]; due_date?: string; remarks?: string },
+  ) => {
+    if (!accessToken) return;
+    setConvertingInvoice(true);
+    try {
+      const result = await deliveryNoteApi.convertToInvoice(accessToken, deliveryNoteId, data) as { invoice_id: string; invoice_no: string; grand_total: number; message: string };
+      toast({
+        title: 'Success',
+        description: `Invoice ${result.invoice_no} created with total ${result.grand_total.toFixed(2)}`,
+      });
+      setDetailDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['delivery-notes'] });
+      refetch();
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to convert to invoice',
+        variant: 'destructive',
+      });
+    } finally {
+      setConvertingInvoice(false);
+    }
+  }, [accessToken, toast, queryClient, refetch]);
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
@@ -231,7 +258,8 @@ export function DeliveryNoteManagement() {
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         deliveryNote={selectedNote}
-        onConvertToInvoice={(id) => console.log('Convert to invoice:', id)}
+        onConvertToInvoice={handleConvertToInvoice}
+        convertingInvoice={convertingInvoice}
         onEdit={handleEdit} />
 
       <DeliveryNoteDialog

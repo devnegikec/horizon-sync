@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { FileText, Plus, MoreHorizontal, Eye, Trash2, CheckCircle, Mail, User } from 'lucide-react';
+import { FileText, Plus, MoreHorizontal, Eye, Trash2, CheckCircle, Mail, User, DollarSign } from 'lucide-react';
 
 import { Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -27,6 +27,7 @@ export interface InvoicesTableProps {
   onView: (invoice: Invoice) => void;
   onDelete: (invoice: Invoice) => void;
   onMarkAsPaid: (invoice: Invoice) => void;
+  onCreatePayment: (invoice: Invoice) => void;
   onCreateInvoice: () => void;
   onTableReady?: (table: Table<Invoice>) => void;
   serverPagination?: {
@@ -45,6 +46,7 @@ export function InvoicesTable({
   onView,
   onDelete,
   onMarkAsPaid,
+  onCreatePayment,
   onCreateInvoice,
   onTableReady,
   serverPagination,
@@ -194,6 +196,15 @@ export function InvoicesTable({
                       </DropdownMenuItem>
                     </>
                   )}
+                  {invoice.outstanding_amount > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onCreatePayment(invoice)}>
+                        <DollarSign className="mr-2 h-4 w-4" />
+                        Create Payment
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuItem>
                     <Mail className="mr-2 h-4 w-4" />
                     Send Email
@@ -216,7 +227,7 @@ export function InvoicesTable({
         enableSorting: false,
       },
     ],
-    [onView, onDelete, onMarkAsPaid]
+    [onView, onDelete, onMarkAsPaid, onCreatePayment]
   );
 
   if (error) {

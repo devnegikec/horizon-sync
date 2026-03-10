@@ -84,7 +84,7 @@ export function RevenuePage() {
 
       <div className="min-h-screen bg-background">
               {/* Top Navigation Bar */}
-        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="sticky top-0 z-50 w-full border-b bg-background">
           <div className="container flex h-16 items-center px-4">
             <nav className="flex items-center gap-2">
               <NavItem icon={Users} label="Customers" isActive={activeView === 'customers'} onClick={() => setActiveView('customers')} />

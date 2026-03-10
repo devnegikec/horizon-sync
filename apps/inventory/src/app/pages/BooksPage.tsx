@@ -6,7 +6,7 @@ import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { AccountManagement, SystemConfiguration, Reports } from '../components/accounts';
+import { AccountManagement, SystemConfiguration, Reports, JournalEntries } from '../components/accounts';
 import { PaymentManagement } from '../components/payments/PaymentManagement';
 
 type ActiveView = 'coa' | 'journal_entries' | 'payments' | 'reports' | 'configuration';
@@ -34,39 +34,29 @@ export function BooksPage() {
     <ThemeProvider>
       <div className="min-h-screen bg-background">
         {/* Top Navigation Bar */}
-        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="sticky top-0 z-50 w-full border-b bg-background">
           <div className="container flex h-16 items-center px-4">
             <nav className="flex items-center gap-2">
-              <NavItem 
-                icon={BookOpen} 
+              <NavItem icon={BookOpen} 
                 label="Chart of Accounts" 
                 isActive={activeView === 'coa'} 
-                onClick={() => setActiveView('coa')} 
-              />
-              <NavItem 
-                icon={BarChart3} 
+                onClick={() => setActiveView('coa')}/>
+              <NavItem icon={BarChart3} 
                 label="Reports" 
                 isActive={activeView === 'reports'} 
-                onClick={() => setActiveView('reports')} 
-              />
-              <NavItem 
-                icon={FileText} 
+                onClick={() => setActiveView('reports')}/>
+              <NavItem icon={FileText} 
                 label="Journal Entries" 
                 isActive={activeView === 'journal_entries'} 
-                onClick={() => setActiveView('journal_entries')} 
-              />
-              <NavItem 
-                icon={CreditCard} 
+                onClick={() => setActiveView('journal_entries')}/>
+              <NavItem icon={CreditCard} 
                 label="Payments" 
                 isActive={activeView === 'payments'} 
-                onClick={() => setActiveView('payments')} 
-              />
-              <NavItem 
-                icon={Settings} 
+                onClick={() => setActiveView('payments')}/>
+              <NavItem icon={Settings} 
                 label="Configuration" 
                 isActive={activeView === 'configuration'} 
-                onClick={() => setActiveView('configuration')} 
-              />
+                onClick={() => setActiveView('configuration')}/>
             </nav>
           </div>
         </header>
@@ -75,15 +65,7 @@ export function BooksPage() {
         <main className="container px-4 py-8">
           {activeView === 'coa' && <AccountManagement />}
           {activeView === 'reports' && <Reports />}
-          {activeView === 'journal_entries' && (
-            <div className="flex items-center justify-center h-96">
-              <div className="text-center">
-                <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <h2 className="text-2xl font-semibold mb-2">Journal Entries</h2>
-                <p className="text-muted-foreground">Coming soon - Phase 2</p>
-              </div>
-            </div>
-          )}
+          {activeView === 'journal_entries' && <JournalEntries />}
           {activeView === 'payments' && <PaymentManagement />}
           {activeView === 'configuration' && <SystemConfiguration />}
         </main>

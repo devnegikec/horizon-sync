@@ -105,25 +105,27 @@ export const InvoiceLinker = memo(function InvoiceLinker({
 
       if (!invoice) return;
 
-      // Calculate unallocated amount excluding this input
-      const otherInputsTotal = Object.entries(allocationInputs)
-        .filter(([id]) => id !== invoiceId)
-        .reduce((sum, [, input]) => sum + (parseFloat(input.allocated_amount) || 0), 0);
-      const availableAmount = calculateUnallocatedAmount(paymentAmount, existingAllocations) - otherInputsTotal;
+      setAllocationInputs((prev) => {
+        // Calculate unallocated amount excluding this input
+        const otherInputsTotal = Object.entries(prev)
+          .filter(([id]) => id !== invoiceId)
+          .reduce((sum, [, input]) => sum + (parseFloat(input.allocated_amount) || 0), 0);
+        const availableAmount = calculateUnallocatedAmount(paymentAmount, existingAllocations) - otherInputsTotal;
 
-      // Validate allocation
-      const validation = validateAllocation(amount, availableAmount, invoice.balance_due);
+        // Validate allocation
+        const validation = validateAllocation(amount, availableAmount, invoice.balance_due);
 
-      setAllocationInputs((prev) => ({
-        ...prev,
-        [invoiceId]: {
-          invoice_id: invoiceId,
-          allocated_amount: value,
-          error: validation.isValid ? undefined : validation.errors[0],
-        },
-      }));
+        return {
+          ...prev,
+          [invoiceId]: {
+            invoice_id: invoiceId,
+            allocated_amount: value,
+            error: validation.isValid ? undefined : validation.errors[0],
+          },
+        };
+      });
     },
-    [invoices, paymentAmount, existingAllocations, allocationInputs]
+    [invoices, paymentAmount, existingAllocations]
   );
 
   const handleSave = useCallback(() => {
@@ -148,6 +150,11 @@ export const InvoiceLinker = memo(function InvoiceLinker({
       const amount = parseFloat(input.allocated_amount);
       return amount > 0 && !input.error;
     });
+  }, [allocationInputs]);
+
+  // Create a stable getter function for allocation inputs
+  const getAllocationInput = useCallback((invoiceId: string) => {
+    return allocationInputs[invoiceId];
   }, [allocationInputs]);
 
   const columns = useMemo<ColumnDef<InvoiceForAllocation>[]>(
@@ -198,12 +205,12 @@ export const InvoiceLinker = memo(function InvoiceLinker({
         header: 'Allocate Amount',
         cell: ({ row }) => {
           const invoiceId = row.original.id;
-          const input = allocationInputs[invoiceId];
 
           return (
             <AllocationInputCell
+              key={invoiceId}
               invoiceId={invoiceId}
-              input={input}
+              input={getAllocationInput(invoiceId)}
               onAllocationChange={handleAllocationChange}
               loading={loading}
             />
@@ -211,7 +218,7 @@ export const InvoiceLinker = memo(function InvoiceLinker({
         },
       },
     ],
-    [allocationInputs, handleAllocationChange, loading]
+    [handleAllocationChange, loading, getAllocationInput]
   );
 
   if (invoices.length === 0) {

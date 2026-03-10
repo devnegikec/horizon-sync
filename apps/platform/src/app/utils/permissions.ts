@@ -126,15 +126,37 @@ export const NavigationPermissions = {
     manage: (userPermissions: Permission[]) => 
       hasAnyPermission(userPermissions, ['*.*', 'subscription.*', 'subscription.manage']),
   },
+
+  // Banking
+  banking: {
+    view: (userPermissions: Permission[]) => 
+      hasAnyPermission(userPermissions, ['*.*', 'banking.*', 'banking.read', 'banking.view']),
+    manage: (userPermissions: Permission[]) => 
+      hasAnyPermission(userPermissions, ['*.*', 'banking.*', 'banking.manage']),
+    create: (userPermissions: Permission[]) => 
+      hasAnyPermission(userPermissions, ['*.*', 'banking.*', 'banking.create']),
+    update: (userPermissions: Permission[]) => 
+      hasAnyPermission(userPermissions, ['*.*', 'banking.*', 'banking.update']),
+    delete: (userPermissions: Permission[]) => 
+      hasAnyPermission(userPermissions, ['*.*', 'banking.*', 'banking.delete']),
+  },
 };
 
 /**
- * Get filtered navigation items based on user permissions
+ * Get filtered navigation items based on user permissions.
+ * If organizationId is null/undefined the user hasn't registered an org yet
+ * and is treated as the owner — show all navigation items.
  */
 export function filterNavigationByPermissions<T extends { href: string; title: string }>(
   navigationItems: T[],
-  userPermissions: Permission[]
+  userPermissions: Permission[],
+  organizationId?: string | null
 ): T[] {
+  // User without an organization is the owner of a new org — grant full access
+  if (!organizationId) {
+    return navigationItems;
+  }
+
   return navigationItems.filter(item => {
     switch (item.href) {
       case '/users':
@@ -153,6 +175,8 @@ export function filterNavigationByPermissions<T extends { href: string; title: s
         return NavigationPermissions.revenue.view(userPermissions);
       case '/subscriptions':
         return NavigationPermissions.subscriptions.view(userPermissions);
+      case '/banking':
+        return NavigationPermissions.banking.view(userPermissions);
       // Dashboard, help, and profile are typically accessible to all authenticated users
       case '/':
       case '/help':

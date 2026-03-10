@@ -35,6 +35,15 @@ export function useAccounts(
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('Fetching accounts with params:', {
+        page: currentPage,
+        pageSize: currentPageSize,
+        filters,
+        sortBy: currentSortBy,
+        sortOrder: currentSortOrder
+      });
+      
       const response = await accountApi.list(
         accessToken,
         currentPage,
@@ -43,12 +52,16 @@ export function useAccounts(
         currentSortBy,
         currentSortOrder
       ) as AccountPaginationResponse;
+      
+      console.log('Account API response:', response);
+      
       setAccounts(response.chart_of_accounts || []);
       setPagination(response.pagination || null);
     } catch (err) {
       console.error('Error fetching accounts:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch accounts');
       setAccounts([]);
+      setPagination(null);
     } finally {
       setLoading(false);
     }

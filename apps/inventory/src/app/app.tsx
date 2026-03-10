@@ -35,8 +35,8 @@ export function App() {
   const [activeView, setActiveView] = React.useState<ActiveView>('items');
   return (
     <ThemeProvider>
-      <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="min-h-screen">
+        <header className="sticky top-0 z-50 w-full border-b bg-background">
           <div className="container flex h-16 items-center px-4">
             <nav className="flex items-center gap-2">
               <NavItem icon={Package} label="Items" isActive={activeView === 'items'} onClick={() => setActiveView('items')} />

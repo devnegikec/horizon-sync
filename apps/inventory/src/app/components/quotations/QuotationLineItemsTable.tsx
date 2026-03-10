@@ -1,77 +1,18 @@
 import * as React from 'react';
 
 import { type CellContext, type ColumnDef } from '@tanstack/react-table';
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Info, Trash2 } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
-import { Button, EditableCell, EditableDataTable, EditableNumberCell, Input, TableCell, TableFooter, TableRow } from '@horizon-sync/ui/components';
+import { Button, EditableCell, EditableDataTable, EditableNumberCell, Input } from '@horizon-sync/ui/components';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 
-import { environment } from '../../../environments/environment';
+import { useQuotationLineItems } from '../../hooks/useQuotationLineItems';
 import { getCurrencySymbol } from '../../types/currency.types';
-import type { QuotationLineItemCreate, QuotationLineItem } from '../../types/quotation.types';
+import type { QuotationLineItemCreate, QuotationLineItem, TableMeta, QuotationLineItemsTableProps } from '../../types/quotation.types';
 
 import { ItemPickerSelect } from './ItemPickerSelect';
-
-interface TableMeta {
-  updateData?: (rowIndex: number, columnId: string, value: unknown) => void;
-  deleteRow?: (rowIndex: number) => void;
-  getItemData?: (itemId: string) => QuotationLineItem | undefined;
-  searchItems?: (query: string) => Promise<QuotationLineItem[]>;
-  itemLabelFormatter?: (item: QuotationLineItem) => string;
-  disabled?: boolean;
-  currency?: string;
-}
-
-interface PickerResponse {
-  items: QuotationLineItem[];
-}
-
-export interface DocumentDiscountControls {
-  type: 'flat' | 'percentage';
-  value: string;
-  onTypeChange: (value: string) => void;
-  onValueChange: (value: string) => void;
-  disabled?: boolean;
-}
-
-export interface QuotationSummary {
-  /** Sum of line amounts (qty × rate) */
-  subtotalAmount: number;
-  /** Sum of line tax amounts */
-  subtotalTax: number;
-  /** Sum of line totals (before document-level discount) */
-  subtotalTotal: number;
-  /** Document-level discount amount (computed) */
-  discountAmount: number;
-  /** After document discount */
-  grandTotal: number;
-  /** When provided, discount-on-total dropdown + input are rendered in the footer Discount column */
-  documentDiscount?: DocumentDiscountControls;
-}
-
-interface QuotationLineItemsTableProps {
-  items: QuotationLineItemCreate[];
-  onItemsChange: (items: QuotationLineItemCreate[]) => void;
-  disabled?: boolean;
-  currency?: string;
-  /** When provided, footer rows (Subtotal, Discount, Grand Total) are shown aligned with table columns */
-  summary?: QuotationSummary;
-}
-
-function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId: string) {
-  meta.updateData?.(rowIndex, 'item_id', newItemId);
-  const selectedItem = meta.getItemData?.(newItemId);
-  if (selectedItem) {
-    setTimeout(() => {
-      meta.updateData?.(rowIndex, 'uom', selectedItem.uom);
-      meta.updateData?.(rowIndex, 'rate', parseFloat(selectedItem.standard_rate || '0') || 0);
-      meta.updateData?.(rowIndex, 'qty', selectedItem.min_order_qty || 1);
-    }, 0);
-  }
-}
-
-const defaultLabelFormatter = (item: QuotationLineItem) => item.item_name ?? '';
-const defaultSearchItems = async () => [] as QuotationLineItem[];
+import { computeLineDiscountAmount, defaultLabelFormatter, defaultSearchItems, getQtyError, handleItemSelection } from './quotation.helpers';
+import { SummaryFooterRows } from './SummaryFooterRows';
 
 // --- Sub-components for cells ---
 
@@ -96,43 +37,49 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<Quotation
   );
 }
 
-// Quantity hints showing min/max/available
-function QtyHints({ itemData }: { itemData: QuotationLineItem | undefined }) {
-  if (!itemData) return null;
+// Build qty hint parts for tooltip content
+function getQtyHintParts(itemData: QuotationLineItem | undefined): string[] {
+  if (!itemData) return [];
+  const parts: string[] = [];
   const min = itemData.min_order_qty;
   const max = itemData.max_order_qty;
   const available = itemData.stock_levels?.quantity_available;
-  const parts: string[] = [];
   if (min != null && min > 0) parts.push(`Min: ${min}`);
   if (max != null && max > 0) parts.push(`Max: ${max}`);
   if (available != null) parts.push(`Avail: ${available}`);
-  if (parts.length === 0) return null;
-  return <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">{parts.join(' · ')}</div>;
+  return parts;
 }
 
-function getQtyError(qty: number, itemData: QuotationLineItem): { message: string; color: string } | null {
-  const min = itemData.min_order_qty;
-  const max = itemData.max_order_qty;
-  const available = itemData.stock_levels?.quantity_available;
-  if (min != null && min > 0 && qty < min) return { message: `Below min (${min})`, color: 'hsl(0 84% 60%)' };
-  if (max != null && max > 0 && qty > max) return { message: `Exceeds max (${max})`, color: 'hsl(0 84% 60%)' };
-  if (available != null && qty > available) return { message: `Exceeds available (${available})`, color: 'hsl(25 95% 53%)' };
-  return null;
-}
+// Quantity info icon with tooltip showing hints + validation
+function QtyInfoIcon({ qty, itemData }: { qty: number; itemData: QuotationLineItem | undefined }) {
+  const hints = getQtyHintParts(itemData);
+  const error = qty > 0 && itemData ? getQtyError(qty, itemData) : null;
+  if (hints.length === 0 && !error) return null;
 
-function QtyValidationError({ qty, itemData }: { qty: number; itemData: QuotationLineItem | undefined }) {
-  if (!itemData || !qty || qty <= 0) return null;
-  const error = getQtyError(qty, itemData);
-  if (!error) return null;
+  // Icon color: red for any error, default muted
+  let iconColor = 'text-muted-foreground';
+  if (error) {
+    iconColor = 'text-destructive';
+  }
+
   return (
-    <div className="flex items-center gap-1 text-[10px] leading-tight mt-0.5" style={{ color: error.color }}>
-      <AlertTriangle className="h-3 w-3 shrink-0" />
-      <span>{error.message}</span>
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={`inline-flex items-center ml-1 cursor-pointer ${iconColor}`}>
+            {error ? <AlertTriangle className="h-3.5 w-3.5" /> : <Info className="h-3.5 w-3.5" />}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[200px] text-xs space-y-1">
+          {hints.length > 0 && <div>{hints.join(' · ')}</div>}
+          {error && <div style={{ color: error.color }}>{error.message}</div>}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
-// Quantity cell: editable number + hints + validation
+// Quantity cell: editable number + icon with tooltip
 function QuantityCellComponent({ getValue, row, column, table, cell, renderValue }: CellContext<QuotationLineItemCreate, unknown>) {
   const meta = table.options.meta as TableMeta | undefined;
   const itemId = row.original.item_id;
@@ -141,19 +88,11 @@ function QuantityCellComponent({ getValue, row, column, table, cell, renderValue
   const cellProps = { getValue, row, column, table, cell, renderValue };
 
   return (
-    <div>
+    <div className="flex items-center">
       <EditableNumberCell {...cellProps} />
-      <QtyHints itemData={itemData} />
-      {itemData && qty > 0 && <QtyValidationError qty={qty} itemData={itemData} />}
+      <QtyInfoIcon qty={qty} itemData={itemData} />
     </div>
   );
-}
-
-// Compute line discount amount from type, value and line amount (so display is always correct)
-function computeLineDiscountAmount(lineAmount: number, discountType: string, discountValue: number): number {
-  if (!discountValue || discountValue <= 0) return 0;
-  if (discountType === 'percentage') return Number((lineAmount * discountValue / 100).toFixed(2));
-  return Math.min(discountValue, lineAmount);
 }
 
 // Editable discount: type (%, flat) + value; show computed amount below so it reflects correctly
@@ -174,214 +113,78 @@ function DiscountCellComponent({ row, table }: CellContext<QuotationLineItemCrea
   return (
     <div className="flex flex-col gap-1 min-w-[100px]">
       <div className="flex gap-1 items-center">
-        <select
-          className="h-8 w-14 rounded-md border border-input bg-background px-1.5 text-xs"
+        <select className="h-8 w-14 rounded-md border border-input bg-background px-1.5 text-xs"
           value={type}
           onChange={(e) => meta?.updateData?.(row.index, 'discount_type', e.target.value as 'flat' | 'percentage')}
-          aria-label="Discount type"
-        >
+          aria-label="Discount type">
           <option value="percentage">%</option>
           <option value="flat">Flat</option>
         </select>
-        <Input
-          type="number"
+        <Input type="number"
           min={0}
           step={type === 'percentage' ? 1 : 0.01}
           className="h-8 w-16 text-xs"
           value={value || ''}
           onChange={(e) => meta?.updateData?.(row.index, 'discount_value', e.target.value === '' ? 0 : Number(e.target.value))}
           placeholder="0"
-          aria-label="Discount value"
-        />
+          aria-label="Discount value"/>
       </div>
       {discountAmount > 0 && <div className="text-[10px] text-muted-foreground">−{sym}{discountAmount.toFixed(2)}</div>}
     </div>
   );
 }
 
-// Tax breakup: percentages only (shown under Tax % column)
-function TaxBreakupPercent({ itemData }: { itemData: QuotationLineItem | undefined }) {
+// Tax breakup tooltip icon for percentages (shown under Tax % column)
+function TaxBreakupPercentIcon({ itemData }: { itemData: QuotationLineItem | undefined }) {
   const breakup = itemData?.tax_info?.breakup;
   if (!breakup || breakup.length <= 1) return null;
   return (
-    <div className="text-[10px] text-muted-foreground leading-tight mt-0.5 space-y-px">
-      {breakup.map((tax) => (
-        <div key={tax.rule_name} className="text-left">{tax.rule_name} {tax.rate}%</div>
-      ))}
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center ml-1 cursor-pointer text-muted-foreground">
+            <Info className="h-3.5 w-3.5" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[200px] text-xs space-y-0.5">
+          {breakup.map((tax) => (
+            <div key={tax.rule_name}>{tax.rule_name} {tax.rate}%</div>
+          ))}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
-// Tax breakup: amounts only (shown under Tax Amt column)
-function TaxBreakupAmount({ itemData, symbol, amount }: { itemData: QuotationLineItem | undefined; symbol: string; amount: number }) {
+// Tax breakup tooltip icon for amounts (shown under Tax Amt column)
+function TaxBreakupAmountIcon({ itemData, symbol, amount }: { itemData: QuotationLineItem | undefined; symbol: string; amount: number }) {
   const breakup = itemData?.tax_info?.breakup;
   if (!breakup || breakup.length <= 1) return null;
   return (
-    <div className="text-[10px] text-muted-foreground leading-tight mt-0.5 space-y-px">
-      {breakup.map((tax) => {
-        const taxAmt = (amount * tax.rate) / 100;
-        return <div key={tax.rule_name} className="text-left">{symbol}{taxAmt.toFixed(2)}</div>;
-      })}
-    </div>
-  );
-}
-
-
-function SummaryFooterRows({
-  summary,
-  currency,
-}: {
-  summary: QuotationSummary;
-  currency: string;
-}) {
-  const sym = getCurrencySymbol(currency);
-  const emptyCells = (count: number, keyStart: number) =>
-    Array.from({ length: count }, (_, i) => <TableCell key={keyStart + i} />);
-  const doc = summary.documentDiscount;
-
-  return (
-    <>
-      {/* Subtotal: label under Rate; amounts under Amount, Tax Amt, Total — same alignment as body (text-left) */}
-      <TableRow>
-        {emptyCells(3, 0)}
-        <TableCell className="font-medium">Subtotal:</TableCell>
-        <TableCell className="text-left font-medium">{sym}{summary.subtotalAmount.toFixed(2)}</TableCell>
-        <TableCell />
-        <TableCell />
-        <TableCell className="text-left font-medium">{sym}{summary.subtotalTax.toFixed(2)}</TableCell>
-        <TableCell className="text-left font-medium">{sym}{summary.subtotalTotal.toFixed(2)}</TableCell>
-        <TableCell />
-      </TableRow>
-      {/* Discount: label under Rate; dropdown in Discount column; discount amount in Total column (align with Subtotal row) */}
-      <TableRow>
-        {emptyCells(3, 0)}
-        <TableCell className="font-medium">Discount:</TableCell>
-        <TableCell />
-        <TableCell className="align-top">
-          {doc ? (
-            <div className="flex gap-1 items-center min-w-[100px]">
-              <select
-                className="h-8 w-14 rounded-md border border-input bg-background px-1.5 text-xs"
-                value={doc.type}
-                onChange={(e) => doc.onTypeChange(e.target.value)}
-                disabled={doc.disabled}
-                aria-label="Discount type on total"
-              >
-                <option value="percentage">%</option>
-                <option value="flat">Flat</option>
-              </select>
-              <Input
-                type="number"
-                min={0}
-                step={doc.type === 'percentage' ? 1 : 0.01}
-                className="h-8 w-16 text-xs"
-                value={doc.value}
-                onChange={(e) => doc.onValueChange(e.target.value)}
-                placeholder="0"
-                disabled={doc.disabled}
-                aria-label="Discount value on total"
-              />
-            </div>
-          ) : null}
-        </TableCell>
-        <TableCell />
-        <TableCell />
-        <TableCell className="text-left text-muted-foreground">
-          {summary.discountAmount > 0 ? `−${sym}${summary.discountAmount.toFixed(2)}` : null}
-        </TableCell>
-        <TableCell />
-      </TableRow>
-      {/* Grand Total: label under Rate; value under Total — same alignment as body */}
-      <TableRow className="border-t-2 font-semibold">
-        {emptyCells(3, 0)}
-        <TableCell className="font-semibold">Grand Total:</TableCell>
-        {emptyCells(4, 0)}
-        <TableCell className="text-left font-semibold">{sym}{summary.grandTotal.toFixed(2)}</TableCell>
-        <TableCell />
-      </TableRow>
-    </>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center ml-1 cursor-pointer text-muted-foreground">
+            <Info className="h-3.5 w-3.5" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[200px] text-xs space-y-0.5">
+          {breakup.map((tax) => {
+            const taxAmt = (amount * tax.rate) / 100;
+            return <div key={tax.rule_name}>{tax.rule_name}: {symbol}{taxAmt.toFixed(2)}</div>;
+          })}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
 export function QuotationLineItemsTable({ items, onItemsChange, disabled = false, currency = 'INR', summary }: QuotationLineItemsTableProps) {
-  const accessToken = useUserStore((s) => s.accessToken);
-  const itemsCacheRef = React.useRef<Map<string, QuotationLineItem>>(new Map());
-
-  // Seed cache from existing items (edit mode — items carry full QuotationLineItem fields at runtime)
-  React.useEffect(() => {
-    items.forEach((item) => {
-      if (item.item_id && !itemsCacheRef.current.has(item.item_id)) {
-        const full = item as unknown as QuotationLineItem;
-        if (full.item_name) {
-          itemsCacheRef.current.set(item.item_id, full);
-        }
-      }
-    });
-  }, [items]);
-
-  const searchItems = React.useCallback(async (query: string): Promise<QuotationLineItem[]> => {
-    if (!accessToken) return [];
-    const response = await fetch(`${environment.apiCoreUrl}/items/picker?search=${encodeURIComponent(query)}`, {
-      headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error('Failed to fetch items');
-    const data: PickerResponse = await response.json();
-    data.items.forEach(item => { itemsCacheRef.current.set(item.id, item); });
-    return data.items;
-  }, [accessToken]);
+  const { searchItems, getItemData, handleDataChange } = useQuotationLineItems(items, onItemsChange);
 
   const itemLabelFormatter = React.useCallback(
     (item: QuotationLineItem) => `${item.item_name} (${item.item_code})`,
     []
-  );
-
-  const getItemData = React.useCallback(
-    (itemId: string) => itemsCacheRef.current.get(itemId),
-    []
-  );
-
-  const computeDiscountAmount = (amount: number, discountType: string, discountValue: number): number => {
-    if (!discountValue || discountValue <= 0) return 0;
-    if (discountType === 'percentage') return Number((amount * discountValue / 100).toFixed(2));
-    return Math.min(discountValue, amount);
-  };
-
-  const handleDataChange = React.useCallback(
-    (newData: QuotationLineItemCreate[]) => {
-      const updatedData = newData.map((item) => {
-        const qty = Number(item.qty) || 0;
-        const rate = Number(item.rate) || 0;
-        const cachedItem = itemsCacheRef.current.get(item.item_id);
-        let taxRate = 0;
-        let taxTemplateId: string | null = null;
-        if (cachedItem?.tax_info) {
-          taxTemplateId = cachedItem.tax_info.id;
-          taxRate = cachedItem.tax_info.breakup.reduce((sum, tax) => sum + tax.rate, 0);
-        }
-        const amount = qty * rate;
-        const discountType = (item.discount_type || 'percentage') as 'flat' | 'percentage';
-        const discountVal = Number(item.discount_value ?? 0);
-        const discountAmount = computeDiscountAmount(amount, discountType, discountVal);
-        const netAmount = amount - discountAmount;
-        const taxAmount = (netAmount * taxRate) / 100;
-        const totalAmount = netAmount + taxAmount;
-        return {
-          ...item,
-          qty,
-          rate,
-          amount,
-          discount_type: discountType,
-          discount_value: discountVal,
-          discount_amount: Number(discountAmount.toFixed(2)),
-          tax_template_id: taxTemplateId,
-          tax_rate: taxRate,
-          tax_amount: Number(taxAmount.toFixed(2)),
-          total_amount: Number(totalAmount.toFixed(2)),
-        };
-      });
-      onItemsChange(updatedData);
-    },
-    [onItemsChange]
   );
 
   // Currency-aware tax amount cell — tax is on net (amount - discount), breakup uses net amount
@@ -395,25 +198,25 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
       const netAmount = Math.max(0, amount - discountAmount);
       const sym = getCurrencySymbol(currency);
       return (
-        <div className="text-left">
-          <div>{sym}{value.toFixed(2)}</div>
-          <TaxBreakupAmount itemData={itemData} symbol={sym} amount={netAmount} />
+        <div className="flex items-center text-left">
+          <span>{sym}{value.toFixed(2)}</span>
+          <TaxBreakupAmountIcon itemData={itemData} symbol={sym} amount={netAmount} />
         </div>
       );
     },
     [currency]
   );
 
-  // Tax rate cell with breakup percentages
+  // Tax rate cell with breakup percentages in tooltip
   const taxRateCell = React.useCallback(
     (props: CellContext<QuotationLineItemCreate, unknown>) => {
       const meta = props.table.options.meta as TableMeta | undefined;
       const v = Number(props.getValue()) || 0;
       const itemData = meta?.getItemData?.(props.row.original.item_id);
       return (
-        <div className="text-left">
-          <div>{v > 0 ? `${v.toFixed(1)}%` : '-'}</div>
-          <TaxBreakupPercent itemData={itemData} />
+        <div className="flex items-center text-left">
+          <span>{v > 0 ? `${v.toFixed(1)}%` : '-'}</span>
+          <TaxBreakupPercentIcon itemData={itemData} />
         </div>
       );
     },
@@ -501,16 +304,16 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
 
   return (
     <div className={disabled ? 'space-y-4 opacity-60 pointer-events-none' : 'space-y-4'}>
-      <EditableDataTable
-        data={items}
+      <EditableDataTable data={items}
         columns={columns}
         onDataChange={handleDataChange}
         enableAddRow={!disabled}
         enableDeleteRow={!disabled}
         newRowTemplate={newRowTemplate}
         config={tableConfig}
-        renderFooter={summary ? renderFooter : undefined}
-      />
+        heading="Line Items"
+        addRowLabel="Add Item"
+        renderFooter={summary ? renderFooter : undefined}/>
     </div>
   );
 }
