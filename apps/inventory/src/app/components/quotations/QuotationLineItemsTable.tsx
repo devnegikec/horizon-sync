@@ -1,9 +1,10 @@
 import * as React from 'react';
 
 import { type CellContext, type ColumnDef } from '@tanstack/react-table';
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Info, Trash2 } from 'lucide-react';
 
 import { Button, EditableCell, EditableDataTable, EditableNumberCell, Input } from '@horizon-sync/ui/components';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 
 import { useQuotationLineItems } from '../../hooks/useQuotationLineItems';
 import { getCurrencySymbol } from '../../types/currency.types';
@@ -36,33 +37,49 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<Quotation
   );
 }
 
-// Quantity hints showing min/max/available
-function QtyHints({ itemData }: { itemData: QuotationLineItem | undefined }) {
-  if (!itemData) return null;
+// Build qty hint parts for tooltip content
+function getQtyHintParts(itemData: QuotationLineItem | undefined): string[] {
+  if (!itemData) return [];
+  const parts: string[] = [];
   const min = itemData.min_order_qty;
   const max = itemData.max_order_qty;
   const available = itemData.stock_levels?.quantity_available;
-  const parts: string[] = [];
   if (min != null && min > 0) parts.push(`Min: ${min}`);
   if (max != null && max > 0) parts.push(`Max: ${max}`);
   if (available != null) parts.push(`Avail: ${available}`);
-  if (parts.length === 0) return null;
-  return <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">{parts.join(' · ')}</div>;
+  return parts;
 }
 
-function QtyValidationError({ qty, itemData }: { qty: number; itemData: QuotationLineItem | undefined }) {
-  if (!itemData || !qty || qty <= 0) return null;
-  const error = getQtyError(qty, itemData);
-  if (!error) return null;
+// Quantity info icon with tooltip showing hints + validation
+function QtyInfoIcon({ qty, itemData }: { qty: number; itemData: QuotationLineItem | undefined }) {
+  const hints = getQtyHintParts(itemData);
+  const error = qty > 0 && itemData ? getQtyError(qty, itemData) : null;
+  if (hints.length === 0 && !error) return null;
+
+  // Icon color: red for any error, default muted
+  let iconColor = 'text-muted-foreground';
+  if (error) {
+    iconColor = 'text-destructive';
+  }
+
   return (
-    <div className="flex items-center gap-1 text-[10px] leading-tight mt-0.5" style={{ color: error.color }}>
-      <AlertTriangle className="h-3 w-3 shrink-0" />
-      <span>{error.message}</span>
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={`inline-flex items-center ml-1 cursor-pointer ${iconColor}`}>
+            {error ? <AlertTriangle className="h-3.5 w-3.5" /> : <Info className="h-3.5 w-3.5" />}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[200px] text-xs space-y-1">
+          {hints.length > 0 && <div>{hints.join(' · ')}</div>}
+          {error && <div style={{ color: error.color }}>{error.message}</div>}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
-// Quantity cell: editable number + hints + validation
+// Quantity cell: editable number + icon with tooltip
 function QuantityCellComponent({ getValue, row, column, table, cell, renderValue }: CellContext<QuotationLineItemCreate, unknown>) {
   const meta = table.options.meta as TableMeta | undefined;
   const itemId = row.original.item_id;
@@ -71,10 +88,9 @@ function QuantityCellComponent({ getValue, row, column, table, cell, renderValue
   const cellProps = { getValue, row, column, table, cell, renderValue };
 
   return (
-    <div>
+    <div className="flex items-center">
       <EditableNumberCell {...cellProps} />
-      <QtyHints itemData={itemData} />
-      {itemData && qty > 0 && <QtyValidationError qty={qty} itemData={itemData} />}
+      <QtyInfoIcon qty={qty} itemData={itemData} />
     </div>
   );
 }
@@ -118,30 +134,48 @@ function DiscountCellComponent({ row, table }: CellContext<QuotationLineItemCrea
   );
 }
 
-// Tax breakup: percentages only (shown under Tax % column)
-function TaxBreakupPercent({ itemData }: { itemData: QuotationLineItem | undefined }) {
+// Tax breakup tooltip icon for percentages (shown under Tax % column)
+function TaxBreakupPercentIcon({ itemData }: { itemData: QuotationLineItem | undefined }) {
   const breakup = itemData?.tax_info?.breakup;
   if (!breakup || breakup.length <= 1) return null;
   return (
-    <div className="text-[10px] text-muted-foreground leading-tight mt-0.5 space-y-px">
-      {breakup.map((tax) => (
-        <div key={tax.rule_name} className="text-left">{tax.rule_name} {tax.rate}%</div>
-      ))}
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center ml-1 cursor-pointer text-muted-foreground">
+            <Info className="h-3.5 w-3.5" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[200px] text-xs space-y-0.5">
+          {breakup.map((tax) => (
+            <div key={tax.rule_name}>{tax.rule_name} {tax.rate}%</div>
+          ))}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
-// Tax breakup: amounts only (shown under Tax Amt column)
-function TaxBreakupAmount({ itemData, symbol, amount }: { itemData: QuotationLineItem | undefined; symbol: string; amount: number }) {
+// Tax breakup tooltip icon for amounts (shown under Tax Amt column)
+function TaxBreakupAmountIcon({ itemData, symbol, amount }: { itemData: QuotationLineItem | undefined; symbol: string; amount: number }) {
   const breakup = itemData?.tax_info?.breakup;
   if (!breakup || breakup.length <= 1) return null;
   return (
-    <div className="text-[10px] text-muted-foreground leading-tight mt-0.5 space-y-px">
-      {breakup.map((tax) => {
-        const taxAmt = (amount * tax.rate) / 100;
-        return <div key={tax.rule_name} className="text-left">{symbol}{taxAmt.toFixed(2)}</div>;
-      })}
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center ml-1 cursor-pointer text-muted-foreground">
+            <Info className="h-3.5 w-3.5" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[200px] text-xs space-y-0.5">
+          {breakup.map((tax) => {
+            const taxAmt = (amount * tax.rate) / 100;
+            return <div key={tax.rule_name}>{tax.rule_name}: {symbol}{taxAmt.toFixed(2)}</div>;
+          })}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -164,25 +198,25 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
       const netAmount = Math.max(0, amount - discountAmount);
       const sym = getCurrencySymbol(currency);
       return (
-        <div className="text-left">
-          <div>{sym}{value.toFixed(2)}</div>
-          <TaxBreakupAmount itemData={itemData} symbol={sym} amount={netAmount} />
+        <div className="flex items-center text-left">
+          <span>{sym}{value.toFixed(2)}</span>
+          <TaxBreakupAmountIcon itemData={itemData} symbol={sym} amount={netAmount} />
         </div>
       );
     },
     [currency]
   );
 
-  // Tax rate cell with breakup percentages
+  // Tax rate cell with breakup percentages in tooltip
   const taxRateCell = React.useCallback(
     (props: CellContext<QuotationLineItemCreate, unknown>) => {
       const meta = props.table.options.meta as TableMeta | undefined;
       const v = Number(props.getValue()) || 0;
       const itemData = meta?.getItemData?.(props.row.original.item_id);
       return (
-        <div className="text-left">
-          <div>{v > 0 ? `${v.toFixed(1)}%` : '-'}</div>
-          <TaxBreakupPercent itemData={itemData} />
+        <div className="flex items-center text-left">
+          <span>{v > 0 ? `${v.toFixed(1)}%` : '-'}</span>
+          <TaxBreakupPercentIcon itemData={itemData} />
         </div>
       );
     },
@@ -277,6 +311,8 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
         enableDeleteRow={!disabled}
         newRowTemplate={newRowTemplate}
         config={tableConfig}
+        heading="Line Items"
+        addRowLabel="Add Item"
         renderFooter={summary ? renderFooter : undefined}/>
     </div>
   );

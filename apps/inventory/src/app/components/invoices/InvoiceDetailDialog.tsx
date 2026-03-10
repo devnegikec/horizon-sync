@@ -51,13 +51,11 @@ export function InvoiceDetailDialog({ open, onOpenChange, invoice }: InvoiceDeta
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="flex items-center gap-3">
-                <FileText className="h-5 w-5" />
-                Invoice Details
-              </DialogTitle>
+            <DialogTitle className="flex items-center gap-3">
+              <FileText className="h-5 w-5" />
+              {invoice.invoice_no}
               <InvoiceStatusBadge status={invoice.status} />
-            </div>
+            </DialogTitle>
           </DialogHeader>
 
           <InvoiceContent invoice={invoice} currencySymbol={currencySymbol} />

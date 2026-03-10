@@ -164,7 +164,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, salesOrder, onCreateIn
                               className={`w-24 text-right ml-auto ${isOverBilled ? 'border-red-500' : ''}`}
                               disabled={item.max_qty === 0}/>
                             {isOverBilled && (
-                              <p className="text-xs text-red-500 mt-1">Exceeds available</p>
+                              <p className="text-xs text-red-900 mt-1">Exceeds available</p>
                             )}
                           </td>
                           <td className="px-4 py-3 text-sm text-right">{item.rate.toFixed(2)}</td>

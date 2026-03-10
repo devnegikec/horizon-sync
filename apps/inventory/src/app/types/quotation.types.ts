@@ -102,6 +102,17 @@ export interface QuotationDetailDialogProps {
   quotation: Quotation | null;
   onEdit: (quotation: Quotation) => void;
   onConvert: (quotation: Quotation) => void;
+
+  export interface QuotationDetailFooterProps {
+    quotation: Quotation;
+    pdfLoading: boolean;
+    onClose: () => void;
+    onPreview: () => void;
+    onDownload: () => void;
+    onSendEmail: () => void;
+    onEdit: (q: Quotation) => void;
+    onConvert: (q: Quotation) => void;
+  }
 }
 
 export interface CustomerInfo {
