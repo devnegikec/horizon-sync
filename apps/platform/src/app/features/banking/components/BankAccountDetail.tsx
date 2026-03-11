@@ -11,13 +11,176 @@ import {
     DialogTitle,
 } from '@horizon-sync/ui/components/ui/dialog';
 import { useBankAccount, useBankAccountHistory } from '../hooks';
-import { BankAccount, BankAccountHistory } from '../types';
+import { BankAccountHistory } from '../types';
 import { Eye, EyeOff, Building2, CreditCard, Globe, Calendar, User, Clock } from 'lucide-react';
 
 interface BankAccountDetailProps {
     accountId: string;
-    onClose?: () => void;
 }
+
+// Account Header Component
+interface AccountHeaderProps {
+    account: { bank_name: string; is_active: boolean; is_primary: boolean };
+}
+
+const AccountHeader = ({ account }: AccountHeaderProps) => (
+    <div className="flex items-center justify-between">
+        <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            {account.bank_name}
+        </CardTitle>
+        <div className="flex items-center gap-2">
+            <Badge variant={account.is_active ? 'default' : 'secondary'}>
+                {account.is_active ? 'Active' : 'Inactive'}
+            </Badge>
+            {account.is_primary && (
+                <Badge variant="outline">Primary</Badge>
+            )}
+        </div>
+    </div>
+);
+
+// Account Holder Component
+interface AccountHolderProps {
+    accountHolderName: string;
+}
+
+const AccountHolderInfo = ({ accountHolderName }: AccountHolderProps) => (
+    <div>
+        <h3 className="text-sm font-medium text-muted-foreground mb-3">Account Holder</h3>
+        <p className="text-lg font-semibold">{accountHolderName}</p>
+    </div>
+);
+
+// Account Number Display Component
+interface AccountNumberProps {
+    accountNumber: string;
+    showFull: boolean;
+    onToggle: () => void;
+}
+
+const AccountNumberDisplay = ({ accountNumber, showFull, onToggle }: AccountNumberProps) => (
+    <div>
+        <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                Account Number
+            </h3>
+            <Button variant="ghost" size="sm" onClick={onToggle}>
+                {showFull ? (
+                    <>
+                        <EyeOff className="h-4 w-4 mr-1" />
+                        Hide
+                    </>
+                ) : (
+                    <>
+                        <Eye className="h-4 w-4 mr-1" />
+                        View Full
+                    </>
+                )}
+            </Button>
+        </div>
+        <p className="font-mono text-sm">
+            {showFull ? accountNumber : maskAccountNumber(accountNumber)}
+        </p>
+    </div>
+);
+
+// Banking Details Component
+interface BankingDetailsProps {
+    account: {
+        iban?: string;
+        swift_code?: string;
+        routing_number?: string;
+        sort_code?: string;
+        bsb_number?: string;
+        ifsc_code?: string;
+        currency: string;
+        country_code: string;
+        account_type?: string;
+        account_purpose?: string;
+    };
+    showFullAccountNumber: boolean;
+}
+
+const BankingDetails = ({ account, showFullAccountNumber }: BankingDetailsProps) => (
+    <>
+        {/* IBAN */}
+        {account.iban && (
+            <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">IBAN</h3>
+                <p className="font-mono text-sm">
+                    {showFullAccountNumber ? account.iban : maskIBAN(account.iban)}
+                </p>
+            </div>
+        )}
+
+        {/* SWIFT Code */}
+        {account.swift_code && (
+            <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">SWIFT Code</h3>
+                <p className="font-mono text-sm">{account.swift_code}</p>
+            </div>
+        )}
+
+        {/* Routing Number */}
+        {account.routing_number && (
+            <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Routing Number</h3>
+                <p className="font-mono text-sm">{account.routing_number}</p>
+            </div>
+        )}
+
+        {/* Additional fields */}
+        {account.sort_code && (
+            <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Sort Code</h3>
+                <p className="font-mono text-sm">{account.sort_code}</p>
+            </div>
+        )}
+
+        {account.bsb_number && (
+            <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">BSB Number</h3>
+                <p className="font-mono text-sm">{account.bsb_number}</p>
+            </div>
+        )}
+
+        {account.ifsc_code && (
+            <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">IFSC Code</h3>
+                <p className="font-mono text-sm">{account.ifsc_code}</p>
+            </div>
+        )}
+
+        <div>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Currency
+            </h3>
+            <p className="text-sm">{account.currency}</p>
+        </div>
+
+        <div>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Country</h3>
+            <p className="text-sm">{account.country_code}</p>
+        </div>
+
+        {account.account_type && (
+            <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Account Type</h3>
+                <p className="text-sm capitalize">{account.account_type}</p>
+            </div>
+        )}
+
+        {account.account_purpose && (
+            <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Purpose</h3>
+                <p className="text-sm capitalize">{account.account_purpose}</p>
+            </div>
+        )}
+    </>
+);
 
 // Masking utilities per requirements 15.7 and 15.8
 const maskAccountNumber = (accountNumber: string): string => {
@@ -37,7 +200,7 @@ const maskIBAN = (iban: string): string => {
     return `${first4}${'*'.repeat(maskedLength)}${last4}`;
 };
 
-export function BankAccountDetail({ accountId, onClose }: BankAccountDetailProps) {
+export function BankAccountDetail({ accountId }: BankAccountDetailProps) {
     const [showFullAccountNumber, setShowFullAccountNumber] = useState(false);
     const [permissionDialogOpen, setPermissionDialogOpen] = useState(false);
 
@@ -67,9 +230,9 @@ export function BankAccountDetail({ accountId, onClose }: BankAccountDetailProps
     };
 
     // Log unmasking action for audit trail (Requirement 15.10)
-    const logUnmaskingAction = (accountId: string) => {
+    const logUnmaskingAction = (_accountId: string) => {
         // TODO: Implement actual audit logging to backend
-        console.log(`Unmasking action logged for account ${accountId}`);
+        // Audit logging logic would go here
     };
 
     if (error) {
@@ -96,155 +259,33 @@ export function BankAccountDetail({ accountId, onClose }: BankAccountDetailProps
         );
     }
 
+    const handleToggleAccountNumber = () => {
+        if (showFullAccountNumber) {
+            setShowFullAccountNumber(false);
+        } else {
+            handleViewFullAccountNumber();
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Account Overview */}
             <Card>
                 <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                            <Building2 className="h-5 w-5" />
-                            {account.bank_name}
-                        </CardTitle>
-                        <div className="flex items-center gap-2">
-                            <Badge variant={account.is_active ? 'default' : 'secondary'}>
-                                {account.is_active ? 'Active' : 'Inactive'}
-                            </Badge>
-                            {account.is_primary && (
-                                <Badge variant="outline">Primary</Badge>
-                            )}
-                        </div>
-                    </div>
+                    <AccountHeader account={account} />
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {/* Account Holder Information */}
-                    <div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-3">Account Holder</h3>
-                        <p className="text-lg font-semibold">{account.account_holder_name}</p>
-                    </div>
-
+                    <AccountHolderInfo accountHolderName={account.account_holder_name} />
+                    
                     <Separator />
-
-                    {/* Banking Details */}
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Account Number - Masked with View Option */}
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                    <CreditCard className="h-4 w-4" />
-                                    Account Number
-                                </h3>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                        if (showFullAccountNumber) {
-                                            setShowFullAccountNumber(false);
-                                        } else {
-                                            handleViewFullAccountNumber();
-                                        }
-                                    }}
-                                >
-                                    {showFullAccountNumber ? (
-                                        <>
-                                            <EyeOff className="h-4 w-4 mr-1" />
-                                            Hide
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Eye className="h-4 w-4 mr-1" />
-                                            View Full
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                            <p className="font-mono text-sm">
-                                {showFullAccountNumber
-                                    ? account.account_number
-                                    : maskAccountNumber(account.account_number)}
-                            </p>
-                        </div>
-
-                        {/* IBAN - Masked */}
-                        {account.iban && (
-                            <div>
-                                <h3 className="text-sm font-medium text-muted-foreground mb-2">IBAN</h3>
-                                <p className="font-mono text-sm">
-                                    {showFullAccountNumber ? account.iban : maskIBAN(account.iban)}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* SWIFT Code */}
-                        {account.swift_code && (
-                            <div>
-                                <h3 className="text-sm font-medium text-muted-foreground mb-2">SWIFT Code</h3>
-                                <p className="font-mono text-sm">{account.swift_code}</p>
-                            </div>
-                        )}
-
-                        {/* Routing Number */}
-                        {account.routing_number && (
-                            <div>
-                                <h3 className="text-sm font-medium text-muted-foreground mb-2">Routing Number</h3>
-                                <p className="font-mono text-sm">{account.routing_number}</p>
-                            </div>
-                        )}
-
-                        {/* Sort Code (UK) */}
-                        {account.sort_code && (
-                            <div>
-                                <h3 className="text-sm font-medium text-muted-foreground mb-2">Sort Code</h3>
-                                <p className="font-mono text-sm">{account.sort_code}</p>
-                            </div>
-                        )}
-
-                        {/* BSB Number (Australia) */}
-                        {account.bsb_number && (
-                            <div>
-                                <h3 className="text-sm font-medium text-muted-foreground mb-2">BSB Number</h3>
-                                <p className="font-mono text-sm">{account.bsb_number}</p>
-                            </div>
-                        )}
-
-                        {/* IFSC Code (India) */}
-                        {account.ifsc_code && (
-                            <div>
-                                <h3 className="text-sm font-medium text-muted-foreground mb-2">IFSC Code</h3>
-                                <p className="font-mono text-sm">{account.ifsc_code}</p>
-                            </div>
-                        )}
-
-                        {/* Currency */}
-                        <div>
-                            <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                                <Globe className="h-4 w-4" />
-                                Currency
-                            </h3>
-                            <p className="text-sm">{account.currency}</p>
-                        </div>
-
-                        {/* Country */}
-                        <div>
-                            <h3 className="text-sm font-medium text-muted-foreground mb-2">Country</h3>
-                            <p className="text-sm">{account.country_code}</p>
-                        </div>
-
-                        {/* Account Type */}
-                        {account.account_type && (
-                            <div>
-                                <h3 className="text-sm font-medium text-muted-foreground mb-2">Account Type</h3>
-                                <p className="text-sm capitalize">{account.account_type}</p>
-                            </div>
-                        )}
-
-                        {/* Account Purpose */}
-                        {account.account_purpose && (
-                            <div>
-                                <h3 className="text-sm font-medium text-muted-foreground mb-2">Purpose</h3>
-                                <p className="text-sm capitalize">{account.account_purpose}</p>
-                            </div>
-                        )}
+                        <AccountNumberDisplay 
+                            accountNumber={account.account_number}
+                            showFull={showFullAccountNumber}
+                            onToggle={handleToggleAccountNumber}
+                        />
+                        <BankingDetails account={account} showFullAccountNumber={showFullAccountNumber} />
                     </div>
 
                     {/* Branch Information */}

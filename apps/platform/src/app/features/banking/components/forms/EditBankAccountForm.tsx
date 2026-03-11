@@ -97,7 +97,7 @@ export function EditBankAccountForm({ account, onSuccess, onCancel }: EditBankAc
         }
 
         if (!result.valid && result.error) {
-            setValidationErrors(prev => ({ ...prev, [fieldName]: result.error! }));
+            setValidationErrors(prev => ({ ...prev, [fieldName]: result.error || '' }));
         } else {
             setValidationErrors(prev => {
                 const newErrors = { ...prev };
@@ -112,7 +112,7 @@ export function EditBankAccountForm({ account, onSuccess, onCancel }: EditBankAc
             await updateBankAccount.mutateAsync({ accountId: account.id, data });
             onSuccess?.();
         } catch (error) {
-            console.error('Failed to update bank account:', error);
+            // Error handling is done by the mutation hook
         }
     };
 

@@ -40,6 +40,65 @@ const SUPPORTED_COUNTRIES = [
 // EU country codes
 const EU_COUNTRIES = ['DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'IE', 'FI', 'GR', 'LU'];
 
+// GL Account Selection Component
+interface GLAccountSelectorProps {
+    selectedAccountType: string;
+    setSelectedAccountType: (type: string) => void;
+    glAccounts: GLAccount[];
+    errors: any;
+    register: any;
+    setValue: any;
+    showAccountTypeWarning: boolean;
+}
+
+const GLAccountSelector = ({ 
+    selectedAccountType, 
+    setSelectedAccountType, 
+    glAccounts, 
+    errors, 
+    register, 
+    setValue,
+    showAccountTypeWarning 
+}: GLAccountSelectorProps) => (
+    <div className="space-y-4 border-t pt-4">
+        <h3 className="text-lg font-semibold">GL Account (Chart of Accounts) *</h3>
+        
+        {showAccountTypeWarning && (
+            <Alert className="border-yellow-500 bg-yellow-50">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-800">
+                    <strong>Unusual Account Type:</strong> Bank accounts are typically linked to ASSET (for regular bank accounts) or LIABILITY (for credit cards/overdrafts) accounts. 
+                    Linking to {selectedAccountType.toUpperCase()} accounts is uncommon and may affect financial reporting.
+                </AlertDescription>
+            </Alert>
+        )}
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label htmlFor="account_type_filter">Account Type *</Label>
+                <Select
+                    value={selectedAccountType}
+                    onValueChange={(value) => {
+                        setSelectedAccountType(value);
+                        setValue('gl_account_id', '');
+                    }}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select account type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="asset">Asset</SelectItem>
+                        <SelectItem value="liability">Liability</SelectItem>
+                        <SelectItem value="equity">Equity</SelectItem>
+                        <SelectItem value="income">Income</SelectItem>
+                        <SelectItem value="expense">Expense</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+        </div>
+    </div>
+);
+
 export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: CreateBankAccountFormProps) {
     const createBankAccount = useCreateBankAccount();
     const [selectedCountry, setSelectedCountry] = useState<string>('');
@@ -95,7 +154,6 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                     setValue('gl_account_id', response.chart_of_accounts[0].id);
                 }
             } catch (error) {
-                console.error('Failed to fetch GL accounts:', error);
                 // If the endpoint doesn't exist or fails, we'll just show an empty list
                 // The user can still manually enter a GL account ID if needed
                 setGlAccounts([]);
@@ -145,49 +203,53 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
         }
     }, [countryCode, selectedCountry, setValue]);
 
-    // Real-time validation for country-specific fields
-    const validateField = (fieldName: string, value: string) => {
-        let result: { valid: boolean; error?: string } = { valid: true };
+    // Individual validation functions to reduce complexity
+    const validateIFSC = (value: string): { valid: boolean; error?: string } => {
+        if (!value) return { valid: true };
+        if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(value)) {
+            return { valid: false, error: 'Invalid IFSC code format (e.g., SBIN0001234)' };
+        }
+        return { valid: true };
+    };
 
+    const validateAccountNumber = (value: string): { valid: boolean; error?: string } => {
+        if (!value) return { valid: true };
+        if (value.length < 8) {
+            return { valid: false, error: 'Account number must be at least 8 digits' };
+        }
+        if (value.length > 18) {
+            return { valid: false, error: 'Account number must not exceed 18 digits' };
+        }
+        if (!/^[0-9]+$/.test(value)) {
+            return { valid: false, error: 'Account number must contain only digits' };
+        }
+        return { valid: true };
+    };
+
+    const getFieldValidator = (fieldName: string) => {
         switch (fieldName) {
             case 'routing_number':
-                result = bankingValidation.validateRoutingNumber(value);
-                break;
+                return bankingValidation.validateRoutingNumber;
             case 'iban':
-                result = bankingValidation.validateIBAN(value);
-                break;
+                return bankingValidation.validateIBAN;
             case 'swift_code':
-                result = bankingValidation.validateSWIFT(value);
-                break;
+                return bankingValidation.validateSWIFT;
             case 'sort_code':
-                result = bankingValidation.validateSortCode(value);
-                break;
+                return bankingValidation.validateSortCode;
             case 'bsb_number':
-                result = bankingValidation.validateBSB(value);
-                break;
+                return bankingValidation.validateBSB;
             case 'ifsc_code':
-                if (!value) {
-                    // Don't set error for empty field - let form validation handle required fields
-                    result = { valid: true };
-                } else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(value)) {
-                    result = { valid: false, error: 'Invalid IFSC code format (e.g., SBIN0001234)' };
-                }
-                break;
+                return validateIFSC;
             case 'account_number':
-                if (!value) {
-                    result = { valid: true };
-                } else if (value.length < 8) {
-                    result = { valid: false, error: 'Account number must be at least 8 digits' };
-                } else if (value.length > 18) {
-                    result = { valid: false, error: 'Account number must not exceed 18 digits' };
-                } else if (!/^[0-9]+$/.test(value)) {
-                    result = { valid: false, error: 'Account number must contain only digits' };
-                }
-                break;
+                return validateAccountNumber;
+            default:
+                return () => ({ valid: true });
         }
+    };
 
+    const updateValidationErrors = (fieldName: string, result: { valid: boolean; error?: string }) => {
         if (!result.valid && result.error) {
-            setValidationErrors(prev => ({ ...prev, [fieldName]: result.error! }));
+            setValidationErrors(prev => ({ ...prev, [fieldName]: result.error || '' }));
         } else {
             setValidationErrors(prev => {
                 const newErrors = { ...prev };
@@ -197,16 +259,16 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
         }
     };
 
+    // Real-time validation for country-specific fields
+    const validateField = (fieldName: string, value: string) => {
+        const validator = getFieldValidator(fieldName);
+        const result = validator(value);
+        updateValidationErrors(fieldName, result);
+    };
+
     const onSubmit = async (data: CreateBankAccountFormData) => {
-        console.log('=== FORM SUBMISSION STARTED ===');
-        console.log('Form data:', data);
-        console.log('Validation errors:', validationErrors);
-        console.log('Form errors:', errors);
-        console.log('GL Account ID from form:', data.gl_account_id);
-        
         // Check if there are any validation errors
         if (Object.keys(validationErrors).length > 0) {
-            console.error('Cannot submit - validation errors present:', validationErrors);
             return;
         }
         
@@ -215,21 +277,14 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
         const effectiveGlAccountId = data.gl_account_id || glAccountId;
         
         if (!effectiveGlAccountId || effectiveGlAccountId === '00000000-0000-0000-0000-000000000000') {
-            console.error('Cannot submit - no valid GL account selected');
             return;
         }
         
         try {
-            console.log('Calling createBankAccount.mutateAsync with GL Account ID:', effectiveGlAccountId);
-            const result = await createBankAccount.mutateAsync({ glAccountId: effectiveGlAccountId, data });
-            console.log('Bank account created successfully:', result);
+            await createBankAccount.mutateAsync({ glAccountId: effectiveGlAccountId, data });
             onSuccess?.();
-        } catch (error) {
-            console.error('Failed to create bank account:', error);
-            if (error instanceof Error) {
-                console.error('Error message:', error.message);
-                console.error('Error stack:', error.stack);
-            }
+        } catch {
+            // Error handling is done by the mutation hook
         }
     };
 
@@ -262,22 +317,7 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                         </AlertDescription>
                     </Alert>
                 )}
-                <form onSubmit={(e) => {
-                    console.log('Form onSubmit event triggered');
-                    console.log('Event:', e);
-                    console.log('Form validation errors:', errors);
-                    console.log('Custom validation errors:', validationErrors);
-                    console.log('Is form valid?', Object.keys(errors).length === 0);
-                    handleSubmit(
-                        (data) => {
-                            console.log('handleSubmit SUCCESS - calling onSubmit with data:', data);
-                            onSubmit(data);
-                        },
-                        (errors) => {
-                            console.error('handleSubmit FAILED - validation errors:', errors);
-                        }
-                    )(e);
-                }} className="space-y-6">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                     {/* GL Account Selection - Two-step filter */}
                     <div className="space-y-4 border-t pt-4">
                         <h3 className="text-lg font-semibold">GL Account (Chart of Accounts) *</h3>

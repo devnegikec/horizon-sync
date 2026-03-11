@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
+import { Card } from '@horizon-sync/ui/components/ui/card';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { useBankAccountsByGLAccount, useBankAccounts } from '../hooks';
@@ -15,6 +15,74 @@ interface BankAccountManagerProps {
 
 const PLACEHOLDER_UUID = '00000000-0000-0000-0000-000000000000';
 
+// Header component to reduce complexity
+const BankAccountHeader = ({ onAddAccount }: { onAddAccount: () => void }) => (
+    <div className="flex items-center justify-between">
+        <div>
+            <h1 className="text-3xl font-bold tracking-tight">Bank Accounts</h1>
+            <p className="text-muted-foreground">
+                Manage your connected bank accounts
+            </p>
+        </div>
+        <Button onClick={onAddAccount}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Bank Account
+        </Button>
+    </div>
+);
+
+// Search and filter component to reduce complexity
+const BankAccountFilters = ({
+    searchTerm,
+    setSearchTerm,
+    filterActive,
+    setFilterActive
+}: {
+    searchTerm: string;
+    setSearchTerm: (term: string) => void;
+    filterActive: boolean | undefined;
+    setFilterActive: (active: boolean | undefined) => void;
+}) => (
+    <Card>
+        <div className="p-4">
+            <div className="flex items-center gap-4">
+                <div className="relative flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                        placeholder="Search accounts..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                    />
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant={filterActive === undefined ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setFilterActive(undefined)}
+                    >
+                        All
+                    </Button>
+                    <Button
+                        variant={filterActive === true ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setFilterActive(true)}
+                    >
+                        Active
+                    </Button>
+                    <Button
+                        variant={filterActive === false ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setFilterActive(false)}
+                    >
+                        Inactive
+                    </Button>
+                </div>
+            </div>
+        </div>
+    </Card>
+);
+
 export function BankAccountManager({ glAccountId = PLACEHOLDER_UUID }: BankAccountManagerProps) {
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
@@ -23,12 +91,6 @@ export function BankAccountManager({ glAccountId = PLACEHOLDER_UUID }: BankAccou
 
     // Use different hooks based on whether we have a valid GL account ID
     const isPlaceholder = !glAccountId || glAccountId === PLACEHOLDER_UUID;
-
-    console.log('🔍 BankAccountManager Debug:', {
-        glAccountId,
-        isPlaceholder,
-        filterActive
-    });
 
     const { data: allAccountsData, isLoading: isLoadingAll } = useBankAccounts({
         active: filterActive,
@@ -40,19 +102,10 @@ export function BankAccountManager({ glAccountId = PLACEHOLDER_UUID }: BankAccou
         limit: 50,
     });
 
-    console.log('📊 Data received:', {
-        allAccountsData,
-        glAccountsData,
-        isLoadingAll,
-        isLoadingGL
-    });
-
     // Use the appropriate data source
     // Both hooks now return BankAccountListResponse
     const accountsData = isPlaceholder ? allAccountsData : glAccountsData;
     const isLoading = isPlaceholder ? isLoadingAll : isLoadingGL;
-
-    console.log('✅ Final accountsData:', accountsData);
 
     const filteredAccounts = (accountsData?.items || []).filter((account: BankAccount) =>
         account.bank_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -82,60 +135,13 @@ export function BankAccountManager({ glAccountId = PLACEHOLDER_UUID }: BankAccou
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Bank Accounts</h1>
-                    <p className="text-muted-foreground">
-                        Manage your connected bank accounts
-                    </p>
-                </div>
-                <Button onClick={() => setShowCreateForm(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Bank Account
-                </Button>
-            </div>
-
-            {/* Filters and Search */}
-            <Card>
-                <div className="p-4">
-                    <div className="flex items-center gap-4">
-                        <div className="relative flex-1 max-w-md">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                            <Input
-                                placeholder="Search accounts..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10"
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant={filterActive === undefined ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setFilterActive(undefined)}
-                            >
-                                All
-                            </Button>
-                            <Button
-                                variant={filterActive === true ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setFilterActive(true)}
-                            >
-                                Active
-                            </Button>
-                            <Button
-                                variant={filterActive === false ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setFilterActive(false)}
-                            >
-                                Inactive
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </Card>
+            <BankAccountHeader onAddAccount={() => setShowCreateForm(true)} />
+            <BankAccountFilters
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                filterActive={filterActive}
+                setFilterActive={setFilterActive}
+            />
 
             {/* Account Grid */}
             {isLoading ? (
@@ -151,9 +157,9 @@ export function BankAccountManager({ glAccountId = PLACEHOLDER_UUID }: BankAccou
                             key={account.id}
                             account={account}
                             onEdit={setEditingAccount}
-                            onSync={(accountId) => {
+                            onSync={() => {
                                 // Sync functionality would be implemented here
-                                console.log('Sync account:', accountId);
+                                // Implementation pending
                             }}
                         />
                     ))}

@@ -1,4 +1,3 @@
-import { log } from 'console';
 import { BankAccount, BankAccountHistory, BankAccountListResponse, CreateBankAccountFormData, UpdateBankAccountFormData } from '../types';
 import { useUserStore } from '@horizon-sync/store';
 
@@ -38,13 +37,7 @@ class BankAccountService {
     // Create bank account linked to GL account
     async createBankAccount(glAccountId: string, data: CreateBankAccountFormData): Promise<BankAccount> {
         // Remove gl_account_id from the request body (it's passed in the URL path)
-        const { gl_account_id, ...bankAccountData } = data;
-        
-        console.log('🔧 Creating bank account with data:', {
-            glAccountId,
-            removedFields: { gl_account_id },
-            sentData: bankAccountData
-        });
+        const { gl_account_id: _, ...bankAccountData } = data;
         
         return this.request<BankAccount>(`/chart-of-accounts/${glAccountId}/bank-accounts`, {
             method: 'POST',
@@ -52,12 +45,12 @@ class BankAccountService {
         });
     }
 
-    // Get all bank accounts
-    async getAllBankAccounts(params?: {
+    // Helper method to build search parameters
+    private buildSearchParams(params?: {
         active?: boolean;
         limit?: number;
         offset?: number;
-    }): Promise<BankAccount[]> {
+    }): URLSearchParams {
         const searchParams = new URLSearchParams();
         if (params?.active !== undefined) {
             searchParams.append('is_active', params.active.toString());
@@ -69,13 +62,20 @@ class BankAccountService {
             const page = Math.floor((params.offset || 0) / (params.limit || 20)) + 1;
             searchParams.append('page', page.toString());
         }
+        return searchParams;
+    }
 
+    // Get all bank accounts
+    async getAllBankAccounts(params?: {
+        active?: boolean;
+        limit?: number;
+        offset?: number;
+    }): Promise<BankAccount[]> {
+        const searchParams = this.buildSearchParams(params);
         const queryString = searchParams.toString();
         const endpoint = `/bank-accounts${queryString ? `?${queryString}` : ''}`;
 
-        console.log('🔍 Fetching bank accounts:', { endpoint, params });
         const response = await this.request<BankAccountListResponse>(endpoint);
-        console.log('✅ Bank accounts response:', response);
         return response.items || [];
     }
 
@@ -97,11 +97,9 @@ class BankAccountService {
         // It returns all bank accounts for the GL account
 
         const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
-        console.log('🔍 Fetching bank accounts by GL account:', { glAccountId, query, params });
         
         // This endpoint returns BankAccount[] directly, not BankAccountListResponse
         const items = await this.request<BankAccount[]>(`/chart-of-accounts/${glAccountId}/bank-accounts${query}`);
-        console.log('✅ Bank accounts by GL response:', items);
         
         // Wrap in BankAccountListResponse format for consistency
         return {
