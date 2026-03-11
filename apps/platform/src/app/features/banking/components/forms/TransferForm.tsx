@@ -74,7 +74,7 @@ export function TransferForm({ onSuccess, onCancel }: TransferFormProps) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="from_account">From Account *</Label>
-                            <Select 
+                            <Select
                                 onValueChange={(value) => setValue('from_account_id', value)}
                                 value={fromAccountId}
                             >
@@ -96,7 +96,7 @@ export function TransferForm({ onSuccess, onCancel }: TransferFormProps) {
 
                         <div className="space-y-2">
                             <Label htmlFor="to_account">To Account *</Label>
-                            <Select 
+                            <Select
                                 onValueChange={(value) => setValue('to_account_id', value)}
                                 value={toAccountId}
                             >

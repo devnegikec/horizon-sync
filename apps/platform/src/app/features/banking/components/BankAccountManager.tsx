@@ -23,18 +23,18 @@ export function BankAccountManager({ glAccountId = PLACEHOLDER_UUID }: BankAccou
 
     // Use different hooks based on whether we have a valid GL account ID
     const isPlaceholder = !glAccountId || glAccountId === PLACEHOLDER_UUID;
-    
+
     console.log('🔍 BankAccountManager Debug:', {
         glAccountId,
         isPlaceholder,
         filterActive
     });
-    
+
     const { data: allAccountsData, isLoading: isLoadingAll } = useBankAccounts({
         active: filterActive,
         limit: 50,
     });
-    
+
     const { data: glAccountsData, isLoading: isLoadingGL } = useBankAccountsByGLAccount(glAccountId, {
         active: filterActive,
         limit: 50,

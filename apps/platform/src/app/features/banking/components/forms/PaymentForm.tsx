@@ -60,7 +60,7 @@ export function PaymentForm({ onSuccess, onCancel }: PaymentFormProps) {
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="from_account_id">From Account *</Label>
-                        <Select 
+                        <Select
                             onValueChange={(value) => setValue('from_account_id', value)}
                             value={watchedValues.from_account_id}
                         >
@@ -82,7 +82,7 @@ export function PaymentForm({ onSuccess, onCancel }: PaymentFormProps) {
 
                     <div className="space-y-2">
                         <Label htmlFor="transaction_type">Transaction Type *</Label>
-                        <Select 
+                        <Select
                             onValueChange={(value) => setValue('transaction_type', value as any)}
                             value={watchedValues.transaction_type}
                         >
@@ -122,7 +122,7 @@ export function PaymentForm({ onSuccess, onCancel }: PaymentFormProps) {
 
                         <div className="space-y-2">
                             <Label htmlFor="currency">Currency</Label>
-                            <Select 
+                            <Select
                                 onValueChange={(value) => setValue('currency', value)}
                                 value={watchedValues.currency}
                             >
@@ -140,7 +140,7 @@ export function PaymentForm({ onSuccess, onCancel }: PaymentFormProps) {
 
                     <div className="space-y-2">
                         <Label htmlFor="to_account_id">To Account</Label>
-                        <Select 
+                        <Select
                             onValueChange={(value) => setValue('to_account_id', value)}
                             value={watchedValues.to_account_id}
                         >

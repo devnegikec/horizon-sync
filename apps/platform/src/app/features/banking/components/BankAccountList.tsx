@@ -142,8 +142,8 @@ export function BankAccountList({ onView, onEdit }: BankAccountListProps) {
                             {searchTerm
                                 ? `No accounts found matching "${searchTerm}"`
                                 : statusFilter === 'all'
-                                ? 'No bank accounts found'
-                                : `No ${statusFilter} bank accounts found`}
+                                    ? 'No bank accounts found'
+                                    : `No ${statusFilter} bank accounts found`}
                         </div>
                     ) : (
                         <Table>

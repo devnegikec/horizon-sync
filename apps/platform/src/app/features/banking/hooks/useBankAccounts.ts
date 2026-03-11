@@ -44,7 +44,7 @@ export function useBankAccountsByGLAccount(
 ) {
     const PLACEHOLDER_UUID = '00000000-0000-0000-0000-000000000000';
     const isValidGLAccount = Boolean(glAccountId && glAccountId !== PLACEHOLDER_UUID);
-    
+
     return useQuery({
         queryKey: BANK_ACCOUNT_KEYS.byGLAccount(glAccountId),
         queryFn: () => bankAccountService.getBankAccountsByGLAccount(glAccountId, params),
