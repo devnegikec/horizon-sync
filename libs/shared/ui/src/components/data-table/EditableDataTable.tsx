@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import { Plus } from 'lucide-react';
+
 import { DataTable, type DataTableProps } from './DataTable';
 
 export interface EditableDataTableProps<TData, TValue>
@@ -9,6 +11,30 @@ export interface EditableDataTableProps<TData, TValue>
   enableAddRow?: boolean;
   enableDeleteRow?: boolean;
   newRowTemplate?: TData;
+  addRowLabel?: string;
+  heading?: string;
+}
+
+function TableHeader({ heading, showAddButton, onAdd, addRowLabel }: {
+  heading?: string;
+  showAddButton: boolean;
+  onAdd: () => void;
+  addRowLabel: string;
+}) {
+  if (!heading && !showAddButton) return null;
+  return (
+    <div className="flex items-center justify-between">
+      {heading ? <h3 className="text-lg font-semibold">{heading}</h3> : <span />}
+      {showAddButton && (
+        <button type="button"
+          onClick={onAdd}
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90">
+          <Plus className="h-4 w-4" />
+          {addRowLabel}
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function EditableDataTable<TData, TValue>({
@@ -19,6 +45,8 @@ export function EditableDataTable<TData, TValue>({
   enableAddRow = false,
   enableDeleteRow = false,
   newRowTemplate,
+  addRowLabel = 'Add Item',
+  heading = 'Line Items',
   ...props
 }: EditableDataTableProps<TData, TValue>) {
   const [tableData, setTableData] = React.useState<TData[]>(data);
@@ -77,25 +105,17 @@ export function EditableDataTable<TData, TValue>({
       meta: {
         ...(config?.meta || {}),
         updateData,
-        deleteRow: enableDeleteRow ? deleteRow : undefined,
+        ...(enableDeleteRow ? { deleteRow } : {}),
       },
     }),
     [config, updateData, deleteRow, enableDeleteRow]
   );
 
+  const showAddButton = enableAddRow && !!newRowTemplate;
+
   return (
     <div className="space-y-4">
-      {enableAddRow && newRowTemplate && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={addRow}
-            className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90"
-          >
-            Add Row
-          </button>
-        </div>
-      )}
+      <TableHeader heading={heading} showAddButton={showAddButton} onAdd={addRow} addRowLabel={addRowLabel} />
       <DataTable data={tableData} columns={columns} config={enhancedConfig} {...props} />
     </div>
   );
