@@ -58,7 +58,7 @@ export function BankAccountList({ onView, onEdit }: BankAccountListProps) {
     const toggleStatus = useToggleBankAccountStatus();
 
     // Filter accounts by search term
-    const filteredAccounts = accounts?.filter(account =>
+    const filteredAccounts = accounts?.items?.filter(account =>
         account.bank_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         account.account_holder_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         account.account_number.includes(searchTerm)

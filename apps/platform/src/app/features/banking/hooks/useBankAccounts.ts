@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { bankAccountService } from '../services';
-import { BankAccount, CreateBankAccountFormData, UpdateBankAccountFormData } from '../types';
+import { BankAccount, BankAccountListResponse, CreateBankAccountFormData, UpdateBankAccountFormData } from '../types';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 // Query keys for caching
@@ -19,7 +19,17 @@ export function useBankAccounts(params?: {
 }) {
     return useQuery({
         queryKey: [...BANK_ACCOUNT_KEYS.all, params],
-        queryFn: () => bankAccountService.getAllBankAccounts(params),
+        queryFn: async (): Promise<BankAccountListResponse> => {
+            const accounts = await bankAccountService.getAllBankAccounts(params);
+            // Return in the same format as the GL account endpoint for consistency
+            return {
+                items: accounts,
+                total: accounts.length,
+                page: 1,
+                page_size: params?.limit || accounts.length,
+                total_pages: 1
+            };
+        },
     });
 }
 
@@ -32,10 +42,13 @@ export function useBankAccountsByGLAccount(
         offset?: number;
     }
 ) {
+    const PLACEHOLDER_UUID = '00000000-0000-0000-0000-000000000000';
+    const isValidGLAccount = Boolean(glAccountId && glAccountId !== PLACEHOLDER_UUID);
+    
     return useQuery({
         queryKey: BANK_ACCOUNT_KEYS.byGLAccount(glAccountId),
         queryFn: () => bankAccountService.getBankAccountsByGLAccount(glAccountId, params),
-        enabled: !!glAccountId,
+        enabled: isValidGLAccount,
     });
 }
 

@@ -202,7 +202,7 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
         console.log('Form data:', data);
         console.log('Validation errors:', validationErrors);
         console.log('Form errors:', errors);
-        console.log('GL Account ID:', glAccountId);
+        console.log('GL Account ID from form:', data.gl_account_id);
         
         // Check if there are any validation errors
         if (Object.keys(validationErrors).length > 0) {
@@ -210,9 +210,18 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
             return;
         }
         
+        // Use the GL account ID from the form data, not from props
+        // This allows the form to work even when initialized with a placeholder ID
+        const effectiveGlAccountId = data.gl_account_id || glAccountId;
+        
+        if (!effectiveGlAccountId || effectiveGlAccountId === '00000000-0000-0000-0000-000000000000') {
+            console.error('Cannot submit - no valid GL account selected');
+            return;
+        }
+        
         try {
-            console.log('Calling createBankAccount.mutateAsync...');
-            const result = await createBankAccount.mutateAsync({ glAccountId, data });
+            console.log('Calling createBankAccount.mutateAsync with GL Account ID:', effectiveGlAccountId);
+            const result = await createBankAccount.mutateAsync({ glAccountId: effectiveGlAccountId, data });
             console.log('Bank account created successfully:', result);
             onSuccess?.();
         } catch (error) {

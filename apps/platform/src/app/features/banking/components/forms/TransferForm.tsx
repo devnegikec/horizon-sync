@@ -34,7 +34,8 @@ interface TransferFormProps {
 
 export function TransferForm({ onSuccess, onCancel }: TransferFormProps) {
     const createTransfer = useCreateTransfer();
-    const { data: accounts = [] } = useBankAccounts();
+    const { data: accountsResponse } = useBankAccounts();
+    const accounts = accountsResponse?.items || [];
 
     const {
         register,

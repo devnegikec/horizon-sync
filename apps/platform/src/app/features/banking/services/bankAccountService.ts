@@ -1,17 +1,19 @@
+import { log } from 'console';
 import { BankAccount, BankAccountHistory, BankAccountListResponse, CreateBankAccountFormData, UpdateBankAccountFormData } from '../types';
+import { useUserStore } from '@horizon-sync/store';
 
 // API Base URL - should come from environment config
-const API_BASE_URL = process.env['NX_API_BASE_URL'] || 'http://localhost:8000/api/v1';
+// Banking endpoints are on Core Service (port 8001), not Identity Service (port 8000)
+const API_BASE_URL = process.env['NX_CORE_API_BASE_URL'] || process.env['NX_API_CORE_URL'] || 'http://localhost:8001/api/v1';
 
 class BankAccountService {
     private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
         const url = `${API_BASE_URL}${endpoint}`;
-
         const response = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
                 // Add auth token from your auth system
-                'Authorization': `Bearer ${this.getAuthToken()}`,
+                'Authorization': `Bearer ${this.getAccessToken()}`,
                 ...options?.headers,
             },
             ...options,
@@ -25,16 +27,28 @@ class BankAccountService {
         return response.json();
     }
 
-    private getAuthToken(): string {
-        // Get token from your auth system (localStorage, Zustand store, etc.)
-        return localStorage.getItem('auth_token') || '';
+    private getAccessToken(): string {
+        const fromStore = useUserStore.getState().accessToken;
+        if (fromStore) return fromStore;
+        const fromStorage = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
+        if (fromStorage) return fromStorage;
+        throw new Error('No access token found');
     }
 
     // Create bank account linked to GL account
     async createBankAccount(glAccountId: string, data: CreateBankAccountFormData): Promise<BankAccount> {
+        // Remove gl_account_id from the request body (it's passed in the URL path)
+        const { gl_account_id, ...bankAccountData } = data;
+        
+        console.log('🔧 Creating bank account with data:', {
+            glAccountId,
+            removedFields: { gl_account_id },
+            sentData: bankAccountData
+        });
+        
         return this.request<BankAccount>(`/chart-of-accounts/${glAccountId}/bank-accounts`, {
             method: 'POST',
-            body: JSON.stringify(data),
+            body: JSON.stringify(bankAccountData),
         });
     }
 
@@ -46,19 +60,22 @@ class BankAccountService {
     }): Promise<BankAccount[]> {
         const searchParams = new URLSearchParams();
         if (params?.active !== undefined) {
-            searchParams.append('active', params.active.toString());
+            searchParams.append('is_active', params.active.toString());
         }
         if (params?.limit) {
-            searchParams.append('limit', params.limit.toString());
+            searchParams.append('page_size', params.limit.toString());
         }
         if (params?.offset) {
-            searchParams.append('offset', params.offset.toString());
+            const page = Math.floor((params.offset || 0) / (params.limit || 20)) + 1;
+            searchParams.append('page', page.toString());
         }
 
         const queryString = searchParams.toString();
         const endpoint = `/bank-accounts${queryString ? `?${queryString}` : ''}`;
 
+        console.log('🔍 Fetching bank accounts:', { endpoint, params });
         const response = await this.request<BankAccountListResponse>(endpoint);
+        console.log('✅ Bank accounts response:', response);
         return response.items || [];
     }
 
@@ -72,12 +89,28 @@ class BankAccountService {
         }
     ): Promise<BankAccountListResponse> {
         const searchParams = new URLSearchParams();
-        if (params?.active !== undefined) searchParams.set('active', params.active.toString());
-        if (params?.limit) searchParams.set('limit', params.limit.toString());
-        if (params?.offset) searchParams.set('offset', params.offset.toString());
+        // Backend uses include_inactive, so we need to invert the active parameter
+        if (params?.active !== undefined) {
+            searchParams.set('include_inactive', (!params.active).toString());
+        }
+        // Note: This endpoint doesn't support pagination (limit/offset)
+        // It returns all bank accounts for the GL account
 
         const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
-        return this.request<BankAccountListResponse>(`/chart-of-accounts/${glAccountId}/bank-accounts${query}`);
+        console.log('🔍 Fetching bank accounts by GL account:', { glAccountId, query, params });
+        
+        // This endpoint returns BankAccount[] directly, not BankAccountListResponse
+        const items = await this.request<BankAccount[]>(`/chart-of-accounts/${glAccountId}/bank-accounts${query}`);
+        console.log('✅ Bank accounts by GL response:', items);
+        
+        // Wrap in BankAccountListResponse format for consistency
+        return {
+            items,
+            total: items.length,
+            page: 1,
+            page_size: items.length,
+            total_pages: 1
+        };
     }
 
     // Get specific bank account

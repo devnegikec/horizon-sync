@@ -23,7 +23,8 @@ interface PaymentFormProps {
 
 export function PaymentForm({ onSuccess, onCancel }: PaymentFormProps) {
     const createPayment = useCreatePayment();
-    const { data: accounts = [] } = useBankAccounts();
+    const { data: accountsResponse } = useBankAccounts();
+    const accounts = accountsResponse?.items || [];
 
     const {
         register,

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
-import { useBankAccountsByGLAccount } from '../hooks';
+import { useBankAccountsByGLAccount, useBankAccounts } from '../hooks';
 import { BankAccountCard } from './ui/BankAccountCard';
 import { CreateBankAccountForm } from './forms/CreateBankAccountForm';
 import { EditBankAccountForm } from './forms/EditBankAccountForm';
@@ -13,22 +13,52 @@ interface BankAccountManagerProps {
     glAccountId?: string;
 }
 
-export function BankAccountManager({ glAccountId = '00000000-0000-0000-0000-000000000000' }: BankAccountManagerProps) {
+const PLACEHOLDER_UUID = '00000000-0000-0000-0000-000000000000';
+
+export function BankAccountManager({ glAccountId = PLACEHOLDER_UUID }: BankAccountManagerProps) {
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterActive, setFilterActive] = useState<boolean | undefined>(undefined);
 
-    const { data: accountsData, isLoading } = useBankAccountsByGLAccount(glAccountId, {
+    // Use different hooks based on whether we have a valid GL account ID
+    const isPlaceholder = !glAccountId || glAccountId === PLACEHOLDER_UUID;
+    
+    console.log('🔍 BankAccountManager Debug:', {
+        glAccountId,
+        isPlaceholder,
+        filterActive
+    });
+    
+    const { data: allAccountsData, isLoading: isLoadingAll } = useBankAccounts({
+        active: filterActive,
+        limit: 50,
+    });
+    
+    const { data: glAccountsData, isLoading: isLoadingGL } = useBankAccountsByGLAccount(glAccountId, {
         active: filterActive,
         limit: 50,
     });
 
-    const filteredAccounts = accountsData?.items.filter(account =>
+    console.log('📊 Data received:', {
+        allAccountsData,
+        glAccountsData,
+        isLoadingAll,
+        isLoadingGL
+    });
+
+    // Use the appropriate data source
+    // Both hooks now return BankAccountListResponse
+    const accountsData = isPlaceholder ? allAccountsData : glAccountsData;
+    const isLoading = isPlaceholder ? isLoadingAll : isLoadingGL;
+
+    console.log('✅ Final accountsData:', accountsData);
+
+    const filteredAccounts = (accountsData?.items || []).filter((account: BankAccount) =>
         account.bank_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         account.account_holder_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         account.account_number.includes(searchTerm)
-    ) || [];
+    );
 
     if (showCreateForm) {
         return (
@@ -116,7 +146,7 @@ export function BankAccountManager({ glAccountId = '00000000-0000-0000-0000-0000
                 </div>
             ) : filteredAccounts.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredAccounts.map((account) => (
+                    {filteredAccounts.map((account: BankAccount) => (
                         <BankAccountCard
                             key={account.id}
                             account={account}
@@ -147,7 +177,7 @@ export function BankAccountManager({ glAccountId = '00000000-0000-0000-0000-0000
             )}
 
             {/* Summary Stats */}
-            {accountsData && accountsData.items.length > 0 && (
+            {accountsData && (accountsData.items || []).length > 0 && (
                 <Card>
                     <div className="p-6">
                         <h3 className="text-lg font-semibold mb-4">Account Summary</h3>
@@ -158,19 +188,19 @@ export function BankAccountManager({ glAccountId = '00000000-0000-0000-0000-0000
                             </div>
                             <div>
                                 <p className="text-2xl font-bold text-green-600">
-                                    {accountsData.items.filter(a => a.is_active).length}
+                                    {(accountsData.items || []).filter((a: BankAccount) => a.is_active).length}
                                 </p>
                                 <p className="text-sm text-muted-foreground">Active</p>
                             </div>
                             <div>
                                 <p className="text-2xl font-bold text-blue-600">
-                                    {accountsData.items.filter(a => a.is_primary).length}
+                                    {(accountsData.items || []).filter((a: BankAccount) => a.is_primary).length}
                                 </p>
                                 <p className="text-sm text-muted-foreground">Primary</p>
                             </div>
                             <div>
                                 <p className="text-2xl font-bold text-purple-600">
-                                    {accountsData.items.filter(a => a.bank_api_enabled).length}
+                                    {(accountsData.items || []).filter((a: BankAccount) => a.bank_api_enabled).length}
                                 </p>
                                 <p className="text-sm text-muted-foreground">API Connected</p>
                             </div>

@@ -105,7 +105,7 @@ export function EditableDataTable<TData, TValue>({
       meta: {
         ...(config?.meta || {}),
         updateData,
-        deleteRow: enableDeleteRow ? deleteRow : undefined,
+        ...(enableDeleteRow ? { deleteRow } : {}),
       },
     }),
     [config, updateData, deleteRow, enableDeleteRow]

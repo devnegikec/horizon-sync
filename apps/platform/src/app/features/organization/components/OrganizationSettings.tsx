@@ -10,11 +10,9 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { OrganizationService } from '../../../services/organization.service';
 import type { OrganizationSettings as OrganizationSettingsType } from '../../../types/organization-settings.types';
-import { DEFAULT_ORGANIZATION_SETTINGS } from '../../../types/organization-settings.types';
 import { validateOrganizationSettings } from '../../../utils/organization-settings.utils';
 
 import { CurrencySettings } from './CurrencySettings';
-import { NamingSeriesSettings } from './NamingSeriesSettings';
 
 interface OrganizationSettingsProps {
   organizationId: string;
@@ -80,16 +78,6 @@ export function OrganizationSettings({
     }
   };
 
-  const handleCurrenciesChange = (currencies: OrganizationSettingsType['currencies']) => {
-    setSettings({ ...settings, currencies });
-    setHasChanges(true);
-  };
-
-  const handleNamingSeriesChange = (namingSeries: OrganizationSettingsType['naming_series']) => {
-    setSettings({ ...settings, naming_series: namingSeries });
-    setHasChanges(true);
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -116,8 +104,7 @@ export function OrganizationSettings({
       )}
 
       {/* Currency Settings */}
-      <CurrencySettings currencies={settings.currencies}
-        onChange={handleCurrenciesChange}
+      <CurrencySettings accessToken={accessToken}
         disabled={saving || !canEdit}/>
 
       <Separator />

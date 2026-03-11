@@ -1,198 +1,219 @@
-import * as React from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Plus, Trash2, Star } from 'lucide-react';
+import { type CellContext, type ColumnDef } from '@tanstack/react-table';
+import { Trash2 } from 'lucide-react';
 
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
+import { ConfirmationDialog, EditableCell, EditableDataTable } from '@horizon-sync/ui/components';
+import { Button } from '@horizon-sync/ui/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
-import type { CurrencyConfig } from '../../../types/organization-settings.types';
-import { validateCurrencies } from '../../../utils/organization-settings.utils';
+import { CurrencyService, type Currency, type CreateCurrencyPayload } from '../../../services/currency.service';
 
 interface CurrencySettingsProps {
-  currencies: CurrencyConfig[];
-  onChange: (currencies: CurrencyConfig[]) => void;
+  accessToken: string;
   disabled?: boolean;
 }
 
-const COMMON_CURRENCIES = [
-  { code: 'USD', symbol: '$', name: 'US Dollar', precision: 2 },
-  { code: 'EUR', symbol: '€', name: 'Euro', precision: 2 },
-  { code: 'GBP', symbol: '£', name: 'British Pound', precision: 2 },
-  { code: 'INR', symbol: '₹', name: 'Indian Rupee', precision: 2 },
-  { code: 'JPY', symbol: '¥', name: 'Japanese Yen', precision: 0 },
-  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan', precision: 2 },
-  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', precision: 2 },
-  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar', precision: 2 },
-  { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc', precision: 2 },
-  { code: 'BHD', symbol: 'BD', name: 'Bahraini Dinar', precision: 3 },
-];
+interface CurrencyRow {
+  id: string;
+  code: string;
+  name: string;
+  symbol: string;
+  isNew?: boolean;
+}
 
-export function CurrencySettings({ currencies, onChange, disabled }: CurrencySettingsProps) {
+const EMPTY_ROW: CurrencyRow = { id: '', code: '', name: '', symbol: '', isNew: true };
+
+function DeleteCell<TData>({ row, table }: CellContext<TData, unknown>) {
+  const meta = table.options.meta as { deleteRow?: (index: number) => void } | undefined;
+  if (!meta?.deleteRow) return null;
+  return (
+    <Button type="button"
+      variant="ghost"
+      size="sm"
+      onClick={() => meta.deleteRow?.(row.index)}>
+      <Trash2 className="h-4 w-4 text-destructive" />
+    </Button>
+  );
+}
+
+export function CurrencySettings({ accessToken, disabled }: CurrencySettingsProps) {
   const { toast } = useToast();
+  const [currencies, setCurrencies] = useState<CurrencyRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ index: number; row: CurrencyRow } | null>(null);
 
-  const handleAddCurrency = () => {
-    const newCurrency: CurrencyConfig = {
-      code: 'USD',
-      symbol: '$',
-      is_base_currency: currencies.length === 0,
-      precision: 2,
-      name: 'US Dollar',
-    };
-    onChange([...currencies, newCurrency]);
-  };
-
-  const handleRemoveCurrency = (index: number) => {
-    if (currencies[index].is_base_currency) {
+  const fetchCurrencies = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await CurrencyService.list(accessToken);
+      setCurrencies(data.map((c: Currency) => ({
+        id: c.id,
+        code: c.code,
+        name: c.name,
+        symbol: c.symbol,
+      })));
+    } catch (err) {
       toast({
-        title: 'Cannot Remove',
-        description: 'Cannot remove the base currency. Set another currency as base first.',
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to fetch currencies',
         variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, toast]);
+
+  useEffect(() => {
+    fetchCurrencies();
+  }, [fetchCurrencies]);
+
+  const handleDataChange = useCallback(async (newData: CurrencyRow[]) => {
+    // Find newly completed rows (have all fields filled and are marked isNew)
+    const newRows = newData.filter((r) => r.isNew && r.code && r.name && r.symbol);
+
+    if (newRows.length === 0) {
+      setCurrencies(newData);
       return;
     }
-    const updated = currencies.filter((_, i) => i !== index);
-    onChange(updated);
-  };
 
-  const handleSetBaseCurrency = (index: number) => {
-    const updated = currencies.map((c, i) => ({
-      ...c,
-      is_base_currency: i === index,
-    }));
-    onChange(updated);
-  };
-
-  const handleUpdateCurrency = (index: number, field: keyof CurrencyConfig, value: string | number | boolean) => {
-    const updated = [...currencies];
-    updated[index] = { ...updated[index], [field]: value };
-    onChange(updated);
-  };
-
-  const handleSelectCommonCurrency = (index: number, currencyCode: string) => {
-    const commonCurrency = COMMON_CURRENCIES.find((c) => c.code === currencyCode);
-    if (commonCurrency) {
-      const updated = [...currencies];
-      updated[index] = {
-        ...updated[index],
-        code: commonCurrency.code,
-        symbol: commonCurrency.symbol,
-        name: commonCurrency.name,
-        precision: commonCurrency.precision,
-      };
-      onChange(updated);
+    setSaving(true);
+    try {
+      for (const row of newRows) {
+        const payload: CreateCurrencyPayload = {
+          code: row.code,
+          name: row.name,
+          symbol: row.symbol,
+        };
+        await CurrencyService.create(payload, accessToken);
+      }
+      toast({ title: 'Success', description: 'Currency added successfully' });
+      await fetchCurrencies();
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to create currency',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
     }
-  };
+  }, [accessToken, fetchCurrencies, toast]);
 
-  const validation = validateCurrencies(currencies);
+  const handleDeleteRow = useCallback((index: number) => {
+    const row = currencies[index];
+    if (!row) return;
+
+    if (row.isNew) {
+      setCurrencies((prev) => prev.filter((_, i) => i !== index));
+      return;
+    }
+
+    setDeleteTarget({ index, row });
+  }, [currencies]);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    const { row } = deleteTarget;
+
+    setSaving(true);
+    try {
+      await CurrencyService.delete(row.id, accessToken);
+      toast({ title: 'Success', description: `Currency ${row.code} deleted` });
+      setDeleteTarget(null);
+      await fetchCurrencies();
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to delete currency',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [deleteTarget, accessToken, fetchCurrencies, toast]);
+
+  const columns: ColumnDef<CurrencyRow, string>[] = useMemo(() => [
+    {
+      accessorKey: 'code',
+      header: 'Code',
+      cell: disabled ? undefined : EditableCell,
+      size: 120,
+    },
+    {
+      accessorKey: 'name',
+      header: 'Name',
+      cell: disabled ? undefined : EditableCell,
+      size: 200,
+    },
+    {
+      accessorKey: 'symbol',
+      header: 'Symbol',
+      cell: disabled ? undefined : EditableCell,
+      size: 100,
+    },
+    ...(!disabled ? [{
+      id: 'actions',
+      header: '',
+      cell: DeleteCell as ColumnDef<CurrencyRow, string>['cell'],
+      size: 60,
+    }] : []),
+  ], [disabled]);
+
+  const config = useMemo(() => ({
+    showPagination: false,
+    enableSorting: false,
+    enableFiltering: false,
+    meta: {
+      deleteRow: handleDeleteRow,
+    },
+  }), [handleDeleteRow]);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Currencies</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-muted-foreground text-sm">Loading currencies...</div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Supported Currencies</CardTitle>
+        <CardTitle>Currencies</CardTitle>
         <CardDescription>
-          Configure currencies for your organization. The base currency is used for FIFO valuation and ledger calculations.
+          Manage currencies for your organization. Add or remove currencies as needed.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {!validation.valid && (
-          <div className="rounded-lg border border-destructive bg-destructive/10 p-3">
-            <p className="text-sm text-destructive">{validation.error}</p>
-          </div>
+      <CardContent>
+        <EditableDataTable data={currencies}
+          columns={columns}
+          config={config}
+          onDataChange={handleDataChange}
+          enableAddRow={!disabled}
+          enableDeleteRow={false}
+          newRowTemplate={EMPTY_ROW}
+          addRowLabel="Add Currency"
+          heading="" />
+        {saving && (
+          <div className="text-muted-foreground text-sm mt-2">Saving...</div>
         )}
-
-        {currencies.map((currency, index) => (
-          <div key={index} className="rounded-lg border p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button type="button"
-                  variant={currency.is_base_currency ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleSetBaseCurrency(index)}
-                  disabled={disabled}
-                  className="gap-2">
-                  <Star className={`h-3 w-3 ${currency.is_base_currency ? 'fill-current' : ''}`} />
-                  {currency.is_base_currency ? 'Base Currency' : 'Set as Base'}
-                </Button>
-              </div>
-              <Button type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleRemoveCurrency(index)}
-                disabled={disabled || currency.is_base_currency}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Currency</Label>
-                <Select value={currency.code}
-                  onValueChange={(value) => handleSelectCommonCurrency(index, value)}
-                  disabled={disabled}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COMMON_CURRENCIES.map((c) => (
-                      <SelectItem key={c.code} value={c.code}>
-                        {c.code} - {c.name} ({c.symbol})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Symbol</Label>
-                <Input value={currency.symbol}
-                  onChange={(e) => handleUpdateCurrency(index, 'symbol', e.target.value)}
-                  disabled={disabled}
-                  placeholder="$" />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Code (ISO 4217)</Label>
-                <Input value={currency.code}
-                  onChange={(e) => handleUpdateCurrency(index, 'code', e.target.value.toUpperCase())}
-                  disabled={disabled}
-                  placeholder="USD"
-                  maxLength={3} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Decimal Precision</Label>
-                <Select key={`precision-${index + 1}-${currency.precision}`}
-                  value={currency.code}
-                  onValueChange={(value) => handleSelectCommonCurrency(index, value)}
-                  disabled={disabled}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COMMON_CURRENCIES.map((c) => {
-                      let example = c.precision === 0 ? '100' :
-                        c.precision === 2 ? '100.00' :
-                          c.precision === 3 ? '100.000' :
-                            '100.0000';
-                      example = `${c.symbol} ${example}`
-                      return (
-                        <SelectItem key={c.code} value={c.code}>
-                          {c.precision} (e.g., {example})
-                        </SelectItem>
-                      )
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        <Button type="button" variant="outline" onClick={handleAddCurrency} disabled={disabled} className="w-full gap-2">
-          <Plus className="h-4 w-4" />
-          Add Currency
-        </Button>
-      </CardContent>
-    </Card>
+      </CardContent >
+      <ConfirmationDialog open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title="Delete Currency"
+        description={`Are you sure you want to delete ${deleteTarget?.row.code ?? ''} (${deleteTarget?.row.name ?? ''})? This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        loading={saving}
+        onConfirm={handleConfirmDelete} />
+    </Card >
   );
 }

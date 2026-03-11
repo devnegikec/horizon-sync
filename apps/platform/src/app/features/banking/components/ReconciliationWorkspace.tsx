@@ -74,10 +74,10 @@ export function ReconciliationWorkspace() {
 
     // Set default bank account when accounts load
     useEffect(() => {
-        if (bankAccounts && bankAccounts.length > 0 && !selectedBankAccountId) {
+        if (bankAccounts?.items && bankAccounts.items.length > 0 && !selectedBankAccountId) {
             // Select the primary account or the first account
-            const primaryAccount = bankAccounts.find(acc => acc.is_primary);
-            setSelectedBankAccountId(primaryAccount?.id || bankAccounts[0].id);
+            const primaryAccount = bankAccounts.items.find((acc) => acc.is_primary);
+            setSelectedBankAccountId(primaryAccount?.id || bankAccounts.items[0]?.id || '');
         }
     }, [bankAccounts, selectedBankAccountId]);
 
@@ -97,7 +97,7 @@ export function ReconciliationWorkspace() {
 
         try {
             // Find the selected bank account to get GL account ID
-            const selectedAccount = bankAccounts?.find(acc => acc.id === selectedBankAccountId);
+            const selectedAccount = bankAccounts?.items?.find((acc) => acc.id === selectedBankAccountId);
             if (!selectedAccount) {
                 setError('Selected bank account not found');
                 return;
@@ -179,7 +179,7 @@ export function ReconciliationWorkspace() {
                                     <SelectValue placeholder="Select bank account" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {bankAccounts?.map((account) => (
+                                    {bankAccounts?.items?.map((account) => (
                                         <SelectItem key={account.id} value={account.id}>
                                             {account.bank_name} - {account.account_holder_name}
                                         </SelectItem>

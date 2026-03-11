@@ -38,6 +38,9 @@ interface TransactionTypeConfig {
 }
 
 const COMMON_TRANSACTION_TYPES = [
+  'payment',
+  'sales_invoice',
+  'purchase_invoice',
   'inventory_purchase',
   'inventory_sale',
   'accounts_payable',
