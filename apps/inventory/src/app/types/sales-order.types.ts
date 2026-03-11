@@ -156,7 +156,7 @@ export interface SalesOrderStatusUpdate {
   status: SalesOrderStatus;
 }
 
-export interface SalesOrderResponse extends SalesOrder {}
+export type SalesOrderResponse = SalesOrder
 
 // Convert to Invoice types
 export interface ConvertToInvoiceItemRequest {

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
+ 
 import { useUserStore } from '@horizon-sync/store';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@horizon-sync/ui/components/ui/popover';

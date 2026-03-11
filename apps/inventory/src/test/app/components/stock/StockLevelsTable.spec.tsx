@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+
 import { StockLevelsTable } from '../../../../app/components/stock/StockLevelsTable';
 import type { StockLevel } from '../../../../app/types/stock.types';
 

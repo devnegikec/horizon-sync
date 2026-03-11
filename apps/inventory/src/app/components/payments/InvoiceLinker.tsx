@@ -1,6 +1,8 @@
 import { useState, useMemo, useCallback, memo } from 'react';
+
 import { type ColumnDef } from '@tanstack/react-table';
 import { AlertCircle } from 'lucide-react';
+
 import {
   DataTable,
   Button,
@@ -11,9 +13,10 @@ import {
   CardTitle,
   Badge,
 } from '@horizon-sync/ui/components';
-import { formatCurrency, formatDate } from '../../utils/payment.utils';
-import { calculateUnallocatedAmount, validateAllocation } from '../../utils/allocation.utils';
+
 import type { InvoiceForAllocation, PaymentReference } from '../../types/payment.types';
+import { calculateUnallocatedAmount, validateAllocation } from '../../utils/allocation.utils';
+import { formatCurrency, formatDate } from '../../utils/payment.utils';
 
 interface InvoiceLinkerProps {
   invoices: InvoiceForAllocation[];
@@ -57,15 +60,13 @@ const AllocationInputCell = memo(({
 
   return (
     <div className="space-y-1">
-      <Input
-        type="text"
+      <Input type="text"
         inputMode="decimal"
         placeholder="0.00"
         value={input?.allocated_amount ?? ''}
         onChange={handleChange}
         className={input?.error ? 'border-destructive' : ''}
-        disabled={loading}
-      />
+        disabled={loading}/>
       {input?.error && (
         <p className="text-xs text-destructive flex items-center gap-1">
           <AlertCircle className="h-3 w-3" />
@@ -207,13 +208,11 @@ export const InvoiceLinker = memo(function InvoiceLinker({
           const invoiceId = row.original.id;
 
           return (
-            <AllocationInputCell
-              key={invoiceId}
+            <AllocationInputCell key={invoiceId}
               invoiceId={invoiceId}
               input={getAllocationInput(invoiceId)}
               onAllocationChange={handleAllocationChange}
-              loading={loading}
-            />
+              loading={loading}/>
           );
         },
       },
@@ -240,11 +239,9 @@ export const InvoiceLinker = memo(function InvoiceLinker({
           <CardTitle className="text-lg">Link Invoices</CardTitle>
           <div className="text-right">
             <p className="text-sm text-muted-foreground">Unallocated Amount</p>
-            <p
-              className={`text-lg font-bold ${
+            <p className={`text-lg font-bold ${
                 unallocatedAmount < 0 ? 'text-destructive' : 'text-foreground'
-              }`}
-            >
+              }`}>
               {formatCurrency(unallocatedAmount, paymentCurrency)}
             </p>
           </div>
@@ -253,10 +250,8 @@ export const InvoiceLinker = memo(function InvoiceLinker({
       <CardContent className="space-y-4">
         <DataTable columns={columns} data={invoices} />
         <div className="flex justify-end gap-3">
-          <Button
-            onClick={handleSave}
-            disabled={!hasValidAllocations || unallocatedAmount < 0 || loading}
-          >
+          <Button onClick={handleSave}
+            disabled={!hasValidAllocations || unallocatedAmount < 0 || loading}>
             {loading ? 'Saving...' : 'Save Allocations'}
           </Button>
         </div>

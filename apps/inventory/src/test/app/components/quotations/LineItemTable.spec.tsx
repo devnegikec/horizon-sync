@@ -1,5 +1,6 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
 import { LineItemTable } from '../../../../app/components/quotations/LineItemTable';
 import type { QuotationLineItemCreate } from '../../../../app/types/quotation.types';
 
@@ -71,11 +72,9 @@ describe('LineItemTable', () => {
   describe('Editable mode', () => {
     it('should render line items with editable fields', async () => {
       renderWithQueryClient(
-        <LineItemTable
-          items={mockItems}
+        <LineItemTable items={mockItems}
           onItemsChange={mockOnItemsChange}
-          readonly={false}
-        />
+          readonly={false}/>
       );
 
       expect(screen.getByText('Line Items')).toBeTruthy();
@@ -86,11 +85,9 @@ describe('LineItemTable', () => {
 
     it('should add a new line item when Add Item button is clicked', async () => {
       renderWithQueryClient(
-        <LineItemTable
-          items={mockItems}
+        <LineItemTable items={mockItems}
           onItemsChange={mockOnItemsChange}
-          readonly={false}
-        />
+          readonly={false}/>
       );
 
       const addButton = screen.getByText('Add Item');
@@ -113,11 +110,9 @@ describe('LineItemTable', () => {
 
     it('should remove a line item when delete button is clicked', async () => {
       renderWithQueryClient(
-        <LineItemTable
-          items={mockItems}
+        <LineItemTable items={mockItems}
           onItemsChange={mockOnItemsChange}
-          readonly={false}
-        />
+          readonly={false}/>
       );
 
       // Find all delete buttons (Trash2 icons)
@@ -142,11 +137,9 @@ describe('LineItemTable', () => {
     it('should not remove the last line item', async () => {
       const singleItem = [mockItems[0]];
       renderWithQueryClient(
-        <LineItemTable
-          items={singleItem}
+        <LineItemTable items={singleItem}
           onItemsChange={mockOnItemsChange}
-          readonly={false}
-        />
+          readonly={false}/>
       );
 
       // Try to find delete button - should not exist for single item
@@ -160,11 +153,9 @@ describe('LineItemTable', () => {
 
     it('should update quantity and recalculate amount', async () => {
       renderWithQueryClient(
-        <LineItemTable
-          items={mockItems}
+        <LineItemTable items={mockItems}
           onItemsChange={mockOnItemsChange}
-          readonly={false}
-        />
+          readonly={false}/>
       );
 
       const quantityInputs = screen.getAllByRole('spinbutton');
@@ -186,11 +177,9 @@ describe('LineItemTable', () => {
 
     it('should update rate and recalculate amount', async () => {
       renderWithQueryClient(
-        <LineItemTable
-          items={mockItems}
+        <LineItemTable items={mockItems}
           onItemsChange={mockOnItemsChange}
-          readonly={false}
-        />
+          readonly={false}/>
       );
 
       // Get all number inputs (quantity and rate)
@@ -214,11 +203,9 @@ describe('LineItemTable', () => {
 
     it('should update UOM field', async () => {
       renderWithQueryClient(
-        <LineItemTable
-          items={mockItems}
+        <LineItemTable items={mockItems}
           onItemsChange={mockOnItemsChange}
-          readonly={false}
-        />
+          readonly={false}/>
       );
 
       // Get all text inputs (UOM inputs)
@@ -240,12 +227,10 @@ describe('LineItemTable', () => {
 
     it('should disable all controls when disabled prop is true', async () => {
       renderWithQueryClient(
-        <LineItemTable
-          items={mockItems}
+        <LineItemTable items={mockItems}
           onItemsChange={mockOnItemsChange}
           readonly={false}
-          disabled={true}
-        />
+          disabled={true}/>
       );
 
       const addButton = screen.getByText('Add Item');
@@ -266,11 +251,9 @@ describe('LineItemTable', () => {
   describe('Readonly mode', () => {
     it('should render line items in readonly table format', () => {
       renderWithQueryClient(
-        <LineItemTable
-          items={mockItems}
+        <LineItemTable items={mockItems}
           onItemsChange={mockOnItemsChange}
-          readonly={true}
-        />
+          readonly={true}/>
       );
 
       // Check for table headers
@@ -287,11 +270,9 @@ describe('LineItemTable', () => {
 
     it('should display line item data in readonly table', () => {
       renderWithQueryClient(
-        <LineItemTable
-          items={mockItems}
+        <LineItemTable items={mockItems}
           onItemsChange={mockOnItemsChange}
-          readonly={true}
-        />
+          readonly={true}/>
       );
 
       // Check first item data
@@ -315,11 +296,9 @@ describe('LineItemTable', () => {
 
     it('should not have any editable inputs in readonly mode', () => {
       renderWithQueryClient(
-        <LineItemTable
-          items={mockItems}
+        <LineItemTable items={mockItems}
           onItemsChange={mockOnItemsChange}
-          readonly={true}
-        />
+          readonly={true}/>
       );
 
       const inputs = screen.queryAllByRole('textbox');
@@ -333,11 +312,9 @@ describe('LineItemTable', () => {
   describe('Empty state', () => {
     it('should handle empty items array', () => {
       renderWithQueryClient(
-        <LineItemTable
-          items={[]}
+        <LineItemTable items={[]}
           onItemsChange={mockOnItemsChange}
-          readonly={false}
-        />
+          readonly={false}/>
       );
 
       expect(screen.getByText('Line Items')).toBeTruthy();
@@ -346,11 +323,9 @@ describe('LineItemTable', () => {
 
     it('should render empty readonly table', () => {
       renderWithQueryClient(
-        <LineItemTable
-          items={[]}
+        <LineItemTable items={[]}
           onItemsChange={mockOnItemsChange}
-          readonly={true}
-        />
+          readonly={true}/>
       );
 
       // Table headers should still be present
@@ -373,11 +348,9 @@ describe('LineItemTable', () => {
       ];
 
       renderWithQueryClient(
-        <LineItemTable
-          items={itemsWithCalculatedAmount}
+        <LineItemTable items={itemsWithCalculatedAmount}
           onItemsChange={mockOnItemsChange}
-          readonly={true}
-        />
+          readonly={true}/>
       );
 
       expect(screen.getByText('925.88')).toBeTruthy();
@@ -396,11 +369,9 @@ describe('LineItemTable', () => {
       ];
 
       renderWithQueryClient(
-        <LineItemTable
-          items={itemsWithZero}
+        <LineItemTable items={itemsWithZero}
           onItemsChange={mockOnItemsChange}
-          readonly={true}
-        />
+          readonly={true}/>
       );
 
       expect(screen.getByText('0.00')).toBeTruthy();

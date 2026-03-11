@@ -1,6 +1,6 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { CreateInvoiceDialog } from '../../../../app/components/sales-orders/CreateInvoiceDialog';
 import type { SalesOrder } from '../../../../app/types/sales-order.types';
@@ -72,13 +72,11 @@ describe('CreateInvoiceDialog', () => {
 
   it('should render dialog with sales order summary', () => {
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -89,13 +87,11 @@ describe('CreateInvoiceDialog', () => {
 
   it('should display line items with quantity information', () => {
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -113,13 +109,11 @@ describe('CreateInvoiceDialog', () => {
 
   it('should calculate available quantity correctly', () => {
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -139,13 +133,11 @@ describe('CreateInvoiceDialog', () => {
 
   it('should initialize qty_to_bill with available quantity', () => {
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -160,13 +152,11 @@ describe('CreateInvoiceDialog', () => {
 
   it('should calculate invoice total based on qty_to_bill', async () => {
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -180,13 +170,11 @@ describe('CreateInvoiceDialog', () => {
     const user = userEvent.setup();
     
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -206,13 +194,11 @@ describe('CreateInvoiceDialog', () => {
     const user = userEvent.setup();
     
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -231,13 +217,11 @@ describe('CreateInvoiceDialog', () => {
     const user = userEvent.setup();
     
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -260,13 +244,11 @@ describe('CreateInvoiceDialog', () => {
     const user = userEvent.setup();
     
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -284,13 +266,11 @@ describe('CreateInvoiceDialog', () => {
 
   it('should disable input when available quantity is zero', () => {
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -305,13 +285,11 @@ describe('CreateInvoiceDialog', () => {
     mockOnCreateInvoice.mockResolvedValue(undefined);
     
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -341,13 +319,11 @@ describe('CreateInvoiceDialog', () => {
     mockOnCreateInvoice.mockResolvedValue(undefined);
     
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -371,13 +347,11 @@ describe('CreateInvoiceDialog', () => {
     const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
     
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -404,13 +378,11 @@ describe('CreateInvoiceDialog', () => {
     const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
     
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -434,13 +406,11 @@ describe('CreateInvoiceDialog', () => {
 
   it('should disable buttons when creating', () => {
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={true}
-      />,
+        creating={true}/>,
       { wrapper }
     );
 
@@ -452,13 +422,11 @@ describe('CreateInvoiceDialog', () => {
     const user = userEvent.setup();
     
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -470,13 +438,11 @@ describe('CreateInvoiceDialog', () => {
 
   it('should not render when salesOrder is null', () => {
     const { container } = render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={null}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -485,25 +451,21 @@ describe('CreateInvoiceDialog', () => {
 
   it('should reset line items when dialog opens with new sales order', () => {
     const { rerender } = render(
-      <CreateInvoiceDialog
-        open={false}
+      <CreateInvoiceDialog open={false}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
     // Open dialog
     rerender(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />
+        creating={false}/>
     );
 
     const inputs = screen.getAllByRole('spinbutton');
@@ -513,13 +475,11 @@ describe('CreateInvoiceDialog', () => {
 
   it('should display order total in summary', () => {
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -528,13 +488,11 @@ describe('CreateInvoiceDialog', () => {
 
   it('should format dates correctly', () => {
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -544,13 +502,11 @@ describe('CreateInvoiceDialog', () => {
 
   it('should display rate and calculate line amount correctly', () => {
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -565,13 +521,11 @@ describe('CreateInvoiceDialog', () => {
     const user = userEvent.setup();
     
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 
@@ -593,13 +547,11 @@ describe('CreateInvoiceDialog', () => {
     const user = userEvent.setup();
     
     render(
-      <CreateInvoiceDialog
-        open={true}
+      <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
         salesOrder={mockSalesOrder}
         onCreateInvoice={mockOnCreateInvoice}
-        creating={false}
-      />,
+        creating={false}/>,
       { wrapper }
     );
 

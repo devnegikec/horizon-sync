@@ -51,7 +51,6 @@ function ProtectedRouteWrapper() {
           <Route path="/revenue" element={<RevenuePage />} />
           <Route path="/sourcing" element={<SourcingPage />} />
           <Route path="/books" element={<BooksPage />} />
-          <Route path="/banking/*" element={<BankingRoutes />} />
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="/tax-charges" element={<TaxChargesPage />} />
           <Route path="/subscriptions" element={<SubscriptionManagementPage />} />
@@ -59,7 +58,7 @@ function ProtectedRouteWrapper() {
           <Route path="/users" element={<UserManagementPage />} />
           <Route path="/roles" element={<RoleManagementPage />} />
           <Route path="/reports" element={<ReportsPlaceholder />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/*" element={<SettingsPage />} />
           <Route path="/help" element={<HelpPlaceholder />} />
         </Routes>
       </DashboardLayout>

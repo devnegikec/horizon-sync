@@ -1,7 +1,7 @@
 import * as React from 'react';
 
-import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Input } from '@horizon-sync/ui/components/ui/input';
+import { Label } from '@horizon-sync/ui/components/ui/label';
 
 import type { TaxTemplate } from '../../../types/tax-template.types';
 import type { ItemFormData } from '../../../utility/item-payload-builders';
@@ -26,22 +26,18 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
                 
                 <div className="space-y-2">
                     <Label htmlFor="barcode">Barcode</Label>
-                    <Input
-                        id="barcode"
+                    <Input id="barcode"
                         value={formData.barcode}
                         onChange={(e) => setFormData((prev) => ({ ...prev, barcode: e.target.value }))}
-                        placeholder="Enter barcode"
-                    />
+                        placeholder="Enter barcode"/>
                 </div>
 
                 <div className="space-y-2">
                     <Label htmlFor="imageUrl">Primary Image URL</Label>
-                    <Input
-                        id="imageUrl"
+                    <Input id="imageUrl"
                         value={formData.imageUrl}
                         onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                        placeholder="https://example.com/image.jpg"
-                    />
+                        placeholder="https://example.com/image.jpg"/>
                 </div>
             </div>
         </div>

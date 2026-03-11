@@ -1,7 +1,9 @@
 import { Eye, FileText, Package } from 'lucide-react';
+
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
+import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import {
   Table,
   TableBody,
@@ -10,8 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from '@horizon-sync/ui/components/ui/table';
-import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import { TableSkeleton } from '@horizon-sync/ui/components/ui/table-skeleton';
+
 import type { PurchaseReceiptListItem, PurchaseReceiptFilters } from '../../types/purchase-receipt.types';
 
 interface PurchaseReceiptTableProps {
@@ -67,11 +69,9 @@ export function PurchaseReceiptTable({
     return (
       <Card>
         <CardContent className="p-6">
-          <EmptyState
-            icon={<Package className="h-12 w-12" />}
+          <EmptyState icon={<Package className="h-12 w-12" />}
             title="No purchase receipts found"
-            description="Record your first goods receipt to track inventory."
-          />
+            description="Record your first goods receipt to track inventory."/>
         </CardContent>
       </Card>
     );
@@ -141,20 +141,16 @@ export function PurchaseReceiptTable({
           Showing {purchaseReceipts.length} of {totalCount} purchase receipts
         </p>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
+          <Button variant="outline"
             size="sm"
             disabled={filters.page === 1}
-            onClick={() => setFilters({ ...filters, page: (filters.page || 1) - 1 })}
-          >
+            onClick={() => setFilters({ ...filters, page: (filters.page || 1) - 1 })}>
             Previous
           </Button>
-          <Button
-            variant="outline"
+          <Button variant="outline"
             size="sm"
             disabled={purchaseReceipts.length < (filters.page_size || 10)}
-            onClick={() => setFilters({ ...filters, page: (filters.page || 1) + 1 })}
-          >
+            onClick={() => setFilters({ ...filters, page: (filters.page || 1) + 1 })}>
             Next
           </Button>
         </div>

@@ -1,11 +1,13 @@
 import { useState } from 'react';
+
 import { useToast } from '@horizon-sync/ui/hooks';
-import { paymentApi } from '../utility/api';
+
 import type {
   PaymentEntry,
   CreatePaymentPayload,
   UpdatePaymentPayload,
 } from '../types/payment.types';
+import { paymentApi } from '../utility/api';
 
 export function usePaymentActions() {
   const { toast } = useToast();

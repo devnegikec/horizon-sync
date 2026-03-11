@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
-import { invoiceApi } from '../utility/api/invoices';
+
 import type { InvoiceForAllocation } from '../types/payment.types';
+import { invoiceApi } from '../utility/api/invoices';
 
 /**
  * Fetches invoices for a party that have outstanding balance > 0, for payment allocation.

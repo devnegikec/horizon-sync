@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { OrganizationForm, OrganizationService, type CreateOrganizationPayload } from '@horizon-sync/ui/components';
+import { OrganizationForm, OrganizationService, type CreateOrganizationPayload, type OrganizationFormData } from '@horizon-sync/ui/components';
 
 import { environment } from '../../../environments/environment';
 import { useAuth } from '../../hooks/useAuth';
@@ -10,7 +10,7 @@ export function OrganizationStep() {
   const { user, accessToken } = useAuth();
   const { data, updateData, setCurrentStep } = useOnboardingStore();
 
-  const handleSubmit = async (formData: any) => {
+  const handleSubmit = async (formData: OrganizationFormData & { logoUrl: string }) => {
     try {
       if (accessToken) {
         // Simple slug generation

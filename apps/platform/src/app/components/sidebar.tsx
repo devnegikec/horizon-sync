@@ -21,7 +21,6 @@ const mainNavItems: NavItem[] = [
   { title: 'Revenue', href: '/revenue', icon: DollarSign },
   { title: 'Sourcing', href: '/sourcing', icon: ShoppingCart },
   { title: 'Books', href: '/books', icon: BookOpen },
-  { title: 'Banking', href: '/banking', icon: Building2 },
   { title: 'Tax & Charges', href: '/tax-charges', icon: Receipt },
   { title: 'Subscriptions', href: '/subscriptions', icon: CreditCard },
   { title: 'Analytics', href: '/analytics', icon: BarChart3 },

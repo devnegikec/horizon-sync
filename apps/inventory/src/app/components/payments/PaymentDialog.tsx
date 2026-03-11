@@ -5,10 +5,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@horizon-sync/ui/components';
-import { PaymentForm } from './PaymentForm';
+
 import { usePaymentActions } from '../../hooks/usePaymentActions';
-import { toDateInputValue } from '../../utils/payment.utils';
 import type { PaymentEntry, CreatePaymentPayload, UpdatePaymentPayload } from '../../types/payment.types';
+import { toDateInputValue } from '../../utils/payment.utils';
+
+import { PaymentForm } from './PaymentForm';
 
 interface PaymentDialogProps {
   open: boolean;
@@ -67,14 +69,12 @@ export function PaymentDialog({ open, onOpenChange, payment, initialData, presel
               : 'Enter payment details to create a new payment entry.'}
           </DialogDescription>
         </DialogHeader>
-        <PaymentForm
-          initialData={formInitialData}
+        <PaymentForm initialData={formInitialData}
           preselectedInvoiceId={preselectedInvoiceId}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
           loading={loading}
-          mode={isEditMode ? 'edit' : 'create'}
-        />
+          mode={isEditMode ? 'edit' : 'create'}/>
       </DialogContent>
     </Dialog>
   );

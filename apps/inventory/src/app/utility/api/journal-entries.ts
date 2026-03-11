@@ -57,11 +57,11 @@ export interface JournalEntriesResponse {
  * Fetch journal entries with pagination
  */
 export async function fetchJournalEntries(
-  page: number = 1,
-  pageSize: number = 20,
+  page = 1,
+  pageSize = 20,
   status?: string,
-  sortBy: string = 'posting_date',
-  sortOrder: string = 'desc'
+  sortBy = 'posting_date',
+  sortOrder = 'desc'
 ): Promise<JournalEntriesResponse> {
   const accessToken = getAccessToken();
 

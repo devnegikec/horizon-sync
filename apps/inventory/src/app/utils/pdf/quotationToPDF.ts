@@ -3,8 +3,8 @@ import type { Organization } from '@horizon-sync/store';
 import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
 import type { Quotation, CustomerInfo } from '../../types/quotation.types';
 
-import type { PDFDocumentData, PDFLineItem } from './types';
 import { getCurrencySymbolForPDF } from './pdfCurrency';
+import type { PDFDocumentData, PDFLineItem } from './types';
 
 interface OrgContext {
   organization: Organization | null;

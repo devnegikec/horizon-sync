@@ -20,29 +20,25 @@ export function PricingValuationStep({ formData, setFormData }: PricingValuation
                     <Label htmlFor="standardRate">
                         Standard Rate <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                        id="standardRate"
+                    <Input id="standardRate"
                         type="number"
                         step="0.01"
                         min="0"
                         value={formData.defaultPrice}
                         onChange={(e) => setFormData((prev) => ({ ...prev, defaultPrice: e.target.value }))}
                         placeholder="0.00"
-                        required
-                    />
+                        required/>
                 </div>
 
                 <div className="space-y-2">
                     <Label htmlFor="valuationRate">Valuation Rate</Label>
-                    <Input
-                        id="valuationRate"
+                    <Input id="valuationRate"
                         type="number"
                         step="0.01"
                         min="0"
                         value={formData.valuationRate}
                         onChange={(e) => setFormData((prev) => ({ ...prev, valuationRate: e.target.value }))}
-                        placeholder="0.00"
-                    />
+                        placeholder="0.00"/>
                 </div>
             </div>
 
@@ -51,23 +47,19 @@ export function PricingValuationStep({ formData, setFormData }: PricingValuation
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="weightPerUnit">Weight Per Unit</Label>
-                        <Input
-                            id="weightPerUnit"
+                        <Input id="weightPerUnit"
                             type="number"
                             step="0.001"
                             min="0"
                             value={formData.weightPerUnit}
                             onChange={(e) => setFormData((prev) => ({ ...prev, weightPerUnit: e.target.value }))}
-                            placeholder="0.000"
-                        />
+                            placeholder="0.000"/>
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="weightUom">Weight UOM</Label>
-                        <Select
-                            value={formData.weightUom}
-                            onValueChange={(value) => setFormData((prev) => ({ ...prev, weightUom: value }))}
-                        >
+                        <Select value={formData.weightUom}
+                            onValueChange={(value) => setFormData((prev) => ({ ...prev, weightUom: value }))}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select unit" />
                             </SelectTrigger>

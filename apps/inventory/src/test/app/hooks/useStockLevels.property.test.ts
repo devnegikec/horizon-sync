@@ -9,6 +9,7 @@
  */
 
 import fc from 'fast-check';
+
 import type { StockLevel, StockLevelStats } from '../../../app/types/stock.types';
 
 // Helper to calculate stats (same logic as in the hook)

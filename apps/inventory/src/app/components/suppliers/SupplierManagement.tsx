@@ -18,8 +18,8 @@ import {
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useItems } from '../../hooks/useItems';
-import { useSuppliers } from '../../hooks/useSuppliers';
 import { useItemSuppliers, useItemSupplierMutations } from '../../hooks/useItemSuppliers';
+import { useSuppliers } from '../../hooks/useSuppliers';
 import type { ItemSupplier, ItemSupplierFilters } from '../../types/supplier.types';
 
 import { ItemSupplierDialog } from './ItemSupplierDialog';
@@ -240,8 +240,7 @@ export function SupplierManagement() {
         serverPagination={serverPaginationConfig}/>
 
       {/* Dialog */}
-      <ItemSupplierDialog 
-        open={dialogOpen}
+      <ItemSupplierDialog open={dialogOpen}
         onOpenChange={setDialogOpen}
         itemSupplier={selectedItemSupplier}
         items={items}
@@ -251,8 +250,7 @@ export function SupplierManagement() {
           code: s.supplier_code 
         }))}
         onCreated={refetch}
-        onUpdated={refetch}
-      />
+        onUpdated={refetch}/>
     </div>
   );
 }

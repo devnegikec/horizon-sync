@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+
 import { useToast } from '@horizon-sync/ui/hooks';
-import { paymentApi } from '../utility/api';
+
 import type { PaymentReference, AllocationCreate } from '../types/payment.types';
+import { paymentApi } from '../utility/api';
 
 export function useInvoiceAllocations(paymentId: string | null) {
   const { toast } = useToast();

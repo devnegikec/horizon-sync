@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
-import { landedCostApi } from '../../utility/api/landed-costs';
+
 import type { LandedCostVoucher } from '../../types/landed-cost.types';
+import { landedCostApi } from '../../utility/api/landed-costs';
 
 interface LandedCostDetailDialogProps {
   open: boolean;
@@ -66,10 +68,8 @@ export function LandedCostDetailDialog({ open, onClose, voucherId }: LandedCostD
               <h3 className="text-lg font-medium leading-6 text-gray-900">
                 Landed Cost Voucher Details
               </h3>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-500"
-              >
+              <button onClick={onClose}
+                className="text-gray-400 hover:text-gray-500">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -98,11 +98,9 @@ export function LandedCostDetailDialog({ open, onClose, voucherId }: LandedCostD
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-500">Status</label>
-                    <span
-                      className={`mt-1 inline-flex px-2 text-xs leading-5 font-semibold rounded-full ${
+                    <span className={`mt-1 inline-flex px-2 text-xs leading-5 font-semibold rounded-full ${
                         STATUS_COLORS[voucher.status] || 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
+                      }`}>
                       {voucher.status}
                     </span>
                   </div>
@@ -145,11 +143,9 @@ export function LandedCostDetailDialog({ open, onClose, voucherId }: LandedCostD
           </div>
 
           <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button
-              type="button"
+            <button type="button"
               onClick={onClose}
-              className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:w-auto sm:text-sm"
-            >
+              className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:w-auto sm:text-sm">
               Close
             </button>
           </div>

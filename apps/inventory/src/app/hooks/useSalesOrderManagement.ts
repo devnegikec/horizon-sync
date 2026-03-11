@@ -1,13 +1,12 @@
 import * as React from 'react';
 import { useMemo, useEffect } from 'react';
+
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import type { Table } from '@tanstack/react-table';
 
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
-import { salesOrderApi } from '../utility/api/sales-orders';
-import { stockLevelApi } from '../utility/api/stock';
-import { warehouseApi } from '../utility/api/warehouses';
+
 import type {
   SalesOrder,
   SalesOrderCreate,
@@ -19,6 +18,9 @@ import type {
 } from '../types/sales-order.types';
 import type { StockLevelsResponse, StockLevel } from '../types/stock.types';
 import type { WarehousesResponse } from '../types/warehouse.types';
+import { salesOrderApi } from '../utility/api/sales-orders';
+import { stockLevelApi } from '../utility/api/stock';
+import { warehouseApi } from '../utility/api/warehouses';
 
 export interface SalesOrderFilters {
   search: string;

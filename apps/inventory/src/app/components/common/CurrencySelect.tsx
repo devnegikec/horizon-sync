@@ -22,8 +22,7 @@ export function CurrencySelect({ value, onValueChange, disabled = false }: Curre
   }, [accessToken, fetchCurrencies]);
 
   return (
-    <SharedCurrencySelect
-      value={value}
+    <SharedCurrencySelect value={value}
       onChange={onValueChange}
       currencies={currencies}
       disabled={disabled} />

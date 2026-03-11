@@ -1,15 +1,15 @@
 import * as React from 'react';
 
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Button } from '@horizon-sync/ui/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 
 import { useItemForm } from '../../hooks/useItemForm';
 import { useItemSubmission } from '../../hooks/useItemSubmission';
+import { useTaxTemplates } from '../../hooks/useTaxTemplates';
 import type { ApiItemGroup } from '../../types/item-groups.types';
 import type { Item } from '../../types/item.types';
 
 import { SimpleItemFormFields } from './SimpleItemFormFields';
-import { useTaxTemplates } from '../../hooks/useTaxTemplates';
 
 interface ItemDialogProps {
   open: boolean;
@@ -68,14 +68,12 @@ export function ItemDialogSimple({
         </DialogHeader>
 
         <form onSubmit={handleFormSubmit} className="space-y-4">
-          <SimpleItemFormFields
-            formData={formData}
+          <SimpleItemFormFields formData={formData}
             setFormData={setFormData}
             itemGroups={itemGroups}
             salesTaxTemplates={salesTaxTemplates}
             purchaseTaxTemplates={purchaseTaxTemplates}
-            isLoadingTaxTemplates={isLoadingTaxTemplates}
-          />
+            isLoadingTaxTemplates={isLoadingTaxTemplates}/>
 
           {error && (
             <div className="text-sm text-red-500 bg-red-50 dark:bg-red-950 p-3 rounded-md">

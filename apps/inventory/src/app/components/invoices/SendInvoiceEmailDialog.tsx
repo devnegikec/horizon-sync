@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { Mail } from 'lucide-react';
 
 import {
@@ -132,48 +133,40 @@ export function SendInvoiceEmailDialog({
           {/* Email Form Fields */}
           <div className="space-y-2">
             <Label htmlFor="to">To</Label>
-            <Input
-              id="to"
+            <Input id="to"
               type="email"
               placeholder="customer@example.com"
               value={formData.to}
               onChange={(e) => setFormData({ ...formData, to: e.target.value })}
-              className={errors.to ? 'border-red-500' : ''}
-            />
+              className={errors.to ? 'border-red-500' : ''}/>
             {errors.to && <p className="text-sm text-red-500">{errors.to}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="subject">Subject</Label>
-            <Input
-              id="subject"
+            <Input id="subject"
               placeholder="Invoice subject"
               value={formData.subject}
               onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-              className={errors.subject ? 'border-red-500' : ''}
-            />
+              className={errors.subject ? 'border-red-500' : ''}/>
             {errors.subject && <p className="text-sm text-red-500">{errors.subject}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="body">Message</Label>
-            <Textarea
-              id="body"
+            <Textarea id="body"
               placeholder="Email message body"
               className={`min-h-[200px] ${errors.body ? 'border-red-500' : ''}`}
               value={formData.body}
-              onChange={(e) => setFormData({ ...formData, body: e.target.value })}
-            />
+              onChange={(e) => setFormData({ ...formData, body: e.target.value })}/>
             {errors.body && <p className="text-sm text-red-500">{errors.body}</p>}
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
+            <Button type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={sending}
-            >
+              disabled={sending}>
               Cancel
             </Button>
             <Button type="submit" disabled={sending} className="gap-2">

@@ -1,6 +1,8 @@
 import { useMemo, useCallback, memo } from 'react';
+
 import { type ColumnDef } from '@tanstack/react-table';
 import { MoreHorizontal, Eye, Edit, CheckCircle, XCircle, Building2 } from 'lucide-react';
+
 import {
   DataTable,
   Button,
@@ -12,10 +14,12 @@ import {
   DropdownMenuTrigger,
   TableSkeleton,
 } from '@horizon-sync/ui/components';
-import { formatDate, getPaymentModeLabel } from '../../utils/payment.utils';
-import { PaymentStatusBadge } from './PaymentStatusBadge';
-import { PaymentAmountDisplay } from './PaymentAmountDisplay';
+
 import type { PaymentEntry } from '../../types/payment.types';
+import { formatDate, getPaymentModeLabel } from '../../utils/payment.utils';
+
+import { PaymentAmountDisplay } from './PaymentAmountDisplay';
+import { PaymentStatusBadge } from './PaymentStatusBadge';
 
 interface PaymentTableProps {
   payments: PaymentEntry[];
@@ -77,10 +81,8 @@ const PaymentActionsCell = memo(({
           </>
         )}
         {isConfirmed && (
-          <DropdownMenuItem 
-            onClick={handleCancel}
-            className="text-destructive"
-          >
+          <DropdownMenuItem onClick={handleCancel}
+            className="text-destructive">
             <XCircle className="mr-2 h-4 w-4" />
             Cancel
           </DropdownMenuItem>
@@ -162,11 +164,9 @@ export const PaymentTable = memo(function PaymentTable({
         accessorKey: 'amount',
         header: 'Amount',
         cell: ({ row }) => (
-          <PaymentAmountDisplay
-            amount={row.original.amount}
+          <PaymentAmountDisplay amount={row.original.amount}
             currencyCode={row.original.currency_code}
-            className="font-medium"
-          />
+            className="font-medium"/>
         ),
       },
       {
@@ -183,13 +183,11 @@ export const PaymentTable = memo(function PaymentTable({
         id: 'actions',
         header: 'Actions',
         cell: ({ row }) => (
-          <PaymentActionsCell
-            payment={row.original}
+          <PaymentActionsCell payment={row.original}
             onView={onView}
             onEdit={onEdit}
             onConfirm={onConfirm}
-            onCancel={onCancel}
-          />
+            onCancel={onCancel}/>
         ),
       },
     ],
@@ -209,9 +207,7 @@ export const PaymentTable = memo(function PaymentTable({
   }
 
   return (
-    <DataTable
-      columns={columns}
-      data={payments}
-    />
+    <DataTable columns={columns}
+      data={payments}/>
   );
 });

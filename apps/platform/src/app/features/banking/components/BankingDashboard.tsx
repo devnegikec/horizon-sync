@@ -45,7 +45,7 @@ export function BankingDashboard() {
                         Settings
                     </Button>
                     <Button asChild>
-                        <Link to="/banking/accounts/new">
+                        <Link to="/settings/banking/accounts/new">
                             <Plus className="h-4 w-4 mr-2" />
                             Add Account
                         </Link>
@@ -64,7 +64,7 @@ export function BankingDashboard() {
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold">Account Balances</h3>
                             <Button variant="ghost" size="sm" asChild>
-                                <Link to="/banking/accounts">View All</Link>
+                                <Link to="/settings/banking/accounts">View All</Link>
                             </Button>
                         </div>
 
@@ -94,7 +94,7 @@ export function BankingDashboard() {
                             <div className="text-center py-8">
                                 <p className="text-muted-foreground mb-4">No bank accounts connected</p>
                                 <Button asChild>
-                                    <Link to="/banking/accounts/new">Add Your First Account</Link>
+                                    <Link to="/settings/banking/accounts/new">Add Your First Account</Link>
                                 </Button>
                             </div>
                         )}
@@ -107,7 +107,7 @@ export function BankingDashboard() {
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold">Recent Activity</h3>
                             <Button variant="ghost" size="sm" asChild>
-                                <Link to="/banking/activity">View All</Link>
+                                <Link to="/settings/banking/activity">View All</Link>
                             </Button>
                         </div>
 
@@ -147,19 +147,19 @@ export function BankingDashboard() {
             {/* Quick Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Button variant="outline" className="h-20" asChild>
-                    <Link to="/banking/payments/new" className="flex flex-col items-center gap-2">
+                    <Link to="/settings/banking/payments/new" className="flex flex-col items-center gap-2">
                         <Plus className="h-6 w-6" />
                         <span>New Payment</span>
                     </Link>
                 </Button>
                 <Button variant="outline" className="h-20" asChild>
-                    <Link to="/banking/transfers/new" className="flex flex-col items-center gap-2">
+                    <Link to="/settings/banking/transfers/new" className="flex flex-col items-center gap-2">
                         <RefreshCw className="h-6 w-6" />
                         <span>Transfer Funds</span>
                     </Link>
                 </Button>
                 <Button variant="outline" className="h-20" asChild>
-                    <Link to="/banking/api" className="flex flex-col items-center gap-2">
+                    <Link to="/settings/banking/api" className="flex flex-col items-center gap-2">
                         <Settings className="h-6 w-6" />
                         <span>API Integration</span>
                     </Link>

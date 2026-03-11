@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { usePurchaseOrders } from '../../hooks/usePurchaseOrders';
+
 import { usePurchaseOrderActions } from '../../hooks/usePurchaseOrderActions';
+import { usePurchaseOrders } from '../../hooks/usePurchaseOrders';
 import type { PurchaseOrder, PurchaseOrderListItem } from '../../types/purchase-order.types';
 
 import {
@@ -91,8 +92,7 @@ export function PurchaseOrderManagement() {
 
       <PurchaseOrderFilters filters={filters} setFilters={setFilters} />
 
-      <PurchaseOrderTable
-        purchaseOrders={purchaseOrders}
+      <PurchaseOrderTable purchaseOrders={purchaseOrders}
         loading={loading || actionLoading}
         error={error}
         totalCount={totalCount}
@@ -103,21 +103,16 @@ export function PurchaseOrderManagement() {
         onSubmit={handleSubmit}
         onCancel={handleCancel}
         onClose={handleClose}
-        onDelete={handleDelete}
-      />
+        onDelete={handleDelete}/>
 
-      <PurchaseOrderDialog
-        open={dialogOpen}
+      <PurchaseOrderDialog open={dialogOpen}
         onOpenChange={setDialogOpen}
         purchaseOrder={selectedPurchaseOrder}
-        onSave={handleSave}
-      />
+        onSave={handleSave}/>
 
-      <PurchaseOrderDetailDialog
-        open={detailDialogOpen}
+      <PurchaseOrderDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        purchaseOrder={selectedPurchaseOrder}
-      />
+        purchaseOrder={selectedPurchaseOrder}/>
     </div>
   );
 }

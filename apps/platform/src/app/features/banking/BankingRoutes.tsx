@@ -20,7 +20,7 @@ export default function BankingRoutes() {
                 path="accounts/new"
                 element={
                     <CreateBankAccountForm
-                        glAccountId="default-gl-account" // This should come from routing params or context
+                        glAccountId="00000000-0000-0000-0000-000000000000" // Placeholder UUID - should be replaced with actual GL account selection
                         onSuccess={() => window.history.back()}
                         onCancel={() => window.history.back()}
                     />

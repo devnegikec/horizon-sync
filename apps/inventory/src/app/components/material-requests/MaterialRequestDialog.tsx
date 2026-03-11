@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
+ 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import {

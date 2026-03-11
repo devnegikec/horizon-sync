@@ -1,16 +1,16 @@
 import * as React from 'react';
 
+import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
-import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
 
 import { UNIT_OF_MEASURE_OPTIONS } from '../../constants/item-constants';
 import { ITEM_TYPE_OPTIONS, ITEM_STATUS_OPTIONS, VALUATION_METHOD_OPTIONS, WEIGHT_UOM_OPTIONS } from '../../constants/item-type-constants';
 import type { ApiItemGroup } from '../../types/item-groups.types';
-import type { ItemFormData } from '../../utility/item-payload-builders';
 import type { TaxTemplate } from '../../types/tax-template.types';
+import type { ItemFormData } from '../../utility/item-payload-builders';
 
 interface SimpleItemFormFieldsProps {
   formData: ItemFormData & { itemGroupName: string };
@@ -42,38 +42,32 @@ export function SimpleItemFormFields({
             <Label htmlFor="itemCode">
               Item Code <span className="text-red-500">*</span>
             </Label>
-            <Input
-              id="itemCode"
+            <Input id="itemCode"
               value={formData.itemCode}
               onChange={(e) => setFormData((prev) => ({ ...prev, itemCode: e.target.value }))}
               placeholder="e.g., ELEC-001"
-              required
-            />
+              required/>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="itemName">
               Item Name <span className="text-red-500">*</span>
             </Label>
-            <Input
-              id="itemName"
+            <Input id="itemName"
               value={formData.name}
               onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
               placeholder="Enter item name"
-              required
-            />
+              required/>
           </div>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
+          <Textarea id="description"
             value={formData.description}
             onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
             placeholder="Enter item description"
-            rows={3}
-          />
+            rows={3}/>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -82,10 +76,8 @@ export function SimpleItemFormFields({
               Item Group <span className="text-red-500">*</span>
             </Label>
             {hasItemGroups ? (
-              <Select
-                value={formData.itemGroupId}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, itemGroupId: value }))}
-              >
+              <Select value={formData.itemGroupId}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, itemGroupId: value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select group" />
                 </SelectTrigger>
@@ -108,10 +100,8 @@ export function SimpleItemFormFields({
             <Label>
               Item Type <span className="text-red-500">*</span>
             </Label>
-            <Select
-              value={formData.itemType}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, itemType: value }))}
-            >
+            <Select value={formData.itemType}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, itemType: value }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
@@ -131,10 +121,8 @@ export function SimpleItemFormFields({
             <Label>
               Unit of Measure <span className="text-red-500">*</span>
             </Label>
-            <Select
-              value={formData.unitOfMeasure}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, unitOfMeasure: value }))}
-            >
+            <Select value={formData.unitOfMeasure}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, unitOfMeasure: value }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Select unit" />
               </SelectTrigger>
@@ -152,10 +140,8 @@ export function SimpleItemFormFields({
             <Label>
               Status <span className="text-red-500">*</span>
             </Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value }))}
-            >
+            <Select value={formData.status}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
@@ -180,29 +166,25 @@ export function SimpleItemFormFields({
             <Label htmlFor="standardRate">
               Standard Rate <span className="text-red-500">*</span>
             </Label>
-            <Input
-              id="standardRate"
+            <Input id="standardRate"
               type="number"
               step="0.01"
               min="0"
               value={formData.defaultPrice}
               onChange={(e) => setFormData((prev) => ({ ...prev, defaultPrice: e.target.value }))}
               placeholder="0.00"
-              required
-            />
+              required/>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="valuationRate">Valuation Rate</Label>
-            <Input
-              id="valuationRate"
+            <Input id="valuationRate"
               type="number"
               step="0.01"
               min="0"
               value={formData.valuationRate}
               onChange={(e) => setFormData((prev) => ({ ...prev, valuationRate: e.target.value }))}
-              placeholder="0.00"
-            />
+              placeholder="0.00"/>
           </div>
         </div>
       </div>
@@ -213,26 +195,22 @@ export function SimpleItemFormFields({
         
         <div className="grid grid-cols-2 gap-4">
           <div className="flex items-center space-x-2">
-            <Checkbox
-              id="maintainStock"
+            <Checkbox id="maintainStock"
               checked={formData.maintainStock}
               onCheckedChange={(checked) =>
                 setFormData((prev) => ({ ...prev, maintainStock: checked === true }))
-              }
-            />
+              }/>
             <Label htmlFor="maintainStock" className="cursor-pointer">
               Maintain Stock
             </Label>
           </div>
 
           <div className="flex items-center space-x-2">
-            <Checkbox
-              id="allowNegativeStock"
+            <Checkbox id="allowNegativeStock"
               checked={formData.allowNegativeStock}
               onCheckedChange={(checked) =>
                 setFormData((prev) => ({ ...prev, allowNegativeStock: checked === true }))
-              }
-            />
+              }/>
             <Label htmlFor="allowNegativeStock" className="cursor-pointer">
               Allow Negative Stock
             </Label>
@@ -241,10 +219,8 @@ export function SimpleItemFormFields({
 
         <div className="space-y-2">
           <Label>Valuation Method</Label>
-          <Select
-            value={formData.valuationMethod}
-            onValueChange={(value) => setFormData((prev) => ({ ...prev, valuationMethod: value }))}
-          >
+          <Select value={formData.valuationMethod}
+            onValueChange={(value) => setFormData((prev) => ({ ...prev, valuationMethod: value }))}>
             <SelectTrigger>
               <SelectValue placeholder="Select method" />
             </SelectTrigger>
@@ -261,26 +237,22 @@ export function SimpleItemFormFields({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="minOrderQty">Minimum Order Quantity</Label>
-            <Input
-              id="minOrderQty"
+            <Input id="minOrderQty"
               type="number"
               min="1"
               value={formData.minOrderQty || 1}
               onChange={(e) => setFormData((prev) => ({ ...prev, minOrderQty: parseInt(e.target.value) || 1 }))}
-              placeholder="1"
-            />
+              placeholder="1"/>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="maxOrderQty">Maximum Order Quantity</Label>
-            <Input
-              id="maxOrderQty"
+            <Input id="maxOrderQty"
               type="number"
               min="1"
               value={formData.maxOrderQty || 1}
               onChange={(e) => setFormData((prev) => ({ ...prev, maxOrderQty: parseInt(e.target.value) || 1 }))}
-              placeholder="1"
-            />
+              placeholder="1"/>
           </div>
         </div>
       </div>
@@ -292,22 +264,18 @@ export function SimpleItemFormFields({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="barcode">Barcode</Label>
-            <Input
-              id="barcode"
+            <Input id="barcode"
               value={formData.barcode}
               onChange={(e) => setFormData((prev) => ({ ...prev, barcode: e.target.value }))}
-              placeholder="Enter barcode"
-            />
+              placeholder="Enter barcode"/>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="imageUrl">Image URL</Label>
-            <Input
-              id="imageUrl"
+            <Input id="imageUrl"
               value={formData.imageUrl}
               onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
-              placeholder="https://example.com/image.jpg"
-            />
+              placeholder="https://example.com/image.jpg"/>
           </div>
         </div>
       </div>
@@ -319,11 +287,9 @@ export function SimpleItemFormFields({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Sales Tax Template</Label>
-            <Select
-              value={formData.salesTaxTemplateId || ''}
+            <Select value={formData.salesTaxTemplateId || ''}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, salesTaxTemplateId: value || null }))}
-              disabled={isLoadingTaxTemplates}
-            >
+              disabled={isLoadingTaxTemplates}>
               <SelectTrigger>
                 <SelectValue placeholder="Select sales tax template" />
               </SelectTrigger>
@@ -339,11 +305,9 @@ export function SimpleItemFormFields({
 
           <div className="space-y-2">
             <Label>Purchase Tax Template</Label>
-            <Select
-              value={formData.purchaseTaxTemplateId || ''}
+            <Select value={formData.purchaseTaxTemplateId || ''}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, purchaseTaxTemplateId: value || null }))}
-              disabled={isLoadingTaxTemplates}
-            >
+              disabled={isLoadingTaxTemplates}>
               <SelectTrigger>
                 <SelectValue placeholder="Select purchase tax template" />
               </SelectTrigger>
@@ -364,8 +328,7 @@ export function SimpleItemFormFields({
         <h3 className="text-base font-semibold border-b pb-2">Custom Fields (JSON)</h3>
         
         <div className="space-y-2">
-          <Textarea
-            value={JSON.stringify(formData.customFields, null, 2)}
+          <Textarea value={JSON.stringify(formData.customFields, null, 2)}
             onChange={(e) => {
               try {
                 const parsed = JSON.parse(e.target.value);
@@ -375,8 +338,7 @@ export function SimpleItemFormFields({
               }
             }}
             placeholder='{"key": "value"}'
-            rows={4}
-          />
+            rows={4}/>
           <p className="text-xs text-muted-foreground">Enter valid JSON format</p>
         </div>
       </div>

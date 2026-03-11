@@ -1,5 +1,20 @@
 import { PaymentTransaction } from '../types';
 
+// Interface for bank statement transactions
+interface BankStatementTransaction {
+    amount: number;
+    date: string;
+    reference?: string;
+    description?: string;
+}
+
+// Interface for transaction matches
+interface TransactionMatch {
+    internal: PaymentTransaction;
+    bank: BankStatementTransaction;
+    confidence: number;
+}
+
 /**
  * Workflow management helpers for banking operations
  */
@@ -145,7 +160,7 @@ export const workflowHelpers = {
         /**
          * Match transactions with bank statements
          */
-        matchTransactions: (internalTxs: PaymentTransaction[], bankStatementTxs: any[]) => {
+        matchTransactions: (internalTxs: PaymentTransaction[], bankStatementTxs: BankStatementTransaction[]) => {
             // Simplified matching logic
             const matches = [];
             const unmatched = [];
@@ -169,7 +184,7 @@ export const workflowHelpers = {
         /**
          * Generate reconciliation report
          */
-        generateReconciliationReport: (matches: any[], unmatched: PaymentTransaction[]) => {
+        generateReconciliationReport: (matches: TransactionMatch[], unmatched: PaymentTransaction[]) => {
             const totalInternal = matches.length + unmatched.length;
             const matchRate = totalInternal > 0 ? (matches.length / totalInternal) * 100 : 0;
 

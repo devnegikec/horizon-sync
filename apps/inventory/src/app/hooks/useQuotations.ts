@@ -1,8 +1,9 @@
 import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { quotationApi } from '../utility/api';
+
 import type { Quotation, QuotationResponse } from '../types/quotation.types';
+import { quotationApi } from '../utility/api';
 
 interface UseQuotationsResult {
   quotations: Quotation[];

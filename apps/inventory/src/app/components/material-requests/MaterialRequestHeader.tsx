@@ -1,4 +1,5 @@
 import { Plus, RefreshCw } from 'lucide-react';
+
 import { Button } from '@horizon-sync/ui/components/ui/button';
 
 interface MaterialRequestManagementHeaderProps {
@@ -21,20 +22,16 @@ export function MaterialRequestHeader({
         </p>
       </div>
       <div className="flex items-center gap-3">
-        <Button
-          variant="outline"
+        <Button variant="outline"
           size="sm"
           onClick={onRefresh}
           disabled={isLoading}
-          className="gap-2"
-        >
+          className="gap-2">
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
-        <Button
-          onClick={onCreateMaterialRequest}
-          className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg"
-        >
+        <Button onClick={onCreateMaterialRequest}
+          className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
           <Plus className="h-4 w-4" />
           New Material Request
         </Button>
