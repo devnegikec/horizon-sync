@@ -16,7 +16,7 @@ import {
 } from '../../types/payment.types';
 import { useUserStore } from '@horizon-sync/store';
 // Payments API is on core-service (port 8001), not identity-service (port 8000)
-const API_BASE_URL = process.env['NX_API_URL'] || 'http://localhost:8001';
+const API_BASE_URL = process.env.NX_API_CORE_URL || 'http://localhost:8001';
 
 function getAccessToken(): string {
   const fromStore = useUserStore.getState().accessToken;

@@ -1,7 +1,7 @@
 import { BankAccount, BankAccountHistory, BankAccountListResponse, CreateBankAccountFormData, UpdateBankAccountFormData } from '../types';
 
 // API Base URL - should come from environment config
-const API_BASE_URL = process.env['NX_API_BASE_URL'] || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.NX_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 class BankAccountService {
     private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {

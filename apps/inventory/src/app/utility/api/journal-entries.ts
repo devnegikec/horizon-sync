@@ -6,7 +6,7 @@
 
 import { useUserStore } from '@horizon-sync/store';
 
-const API_BASE_URL = process.env['NX_API_URL'] || 'http://localhost:8001';
+const API_BASE_URL = process.env.NX_API_CORE_URL || 'http://localhost:8001';
 
 function getAccessToken(): string {
   const fromStore = useUserStore.getState().accessToken;
