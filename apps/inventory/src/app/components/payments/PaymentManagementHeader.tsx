@@ -32,7 +32,7 @@ export function PaymentManagementHeader({
           className="gap-2 text-primary-foreground shadow-lg"
           onClick={onCreatePayment}>
           <Plus className="h-4 w-4" />
-          New Payment
+          Capture Payment
         </Button>
       </div>
     </div>

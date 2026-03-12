@@ -163,7 +163,7 @@ export function BankingDashboard() {
                 <Button variant="outline" className="h-20" asChild>
                     <Link to="/settings/banking/payments/new" className="flex flex-col items-center gap-2">
                         <Plus className="h-6 w-6" />
-                        <span>New Payment</span>
+                        <span>Capture Payment</span>
                     </Link>
                 </Button>
                 <Button variant="outline" className="h-20" asChild>

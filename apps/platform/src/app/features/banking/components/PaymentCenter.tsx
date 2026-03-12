@@ -46,7 +46,7 @@ export function PaymentCenter() {
                     </Button>
                     <Button onClick={() => setShowPaymentForm(true)}>
                         <Plus className="h-4 w-4 mr-2" />
-                        New Payment
+                        Capture Payment
                     </Button>
                 </div>
             </div>
