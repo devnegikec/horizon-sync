@@ -48,7 +48,6 @@ interface GLAccountSelectorProps {
     errors: any;
     register: any;
     setValue: any;
-    showAccountTypeWarning: boolean;
 }
 
 const GLAccountSelector = ({ 
@@ -57,21 +56,10 @@ const GLAccountSelector = ({
     glAccounts, 
     errors, 
     register, 
-    setValue,
-    showAccountTypeWarning 
+    setValue
 }: GLAccountSelectorProps) => (
     <div className="space-y-4 border-t pt-4">
         <h3 className="text-lg font-semibold">GL Account (Chart of Accounts) *</h3>
-        
-        {showAccountTypeWarning && (
-            <Alert className="border-yellow-500 bg-yellow-50">
-                <AlertCircle className="h-4 w-4 text-yellow-600" />
-                <AlertDescription className="text-yellow-800">
-                    <strong>Unusual Account Type:</strong> Bank accounts are typically linked to ASSET (for regular bank accounts) or LIABILITY (for credit cards/overdrafts) accounts. 
-                    Linking to {selectedAccountType.toUpperCase()} accounts is uncommon and may affect financial reporting.
-                </AlertDescription>
-            </Alert>
-        )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -106,7 +94,6 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
     const [glAccounts, setGlAccounts] = useState<GLAccount[]>([]);
     const [loadingGlAccounts, setLoadingGlAccounts] = useState(true);
     const [selectedAccountType, setSelectedAccountType] = useState<string>('asset');
-    const [showAccountTypeWarning, setShowAccountTypeWarning] = useState(false);
 
     const {
         register,
@@ -147,11 +134,17 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                     page_size: 100
                 });
                 
-                setGlAccounts(response.chart_of_accounts || []);
+                // Filter to only show posting accounts (is_posting_account = true)
+                // Non-posting accounts are parent/group accounts and should not be used for bank linking
+                const postingAccounts = (response.chart_of_accounts || []).filter(
+                    account => account.is_posting_account === true
+                );
+                
+                setGlAccounts(postingAccounts);
                 
                 // If no glAccountId was provided and we have accounts, use the first one
-                if ((!glAccountId || glAccountId === '00000000-0000-0000-0000-000000000000') && response.chart_of_accounts && response.chart_of_accounts.length > 0) {
-                    setValue('gl_account_id', response.chart_of_accounts[0].id);
+                if ((!glAccountId || glAccountId === '00000000-0000-0000-0000-000000000000') && postingAccounts.length > 0) {
+                    setValue('gl_account_id', postingAccounts[0].id);
                 }
             } catch (error) {
                 // If the endpoint doesn't exist or fails, we'll just show an empty list
@@ -165,15 +158,6 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
         fetchGlAccounts();
     }, [glAccountId, setValue, selectedAccountType]); // Re-fetch when selectedAccountType changes
 
-    // Watch for account type changes to show/hide warning
-    useEffect(() => {
-        // Show warning for non-standard account types
-        if (selectedAccountType !== 'asset' && selectedAccountType !== 'liability') {
-            setShowAccountTypeWarning(true);
-        } else {
-            setShowAccountTypeWarning(false);
-        }
-    }, [selectedAccountType]);
     const countryCode = watch('country_code');
 
     // Auto-set currency when country changes
@@ -322,17 +306,6 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                     <div className="space-y-4 border-t pt-4">
                         <h3 className="text-lg font-semibold">GL Account (Chart of Accounts) *</h3>
                         
-                        {/* Warning for non-standard account types */}
-                        {showAccountTypeWarning && (
-                            <Alert className="border-yellow-500 bg-yellow-50">
-                                <AlertCircle className="h-4 w-4 text-yellow-600" />
-                                <AlertDescription className="text-yellow-800">
-                                    <strong>Unusual Account Type:</strong> Bank accounts are typically linked to ASSET (for regular bank accounts) or LIABILITY (for credit cards/overdrafts) accounts. 
-                                    Linking to {selectedAccountType.toUpperCase()} accounts is uncommon and may affect financial reporting.
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Account Type Filter */}
                             <div className="space-y-2">
@@ -349,19 +322,13 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                                         <SelectValue placeholder="Select account type" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="asset">Asset</SelectItem>
-                                        <SelectItem value="liability">Liability</SelectItem>
-                                        <SelectItem value="equity">Equity</SelectItem>
-                                        <SelectItem value="income">Income</SelectItem>
-                                        <SelectItem value="expense">Expense</SelectItem>
+                                        <SelectItem value="asset">Asset (Checking, Savings)</SelectItem>
+                                        <SelectItem value="liability">Liability (Credit Cards, Loans)</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <p className="text-xs text-muted-foreground">
                                     {selectedAccountType === 'asset' && 'Bank accounts are typically ASSET accounts'}
                                     {selectedAccountType === 'liability' && 'Use for credit cards, loans, or overdrafts'}
-                                    {selectedAccountType === 'equity' && 'Owner\'s equity or retained earnings'}
-                                    {selectedAccountType === 'income' && 'Revenue or income accounts'}
-                                    {selectedAccountType === 'expense' && 'Expense or cost accounts'}
                                 </p>
                             </div>
 
@@ -491,6 +458,35 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                                 <p className="text-sm text-red-600">{errors.currency.message}</p>
                             )}
                             <p className="text-xs text-muted-foreground">Auto-populated based on country</p>
+                        </div>
+                    </div>
+
+                    {/* Primary Account Checkbox */}
+                    <div className="border-t pt-4">
+                        <div className="space-y-2">
+                            <div className="flex items-start space-x-3">
+                                <Controller
+                                    name="is_primary"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <input
+                                            type="checkbox"
+                                            id="is_primary"
+                                            checked={field.value}
+                                            onChange={field.onChange}
+                                            className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                    )}
+                                />
+                                <div className="flex-1">
+                                    <Label htmlFor="is_primary" className="text-sm font-medium cursor-pointer">
+                                        Set as primary bank account
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Only one bank account can be primary per GL account. Setting this as primary will automatically unset any existing primary account for this GL account.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
-import { useBankingOverview, useRecentActivity } from '../hooks';
+import { useBankAccounts } from '../hooks';
 import { BankingOverviewStats } from './ui/BankingOverviewStats';
 import { PaymentTransactionRow } from './ui/PaymentTransactionRow';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -8,10 +8,13 @@ import { Plus, RefreshCw, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function BankingDashboard() {
-    const { data: overview, isLoading: overviewLoading } = useBankingOverview();
-    const { data: recentActivity, isLoading: activityLoading } = useRecentActivity(5);
+    // Use useBankAccounts instead of useBankingOverview since the overview endpoint is not implemented
+    const { data: bankAccountsData, isLoading: accountsLoading } = useBankAccounts({
+        active: true,
+        limit: 50,
+    });
 
-    if (overviewLoading) {
+    if (accountsLoading) {
         return (
             <div className="space-y-6">
                 <div className="animate-pulse h-8 bg-muted rounded w-64" />
@@ -24,6 +27,9 @@ export function BankingDashboard() {
             </div>
         );
     }
+
+    const bankAccounts = bankAccountsData?.items || [];
+    const hasAccounts = bankAccounts.length > 0;
 
     return (
         <div className="space-y-6">
@@ -54,7 +60,40 @@ export function BankingDashboard() {
             </div>
 
             {/* Overview Stats */}
-            {overview && <BankingOverviewStats data={overview} />}
+            {hasAccounts && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <Card>
+                        <div className="p-6">
+                            <p className="text-sm text-muted-foreground">Total Accounts</p>
+                            <p className="text-2xl font-bold text-primary">{bankAccounts.length}</p>
+                        </div>
+                    </Card>
+                    <Card>
+                        <div className="p-6">
+                            <p className="text-sm text-muted-foreground">Active Accounts</p>
+                            <p className="text-2xl font-bold text-green-600">
+                                {bankAccounts.filter(a => a.is_active).length}
+                            </p>
+                        </div>
+                    </Card>
+                    <Card>
+                        <div className="p-6">
+                            <p className="text-sm text-muted-foreground">Primary Accounts</p>
+                            <p className="text-2xl font-bold text-blue-600">
+                                {bankAccounts.filter(a => a.is_primary).length}
+                            </p>
+                        </div>
+                    </Card>
+                    <Card>
+                        <div className="p-6">
+                            <p className="text-sm text-muted-foreground">API Connected</p>
+                            <p className="text-2xl font-bold text-purple-600">
+                                {bankAccounts.filter(a => a.bank_api_enabled).length}
+                            </p>
+                        </div>
+                    </Card>
+                </div>
+            )}
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -68,24 +107,25 @@ export function BankingDashboard() {
                             </Button>
                         </div>
 
-                        {overview?.account_balances && overview.account_balances.length > 0 ? (
+                        {hasAccounts ? (
                             <div className="space-y-4">
-                                {overview.account_balances.map((account) => (
-                                    <div key={account.account_id} className="flex items-center justify-between p-4 border rounded-lg">
+                                {bankAccounts.map((account) => (
+                                    <div key={account.id} className="flex items-center justify-between p-4 border rounded-lg">
                                         <div>
                                             <p className="font-medium">{account.bank_name}</p>
                                             <p className="text-sm text-muted-foreground">
-                                                Last updated: {new Date(account.last_updated).toLocaleDateString()}
+                                                {account.account_holder_name} • {account.currency}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                {account.is_primary && <span className="text-blue-600 font-medium">Primary • </span>}
+                                                {account.is_active ? 'Active' : 'Inactive'}
                                             </p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-lg font-semibold">
-                                                {new Intl.NumberFormat('en-US', {
-                                                    style: 'currency',
-                                                    currency: account.currency,
-                                                }).format(account.balance)}
+                                            <p className="text-sm text-muted-foreground">Account: {account.account_number}</p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Updated: {new Date(account.updated_at).toLocaleDateString()}
                                             </p>
-                                            <p className="text-xs text-muted-foreground">{account.currency}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -111,35 +151,9 @@ export function BankingDashboard() {
                             </Button>
                         </div>
 
-                        {recentActivity && recentActivity.length > 0 ? (
-                            <div className="space-y-3">
-                                {recentActivity.map((activity) => (
-                                    <div key={activity.id} className="flex items-center justify-between text-sm">
-                                        <div>
-                                            <p className="font-medium">{activity.description}</p>
-                                            <p className="text-muted-foreground">{activity.account_name}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            {activity.amount && (
-                                                <p className="font-medium">
-                                                    {new Intl.NumberFormat('en-US', {
-                                                        style: 'currency',
-                                                        currency: 'USD',
-                                                    }).format(activity.amount)}
-                                                </p>
-                                            )}
-                                            <p className="text-xs text-muted-foreground">
-                                                {new Date(activity.timestamp).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-center text-muted-foreground py-4">
-                                No recent activity
-                            </p>
-                        )}
+                        <p className="text-center text-muted-foreground py-4">
+                            No recent activity
+                        </p>
                     </div>
                 </Card>
             </div>

@@ -5,6 +5,7 @@ export interface GLAccount {
     account_type: string;
     currency: string;
     is_active: boolean;
+    is_posting_account?: boolean;
 }
 
 export interface GLAccountListResponse {
@@ -60,6 +61,11 @@ class GLAccountService {
 
         const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
         return this.request<GLAccountListResponse>(`/api/v1/chart-of-accounts${query}`);
+    }
+
+    // Get a specific GL Account by ID
+    async getGLAccount(accountId: string): Promise<GLAccount> {
+        return this.request<GLAccount>(`/api/v1/chart-of-accounts/${accountId}`);
     }
 
     private getAccessToken(): string {

@@ -118,10 +118,18 @@ class BankAccountService {
 
     // Update bank account
     async updateBankAccount(accountId: string, data: UpdateBankAccountFormData): Promise<BankAccount> {
-        return this.request<BankAccount>(`/bank-accounts/${accountId}`, {
+        console.log('BankAccountService - updateBankAccount called');
+        console.log('BankAccountService - accountId:', accountId);
+        console.log('BankAccountService - data:', data);
+        console.log('BankAccountService - API URL:', `${API_BASE_URL}/bank-accounts/${accountId}`);
+        
+        const result = await this.request<BankAccount>(`/bank-accounts/${accountId}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         });
+        
+        console.log('BankAccountService - updateBankAccount result:', result);
+        return result;
     }
 
     // Delete bank account
