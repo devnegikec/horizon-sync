@@ -28,6 +28,7 @@ import type {
   DefaultAccountUpdateResponse,
 } from '../../types/account.types';
 import { accountApi } from '../../utility/api/accounts';
+import { environment } from '../../../environments/environment';
 
 interface TransactionTypeConfig {
   transaction_type: string;
@@ -319,13 +320,40 @@ export const SystemConfiguration: React.FC = () => {
       setSeeding(true);
       setError(null);
 
-      const response = await fetch('/api/v1/admin/seed-data', {
-        method: 'POST',
+      // Get current user to extract organization_id
+      const userResponse = await fetch(`${environment.apiBaseUrl}/identity/me`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
         },
       });
+
+      if (!userResponse.ok) {
+        throw new Error('Failed to get user information');
+      }
+
+      const userData = await userResponse.json();
+      const organizationId = userData.organization_id;
+
+      if (!organizationId) {
+        throw new Error('No organization found for current user');
+      }
+
+      // Call the manual trigger endpoint (same as identity service uses)
+      // This uses DefaultChartSetupService with proper validation
+      const response = await fetch(
+        `${environment.apiCoreUrl}/setup/default-chart-of-accounts/${organizationId}/trigger`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            currency: 'USD',
+            force_recreate: false,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -373,7 +401,7 @@ export const SystemConfiguration: React.FC = () => {
       setSeeding(true);
       setError(null);
 
-      const response = await fetch('/api/v1/admin/clear-data', {
+      const response = await fetch(`${environment.apiCoreUrl}/admin/clear-data`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
