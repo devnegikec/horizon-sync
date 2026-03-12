@@ -25,7 +25,20 @@ import type { PaymentType, PaymentMode, CreatePaymentPayload, UpdatePaymentPaylo
 import type { SuppliersResponse } from '../../types/supplier.types';
 import { supplierApi } from '../../utility/api';
 import { customerApi } from '../../utility/api';
+import { apiRequest } from '../../utility/api/core';
 import { toDateInputValue } from '../../utils/payment.utils';
+
+interface BankAccount {
+  id: string;
+  bank_name: string;
+  account_number: string;
+  is_active: boolean;
+}
+
+interface BankAccountListResponse {
+  items: BankAccount[];
+  total: number;
+}
 
 interface PaymentFormProps {
   initialData?: Partial<CreatePaymentPayload>;
@@ -61,6 +74,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
     payment_date: normalizedDate,
     payment_mode: initialData?.payment_mode,
     reference_no: initialData?.reference_no,
+    bank_account_id: initialData?.bank_account_id,
   });
 
   // Allocation state (only for create mode)
@@ -100,6 +114,23 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
     staleTime: 60_000,
     retry: 1,
   });
+
+  // Fetch active bank accounts for Bank_Transfer payment mode
+  const {
+    data: bankAccountsData,
+    error: bankAccountsError,
+    isFetching: bankAccountsLoading,
+  } = useQuery<BankAccountListResponse>({
+    queryKey: ['bank-accounts-active', accessToken ?? ''],
+    queryFn: () => apiRequest<BankAccountListResponse>('/bank-accounts', accessToken || '', {
+      params: { is_active: true }
+    }),
+    enabled: !!accessToken,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const bankAccounts = bankAccountsData?.items ?? [];
 
   const customers = customersData?.customers ?? [];
   const suppliers = suppliersData?.suppliers ?? [];
@@ -144,6 +175,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
         payment_date: dateVal,
         payment_mode: initialData.payment_mode,
         reference_no: initialData.reference_no,
+        bank_account_id: initialData.bank_account_id,
       });
     }
   }, [initialData?.payment_date, initialData?.amount, initialData?.payment_mode, initialData?.reference_no, initialData?.currency_code, initialData?.party_id, initialData?.payment_type]);
@@ -172,6 +204,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
         payment_date: paymentDateTime,
         payment_mode: formData.payment_mode!,
         reference_no: formData.reference_no,
+        ...(formData.payment_mode === 'Bank_Transfer' && { bank_account_id: formData.bank_account_id }),
       };
       onSubmit(payload);
     } else {
@@ -211,6 +244,10 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
 
   const handleReferenceChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, reference_no: e.target.value }));
+  }, []);
+
+  const handleBankAccountChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, bank_account_id: value }));
   }, []);
 
   // Allocation handlers
@@ -525,6 +562,40 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
         )}
       </div>
 
+      {formData.payment_mode === 'Bank_Transfer' && (
+        <div className="space-y-2">
+          <Label htmlFor="bank_account_id">Bank Account *</Label>
+          <Select value={formData.bank_account_id ?? ''}
+            onValueChange={handleBankAccountChange}
+            disabled={bankAccountsLoading}>
+            <SelectTrigger id="bank_account_id">
+              <SelectValue placeholder={
+                  bankAccountsLoading
+                    ? 'Loading bank accounts...'
+                    : bankAccounts.length === 0
+                      ? 'No active bank accounts available'
+                      : 'Select bank account'
+                }/>
+            </SelectTrigger>
+            <SelectContent>
+              {bankAccounts.map((account) => (
+                <SelectItem key={account.id} value={account.id}>
+                  {account.bank_name} - ****{account.account_number.slice(-4)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {bankAccountsError && (
+            <p className="text-sm text-destructive">
+              Failed to load bank accounts. Check your connection and try again.
+            </p>
+          )}
+          {errors.bank_account_id && (
+            <p className="text-sm text-destructive">{errors.bank_account_id}</p>
+          )}
+        </div>
+      )}
+
       {requiresReferenceNo && (
         <div className="space-y-2">
           <Label htmlFor="reference_no">Reference Number *</Label>
@@ -549,7 +620,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
             handleSubmit(e as unknown as React.FormEvent);
           }}
           className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2 disabled:pointer-events-none disabled:opacity-50">
-          {loading ? 'Saving...' : mode === 'create' ? 'Create Payment' : 'Update Payment'}
+          {loading ? 'Saving...' : mode === 'create' ? 'Capture Payment' : 'Update Payment'}
         </button>
       </div>
     </form>

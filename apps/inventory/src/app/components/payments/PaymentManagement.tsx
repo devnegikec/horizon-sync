@@ -201,7 +201,7 @@ export function PaymentManagement({
         <Button onClick={handleCreatePayment}
           className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
           <Plus className="h-4 w-4" />
-          New Payment
+          Capture Payment
         </Button>
       </div>
 
