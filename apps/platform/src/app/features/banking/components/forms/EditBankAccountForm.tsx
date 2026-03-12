@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/compo
 import { updateBankAccountSchema, UpdateBankAccountFormData, BankAccount } from '../../types';
 import { useUpdateBankAccount } from '../../hooks';
 import { bankingValidation } from '../../hooks/useBankingValidation';
+import { glAccountService, GLAccount } from '../../services/glAccountService';
 
 interface EditBankAccountFormProps {
     account: BankAccount;
@@ -38,8 +39,13 @@ const SUPPORTED_COUNTRIES = [
 const EU_COUNTRIES = ['DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'IE', 'FI', 'GR', 'LU'];
 
 export function EditBankAccountForm({ account, onSuccess, onCancel }: EditBankAccountFormProps) {
+    console.log('EditBankAccountForm - Component rendered');
+    console.log('EditBankAccountForm - account:', account);
+    
     const updateBankAccount = useUpdateBankAccount();
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+    const [glAccount, setGlAccount] = useState<GLAccount | null>(null);
+    const [loadingGlAccount, setLoadingGlAccount] = useState(true);
 
     const {
         register,
@@ -47,13 +53,44 @@ export function EditBankAccountForm({ account, onSuccess, onCancel }: EditBankAc
         control,
         watch,
         reset,
-        formState: { errors, isSubmitting },
+        formState: { errors, isSubmitting, isValid },
+        getValues,
     } = useForm<UpdateBankAccountFormData>({
-        resolver: zodResolver(updateBankAccountSchema)
+        resolver: zodResolver(updateBankAccountSchema),
+        mode: 'onChange', // Enable validation on change to see errors immediately
     });
 
     // Watch country code changes
     const countryCode = watch('country_code');
+
+    // Fetch GL Account details
+    useEffect(() => {
+        const fetchGlAccount = async () => {
+            try {
+                setLoadingGlAccount(true);
+                const glAccountData = await glAccountService.getGLAccount(account.gl_account_id);
+                setGlAccount(glAccountData);
+            } catch (error) {
+                console.error('Failed to fetch GL account:', error);
+                setGlAccount(null);
+            } finally {
+                setLoadingGlAccount(false);
+            }
+        };
+
+        if (account.gl_account_id) {
+            fetchGlAccount();
+        }
+    }, [account.gl_account_id]);
+
+    // Debug: Log form errors whenever they change
+    useEffect(() => {
+        if (Object.keys(errors).length > 0) {
+            console.log('=== FORM VALIDATION ERRORS DETECTED ===');
+            console.log('Errors:', errors);
+            console.log('Current form values:', getValues());
+        }
+    }, [errors, getValues]);
 
     useEffect(() => {
         reset({
@@ -62,12 +99,13 @@ export function EditBankAccountForm({ account, onSuccess, onCancel }: EditBankAc
             account_number: account.account_number,
             country_code: account.country_code,
             currency: account.currency,
-            iban: account.iban,
-            swift_code: account.swift_code,
-            routing_number: account.routing_number,
-            ifsc_code: account.ifsc_code,
-            sort_code: account.sort_code,
-            bsb_number: account.bsb_number,
+            iban: account.iban || undefined,
+            swift_code: account.swift_code || undefined,
+            routing_number: account.routing_number || undefined,
+            ifsc_code: account.ifsc_code || undefined,
+            sort_code: account.sort_code || undefined,
+            bsb_number: account.bsb_number || undefined,
+            is_primary: account.is_primary,
         });
     }, [account, reset]);
 
@@ -108,10 +146,15 @@ export function EditBankAccountForm({ account, onSuccess, onCancel }: EditBankAc
     };
 
     const onSubmit = async (data: UpdateBankAccountFormData) => {
+        console.log('EditBankAccountForm - onSubmit called with data:', data);
+        console.log('EditBankAccountForm - account.id:', account.id);
         try {
-            await updateBankAccount.mutateAsync({ accountId: account.id, data });
+            console.log('EditBankAccountForm - calling mutateAsync...');
+            const result = await updateBankAccount.mutateAsync({ accountId: account.id, data });
+            console.log('EditBankAccountForm - mutateAsync result:', result);
             onSuccess?.();
         } catch (error) {
+            console.error('EditBankAccountForm - Error in onSubmit:', error);
             // Error handling is done by the mutation hook
         }
     };
@@ -129,9 +172,33 @@ export function EditBankAccountForm({ account, onSuccess, onCancel }: EditBankAc
                 <CardTitle>Edit Bank Account</CardTitle>
             </CardHeader>
             <CardContent>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <form onSubmit={(e) => {
+                    console.log('Form onSubmit event triggered');
+                    console.log('Event:', e);
+                    handleSubmit(onSubmit)(e);
+                }} className="space-y-6">
                     {/* Basic Information */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* GL Account (Read-only) */}
+                        <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="gl_account_display">Linked GL Account</Label>
+                            <Input
+                                id="gl_account_display"
+                                value={
+                                    loadingGlAccount 
+                                        ? 'Loading...' 
+                                        : glAccount 
+                                            ? `${glAccount.account_code} - ${glAccount.account_name} (${glAccount.account_type.toUpperCase()})`
+                                            : account.gl_account_id
+                                }
+                                disabled
+                                className="bg-gray-50"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                This bank account is linked to the GL account above. The GL account cannot be changed after creation.
+                            </p>
+                        </div>
+
                         <div className="space-y-2">
                             <Label htmlFor="bank_name">Bank Name *</Label>
                             <Input
@@ -164,9 +231,10 @@ export function EditBankAccountForm({ account, onSuccess, onCancel }: EditBankAc
                             <Controller
                                 name="country_code"
                                 control={control}
+                                defaultValue={account.country_code}
                                 render={({ field }) => (
                                     <Select
-                                        value={field.value}
+                                        value={field.value || account.country_code}
                                         onValueChange={field.onChange}
                                         disabled
                                     >
@@ -197,6 +265,36 @@ export function EditBankAccountForm({ account, onSuccess, onCancel }: EditBankAc
                                 className="bg-gray-50"
                             />
                             <p className="text-xs text-gray-500">Currency cannot be changed after creation</p>
+                        </div>
+                    </div>
+
+                    {/* Primary Account Checkbox */}
+                    <div className="border-t pt-4">
+                        <div className="space-y-2">
+                            <div className="flex items-start space-x-3">
+                                <Controller
+                                    name="is_primary"
+                                    control={control}
+                                    defaultValue={account.is_primary}
+                                    render={({ field }) => (
+                                        <input
+                                            type="checkbox"
+                                            id="is_primary"
+                                            checked={field.value || false}
+                                            onChange={field.onChange}
+                                            className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                    )}
+                                />
+                                <div className="flex-1">
+                                    <Label htmlFor="is_primary" className="text-sm font-medium cursor-pointer">
+                                        Set as primary bank account
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Only one bank account can be primary per GL account. Setting this as primary will automatically unset any existing primary account for this GL account.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -421,6 +519,15 @@ export function EditBankAccountForm({ account, onSuccess, onCancel }: EditBankAc
                         <Button 
                             type="submit" 
                             disabled={isSubmitting || Object.keys(validationErrors).length > 0}
+                            onClick={() => {
+                                console.log('=== SUBMIT BUTTON CLICKED ===');
+                                console.log('isSubmitting:', isSubmitting);
+                                console.log('isValid:', isValid);
+                                console.log('validationErrors:', validationErrors);
+                                console.log('form errors:', errors);
+                                console.log('form values:', getValues());
+                                console.log('Button disabled?', isSubmitting || Object.keys(validationErrors).length > 0);
+                            }}
                         >
                             {isSubmitting ? 'Updating...' : 'Update Account'}
                         </Button>

@@ -112,8 +112,9 @@ export function useUpdateBankAccount() {
                 updatedAccount
             );
 
-            // Invalidate related queries
+            // Invalidate related queries - both GL account specific and all accounts
             queryClient.invalidateQueries({ queryKey: BANK_ACCOUNT_KEYS.byGLAccount(updatedAccount.gl_account_id) });
+            queryClient.invalidateQueries({ queryKey: BANK_ACCOUNT_KEYS.all });
 
             toast({
                 title: 'Bank Account Updated',

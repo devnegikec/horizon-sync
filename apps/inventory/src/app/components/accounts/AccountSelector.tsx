@@ -25,6 +25,7 @@ export interface AccountSelectorProps {
   filterByType?: AccountType | AccountType[];
   filterByStatus?: 'active' | 'inactive' | 'all';
   excludeParentAccounts?: boolean;
+  postingAccountsOnly?: boolean;
   disabled?: boolean;
   required?: boolean;
   error?: string;
@@ -41,6 +42,7 @@ export interface AccountSelectorProps {
  *   label="Select Account"
  *   filterByType="ASSET"
  *   excludeParentAccounts={true}
+ *   postingAccountsOnly={true}
  * />
  * ```
  */
@@ -52,6 +54,7 @@ export function AccountSelector({
   filterByType,
   filterByStatus = 'active',
   excludeParentAccounts = false,
+  postingAccountsOnly = false,
   disabled = false,
   required = false,
   error,
@@ -97,6 +100,13 @@ export function AccountSelector({
       // Filter out parent accounts if requested
       if (excludeParentAccounts) {
         accountsList = accountsList.filter(acc => acc.is_group === false);
+      }
+
+      // Filter to only posting accounts if requested
+      // Posting accounts are accounts that can have transactions posted to them
+      // Non-posting accounts are typically parent/group accounts used for organization only
+      if (postingAccountsOnly) {
+        accountsList = accountsList.filter(acc => acc.is_posting_account === true);
       }
 
       setAccounts(accountsList);

@@ -135,7 +135,14 @@ export const SystemConfiguration: React.FC = () => {
     try {
       setLoadingAccounts(true);
       const response = await accountApi.list(accessToken, 1, 1000, { status: 'active' }) as AccountPaginationResponse;
-      setAvailableAccounts(response.chart_of_accounts || []);
+      
+      // Filter to only show posting accounts (is_posting_account = true)
+      // Non-posting accounts are parent/group accounts and should not be used for transactions
+      const postingAccounts = (response.chart_of_accounts || []).filter(
+        account => account.is_posting_account === true
+      );
+      
+      setAvailableAccounts(postingAccounts);
     } catch (err) {
       console.error('Failed to load accounts:', err);
     } finally {
@@ -470,7 +477,7 @@ export const SystemConfiguration: React.FC = () => {
                   ) : (
                     <>
                       <Database className="h-4 w-4" />
-                      Seed Sample Data (1000+ Accounts)
+                      Create Default Chart of Accounts
                     </>
                   )}
                 </Button>
@@ -496,8 +503,11 @@ export const SystemConfiguration: React.FC = () => {
               <div className="rounded-lg bg-amber-100 p-3 text-sm text-amber-900">
                 <p className="font-medium">Note:</p>
                 <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li>Seed data creates a comprehensive chart of accounts with hierarchy</li>
-                  <li>Includes sample accounts for all types (Assets, Liabilities, Equity, Revenue, Expenses)</li>
+                  <li>Seed data creates 35+ GL accounts with proper hierarchy</li>
+                  <li>Includes accounts for all types (Assets, Liabilities, Equity, Revenue, Expenses)</li>
+                  <li>Creates default account mappings for common transaction types</li>
+                  <li>Validates account codes against your configured format</li>
+                  <li>Idempotent - safe to call multiple times (won't create duplicates)</li>
                   <li>Clear data will DELETE ALL accounts - use with caution!</li>
                   <li>Refresh the page after seeding to see the new accounts</li>
                 </ul>
