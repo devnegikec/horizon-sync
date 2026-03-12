@@ -36,10 +36,10 @@ export function QuotationFormFields({
           <div className="space-y-2">
             <Label htmlFor="quotation_no">Quotation #</Label>
             <Input id="quotation_no"
-                value={formData.quotation_no}
-                disabled
-                placeholder="Auto-generated"
-                className="cursor-not-allowed opacity-60"/>
+              value={formData.quotation_no}
+              disabled
+              placeholder="Auto-generated"
+              className="cursor-not-allowed opacity-60" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="customer_id">Customer *</Label>
@@ -67,20 +67,20 @@ export function QuotationFormFields({
             <DatePicker id="quotation_date"
               value={formData.quotation_date}
               onChange={(v) => onFieldChange('quotation_date', v)}
-              required/>
+              required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="valid_until">Valid Until *</Label>
-            <DatePicker id="quotation_date"
-              value={formData.quotation_date}
+            <DatePicker id="valid_until"
+              value={formData.valid_until}
               onChange={(v) => onFieldChange('valid_until', v)}
-              required/>
+              required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="currency">Currency *</Label>
             <CurrencySelect value={formData.currency}
               onValueChange={(v) => onFieldChange('currency', v)}
-              disabled={isEdit}/>
+              disabled={isEdit} />
           </div>
         </div>
 
@@ -89,7 +89,7 @@ export function QuotationFormFields({
             <Label htmlFor="status">Status</Label>
             <StatusSelect value={formData.status}
               onValueChange={(v) => onFieldChange('status', v)}
-              availableStatuses={availableStatuses}/>
+              availableStatuses={availableStatuses} />
           </div>
         )}
       </div>
@@ -101,7 +101,7 @@ export function QuotationFormFields({
           value={formData.remarks}
           onChange={(e) => onFieldChange('remarks', e.target.value)}
           placeholder="Additional notes..."
-          rows={2}/>
+          rows={2} />
       </div>
     </>
   );

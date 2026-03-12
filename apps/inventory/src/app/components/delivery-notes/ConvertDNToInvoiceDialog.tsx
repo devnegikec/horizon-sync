@@ -17,6 +17,8 @@ import {
 
 import type { DeliveryNote } from '../../types/delivery-note.types';
 
+import { BankAccountDetails } from '../invoices/BankAccountDetails';
+
 interface ConvertToInvoiceItem {
   item_id: string; // delivery_note_item UUID
   item_name: string;
@@ -194,6 +196,9 @@ export function ConvertDNToInvoiceDialog({
               </div>
             </div>
           </div>
+
+          {/* Bank Account Details */}
+          <BankAccountDetails />
 
           {/* Optional fields */}
           <div className="grid gap-4 md:grid-cols-2">

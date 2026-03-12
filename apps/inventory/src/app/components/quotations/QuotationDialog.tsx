@@ -158,7 +158,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
               onValueChange: (v) => handleChange('discount_value', v),
               disabled: isLineItemEditingDisabled,
             },
-          }}/>
+          }} />
       </div>
     </FormDialog>
   );

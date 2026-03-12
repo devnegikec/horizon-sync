@@ -22,6 +22,16 @@ export function SalesOrderDetailFooter({ salesOrder, pdfLoading, onClose, onPrev
   const isClosedOrCancelled = salesOrder.status === 'closed' || salesOrder.status === 'cancelled';
   const canCreateInvoice = salesOrder.status === 'confirmed' || salesOrder.status === 'partially_delivered' || salesOrder.status === 'delivered';
   const canCreateDeliveryNote = salesOrder.status === 'confirmed' || salesOrder.status === 'partially_delivered';
+  
+  // Check if all items are fully billed
+  const allItemsFullyBilled = salesOrder.items?.every((item) => {
+    const qty = Number(item.qty);
+    const billedQty = Number(item.billed_qty || 0);
+    return billedQty >= qty;
+  }) ?? false;
+  
+  // Disable Create Invoice button if all items are fully billed
+  const canShowCreateInvoice = canCreateInvoice && !allItemsFullyBilled;
 
   return (
     <DialogFooter>
@@ -35,7 +45,7 @@ export function SalesOrderDetailFooter({ salesOrder, pdfLoading, onClose, onPrev
       <Button variant="outline" onClick={onSendEmail} disabled={pdfLoading} className="gap-2">
         <Mail className="h-4 w-4" />Send Email
       </Button>
-      {canCreateInvoice && (
+      {canShowCreateInvoice && (
         <Button variant="default" onClick={() => onCreateInvoice(salesOrder)} className="gap-2">
           <Receipt className="h-4 w-4" />Create Invoice
         </Button>
