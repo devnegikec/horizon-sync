@@ -1,9 +1,14 @@
+import { config as dotenvConfig } from 'dotenv';
+import { resolve } from 'path';
 import { withModuleFederation } from '@nx/module-federation/webpack.js';
 import { withReact } from '@nx/react';
 import { composePlugins, withNx } from '@nx/webpack';
 import * as webpack from 'webpack';
 
 import baseConfig from './module-federation.config';
+
+// Load .env from workspace root
+dotenvConfig({ path: resolve(__dirname, '../../.env') });
 
 const config = {
   ...baseConfig,
