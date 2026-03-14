@@ -11,7 +11,7 @@ import type {
   PurchaseOrderFilters,
 } from '../../types/purchase-order.types';
 
-const API_BASE_URL = process.env['NX_API_BASE_URL'] || 'http://localhost:8001';
+const API_BASE_URL = process.env.NX_API_BASE_URL || 'http://localhost:8001';
 
 export const purchaseOrderApi = {
   /**

@@ -53,6 +53,19 @@ const config: ModuleFederationConfig = {
       };
     }
 
+    // Share form libraries as singletons
+    if (
+      libraryName === 'react-hook-form' ||
+      libraryName.startsWith('@hookform/') ||
+      libraryName === 'zod'
+    ) {
+      return {
+        ...defaultConfig,
+        singleton: true,
+        strictVersion: false,
+      };
+    }
+
     return defaultConfig;
   },
 };

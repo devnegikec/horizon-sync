@@ -1,5 +1,6 @@
-import { BankAccount, BankAccountHistory, BankAccountListResponse, CreateBankAccountFormData, UpdateBankAccountFormData } from '../types';
 import { useUserStore } from '@horizon-sync/store';
+
+import { BankAccount, BankAccountHistory, BankAccountListResponse, CreateBankAccountFormData, UpdateBankAccountFormData } from '../types';
 
 // API Base URL - should come from environment config
 // Banking endpoints are on Core Service (port 8001), not Identity Service (port 8000)

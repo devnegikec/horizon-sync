@@ -11,7 +11,7 @@ import type {
   MaterialRequestFilters,
 } from '../../types/material-request.types';
 
-const API_BASE_URL = process.env['NX_API_BASE_URL'] || 'http://localhost:8001';
+const API_BASE_URL = process.env.NX_API_BASE_URL || 'http://localhost:8001';
 
 export const materialRequestApi = {
   /**
