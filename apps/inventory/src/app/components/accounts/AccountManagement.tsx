@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+
 import { type Table } from '@tanstack/react-table';
 import { Wallet, Plus, Download } from 'lucide-react';
 
@@ -16,8 +17,8 @@ import {
 } from '@horizon-sync/ui/components';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { useAccounts } from '../../hooks/useAccounts';
 import { useAccountActions } from '../../hooks/useAccountActions';
+import { useAccounts } from '../../hooks/useAccounts';
 import type { AccountListItem, AccountFilters } from '../../types/account.types';
 import { ACCOUNT_TYPE_COLORS } from '../../utils/accountColors';
 
@@ -138,10 +139,8 @@ export function AccountManagement() {
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button
-            onClick={handleCreateAccount}
-            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg"
-          >
+          <Button onClick={handleCreateAccount}
+            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
             <Plus className="h-4 w-4" />
             Create Account
           </Button>
@@ -150,49 +149,37 @@ export function AccountManagement() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Accounts"
+        <StatCard title="Total Accounts"
           value={stats.total}
           icon={Wallet}
           iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"
-        />
-        <StatCard
-          title="Active Accounts"
+          iconColor="text-slate-600 dark:text-slate-400"/>
+        <StatCard title="Active Accounts"
           value={stats.active}
           icon={Wallet}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"
-        />
-        <StatCard
-          title="Assets"
+          iconColor="text-emerald-600 dark:text-emerald-400"/>
+        <StatCard title="Assets"
           value={stats.byType.ASSET || 0}
           icon={Wallet}
           iconBg="bg-blue-100 dark:bg-blue-900/20"
-          iconColor="text-blue-600 dark:text-blue-400"
-        />
-        <StatCard
-          title="Liabilities"
+          iconColor="text-blue-600 dark:text-blue-400"/>
+        <StatCard title="Liabilities"
           value={stats.byType.LIABILITY || 0}
           icon={Wallet}
           iconBg="bg-red-100 dark:bg-red-900/20"
-          iconColor="text-red-600 dark:text-red-400"
-        />
+          iconColor="text-red-600 dark:text-red-400"/>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <SearchInput
-            className="sm:w-80"
+          <SearchInput className="sm:w-80"
             placeholder="Search by code or name..."
-            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
-          />
+            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
           <div className="flex gap-3">
-            <Select
-              value={filters.account_type}
-              onValueChange={(value) => setFilters((prev) => ({ ...prev, account_type: value }))}
-            >
+            <Select value={filters.account_type}
+              onValueChange={(value) => setFilters((prev) => ({ ...prev, account_type: value }))}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
@@ -205,10 +192,8 @@ export function AccountManagement() {
                 <SelectItem value="EXPENSE">Expense</SelectItem>
               </SelectContent>
             </Select>
-            <Select
-              value={filters.status}
-              onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
-            >
+            <Select value={filters.status}
+              onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
@@ -224,8 +209,7 @@ export function AccountManagement() {
       </div>
 
       {/* Accounts Table */}
-      <AccountsTable
-        accounts={accounts}
+      <AccountsTable accounts={accounts}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.account_type !== 'all' || filters.status !== 'all'}
@@ -233,17 +217,14 @@ export function AccountManagement() {
         onToggleStatus={handleToggleStatus}
         onCreateAccount={handleCreateAccount}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
       {/* Dialog */}
-      <AccountDialog
-        open={dialogOpen}
+      <AccountDialog open={dialogOpen}
         onOpenChange={setDialogOpen}
         account={selectedAccount}
         onCreated={refetch}
-        onUpdated={refetch}
-      />
+        onUpdated={refetch}/>
     </div>
   );
 }

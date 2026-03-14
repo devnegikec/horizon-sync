@@ -1,17 +1,19 @@
+import { useUserStore } from '@horizon-sync/store';
+
 import { BankAccount, BankAccountHistory, BankAccountListResponse, CreateBankAccountFormData, UpdateBankAccountFormData } from '../types';
 
 // API Base URL - should come from environment config
-const API_BASE_URL = process.env.NX_API_BASE_URL || 'http://localhost:8000/api/v1';
+// Banking endpoints are on Core Service (port 8001), not Identity Service (port 8000)
+const API_BASE_URL = process.env['NX_CORE_API_BASE_URL'] || process.env['NX_API_CORE_URL'] || 'http://localhost:8001/api/v1';
 
 class BankAccountService {
     private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
         const url = `${API_BASE_URL}${endpoint}`;
-
         const response = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
                 // Add auth token from your auth system
-                'Authorization': `Bearer ${this.getAuthToken()}`,
+                'Authorization': `Bearer ${this.getAccessToken()}`,
                 ...options?.headers,
             },
             ...options,
@@ -25,17 +27,43 @@ class BankAccountService {
         return response.json();
     }
 
-    private getAuthToken(): string {
-        // Get token from your auth system (localStorage, Zustand store, etc.)
-        return localStorage.getItem('auth_token') || '';
+    private getAccessToken(): string {
+        const fromStore = useUserStore.getState().accessToken;
+        if (fromStore) return fromStore;
+        const fromStorage = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
+        if (fromStorage) return fromStorage;
+        throw new Error('No access token found');
     }
 
     // Create bank account linked to GL account
     async createBankAccount(glAccountId: string, data: CreateBankAccountFormData): Promise<BankAccount> {
+        // Remove gl_account_id from the request body (it's passed in the URL path)
+        const { gl_account_id: _, ...bankAccountData } = data;
+        
         return this.request<BankAccount>(`/chart-of-accounts/${glAccountId}/bank-accounts`, {
             method: 'POST',
-            body: JSON.stringify(data),
+            body: JSON.stringify(bankAccountData),
         });
+    }
+
+    // Helper method to build search parameters
+    private buildSearchParams(params?: {
+        active?: boolean;
+        limit?: number;
+        offset?: number;
+    }): URLSearchParams {
+        const searchParams = new URLSearchParams();
+        if (params?.active !== undefined) {
+            searchParams.append('is_active', params.active.toString());
+        }
+        if (params?.limit) {
+            searchParams.append('page_size', params.limit.toString());
+        }
+        if (params?.offset) {
+            const page = Math.floor((params.offset || 0) / (params.limit || 20)) + 1;
+            searchParams.append('page', page.toString());
+        }
+        return searchParams;
     }
 
     // Get all bank accounts
@@ -44,17 +72,7 @@ class BankAccountService {
         limit?: number;
         offset?: number;
     }): Promise<BankAccount[]> {
-        const searchParams = new URLSearchParams();
-        if (params?.active !== undefined) {
-            searchParams.append('active', params.active.toString());
-        }
-        if (params?.limit) {
-            searchParams.append('limit', params.limit.toString());
-        }
-        if (params?.offset) {
-            searchParams.append('offset', params.offset.toString());
-        }
-
+        const searchParams = this.buildSearchParams(params);
         const queryString = searchParams.toString();
         const endpoint = `/bank-accounts${queryString ? `?${queryString}` : ''}`;
 
@@ -72,12 +90,26 @@ class BankAccountService {
         }
     ): Promise<BankAccountListResponse> {
         const searchParams = new URLSearchParams();
-        if (params?.active !== undefined) searchParams.set('active', params.active.toString());
-        if (params?.limit) searchParams.set('limit', params.limit.toString());
-        if (params?.offset) searchParams.set('offset', params.offset.toString());
+        // Backend uses include_inactive, so we need to invert the active parameter
+        if (params?.active !== undefined) {
+            searchParams.set('include_inactive', (!params.active).toString());
+        }
+        // Note: This endpoint doesn't support pagination (limit/offset)
+        // It returns all bank accounts for the GL account
 
         const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
-        return this.request<BankAccountListResponse>(`/chart-of-accounts/${glAccountId}/bank-accounts${query}`);
+        
+        // This endpoint returns BankAccount[] directly, not BankAccountListResponse
+        const items = await this.request<BankAccount[]>(`/chart-of-accounts/${glAccountId}/bank-accounts${query}`);
+        
+        // Wrap in BankAccountListResponse format for consistency
+        return {
+            items,
+            total: items.length,
+            page: 1,
+            page_size: items.length,
+            total_pages: 1
+        };
     }
 
     // Get specific bank account
@@ -87,10 +119,18 @@ class BankAccountService {
 
     // Update bank account
     async updateBankAccount(accountId: string, data: UpdateBankAccountFormData): Promise<BankAccount> {
-        return this.request<BankAccount>(`/bank-accounts/${accountId}`, {
+        console.log('BankAccountService - updateBankAccount called');
+        console.log('BankAccountService - accountId:', accountId);
+        console.log('BankAccountService - data:', data);
+        console.log('BankAccountService - API URL:', `${API_BASE_URL}/bank-accounts/${accountId}`);
+        
+        const result = await this.request<BankAccount>(`/bank-accounts/${accountId}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         });
+        
+        console.log('BankAccountService - updateBankAccount result:', result);
+        return result;
     }
 
     // Delete bank account

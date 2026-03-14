@@ -1,7 +1,9 @@
 import { useState } from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
-import { accountApi } from '../utility/api/accounts';
+
 import type { CreateAccountPayload, UpdateAccountPayload } from '../types/account.types';
+import { accountApi } from '../utility/api/accounts';
 
 export function useAccountActions(): {
   createAccount: (data: CreateAccountPayload) => Promise<any>;

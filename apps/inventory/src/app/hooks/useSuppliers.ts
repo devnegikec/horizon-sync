@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
-import { supplierApi } from '../utility/api';
+
 import type { Supplier, SuppliersResponse } from '../types/supplier.types';
+import { supplierApi } from '../utility/api';
 
 export function useSuppliers(page = 1, pageSize = 100) {
   const accessToken = useUserStore((s) => s.accessToken);

@@ -1,14 +1,9 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components';
-import { PaymentForm } from './PaymentForm';
 import { usePaymentActions } from '../../hooks/usePaymentActions';
-import { toDateInputValue } from '../../utils/payment.utils';
 import type { PaymentEntry, CreatePaymentPayload, UpdatePaymentPayload } from '../../types/payment.types';
+import { toDateInputValue } from '../../utils/payment.utils';
+import { FormDialog } from '../containers';
+
+import { PaymentForm } from './PaymentForm';
 
 interface PaymentDialogProps {
   open: boolean;
@@ -51,31 +46,30 @@ export function PaymentDialog({ open, onOpenChange, payment, initialData, presel
         payment_date: toDateInputValue(payment.payment_date),
         payment_mode: payment.payment_mode,
         reference_no: payment.reference_no,
+        bank_account_id: payment.bank_account_id,
       }
     : initialData || undefined;
 
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // PaymentForm handles its own submission via the form element
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditMode ? 'Edit Payment' : 'Create New Payment'}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditMode
-              ? 'Update payment details. Only draft payments can be edited.'
-              : 'Enter payment details to create a new payment entry.'}
-          </DialogDescription>
-        </DialogHeader>
-        <PaymentForm
-          initialData={formInitialData}
-          preselectedInvoiceId={preselectedInvoiceId}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          loading={loading}
-          mode={isEditMode ? 'edit' : 'create'}
-        />
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={isEditMode ? 'Edit Payment' : 'Capture Payment'}
+      size="lg"
+      saving={loading}
+      footer={null}
+    >
+      <PaymentForm initialData={formInitialData}
+        preselectedInvoiceId={preselectedInvoiceId}
+        onSubmit={handleSubmit}
+        onCancel={handleCancel}
+        loading={loading}
+        mode={isEditMode ? 'edit' : 'create'}/>
+    </FormDialog>
   );
 }

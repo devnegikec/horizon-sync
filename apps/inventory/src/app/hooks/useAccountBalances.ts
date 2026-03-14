@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
-import { accountApi } from '../utility/api/accounts';
+
 import type { AccountBalance } from '../types/account.types';
+import { accountApi } from '../utility/api/accounts';
 
 interface UseAccountBalancesOptions {
   accountIds: string[];

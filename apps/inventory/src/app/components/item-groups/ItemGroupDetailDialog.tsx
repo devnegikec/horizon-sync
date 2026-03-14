@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { Layers, Hash, Calendar, FileText, CheckCircle2, XCircle } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components';

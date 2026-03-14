@@ -1,4 +1,4 @@
-// eslint-disable-next-line @nx/enforce-module-boundaries
+ 
 import { useUserStore } from '@horizon-sync/store';
 
 import { useItemSubmission } from '../../hooks/useItemSubmission';

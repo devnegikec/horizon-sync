@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { Wallet, Plus, MoreHorizontal, Eye, Edit, Trash2, User } from 'lucide-react';
 
@@ -194,10 +195,8 @@ export function PaymentsTable({
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => onDelete(payment)}
-                        className="text-destructive focus:text-destructive"
-                      >
+                      <DropdownMenuItem onClick={() => onDelete(payment)}
+                        className="text-destructive focus:text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Payment
                       </DropdownMenuItem>
@@ -239,8 +238,7 @@ export function PaymentsTable({
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState
-              icon={<Wallet className="h-12 w-12" />}
+            <EmptyState icon={<Wallet className="h-12 w-12" />}
               title="No payments found"
               description={
                 hasActiveFilters
@@ -251,11 +249,10 @@ export function PaymentsTable({
                 !hasActiveFilters ? (
                   <Button onClick={onCreatePayment} className="gap-2">
                     <Plus className="h-4 w-4" />
-                    New Payment
+                    Capture Payment
                   </Button>
                 ) : undefined
-              }
-            />
+              }/>
           </div>
         </CardContent>
       </Card>
@@ -265,8 +262,7 @@ export function PaymentsTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable
-          columns={columns}
+        <DataTable columns={columns}
           data={payments}
           config={{
             showSerialNumber: true,
@@ -281,8 +277,7 @@ export function PaymentsTable({
           filterPlaceholder="Search by payment #, party..."
           renderViewOptions={renderViewOptions}
           fixedHeader
-          maxHeight="auto"
-        />
+          maxHeight="auto"/>
       </CardContent>
     </Card>
   );

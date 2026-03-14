@@ -1,6 +1,8 @@
 import * as React from 'react';
+
 import { Badge } from '@horizon-sync/ui/components';
 import { cn } from '@horizon-sync/ui/lib';
+
 import type { QuotationStatus } from '../../types/quotation.types';
 
 interface StatusBadgeProps {

@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
+
 import { Loader2, AlertTriangle } from 'lucide-react';
+
+import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
   Dialog,
@@ -26,12 +29,12 @@ import {
   TableHeader,
   TableRow,
 } from '@horizon-sync/ui/components/ui/table';
-import { usePurchaseReceiptActions } from '../../hooks/usePurchaseReceiptActions';
+
 import { usePurchaseOrders } from '../../hooks/usePurchaseOrders';
-import { useUserStore } from '@horizon-sync/store';
-import { purchaseOrderApi } from '../../utility/api';
-import type { CreatePurchaseReceiptPayload } from '../../types/purchase-receipt.types';
+import { usePurchaseReceiptActions } from '../../hooks/usePurchaseReceiptActions';
 import type { PurchaseOrder } from '../../types/purchase-order.types';
+import type { CreatePurchaseReceiptPayload } from '../../types/purchase-receipt.types';
+import { purchaseOrderApi } from '../../utility/api';
 
 interface PurchaseReceiptDialogProps {
   open: boolean;
@@ -167,12 +170,10 @@ export function PurchaseReceiptDialog({
 
             <div className="space-y-2">
               <Label htmlFor="date">Received Date *</Label>
-              <Input
-                id="date"
+              <Input id="date"
                 type="date"
                 value={receivedDate}
-                onChange={(e) => setReceivedDate(e.target.value)}
-              />
+                onChange={(e) => setReceivedDate(e.target.value)}/>
             </div>
           </div>
 
@@ -219,15 +220,13 @@ export function PurchaseReceiptDialog({
                           {item.remaining_quantity}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Input
-                            type="number"
+                          <Input type="number"
                             min="0"
                             max={item.remaining_quantity}
                             value={item.receiving_now}
                             onChange={(e) => handleReceivingChange(index, parseFloat(e.target.value) || 0)}
                             className="w-24 text-right"
-                            disabled={item.remaining_quantity === 0}
-                          />
+                            disabled={item.remaining_quantity === 0}/>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -253,10 +252,8 @@ export function PurchaseReceiptDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={loading || !selectedPOId || totalReceiving === 0}
-          >
+          <Button onClick={handleSubmit} 
+            disabled={loading || !selectedPOId || totalReceiving === 0}>
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

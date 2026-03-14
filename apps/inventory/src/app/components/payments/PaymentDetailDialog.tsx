@@ -1,5 +1,7 @@
 import { useState, useCallback, memo, useEffect } from 'react';
+
 import { FileText, Edit, CheckCircle, XCircle, Download } from 'lucide-react';
+
 import {
   Dialog,
   DialogContent,
@@ -12,16 +14,19 @@ import {
   CardTitle,
   Separator,
 } from '@horizon-sync/ui/components';
+
+import { useInvoiceAllocations } from '../../hooks/useInvoiceAllocations';
+import { useOutstandingInvoicesForAllocation } from '../../hooks/useOutstandingInvoicesForAllocation';
+import { getCurrencySymbol } from '../../types/currency.types';
+import type { PaymentEntry } from '../../types/payment.types';
 import { formatCurrency, formatDate, getPaymentModeLabel } from '../../utils/payment.utils';
-import { PaymentStatusBadge } from './PaymentStatusBadge';
+
 import { AllocationList } from './AllocationList';
 import { InvoiceLinker } from './InvoiceLinker';
 import { PaymentAuditTrail } from './PaymentAuditTrail';
-import { getCurrencySymbol } from '../../types/currency.types';
+import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { ReceiptViewer } from './ReceiptViewer';
-import { useInvoiceAllocations } from '../../hooks/useInvoiceAllocations';
-import { useOutstandingInvoicesForAllocation } from '../../hooks/useOutstandingInvoicesForAllocation';
-import type { PaymentEntry } from '../../types/payment.types';
+
 
 interface PaymentDetailDialogProps {
   open: boolean;
@@ -113,28 +118,22 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
           <div className="flex flex-col flex-1 min-h-0">
             {/* Navigation Buttons */}
             <div className="flex space-x-1 bg-muted p-1 rounded-lg mb-4 flex-shrink-0">
-              <Button
-                variant={activeTab === 'details' ? 'default' : 'ghost'}
+              <Button variant={activeTab === 'details' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setActiveTab('details')}
-                className="flex-1"
-              >
+                className="flex-1">
                 Details
               </Button>
-              <Button
-                variant={activeTab === 'allocations' ? 'default' : 'ghost'}
+              <Button variant={activeTab === 'allocations' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setActiveTab('allocations')}
-                className="flex-1"
-              >
+                className="flex-1">
                 Allocations
               </Button>
-              <Button
-                variant={activeTab === 'audit' ? 'default' : 'ghost'}
+              <Button variant={activeTab === 'audit' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setActiveTab('audit')}
-                className="flex-1"
-              >
+                className="flex-1">
                 Audit Trail
               </Button>
             </div>
@@ -142,10 +141,8 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
             {/* Content Area with Fixed Height - All content always rendered */}
             <div className="flex-1 relative" style={{ height: 'calc(85vh - 180px)', minHeight: '400px' }}>
               {/* Details Section */}
-              <div 
-                className="absolute inset-0 overflow-y-auto space-y-4 pr-2"
-                style={{ visibility: activeTab === 'details' ? 'visible' : 'hidden' }}
-              >
+              <div className="absolute inset-0 overflow-y-auto space-y-4 pr-2"
+                style={{ visibility: activeTab === 'details' ? 'visible' : 'hidden' }}>
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Payment Information</CardTitle>
@@ -240,12 +237,10 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
                     </Button>
                   )}
                   {isConfirmed && onCancel && (
-                    <Button
-                      variant="destructive"
+                    <Button variant="destructive"
                       onClick={onCancel}
                       disabled={loading}
-                      className="gap-2"
-                    >
+                      className="gap-2">
                       <XCircle className="h-4 w-4" />
                       Cancel Payment
                     </Button>
@@ -260,17 +255,13 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
               </div>
 
               {/* Allocations Section */}
-              <div 
-                className="absolute inset-0 overflow-y-auto space-y-4 pr-2"
-                style={{ visibility: activeTab === 'allocations' ? 'visible' : 'hidden' }}
-              >
-                <AllocationList
-                  allocations={allocationList}
+              <div className="absolute inset-0 overflow-y-auto space-y-4 pr-2"
+                style={{ visibility: activeTab === 'allocations' ? 'visible' : 'hidden' }}>
+                <AllocationList allocations={allocationList}
                   paymentCurrency={payment.currency_code}
                   isDraft={isDraft}
                   onRemove={removeAllocation}
-                  loading={loading || allocationActionLoading}
-                />
+                  loading={loading || allocationActionLoading}/>
                 {isDraft && (
                   <>
                     <Separator className="my-4" />
@@ -279,24 +270,20 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
                       <p className="text-sm text-muted-foreground mb-3">
                         Allocate this payment to one or more invoices. At least one allocation is required before confirming.
                       </p>
-                      <InvoiceLinker
-                        invoices={outstandingInvoices}
+                      <InvoiceLinker invoices={outstandingInvoices}
                         paymentAmount={payment.amount}
                         paymentCurrency={payment.currency_code}
                         existingAllocations={allocationList}
                         onSave={handleSaveAllocations}
-                        loading={allocationActionLoading || invoicesLoading}
-                      />
+                        loading={allocationActionLoading || invoicesLoading}/>
                     </div>
                   </>
                 )}
               </div>
 
               {/* Audit Trail Section */}
-              <div 
-                className="absolute inset-0 overflow-y-auto space-y-4 pr-2"
-                style={{ visibility: activeTab === 'audit' ? 'visible' : 'hidden' }}
-              >
+              <div className="absolute inset-0 overflow-y-auto space-y-4 pr-2"
+                style={{ visibility: activeTab === 'audit' ? 'visible' : 'hidden' }}>
                 <PaymentAuditTrail auditLogs={[]} />
                 <div className="text-sm text-muted-foreground text-center mt-8">
                   <p>Audit trail integration coming soon</p>
@@ -309,11 +296,9 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
 
       {/* Receipt Viewer */}
       {isConfirmed && payment.receipt_number && (
-        <ReceiptViewer
-          open={receiptViewerOpen}
+        <ReceiptViewer open={receiptViewerOpen}
           onOpenChange={setReceiptViewerOpen}
-          payment={payment}
-        />
+          payment={payment}/>
       )}
     </>
   );

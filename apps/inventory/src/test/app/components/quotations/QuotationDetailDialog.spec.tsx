@@ -1,5 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, fireEvent } from '@testing-library/react';
+
 import { QuotationDetailDialog } from '../../../../app/components/quotations/QuotationDetailDialog';
 import type { Quotation } from '../../../../app/types/quotation.types';
 
@@ -102,13 +103,11 @@ describe('QuotationDetailDialog', () => {
   describe('Dialog rendering', () => {
     it('should not render when quotation is null', () => {
       const { container } = renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={null}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(container.firstChild).toBeNull();
@@ -117,13 +116,11 @@ describe('QuotationDetailDialog', () => {
     it('should render when open is true and quotation is provided', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('Quotation Details')).toBeTruthy();
@@ -134,13 +131,11 @@ describe('QuotationDetailDialog', () => {
     it('should display quotation number', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('Quotation Number')).toBeTruthy();
@@ -150,13 +145,11 @@ describe('QuotationDetailDialog', () => {
     it('should display customer name from customer_name field', () => {
       const quotation = createMockQuotation({ customer_name: 'Direct Customer Name' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('Customer')).toBeTruthy();
@@ -166,13 +159,11 @@ describe('QuotationDetailDialog', () => {
     it('should display customer name from customer object when customer_name is not available', () => {
       const quotation = createMockQuotation({ customer_name: undefined });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('Customer')).toBeTruthy();
@@ -182,13 +173,11 @@ describe('QuotationDetailDialog', () => {
     it('should display N/A when no customer information is available', () => {
       const quotation = createMockQuotation({ customer_name: undefined, customer: undefined });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('N/A')).toBeTruthy();
@@ -197,13 +186,11 @@ describe('QuotationDetailDialog', () => {
     it('should display formatted quotation date', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('Quotation Date')).toBeTruthy();
@@ -213,13 +200,11 @@ describe('QuotationDetailDialog', () => {
     it('should display formatted valid until date', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('Valid Until')).toBeTruthy();
@@ -229,13 +214,11 @@ describe('QuotationDetailDialog', () => {
     it('should display currency', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('Currency')).toBeTruthy();
@@ -245,13 +228,11 @@ describe('QuotationDetailDialog', () => {
     it('should display grand total with currency and formatted amount', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('Grand Total')).toBeTruthy();
@@ -261,13 +242,11 @@ describe('QuotationDetailDialog', () => {
     it('should display status badge', () => {
       const quotation = createMockQuotation({ status: 'sent' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('Sent')).toBeTruthy();
@@ -276,13 +255,11 @@ describe('QuotationDetailDialog', () => {
     it('should display remarks when present', () => {
       const quotation = createMockQuotation({ remarks: 'Special instructions for this quotation' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('Remarks')).toBeTruthy();
@@ -292,13 +269,11 @@ describe('QuotationDetailDialog', () => {
     it('should not display remarks section when remarks is not present', () => {
       const quotation = createMockQuotation({ remarks: undefined });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.queryByText('Remarks')).toBeNull();
@@ -307,13 +282,11 @@ describe('QuotationDetailDialog', () => {
     it('should display created timestamp', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText(/Created:/)).toBeTruthy();
@@ -323,13 +296,11 @@ describe('QuotationDetailDialog', () => {
     it('should display updated timestamp when present', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText(/Updated:/)).toBeTruthy();
@@ -338,13 +309,11 @@ describe('QuotationDetailDialog', () => {
     it('should not display updated timestamp when not present', () => {
       const quotation = createMockQuotation({ updated_at: undefined });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.queryByText(/Updated:/)).toBeNull();
@@ -355,13 +324,11 @@ describe('QuotationDetailDialog', () => {
     it('should display line items section header', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('Line Items')).toBeTruthy();
@@ -370,13 +337,11 @@ describe('QuotationDetailDialog', () => {
     it('should display line items in readonly table', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       // Check for table headers
@@ -391,13 +356,11 @@ describe('QuotationDetailDialog', () => {
     it('should display "No line items" when line items array is empty', () => {
       const quotation = createMockQuotation({ line_items: [] });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('No line items')).toBeTruthy();
@@ -406,13 +369,11 @@ describe('QuotationDetailDialog', () => {
     it('should display "No line items" when line items is undefined', () => {
       const quotation = createMockQuotation({ line_items: undefined });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.getByText('No line items')).toBeTruthy();
@@ -423,13 +384,11 @@ describe('QuotationDetailDialog', () => {
     it('should display Edit button for DRAFT status', () => {
       const quotation = createMockQuotation({ status: 'draft' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       const editButton = screen.getByText('Edit');
@@ -439,13 +398,11 @@ describe('QuotationDetailDialog', () => {
     it('should display Edit button for SENT status', () => {
       const quotation = createMockQuotation({ status: 'sent' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       const editButton = screen.getByText('Edit');
@@ -455,13 +412,11 @@ describe('QuotationDetailDialog', () => {
     it('should NOT display Edit button for ACCEPTED status (terminal)', () => {
       const quotation = createMockQuotation({ status: 'accepted' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.queryByText('Edit')).toBeNull();
@@ -470,13 +425,11 @@ describe('QuotationDetailDialog', () => {
     it('should NOT display Edit button for REJECTED status (terminal)', () => {
       const quotation = createMockQuotation({ status: 'rejected' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.queryByText('Edit')).toBeNull();
@@ -485,13 +438,11 @@ describe('QuotationDetailDialog', () => {
     it('should NOT display Edit button for EXPIRED status (terminal)', () => {
       const quotation = createMockQuotation({ status: 'expired' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.queryByText('Edit')).toBeNull();
@@ -500,13 +451,11 @@ describe('QuotationDetailDialog', () => {
     it('should call onEdit when Edit button is clicked', () => {
       const quotation = createMockQuotation({ status: 'draft' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       const editButton = screen.getByText('Edit');
@@ -521,13 +470,11 @@ describe('QuotationDetailDialog', () => {
     it('should display Convert button ONLY for ACCEPTED status', () => {
       const quotation = createMockQuotation({ status: 'accepted' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       const convertButton = screen.getByText('Convert to Sales Order');
@@ -537,13 +484,11 @@ describe('QuotationDetailDialog', () => {
     it('should NOT display Convert button for DRAFT status', () => {
       const quotation = createMockQuotation({ status: 'draft' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.queryByText('Convert to Sales Order')).toBeNull();
@@ -552,13 +497,11 @@ describe('QuotationDetailDialog', () => {
     it('should NOT display Convert button for SENT status', () => {
       const quotation = createMockQuotation({ status: 'sent' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.queryByText('Convert to Sales Order')).toBeNull();
@@ -567,13 +510,11 @@ describe('QuotationDetailDialog', () => {
     it('should NOT display Convert button for REJECTED status', () => {
       const quotation = createMockQuotation({ status: 'rejected' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.queryByText('Convert to Sales Order')).toBeNull();
@@ -582,13 +523,11 @@ describe('QuotationDetailDialog', () => {
     it('should NOT display Convert button for EXPIRED status', () => {
       const quotation = createMockQuotation({ status: 'expired' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       expect(screen.queryByText('Convert to Sales Order')).toBeNull();
@@ -597,13 +536,11 @@ describe('QuotationDetailDialog', () => {
     it('should call onConvert when Convert button is clicked', () => {
       const quotation = createMockQuotation({ status: 'accepted' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       const convertButton = screen.getByText('Convert to Sales Order');
@@ -618,13 +555,11 @@ describe('QuotationDetailDialog', () => {
     it('should display Close button', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       const closeButtons = screen.getAllByRole('button', { name: /Close/i });
@@ -635,13 +570,11 @@ describe('QuotationDetailDialog', () => {
     it('should call onOpenChange with false when Close button is clicked', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       const closeButtons = screen.getAllByRole('button', { name: /Close/i });
@@ -657,13 +590,11 @@ describe('QuotationDetailDialog', () => {
     it('should show both Edit and Close buttons for DRAFT status', () => {
       const quotation = createMockQuotation({ status: 'draft' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       const closeButtons = screen.getAllByRole('button', { name: /Close/i });
@@ -675,13 +606,11 @@ describe('QuotationDetailDialog', () => {
     it('should show both Edit and Close buttons for SENT status', () => {
       const quotation = createMockQuotation({ status: 'sent' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       const closeButtons = screen.getAllByRole('button', { name: /Close/i });
@@ -693,13 +622,11 @@ describe('QuotationDetailDialog', () => {
     it('should show Convert and Close buttons (no Edit) for ACCEPTED status', () => {
       const quotation = createMockQuotation({ status: 'accepted' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       const closeButtons = screen.getAllByRole('button', { name: /Close/i });
@@ -711,13 +638,11 @@ describe('QuotationDetailDialog', () => {
     it('should show only Close button for REJECTED status', () => {
       const quotation = createMockQuotation({ status: 'rejected' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       const closeButtons = screen.getAllByRole('button', { name: /Close/i });
@@ -729,13 +654,11 @@ describe('QuotationDetailDialog', () => {
     it('should show only Close button for EXPIRED status', () => {
       const quotation = createMockQuotation({ status: 'expired' });
       renderWithQueryClient(
-        <QuotationDetailDialog
-          open={true}
+        <QuotationDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onEdit={mockOnEdit}
-          onConvert={mockOnConvert}
-        />
+          onConvert={mockOnConvert}/>
       );
 
       const closeButtons = screen.getAllByRole('button', { name: /Close/i });

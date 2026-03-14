@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { FileText, Plus, MoreHorizontal, Eye, Edit, Trash2, Send, XCircle } from 'lucide-react';
 
@@ -219,10 +220,8 @@ export function MaterialRequestsTable({
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={() => onDelete(mr)}
-                        className="text-destructive focus:text-destructive"
-                      >
+                      <DropdownMenuItem onClick={() => onDelete(mr)}
+                        className="text-destructive focus:text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Request
                       </DropdownMenuItem>
@@ -264,8 +263,7 @@ export function MaterialRequestsTable({
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState 
-              icon={<FileText className="h-12 w-12" />}
+            <EmptyState icon={<FileText className="h-12 w-12" />}
               title="No material requests found"
               description={
                 hasActiveFilters
@@ -279,8 +277,7 @@ export function MaterialRequestsTable({
                     New Material Request
                   </Button>
                 ) : undefined
-              }
-            />
+              }/>
           </div>
         </CardContent>
       </Card>
@@ -290,8 +287,7 @@ export function MaterialRequestsTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable 
-          columns={columns}
+        <DataTable columns={columns}
           data={materialRequests}
           config={{
             showSerialNumber: true,
@@ -306,8 +302,7 @@ export function MaterialRequestsTable({
           filterPlaceholder="Search by request #, department..."
           renderViewOptions={renderViewOptions}
           fixedHeader
-          maxHeight="auto"
-        />
+          maxHeight="auto"/>
       </CardContent>
     </Card>
   );

@@ -90,6 +90,19 @@ export const bankingValidation = {
         return { valid: true };
     },
 
+    validateIFSC: (ifsc: string): { valid: boolean; error?: string } => {
+        if (!ifsc) return { valid: false, error: 'IFSC code is required' };
+
+        const cleanIFSC = ifsc.toUpperCase();
+
+        // Indian IFSC: 4 chars bank code + 0 + 6 chars branch code
+        if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanIFSC)) {
+            return { valid: false, error: 'IFSC code must be 11 characters (e.g., SBIN0001234)' };
+        }
+
+        return { valid: true };
+    },
+
     formatIBAN: (iban: string): string => {
         const cleanIBAN = iban.replace(/\s/g, '').toUpperCase();
         return cleanIBAN.replace(/.{4}/g, '$& ').trim();

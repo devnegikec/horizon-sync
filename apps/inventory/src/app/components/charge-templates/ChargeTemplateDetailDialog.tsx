@@ -1,6 +1,9 @@
 import * as React from 'react';
+
 import { Edit, DollarSign } from 'lucide-react';
+
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
+
 import type { ChargeTemplate } from '../../types/charge-template.types';
 
 interface ChargeTemplateDetailDialogProps {

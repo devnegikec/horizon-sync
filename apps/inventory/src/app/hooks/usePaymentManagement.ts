@@ -1,10 +1,12 @@
 import * as React from 'react';
 import { useMemo, useEffect } from 'react';
+
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import type { Table } from '@tanstack/react-table';
 
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
+
 import { paymentApi } from '../api/payments';
 import type { 
   Payment, 

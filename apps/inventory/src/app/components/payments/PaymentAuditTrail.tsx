@@ -1,4 +1,5 @@
 import { Clock, User, FileText } from 'lucide-react';
+
 import { Badge, Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components';
 
 interface AuditLogEntry {

@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { AccountTypeFilter, AccountTypeBadge, getAccountTypeBadgeColor } from './AccountTypeFilter';
 
 describe('AccountTypeFilter', () => {
@@ -12,11 +13,9 @@ describe('AccountTypeFilter', () => {
 
   it('renders with label', () => {
     render(
-      <AccountTypeFilter
-        value="ALL"
+      <AccountTypeFilter value="ALL"
         onValueChange={mockOnValueChange}
-        label="Account Type"
-      />
+        label="Account Type"/>
     );
 
     expect(screen.getByText('Account Type')).toBeInTheDocument();
@@ -24,10 +23,8 @@ describe('AccountTypeFilter', () => {
 
   it('shows "All Types" option by default', async () => {
     render(
-      <AccountTypeFilter
-        value="ALL"
-        onValueChange={mockOnValueChange}
-      />
+      <AccountTypeFilter value="ALL"
+        onValueChange={mockOnValueChange}/>
     );
 
     const trigger = screen.getByRole('combobox');
@@ -40,11 +37,9 @@ describe('AccountTypeFilter', () => {
 
   it('hides "All Types" option when showAllOption is false', async () => {
     render(
-      <AccountTypeFilter
-        value="ASSET"
+      <AccountTypeFilter value="ASSET"
         onValueChange={mockOnValueChange}
-        showAllOption={false}
-      />
+        showAllOption={false}/>
     );
 
     const trigger = screen.getByRole('combobox');
@@ -57,10 +52,8 @@ describe('AccountTypeFilter', () => {
 
   it('displays all account types with descriptions', async () => {
     render(
-      <AccountTypeFilter
-        value="ALL"
-        onValueChange={mockOnValueChange}
-      />
+      <AccountTypeFilter value="ALL"
+        onValueChange={mockOnValueChange}/>
     );
 
     const trigger = screen.getByRole('combobox');
@@ -79,10 +72,8 @@ describe('AccountTypeFilter', () => {
 
   it('calls onValueChange when type is selected', async () => {
     render(
-      <AccountTypeFilter
-        value="ALL"
-        onValueChange={mockOnValueChange}
-      />
+      <AccountTypeFilter value="ALL"
+        onValueChange={mockOnValueChange}/>
     );
 
     const trigger = screen.getByRole('combobox');
@@ -100,11 +91,9 @@ describe('AccountTypeFilter', () => {
 
   it('disables component when disabled prop is true', () => {
     render(
-      <AccountTypeFilter
-        value="ALL"
+      <AccountTypeFilter value="ALL"
         onValueChange={mockOnValueChange}
-        disabled
-      />
+        disabled/>
     );
 
     const trigger = screen.getByRole('combobox');

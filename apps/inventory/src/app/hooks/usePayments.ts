@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { paymentApi } from '../utility/api';
+
 import type { PaymentEntry, PaymentFilters } from '../types/payment.types';
+import { paymentApi } from '../utility/api';
 
 const DEFAULT_FILTERS: Partial<PaymentFilters> = {
   page: 1,

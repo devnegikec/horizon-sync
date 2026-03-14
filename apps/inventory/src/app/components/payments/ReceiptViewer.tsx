@@ -1,4 +1,5 @@
 import { Download, Printer, QrCode } from 'lucide-react';
+
 import {
   Dialog,
   DialogContent,
@@ -9,9 +10,10 @@ import {
   CardContent,
   Separator,
 } from '@horizon-sync/ui/components';
-import { formatCurrency, formatDate } from '../../utils/payment.utils';
+
 import { usePaymentActions } from '../../hooks/usePaymentActions';
 import type { PaymentEntry } from '../../types/payment.types';
+import { formatCurrency, formatDate } from '../../utils/payment.utils';
 
 interface ReceiptViewerProps {
   open: boolean;

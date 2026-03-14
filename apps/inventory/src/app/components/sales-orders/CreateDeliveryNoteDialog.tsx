@@ -260,16 +260,14 @@ export function CreateDeliveryNoteDialog({
                       const isFullyDelivered = item.pending_qty === 0;
 
                       return (
-                        <tr
-                          key={item.item_id}
+                        <tr key={item.item_id}
                           className={
                             isOverDelivered
                               ? 'bg-red-50 dark:bg-red-950/20'
                               : isFullyDelivered
                                 ? 'bg-muted/30 opacity-60'
                                 : ''
-                          }
-                        >
+                          }>
                           <td className="px-4 py-3 text-sm">
                             <div className="flex items-center gap-2">
                               {item.item_name}
@@ -284,26 +282,22 @@ export function CreateDeliveryNoteDialog({
                           <td className="px-4 py-3 text-sm text-right">{item.delivered_qty}</td>
                           <td className="px-4 py-3 text-sm text-right font-medium">{item.pending_qty}</td>
                           <td className="px-4 py-3 text-sm text-right">
-                            <Input
-                              type="number"
+                            <Input type="number"
                               min="0"
                               max={item.pending_qty}
                               step="1"
                               value={item.qty_to_deliver}
                               onChange={(e) => handleQtyChange(index, Number(e.target.value))}
                               className={`w-24 text-right ml-auto ${isOverDelivered ? 'border-red-500' : ''}`}
-                              disabled={isFullyDelivered}
-                            />
+                              disabled={isFullyDelivered}/>
                             {isOverDelivered && (
                               <p className="text-xs text-red-500 mt-1">Exceeds pending</p>
                             )}
                           </td>
                           <td className="px-4 py-3 text-sm">
-                            <Select
-                              value={item.warehouse_id}
+                            <Select value={item.warehouse_id}
                               onValueChange={(v) => handleWarehouseChange(index, v)}
-                              disabled={isFullyDelivered}
-                            >
+                              disabled={isFullyDelivered}>
                               <SelectTrigger className="w-[180px]">
                                 <SelectValue placeholder="Select" />
                               </SelectTrigger>
@@ -371,10 +365,8 @@ export function CreateDeliveryNoteDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={creating}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={creating || !hasValidItems || hasValidationError || hasMissingWarehouse}
-            >
+            <Button type="submit"
+              disabled={creating || !hasValidItems || hasValidationError || hasMissingWarehouse}>
               {creating
                 ? 'Creating...'
                 : deliveryNoteCount > 1

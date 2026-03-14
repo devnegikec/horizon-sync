@@ -1,13 +1,15 @@
 import * as React from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
-import { smartPickingApi } from '../utility/api/smart-picking';
+
 import type {
   AllocationSuggestionResponse,
   SmartPickAllocation,
   SmartPickListResponse,
   DeliveryNoteFromPickListResponse,
 } from '../types/smart-picking.types';
+import { smartPickingApi } from '../utility/api/smart-picking';
 
 export function useSuggestAllocation() {
   const accessToken = useUserStore((s) => s.accessToken);

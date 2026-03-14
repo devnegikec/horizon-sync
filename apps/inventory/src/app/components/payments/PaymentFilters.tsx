@@ -1,5 +1,7 @@
 import { useCallback, useMemo, memo } from 'react';
+
 import { Search, X } from 'lucide-react';
+
 import {
   Input,
   Button,
@@ -10,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components';
+
 import type { PaymentFilters as Filters, PaymentStatus, PaymentMode, PaymentType } from '../../types/payment.types';
 
 interface PaymentFiltersProps {
@@ -97,18 +100,14 @@ export const PaymentFilters = memo(function PaymentFilters({ filters, setFilters
         <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-center">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search by reference number..."
+            <Input placeholder="Search by reference number..."
               value={filters.search || ''}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-9"
-            />
+              className="pl-9"/>
           </div>
 
-          <Select 
-            value={filters.status || 'all'} 
-            onValueChange={handleStatusChange}
-          >
+          <Select value={filters.status || 'all'} 
+            onValueChange={handleStatusChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
@@ -121,10 +120,8 @@ export const PaymentFilters = memo(function PaymentFilters({ filters, setFilters
             </SelectContent>
           </Select>
 
-          <Select 
-            value={filters.payment_mode || 'all'} 
-            onValueChange={handlePaymentModeChange}
-          >
+          <Select value={filters.payment_mode || 'all'} 
+            onValueChange={handlePaymentModeChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by mode" />
             </SelectTrigger>
@@ -137,10 +134,8 @@ export const PaymentFilters = memo(function PaymentFilters({ filters, setFilters
             </SelectContent>
           </Select>
 
-          <Select 
-            value={filters.payment_type || 'all'} 
-            onValueChange={handlePaymentTypeChange}
-          >
+          <Select value={filters.payment_type || 'all'} 
+            onValueChange={handlePaymentTypeChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
@@ -155,12 +150,10 @@ export const PaymentFilters = memo(function PaymentFilters({ filters, setFilters
         </div>
 
         {hasActiveFilters && (
-          <Button
-            variant="ghost"
+          <Button variant="ghost"
             size="sm"
             onClick={handleClearFilters}
-            className="gap-2"
-          >
+            className="gap-2">
             <X className="h-4 w-4" />
             Clear Filters
           </Button>
@@ -168,15 +161,11 @@ export const PaymentFilters = memo(function PaymentFilters({ filters, setFilters
       </div>
 
       <div className="flex items-center gap-2">
-        <Checkbox
-          id="has-unallocated"
+        <Checkbox id="has-unallocated"
           checked={filters.has_unallocated || false}
-          onCheckedChange={handleUnallocatedChange}
-        />
-        <label
-          htmlFor="has-unallocated"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        >
+          onCheckedChange={handleUnallocatedChange}/>
+        <label htmlFor="has-unallocated"
+          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
           Show only payments with unallocated amount
         </label>
       </div>

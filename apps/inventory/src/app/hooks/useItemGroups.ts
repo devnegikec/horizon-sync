@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
+ 
 import { useUserStore } from '@horizon-sync/store';
 
 import type { ItemGroup, ItemGroupListItem, ItemGroupListResponse, ItemGroupCreate, ItemGroupUpdate, ItemGroupFilters } from '../types/item-group.types';

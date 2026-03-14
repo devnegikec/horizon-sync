@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { FileText } from 'lucide-react';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
+ 
 import { useUserStore } from '@horizon-sync/store';
 import {
   Dialog,

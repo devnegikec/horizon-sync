@@ -1,15 +1,9 @@
 import { Eye, Edit, Send, XCircle, Trash2, FileText } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
+
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@horizon-sync/ui/components/ui/table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,9 +12,17 @@ import {
   DropdownMenuSeparator,
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@horizon-sync/ui/components/ui/table';
 import { TableSkeleton } from '@horizon-sync/ui/components/ui/table-skeleton';
+
 import type { RFQListItem, RFQFilters, RFQStatus } from '../../types/rfq.types';
-import { MoreHorizontal } from 'lucide-react';
 
 interface RFQTableProps {
   rfqs: RFQListItem[];
@@ -91,11 +93,9 @@ export function RFQTable({
     return (
       <Card>
         <CardContent className="p-6">
-          <EmptyState
-            icon={<FileText className="h-12 w-12" />}
+          <EmptyState icon={<FileText className="h-12 w-12" />}
             title="No RFQs found"
-            description="Create your first RFQ to request quotes from suppliers."
-          />
+            description="Create your first RFQ to request quotes from suppliers."/>
         </CardContent>
       </Card>
     );
@@ -210,20 +210,16 @@ export function RFQTable({
           Showing {rfqs.length} of {totalCount} RFQs
         </p>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
+          <Button variant="outline"
             size="sm"
             disabled={filters.page === 1}
-            onClick={() => setFilters({ ...filters, page: (filters.page || 1) - 1 })}
-          >
+            onClick={() => setFilters({ ...filters, page: (filters.page || 1) - 1 })}>
             Previous
           </Button>
-          <Button
-            variant="outline"
+          <Button variant="outline"
             size="sm"
             disabled={rfqs.length < (filters.page_size || 10)}
-            onClick={() => setFilters({ ...filters, page: (filters.page || 1) + 1 })}
-          >
+            onClick={() => setFilters({ ...filters, page: (filters.page || 1) + 1 })}>
             Next
           </Button>
         </div>

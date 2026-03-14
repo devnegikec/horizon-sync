@@ -73,8 +73,7 @@ export function RFQManagement() {
       <RFQManagementFilters filters={filters} setFilters={setFilters} tableInstance={tableInstance} />
 
       {/* RFQs Table */}
-      <RFQsTable
-        rfqs={rfqs}
+      <RFQsTable rfqs={rfqs}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || !!filters.status}
@@ -85,8 +84,7 @@ export function RFQManagement() {
         onClose={handleClose}
         onCreateRFQ={handleCreate}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
       {/* Detail Dialog */}
       <RFQDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} rfq={selectedRFQ} onEdit={handleEdit} />

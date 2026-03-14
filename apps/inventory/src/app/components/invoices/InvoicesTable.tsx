@@ -201,7 +201,7 @@ export function InvoicesTable({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => onCreatePayment(invoice)}>
                         <DollarSign className="mr-2 h-4 w-4" />
-                        Create Payment
+                        Capture Payment
                       </DropdownMenuItem>
                     </>
                   )}

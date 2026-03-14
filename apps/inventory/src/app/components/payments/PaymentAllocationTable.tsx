@@ -1,5 +1,7 @@
 import * as React from 'react';
+
 import { useQuery } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import {
@@ -14,11 +16,10 @@ import {
   TableHeader,
   TableRow,
 } from '@horizon-sync/ui/components';
-import { Loader2 } from 'lucide-react';
 
+import { paymentApi } from '../../api/payments';
 import type { PartyType, PaymentAllocationFormData } from '../../types/payment';
 import type { OutstandingInvoice } from '../../types/payment';
-import { paymentApi } from '../../api/payments';
 
 interface PaymentAllocationTableProps {
   partyId: string | null;
@@ -205,13 +206,11 @@ export function PaymentAllocationTable({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Invoice Allocations</h3>
-        <Button
-          type="button"
+        <Button type="button"
           variant="outline"
           size="sm"
           onClick={handleAutoAllocate}
-          disabled={disabled || totalAmount <= 0}
-        >
+          disabled={disabled || totalAmount <= 0}>
           Auto Allocate
         </Button>
       </div>
@@ -237,13 +236,11 @@ export function PaymentAllocationTable({
               return (
                 <TableRow key={invoice.id}>
                   <TableCell>
-                    <Checkbox
-                      checked={isSelected}
+                    <Checkbox checked={isSelected}
                       onCheckedChange={(checked) =>
                         handleInvoiceSelect(invoice.id, checked as boolean)
                       }
-                      disabled={disabled || invoice.id === preSelectedInvoiceId}
-                    />
+                      disabled={disabled || invoice.id === preSelectedInvoiceId}/>
                   </TableCell>
                   <TableCell className="font-medium">
                     {invoice.invoice_number}
@@ -258,16 +255,14 @@ export function PaymentAllocationTable({
                     {currency} {Number(invoice.outstanding_amount ?? 0).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Input
-                      type="text"
+                    <Input type="text"
                       inputMode="decimal"
                       placeholder="0.00"
                       value={getInputValue(invoice.id)}
                       onChange={(e) => handleAmountChange(invoice.id, e.target.value)}
                       onBlur={() => handleAmountBlur(invoice.id)}
                       disabled={disabled || !isSelected}
-                      className={`w-32 text-right ${isOverAllocated ? 'border-red-500' : ''}`}
-                    />
+                      className={`w-32 text-right ${isOverAllocated ? 'border-red-500' : ''}`}/>
                     {isOverAllocated && (
                       <p className="text-xs text-red-600 mt-1">
                         Exceeds outstanding

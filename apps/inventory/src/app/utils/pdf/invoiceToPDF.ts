@@ -1,7 +1,7 @@
 import type { Invoice } from '../../types/invoice.types';
 
-import type { PDFDocumentData, PDFLineItem } from './types';
 import { getCurrencySymbolForPDF } from './pdfCurrency';
+import type { PDFDocumentData, PDFLineItem } from './types';
 
 export const convertInvoiceToPDFData = (invoice: Invoice): PDFDocumentData => {
   const lineItems = invoice.line_items || [];

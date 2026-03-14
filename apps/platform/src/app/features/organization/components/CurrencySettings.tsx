@@ -201,11 +201,11 @@ export function CurrencySettings({ accessToken, disabled }: CurrencySettingsProp
           enableDeleteRow={false}
           newRowTemplate={EMPTY_ROW}
           addRowLabel="Add Currency"
-          heading=""/>
+          heading="" />
         {saving && (
           <div className="text-muted-foreground text-sm mt-2">Saving...</div>
         )}
-      </CardContent>
+      </CardContent >
       <ConfirmationDialog open={!!deleteTarget}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
         title="Delete Currency"
@@ -213,7 +213,7 @@ export function CurrencySettings({ accessToken, disabled }: CurrencySettingsProp
         confirmLabel="Delete"
         variant="destructive"
         loading={saving}
-        onConfirm={handleConfirmDelete}/>
-    </Card>
+        onConfirm={handleConfirmDelete} />
+    </Card >
   );
 }

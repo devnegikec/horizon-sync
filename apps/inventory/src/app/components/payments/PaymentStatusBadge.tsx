@@ -1,7 +1,9 @@
 import { memo } from 'react';
+
 import { Badge } from '@horizon-sync/ui/components';
-import { getStatusColor } from '../../utils/payment.utils';
+
 import type { PaymentStatus } from '../../types/payment.types';
+import { getStatusColor } from '../../utils/payment.utils';
 
 interface PaymentStatusBadgeProps {
   status: PaymentStatus;

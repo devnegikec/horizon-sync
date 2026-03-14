@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+
 import { ChevronRight, ChevronDown, Wallet, FolderTree, Loader2 } from 'lucide-react';
 
 import { Card, CardContent, Badge } from '@horizon-sync/ui/components';
-import { cn } from '@horizon-sync/ui/lib';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
+import { cn } from '@horizon-sync/ui/lib';
 
 import type { AccountType } from '../../types/account.types';
 import { ACCOUNT_TYPE_COLORS } from '../../utils/accountColors';
@@ -75,15 +76,13 @@ function TreeNodeItem({
 
   return (
     <div>
-      <div
-        className={cn(
+      <div className={cn(
           'flex items-center gap-2 py-2 px-3 rounded-md cursor-pointer transition-colors hover:bg-muted/50',
           isSelected && 'bg-primary/10 hover:bg-primary/15',
           !node.is_active && 'opacity-60'
         )}
         style={{ paddingLeft: `${depth * 24 + 12}px` }}
-        onClick={handleClick}
-      >
+        onClick={handleClick}>
         {/* Expand/Collapse Icon */}
         <div className="flex-shrink-0 w-4 h-4">
           {loading ? (
@@ -100,12 +99,10 @@ function TreeNodeItem({
         </div>
 
         {/* Account Icon */}
-        <div
-          className={cn(
+        <div className={cn(
             'flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg',
             hasChildren ? 'bg-primary/10' : 'bg-muted'
-          )}
-        >
+          )}>
           {hasChildren ? (
             <FolderTree className="h-4 w-4 text-primary" />
           ) : (
@@ -138,8 +135,7 @@ function TreeNodeItem({
       {hasChildren && isExpanded && node.children && (
         <div>
           {node.children.map((child) => (
-            <TreeNodeItem
-              key={child.id}
+            <TreeNodeItem key={child.id}
               node={child}
               depth={depth + 1}
               expandedNodes={expandedNodes}
@@ -147,8 +143,7 @@ function TreeNodeItem({
               onAccountSelect={onAccountSelect}
               selectedAccountId={selectedAccountId}
               lazyLoad={lazyLoad}
-              onLoadChildren={onLoadChildren}
-            />
+              onLoadChildren={onLoadChildren}/>
           ))}
         </div>
       )}
@@ -311,11 +306,9 @@ export function AccountTreeView({ onAccountSelect, selectedAccountId, lazyLoad =
     return (
       <Card>
         <CardContent className="p-6">
-          <EmptyState
-            icon={<FolderTree className="h-12 w-12" />}
+          <EmptyState icon={<FolderTree className="h-12 w-12" />}
             title="No accounts found"
-            description="Create your first account to see the hierarchy tree"
-          />
+            description="Create your first account to see the hierarchy tree"/>
         </CardContent>
       </Card>
     );
@@ -331,17 +324,13 @@ export function AccountTreeView({ onAccountSelect, selectedAccountId, lazyLoad =
             <h3 className="text-sm font-semibold">Account Hierarchy</h3>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleExpandAll}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <button onClick={handleExpandAll}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors">
               Expand All
             </button>
             <span className="text-muted-foreground">|</span>
-            <button
-              onClick={handleCollapseAll}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <button onClick={handleCollapseAll}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors">
               Collapse All
             </button>
           </div>
@@ -350,8 +339,7 @@ export function AccountTreeView({ onAccountSelect, selectedAccountId, lazyLoad =
         {/* Tree View */}
         <div className="p-2 max-h-[600px] overflow-y-auto">
           {treeData.map((node) => (
-            <TreeNodeItem
-              key={node.id}
+            <TreeNodeItem key={node.id}
               node={node}
               depth={0}
               expandedNodes={expandedNodes}
@@ -359,8 +347,7 @@ export function AccountTreeView({ onAccountSelect, selectedAccountId, lazyLoad =
               onAccountSelect={onAccountSelect}
               selectedAccountId={selectedAccountId}
               lazyLoad={lazyLoad}
-              onLoadChildren={loadChildren}
-            />
+              onLoadChildren={loadChildren}/>
           ))}
         </div>
       </CardContent>

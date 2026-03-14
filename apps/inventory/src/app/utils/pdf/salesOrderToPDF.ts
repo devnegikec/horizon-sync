@@ -1,7 +1,7 @@
 import type { SalesOrder } from '../../types/sales-order.types';
 
-import type { PDFDocumentData, PDFLineItem } from './types';
 import { getCurrencySymbolForPDF } from './pdfCurrency';
+import type { PDFDocumentData, PDFLineItem } from './types';
 
 export const convertSalesOrderToPDFData = (salesOrder: SalesOrder): PDFDocumentData => {
   const lineItems = salesOrder.items || [];

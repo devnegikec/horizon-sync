@@ -1,5 +1,8 @@
 import * as React from 'react';
+
 import { Calendar, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+
+import { useUserStore } from '@horizon-sync/store';
 import { Card, CardContent, CardHeader, CardTitle, Button } from '@horizon-sync/ui/components';
 import {
   Select,
@@ -8,10 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
-import { useUserStore } from '@horizon-sync/store';
-import { accountApi } from '../../utility/api/accounts';
+
 import type { AccountBalance, AccountBalanceHistoryResponse } from '../../types/account.types';
 import { getCurrencySymbol } from '../../types/currency.types';
+import { accountApi } from '../../utility/api/accounts';
 
 interface BalanceHistoryProps {
   accountId: string;

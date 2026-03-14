@@ -43,6 +43,7 @@ export interface PaymentEntry {
   payment_date: string;
   payment_mode: PaymentMode;
   reference_no?: string;
+  bank_account_id?: string;
   status: PaymentStatus;
   source: PaymentSource;
   gateway_transaction_id?: string;
@@ -80,6 +81,7 @@ export interface CreatePaymentPayload {
   payment_date: string;
   payment_mode: PaymentMode;
   reference_no?: string;
+  bank_account_id?: string;
 }
 
 export interface UpdatePaymentPayload {

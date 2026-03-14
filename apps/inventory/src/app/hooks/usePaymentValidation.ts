@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+
 import type { PaymentMode, PaymentType } from '../types/payment.types';
 
 export interface PaymentFormData {
@@ -9,6 +10,7 @@ export interface PaymentFormData {
   reference_no?: string;
   payment_mode?: PaymentMode;
   currency_code?: string;
+  bank_account_id?: string;
 }
 
 export interface ValidationErrors {
@@ -19,6 +21,7 @@ export interface ValidationErrors {
   reference_no?: string;
   currency_code?: string;
   payment_mode?: string;
+  bank_account_id?: string;
 }
 
 export function usePaymentValidation(
@@ -94,6 +97,13 @@ export function usePaymentValidation(
     ) {
       if (!formData.reference_no || formData.reference_no.trim() === '') {
         validationErrors.reference_no = 'Reference number is required for Check and Bank Transfer';
+      }
+    }
+
+    // Validate bank_account_id for Bank_Transfer
+    if (formData.payment_mode === 'Bank_Transfer') {
+      if (!formData.bank_account_id || formData.bank_account_id.trim() === '') {
+        validationErrors.bank_account_id = 'Bank account is required for Bank Transfer payments';
       }
     }
 

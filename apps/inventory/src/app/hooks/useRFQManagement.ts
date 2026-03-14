@@ -1,11 +1,12 @@
 import * as React from 'react';
 import { useMemo, useEffect } from 'react';
+
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import type { Table } from '@tanstack/react-table';
 
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
-import { rfqApi } from '../utility/api';
+
 import type {
   RFQ,
   RFQListItem,
@@ -15,6 +16,7 @@ import type {
   RFQFilters,
   RFQManagementFilters,
 } from '../types/rfq.types';
+import { rfqApi } from '../utility/api';
 
 interface UseRFQManagementResult {
   filters: RFQManagementFilters;

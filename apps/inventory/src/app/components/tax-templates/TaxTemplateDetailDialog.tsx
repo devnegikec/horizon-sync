@@ -1,6 +1,9 @@
 import * as React from 'react';
+
 import { Edit, Receipt } from 'lucide-react';
+
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
+
 import type { TaxTemplate } from '../../types/tax-template.types';
 
 interface TaxTemplateDetailDialogProps {

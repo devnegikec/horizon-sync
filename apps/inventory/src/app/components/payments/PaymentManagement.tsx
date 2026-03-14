@@ -4,19 +4,19 @@ import { DollarSign, Plus } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks';
-import { usePayments } from '../../hooks/usePayments';
-import { usePaymentActions } from '../../hooks/usePaymentActions';
-import { paymentApi } from '../../utility/api';
 
+import { usePaymentActions } from '../../hooks/usePaymentActions';
+import { usePayments } from '../../hooks/usePayments';
 import type { Invoice } from '../../types/invoice';
 import type { PaymentEntry, PaymentFilters as Filters } from '../../types/payment.types';
+import { paymentApi } from '../../utility/api';
 import { getStatIconColors } from '../../utils/payment.utils';
 
-import { PaymentDialog } from './PaymentDialog';
 import { PaymentDetailDialog } from './PaymentDetailDialog';
-import { StatCard } from './StatCard';
+import { PaymentDialog } from './PaymentDialog';
 import { PaymentFilters } from './PaymentFilters';
 import { PaymentTable } from './PaymentTable';
+import { StatCard } from './StatCard';
 
 export interface PaymentManagementProps {
   preSelectedInvoice?: Invoice | null;
@@ -201,7 +201,7 @@ export function PaymentManagement({
         <Button onClick={handleCreatePayment}
           className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
           <Plus className="h-4 w-4" />
-          New Payment
+          Capture Payment
         </Button>
       </div>
 
@@ -242,25 +242,21 @@ export function PaymentManagement({
         onCancel={handleCancelPayment}/>
 
       {/* Create/Edit Dialog */}
-      <PaymentDialog
-        open={dialogOpen}
+      <PaymentDialog open={dialogOpen}
         onOpenChange={setDialogOpen}
         payment={selectedPayment}
-        onSuccess={handleDialogSuccess}
-      />
+        onSuccess={handleDialogSuccess}/>
 
       {/* View Details Dialog */}
       {paymentForDetail && (
-        <PaymentDetailDialog
-          open={detailDialogOpen}
+        <PaymentDetailDialog open={detailDialogOpen}
           onOpenChange={handleDetailClose}
           payment={paymentForDetail}
           onEdit={handleDetailEdit}
           onConfirm={handleDetailConfirm}
           onCancel={handleDetailCancel}
           onAllocationChange={handleDetailAllocationChange}
-          loading={detailLoading}
-        />
+          loading={detailLoading}/>
       )}
     </div>
   );

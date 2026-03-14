@@ -151,20 +151,16 @@ export function CreateDeliveryFromPickListDialog({
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Delivery Date (optional, defaults to now)</Label>
-              <Input
-                type="datetime-local"
+              <Input type="datetime-local"
                 value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
-              />
+                onChange={(e) => setDeliveryDate(e.target.value)}/>
             </div>
             <div className="space-y-2">
               <Label>Remarks (optional)</Label>
-              <Textarea
-                value={remarks}
+              <Textarea value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 rows={2}
-                placeholder="Delivery notes..."
-              />
+                placeholder="Delivery notes..."/>
             </div>
           </div>
 

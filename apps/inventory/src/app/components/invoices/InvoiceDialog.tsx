@@ -1,7 +1,8 @@
 import * as React from 'react';
+
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 
 import { useUserStore } from '@horizon-sync/store';
 import {
@@ -22,11 +23,12 @@ import {
   Textarea,
 } from '@horizon-sync/ui/components';
 
-import type { Invoice } from '../../types/invoice';
 import type { CustomerResponse } from '../../types/customer.types';
+import type { Invoice } from '../../types/invoice';
 import { customerApi } from '../../utility/api';
-import { InvoiceLineItemTable } from './InvoiceLineItemTable';
 import { invoiceFormSchema, type InvoiceFormData, type InvoiceLineItemFormData } from '../../utils/validation';
+
+import { InvoiceLineItemTable } from './InvoiceLineItemTable';
 
 function computeDocumentDiscount(subtotal: number, discountType: string, discountValue: number): number {
   if (!discountValue || discountValue <= 0) return 0;
@@ -199,15 +201,12 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="party_id">Customer *</Label>
-                <Controller
-                  name="party_id"
+                <Controller name="party_id"
                   control={control}
                   render={({ field }) => (
-                    <Select
-                      value={field.value}
+                    <Select value={field.value}
                       onValueChange={field.onChange}
-                      disabled={isEdit}
-                    >
+                      disabled={isEdit}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select customer" />
                       </SelectTrigger>
@@ -219,8 +218,7 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
                         ))}
                       </SelectContent>
                     </Select>
-                  )}
-                />
+                  )}/>
                 {errors.party_id && (
                   <p className="text-sm text-red-600">{errors.party_id.message}</p>
                 )}
@@ -228,15 +226,12 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
 
               <div className="space-y-2">
                 <Label htmlFor="invoice_type">Invoice Type *</Label>
-                <Controller
-                  name="invoice_type"
+                <Controller name="invoice_type"
                   control={control}
                   render={({ field }) => (
-                    <Select
-                      value={field.value}
+                    <Select value={field.value}
                       onValueChange={field.onChange}
-                      disabled={isEdit}
-                    >
+                      disabled={isEdit}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -247,8 +242,7 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
                         <SelectItem value="Credit Note">Credit Note</SelectItem>
                       </SelectContent>
                     </Select>
-                  )}
-                />
+                  )}/>
                 {errors.invoice_type && (
                   <p className="text-sm text-red-600">{errors.invoice_type.message}</p>
                 )}
@@ -258,18 +252,14 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="posting_date">Posting Date *</Label>
-                <Controller
-                  name="posting_date"
+                <Controller name="posting_date"
                   control={control}
                   render={({ field }) => (
-                    <Input
-                      id="posting_date"
+                    <Input id="posting_date"
                       type="date"
                       value={field.value instanceof Date ? field.value.toISOString().slice(0, 10) : ''}
-                      onChange={(e) => field.onChange(new Date(e.target.value))}
-                    />
-                  )}
-                />
+                      onChange={(e) => field.onChange(new Date(e.target.value))}/>
+                  )}/>
                 {errors.posting_date && (
                   <p className="text-sm text-red-600">{errors.posting_date.message}</p>
                 )}
@@ -277,18 +267,14 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
 
               <div className="space-y-2">
                 <Label htmlFor="due_date">Due Date *</Label>
-                <Controller
-                  name="due_date"
+                <Controller name="due_date"
                   control={control}
                   render={({ field }) => (
-                    <Input
-                      id="due_date"
+                    <Input id="due_date"
                       type="date"
                       value={field.value instanceof Date ? field.value.toISOString().slice(0, 10) : ''}
-                      onChange={(e) => field.onChange(new Date(e.target.value))}
-                    />
-                  )}
-                />
+                      onChange={(e) => field.onChange(new Date(e.target.value))}/>
+                  )}/>
                 {errors.due_date && (
                   <p className="text-sm text-red-600">{errors.due_date.message}</p>
                 )}
@@ -296,15 +282,12 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
 
               <div className="space-y-2">
                 <Label htmlFor="currency">Currency *</Label>
-                <Controller
-                  name="currency"
+                <Controller name="currency"
                   control={control}
                   render={({ field }) => (
-                    <Select
-                      value={field.value}
+                    <Select value={field.value}
                       onValueChange={field.onChange}
-                      disabled={isEdit}
-                    >
+                      disabled={isEdit}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -315,8 +298,7 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
                         <SelectItem value="GBP">GBP</SelectItem>
                       </SelectContent>
                     </Select>
-                  )}
-                />
+                  )}/>
                 {errors.currency && (
                   <p className="text-sm text-red-600">{errors.currency.message}</p>
                 )}
@@ -326,15 +308,12 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
             {isEdit && (
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Controller
-                  name="status"
+                <Controller name="status"
                   control={control}
                   render={({ field }) => (
-                    <Select
-                      value={field.value}
+                    <Select value={field.value}
                       onValueChange={field.onChange}
-                      disabled={availableStatuses.length === 1}
-                    >
+                      disabled={availableStatuses.length === 1}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -346,8 +325,7 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
                         ))}
                       </SelectContent>
                     </Select>
-                  )}
-                />
+                  )}/>
                 {errors.status && (
                   <p className="text-sm text-red-600">{errors.status.message}</p>
                 )}
@@ -358,29 +336,23 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
           {/* Remarks */}
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>
-            <Controller
-              name="remarks"
+            <Controller name="remarks"
               control={control}
               render={({ field }) => (
-                <Textarea
-                  id="remarks"
+                <Textarea id="remarks"
                   value={field.value}
                   onChange={field.onChange}
                   placeholder="Additional notes..."
-                  rows={2}
-                />
-              )}
-            />
+                  rows={2}/>
+              )}/>
           </div>
 
           {/* Line Items */}
           <Separator />
           <div className="space-y-2">
-            <InvoiceLineItemTable
-              items={lineItems}
+            <InvoiceLineItemTable items={lineItems}
               onItemsChange={(items) => setValue('line_items', items)}
-              disabled={isLineItemEditingDisabled}
-            />
+              disabled={isLineItemEditingDisabled}/>
             {errors.line_items && (
               <p className="text-sm text-red-600">
                 {typeof errors.line_items.message === 'string' 
@@ -404,15 +376,12 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
               <div className="flex justify-between items-center gap-4">
                 <span className="text-sm">Discount:</span>
                 <div className="flex items-center gap-2">
-                  <Controller
-                    name="discount_type"
+                  <Controller name="discount_type"
                     control={control}
                     render={({ field }) => (
-                      <Select
-                        value={field.value ?? 'percentage'}
+                      <Select value={field.value ?? 'percentage'}
                         onValueChange={field.onChange}
-                        disabled={isLineItemEditingDisabled}
-                      >
+                        disabled={isLineItemEditingDisabled}>
                         <SelectTrigger className="w-28">
                           <SelectValue />
                         </SelectTrigger>
@@ -421,24 +390,19 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
                           <SelectItem value="flat">Flat</SelectItem>
                         </SelectContent>
                       </Select>
-                    )}
-                  />
-                  <Controller
-                    name="discount_value"
+                    )}/>
+                  <Controller name="discount_value"
                     control={control}
                     render={({ field }) => (
-                      <Input
-                        type="number"
+                      <Input type="number"
                         min={0}
                         step={discountType === 'percentage' ? 1 : 0.01}
                         className="w-24 text-right"
                         value={field.value ?? ''}
                         onChange={(e) => field.onChange(e.target.value)}
                         disabled={isLineItemEditingDisabled}
-                        placeholder={discountType === 'percentage' ? '%' : 'Amount'}
-                      />
-                    )}
-                  />
+                        placeholder={discountType === 'percentage' ? '%' : 'Amount'}/>
+                    )}/>
                 </div>
                 <span className="text-sm text-muted-foreground w-24 text-right">
                   −{currency} {totalDiscountAmount.toFixed(2)}
@@ -453,12 +417,10 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
+            <Button type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={saving}
-            >
+              disabled={saving}>
               Cancel
             </Button>
             <Button type="submit" disabled={saving}>

@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { Plus } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -34,38 +35,32 @@ export function BasicInformationStep({
                     <Label htmlFor="itemCode">
                         Item Code <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                        id="itemCode"
+                    <Input id="itemCode"
                         value={formData.itemCode}
                         onChange={(e) => setFormData((prev) => ({ ...prev, itemCode: e.target.value }))}
                         placeholder="e.g., ELEC-001"
-                        required
-                    />
+                        required/>
                 </div>
 
                 <div className="space-y-2">
                     <Label htmlFor="itemName">
                         Item Name <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                        id="itemName"
+                    <Input id="itemName"
                         value={formData.name}
                         onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                         placeholder="Enter item name"
-                        required
-                    />
+                        required/>
                 </div>
             </div>
 
             <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea
-                    id="description"
+                <Textarea id="description"
                     value={formData.description}
                     onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                     placeholder="Enter item description"
-                    rows={3}
-                />
+                    rows={3}/>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -74,10 +69,8 @@ export function BasicInformationStep({
                         Item Group <span className="text-red-500">*</span>
                     </Label>
                     {hasItemGroups ? (
-                        <Select
-                            value={formData.itemGroupId}
-                            onValueChange={(value) => setFormData((prev) => ({ ...prev, itemGroupId: value }))}
-                        >
+                        <Select value={formData.itemGroupId}
+                            onValueChange={(value) => setFormData((prev) => ({ ...prev, itemGroupId: value }))}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select group" />
                             </SelectTrigger>
@@ -100,10 +93,8 @@ export function BasicInformationStep({
                     <Label htmlFor="itemType">
                         Item Type <span className="text-red-500">*</span>
                     </Label>
-                    <Select
-                        value={formData.itemType}
-                        onValueChange={(value) => setFormData((prev) => ({ ...prev, itemType: value }))}
-                    >
+                    <Select value={formData.itemType}
+                        onValueChange={(value) => setFormData((prev) => ({ ...prev, itemType: value }))}>
                         <SelectTrigger>
                             <SelectValue placeholder="Select type" />
                         </SelectTrigger>
@@ -123,10 +114,8 @@ export function BasicInformationStep({
                     <Label htmlFor="unitOfMeasure">
                         Unit of Measure <span className="text-red-500">*</span>
                     </Label>
-                    <Select
-                        value={formData.unitOfMeasure}
-                        onValueChange={(value) => setFormData((prev) => ({ ...prev, unitOfMeasure: value }))}
-                    >
+                    <Select value={formData.unitOfMeasure}
+                        onValueChange={(value) => setFormData((prev) => ({ ...prev, unitOfMeasure: value }))}>
                         <SelectTrigger>
                             <SelectValue placeholder="Select unit" />
                         </SelectTrigger>
@@ -144,10 +133,8 @@ export function BasicInformationStep({
                     <Label htmlFor="status">
                         Status <span className="text-red-500">*</span>
                     </Label>
-                    <Select
-                        value={formData.status}
-                        onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value }))}
-                    >
+                    <Select value={formData.status}
+                        onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value }))}>
                         <SelectTrigger>
                             <SelectValue placeholder="Select status" />
                         </SelectTrigger>

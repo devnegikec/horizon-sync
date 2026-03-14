@@ -27,16 +27,12 @@ export function InvoiceManagementFilters({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <SearchInput
-          className="sm:w-80"
+        <SearchInput className="sm:w-80"
           placeholder="Search by invoice #, party..."
-          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
-        />
+          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
         <div className="flex gap-3">
-          <Select
-            value={filters.invoice_type}
-            onValueChange={(invoice_type) => setFilters((prev) => ({ ...prev, invoice_type }))}
-          >
+          <Select value={filters.invoice_type}
+            onValueChange={(invoice_type) => setFilters((prev) => ({ ...prev, invoice_type }))}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
@@ -46,10 +42,8 @@ export function InvoiceManagementFilters({
               <SelectItem value="purchase">Purchase</SelectItem>
             </SelectContent>
           </Select>
-          <Select
-            value={filters.status}
-            onValueChange={(status) => setFilters((prev) => ({ ...prev, status }))}
-          >
+          <Select value={filters.status}
+            onValueChange={(status) => setFilters((prev) => ({ ...prev, status }))}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>

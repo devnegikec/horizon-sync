@@ -1,5 +1,6 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import { render, screen, fireEvent } from '@testing-library/react';
+
 import '@testing-library/jest-dom';
 import { InvoiceDetailDialog } from '../../../../app/components/invoices/InvoiceDetailDialog';
 import type { Invoice } from '../../../../app/types/invoice';
@@ -68,11 +69,9 @@ describe('InvoiceDetailDialog', () => {
 
   it('renders invoice details correctly', () => {
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={mockInvoice}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Invoice Details')).toBeInTheDocument();
@@ -83,11 +82,9 @@ describe('InvoiceDetailDialog', () => {
 
   it('shows Record Payment button when status is Submitted and outstanding > 0', () => {
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={mockInvoice}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Record Payment')).toBeInTheDocument();
@@ -96,11 +93,9 @@ describe('InvoiceDetailDialog', () => {
   it('hides Record Payment button when status is Paid', () => {
     const paidInvoice = { ...mockInvoice, status: 'Paid' as const, outstanding_amount: 0 };
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={paidInvoice}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.queryByText('Record Payment')).not.toBeInTheDocument();
@@ -109,11 +104,9 @@ describe('InvoiceDetailDialog', () => {
   it('shows Edit button only when status is Draft', () => {
     const draftInvoice = { ...mockInvoice, status: 'Draft' as const };
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={draftInvoice}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Edit')).toBeInTheDocument();
@@ -121,11 +114,9 @@ describe('InvoiceDetailDialog', () => {
 
   it('hides Edit button when status is not Draft', () => {
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={mockInvoice}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.queryByText('Edit')).not.toBeInTheDocument();
@@ -133,11 +124,9 @@ describe('InvoiceDetailDialog', () => {
 
   it('displays line items table', () => {
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={mockInvoice}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Line Items')).toBeInTheDocument();
@@ -147,11 +136,9 @@ describe('InvoiceDetailDialog', () => {
 
   it('displays payment history when payments exist', () => {
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={mockInvoice}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Payment History')).toBeInTheDocument();
@@ -160,11 +147,9 @@ describe('InvoiceDetailDialog', () => {
 
   it('displays sales order reference link when reference exists', () => {
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={mockInvoice}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText(/Created from Sales Order/)).toBeInTheDocument();
@@ -173,11 +158,9 @@ describe('InvoiceDetailDialog', () => {
 
   it('displays totals correctly', () => {
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={mockInvoice}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Subtotal')).toBeInTheDocument();
@@ -189,11 +172,9 @@ describe('InvoiceDetailDialog', () => {
 
   it('returns null when invoice is null', () => {
     const { container } = render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={null}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(container.firstChild).toBeNull();
@@ -201,11 +182,9 @@ describe('InvoiceDetailDialog', () => {
 
   it('displays View button for each payment in payment history', () => {
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={mockInvoice}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Payment History')).toBeInTheDocument();
@@ -216,11 +195,9 @@ describe('InvoiceDetailDialog', () => {
 
   it('calls onViewPayment when View button is clicked in payment history', () => {
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={mockInvoice}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     // Find all buttons with "View" text
@@ -235,11 +212,9 @@ describe('InvoiceDetailDialog', () => {
 
   it('calls onViewSalesOrder when View Order button is clicked', () => {
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={mockInvoice}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     const viewOrderButton = screen.getByText('View Order');
@@ -251,11 +226,9 @@ describe('InvoiceDetailDialog', () => {
   it('does not display View Order button when onViewSalesOrder is not provided', () => {
     const handlersWithoutSalesOrder = { ...mockHandlers, onViewSalesOrder: undefined };
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={mockInvoice}
-        {...handlersWithoutSalesOrder}
-      />
+        {...handlersWithoutSalesOrder}/>
     );
 
     expect(screen.queryByText('View Order')).not.toBeInTheDocument();
@@ -264,11 +237,9 @@ describe('InvoiceDetailDialog', () => {
   it('does not display View buttons in payment history when onViewPayment is not provided', () => {
     const handlersWithoutPayment = { ...mockHandlers, onViewPayment: undefined };
     render(
-      <InvoiceDetailDialog
-        open={true}
+      <InvoiceDetailDialog open={true}
         invoice={mockInvoice}
-        {...handlersWithoutPayment}
-      />
+        {...handlersWithoutPayment}/>
     );
 
     expect(screen.getByText('Payment History')).toBeInTheDocument();

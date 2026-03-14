@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
-import { rfqApi } from '../utility/api';
+
 import type { RFQListItem, RFQFilters } from '../types/rfq.types';
+import { rfqApi } from '../utility/api';
 
 export function useRFQs(initialFilters: Partial<RFQFilters> = {}) {
   const accessToken = useUserStore((s) => s.accessToken);

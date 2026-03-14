@@ -1,8 +1,11 @@
 import { useMemo, useCallback, memo } from 'react';
+
 import { Trash2 } from 'lucide-react';
+
 import { Button, Badge, Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components';
-import { formatAllocationAmount } from '../../utils/allocation.utils';
+
 import type { PaymentReference } from '../../types/payment.types';
+import { formatAllocationAmount } from '../../utils/allocation.utils';
 
 interface AllocationListProps {
   allocations: PaymentReference[];
@@ -47,13 +50,11 @@ const AllocationRow = memo(({
         </p>
       </div>
       {isDraft && (
-        <Button
-          variant="ghost"
+        <Button variant="ghost"
           size="sm"
           onClick={handleRemove}
           disabled={loading}
-          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-        >
+          className="text-destructive hover:text-destructive hover:bg-destructive/10">
           <Trash2 className="h-4 w-4" />
         </Button>
       )}
@@ -96,14 +97,12 @@ export const AllocationList = memo(function AllocationList({
       <CardContent className="p-0">
         <div className="divide-y">
           {allocations.map((allocation) => (
-            <AllocationRow
-              key={allocation.id}
+            <AllocationRow key={allocation.id}
               allocation={allocation}
               paymentCurrency={paymentCurrency}
               isDraft={isDraft}
               onRemove={onRemove}
-              loading={loading}
-            />
+              loading={loading}/>
           ))}
         </div>
         <div className="border-t bg-muted/30 p-4">

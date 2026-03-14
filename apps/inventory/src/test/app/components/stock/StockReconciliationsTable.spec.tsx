@@ -145,12 +145,10 @@ describe('StockReconciliationsTable', () => {
   it('should display create button in empty state when no filters', () => {
     const mockOnCreate = jest.fn();
     render(
-      <StockReconciliationsTable
-        {...defaultProps}
+      <StockReconciliationsTable {...defaultProps}
         stockReconciliations={[]}
         hasActiveFilters={false}
-        onCreateReconciliation={mockOnCreate}
-      />
+        onCreateReconciliation={mockOnCreate}/>
     );
 
     expect(screen.getByTestId('empty-state-action')).toBeTruthy();
@@ -159,12 +157,10 @@ describe('StockReconciliationsTable', () => {
   it('should not display create button in empty state when filters are active', () => {
     const mockOnCreate = jest.fn();
     render(
-      <StockReconciliationsTable
-        {...defaultProps}
+      <StockReconciliationsTable {...defaultProps}
         stockReconciliations={[]}
         hasActiveFilters={true}
-        onCreateReconciliation={mockOnCreate}
-      />
+        onCreateReconciliation={mockOnCreate}/>
     );
 
     expect(screen.queryByTestId('empty-state-action')).toBeNull();
@@ -204,10 +200,8 @@ describe('StockReconciliationsTable', () => {
     };
 
     render(
-      <StockReconciliationsTable
-        {...defaultProps}
-        stockReconciliations={[draftReconciliation, submittedReconciliation]}
-      />
+      <StockReconciliationsTable {...defaultProps}
+        stockReconciliations={[draftReconciliation, submittedReconciliation]}/>
     );
 
     // The mock DataTable doesn't render cell content, so we just verify the table exists

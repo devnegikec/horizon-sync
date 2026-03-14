@@ -285,35 +285,29 @@ function EditableLineItemRow<T extends BaseLineItem>({
         )}
       </div>
 
-      <ItemSelectionFields
-        item={item}
+      <ItemSelectionFields item={item}
         index={index}
         itemData={itemData}
         disabled={disabled}
         showItemGroup={showItemGroup}
         onItemChange={onItemChange}
         searchItems={searchItems}
-        itemLabelFormatter={itemLabelFormatter}
-      />
+        itemLabelFormatter={itemLabelFormatter}/>
 
-      <QuantityFields
-        item={item}
+      <QuantityFields item={item}
         index={index}
         itemData={itemData}
         disabled={disabled}
         validationError={validationError}
-        onItemChange={onItemChange}
-      />
+        onItemChange={onItemChange}/>
 
-      <PricingFields
-        item={item}
+      <PricingFields item={item}
         index={index}
         itemData={itemData}
         disabled={disabled}
         showTax={showTax}
         taxAmount={taxAmount}
-        onItemChange={onItemChange}
-      />
+        onItemChange={onItemChange}/>
 
       <TotalFields baseAmount={baseAmount} totalAmount={totalAmount} />
     </div>
@@ -346,8 +340,7 @@ function ItemSelectionFields<T extends BaseLineItem>({
     <div className="grid gap-3 md:grid-cols-2">
       <div className="space-y-1">
         <Label className="text-xs">Item Name *</Label>
-        <ItemPickerSelect
-          value={item.item_id}
+        <ItemPickerSelect value={item.item_id}
           onValueChange={(v) => onItemChange(index, 'item_id' as keyof T, v)}
           searchItems={searchItems}
           labelFormatter={itemLabelFormatter}
@@ -356,8 +349,7 @@ function ItemSelectionFields<T extends BaseLineItem>({
           disabled={disabled}
           searchPlaceholder="Search items..."
           minSearchLength={2}
-          selectedItemData={itemData || null}
-        />
+          selectedItemData={itemData || null}/>
       </div>
       {showItemGroup && (
         <div className="space-y-1">
@@ -390,8 +382,7 @@ function QuantityFields<T extends BaseLineItem>({
     <div className="grid gap-3 md:grid-cols-2">
       <div className="space-y-1">
         <Label className="text-xs">Quantity *</Label>
-        <Input
-          type="number"
+        <Input type="number"
           min={itemData?.min_order_qty || 1}
           max={itemData?.max_order_qty}
           step="0.01"
@@ -399,8 +390,7 @@ function QuantityFields<T extends BaseLineItem>({
           onChange={(e) => onItemChange(index, 'qty' as keyof T, Number(e.target.value))}
           disabled={disabled}
           required
-          className={validationError ? 'border-destructive' : ''}
-        />
+          className={validationError ? 'border-destructive' : ''}/>
         {validationError && (
           <div className="flex items-center gap-1 text-xs text-destructive">
             <AlertCircle className="h-3 w-3" />
@@ -416,14 +406,12 @@ function QuantityFields<T extends BaseLineItem>({
       </div>
       <div className="space-y-1">
         <Label className="text-xs">UOM *</Label>
-        <Input
-          value={item.uom}
+        <Input value={item.uom}
           onChange={(e) => onItemChange(index, 'uom' as keyof T, e.target.value)}
           placeholder="pcs"
           disabled
           className="bg-muted"
-          required
-        />
+          required/>
       </div>
     </div>
   );
@@ -452,15 +440,13 @@ function PricingFields<T extends BaseLineItem>({
     <div className="grid gap-3 md:grid-cols-2">
       <div className="space-y-1">
         <Label className="text-xs">Rate *</Label>
-        <Input
-          type="number"
+        <Input type="number"
           min="0"
           step="0.01"
           value={item.rate}
           onChange={(e) => onItemChange(index, 'rate' as keyof T, Number(e.target.value))}
           disabled={disabled}
-          required
-        />
+          required/>
       </div>
       {showTax && (
         <div className="space-y-1">

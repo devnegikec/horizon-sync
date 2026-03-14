@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+
 import { Plus, Trash2, Save, Loader2, AlertCircle, CheckCircle2, Database, Trash } from 'lucide-react';
+
 import { useUserStore } from '@horizon-sync/store';
 import {
   Card,
@@ -15,7 +17,7 @@ import {
   Badge,
 } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks';
-import { accountApi } from '../../utility/api/accounts';
+
 import type {
   DefaultAccountMapping,
   DefaultAccountUpdate,
@@ -25,6 +27,8 @@ import type {
   AccountPaginationResponse,
   DefaultAccountUpdateResponse,
 } from '../../types/account.types';
+import { accountApi } from '../../utility/api/accounts';
+import { environment } from '../../../environments/environment';
 
 interface TransactionTypeConfig {
   transaction_type: string;
@@ -35,6 +39,9 @@ interface TransactionTypeConfig {
 }
 
 const COMMON_TRANSACTION_TYPES = [
+  'payment',
+  'sales_invoice',
+  'purchase_invoice',
   'inventory_purchase',
   'inventory_sale',
   'accounts_payable',
@@ -129,7 +136,14 @@ export const SystemConfiguration: React.FC = () => {
     try {
       setLoadingAccounts(true);
       const response = await accountApi.list(accessToken, 1, 1000, { status: 'active' }) as AccountPaginationResponse;
-      setAvailableAccounts(response.chart_of_accounts || []);
+      
+      // Filter to only show posting accounts (is_posting_account = true)
+      // Non-posting accounts are parent/group accounts and should not be used for transactions
+      const postingAccounts = (response.chart_of_accounts || []).filter(
+        account => account.is_posting_account === true
+      );
+      
+      setAvailableAccounts(postingAccounts);
     } catch (err) {
       console.error('Failed to load accounts:', err);
     } finally {
@@ -306,13 +320,40 @@ export const SystemConfiguration: React.FC = () => {
       setSeeding(true);
       setError(null);
 
-      const response = await fetch('/api/v1/admin/seed-data', {
-        method: 'POST',
+      // Get current user to extract organization_id
+      const userResponse = await fetch(`${environment.apiBaseUrl}/identity/me`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
         },
       });
+
+      if (!userResponse.ok) {
+        throw new Error('Failed to get user information');
+      }
+
+      const userData = await userResponse.json();
+      const organizationId = userData.organization_id;
+
+      if (!organizationId) {
+        throw new Error('No organization found for current user');
+      }
+
+      // Call the manual trigger endpoint (same as identity service uses)
+      // This uses DefaultChartSetupService with proper validation
+      const response = await fetch(
+        `${environment.apiCoreUrl}/setup/default-chart-of-accounts/${organizationId}/trigger`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            currency: 'USD',
+            force_recreate: false,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -360,7 +401,7 @@ export const SystemConfiguration: React.FC = () => {
       setSeeding(true);
       setError(null);
 
-      const response = await fetch('/api/v1/admin/clear-data', {
+      const response = await fetch(`${environment.apiCoreUrl}/admin/clear-data`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -452,12 +493,10 @@ export const SystemConfiguration: React.FC = () => {
               </div>
 
               <div className="flex gap-3">
-                <Button
-                  onClick={handleSeedData}
+                <Button onClick={handleSeedData}
                   disabled={seeding}
                   variant="outline"
-                  className="gap-2 border-amber-300 hover:bg-amber-100"
-                >
+                  className="gap-2 border-amber-300 hover:bg-amber-100">
                   {seeding ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -466,17 +505,15 @@ export const SystemConfiguration: React.FC = () => {
                   ) : (
                     <>
                       <Database className="h-4 w-4" />
-                      Seed Sample Data (1000+ Accounts)
+                      Create Default Chart of Accounts
                     </>
                   )}
                 </Button>
 
-                <Button
-                  onClick={handleClearData}
+                <Button onClick={handleClearData}
                   disabled={seeding}
                   variant="outline"
-                  className="gap-2 border-red-300 hover:bg-red-100 text-red-600"
-                >
+                  className="gap-2 border-red-300 hover:bg-red-100 text-red-600">
                   {seeding ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -494,8 +531,11 @@ export const SystemConfiguration: React.FC = () => {
               <div className="rounded-lg bg-amber-100 p-3 text-sm text-amber-900">
                 <p className="font-medium">Note:</p>
                 <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li>Seed data creates a comprehensive chart of accounts with hierarchy</li>
-                  <li>Includes sample accounts for all types (Assets, Liabilities, Equity, Revenue, Expenses)</li>
+                  <li>Seed data creates 35+ GL accounts with proper hierarchy</li>
+                  <li>Includes accounts for all types (Assets, Liabilities, Equity, Revenue, Expenses)</li>
+                  <li>Creates default account mappings for common transaction types</li>
+                  <li>Validates account codes against your configured format</li>
+                  <li>Idempotent - safe to call multiple times (won't create duplicates)</li>
                   <li>Clear data will DELETE ALL accounts - use with caution!</li>
                   <li>Refresh the page after seeding to see the new accounts</li>
                 </ul>
@@ -514,11 +554,9 @@ export const SystemConfiguration: React.FC = () => {
                 Configure default accounts for common transaction types
               </p>
             </div>
-            <Button
-              onClick={handleAddDefaultAccount}
+            <Button onClick={handleAddDefaultAccount}
               disabled={saving}
-              size="sm"
-            >
+              size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Add Mapping
             </Button>
@@ -534,19 +572,15 @@ export const SystemConfiguration: React.FC = () => {
             <div className="space-y-6">
               {defaultAccounts.map((config, index) => (
                 <div key={index} className="space-y-2">
-                  <div
-                    className={`flex gap-4 p-4 border rounded-lg items-start ${config.validationError ? 'border-destructive bg-destructive/5' : ''
-                      }`}
-                  >
+                  <div className={`flex gap-4 p-4 border rounded-lg items-start ${config.validationError ? 'border-destructive bg-destructive/5' : ''
+                      }`}>
                     <div className="flex-1 space-y-2">
                       <Label>Transaction Type</Label>
-                      <Select
-                        value={config.transaction_type}
+                      <Select value={config.transaction_type}
                         onValueChange={(value) =>
                           handleDefaultAccountChange(index, 'transaction_type', value)
                         }
-                        disabled={saving}
-                      >
+                        disabled={saving}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
@@ -562,25 +596,21 @@ export const SystemConfiguration: React.FC = () => {
 
                     <div className="flex-1 space-y-2">
                       <Label>Scenario (Optional)</Label>
-                      <Input
-                        value={config.scenario || ''}
+                      <Input value={config.scenario || ''}
                         onChange={(e) =>
                           handleDefaultAccountChange(index, 'scenario', e.target.value || null)
                         }
                         placeholder="e.g., domestic, international"
-                        disabled={saving}
-                      />
+                        disabled={saving}/>
                     </div>
 
                     <div className="flex-1 space-y-2">
                       <Label>Account</Label>
-                      <Select
-                        value={config.account_id}
+                      <Select value={config.account_id}
                         onValueChange={(value) =>
                           handleDefaultAccountChange(index, 'account_id', value)
                         }
-                        disabled={saving || loadingAccounts}
-                      >
+                        disabled={saving || loadingAccounts}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select account" />
                         </SelectTrigger>
@@ -599,13 +629,11 @@ export const SystemConfiguration: React.FC = () => {
                       )}
                     </div>
 
-                    <Button
-                      variant="ghost"
+                    <Button variant="ghost"
                       size="icon"
                       onClick={() => handleRemoveDefaultAccount(index)}
                       disabled={saving}
-                      className="mt-8"
-                    >
+                      className="mt-8">
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
@@ -624,10 +652,8 @@ export const SystemConfiguration: React.FC = () => {
           )}
 
           <div className="flex justify-end mt-6">
-            <Button
-              onClick={handleSaveDefaultAccounts}
-              disabled={saving || defaultAccounts.length === 0}
-            >
+            <Button onClick={handleSaveDefaultAccounts}
+              disabled={saving || defaultAccounts.length === 0}>
               {saving ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -670,12 +696,10 @@ export const SystemConfiguration: React.FC = () => {
               <Label className="text-sm font-medium">Common Format Patterns</Label>
               <div className="flex flex-wrap gap-2 mt-2">
                 {FORMAT_EXAMPLES.map((format) => (
-                  <Badge
-                    key={format.pattern}
+                  <Badge key={format.pattern}
                     variant={customPattern === format.pattern ? 'default' : 'outline'}
                     className="cursor-pointer"
-                    onClick={() => handleSelectFormatExample(format.pattern)}
-                  >
+                    onClick={() => handleSelectFormatExample(format.pattern)}>
                     {format.example} - {format.description}
                   </Badge>
                 ))}
@@ -685,8 +709,7 @@ export const SystemConfiguration: React.FC = () => {
             <div className="space-y-2">
               <Label htmlFor="pattern">Custom Pattern (Regex)</Label>
               <div className="relative">
-                <Input
-                  id="pattern"
+                <Input id="pattern"
                   value={customPattern}
                   onChange={(e) => {
                     setCustomPattern(e.target.value);
@@ -694,8 +717,7 @@ export const SystemConfiguration: React.FC = () => {
                   }}
                   disabled={saving}
                   placeholder="Enter regex pattern"
-                  className={patternError ? 'border-destructive' : patternValid ? 'border-green-500' : ''}
-                />
+                  className={patternError ? 'border-destructive' : patternValid ? 'border-green-500' : ''}/>
                 {patternValid && !patternError && customPattern.trim() && (
                   <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />
                 )}
@@ -731,10 +753,8 @@ export const SystemConfiguration: React.FC = () => {
             </div>
 
             <div className="flex justify-end">
-              <Button
-                onClick={handleSaveCodeFormat}
-                disabled={saving || !customPattern.trim() || !patternValid}
-              >
+              <Button onClick={handleSaveCodeFormat}
+                disabled={saving || !customPattern.trim() || !patternValid}>
                 {saving ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+
 import { useQuery } from '@tanstack/react-query';
+import { FileText, AlertCircle } from 'lucide-react';
+
 import { useUserStore } from '@horizon-sync/store';
 import {
   Button,
@@ -14,15 +17,28 @@ import {
   CardContent,
   Checkbox,
 } from '@horizon-sync/ui/components';
-import { usePaymentValidation, type PaymentFormData } from '../../hooks/usePaymentValidation';
-import { toDateInputValue } from '../../utils/payment.utils';
-import { customerApi } from '../../utility/api';
-import { supplierApi } from '../../utility/api';
+
 import { useOutstandingInvoicesForAllocation } from '../../hooks/useOutstandingInvoicesForAllocation';
+import { usePaymentValidation, type PaymentFormData } from '../../hooks/usePaymentValidation';
 import type { CustomerResponse } from '../../types/customer.types';
-import type { SuppliersResponse } from '../../types/supplier.types';
 import type { PaymentType, PaymentMode, CreatePaymentPayload, UpdatePaymentPayload, InvoiceForAllocation } from '../../types/payment.types';
-import { FileText, AlertCircle } from 'lucide-react';
+import type { SuppliersResponse } from '../../types/supplier.types';
+import { supplierApi } from '../../utility/api';
+import { customerApi } from '../../utility/api';
+import { apiRequest } from '../../utility/api/core';
+import { toDateInputValue } from '../../utils/payment.utils';
+
+interface BankAccount {
+  id: string;
+  bank_name: string;
+  account_number: string;
+  is_active: boolean;
+}
+
+interface BankAccountListResponse {
+  items: BankAccount[];
+  total: number;
+}
 
 interface PaymentFormProps {
   initialData?: Partial<CreatePaymentPayload>;
@@ -58,6 +74,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
     payment_date: normalizedDate,
     payment_mode: initialData?.payment_mode,
     reference_no: initialData?.reference_no,
+    bank_account_id: initialData?.bank_account_id,
   });
 
   // Allocation state (only for create mode)
@@ -97,6 +114,23 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
     staleTime: 60_000,
     retry: 1,
   });
+
+  // Fetch active bank accounts for Bank_Transfer payment mode
+  const {
+    data: bankAccountsData,
+    error: bankAccountsError,
+    isFetching: bankAccountsLoading,
+  } = useQuery<BankAccountListResponse>({
+    queryKey: ['bank-accounts-active', accessToken ?? ''],
+    queryFn: () => apiRequest<BankAccountListResponse>('/bank-accounts', accessToken || '', {
+      params: { is_active: true }
+    }),
+    enabled: !!accessToken,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const bankAccounts = bankAccountsData?.items ?? [];
 
   const customers = customersData?.customers ?? [];
   const suppliers = suppliersData?.suppliers ?? [];
@@ -141,6 +175,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
         payment_date: dateVal,
         payment_mode: initialData.payment_mode,
         reference_no: initialData.reference_no,
+        bank_account_id: initialData.bank_account_id,
       });
     }
   }, [initialData?.payment_date, initialData?.amount, initialData?.payment_mode, initialData?.reference_no, initialData?.currency_code, initialData?.party_id, initialData?.payment_type]);
@@ -169,6 +204,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
         payment_date: paymentDateTime,
         payment_mode: formData.payment_mode!,
         reference_no: formData.reference_no,
+        ...(formData.payment_mode === 'Bank_Transfer' && { bank_account_id: formData.bank_account_id }),
       };
       onSubmit(payload);
     } else {
@@ -208,6 +244,10 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
 
   const handleReferenceChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, reference_no: e.target.value }));
+  }, []);
+
+  const handleBankAccountChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, bank_account_id: value }));
   }, []);
 
   // Allocation handlers
@@ -254,10 +294,8 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
         <>
           <div className="space-y-2">
             <Label htmlFor="payment_type">Payment Type *</Label>
-            <Select
-              value={formData.payment_type ?? ''}
-              onValueChange={handlePaymentTypeChange}
-            >
+            <Select value={formData.payment_type ?? ''}
+              onValueChange={handlePaymentTypeChange}>
               <SelectTrigger id="payment_type">
                 <SelectValue placeholder="Select payment type" />
               </SelectTrigger>
@@ -273,14 +311,11 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
 
           <div className="space-y-2">
             <Label htmlFor="party_id">Party *</Label>
-            <Select
-              value={formData.party_id ?? ''}
+            <Select value={formData.party_id ?? ''}
               onValueChange={handlePartySelect}
-              disabled={!formData.payment_type || partyLoading}
-            >
+              disabled={!formData.payment_type || partyLoading}>
               <SelectTrigger id="party_id">
-                <SelectValue
-                  placeholder={
+                <SelectValue placeholder={
                     !formData.payment_type
                       ? 'Select payment type first'
                       : partyLoading
@@ -288,8 +323,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
                         : formData.payment_type === 'Customer_Payment'
                           ? 'Select customer'
                           : 'Select supplier'
-                  }
-                />
+                  }/>
               </SelectTrigger>
               <SelectContent>
                 {formData.payment_type === 'Customer_Payment' &&
@@ -332,14 +366,12 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
 
       <div className="space-y-2">
         <Label htmlFor="amount">Amount *</Label>
-        <Input
-          id="amount"
+        <Input id="amount"
           type="number"
           step="0.01"
           placeholder="0.00"
           value={formData.amount || ''}
-          onChange={handleAmountChange}
-        />
+          onChange={handleAmountChange}/>
         {errors.amount && (
           <p className="text-sm text-destructive">{errors.amount}</p>
         )}
@@ -361,29 +393,25 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
 
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
-                  <input
-                    type="radio"
+                  <input type="radio"
                     id="single"
                     name="allocationType"
                     value="single"
                     checked={allocationType === 'single'}
                     onChange={(e) => handleAllocationTypeChange(e.target.value)}
-                    className="h-4 w-4 cursor-pointer"
-                  />
+                    className="h-4 w-4 cursor-pointer"/>
                   <Label htmlFor="single" className="font-normal cursor-pointer">
                     Single Invoice {preselectedInvoiceId && '(Pre-selected)'}
                   </Label>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <input
-                    type="radio"
+                  <input type="radio"
                     id="multiple"
                     name="allocationType"
                     value="multiple"
                     checked={allocationType === 'multiple'}
                     onChange={(e) => handleAllocationTypeChange(e.target.value)}
-                    className="h-4 w-4 cursor-pointer"
-                  />
+                    className="h-4 w-4 cursor-pointer"/>
                   <Label htmlFor="multiple" className="font-normal cursor-pointer">
                     Multiple Invoices
                   </Label>
@@ -407,8 +435,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
                         return (
                           <div key={invoice.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded border">
                             <div className="flex items-center space-x-3 flex-1">
-                              <input
-                                type="radio"
+                              <input type="radio"
                                 id={`invoice-${invoice.id}`}
                                 name="singleInvoice"
                                 value={invoice.id}
@@ -422,8 +449,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
                                     setFormData(prev => ({ ...prev, amount: selectedInvoice.balance_due }));
                                   }
                                 }}
-                                className="h-4 w-4 cursor-pointer"
-                              />
+                                className="h-4 w-4 cursor-pointer"/>
                               <Label htmlFor={`invoice-${invoice.id}`} className="flex items-center gap-2 cursor-pointer flex-1">
                                 <FileText className="h-4 w-4 text-muted-foreground" />
                                 <div className="flex-1">
@@ -451,11 +477,9 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
                           <div key={invoice.id} className="border rounded-md p-3 space-y-2">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3 flex-1">
-                                <Checkbox
-                                  id={`invoice-multi-${invoice.id}`}
+                                <Checkbox id={`invoice-multi-${invoice.id}`}
                                   checked={isSelected}
-                                  onCheckedChange={(checked) => handleInvoiceToggle(invoice.id, checked as boolean)}
-                                />
+                                  onCheckedChange={(checked) => handleInvoiceToggle(invoice.id, checked as boolean)}/>
                                 <Label htmlFor={`invoice-multi-${invoice.id}`} className="flex items-center gap-2 cursor-pointer flex-1">
                                   <FileText className="h-4 w-4 text-muted-foreground" />
                                   <div className="flex-1">
@@ -476,15 +500,13 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
                                 <Label htmlFor={`amount-${invoice.id}`} className="text-xs text-muted-foreground">
                                   Allocation Amount
                                 </Label>
-                                <Input
-                                  id={`amount-${invoice.id}`}
+                                <Input id={`amount-${invoice.id}`}
                                   type="number"
                                   step="0.01"
                                   placeholder="0.00"
                                   value={allocationAmounts[invoice.id] || ''}
                                   onChange={(e) => handleAllocationAmountChange(invoice.id, e.target.value)}
-                                  className="mt-1"
-                                />
+                                  className="mt-1"/>
                               </div>
                             )}
                           </div>
@@ -501,13 +523,11 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
 
       <div className="space-y-2">
         <Label htmlFor="currency_code">Currency *</Label>
-        <Input
-          id="currency_code"
+        <Input id="currency_code"
           placeholder="USD"
           maxLength={3}
           value={formData.currency_code || ''}
-          onChange={handleCurrencyChange}
-        />
+          onChange={handleCurrencyChange}/>
         {errors.currency_code && (
           <p className="text-sm text-destructive">{errors.currency_code}</p>
         )}
@@ -515,12 +535,10 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
 
       <div className="space-y-2">
         <Label htmlFor="payment_date">Payment Date *</Label>
-        <Input
-          id="payment_date"
+        <Input id="payment_date"
           type="date"
           value={formData.payment_date || ''}
-          onChange={handleDateChange}
-        />
+          onChange={handleDateChange}/>
         {errors.payment_date && (
           <p className="text-sm text-destructive">{errors.payment_date}</p>
         )}
@@ -528,10 +546,8 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
 
       <div className="space-y-2">
         <Label htmlFor="payment_mode">Payment Mode *</Label>
-        <Select
-          value={formData.payment_mode ?? ''}
-          onValueChange={handlePaymentModeChange}
-        >
+        <Select value={formData.payment_mode ?? ''}
+          onValueChange={handlePaymentModeChange}>
           <SelectTrigger id="payment_mode">
             <SelectValue placeholder="Select payment mode" />
           </SelectTrigger>
@@ -546,15 +562,47 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
         )}
       </div>
 
+      {formData.payment_mode === 'Bank_Transfer' && (
+        <div className="space-y-2">
+          <Label htmlFor="bank_account_id">Bank Account *</Label>
+          <Select value={formData.bank_account_id ?? ''}
+            onValueChange={handleBankAccountChange}
+            disabled={bankAccountsLoading}>
+            <SelectTrigger id="bank_account_id">
+              <SelectValue placeholder={
+                  bankAccountsLoading
+                    ? 'Loading bank accounts...'
+                    : bankAccounts.length === 0
+                      ? 'No active bank accounts available'
+                      : 'Select bank account'
+                }/>
+            </SelectTrigger>
+            <SelectContent>
+              {bankAccounts.map((account) => (
+                <SelectItem key={account.id} value={account.id}>
+                  {account.bank_name} - ****{account.account_number.slice(-4)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {bankAccountsError && (
+            <p className="text-sm text-destructive">
+              Failed to load bank accounts. Check your connection and try again.
+            </p>
+          )}
+          {errors.bank_account_id && (
+            <p className="text-sm text-destructive">{errors.bank_account_id}</p>
+          )}
+        </div>
+      )}
+
       {requiresReferenceNo && (
         <div className="space-y-2">
           <Label htmlFor="reference_no">Reference Number *</Label>
-          <Input
-            id="reference_no"
+          <Input id="reference_no"
             placeholder="Enter check number or transaction reference"
             value={formData.reference_no || ''}
-            onChange={handleReferenceChange}
-          />
+            onChange={handleReferenceChange}/>
           {errors.reference_no && (
             <p className="text-sm text-destructive">{errors.reference_no}</p>
           )}
@@ -565,16 +613,14 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
         <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
           Cancel
         </Button>
-        <button
-          type="button"
+        <button type="button"
           disabled={!isValid || loading}
           onClick={(e) => {
             e.preventDefault();
             handleSubmit(e as unknown as React.FormEvent);
           }}
-          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2 disabled:pointer-events-none disabled:opacity-50"
-        >
-          {loading ? 'Saving...' : mode === 'create' ? 'Create Payment' : 'Update Payment'}
+          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2 disabled:pointer-events-none disabled:opacity-50">
+          {loading ? 'Saving...' : mode === 'create' ? 'Capture Payment' : 'Update Payment'}
         </button>
       </div>
     </form>

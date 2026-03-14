@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import * as fc from 'fast-check';
+
 import { StockLevelsTable } from '../../../../app/components/stock/StockLevelsTable';
 import type { StockLevel } from '../../../../app/types/stock.types';
 
@@ -87,12 +88,10 @@ describe('Property 8: Empty state header preservation', () => {
         fc.boolean(), // hasActiveFilters
         (hasActiveFilters) => {
           const { container } = render(
-            <StockLevelsTable
-              stockLevels={[]}
+            <StockLevelsTable stockLevels={[]}
               loading={false}
               error={null}
-              hasActiveFilters={hasActiveFilters}
-            />
+              hasActiveFilters={hasActiveFilters}/>
           );
 
           // Property: Headers must be visible when data is empty
@@ -123,12 +122,10 @@ describe('Property 8: Empty state header preservation', () => {
           fc.pre(error === null);
 
           const { container } = render(
-            <StockLevelsTable
-              stockLevels={[]}
+            <StockLevelsTable stockLevels={[]}
               loading={false}
               error={error}
-              hasActiveFilters={hasActiveFilters}
-            />
+              hasActiveFilters={hasActiveFilters}/>
           );
 
           // Property: Table structure with headers must exist
@@ -165,12 +162,10 @@ describe('Property 8: Empty state header preservation', () => {
         ),
         (stockLevels) => {
           const { container } = render(
-            <StockLevelsTable
-              stockLevels={stockLevels as StockLevel[]}
+            <StockLevelsTable stockLevels={stockLevels as StockLevel[]}
               loading={false}
               error={null}
-              hasActiveFilters={false}
-            />
+              hasActiveFilters={false}/>
           );
 
           const headers = container.querySelectorAll('[data-testid^="header-"]');
@@ -195,12 +190,10 @@ describe('Property 8: Empty state header preservation', () => {
         fc.boolean(), // hasActiveFilters
         (hasActiveFilters) => {
           render(
-            <StockLevelsTable
-              stockLevels={[]}
+            <StockLevelsTable stockLevels={[]}
               loading={false}
               error={null}
-              hasActiveFilters={hasActiveFilters}
-            />
+              hasActiveFilters={hasActiveFilters}/>
           );
 
           // Property: When data is empty, we should render the table structure

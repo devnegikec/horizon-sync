@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { Loader2, Layers } from 'lucide-react';
 
-// eslint-disable-next-line @nx/enforce-module-boundaries
+ 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';

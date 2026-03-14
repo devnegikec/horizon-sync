@@ -27,7 +27,7 @@ const DOCUMENT_TYPES: { type: DocumentType; label: string; description: string }
 ];
 
 export function NamingSeriesSettings({ namingSeries, onChange, disabled }: NamingSeriesSettingsProps) {
-  const handleUpdate = (docType: DocumentType, field: string, value: any) => {
+  const handleUpdate = (docType: DocumentType, field: string, value: string | boolean | number) => {
     const config = namingSeries[docType];
     if (!config) return;
 
@@ -53,7 +53,7 @@ export function NamingSeriesSettings({ namingSeries, onChange, disabled }: Namin
           const config = namingSeries[type];
           if (!config) return null;
 
-          const preview = previewDocumentNumber(type, { 
+          const preview = previewDocumentNumber(type, {
             naming_series: namingSeries,
             currencies: [],
             address: {

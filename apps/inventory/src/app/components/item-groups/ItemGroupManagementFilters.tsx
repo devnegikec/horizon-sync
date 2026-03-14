@@ -18,15 +18,11 @@ export function ItemGroupManagementFilters({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <SearchInput
-          className="sm:w-72"
+        <SearchInput className="sm:w-72"
           placeholder="Search by name or code..."
-          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
-        />
-        <Select
-          value={filters.status}
-          onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
-        >
+          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
+        <Select value={filters.status}
+          onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="All Status" />
           </SelectTrigger>

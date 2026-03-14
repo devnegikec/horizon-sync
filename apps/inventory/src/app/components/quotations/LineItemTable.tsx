@@ -334,25 +334,21 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                 <div className="space-y-1">
                   <Label className="text-xs">Discount</Label>
                   <div className="flex gap-2">
-                    <select
-                      className="flex h-9 w-[100px] rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    <select className="flex h-9 w-[100px] rounded-md border border-input bg-background px-3 py-1 text-sm"
                       value={(item.discount_type || 'percentage') as string}
                       onChange={(e) => handleItemChange(index, 'discount_type', e.target.value as 'flat' | 'percentage')}
-                      disabled={disabled}
-                    >
+                      disabled={disabled}>
                       <option value="percentage">%</option>
                       <option value="flat">Flat</option>
                     </select>
-                    <Input
-                      type="number"
+                    <Input type="number"
                       min="0"
                       step={item.discount_type === 'percentage' ? '1' : '0.01'}
                       value={item.discount_value ?? ''}
                       onChange={(e) => handleItemChange(index, 'discount_value', e.target.value === '' ? 0 : Number(e.target.value))}
                       disabled={disabled}
                       placeholder={item.discount_type === 'percentage' ? '0' : '0.00'}
-                      className="flex-1"
-                    />
+                      className="flex-1"/>
                   </div>
                   {(item.discount_amount && Number(item.discount_amount) > 0) && (
                     <p className="text-xs text-muted-foreground">

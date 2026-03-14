@@ -37,15 +37,11 @@ export function TaxSummaryCollapsible({
 
   return (
     <div className="space-y-3">
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="w-full flex items-center justify-between group"
-      >
+      <button onClick={() => setIsCollapsed(!isCollapsed)}
+        className="w-full flex items-center justify-between group">
         <h3 className="text-lg font-medium group-hover:text-primary transition-colors">Tax Summary</h3>
-        <ChevronDown
-          className="h-5 w-5 transition-transform duration-200"
-          style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
-        />
+        <ChevronDown className="h-5 w-5 transition-transform duration-200"
+          style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}/>
       </button>
 
       {!isCollapsed && (

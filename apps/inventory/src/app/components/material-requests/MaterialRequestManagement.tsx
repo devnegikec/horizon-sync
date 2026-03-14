@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { AlertTriangle } from 'lucide-react';
 
 import { Card, CardContent } from '@horizon-sync/ui/components';
@@ -59,33 +60,26 @@ export function MaterialRequestManagement() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <MaterialRequestHeader
-        onRefresh={refetch}
+      <MaterialRequestHeader onRefresh={refetch}
         onCreateMaterialRequest={handleCreate}
-        isLoading={loading}
-      />
+        isLoading={loading}/>
 
       {/* Error State */}
       {ErrorDisplay}
 
       {/* Stats Cards */}
-      <MaterialRequestStats
-        total={stats.total}
+      <MaterialRequestStats total={stats.total}
         draft={stats.draft}
         submitted={stats.submitted}
-        quoted={stats.quoted}
-      />
+        quoted={stats.quoted}/>
 
       {/* Filters */}
-      <MaterialRequestFilters
-        filters={filters}
+      <MaterialRequestFilters filters={filters}
         setFilters={setFilters}
-        tableInstance={tableInstance}
-      />
+        tableInstance={tableInstance}/>
 
       {/* Material Requests Table */}
-      <MaterialRequestsTable
-        materialRequests={materialRequests}
+      <MaterialRequestsTable materialRequests={materialRequests}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.status !== 'all'}
@@ -96,23 +90,18 @@ export function MaterialRequestManagement() {
         onCancel={handleCancel}
         onCreateMaterialRequest={handleCreate}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
       {/* Detail Dialog */}
-      <MaterialRequestDetailDialog
-        open={detailDialogOpen}
+      <MaterialRequestDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        materialRequest={selectedMaterialRequest}
-      />
+        materialRequest={selectedMaterialRequest}/>
 
       {/* Create/Edit Dialog */}
-      <MaterialRequestDialog
-        open={createDialogOpen}
+      <MaterialRequestDialog open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         materialRequest={editMaterialRequest}
-        onSave={handleSave}
-      />
+        onSave={handleSave}/>
     </div>
   );
 }

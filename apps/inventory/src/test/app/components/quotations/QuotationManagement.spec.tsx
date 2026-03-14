@@ -1,5 +1,6 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
 import { QuotationManagement } from '../../../../app/components/quotations/QuotationManagement';
 import { useQuotationManagement } from '../../../../app/hooks/useQuotationManagement';
 import type { Quotation } from '../../../../app/types/quotation.types';
@@ -31,16 +32,12 @@ jest.mock('../../../../app/components/quotations/QuotationStats', () => ({
 jest.mock('../../../../app/components/quotations/QuotationManagementFilters', () => ({
   QuotationManagementFilters: ({ filters, setFilters }: any) => (
     <div data-testid="quotation-filters">
-      <input
-        data-testid="search-input"
+      <input data-testid="search-input"
         value={filters.search}
-        onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-      />
-      <select
-        data-testid="status-select"
+        onChange={(e) => setFilters({ ...filters, search: e.target.value })}/>
+      <select data-testid="status-select"
         value={filters.status}
-        onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-      >
+        onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
         <option value="all">All</option>
         <option value="draft">Draft</option>
         <option value="sent">Sent</option>

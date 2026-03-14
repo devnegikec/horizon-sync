@@ -4,6 +4,8 @@
  * API functions for payment operations
  */
 
+import { useUserStore } from '@horizon-sync/store';
+
 import {
   PaymentEntry,
   PaymentReference,
@@ -14,7 +16,6 @@ import {
   CancelPaymentPayload,
   PaymentFilters,
 } from '../../types/payment.types';
-import { useUserStore } from '@horizon-sync/store';
 // Payments API is on core-service (port 8001), not identity-service (port 8000)
 const API_BASE_URL = process.env.NX_API_CORE_URL || 'http://localhost:8001';
 

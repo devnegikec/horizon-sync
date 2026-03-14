@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+
 import { SalesOrderDetailDialog } from '../../../../app/components/sales-orders/SalesOrderDetailDialog';
 import type { SalesOrder } from '../../../../app/types/sales-order.types';
 
@@ -71,13 +72,11 @@ describe('SalesOrderDetailDialog', () => {
   describe('Dialog rendering', () => {
     it('should not render when salesOrder is null', () => {
       const { container } = render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={null}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(container.firstChild).toBeNull();
@@ -86,13 +85,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should render when open is true and salesOrder is provided', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByRole('dialog')).toBeTruthy();
@@ -104,13 +101,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display sales order number', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Sales Order Number')).toBeTruthy();
@@ -120,13 +115,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display customer name', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Customer')).toBeTruthy();
@@ -136,13 +129,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display customer_id when customer_name is not available', () => {
       const salesOrder = createMockSalesOrder({ customer_name: undefined });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('customer-1')).toBeTruthy();
@@ -151,13 +142,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display status badge', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       // StatusBadge component should render the status
@@ -169,13 +158,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display formatted order date', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Order Date')).toBeTruthy();
@@ -185,13 +172,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display formatted delivery date', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Delivery Date')).toBeTruthy();
@@ -201,13 +186,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display "Not set" when delivery date is not provided', () => {
       const salesOrder = createMockSalesOrder({ delivery_date: null });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Not set')).toBeTruthy();
@@ -216,13 +199,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display currency', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Currency')).toBeTruthy();
@@ -237,13 +218,11 @@ describe('SalesOrderDetailDialog', () => {
         reference_id: 'quotation-123',
       });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText(/Created from Quotation/i)).toBeTruthy();
@@ -257,13 +236,11 @@ describe('SalesOrderDetailDialog', () => {
         reference_id: undefined,
       });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.queryByText(/Created from Quotation/i)).toBeNull();
@@ -274,13 +251,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display grand total with currency', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Grand Total')).toBeTruthy();
@@ -292,13 +267,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display line items table with all columns', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Line Items')).toBeTruthy();
@@ -314,13 +287,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display line item details', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Product A')).toBeTruthy();
@@ -332,13 +303,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display fulfillment status with progress bars', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       // Check for billed and delivered quantities
@@ -350,13 +319,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display "No line items" when items array is empty', () => {
       const salesOrder = createMockSalesOrder({ items: [] });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('No line items')).toBeTruthy();
@@ -365,13 +332,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display "No line items" when items is undefined', () => {
       const salesOrder = createMockSalesOrder({ items: undefined });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('No line items')).toBeTruthy();
@@ -382,13 +347,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display remarks when available', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Remarks')).toBeTruthy();
@@ -398,13 +361,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should not display remarks section when remarks is null', () => {
       const salesOrder = createMockSalesOrder({ remarks: null });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       // Should not find the Remarks label
@@ -417,13 +378,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display created timestamp', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText(/Created: Jan 15, 2026/)).toBeTruthy();
@@ -432,13 +391,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display updated timestamp when available', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText(/Updated: Jan 15, 2026/)).toBeTruthy();
@@ -449,13 +406,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display Close button', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Close')).toBeTruthy();
@@ -464,13 +419,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should call onOpenChange when Close button is clicked', () => {
       const salesOrder = createMockSalesOrder();
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       const closeButton = screen.getByText('Close');
@@ -482,13 +435,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display Edit button for non-terminal statuses', () => {
       const salesOrder = createMockSalesOrder({ status: 'confirmed' });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Edit')).toBeTruthy();
@@ -497,13 +448,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should not display Edit button for closed status', () => {
       const salesOrder = createMockSalesOrder({ status: 'closed' });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.queryByText('Edit')).toBeNull();
@@ -512,13 +461,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should not display Edit button for cancelled status', () => {
       const salesOrder = createMockSalesOrder({ status: 'cancelled' });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.queryByText('Edit')).toBeNull();
@@ -527,13 +474,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should call onEdit when Edit button is clicked', () => {
       const salesOrder = createMockSalesOrder({ status: 'confirmed' });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       const editButton = screen.getByText('Edit');
@@ -545,13 +490,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display Create Invoice button for confirmed status', () => {
       const salesOrder = createMockSalesOrder({ status: 'confirmed' });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Create Invoice')).toBeTruthy();
@@ -560,13 +503,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display Create Invoice button for partially_delivered status', () => {
       const salesOrder = createMockSalesOrder({ status: 'partially_delivered' });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Create Invoice')).toBeTruthy();
@@ -575,13 +516,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should display Create Invoice button for delivered status', () => {
       const salesOrder = createMockSalesOrder({ status: 'delivered' });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.getByText('Create Invoice')).toBeTruthy();
@@ -590,13 +529,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should not display Create Invoice button for draft status', () => {
       const salesOrder = createMockSalesOrder({ status: 'draft' });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.queryByText('Create Invoice')).toBeNull();
@@ -605,13 +542,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should not display Create Invoice button for closed status', () => {
       const salesOrder = createMockSalesOrder({ status: 'closed' });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.queryByText('Create Invoice')).toBeNull();
@@ -620,13 +555,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should not display Create Invoice button for cancelled status', () => {
       const salesOrder = createMockSalesOrder({ status: 'cancelled' });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       expect(screen.queryByText('Create Invoice')).toBeNull();
@@ -635,13 +568,11 @@ describe('SalesOrderDetailDialog', () => {
     it('should call onCreateInvoice when Create Invoice button is clicked', () => {
       const salesOrder = createMockSalesOrder({ status: 'confirmed' });
       render(
-        <SalesOrderDetailDialog
-          open={true}
+        <SalesOrderDetailDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onEdit={mockOnEdit}
-          onCreateInvoice={mockOnCreateInvoice}
-        />
+          onCreateInvoice={mockOnCreateInvoice}/>
       );
 
       const createInvoiceButton = screen.getByText('Create Invoice');

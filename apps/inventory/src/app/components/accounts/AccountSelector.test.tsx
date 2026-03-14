@@ -1,8 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AccountSelector } from './AccountSelector';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import type { AccountListItem } from '../../types/account.types';
+
+import { AccountSelector } from './AccountSelector';
+
 
 // Mock the useAccounts hook
 vi.mock('../../hooks/useAccounts', () => ({
@@ -70,11 +73,9 @@ describe('AccountSelector', () => {
 
   it('renders with label', () => {
     render(
-      <AccountSelector
-        value={null}
+      <AccountSelector value={null}
         onValueChange={mockOnValueChange}
-        label="Select Account"
-      />
+        label="Select Account"/>
     );
 
     expect(screen.getByText('Select Account')).toBeInTheDocument();
@@ -82,12 +83,10 @@ describe('AccountSelector', () => {
 
   it('shows required indicator when required', () => {
     render(
-      <AccountSelector
-        value={null}
+      <AccountSelector value={null}
         onValueChange={mockOnValueChange}
         label="Account"
-        required
-      />
+        required/>
     );
 
     expect(screen.getByText('*')).toBeInTheDocument();
@@ -95,11 +94,9 @@ describe('AccountSelector', () => {
 
   it('filters accounts by type', async () => {
     render(
-      <AccountSelector
-        value={null}
+      <AccountSelector value={null}
         onValueChange={mockOnValueChange}
-        accountType="ASSET"
-      />
+        accountType="ASSET"/>
     );
 
     const trigger = screen.getByRole('combobox');
@@ -114,11 +111,9 @@ describe('AccountSelector', () => {
 
   it('excludes specified account', async () => {
     render(
-      <AccountSelector
-        value={null}
+      <AccountSelector value={null}
         onValueChange={mockOnValueChange}
-        excludeAccountId="1"
-      />
+        excludeAccountId="1"/>
     );
 
     const trigger = screen.getByRole('combobox');
@@ -132,10 +127,8 @@ describe('AccountSelector', () => {
 
   it('filters inactive accounts by default', async () => {
     render(
-      <AccountSelector
-        value={null}
-        onValueChange={mockOnValueChange}
-      />
+      <AccountSelector value={null}
+        onValueChange={mockOnValueChange}/>
     );
 
     const trigger = screen.getByRole('combobox');
@@ -148,11 +141,9 @@ describe('AccountSelector', () => {
 
   it('shows inactive accounts when filterInactive is false', async () => {
     render(
-      <AccountSelector
-        value={null}
+      <AccountSelector value={null}
         onValueChange={mockOnValueChange}
-        filterInactive={false}
-      />
+        filterInactive={false}/>
     );
 
     const trigger = screen.getByRole('combobox');
@@ -165,10 +156,8 @@ describe('AccountSelector', () => {
 
   it('calls onValueChange when account is selected', async () => {
     render(
-      <AccountSelector
-        value={null}
-        onValueChange={mockOnValueChange}
-      />
+      <AccountSelector value={null}
+        onValueChange={mockOnValueChange}/>
     );
 
     const trigger = screen.getByRole('combobox');
@@ -186,11 +175,9 @@ describe('AccountSelector', () => {
 
   it('calls onValueChange with null when "None" is selected', async () => {
     render(
-      <AccountSelector
-        value="1"
+      <AccountSelector value="1"
         onValueChange={mockOnValueChange}
-        required={false}
-      />
+        required={false}/>
     );
 
     const trigger = screen.getByRole('combobox');
@@ -208,11 +195,9 @@ describe('AccountSelector', () => {
 
   it('does not show "None" option when required', async () => {
     render(
-      <AccountSelector
-        value={null}
+      <AccountSelector value={null}
         onValueChange={mockOnValueChange}
-        required
-      />
+        required/>
     );
 
     const trigger = screen.getByRole('combobox');
@@ -225,11 +210,9 @@ describe('AccountSelector', () => {
 
   it('disables component when disabled prop is true', () => {
     render(
-      <AccountSelector
-        value={null}
+      <AccountSelector value={null}
         onValueChange={mockOnValueChange}
-        disabled
-      />
+        disabled/>
     );
 
     const trigger = screen.getByRole('combobox');
