@@ -68,6 +68,7 @@ export interface Invoice {
   discount_amount?: number;
   reference_type?: string | null;
   reference_id?: string | null;
+  reference_no?: string | null; // Sales Order/Delivery Note/Pick List number
   remarks?: string | null;
   created_at: string;
   updated_at: string;

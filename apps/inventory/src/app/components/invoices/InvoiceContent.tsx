@@ -4,6 +4,7 @@ import type { Invoice, InvoiceLineItem } from '../../types/invoice.types';
 import { formatDate } from '../../utility/formatDate';
 import { LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
 
+import { BankAccountDetails } from './BankAccountDetails';
 import { InvoiceAmountsSummary } from './InvoiceAmountsSummary';
 import { InvoiceDates } from './InvoiceDates';
 import { InvoiceHeader } from './InvoiceHeader';
@@ -123,12 +124,15 @@ export function InvoiceContent({ invoice, currencySymbol }: { invoice: Invoice; 
        <TaxSummaryCollapsible taxSummary={taxSummary} currencySymbol={currencySymbol} />
       <InvoiceAmountsSummary invoice={invoice} currencySymbol={currencySymbol} />
 
-      {(invoice.reference_type || invoice.reference_id) && (
+      {/* Bank Account Details */}
+      <BankAccountDetails />
+
+      {(invoice.reference_type || invoice.reference_no) && (
         <div className="rounded-lg border p-4 bg-muted/20">
           <p className="text-sm text-muted-foreground mb-1">Reference</p>
           <p className="text-sm font-medium">
             {invoice.reference_type && <span className="capitalize">{invoice.reference_type}: </span>}
-            {invoice.reference_id}
+            {invoice.reference_no || invoice.reference_id}
           </p>
         </div>
       )}

@@ -28,6 +28,7 @@ import type { Invoice } from '../../types/invoice';
 import { customerApi } from '../../utility/api';
 import { invoiceFormSchema, type InvoiceFormData, type InvoiceLineItemFormData } from '../../utils/validation';
 
+import { BankAccountDetails } from './BankAccountDetails';
 import { InvoiceLineItemTable } from './InvoiceLineItemTable';
 
 function computeDocumentDiscount(subtotal: number, discountType: string, discountValue: number): number {
@@ -332,6 +333,9 @@ export function InvoiceDialog({ open, onOpenChange, invoice, onSave, saving }: I
               </div>
             )}
           </div>
+
+          {/* Bank Account Details */}
+          <BankAccountDetails />
 
           {/* Remarks */}
           <div className="space-y-2">

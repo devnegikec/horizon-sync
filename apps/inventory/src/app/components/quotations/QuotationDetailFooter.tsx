@@ -8,7 +8,7 @@ import type { QuotationDetailFooterProps } from '../../types/quotation.types';
 
 export function QuotationDetailFooter({ quotation, pdfLoading, onClose, onPreview, onDownload, onSendEmail, onEdit, onConvert }: QuotationDetailFooterProps) {
   const isTerminalStatus = quotation.status === 'accepted' || quotation.status === 'rejected' || quotation.status === 'expired';
-  const canConvert = quotation.status === 'accepted';
+  const canConvert = quotation.status === 'accepted' && !quotation.converted_to_sales_order;
   return (
     <DialogFooter>
       <Button variant="outline" onClick={onClose}>Close</Button>

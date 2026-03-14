@@ -2,9 +2,11 @@ import * as React from 'react';
 
 import { Receipt } from 'lucide-react';
 
-import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Separator } from '@horizon-sync/ui/components';
+import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 
 import type { SalesOrder, ConvertToInvoiceRequest, ConvertToInvoiceItemRequest } from '../../types/sales-order.types';
+
+import { BankAccountDetails } from '../invoices/BankAccountDetails';
 
 interface CreateInvoiceDialogProps {
   open: boolean;
@@ -15,7 +17,16 @@ interface CreateInvoiceDialogProps {
 }
 
 export function CreateInvoiceDialog({ open, onOpenChange, salesOrder, onCreateInvoice, creating }: CreateInvoiceDialogProps) {
-  const [lineItems, setLineItems] = React.useState<{ item_id: string; qty_to_bill: number; max_qty: number; item_name: string; rate: number }[]>([]);
+  const [lineItems, setLineItems] = React.useState<{ 
+    item_id: string; 
+    qty_to_bill: number; 
+    max_qty: number; 
+    item_name: string; 
+    rate: number;
+    discount_amount: number;
+    tax_amount: number;
+    total_amount: number;
+  }[]>([]);
 
   React.useEffect(() => {
     if (open && salesOrder?.items) {
@@ -30,36 +41,54 @@ export function CreateInvoiceDialog({ open, onOpenChange, salesOrder, onCreateIn
             max_qty: available,
             item_name: item.item_name || item.item_id,
             rate: Number(item.rate),
+            discount_amount: Number(item.discount_amount || 0),
+            tax_amount: Number(item.tax_amount || 0),
+            total_amount: Number(item.total_amount || item.amount || 0),
           };
         })
       );
     }
   }, [open, salesOrder]);
 
-  const handleQtyChange = (index: number, value: number) => {
-    setLineItems((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], qty_to_bill: value };
-      return updated;
+  const invoiceTotals = React.useMemo(() => {
+    let subtotal = 0;
+    let totalDiscount = 0;
+    let totalTax = 0;
+    
+    lineItems.forEach((item) => {
+      if (item.qty_to_bill > 0) {
+        const soItem = salesOrder?.items.find(i => i.item_id === item.item_id);
+        if (soItem) {
+          const originalQty = Number(soItem.qty);
+          const proportion = originalQty > 0 ? item.qty_to_bill / originalQty : 1;
+          
+          const lineSubtotal = item.qty_to_bill * item.rate;
+          const lineDiscount = item.discount_amount * proportion;
+          const lineTax = item.tax_amount * proportion;
+          
+          subtotal += lineSubtotal;
+          totalDiscount += lineDiscount;
+          totalTax += lineTax;
+        }
+      }
     });
-  };
-
-  const invoiceTotal = React.useMemo(() => {
-    return lineItems.reduce((sum, item) => sum + item.qty_to_bill * item.rate, 0);
-  }, [lineItems]);
+    
+    const grandTotal = subtotal - totalDiscount + totalTax;
+    
+    return {
+      subtotal,
+      totalDiscount,
+      totalTax,
+      grandTotal,
+    };
+  }, [lineItems, salesOrder]);
 
   const hasValidItems = lineItems.some((item) => item.qty_to_bill > 0);
-  const hasValidationError = lineItems.some((item) => item.qty_to_bill > item.max_qty || item.qty_to_bill < 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!salesOrder) return;
-
-    if (hasValidationError) {
-      alert('Quantity to bill cannot exceed available quantity');
-      return;
-    }
 
     if (!hasValidItems) {
       alert('At least one line item must have a quantity to bill');
@@ -137,6 +166,8 @@ export function CreateInvoiceDialog({ open, onOpenChange, salesOrder, onCreateIn
                       <th className="px-4 py-3 text-right text-sm font-medium">Available</th>
                       <th className="px-4 py-3 text-right text-sm font-medium">Qty to Bill</th>
                       <th className="px-4 py-3 text-right text-sm font-medium">Rate</th>
+                      <th className="px-4 py-3 text-right text-sm font-medium">Discount</th>
+                      <th className="px-4 py-3 text-right text-sm font-medium">Tax</th>
                       <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
                     </tr>
                   </thead>
@@ -145,30 +176,31 @@ export function CreateInvoiceDialog({ open, onOpenChange, salesOrder, onCreateIn
                       const soItem = salesOrder.items[index];
                       const orderedQty = Number(soItem.qty);
                       const billedQty = Number(soItem.billed_qty);
-                      const isOverBilled = item.qty_to_bill > item.max_qty;
-                      const lineAmount = item.qty_to_bill * item.rate;
+                      
+                      // Calculate proportional amounts
+                      const proportion = orderedQty > 0 ? item.qty_to_bill / orderedQty : 1;
+                      const lineSubtotal = item.qty_to_bill * item.rate;
+                      const lineDiscount = item.discount_amount * proportion;
+                      const lineTax = item.tax_amount * proportion;
+                      const lineTotal = lineSubtotal - lineDiscount + lineTax;
 
                       return (
-                        <tr key={item.item_id} className={isOverBilled ? 'bg-red-50 dark:bg-red-950/20' : ''}>
+                        <tr key={item.item_id}>
                           <td className="px-4 py-3 text-sm">{item.item_name}</td>
                           <td className="px-4 py-3 text-sm text-right">{orderedQty}</td>
                           <td className="px-4 py-3 text-sm text-right">{billedQty}</td>
                           <td className="px-4 py-3 text-sm text-right font-medium">{item.max_qty}</td>
-                          <td className="px-4 py-3 text-sm text-right">
-                            <Input type="number"
-                              min="0"
-                              max={item.max_qty}
-                              step="0.01"
-                              value={item.qty_to_bill}
-                              onChange={(e) => handleQtyChange(index, Number(e.target.value))}
-                              className={`w-24 text-right ml-auto ${isOverBilled ? 'border-red-500' : ''}`}
-                              disabled={item.max_qty === 0}/>
-                            {isOverBilled && (
-                              <p className="text-xs text-red-900 mt-1">Exceeds available</p>
-                            )}
+                          <td className="px-4 py-3 text-sm text-right font-medium">
+                            {item.qty_to_bill}
                           </td>
                           <td className="px-4 py-3 text-sm text-right">{item.rate.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-sm text-right font-medium">{lineAmount.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-sm text-right text-red-600">
+                            {lineDiscount > 0 ? `-${lineDiscount.toFixed(2)}` : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-green-600">
+                            {lineTax > 0 ? `+${lineTax.toFixed(2)}` : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right font-medium">{lineTotal.toFixed(2)}</td>
                         </tr>
                       );
                     })}
@@ -178,12 +210,32 @@ export function CreateInvoiceDialog({ open, onOpenChange, salesOrder, onCreateIn
             </div>
           </div>
 
+          {/* Bank Account Details */}
+          <BankAccountDetails />
+
           {/* Invoice Total */}
           <div className="flex justify-end">
-            <div className="w-64 space-y-2">
+            <div className="w-80 space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">Subtotal:</span>
+                <span className="font-medium">{salesOrder.currency} {invoiceTotals.subtotal.toFixed(2)}</span>
+              </div>
+              {invoiceTotals.totalDiscount > 0 && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Discount:</span>
+                  <span className="font-medium text-red-600">-{salesOrder.currency} {invoiceTotals.totalDiscount.toFixed(2)}</span>
+                </div>
+              )}
+              {invoiceTotals.totalTax > 0 && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Tax:</span>
+                  <span className="font-medium text-green-600">+{salesOrder.currency} {invoiceTotals.totalTax.toFixed(2)}</span>
+                </div>
+              )}
+              <Separator />
               <div className="flex justify-between items-center text-lg font-semibold">
                 <span>Invoice Total:</span>
-                <span>{salesOrder.currency} {invoiceTotal.toFixed(2)}</span>
+                <span>{salesOrder.currency} {invoiceTotals.grandTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -192,7 +244,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, salesOrder, onCreateIn
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={creating}>
               Cancel
             </Button>
-            <Button type="submit" disabled={creating || !hasValidItems || hasValidationError}>
+            <Button type="submit" disabled={creating || !hasValidItems}>
               {creating ? 'Creating Invoice...' : 'Create Invoice'}
             </Button>
           </DialogFooter>
