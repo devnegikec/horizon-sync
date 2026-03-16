@@ -157,7 +157,7 @@ export function SupplierManagement() {
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button onClick={handleCreateLink} className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
+          <Button onClick={handleCreateLink} className="gap-2">
             <Plus className="h-4 w-4" />
             Link Item to Supplier
           </Button>

@@ -142,8 +142,11 @@ export function AccountManagement() {
       pageSize: currentPageSize,
       totalItems: pagination?.total_items ?? 0,
       onPaginationChange: (pageIndex: number, newPageSize: number) => {
-        setPage(pageIndex + 1);
-        setPageSize(newPageSize);
+        if (newPageSize !== currentPageSize) {
+          setPageSize(newPageSize); // This resets page to 1 internally
+        } else {
+          setPage(pageIndex + 1);
+        }
       },
     }),
     [currentPage, currentPageSize, pagination?.total_items, setPage, setPageSize]
@@ -212,7 +215,7 @@ export function AccountManagement() {
             Export
           </Button>
           <Button onClick={handleCreateAccount}
-            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
+            className="gap-2">
             <Plus className="h-4 w-4" />
             Create Account
           </Button>

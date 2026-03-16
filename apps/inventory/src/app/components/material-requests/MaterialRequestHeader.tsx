@@ -31,7 +31,7 @@ export function MaterialRequestHeader({
           Refresh
         </Button>
         <Button onClick={onCreateMaterialRequest}
-          className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
+          className="gap-2">
           <Plus className="h-4 w-4" />
           New Material Request
         </Button>
