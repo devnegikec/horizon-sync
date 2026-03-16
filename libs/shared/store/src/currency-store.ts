@@ -36,7 +36,7 @@ export const useCurrencyStore = create<CurrencyStoreState>()(
         set({ loading: true, error: null }, false, 'fetchCurrencies/start');
 
         try {
-          const res = await fetch(`${apiBaseUrl}/currency/currencies`, {
+          const res = await fetch(`${apiBaseUrl}/api/v1/currency/currencies`, {
             headers: {
               Authorization: `Bearer ${accessToken}`,
               'Content-Type': 'application/json',

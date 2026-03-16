@@ -39,7 +39,7 @@ export class SearchService {
     // Try to get token from parameter, or fall back to localStorage for backward compatibility
     const authToken = token || localStorage.getItem('access_token');
     const validToken = validateAuthToken(authToken);
-    const url = `${API_BASE_URL}/search/global`;
+    const url = `${API_BASE_URL}/api/v1/search/global`;
 
     console.log('[SearchService] Global search request:', { url, request });
 
@@ -83,7 +83,7 @@ export class SearchService {
     // Try to get token from parameter, or fall back to localStorage for backward compatibility
     const authToken = token || localStorage.getItem('access_token');
     const validToken = validateAuthToken(authToken);
-    const url = `${API_BASE_URL}/search/${entityType}`;
+    const url = `${API_BASE_URL}/api/v1/search/${entityType}`;
 
     console.log('[SearchService] Local search request:', {
       url,

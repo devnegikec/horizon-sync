@@ -136,7 +136,7 @@ export function StockEntryLineItemsTable({ items, onItemsChange, disabled = fals
 
   const searchItems = React.useCallback(async (query: string): Promise<PickerItem[]> => {
     if (!accessToken || !warehouseId) return [];
-    const url = `${environment.apiCoreUrl}/items/picker?search=${encodeURIComponent(query)}&warehouse_id=${encodeURIComponent(warehouseId)}`;
+    const url = `${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(query)}&warehouse_id=${encodeURIComponent(warehouseId)}`;
     const response = await fetch(url, {
       headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     });

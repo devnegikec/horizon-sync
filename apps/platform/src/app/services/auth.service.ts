@@ -75,7 +75,7 @@ async function apiRequest<T>(
   token?: string,
   options?: { credentials?: RequestCredentials }
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${API_BASE_URL}/api/v1${endpoint}`;
 
   console.log(`Making ${method} request to:`, url);
   if (body) {
@@ -128,7 +128,7 @@ async function apiRequest<T>(
  * Backend should set Secure=false in development (HTTP/localhost) and Secure=true in production (HTTPS).
  */
 async function loginWithCredentials(payload: LoginPayload): Promise<LoginResponse> {
-  const url = `${API_BASE_URL}/identity/login`;
+  const url = `${API_BASE_URL}/api/v1/identity/login`;
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -165,7 +165,7 @@ export class AuthService {
    * @param refreshToken - Refresh token to send in body (required).
    */
   static async refresh(refreshToken?: string): Promise<RefreshResponse> {
-    const url = `${API_BASE_URL}/identity/refresh`;
+    const url = `${API_BASE_URL}/api/v1/identity/refresh`;
     
     // Prepare the request body with refresh_token
     const body: { refresh_token?: string } = {};

@@ -5,7 +5,7 @@ import type {
   PurchaseReceiptFilters,
 } from '../../types/purchase-receipt.types';
 
-const BASE_URL = 'http://localhost:8001/api/v1';
+const BASE_URL = 'http://localhost:8001';
 
 export const purchaseReceiptApi = {
   async list(accessToken: string, filters: Partial<PurchaseReceiptFilters> = {}): Promise<PurchaseReceiptsResponse> {
@@ -17,7 +17,7 @@ export const purchaseReceiptApi = {
     if (filters.sort_by) params.append('sort_by', filters.sort_by);
     if (filters.sort_order) params.append('sort_order', filters.sort_order);
 
-    const response = await fetch(`${BASE_URL}/purchase-receipts?${params.toString()}`, {
+    const response = await fetch(`${BASE_URL}/api/v1/purchase-receipts?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -33,7 +33,7 @@ export const purchaseReceiptApi = {
   },
 
   async getById(accessToken: string, id: string): Promise<PurchaseReceipt> {
-    const response = await fetch(`${BASE_URL}/purchase-receipts/${id}`, {
+    const response = await fetch(`${BASE_URL}/api/v1/purchase-receipts/${id}`, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -49,7 +49,7 @@ export const purchaseReceiptApi = {
   },
 
   async create(accessToken: string, payload: CreatePurchaseReceiptPayload): Promise<PurchaseReceipt> {
-    const response = await fetch(`${BASE_URL}/purchase-receipts`, {
+    const response = await fetch(`${BASE_URL}/api/v1/purchase-receipts`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,

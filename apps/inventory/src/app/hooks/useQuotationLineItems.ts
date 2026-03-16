@@ -27,7 +27,7 @@ export function useQuotationLineItems(
 
   const searchItems = React.useCallback(async (query: string): Promise<QuotationLineItem[]> => {
     if (!accessToken) return [];
-    const response = await fetch(`${environment.apiCoreUrl}/items/picker?search=${encodeURIComponent(query)}`, {
+    const response = await fetch(`${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(query)}`, {
       headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     });
     if (!response.ok) throw new Error('Failed to fetch items');

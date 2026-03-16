@@ -13,11 +13,11 @@ import {
 
 // API Base URL - should come from environment config
 // Banking endpoints are on Core Service (port 8001), not Identity Service (port 8000)
-const API_BASE_URL = process.env['NX_CORE_API_BASE_URL'] || process.env['NX_API_CORE_URL'] || 'http://localhost:8001/api/v1';
+const API_BASE_URL = process.env['NX_CORE_API_BASE_URL'] || process.env['NX_API_CORE_URL'] || 'http://localhost:8001';
 
 class ReconciliationService {
     private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-        const url = `${API_BASE_URL}${endpoint}`;
+        const url = `${API_BASE_URL}/api/v1${endpoint}`;
 
         const response = await fetch(url, {
             headers: {
@@ -207,7 +207,7 @@ class ReconciliationService {
             ? `/reconciliations/report/export/csv?${queryString}`
             : '/reconciliations/report/export/csv';
         
-        const url = `${API_BASE_URL}${endpoint}`;
+        const url = `${API_BASE_URL}/api/v1${endpoint}`;
         const response = await fetch(url, {
             headers: {
                 'Authorization': `Bearer ${this.getAuthToken()}`,
@@ -235,7 +235,7 @@ class ReconciliationService {
             ? `/reconciliations/report/export/pdf?${queryString}`
             : '/reconciliations/report/export/pdf';
         
-        const url = `${API_BASE_URL}${endpoint}`;
+        const url = `${API_BASE_URL}/api/v1${endpoint}`;
         const response = await fetch(url, {
             headers: {
                 'Authorization': `Bearer ${this.getAuthToken()}`,
