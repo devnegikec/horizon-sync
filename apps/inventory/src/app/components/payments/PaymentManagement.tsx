@@ -199,7 +199,7 @@ export function PaymentManagement({
           <p className="text-muted-foreground mt-1">Manage customer and supplier payments</p>
         </div>
         <Button onClick={handleCreatePayment}
-          className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg">
+          className="gap-2">
           <Plus className="h-4 w-4" />
           Capture Payment
         </Button>
