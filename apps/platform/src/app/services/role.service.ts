@@ -107,7 +107,7 @@ export class RoleService {
       params.append('limit', String(filters.pageSize));
       params.append('include_permissions', 'true');
 
-      const response = await fetch(`${API_BASE_URL}/identity/roles?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles?${params}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ export class RoleService {
    */
   static async getRole(roleId: string, token: string): Promise<Role> {
     try {
-      const response = await fetch(`${API_BASE_URL}/identity/roles/${roleId}?include_permissions=true`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles/${roleId}?include_permissions=true`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -150,7 +150,7 @@ export class RoleService {
    * Helper method to convert permission codes to IDs
    */
   private static async getPermissionIds(codes: string[], token: string): Promise<string[]> {
-    const allPermissionsResponse = await fetch(`${API_BASE_URL}/identity/permissions/grouped`, {
+    const allPermissionsResponse = await fetch(`${API_BASE_URL}/api/v1/identity/permissions/grouped`, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -205,7 +205,7 @@ export class RoleService {
         payload.organization_id = organizationId;
       }
 
-      const response = await fetch(`${API_BASE_URL}/identity/roles`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -245,7 +245,7 @@ export class RoleService {
         payload.permission_ids = await this.getPermissionIds(data.permissions, token);
       }
 
-      const response = await fetch(`${API_BASE_URL}/identity/roles/${roleId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles/${roleId}`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -269,7 +269,7 @@ export class RoleService {
    */
   static async deleteRole(roleId: string, token: string): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/identity/roles/${roleId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles/${roleId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -290,7 +290,7 @@ export class RoleService {
    */
   static async getGroupedPermissions(token: string): Promise<PermissionGroupedResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/identity/permissions/grouped`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/permissions/grouped`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -331,7 +331,7 @@ export class RoleService {
       if (filters?.search) params.append('search', filters.search);
       if (filters?.module) params.append('module', filters.module);
 
-      const response = await fetch(`${API_BASE_URL}/identity/permissions?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/permissions?${params}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -354,7 +354,7 @@ export class RoleService {
    */
   static async getRoleUsers(roleId: string, token: string): Promise<Array<{ id: string; name: string; email: string }>> {
     try {
-      const response = await fetch(`${API_BASE_URL}/identity/roles/${roleId}/users`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles/${roleId}/users`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',

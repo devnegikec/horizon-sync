@@ -24,7 +24,7 @@ export interface ApiError {
  * Build URL with query parameters
  */
 export function buildUrl(endpoint: string, params?: Record<string, string | number | boolean | undefined>): string {
-  const url = new URL(`${BASE_URL}${endpoint}`);
+  const url = new URL(`${BASE_URL}/api/v1${endpoint}`);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {

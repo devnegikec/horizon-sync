@@ -5,7 +5,7 @@ import { useUserStore } from '@horizon-sync/store';
 import { environment } from '../../environments/environment';
 import type { Warehouse, WarehousesResponse, CreateWarehousePayload, UpdateWarehousePayload } from '../types/warehouse.types';
 import { warehouseApi } from '../utility';
-const WAREHOUSE_URL = `${environment.apiCoreUrl}/warehouses`;
+const WAREHOUSE_URL = `${environment.apiCoreUrl}/api/v1/warehouses`;
 
 interface UseWarehousesResult {
   warehouses: Warehouse[];

@@ -25,7 +25,7 @@ export function useTransactionImport(bankAccountId: string) {
             const formData = new FormData();
             formData.append('file', file);
 
-            const url = `${API_BASE_URL}/bank-accounts/${bankAccountId}/import/${format}${
+            const url = `${API_BASE_URL}/api/v1/bank-accounts/${bankAccountId}/import/${format}${
                 forceImport ? '?force_import=true' : ''
             }`;
 

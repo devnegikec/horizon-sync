@@ -63,7 +63,7 @@ const API_BASE_URL = environment.apiBaseUrl;
 export class UserService {
   static async updateMe(payload: UpdateUserPayload, token: string): Promise<User> {
     try {
-      const response = await fetch(`${API_BASE_URL}/identity/users/me`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/users/me`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -90,7 +90,7 @@ export class UserService {
 
   static async getUsers(page = 1, pageSize = 20, token: string): Promise<UsersResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/users?page=${page}&page_size=${pageSize}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users?page=${page}&page_size=${pageSize}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -117,7 +117,7 @@ export class UserService {
 
   static async inviteUser(payload: InviteUserPayload, token: string): Promise<InviteUserResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/invite`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

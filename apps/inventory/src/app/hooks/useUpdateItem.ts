@@ -5,7 +5,7 @@ import { useUserStore } from '@horizon-sync/store';
 import { environment } from '../../environments/environment';
 import type { UpdateItemPayload } from '../types/items-api.types';
 
-const ITEMS_URL = `${environment.apiCoreUrl}/items`;
+const ITEMS_URL = `${environment.apiCoreUrl}/api/v1/items`;
 
 interface UseUpdateItemResult {
   updateItem: (itemId: string, payload: UpdateItemPayload) => Promise<void>;

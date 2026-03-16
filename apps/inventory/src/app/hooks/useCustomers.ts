@@ -53,7 +53,7 @@ export function useCustomers(params: UseCustomersParams = {}): UseCustomersRetur
         searchParams.append('status', status);
       }
 
-      const response = await fetch(`${API_BASE_URL}/customers?${searchParams}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/customers?${searchParams}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },

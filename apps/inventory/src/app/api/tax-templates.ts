@@ -25,7 +25,7 @@ export const taxTemplateApi = {
       ...(filters?.is_active !== undefined && { is_active: filters.is_active.toString() }),
     });
 
-    const response = await fetch(`${API_BASE_URL}/tax-templates?${params}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tax-templates?${params}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -51,7 +51,7 @@ export const taxTemplateApi = {
   },
 
   getById: async (accessToken: string, id: string): Promise<TaxTemplate> => {
-    const response = await fetch(`${API_BASE_URL}/tax-templates/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tax-templates/${id}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ export const taxTemplateApi = {
   },
 
   create: async (accessToken: string, data: TaxTemplateCreate): Promise<TaxTemplate> => {
-    const response = await fetch(`${API_BASE_URL}/tax-templates`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tax-templates`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -83,7 +83,7 @@ export const taxTemplateApi = {
   },
 
   update: async (accessToken: string, id: string, data: TaxTemplateUpdate): Promise<TaxTemplate> => {
-    const response = await fetch(`${API_BASE_URL}/tax-templates/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tax-templates/${id}`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -100,7 +100,7 @@ export const taxTemplateApi = {
   },
 
   delete: async (accessToken: string, id: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/tax-templates/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/tax-templates/${id}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${accessToken}`,
