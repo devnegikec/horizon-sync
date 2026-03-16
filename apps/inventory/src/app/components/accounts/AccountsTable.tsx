@@ -51,6 +51,8 @@ export interface AccountsTableProps {
   onBulkDeactivate?: (accountIds: string[]) => void;
   onBulkDelete?: (accountIds: string[]) => void;
   onBulkExport?: (accountIds: string[]) => void;
+  isDefaultAccount?: (accountId: string) => boolean;
+  isSystemAdmin?: boolean;
 }
 
 export function AccountsTable({
@@ -60,7 +62,9 @@ export function AccountsTable({
   hasActiveFilters,
   onEdit,
   onToggleStatus,
-  onViewDetails,  onDelete,  onCreateAccount,
+  onViewDetails,
+  onDelete,
+  onCreateAccount,
   onTableReady,
   serverPagination,
   sortBy,
@@ -71,6 +75,8 @@ export function AccountsTable({
   onBulkDeactivate,
   onBulkDelete,
   onBulkExport,
+  isDefaultAccount = () => false,
+  isSystemAdmin = false,
 }: AccountsTableProps) {
   const tableReadyRef = React.useRef<((table: Table<AccountListItem>) => void) | undefined>(onTableReady);
   const [selectedRows, setSelectedRows] = React.useState<Record<string, boolean>>({});
@@ -148,7 +154,25 @@ export function AccountsTable({
       {
         accessorKey: 'account_name',
         header: () => <SortableHeader title="Account Name" columnId="account_name" />,
-        cell: ({ row }) => <p className="font-medium">{row.original.account_name}</p>,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <p className="font-medium">{row.original.account_name}</p>
+            {isDefaultAccount(row.original.id) && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800">
+                      Default
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>This account is used as a default for transaction types</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        ),
         enableSorting: false,
       },
       {
@@ -373,10 +397,19 @@ export function AccountsTable({
                   {onDelete && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onDelete(account)}
-                        className="text-destructive focus:text-destructive">
+                      <DropdownMenuItem 
+                        onClick={() => onDelete(account)}
+                        className={
+                          isDefaultAccount(account.id) && !isSystemAdmin 
+                            ? "text-muted-foreground focus:text-muted-foreground cursor-help" 
+                            : "text-destructive focus:text-destructive"
+                        }>
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Account
+                        {isDefaultAccount(account.id) ? (
+                          isSystemAdmin ? 'Delete Default Account' : 'Protected Account'
+                        ) : (
+                          'Delete Account'
+                        )}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -388,7 +421,7 @@ export function AccountsTable({
         enableSorting: false,
       },
     ],
-    [onEdit, onToggleStatus, onViewDetails, onDelete, balances, balancesLoading, SortableHeader, actionLoading]
+    [onEdit, onToggleStatus, onViewDetails, onDelete, balances, balancesLoading, SortableHeader, actionLoading, isDefaultAccount, isSystemAdmin]
   );
 
   const renderViewOptions = React.useCallback(

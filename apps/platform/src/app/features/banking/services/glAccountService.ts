@@ -22,7 +22,7 @@ export interface GLAccountListResponse {
 import { useUserStore } from '@horizon-sync/store';
 
 // API Base URL - should come from environment config
-const API_BASE_URL = process.env['NX_API_URL'] || 'http://localhost:8001';
+const API_BASE_URL = process.env.NX_API_CORE_URL || 'http://localhost:8001';
 
 class GLAccountService {
     private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -60,7 +60,7 @@ class GLAccountService {
         if (params?.page_size) searchParams.append('page_size', params.page_size.toString());
 
         const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
-        return this.request<GLAccountListResponse>(`/api/v1/chart-of-accounts${query}`);
+        return this.request<GLAccountListResponse>(`/chart-of-accounts${query}`);
     }
 
     // Get a specific GL Account by ID

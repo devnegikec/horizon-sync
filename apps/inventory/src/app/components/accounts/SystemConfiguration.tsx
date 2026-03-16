@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
-import { Plus, Trash2, Save, Loader2, AlertCircle, CheckCircle2, Database, Trash } from 'lucide-react';
+import { Plus, Trash2, Save, Loader2, AlertCircle, CheckCircle2, Database, Trash, Shield } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import {
@@ -29,6 +29,8 @@ import type {
 } from '../../types/account.types';
 import { accountApi } from '../../utility/api/accounts';
 import { environment } from '../../../environments/environment';
+import { isSystemAdmin } from '../../utils/permissions';
+import { DeleteConfirmationDialog } from '../common/DeleteConfirmationDialog';
 
 interface TransactionTypeConfig {
   transaction_type: string;
@@ -62,13 +64,22 @@ const FORMAT_EXAMPLES = [
 ];
 
 export const SystemConfiguration: React.FC = () => {
-  const { accessToken } = useUserStore();
+  const { accessToken, permissions } = useUserStore();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Permission check
+  const userIsSystemAdmin = useMemo(() => {
+    return isSystemAdmin(permissions?.permissions || []);
+  }, [permissions]);
+
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [mappingToDelete, setMappingToDelete] = useState<{ index: number; config: TransactionTypeConfig } | null>(null);
 
   // Default accounts state
   const [defaultAccounts, setDefaultAccounts] = useState<TransactionTypeConfig[]>([]);
@@ -165,7 +176,33 @@ export const SystemConfiguration: React.FC = () => {
   };
 
   const handleRemoveDefaultAccount = (index: number) => {
-    setDefaultAccounts(defaultAccounts.filter((_, i) => i !== index));
+    const config = defaultAccounts[index];
+    
+    // Check if user is system admin
+    if (!userIsSystemAdmin) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to delete default account mappings.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Set up confirmation dialog
+    setMappingToDelete({ index, config });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (mappingToDelete) {
+      setDefaultAccounts(defaultAccounts.filter((_, i) => i !== mappingToDelete.index));
+      toast({
+        title: 'Mapping Deleted',
+        description: `Default mapping for "${mappingToDelete.config.transaction_type}" has been removed.`,
+      });
+    }
+    setMappingToDelete(null);
+    setDeleteDialogOpen(false);
   };
 
   const handleDefaultAccountChange = (
@@ -552,14 +589,22 @@ export const SystemConfiguration: React.FC = () => {
               <h3 className="text-lg font-semibold">Default Accounts</h3>
               <p className="text-sm text-muted-foreground mt-1">
                 Configure default accounts for common transaction types
+                {!userIsSystemAdmin && (
+                  <span className="block text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    View-only: System admin permissions required to modify
+                  </span>
+                )}
               </p>
             </div>
-            <Button onClick={handleAddDefaultAccount}
-              disabled={saving}
-              size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Mapping
-            </Button>
+            {userIsSystemAdmin && (
+              <Button onClick={handleAddDefaultAccount}
+                disabled={saving}
+                size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Mapping
+              </Button>
+            )}
           </div>
 
           {defaultAccounts.length === 0 ? (
@@ -572,15 +617,14 @@ export const SystemConfiguration: React.FC = () => {
             <div className="space-y-6">
               {defaultAccounts.map((config, index) => (
                 <div key={index} className="space-y-2">
-                  <div className={`flex gap-4 p-4 border rounded-lg items-start ${config.validationError ? 'border-destructive bg-destructive/5' : ''
-                      }`}>
+                  <div className={`flex gap-4 p-4 border rounded-lg items-start ${config.validationError ? 'border-destructive bg-destructive/5' : ''}`}>
                     <div className="flex-1 space-y-2">
                       <Label>Transaction Type</Label>
                       <Select value={config.transaction_type}
                         onValueChange={(value) =>
                           handleDefaultAccountChange(index, 'transaction_type', value)
                         }
-                        disabled={saving}>
+                        disabled={saving || !userIsSystemAdmin}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
@@ -595,13 +639,18 @@ export const SystemConfiguration: React.FC = () => {
                     </div>
 
                     <div className="flex-1 space-y-2">
-                      <Label>Scenario (Optional)</Label>
+                      <Label>Scenario</Label>
                       <Input value={config.scenario || ''}
                         onChange={(e) =>
                           handleDefaultAccountChange(index, 'scenario', e.target.value || null)
                         }
-                        placeholder="e.g., domestic, international"
-                        disabled={saving}/>
+                        placeholder="Default (leave empty for standard)"
+                        disabled={saving || !userIsSystemAdmin}/>
+                      {!config.scenario && (
+                        <p className="text-xs text-muted-foreground">
+                          Standard mapping — add a scenario like "domestic" or "international" for variants
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex-1 space-y-2">
@@ -610,7 +659,7 @@ export const SystemConfiguration: React.FC = () => {
                         onValueChange={(value) =>
                           handleDefaultAccountChange(index, 'account_id', value)
                         }
-                        disabled={saving || loadingAccounts}>
+                        disabled={saving || loadingAccounts || !userIsSystemAdmin}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select account" />
                         </SelectTrigger>
@@ -629,13 +678,19 @@ export const SystemConfiguration: React.FC = () => {
                       )}
                     </div>
 
-                    <Button variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveDefaultAccount(index)}
-                      disabled={saving}
-                      className="mt-8">
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    {userIsSystemAdmin ? (
+                      <Button variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveDefaultAccount(index)}
+                        disabled={saving}
+                        className="mt-8">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    ) : (
+                      <div className="flex items-center justify-center w-10 h-10 mt-8">
+                        <Shield className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
 
                   {config.validationError && (
@@ -653,7 +708,7 @@ export const SystemConfiguration: React.FC = () => {
 
           <div className="flex justify-end mt-6">
             <Button onClick={handleSaveDefaultAccounts}
-              disabled={saving || defaultAccounts.length === 0}>
+              disabled={saving || defaultAccounts.length === 0 || !userIsSystemAdmin}>
               {saving ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -662,7 +717,7 @@ export const SystemConfiguration: React.FC = () => {
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Default Accounts
+                  {userIsSystemAdmin ? 'Save Default Accounts' : 'Save (Admin Only)'}
                 </>
               )}
             </Button>
@@ -771,6 +826,20 @@ export const SystemConfiguration: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog 
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDelete}
+        title="Delete Default Account Mapping"
+        description={mappingToDelete && mappingToDelete.config ? 
+          `Are you sure you want to delete the default mapping for "${mappingToDelete.config.transaction_type}"${mappingToDelete.config.scenario ? ` (${mappingToDelete.config.scenario})` : ''}? This action will affect automated transaction processing and cannot be undone.` 
+          : ''
+        }
+        confirmText="Delete Mapping"
+        cancelText="Cancel"
+      />
     </div>
   );
 };
