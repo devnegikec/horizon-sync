@@ -106,19 +106,12 @@ export const stockEntryApi = {
     }),
 
   bulkUpload: async (accessToken: string, file: File): Promise<unknown> => {
-    const { buildUrl } = await import('./core');
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch(buildUrl('/stock-entries/bulk/upload'), {
+    return apiRequest('/stock-entries/bulk/upload', accessToken, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken}` },
       body: formData,
     });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || `HTTP ${response.status}`);
-    }
-    return response.status === 204 ? {} : response.json();
   },
 };
 
@@ -153,37 +146,24 @@ export const stockReconciliationApi = {
 
   /** GET /stock-reconciliations/template?warehouse_id={uuid} — download CSV */
   downloadTemplate: async (accessToken: string, warehouseId: string): Promise<Blob> => {
-    const { buildUrl } = await import('./core');
-    const url = buildUrl('/stock-reconciliations/template', { warehouse_id: warehouseId });
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+    return apiRequest('/stock-reconciliations/template', accessToken, {
+      params: { warehouse_id: warehouseId },
+      responseType: 'blob',
     });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || `HTTP ${response.status}`);
-    }
-    return response.blob();
   },
 
   /** POST /stock-reconciliations/upload — multipart form (warehouse_id + CSV + optional reconciliation_id) */
   upload: async (accessToken: string, warehouseId: string, file: File, reconciliationId?: string): Promise<unknown> => {
-    const { buildUrl } = await import('./core');
     const formData = new FormData();
     formData.append('warehouse_id', warehouseId);
     formData.append('file', file);
     if (reconciliationId) {
       formData.append('reconciliation_id', reconciliationId);
     }
-    const response = await fetch(buildUrl('/stock-reconciliations/upload'), {
+    return apiRequest('/stock-reconciliations/upload', accessToken, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken}` },
       body: formData,
     });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || `HTTP ${response.status}`);
-    }
-    return response.json();
   },
 
   /** POST /stock-reconciliations/{id}/confirm — commit adjustments */
