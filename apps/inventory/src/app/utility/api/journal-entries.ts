@@ -4,17 +4,16 @@
  * API functions for journal entry operations
  */
 
-import { useUserStore } from '@horizon-sync/store';
+import { apiRequest, buildPaginationParams } from './core';
 
-const API_BASE_URL = process.env.NX_API_CORE_URL || 'http://localhost:8001';
-
-function getAccessToken(): string {
-  const fromStore = useUserStore.getState().accessToken;
-  if (fromStore) return fromStore;
-  const fromStorage = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
-  if (fromStorage) return fromStorage;
-  throw new Error('No access token found');
-}
+// Helper to get access token from auth context
+const getAccessToken = () => {
+  const token = localStorage.getItem('accessToken');
+  if (!token) {
+    throw new Error('No access token available');
+  }
+  return token;
+};
 
 export interface JournalEntryLine {
   id: string;
@@ -61,34 +60,15 @@ export async function fetchJournalEntries(
   pageSize = 20,
   status?: string,
   sortBy = 'posting_date',
-  sortOrder = 'desc'
+  sortOrder: 'asc' | 'desc' = 'desc'
 ): Promise<JournalEntriesResponse> {
   const accessToken = getAccessToken();
-
-  const params = new URLSearchParams();
-  params.append('page', String(page));
-  params.append('page_size', String(pageSize));
-  params.append('sort_by', sortBy);
-  params.append('sort_order', sortOrder);
-  if (status) params.append('status', status);
-
-  const response = await fetch(
-    `${API_BASE_URL}/api/v1/journal-entries?${params.toString()}`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to fetch journal entries: ${response.statusText}`);
-  }
-
-  return response.json();
+  return apiRequest<JournalEntriesResponse>('/journal-entries', accessToken, {
+    params: {
+      ...buildPaginationParams(page, pageSize, sortBy, sortOrder),
+      ...(status && { status }),
+    },
+  });
 }
 
 /**
@@ -96,27 +76,12 @@ export async function fetchJournalEntries(
  */
 export async function fetchJournalEntryById(entryId: string): Promise<JournalEntry> {
   const accessToken = getAccessToken();
-
-  const response = await fetch(
-    `${API_BASE_URL}/api/v1/journal-entries/${entryId}`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Failed to fetch journal entry: ${response.statusText}`);
-  }
-
-  return response.json();
+  return apiRequest<JournalEntry>(`/journal-entries/${entryId}`, accessToken);
 }
 
 export const journalEntriesApi = {
-  fetchJournalEntries,
-  fetchJournalEntryById,
+  fetchJournalEntries: (page?: number, pageSize?: number, status?: string, sortBy?: string, sortOrder?: 'asc' | 'desc') => 
+    fetchJournalEntries(page, pageSize, status, sortBy, sortOrder),
+  fetchJournalEntryById: (entryId: string) => 
+    fetchJournalEntryById(entryId),
 };

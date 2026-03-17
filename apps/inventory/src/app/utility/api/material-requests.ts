@@ -10,8 +10,7 @@ import type {
   MaterialRequestsResponse,
   MaterialRequestFilters,
 } from '../../types/material-request.types';
-
-const API_BASE_URL = process.env.NX_API_BASE_URL || 'http://localhost:8001';
+import { apiRequest, buildPaginationParams } from './core';
 
 export const materialRequestApi = {
   /**
@@ -19,27 +18,17 @@ export const materialRequestApi = {
    * GET /api/v1/material-requests
    */
   list: async (accessToken: string, filters: Partial<MaterialRequestFilters> = {}): Promise<MaterialRequestsResponse> => {
-    const params = new URLSearchParams();
-    if (filters.page) params.append('page', filters.page.toString());
-    if (filters.page_size) params.append('page_size', filters.page_size.toString());
-    // Only include status if it's not 'all' - backend doesn't accept 'all' as a value
-    if (filters.status && filters.status !== 'all') params.append('status', filters.status);
-    if (filters.sort_by) params.append('sort_by', filters.sort_by);
-    if (filters.sort_order) params.append('sort_order', filters.sort_order);
-    if (filters.search) params.append('search', filters.search);
-
-    const response = await fetch(`${API_BASE_URL}/api/v1/material-requests?${params}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+    return apiRequest<MaterialRequestsResponse>('/material-requests', accessToken, {
+      params: {
+        ...(filters.page && { page: filters.page }),
+        ...(filters.page_size && { page_size: filters.page_size }),
+        // Only include status if it's not 'all' - backend doesn't accept 'all' as a value
+        ...(filters.status && filters.status !== 'all' && { status: filters.status }),
+        ...(filters.sort_by && { sort_by: filters.sort_by }),
+        ...(filters.sort_order && { sort_order: filters.sort_order }),
+        ...(filters.search && { search: filters.search }),
       },
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Material Requests: ${response.statusText}`);
-    }
-
-    return response.json();
   },
 
   /**
@@ -47,18 +36,7 @@ export const materialRequestApi = {
    * GET /api/v1/material-requests/{material_request_id}
    */
   getById: async (accessToken: string, id: string): Promise<MaterialRequest> => {
-    const response = await fetch(`${API_BASE_URL}/api/v1/material-requests/${id}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Material Request: ${response.statusText}`);
-    }
-
-    return response.json();
+    return apiRequest<MaterialRequest>(`/material-requests/${id}`, accessToken);
   },
 
   /**
@@ -66,20 +44,10 @@ export const materialRequestApi = {
    * POST /api/v1/material-requests
    */
   create: async (accessToken: string, payload: CreateMaterialRequestPayload): Promise<MaterialRequest> => {
-    const response = await fetch(`${API_BASE_URL}/api/v1/material-requests`, {
+    return apiRequest<MaterialRequest>('/material-requests', accessToken, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
+      body: payload,
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to create Material Request: ${response.statusText}`);
-    }
-
-    return response.json();
   },
 
   /**
@@ -87,20 +55,10 @@ export const materialRequestApi = {
    * PUT /api/v1/material-requests/{material_request_id}
    */
   update: async (accessToken: string, id: string, payload: UpdateMaterialRequestPayload): Promise<MaterialRequest> => {
-    const response = await fetch(`${API_BASE_URL}/api/v1/material-requests/${id}`, {
+    return apiRequest<MaterialRequest>(`/material-requests/${id}`, accessToken, {
       method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
+      body: payload,
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to update Material Request: ${response.statusText}`);
-    }
-
-    return response.json();
   },
 
   /**
@@ -108,17 +66,9 @@ export const materialRequestApi = {
    * DELETE /api/v1/material-requests/{material_request_id}
    */
   delete: async (accessToken: string, id: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/api/v1/material-requests/${id}`, {
+    return apiRequest<void>(`/material-requests/${id}`, accessToken, {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to delete Material Request: ${response.statusText}`);
-    }
   },
 
   /**
@@ -126,19 +76,9 @@ export const materialRequestApi = {
    * POST /api/v1/material-requests/{material_request_id}/submit
    */
   submit: async (accessToken: string, id: string): Promise<MaterialRequest> => {
-    const response = await fetch(`${API_BASE_URL}/api/v1/material-requests/${id}/submit`, {
+    return apiRequest<MaterialRequest>(`/material-requests/${id}/submit`, accessToken, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to submit Material Request: ${response.statusText}`);
-    }
-
-    return response.json();
   },
 
   /**
@@ -146,19 +86,9 @@ export const materialRequestApi = {
    * POST /api/v1/material-requests/{material_request_id}/cancel
    */
   cancel: async (accessToken: string, id: string): Promise<MaterialRequest> => {
-    const response = await fetch(`${API_BASE_URL}/api/v1/material-requests/${id}/cancel`, {
+    return apiRequest<MaterialRequest>(`/material-requests/${id}/cancel`, accessToken, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to cancel Material Request: ${response.statusText}`);
-    }
-
-    return response.json();
   },
 
   /**
