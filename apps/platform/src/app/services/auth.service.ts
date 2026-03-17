@@ -20,10 +20,10 @@ const API_BASE_URL = environment.apiBaseUrl;
  */
 async function handleApiError(response: Response): Promise<never> {
   let message = `HTTP error! status: ${response.status}`;
-  
+
   try {
     const errorData: ApiErrorResponse = await response.json();
-    
+
     // Handle different error response formats
     if (errorData?.detail?.message) {
       message = errorData.detail.message;
@@ -61,7 +61,7 @@ async function handleApiError(response: Response): Promise<never> {
         message = `HTTP error! status: ${response.status}`;
     }
   }
-  
+
   throw new Error(message);
 }
 
@@ -166,15 +166,15 @@ export class AuthService {
    */
   static async refresh(refreshToken?: string): Promise<RefreshResponse> {
     const url = `${API_BASE_URL}/api/v1/identity/refresh`;
-    
+
     // Prepare the request body with refresh_token
     const body: { refresh_token?: string } = {};
     if (refreshToken) {
       body.refresh_token = refreshToken;
     }
-    
+
     console.log('Refresh request:', { url, hasRefreshToken: !!refreshToken });
-    
+
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -216,6 +216,6 @@ export class AuthService {
   }
 
   static async getUserProfile(token: string): Promise<UserType> {
-    return apiRequest<UserType>('/identity/users/me', 'GET', undefined, token);
+    return apiRequest<UserType>('/api/v1/identity/users/me', 'GET', undefined, token);
   }
 }

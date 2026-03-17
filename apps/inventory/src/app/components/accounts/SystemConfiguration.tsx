@@ -147,13 +147,13 @@ export const SystemConfiguration: React.FC = () => {
     try {
       setLoadingAccounts(true);
       const response = await accountApi.list(accessToken, 1, 1000, { status: 'active' }) as AccountPaginationResponse;
-      
+
       // Filter to only show posting accounts (is_posting_account = true)
       // Non-posting accounts are parent/group accounts and should not be used for transactions
       const postingAccounts = (response.chart_of_accounts || []).filter(
         account => account.is_posting_account === true
       );
-      
+
       setAvailableAccounts(postingAccounts);
     } catch (err) {
       console.error('Failed to load accounts:', err);
@@ -177,7 +177,7 @@ export const SystemConfiguration: React.FC = () => {
 
   const handleRemoveDefaultAccount = (index: number) => {
     const config = defaultAccounts[index];
-    
+
     // Check if user is system admin
     if (!userIsSystemAdmin) {
       toast({
@@ -358,7 +358,7 @@ export const SystemConfiguration: React.FC = () => {
       setError(null);
 
       // Get current user to extract organization_id
-      const userResponse = await fetch(`${environment.apiBaseUrl}/identity/me`, {
+      const userResponse = await fetch(`${environment.apiBaseUrl}/api/v1/identity/me`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
@@ -378,7 +378,7 @@ export const SystemConfiguration: React.FC = () => {
       // Call the manual trigger endpoint (same as identity service uses)
       // This uses DefaultChartSetupService with proper validation
       const response = await fetch(
-        `${environment.apiCoreUrl}/setup/default-chart-of-accounts/${organizationId}/trigger`,
+        `${environment.apiCoreUrl}/api/v1/setup/default-chart-of-accounts/${organizationId}/trigger`,
         {
           method: 'POST',
           headers: {
@@ -438,7 +438,7 @@ export const SystemConfiguration: React.FC = () => {
       setSeeding(true);
       setError(null);
 
-      const response = await fetch(`${environment.apiCoreUrl}/admin/clear-data`, {
+      const response = await fetch(`${environment.apiCoreUrl}/api/v1/admin/clear-data`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -645,7 +645,7 @@ export const SystemConfiguration: React.FC = () => {
                           handleDefaultAccountChange(index, 'scenario', e.target.value || null)
                         }
                         placeholder="Default (leave empty for standard)"
-                        disabled={saving || !userIsSystemAdmin}/>
+                        disabled={saving || !userIsSystemAdmin} />
                       {!config.scenario && (
                         <p className="text-xs text-muted-foreground">
                           Standard mapping — add a scenario like "domestic" or "international" for variants
@@ -772,7 +772,7 @@ export const SystemConfiguration: React.FC = () => {
                   }}
                   disabled={saving}
                   placeholder="Enter regex pattern"
-                  className={patternError ? 'border-destructive' : patternValid ? 'border-green-500' : ''}/>
+                  className={patternError ? 'border-destructive' : patternValid ? 'border-green-500' : ''} />
                 {patternValid && !patternError && customPattern.trim() && (
                   <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />
                 )}
@@ -828,13 +828,13 @@ export const SystemConfiguration: React.FC = () => {
       </Card>
 
       {/* Delete Confirmation Dialog */}
-      <DeleteConfirmationDialog 
+      <DeleteConfirmationDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={confirmDelete}
         title="Delete Default Account Mapping"
-        description={mappingToDelete && mappingToDelete.config ? 
-          `Are you sure you want to delete the default mapping for "${mappingToDelete.config.transaction_type}"${mappingToDelete.config.scenario ? ` (${mappingToDelete.config.scenario})` : ''}? This action will affect automated transaction processing and cannot be undone.` 
+        description={mappingToDelete && mappingToDelete.config ?
+          `Are you sure you want to delete the default mapping for "${mappingToDelete.config.transaction_type}"${mappingToDelete.config.scenario ? ` (${mappingToDelete.config.scenario})` : ''}? This action will affect automated transaction processing and cannot be undone.`
           : ''
         }
         confirmText="Delete Mapping"
