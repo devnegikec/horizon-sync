@@ -20,6 +20,7 @@ export interface GLAccountListResponse {
     };
 }
 import { useUserStore } from '@horizon-sync/store';
+import { getAccessToken } from '../../../utility/api-core';
 
 // API Base URL - should come from environment config
 const API_BASE_URL = process.env.NX_API_CORE_URL || 'http://localhost:8001';
@@ -27,7 +28,7 @@ const API_BASE_URL = process.env.NX_API_CORE_URL || 'http://localhost:8001';
 class GLAccountService {
     private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
         const url = `${API_BASE_URL}/api/v1${endpoint}`;
-        const accessToken = this.getAccessToken();
+        const accessToken = getAccessToken();
         const response = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
@@ -53,7 +54,7 @@ class GLAccountService {
         page_size?: number;
     }): Promise<GLAccountListResponse> {
         const searchParams = new URLSearchParams();
-        
+
         if (params?.account_type) searchParams.append('account_type', params.account_type);
         if (params?.status) searchParams.append('status', params.status);
         if (params?.page) searchParams.append('page', params.page.toString());
@@ -68,13 +69,7 @@ class GLAccountService {
         return this.request<GLAccount>(`/api/v1/chart-of-accounts/${accountId}`);
     }
 
-    private getAccessToken(): string {
-        const fromStore = useUserStore.getState().accessToken;
-        if (fromStore) return fromStore;
-        const fromStorage = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
-        if (fromStorage) return fromStorage;
-        throw new Error('No access token found');
-    }
+
 }
 
 export const glAccountService = new GLAccountService();
