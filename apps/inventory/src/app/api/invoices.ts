@@ -43,7 +43,7 @@ export const invoiceApi = {
     pageSize = 20,
     filters?: InvoiceFilters
   ): Promise<InvoiceListResponse> =>
-    apiRequest('/invoices', accessToken, {
+    apiRequest('/api/v1/invoices', accessToken, {
       params: {
         ...buildPaginationParams(
           page,
@@ -108,7 +108,7 @@ export const invoiceApi = {
    */
   generateInvoicePDF: async (accessToken: string, invoiceId: string): Promise<Blob> => {
     const response = await fetch(
-      `${process.env.NX_API_CORE_URL || 'http://localhost:8000/api/v1'}/invoices/${invoiceId}/pdf`,
+      `${process.env.NX_API_CORE_URL || 'http://localhost:8000'}/api/v1/invoices/${invoiceId}/pdf`,
       {
         method: 'GET',
         headers: {
