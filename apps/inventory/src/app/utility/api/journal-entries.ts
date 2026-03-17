@@ -4,16 +4,7 @@
  * API functions for journal entry operations
  */
 
-import { apiRequest, buildPaginationParams } from './core';
-
-// Helper to get access token from auth context
-const getAccessToken = () => {
-  const token = localStorage.getItem('accessToken');
-  if (!token) {
-    throw new Error('No access token available');
-  }
-  return token;
-};
+import { apiRequest, getAccessToken, buildPaginationParams } from './core';
 
 export interface JournalEntryLine {
   id: string;
@@ -80,8 +71,8 @@ export async function fetchJournalEntryById(entryId: string): Promise<JournalEnt
 }
 
 export const journalEntriesApi = {
-  fetchJournalEntries: (page?: number, pageSize?: number, status?: string, sortBy?: string, sortOrder?: 'asc' | 'desc') => 
+  fetchJournalEntries: (page?: number, pageSize?: number, status?: string, sortBy?: string, sortOrder?: 'asc' | 'desc') =>
     fetchJournalEntries(page, pageSize, status, sortBy, sortOrder),
-  fetchJournalEntryById: (entryId: string) => 
+  fetchJournalEntryById: (entryId: string) =>
     fetchJournalEntryById(entryId),
 };

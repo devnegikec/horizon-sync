@@ -4,6 +4,7 @@
  */
 
 import { environment } from '../../../environments/environment';
+import { useUserStore } from '@horizon-sync/store';
 
 const BASE_URL = environment.apiCoreUrl;
 
@@ -114,4 +115,22 @@ export function buildPaginationParams(
     sort_by: sortBy,
     sort_order: sortOrder,
   };
+}
+
+/**
+ * Helper to get access token from auth context
+ */
+export function getAccessToken(): string {
+  // First try to get token from user store
+  const tokenFromStore = useUserStore.getState().accessToken;
+  if (tokenFromStore) {
+    return tokenFromStore;
+  }
+
+  // Fallback to localStorage
+  const token = localStorage.getItem('accessToken');
+  if (!token) {
+    throw new Error('No access token available');
+  }
+  return token;
 }

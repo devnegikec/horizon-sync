@@ -14,16 +14,7 @@ import {
   CancelPaymentPayload,
   PaymentFilters,
 } from '../../types/payment.types';
-import { apiRequest, buildPaginationParams } from './core';
-
-// Helper to get access token from auth context
-const getAccessToken = () => {
-  const token = localStorage.getItem('accessToken');
-  if (!token) {
-    throw new Error('No access token available');
-  }
-  return token;
-};
+import { apiRequest, buildPaginationParams, getAccessToken } from './core';
 
 /**
  * Fetch payments with optional filters

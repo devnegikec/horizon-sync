@@ -1,6 +1,5 @@
-import { useUserStore } from '@horizon-sync/store';
-
 import { BankAccount, BankAccountHistory, BankAccountListResponse, CreateBankAccountFormData, UpdateBankAccountFormData } from '../types';
+import { getAccessToken } from '../../../utility/api-core';
 
 // API Base URL - should come from environment config
 // Banking endpoints are on Core Service (port 8001), not Identity Service (port 8000)
@@ -13,7 +12,7 @@ class BankAccountService {
             headers: {
                 'Content-Type': 'application/json',
                 // Add auth token from your auth system
-                'Authorization': `Bearer ${this.getAccessToken()}`,
+                'Authorization': `Bearer ${getAccessToken()}`,
                 ...options?.headers,
             },
             ...options,
@@ -27,19 +26,13 @@ class BankAccountService {
         return response.json();
     }
 
-    private getAccessToken(): string {
-        const fromStore = useUserStore.getState().accessToken;
-        if (fromStore) return fromStore;
-        const fromStorage = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
-        if (fromStorage) return fromStorage;
-        throw new Error('No access token found');
-    }
+
 
     // Create bank account linked to GL account
     async createBankAccount(glAccountId: string, data: CreateBankAccountFormData): Promise<BankAccount> {
         // Remove gl_account_id from the request body (it's passed in the URL path)
         const { gl_account_id: _, ...bankAccountData } = data;
-        
+
         return this.request<BankAccount>(`/chart-of-accounts/${glAccountId}/bank-accounts`, {
             method: 'POST',
             body: JSON.stringify(bankAccountData),
@@ -98,10 +91,10 @@ class BankAccountService {
         // It returns all bank accounts for the GL account
 
         const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
-        
+
         // This endpoint returns BankAccount[] directly, not BankAccountListResponse
         const items = await this.request<BankAccount[]>(`/chart-of-accounts/${glAccountId}/bank-accounts${query}`);
-        
+
         // Wrap in BankAccountListResponse format for consistency
         return {
             items,
@@ -123,12 +116,12 @@ class BankAccountService {
         console.log('BankAccountService - accountId:', accountId);
         console.log('BankAccountService - data:', data);
         console.log('BankAccountService - API URL:', `${API_BASE_URL}/api/v1/bank-accounts/${accountId}`);
-        
+
         const result = await this.request<BankAccount>(`/bank-accounts/${accountId}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         });
-        
+
         console.log('BankAccountService - updateBankAccount result:', result);
         return result;
     }

@@ -4,7 +4,7 @@
  */
 
 // Core utilities
-export { apiRequest, buildUrl, buildPaginationParams } from './core';
+export { apiRequest, buildUrl, buildPaginationParams, getAccessToken } from './core';
 export type { ApiRequestOptions, ApiError } from './core';
 
 // Domain API clients
