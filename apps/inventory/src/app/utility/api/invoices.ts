@@ -18,7 +18,7 @@ export const invoiceApi = {
       sort_order?: 'asc' | 'desc';
     }
   ): Promise<InvoiceResponse> =>
-    apiRequest<InvoiceResponse>('/api/v1/invoices', accessToken, {
+    apiRequest<InvoiceResponse>('/invoices', accessToken, {
       params: {
         ...buildPaginationParams(page, pageSize, filters?.sort_by || 'posting_date', filters?.sort_order || 'desc'),
         invoice_type: filters?.invoice_type,
@@ -28,33 +28,33 @@ export const invoiceApi = {
       },
     }),
 
-  get: (accessToken: string, id: string) => apiRequest(`/api/v1/invoices/${id}`, accessToken),
+  get: (accessToken: string, id: string) => apiRequest(`/invoices/${id}`, accessToken),
 
   create: (accessToken: string, data: InvoiceCreateRequest) =>
-    apiRequest('/api/v1/invoices', accessToken, {
+    apiRequest('/invoices', accessToken, {
       method: 'POST',
       body: data,
     }),
 
   update: (accessToken: string, id: string, data: InvoiceUpdateRequest) =>
-    apiRequest(`/api/v1/invoices/${id}`, accessToken, {
+    apiRequest(`/invoices/${id}`, accessToken, {
       method: 'PUT',
       body: data,
     }),
 
   delete: (accessToken: string, id: string) =>
-    apiRequest(`/api/v1/invoices/${id}`, accessToken, {
+    apiRequest(`/invoices/${id}`, accessToken, {
       method: 'DELETE',
     }),
 
   confirm: (accessToken: string, id: string) =>
-    apiRequest(`/api/v1/invoices/${id}`, accessToken, {
+    apiRequest(`/invoices/${id}`, accessToken, {
       method: 'PUT',
       body: { status: 'pending' },
     }),
 
   sendEmail: (accessToken: string, id: string, emailData: { to: string; subject?: string; message?: string }) =>
-    apiRequest(`/api/v1/invoices/${id}/send-email`, accessToken, {
+    apiRequest(`/invoices/${id}/send-email`, accessToken, {
       method: 'POST',
       body: emailData,
     }),
