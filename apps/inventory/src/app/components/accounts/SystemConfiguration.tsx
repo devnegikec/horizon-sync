@@ -54,7 +54,26 @@ const COMMON_TRANSACTION_TYPES = [
   'payment_received',
   'payment_made',
   'inventory_adjustment',
+  'cash',
+  'bank',
+  'checks_received',
+  'demand_draft',
+  'inventory_asset',
+  'tax_payable',
+  'tax_receivable',
+  'discount_given',
+  'discount_received',
+  'freight_expense',
+  'shipping_charges'
 ];
+
+// Helper function to format transaction type display names
+const formatTransactionTypeName = (type: string): string => {
+  return type
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
 
 const FORMAT_EXAMPLES = [
   { pattern: '^[0-9]{4}-[0-9]{2}$', example: '1000-01', description: 'Four digits, dash, two digits' },
@@ -631,7 +650,7 @@ export const SystemConfiguration: React.FC = () => {
                         <SelectContent>
                           {COMMON_TRANSACTION_TYPES.map((type) => (
                             <SelectItem key={type} value={type}>
-                              {type.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                              {formatTransactionTypeName(type)}
                             </SelectItem>
                           ))}
                         </SelectContent>

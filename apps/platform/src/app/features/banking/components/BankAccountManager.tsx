@@ -7,7 +7,7 @@ import { BankAccountCard } from './ui/BankAccountCard';
 import { CreateBankAccountForm } from './forms/CreateBankAccountForm';
 import { EditBankAccountForm } from './forms/EditBankAccountForm';
 import { BankAccount } from '../types';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, RefreshCw } from 'lucide-react';
 
 interface BankAccountManagerProps {
     glAccountId?: string;
@@ -16,7 +16,10 @@ interface BankAccountManagerProps {
 const PLACEHOLDER_UUID = '00000000-0000-0000-0000-000000000000';
 
 // Header component to reduce complexity
-const BankAccountHeader = ({ onAddAccount }: { onAddAccount: () => void }) => (
+const BankAccountHeader = ({ onAddAccount, onRefresh }: {
+    onAddAccount: () => void;
+    onRefresh: () => void;
+}) => (
     <div className="flex items-center justify-between">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Bank Accounts</h1>
@@ -24,10 +27,16 @@ const BankAccountHeader = ({ onAddAccount }: { onAddAccount: () => void }) => (
                 Manage your connected bank accounts
             </p>
         </div>
-        <Button onClick={onAddAccount}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Bank Account
-        </Button>
+        <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={onRefresh}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+            </Button>
+            <Button onClick={onAddAccount}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Bank Account
+            </Button>
+        </div>
     </div>
 );
 
@@ -92,12 +101,13 @@ export function BankAccountManager({ glAccountId = PLACEHOLDER_UUID }: BankAccou
     // Use different hooks based on whether we have a valid GL account ID
     const isPlaceholder = !glAccountId || glAccountId === PLACEHOLDER_UUID;
 
-    const { data: allAccountsData, isLoading: isLoadingAll } = useBankAccounts({
+    // Fetch bank accounts data
+    const { data: allAccountsData, isLoading: isLoadingAll, refetch: refetchAll } = useBankAccounts({
         active: filterActive,
         limit: 50,
     });
 
-    const { data: glAccountsData, isLoading: isLoadingGL } = useBankAccountsByGLAccount(glAccountId, {
+    const { data: glAccountsData, isLoading: isLoadingGL, refetch: refetchGL } = useBankAccountsByGLAccount(glAccountId, {
         active: filterActive,
         limit: 50,
     });
@@ -112,6 +122,18 @@ export function BankAccountManager({ glAccountId = PLACEHOLDER_UUID }: BankAccou
         account.account_holder_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         account.account_number.includes(searchTerm)
     );
+
+    const handleRefresh = async () => {
+        try {
+            if (isPlaceholder) {
+                await refetchAll();
+            } else {
+                await refetchGL();
+            }
+        } catch (error) {
+            console.error('Error refreshing bank accounts:', error);
+        }
+    };
 
     if (showCreateForm) {
         return (
@@ -135,7 +157,10 @@ export function BankAccountManager({ glAccountId = PLACEHOLDER_UUID }: BankAccou
 
     return (
         <div className="space-y-6">
-            <BankAccountHeader onAddAccount={() => setShowCreateForm(true)} />
+            <BankAccountHeader
+                onAddAccount={() => setShowCreateForm(true)}
+                onRefresh={handleRefresh}
+            />
             <BankAccountFilters
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}

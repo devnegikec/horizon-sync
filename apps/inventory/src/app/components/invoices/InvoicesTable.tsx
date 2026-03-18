@@ -196,7 +196,7 @@ export function InvoicesTable({
                       </DropdownMenuItem>
                     </>
                   )}
-                  {invoice.outstanding_amount > 0 && (
+                  {invoice.status === 'paid' && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => onCreatePayment(invoice)}>
@@ -267,7 +267,7 @@ export function InvoicesTable({
                     New Invoice
                   </Button>
                 ) : undefined
-              }/>
+              } />
           </div>
         </CardContent>
       </Card>
@@ -292,7 +292,7 @@ export function InvoicesTable({
           filterPlaceholder="Search by invoice #, party..."
           renderViewOptions={renderViewOptions}
           fixedHeader
-          maxHeight="auto"/>
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );

@@ -68,7 +68,8 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
   const { invoices: outstandingInvoices, loading: invoicesLoading } =
     useOutstandingInvoicesForAllocation(
       isDraft && payment?.party_id ? payment.party_id : null,
-      payment?.payment_type === 'Supplier_Payment' ? 'Supplier_Payment' : 'Customer_Payment'
+      payment?.payment_type === 'Supplier_Payment' ? 'Supplier_Payment' : 'Customer_Payment',
+      null
     );
 
   const handleViewReceipt = useCallback(() => {
@@ -261,7 +262,7 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
                   paymentCurrency={payment.currency_code}
                   isDraft={isDraft}
                   onRemove={removeAllocation}
-                  loading={loading || allocationActionLoading}/>
+                  loading={loading || allocationActionLoading} />
                 {isDraft && (
                   <>
                     <Separator className="my-4" />
@@ -275,7 +276,7 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
                         paymentCurrency={payment.currency_code}
                         existingAllocations={allocationList}
                         onSave={handleSaveAllocations}
-                        loading={allocationActionLoading || invoicesLoading}/>
+                        loading={allocationActionLoading || invoicesLoading} />
                     </div>
                   </>
                 )}
@@ -298,7 +299,7 @@ export const PaymentDetailDialog = memo(function PaymentDetailDialog({
       {isConfirmed && payment.receipt_number && (
         <ReceiptViewer open={receiptViewerOpen}
           onOpenChange={setReceiptViewerOpen}
-          payment={payment}/>
+          payment={payment} />
       )}
     </>
   );

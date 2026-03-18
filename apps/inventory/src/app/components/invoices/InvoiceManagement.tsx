@@ -50,13 +50,18 @@ export function InvoiceManagement() {
 
   // Handle create payment from invoice
   const handleCreatePayment = React.useCallback((invoice: Invoice) => {
-    const payment_type = invoice.invoice_type === 'sales' 
-      ? PaymentType.CUSTOMER_PAYMENT 
+    const payment_type = invoice.invoice_type === 'sales'
+      ? PaymentType.CUSTOMER_PAYMENT
       : PaymentType.SUPPLIER_PAYMENT;
+
+    // For paid invoices, use the grand total as the payment amount
+    // For unpaid invoices, use the outstanding amount
+    const paymentAmount = invoice.status === 'paid' ? invoice.grand_total : invoice.outstanding_amount;
+
     setPaymentInitialData({
       payment_type,
       party_id: invoice.party_id,
-      amount: invoice.outstanding_amount,
+      amount: paymentAmount,
       currency_code: invoice.currency,
       payment_date: new Date().toISOString().split('T')[0],
     });
@@ -92,7 +97,7 @@ export function InvoiceManagement() {
         draft={stats.draft}
         pending={stats.pending}
         paid={stats.paid}
-        overdue={stats.overdue}/>
+        overdue={stats.overdue} />
 
       {/* Filters */}
       <InvoiceManagementFilters filters={filters} setFilters={setFilters} tableInstance={tableInstance} />
@@ -108,7 +113,7 @@ export function InvoiceManagement() {
         onCreatePayment={handleCreatePayment}
         onCreateInvoice={handleCreate}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}/>
+        serverPagination={serverPaginationConfig} />
 
       {/* Detail Dialog */}
       <InvoiceDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} invoice={selectedInvoice} />
@@ -123,7 +128,7 @@ export function InvoiceManagement() {
           setPaymentDialogOpen(false);
           setSelectedInvoiceId(null);
           refetch();
-        }}/>
+        }} />
 
       {/* TODO: Create Dialog */}
       {createDialogOpen && (
@@ -138,7 +143,7 @@ export function InvoiceManagement() {
         confirmLabel="Mark as Paid"
         cancelLabel="Cancel"
         loading={isMarkingAsPaid}
-        onConfirm={confirmMarkAsPaid}/>
+        onConfirm={confirmMarkAsPaid} />
     </div>
   );
 }

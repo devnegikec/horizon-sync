@@ -8,6 +8,8 @@ const API_BASE_URL = process.env['NX_CORE_API_BASE_URL'] || process.env['NX_API_
 class BankAccountService {
     private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
         const url = `${API_BASE_URL}/api/v1${endpoint}`;
+        console.log('Bank API Request:', url, options); // Debug logging
+
         const response = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
@@ -18,12 +20,17 @@ class BankAccountService {
             ...options,
         });
 
+        console.log('Bank API Response:', response.status, response.statusText); // Debug logging
+
         if (!response.ok) {
             const error = await response.text();
+            console.error('Bank API Error:', error); // Debug logging
             throw new Error(`API Error: ${response.status} - ${error}`);
         }
 
-        return response.json();
+        const data = await response.json();
+        console.log('Bank API Data:', data); // Debug logging
+        return data;
     }
 
 
@@ -37,6 +44,84 @@ class BankAccountService {
             method: 'POST',
             body: JSON.stringify(bankAccountData),
         });
+    }
+
+    // Check for duplicate bank account using country-aware banking identifiers
+    async checkDuplicateBankAccount(params: {
+        account_number?: string;
+        iban?: string;
+        routing_number?: string;
+        sort_code?: string;
+        bsb_number?: string;
+        ifsc_code?: string;
+        country_code?: string;
+        organization_id?: string;
+    }): Promise<{ isDuplicate: boolean; duplicateField?: string; existingAccount?: any }> {
+
+        // Determine the primary banking identifier based on country or available fields
+        let bankIdentifier = '';
+        let identifierType = '';
+
+        // Check in order of specificity based on country
+        const country = params.country_code?.toUpperCase();
+
+        // EU countries prioritize IBAN
+        if (country && ['DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'IE', 'FI', 'GR', 'LU'].includes(country) && params.iban) {
+            bankIdentifier = params.iban;
+            identifierType = 'iban';
+        }
+        // US uses routing + account number or just account number
+        else if (country === 'US' && params.routing_number && params.account_number) {
+            bankIdentifier = `${params.routing_number}:${params.account_number}`;
+            identifierType = 'routing_account';
+        }
+        // UK uses sort code + account number
+        else if (country === 'GB' && params.sort_code && params.account_number) {
+            bankIdentifier = `${params.sort_code.replace('-', '')}:${params.account_number}`;
+            identifierType = 'sort_account';
+        }
+        // Australia uses BSB + account number
+        else if (country === 'AU' && params.bsb_number && params.account_number) {
+            bankIdentifier = `${params.bsb_number.replace('-', '')}:${params.account_number}`;
+            identifierType = 'bsb_account';
+        }
+        // India uses IFSC + account number
+        else if (country === 'IN' && params.ifsc_code && params.account_number) {
+            bankIdentifier = `${params.ifsc_code}:${params.account_number}`;
+            identifierType = 'ifsc_account';
+        }
+        // Fallback to available identifiers
+        else if (params.iban) {
+            bankIdentifier = params.iban;
+            identifierType = 'iban';
+        }
+        else if (params.account_number) {
+            bankIdentifier = params.account_number;
+            identifierType = 'account_number';
+        }
+        else if (params.routing_number) {
+            bankIdentifier = params.routing_number;
+            identifierType = 'routing_number';
+        }
+
+        if (!bankIdentifier) {
+            return { isDuplicate: false };
+        }
+
+        // Use the generic bank_identifier parameter
+        const response = await this.request<BankAccountListResponse>(
+            `/bank-accounts?bank_identifier=${encodeURIComponent(bankIdentifier)}`
+        ).catch(() => ({ items: [] }));
+
+        if (response.items && response.items.length > 0) {
+            return {
+                isDuplicate: true,
+                duplicateField: identifierType === 'iban' ? 'iban' : 'account_number',
+                existingAccount: response.items[0]
+            };
+        }
+
+        return { isDuplicate: false };
     }
 
     // Helper method to build search parameters

@@ -50,17 +50,17 @@ interface GLAccountSelectorProps {
     setValue: any;
 }
 
-const GLAccountSelector = ({ 
-    selectedAccountType, 
-    setSelectedAccountType, 
-    glAccounts, 
-    errors, 
-    register, 
+const GLAccountSelector = ({
+    selectedAccountType,
+    setSelectedAccountType,
+    glAccounts,
+    errors,
+    register,
     setValue
 }: GLAccountSelectorProps) => (
     <div className="space-y-4 border-t pt-4">
         <h3 className="text-lg font-semibold">GL Account (Chart of Accounts) *</h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
                 <Label htmlFor="account_type_filter">Account Type *</Label>
@@ -94,12 +94,22 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
     const [glAccounts, setGlAccounts] = useState<GLAccount[]>([]);
     const [loadingGlAccounts, setLoadingGlAccounts] = useState(true);
     const [selectedAccountType, setSelectedAccountType] = useState<string>('asset');
+    const [duplicateCheckLoading, setDuplicateCheckLoading] = useState(false);
+    const [duplicateError, setDuplicateError] = useState<string>('');
+
+    // Helper function to clear duplicate error when user starts editing
+    const clearDuplicateErrorOnEdit = () => {
+        if (duplicateError) {
+            setDuplicateError('');
+        }
+    };
 
     const {
         register,
         handleSubmit,
         control,
         watch,
+        getValues,
         setValue,
         formState: { errors, isSubmitting },
     } = useForm<CreateBankAccountFormData>({
@@ -133,15 +143,15 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                     status: 'active',
                     page_size: 100
                 });
-                
+
                 // Filter to only show posting accounts (is_posting_account = true)
                 // Non-posting accounts are parent/group accounts and should not be used for bank linking
                 const postingAccounts = (response.chart_of_accounts || []).filter(
                     account => account.is_posting_account === true
                 );
-                
+
                 setGlAccounts(postingAccounts);
-                
+
                 // If no glAccountId was provided and we have accounts, use the first one
                 if ((!glAccountId || glAccountId === '00000000-0000-0000-0000-000000000000') && postingAccounts.length > 0) {
                     setValue('gl_account_id', postingAccounts[0].id);
@@ -181,7 +191,7 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
             setValue('sort_code', undefined);
             setValue('bsb_number', undefined);
             setValue('account_number', '');
-            
+
             setSelectedCountry(countryCode);
             setValidationErrors({});
         }
@@ -250,20 +260,103 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
         updateValidationErrors(fieldName, result);
     };
 
+    const checkForDuplicates = async (fieldType: 'account_number' | 'iban' | 'routing_number' | 'sort_code' | 'bsb_number' | 'ifsc_code' | 'country_code' | '', value: string) => {
+        if (!value || !value.trim()) {
+            // Clear error if field is empty
+            setDuplicateError('');
+            return;
+        }
+
+        // Get the latest form values to ensure we're checking with current data
+        const currentFormValues = getValues();
+
+        setDuplicateCheckLoading(true);
+        setDuplicateError('');
+
+        try {
+            const { bankAccountService } = await import('../../services');
+
+            // Prepare the check data with the current field value
+            const checkData = {
+                account_number: fieldType === 'account_number' ? value.trim() : currentFormValues.account_number?.trim() || undefined,
+                iban: fieldType === 'iban' ? value.trim() : currentFormValues.iban?.trim() || undefined,
+                routing_number: fieldType === 'routing_number' ? value.trim() : currentFormValues.routing_number?.trim() || undefined,
+                sort_code: fieldType === 'sort_code' ? value.trim() : currentFormValues.sort_code?.trim() || undefined,
+                bsb_number: fieldType === 'bsb_number' ? value.trim() : currentFormValues.bsb_number?.trim() || undefined,
+                ifsc_code: fieldType === 'ifsc_code' ? value.trim() : currentFormValues.ifsc_code?.trim() || undefined,
+                country_code: fieldType === 'country_code' ? value : currentFormValues.country_code || undefined
+            };
+
+            // Only proceed if we have valid data to check
+            if (!checkData.account_number && !checkData.iban && !checkData.routing_number && !checkData.sort_code && !checkData.bsb_number && !checkData.ifsc_code) {
+                setDuplicateError('');
+                return;
+            }
+
+            const duplicateCheck = await bankAccountService.checkDuplicateBankAccount(checkData);
+
+            if (duplicateCheck.isDuplicate) {
+                const fieldName = duplicateCheck.duplicateField === 'account_number' ? 'Account Number' : 'IBAN';
+                const existingBank = duplicateCheck.existingAccount?.bank_name || 'Unknown Bank';
+                setDuplicateError(`${fieldName} already exists for ${existingBank}. Please use a different ${fieldName.toLowerCase()}.`);
+            } else {
+                // Explicitly clear error if no duplicate found
+                setDuplicateError('');
+            }
+        } catch (error) {
+            console.error('Error checking for duplicates:', error);
+            // Clear error on API failure to avoid showing stale error
+            setDuplicateError('');
+        } finally {
+            setDuplicateCheckLoading(false);
+        }
+    };
+
     const onSubmit = async (data: CreateBankAccountFormData) => {
         // Check if there are any validation errors
         if (Object.keys(validationErrors).length > 0) {
             return;
         }
-        
+
+        // Check for duplicate error
+        if (duplicateError) {
+            return;
+        }
+
+        // Final duplicate check before submission
+        setDuplicateCheckLoading(true);
+        try {
+            const { bankAccountService } = await import('../../services');
+            const duplicateCheck = await bankAccountService.checkDuplicateBankAccount({
+                account_number: data.account_number?.trim() || undefined,
+                iban: data.iban?.trim() || undefined,
+                routing_number: data.routing_number?.trim() || undefined,
+                sort_code: data.sort_code?.trim() || undefined,
+                bsb_number: data.bsb_number?.trim() || undefined,
+                ifsc_code: data.ifsc_code?.trim() || undefined,
+                country_code: data.country_code || undefined
+            });
+
+            if (duplicateCheck.isDuplicate) {
+                const fieldName = duplicateCheck.duplicateField === 'account_number' ? 'Account Number' : 'IBAN';
+                const existingBank = duplicateCheck.existingAccount?.bank_name || 'Unknown Bank';
+                setDuplicateError(`${fieldName} already exists for ${existingBank}. Please use a different ${fieldName.toLowerCase()}.`);
+                setDuplicateCheckLoading(false);
+                return;
+            }
+        } catch (error) {
+            console.error('Error in final duplicate check:', error);
+        }
+        setDuplicateCheckLoading(false);
+
         // Use the GL account ID from the form data, not from props
         // This allows the form to work even when initialized with a placeholder ID
         const effectiveGlAccountId = data.gl_account_id || glAccountId;
-        
+
         if (!effectiveGlAccountId || effectiveGlAccountId === '00000000-0000-0000-0000-000000000000') {
             return;
         }
-        
+
         try {
             await createBankAccount.mutateAsync({ glAccountId: effectiveGlAccountId, data });
             onSuccess?.();
@@ -305,7 +398,7 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                     {/* GL Account Selection - Two-step filter */}
                     <div className="space-y-4 border-t pt-4">
                         <h3 className="text-lg font-semibold">GL Account (Chart of Accounts) *</h3>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Account Type Filter */}
                             <div className="space-y-2">
@@ -346,10 +439,10 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                                         >
                                             <SelectTrigger className={errors.gl_account_id ? 'border-red-500' : ''}>
                                                 <SelectValue placeholder={
-                                                    loadingGlAccounts 
-                                                        ? "Loading accounts..." 
-                                                        : glAccounts.length === 0 
-                                                            ? `No ${selectedAccountType} accounts available` 
+                                                    loadingGlAccounts
+                                                        ? "Loading accounts..."
+                                                        : glAccounts.length === 0
+                                                            ? `No ${selectedAccountType} accounts available`
                                                             : "Select GL Account"
                                                 } />
                                             </SelectTrigger>
@@ -395,6 +488,13 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                                 id="bank_name"
                                 placeholder="Bank of America"
                                 {...register('bank_name')}
+                                onChange={(e) => {
+                                    register('bank_name').onChange(e);
+                                    // Clear duplicate error when bank name changes since error message contains bank name
+                                    if (duplicateError) {
+                                        setDuplicateError('');
+                                    }
+                                }}
                                 className={errors.bank_name ? 'border-red-500' : ''}
                             />
                             {errors.bank_name && (
@@ -528,12 +628,19 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                                                 onChange={(e) => {
                                                     register('account_number').onChange(e);
                                                     validateField('account_number', e.target.value);
+                                                    // Clear duplicate error when user starts editing
+                                                    clearDuplicateErrorOnEdit();
                                                 }}
-                                                className={errors.account_number || validationErrors.account_number ? 'border-red-500' : ''}
+                                                onBlur={async (e) => {
+                                                    if (e.target.value.trim()) {
+                                                        await checkForDuplicates('account_number', e.target.value);
+                                                    }
+                                                }}
+                                                className={errors.account_number || validationErrors.account_number || duplicateError ? 'border-red-500' : ''}
                                             />
-                                            {(errors.account_number || validationErrors.account_number) && (
+                                            {(errors.account_number || validationErrors.account_number || duplicateError) && (
                                                 <p className="text-sm text-red-600">
-                                                    {errors.account_number?.message || validationErrors.account_number}
+                                                    {errors.account_number?.message || validationErrors.account_number || duplicateError}
                                                 </p>
                                             )}
                                             <p className="text-xs text-muted-foreground">8-18 digit account number</p>
@@ -553,12 +660,19 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                                                 onChange={(e) => {
                                                     register('iban').onChange(e);
                                                     validateField('iban', e.target.value);
+                                                    // Clear duplicate error when user starts editing
+                                                    clearDuplicateErrorOnEdit();
                                                 }}
-                                                className={errors.iban || validationErrors.iban ? 'border-red-500' : ''}
+                                                onBlur={async (e) => {
+                                                    if (e.target.value.trim()) {
+                                                        await checkForDuplicates('iban', e.target.value);
+                                                    }
+                                                }}
+                                                className={errors.iban || validationErrors.iban || duplicateError ? 'border-red-500' : ''}
                                             />
-                                            {(errors.iban || validationErrors.iban) && (
+                                            {(errors.iban || validationErrors.iban || duplicateError) && (
                                                 <p className="text-sm text-red-600">
-                                                    {errors.iban?.message || validationErrors.iban}
+                                                    {errors.iban?.message || validationErrors.iban || duplicateError}
                                                 </p>
                                             )}
                                             <p className="text-xs text-gray-500">International Bank Account Number</p>
@@ -620,12 +734,18 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                                                 onChange={(e) => {
                                                     register('account_number').onChange(e);
                                                     validateField('account_number', e.target.value);
+                                                    clearDuplicateErrorOnEdit();
                                                 }}
-                                                className={errors.account_number || validationErrors.account_number ? 'border-red-500' : ''}
+                                                onBlur={async (e) => {
+                                                    if (e.target.value.trim()) {
+                                                        await checkForDuplicates('account_number', e.target.value);
+                                                    }
+                                                }}
+                                                className={errors.account_number || validationErrors.account_number || duplicateError ? 'border-red-500' : ''}
                                             />
-                                            {(errors.account_number || validationErrors.account_number) && (
+                                            {(errors.account_number || validationErrors.account_number || duplicateError) && (
                                                 <p className="text-sm text-red-600">
-                                                    {errors.account_number?.message || validationErrors.account_number}
+                                                    {errors.account_number?.message || validationErrors.account_number || duplicateError}
                                                 </p>
                                             )}
                                             <p className="text-xs text-muted-foreground">8-18 digit account number</p>
@@ -666,12 +786,18 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                                                 onChange={(e) => {
                                                     register('account_number').onChange(e);
                                                     validateField('account_number', e.target.value);
+                                                    clearDuplicateErrorOnEdit();
                                                 }}
-                                                className={errors.account_number || validationErrors.account_number ? 'border-red-500' : ''}
+                                                onBlur={async (e) => {
+                                                    if (e.target.value.trim()) {
+                                                        await checkForDuplicates('account_number', e.target.value);
+                                                    }
+                                                }}
+                                                className={errors.account_number || validationErrors.account_number || duplicateError ? 'border-red-500' : ''}
                                             />
-                                            {(errors.account_number || validationErrors.account_number) && (
+                                            {(errors.account_number || validationErrors.account_number || duplicateError) && (
                                                 <p className="text-sm text-red-600">
-                                                    {errors.account_number?.message || validationErrors.account_number}
+                                                    {errors.account_number?.message || validationErrors.account_number || duplicateError}
                                                 </p>
                                             )}
                                             <p className="text-xs text-muted-foreground">8-18 digit account number</p>
@@ -712,12 +838,18 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                                                 onChange={(e) => {
                                                     register('account_number').onChange(e);
                                                     validateField('account_number', e.target.value);
+                                                    clearDuplicateErrorOnEdit();
                                                 }}
-                                                className={errors.account_number || validationErrors.account_number ? 'border-red-500' : ''}
+                                                onBlur={async (e) => {
+                                                    if (e.target.value.trim()) {
+                                                        await checkForDuplicates('account_number', e.target.value);
+                                                    }
+                                                }}
+                                                className={errors.account_number || validationErrors.account_number || duplicateError ? 'border-red-500' : ''}
                                             />
-                                            {(errors.account_number || validationErrors.account_number) && (
+                                            {(errors.account_number || validationErrors.account_number || duplicateError) && (
                                                 <p className="text-sm text-red-600">
-                                                    {errors.account_number?.message || validationErrors.account_number}
+                                                    {errors.account_number?.message || validationErrors.account_number || duplicateError}
                                                 </p>
                                             )}
                                             <p className="text-xs text-muted-foreground">8-18 digit account number</p>
@@ -729,14 +861,14 @@ export function CreateBankAccountForm({ glAccountId, onSuccess, onCancel }: Crea
                     )}
 
                     <div className="flex justify-end space-x-4 pt-4">
-                        <Button 
-                            type="submit" 
-                            disabled={isSubmitting || Object.keys(validationErrors).length > 0}
+                        <Button
+                            type="submit"
+                            disabled={isSubmitting || duplicateCheckLoading || Object.keys(validationErrors).length > 0 || duplicateError.length > 0}
                         >
-                            {isSubmitting ? 'Creating...' : 'Create Account'}
+                            {isSubmitting ? 'Creating...' : duplicateCheckLoading ? 'Checking...' : 'Create Account'}
                         </Button>
-                        <Button 
-                            type="button" 
+                        <Button
+                            type="button"
                             variant="outline"
                             onClick={onCancel}
                         >
