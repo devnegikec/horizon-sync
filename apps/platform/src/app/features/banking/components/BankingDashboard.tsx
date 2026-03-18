@@ -9,10 +9,18 @@ import { Link } from 'react-router-dom';
 
 export function BankingDashboard() {
     // Use useBankAccounts instead of useBankingOverview since the overview endpoint is not implemented
-    const { data: bankAccountsData, isLoading: accountsLoading } = useBankAccounts({
+    const { data: bankAccountsData, isLoading: accountsLoading, error, refetch } = useBankAccounts({
         active: true,
         limit: 50,
     });
+
+    const handleRefresh = async () => {
+        try {
+            await refetch();
+        } catch (error) {
+            console.error('Error refreshing bank accounts:', error);
+        }
+    };
 
     if (accountsLoading) {
         return (
@@ -27,7 +35,34 @@ export function BankingDashboard() {
             </div>
         );
     }
-
+    // Show error state if API call failed
+    if (error) {
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Banking</h1>
+                        <p className="text-muted-foreground">
+                            Manage your bank accounts, payments, and transfers
+                        </p>
+                    </div>
+                    <Button onClick={handleRefresh} variant="outline">
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Retry
+                    </Button>
+                </div>
+                <div className="rounded-lg border bg-destructive/10 p-4">
+                    <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 text-destructive">⚠️</div>
+                        <p className="text-sm font-medium">Failed to load bank accounts</p>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        {error?.message || 'There was an error loading your bank accounts. Please try again.'}
+                    </p>
+                </div>
+            </div>
+        );
+    }
     const bankAccounts = bankAccountsData?.items || [];
     const hasAccounts = bankAccounts.length > 0;
 
@@ -42,9 +77,9 @@ export function BankingDashboard() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleRefresh}>
                         <RefreshCw className="h-4 w-4 mr-2" />
-                        Sync All
+                        Refresh
                     </Button>
                     <Button variant="outline" size="sm">
                         <Settings className="h-4 w-4 mr-2" />

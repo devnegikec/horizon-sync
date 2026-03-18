@@ -20,7 +20,9 @@ export function useBankAccounts(params?: {
     return useQuery({
         queryKey: [...BANK_ACCOUNT_KEYS.all, params],
         queryFn: async (): Promise<BankAccountListResponse> => {
+            console.log('Fetching bank accounts with params:', params); // Debug logging
             const accounts = await bankAccountService.getAllBankAccounts(params);
+            console.log('Bank accounts fetched:', accounts); // Debug logging
             // Return in the same format as the GL account endpoint for consistency
             return {
                 items: accounts,
@@ -30,6 +32,9 @@ export function useBankAccounts(params?: {
                 total_pages: 1
             };
         },
+        retry: 2, // Retry failed requests twice
+        staleTime: 30000, // Consider data fresh for 30 seconds
+        refetchOnWindowFocus: false, // Don't refetch on window focus by default
     });
 }
 
@@ -81,6 +86,8 @@ export function useCreateBankAccount() {
         onSuccess: (newAccount, { glAccountId }) => {
             // Invalidate and refetch bank accounts for this GL account
             queryClient.invalidateQueries({ queryKey: BANK_ACCOUNT_KEYS.byGLAccount(glAccountId) });
+            // Also invalidate the general bank accounts list used in dashboard
+            queryClient.invalidateQueries({ queryKey: BANK_ACCOUNT_KEYS.all });
 
             toast({
                 title: 'Bank Account Created',
@@ -106,6 +113,10 @@ export function useUpdateBankAccount() {
         mutationFn: ({ accountId, data }: { accountId: string; data: UpdateBankAccountFormData }) =>
             bankAccountService.updateBankAccount(accountId, data),
         onSuccess: (updatedAccount) => {
+            // Invalidate all bank account queries to ensure fresh data
+            queryClient.invalidateQueries({ queryKey: BANK_ACCOUNT_KEYS.all });
+            queryClient.invalidateQueries({ queryKey: BANK_ACCOUNT_KEYS.byGLAccount(updatedAccount.gl_account_id) });
+
             // Update the specific account in cache
             queryClient.setQueryData(
                 BANK_ACCOUNT_KEYS.byId(updatedAccount.id),
@@ -179,6 +190,8 @@ export function useToggleBankAccountStatus() {
 
             // Invalidate related queries
             queryClient.invalidateQueries({ queryKey: BANK_ACCOUNT_KEYS.byGLAccount(updatedAccount.gl_account_id) });
+            // Also invalidate the general bank accounts list used in dashboard
+            queryClient.invalidateQueries({ queryKey: BANK_ACCOUNT_KEYS.all });
 
             toast({
                 title: `Bank Account ${activate ? 'Activated' : 'Deactivated'}`,

@@ -26,20 +26,8 @@ import type { SuppliersResponse } from '../../types/supplier.types';
 import { supplierApi } from '../../utility/api';
 import { customerApi } from '../../utility/api';
 import { getAccessToken } from '../../utility/api/core';
-import { apiRequest } from '../../utility/api/core';
 import { toDateInputValue } from '../../utils/payment.utils';
-
-interface BankAccount {
-  id: string;
-  bank_name: string;
-  account_number: string;
-  is_active: boolean;
-}
-
-interface BankAccountListResponse {
-  items: BankAccount[];
-  total: number;
-}
+import { useActiveBankAccounts } from '../../hooks/useBankAccounts';
 
 interface PaymentFormProps {
   initialData?: Partial<CreatePaymentPayload>;
@@ -87,7 +75,8 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
   // Fetch outstanding invoices for allocation
   const { invoices: outstandingInvoices, loading: invoicesLoading } = useOutstandingInvoicesForAllocation(
     formData.party_id || null,
-    formData.payment_type || 'Customer_Payment'
+    formData.payment_type || 'Customer_Payment',
+    preselectedInvoiceId
   );
 
   const {
@@ -115,20 +104,12 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
 
   // Fetch active bank accounts for Bank_Transfer payment mode
   const {
-    data: bankAccountsData,
+    data: bankAccounts,
     error: bankAccountsError,
     isFetching: bankAccountsLoading,
-  } = useQuery<BankAccountListResponse>({
-    queryKey: ['bank-accounts-active', accessToken ?? ''],
-    queryFn: () => apiRequest<BankAccountListResponse>('/bank-accounts', accessToken || '', {
-      params: { is_active: true }
-    }),
-    enabled: !!accessToken,
-    staleTime: 60_000,
-    retry: 1,
-  });
+  } = useActiveBankAccounts();
 
-  const bankAccounts = bankAccountsData?.items ?? [];
+  console.log('Available bank accounts:', bankAccounts); // Debug log
 
   const customers = customersData?.customers ?? [];
   const suppliers = suppliersData?.suppliers ?? [];
@@ -570,23 +551,32 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
               <SelectValue placeholder={
                 bankAccountsLoading
                   ? 'Loading bank accounts...'
-                  : bankAccounts.length === 0
-                    ? 'No active bank accounts available'
+                  : bankAccounts?.length === 0
+                    ? 'No active bank accounts available - Create one in Banking Settings'
                     : 'Select bank account'
               } />
             </SelectTrigger>
             <SelectContent>
-              {bankAccounts.map((account) => (
-                <SelectItem key={account.id} value={account.id}>
-                  {account.bank_name} - ****{account.account_number.slice(-4)}
-                </SelectItem>
-              ))}
+              {bankAccounts?.length === 0 ? (
+                <div className="p-3 text-sm text-muted-foreground text-center">
+                  <p>No bank accounts available.</p>
+                  <p className="text-xs mt-1">Go to Settings → Banking to add bank accounts.</p>
+                </div>
+              ) : (
+                bankAccounts?.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.bank_name} - ****{account.account_number.slice(-4)}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
           {bankAccountsError && (
-            <p className="text-sm text-destructive">
-              Failed to load bank accounts. Check your connection and try again.
-            </p>
+            <div className="text-sm text-destructive space-y-1">
+              <p>Failed to load bank accounts. Check your connection and try again.</p>
+              <p className="text-xs">Error: {bankAccountsError instanceof Error ? bankAccountsError.message : 'Unknown error'}</p>
+              <p className="text-xs text-muted-foreground">If no bank accounts exist, go to Settings → Banking to create them.</p>
+            </div>
           )}
           {errors.bank_account_id && (
             <p className="text-sm text-destructive">{errors.bank_account_id}</p>

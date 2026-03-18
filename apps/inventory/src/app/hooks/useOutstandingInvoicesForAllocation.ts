@@ -8,10 +8,12 @@ import { invoiceApi } from '../utility/api/invoices';
 /**
  * Fetches invoices for a party that have outstanding balance > 0, for payment allocation.
  * Maps to InvoiceForAllocation (invoice_no, invoice_date, total_amount, balance_due, etc.).
+ * Can also include a preselected invoice even if it has no outstanding amount (for paid invoice payment capture).
  */
 export function useOutstandingInvoicesForAllocation(
   partyId: string | null,
-  paymentType: 'Customer_Payment' | 'Supplier_Payment'
+  paymentType: 'Customer_Payment' | 'Supplier_Payment',
+  preselectedInvoiceId?: string | null
 ) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [invoices, setInvoices] = useState<InvoiceForAllocation[]>([]);
@@ -34,25 +36,32 @@ export function useOutstandingInvoicesForAllocation(
         sort_order: 'desc',
       });
       const list = response?.invoices ?? [];
-      const mapped: InvoiceForAllocation[] = list
-        .filter((inv: { outstanding_amount?: number }) => (inv.outstanding_amount ?? 0) > 0)
-        .map((inv: {
-          id: string;
-          invoice_no: string;
-          posting_date: string;
-          grand_total: number;
-          outstanding_amount?: number;
-          currency?: string;
-          status?: string;
-        }) => ({
-          id: inv.id,
-          invoice_no: inv.invoice_no,
-          invoice_date: inv.posting_date,
-          total_amount: Number(inv.grand_total),
-          balance_due: Number(inv.outstanding_amount ?? inv.grand_total),
-          currency: inv.currency ?? 'USD',
-          status: inv.status ?? 'pending',
-        }));
+
+      // Filter invoices with outstanding balance OR include preselected invoice
+      const filteredList = list.filter((inv: { outstanding_amount?: number; id: string }) =>
+        (inv.outstanding_amount ?? 0) > 0 || inv.id === preselectedInvoiceId
+      );
+
+      const mapped: InvoiceForAllocation[] = filteredList.map((inv: {
+        id: string;
+        invoice_no: string;
+        posting_date: string;
+        grand_total: number;
+        outstanding_amount?: number;
+        currency?: string;
+        status?: string;
+      }) => ({
+        id: inv.id,
+        invoice_no: inv.invoice_no,
+        invoice_date: inv.posting_date,
+        total_amount: Number(inv.grand_total),
+        // For paid invoices (outstanding_amount is 0), use grand_total as balance_due for allocation
+        balance_due: inv.id === preselectedInvoiceId && (inv.outstanding_amount ?? 0) === 0
+          ? Number(inv.grand_total)
+          : Number(inv.outstanding_amount ?? inv.grand_total),
+        currency: inv.currency ?? 'USD',
+        status: inv.status ?? 'pending',
+      }));
       setInvoices(mapped);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load invoices');
@@ -60,7 +69,7 @@ export function useOutstandingInvoicesForAllocation(
     } finally {
       setLoading(false);
     }
-  }, [partyId, paymentType, accessToken]);
+  }, [partyId, paymentType, accessToken, preselectedInvoiceId]);
 
   useEffect(() => {
     fetchInvoices();

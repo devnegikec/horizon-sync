@@ -1,3 +1,5 @@
+import { getAccessToken } from '../../../utility/api-core';
+
 export interface GLAccount {
     id: string;
     account_code: string;
@@ -19,11 +21,10 @@ export interface GLAccountListResponse {
         has_prev: boolean;
     };
 }
-import { useUserStore } from '@horizon-sync/store';
-import { getAccessToken } from '../../../utility/api-core';
 
 // API Base URL - should come from environment config
 const API_BASE_URL = process.env.NX_API_CORE_URL || 'http://localhost:8001';
+
 
 class GLAccountService {
     private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {

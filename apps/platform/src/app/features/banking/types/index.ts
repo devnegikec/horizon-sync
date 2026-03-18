@@ -143,6 +143,20 @@ export interface BankingOverview {
     }>;
 }
 
+// Transfer Form Schema with same account validation
+export const createTransferSchema = z.object({
+    from_account_id: z.string().uuid('Please select a source account'),
+    to_account_id: z.string().uuid('Please select a destination account'),
+    amount: z.number().positive('Amount must be greater than 0'),
+    description: z.string().min(1, 'Description is required'),
+    reference_number: z.string().optional()
+}).refine((data) => data.from_account_id !== data.to_account_id, {
+    message: "Source and destination accounts cannot be the same",
+    path: ["to_account_id"],
+});
+
+export type CreateTransferFormData = z.infer<typeof createTransferSchema>;
+
 // Form Schemas using Zod
 export const createBankAccountSchema = z.object({
     gl_account_id: z.string().uuid('Invalid GL Account ID'),
