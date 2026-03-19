@@ -29,3 +29,8 @@ declare module 'inventory/PaymentsPage' {
   const Component: React.ComponentType;
   export default Component;
 }
+
+declare module 'inventory/QSealPage' {
+  const Component: React.ComponentType;
+  export default Component;
+}

@@ -3,10 +3,10 @@ import * as React from 'react';
 import { Route, Routes } from 'react-router-dom';
 
 import { DashboardLayout, DashboardHome, AuthGuard, PublicRoute } from './components';
-import { PlaceholderPage } from './components/PlaceholderPage';
-import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage } from './pages';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { PlaceholderPage } from './components/PlaceholderPage';
 import BankingRoutes from './features/banking/BankingRoutes';
+import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage } from './pages';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 const RevenuePage = React.lazy(() => import('inventory/RevenuePage'));
@@ -14,6 +14,7 @@ const SourcingPage = React.lazy(() => import('inventory/SourcingPage'));
 const BooksPage = React.lazy(() => import('inventory/BooksPage'));
 const TaxChargesPage = React.lazy(() => import('inventory/TaxChargesPage'));
 const PaymentsPage = React.lazy(() => import('inventory/PaymentsPage'));
+const QSealPage = React.lazy(() => import('inventory/QSealPage'));
 
 export function AppRoutes() {
   return (
@@ -52,6 +53,7 @@ function ProtectedRouteWrapper() {
           <Route path="/sourcing" element={<SourcingPage />} />
           <Route path="/books" element={<BooksPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
+          <Route path="/qseal" element={<QSealPage />} />
           <Route path="/tax-charges" element={<TaxChargesPage />} />
           <Route path="/subscriptions" element={<SubscriptionManagementPage />} />
           <Route path="/analytics" element={<AnalyticsPlaceholder />} />

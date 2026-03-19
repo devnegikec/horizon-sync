@@ -38,24 +38,19 @@ export function QSealManagement() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <QSealHeader
-        onRefresh={refetch}
+      <QSealHeader onRefresh={refetch}
         onCreateProduct={handleCreateProduct}
         isLoading={loading}
-        creditInfo={creditInfo}
-      />
+        creditInfo={creditInfo}/>
 
-      <QSealStats
-        total={stats.total}
+      <QSealStats total={stats.total}
         active={stats.active}
         totalQRCodes={stats.totalQRCodes}
-        totalScans={stats.totalScans}
-      />
+        totalScans={stats.totalScans}/>
 
       <QSealFilters filters={filters} setFilters={setFilters} />
 
-      <QSealTable
-        products={products}
+      <QSealTable products={products}
         loading={loading}
         error={error}
         hasActiveFilters={hasActiveFilters}
@@ -66,21 +61,16 @@ export function QSealManagement() {
           console.log('toggle status', p.id);
         }}
         onCreateProduct={handleCreateProduct}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
-      <QSealDetailDialog
-        open={detailDialogOpen}
+      <QSealDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        product={selectedProduct}
-      />
+        product={selectedProduct}/>
 
-      <QSealProductDialog
-        open={productDialogOpen}
+      <QSealProductDialog open={productDialogOpen}
         onOpenChange={setProductDialogOpen}
         product={selectedProduct}
-        onSave={handleSaveProduct}
-      />
+        onSave={handleSaveProduct}/>
     </div>
   );
 }
