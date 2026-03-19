@@ -73,7 +73,7 @@ export async function fetchJournalEntries(
   if (status) params.append('status', status);
 
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/journal-entries?${params.toString()}`,
+    `${API_BASE_URL}/journal-entries?${params.toString()}`,
     {
       method: 'GET',
       headers: {
@@ -98,7 +98,7 @@ export async function fetchJournalEntryById(entryId: string): Promise<JournalEnt
   const accessToken = getAccessToken();
 
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/journal-entries/${entryId}`,
+    `${API_BASE_URL}/journal-entries/${entryId}`,
     {
       method: 'GET',
       headers: {
