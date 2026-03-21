@@ -1,25 +1,56 @@
-// QSeal Types — matches QSeal platform domain
-
-export type QSealProductStatus = 'active' | 'inactive' | 'draft';
+// QSeal Types — matches QR Products API from openapi.json
 
 export type QSealQRType = 'dynamic' | 'secure_qr_runtime' | 'static_qr';
 
+// Derived status from is_active boolean for UI display
+export type QSealProductStatus = 'active' | 'inactive';
+
+/**
+ * List item returned by GET /api/v1/qr-products
+ */
+export interface QSealProductListItem {
+  id: string;
+  name: string;
+  generic_name: string | null;
+  gtin: string | null;
+  industry: string | null;
+  qr_type: string | null;
+  is_active: boolean;
+  activation_method: string | null;
+  created_at: string;
+}
+
+/**
+ * Full product returned by GET /api/v1/qr-products/{product_id}
+ */
 export interface QSealProduct {
   id: string;
   organization_id: string;
-  product_code: string;
-  product_name: string;
-  description: string | null;
-  category: string | null;
-  qr_type: QSealQRType;
-  status: QSealProductStatus;
-  total_blocks: number;
-  total_qr_codes: number;
-  activated_count: number;
-  scan_count: number;
+  name: string;
+  generic_name: string | null;
+  gtin: string | null;
+  industry: string | null;
+  qr_type: QSealQRType | string | null;
+  is_active: boolean;
+  landing_page: string | null;
+  image_url: string | null;
+  banner_image_url: string | null;
+  email: string | null;
+  phone_number: string | null;
+  client_product_auth_url: string | null;
+  activation_method: string;
+  sr_number_type: string | null;
+  redirect_to_client: boolean;
+  warranty_period_months: number | null;
+  extra_data: Record<string, unknown> | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Helper to derive display status from is_active */
+export function getProductStatus(product: { is_active: boolean }): QSealProductStatus {
+  return product.is_active ? 'active' : 'inactive';
 }
 
 export interface QSealBlock {
@@ -41,7 +72,7 @@ export interface QSealCreditInfo {
 }
 
 export interface QSealProductListResponse {
-  products: QSealProduct[];
+  products: QSealProductListItem[];
   pagination: {
     page: number;
     page_size: number;
@@ -53,15 +84,51 @@ export interface QSealProductListResponse {
 }
 
 export interface CreateQSealProductPayload {
-  product_code: string;
-  product_name: string;
-  description?: string | null;
-  category?: string | null;
-  qr_type: QSealQRType;
+  name: string;
+  generic_name?: string | null;
+  gtin?: string | null;
+  industry?: string | null;
+  qr_type?: string | null;
+  landing_page?: string | null;
+  image_url?: string | null;
+  banner_image_url?: string | null;
+  email?: string | null;
+  phone_number?: string | null;
+  activation_method?: string;
+  sr_number_type?: string | null;
+  redirect_to_client?: boolean;
+  warranty_period_months?: number | null;
+  extra_data?: Record<string, unknown> | null;
+}
+
+export interface UpdateQSealProductPayload {
+  name?: string | null;
+  generic_name?: string | null;
+  gtin?: string | null;
+  industry?: string | null;
+  qr_type?: string | null;
+  is_active?: boolean | null;
+  landing_page?: string | null;
+  image_url?: string | null;
+  banner_image_url?: string | null;
+  email?: string | null;
+  phone_number?: string | null;
+  activation_method?: string | null;
+  sr_number_type?: string | null;
+  redirect_to_client?: boolean | null;
+  warranty_period_months?: number | null;
+  extra_data?: Record<string, unknown> | null;
 }
 
 export interface QSealFilters {
   search?: string;
-  status?: string;
+  status?: string;   // 'all' | 'active' | 'inactive'
   qr_type?: string;
+}
+
+export interface ScanAnalyticsResponse {
+  total_scans: number;
+  unique_serials: number;
+  by_date: { date: string; count: number }[];
+  by_country: { country: string; count: number }[];
 }

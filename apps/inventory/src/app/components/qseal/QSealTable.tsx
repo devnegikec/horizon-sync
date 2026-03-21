@@ -14,37 +14,36 @@ import {
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
-import type { QSealProduct, QSealProductStatus, QSealQRType } from '../../types/qseal.types';
+import type { QSealProductListItem } from '../../types/qseal.types';
 import { formatDate } from '../../utility/formatDate';
 
-const STATUS_COLORS: Record<QSealProductStatus, string> = {
+const STATUS_COLORS = {
   active: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
   inactive: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-  draft: 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400',
 };
 
-const QR_TYPE_LABELS: Record<QSealQRType, string> = {
+const QR_TYPE_LABELS: Record<string, string> = {
   dynamic: 'Dynamic',
   secure_qr_runtime: 'Secure QR',
   static_qr: 'Static QR',
 };
 
-const QR_TYPE_COLORS: Record<QSealQRType, string> = {
+const QR_TYPE_COLORS: Record<string, string> = {
   dynamic: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
   secure_qr_runtime: 'bg-violet-100 text-violet-800 dark:bg-violet-900/20 dark:text-violet-400',
   static_qr: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300',
 };
 
 export interface QSealTableProps {
-  products: QSealProduct[];
+  products: QSealProductListItem[];
   loading: boolean;
   error: string | null;
   hasActiveFilters: boolean;
-  onView: (product: QSealProduct) => void;
-  onEdit: (product: QSealProduct) => void;
-  onToggleStatus: (product: QSealProduct) => void;
+  onView: (product: QSealProductListItem) => void;
+  onEdit: (product: QSealProductListItem) => void;
+  onToggleStatus: (product: QSealProductListItem) => void;
   onCreateProduct: () => void;
-  onTableReady?: (table: Table<QSealProduct>) => void;
+  onTableReady?: (table: Table<QSealProductListItem>) => void;
   serverPagination?: {
     totalItems: number;
     currentPage: number;
@@ -65,7 +64,7 @@ export function QSealTable({
   onTableReady,
   serverPagination,
 }: QSealTableProps) {
-  const [tableInstance, setTableInstance] = React.useState<Table<QSealProduct> | null>(null);
+  const [tableInstance, setTableInstance] = React.useState<Table<QSealProductListItem> | null>(null);
 
   React.useEffect(() => {
     if (tableInstance && onTableReady) onTableReady(tableInstance);
@@ -77,16 +76,16 @@ export function QSealTable({
       totalItems: serverPagination.totalItems,
       currentPage: serverPagination.currentPage,
       pageSize: serverPagination.pageSize,
-      onPageChange: (page: number, pageSize: number) => {
+      onPageChange: (page: number, _pageSize: number) => {
         serverPagination.onPageChange(page);
       },
     };
   }, [serverPagination]);
 
-  const columns: ColumnDef<QSealProduct, unknown>[] = React.useMemo(
+  const columns: ColumnDef<QSealProductListItem, unknown>[] = React.useMemo(
     () => [
       {
-        accessorKey: 'product_name',
+        accessorKey: 'name',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Product" />,
         cell: ({ row }) => {
           const p = row.original;
@@ -96,19 +95,21 @@ export function QSealTable({
                 <QrCode className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="font-medium">{p.product_name}</p>
-                <p className="text-xs text-muted-foreground font-mono">{p.product_code}</p>
+                <p className="font-medium">{p.name}</p>
+                {p.gtin && (
+                  <p className="text-xs text-muted-foreground font-mono">{p.gtin}</p>
+                )}
               </div>
             </div>
           );
         },
       },
       {
-        accessorKey: 'category',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Category" />,
+        accessorKey: 'industry',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Industry" />,
         cell: ({ row }) =>
-          row.original.category ? (
-            <span className="text-sm">{row.original.category}</span>
+          row.original.industry ? (
+            <span className="text-sm">{row.original.industry}</span>
           ) : (
             <span className="text-muted-foreground">—</span>
           ),
@@ -118,58 +119,41 @@ export function QSealTable({
         header: ({ column }) => <DataTableColumnHeader column={column} title="QR Type" />,
         cell: ({ row }) => {
           const t = row.original.qr_type;
+          if (!t) return <span className="text-muted-foreground">—</span>;
           return (
-            <Badge variant="secondary" className={QR_TYPE_COLORS[t]}>
-              {QR_TYPE_LABELS[t]}
+            <Badge variant="secondary" className={QR_TYPE_COLORS[t] || ''}>
+              {QR_TYPE_LABELS[t] || t}
             </Badge>
           );
         },
       },
       {
-        accessorKey: 'total_qr_codes',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="QR Codes" />,
-        cell: ({ row }) => (
-          <span className="text-sm font-medium tabular-nums">
-            {row.original.total_qr_codes.toLocaleString()}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'activated_count',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Activated" />,
+        accessorKey: 'is_active',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => {
-          const p = row.original;
-          const pct =
-            p.total_qr_codes > 0
-              ? Math.round((p.activated_count / p.total_qr_codes) * 100)
-              : 0;
+          const isActive = row.original.is_active;
+          const label = isActive ? 'Active' : 'Inactive';
+          const color = isActive ? STATUS_COLORS.active : STATUS_COLORS.inactive;
           return (
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium tabular-nums">
-                {p.activated_count.toLocaleString()}
-              </span>
-              <span className="text-xs text-muted-foreground">{pct}%</span>
-            </div>
+            <Badge variant="secondary" className={color}>
+              {label}
+            </Badge>
           );
         },
       },
       {
-        accessorKey: 'scan_count',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Scans" />,
-        cell: ({ row }) => (
-          <span className="text-sm tabular-nums">
-            {row.original.scan_count.toLocaleString()}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'status',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+        accessorKey: 'activation_method',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Activation" />,
         cell: ({ row }) => {
-          const s = row.original.status;
+          const method = row.original.activation_method;
+          if (!method) return <span className="text-muted-foreground">—</span>;
+          const label = method === 'pre' ? 'Pre-Activated' : 'Post-Activated';
+          const color = method === 'pre'
+            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400'
+            : 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400';
           return (
-            <Badge variant="secondary" className={STATUS_COLORS[s]}>
-              {s.charAt(0).toUpperCase() + s.slice(1)}
+            <Badge variant="secondary" className={color}>
+              {label}
             </Badge>
           );
         },
@@ -189,7 +173,7 @@ export function QSealTable({
         enableSorting: false,
         cell: ({ row }) => {
           const p = row.original;
-          const isActive = p.status === 'active';
+          const isActive = p.is_active;
           return (
             <div className="text-right">
               <DropdownMenu>
@@ -243,7 +227,7 @@ export function QSealTable({
     return (
       <Card>
         <CardContent className="p-0">
-          <TableSkeleton columns={8} rows={10} showHeader />
+          <TableSkeleton columns={6} rows={10} showHeader />
         </CardContent>
       </Card>
     );

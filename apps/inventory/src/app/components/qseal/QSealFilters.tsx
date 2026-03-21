@@ -40,7 +40,6 @@ export function QSealFilters({ filters, setFilters }: QSealFiltersProps) {
           <SelectItem value="all">All Status</SelectItem>
           <SelectItem value="active">Active</SelectItem>
           <SelectItem value="inactive">Inactive</SelectItem>
-          <SelectItem value="draft">Draft</SelectItem>
         </SelectContent>
       </Select>
 

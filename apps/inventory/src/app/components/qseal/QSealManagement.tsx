@@ -28,6 +28,7 @@ export function QSealManagement() {
     handleEditProduct,
     handleViewProduct,
     handleSaveProduct,
+    handleToggleStatus,
     serverPaginationConfig,
   } = useQSealManagement();
 
@@ -56,10 +57,7 @@ export function QSealManagement() {
         hasActiveFilters={hasActiveFilters}
         onView={handleViewProduct}
         onEdit={handleEditProduct}
-        onToggleStatus={(p) => {
-          // TODO: wire to real API toggle
-          console.log('toggle status', p.id);
-        }}
+        onToggleStatus={handleToggleStatus}
         onCreateProduct={handleCreateProduct}
         serverPagination={serverPaginationConfig}/>
 
