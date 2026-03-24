@@ -54,12 +54,31 @@ export async function fetchJournalEntries(
   sortOrder: 'asc' | 'desc' = 'desc'
 ): Promise<JournalEntriesResponse> {
   const accessToken = getAccessToken();
-  return apiRequest<JournalEntriesResponse>('/journal-entries', accessToken, {
-    params: {
-      ...buildPaginationParams(page, pageSize, sortBy, sortOrder),
-      ...(status && { status }),
-    },
-  });
+
+  const params = new URLSearchParams();
+  params.append('page', String(page));
+  params.append('page_size', String(pageSize));
+  params.append('sort_by', sortBy);
+  params.append('sort_order', sortOrder);
+  if (status) params.append('status', status);
+
+  const response = await fetch(
+    `${API_BASE_URL}/journal-entries?${params.toString()}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to fetch journal entries: ${response.statusText}`);
+  }
+
+  return response.json();
 }
 
 /**
@@ -67,7 +86,24 @@ export async function fetchJournalEntries(
  */
 export async function fetchJournalEntryById(entryId: string): Promise<JournalEntry> {
   const accessToken = getAccessToken();
-  return apiRequest<JournalEntry>(`/journal-entries/${entryId}`, accessToken);
+
+  const response = await fetch(
+    `${API_BASE_URL}/journal-entries/${entryId}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to fetch journal entry: ${response.statusText}`);
+  }
+
+  return response.json();
 }
 
 export const journalEntriesApi = {

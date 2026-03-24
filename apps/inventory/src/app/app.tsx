@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Package, Warehouse, Boxes, Layers } from 'lucide-react';
+import { Package, Warehouse, Boxes, Layers, QrCode } from 'lucide-react';
 
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -8,10 +8,11 @@ import { cn } from '@horizon-sync/ui/lib';
 
 import { ItemGroupManagement } from './components/item-groups';
 import { ItemManagement } from './components/items';
+import { QSealManagement } from './components/qseal';
 import { StockManagement } from './components/stock';
 import { WarehouseManagement } from './components/warehouses';
 
-type ActiveView = 'items' | 'warehouses' | 'stock' | 'item-group';
+type ActiveView = 'items' | 'warehouses' | 'stock' | 'item-group' | 'qseal';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -43,6 +44,7 @@ export function App() {
               <NavItem icon={Warehouse} label="Warehouses" isActive={activeView === 'warehouses'} onClick={() => setActiveView('warehouses')} />
               <NavItem icon={Layers} label="Item Groups" isActive={activeView === 'item-group'} onClick={() => setActiveView('item-group')} />
               <NavItem icon={Boxes} label="Stock" isActive={activeView === 'stock'} onClick={() => setActiveView('stock')} />
+              <NavItem icon={QrCode} label="QSeal" isActive={activeView === 'qseal'} onClick={() => setActiveView('qseal')} />
             </nav>
           </div>
         </header>
@@ -52,6 +54,7 @@ export function App() {
           {activeView === 'warehouses' && <WarehouseManagement />}
           {activeView === 'item-group' && <ItemGroupManagement />}
           {activeView === 'stock' && <StockManagement />}
+          {activeView === 'qseal' && <QSealManagement />}
         </main>
       </div>
     </ThemeProvider>

@@ -1,0 +1,47 @@
+export const warranties = [
+  {
+    id: "warr-001",
+    tenant_id: "tenant-001",
+    product_id: "prod-001",
+    serial_number: "PAR500-000001",
+    customer_name: "Rahul Sharma",
+    mobile: "+919876543210",
+    email: "rahul@example.com",
+    purchase_date: "2025-02-28",
+    expiry_date: "2027-02-28",
+    status: "active",
+    created_at: "2025-03-01T08:30:00Z",
+  },
+  {
+    id: "warr-002",
+    tenant_id: "tenant-001",
+    product_id: "prod-002",
+    serial_number: "AMX250-000010",
+    customer_name: "Priya Patel",
+    mobile: "+919123456789",
+    email: "priya@example.com",
+    purchase_date: "2025-01-15",
+    expiry_date: "2026-01-15",
+    status: "active",
+    created_at: "2025-01-15T14:00:00Z",
+  },
+  {
+    id: "warr-003",
+    tenant_id: "tenant-002",
+    product_id: "prod-003",
+    serial_number: "LUX-HB-000042",
+    customer_name: "Ahmed Al Rashid",
+    mobile: "+971501234567",
+    email: "ahmed@example.com",
+    purchase_date: "2024-12-01",
+    expiry_date: "2026-12-01",
+    status: "active",
+    created_at: "2024-12-01T16:00:00Z",
+  },
+];
+
+export const warrantyPeriods = [
+  { id: "wp-001", tenant_id: "tenant-001", product_id: "prod-001", months: 24, is_default: true },
+  { id: "wp-002", tenant_id: "tenant-001", product_id: "prod-002", months: 12, is_default: true },
+  { id: "wp-003", tenant_id: "tenant-002", product_id: "prod-003", months: 24, is_default: true },
+];
