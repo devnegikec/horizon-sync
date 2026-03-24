@@ -4,65 +4,30 @@ import type {
   CreatePurchaseReceiptPayload,
   PurchaseReceiptFilters,
 } from '../../types/purchase-receipt.types';
-
-const BASE_URL = 'http://localhost:8001/api/v1';
+import { apiRequest, buildPaginationParams } from './core';
 
 export const purchaseReceiptApi = {
   async list(accessToken: string, filters: Partial<PurchaseReceiptFilters> = {}): Promise<PurchaseReceiptsResponse> {
-    const params = new URLSearchParams();
-    if (filters.page) params.append('page', filters.page.toString());
-    if (filters.page_size) params.append('page_size', filters.page_size.toString());
-    if (filters.reference_type) params.append('reference_type', filters.reference_type);
-    if (filters.reference_id) params.append('reference_id', filters.reference_id);
-    if (filters.sort_by) params.append('sort_by', filters.sort_by);
-    if (filters.sort_order) params.append('sort_order', filters.sort_order);
-
-    const response = await fetch(`${BASE_URL}/purchase-receipts?${params.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+    return apiRequest<PurchaseReceiptsResponse>('/purchase-receipts', accessToken, {
+      params: {
+        ...(filters.page && { page: filters.page }),
+        ...(filters.page_size && { page_size: filters.page_size }),
+        ...(filters.reference_type && { reference_type: filters.reference_type }),
+        ...(filters.reference_id && { reference_id: filters.reference_id }),
+        ...(filters.sort_by && { sort_by: filters.sort_by }),
+        ...(filters.sort_order && { sort_order: filters.sort_order }),
       },
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail?.message || 'Failed to fetch purchase receipts');
-    }
-
-    return response.json();
   },
 
   async getById(accessToken: string, id: string): Promise<PurchaseReceipt> {
-    const response = await fetch(`${BASE_URL}/purchase-receipts/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail?.message || 'Failed to fetch purchase receipt');
-    }
-
-    return response.json();
+    return apiRequest<PurchaseReceipt>(`/purchase-receipts/${id}`, accessToken);
   },
 
   async create(accessToken: string, payload: CreatePurchaseReceiptPayload): Promise<PurchaseReceipt> {
-    const response = await fetch(`${BASE_URL}/purchase-receipts`, {
+    return apiRequest<PurchaseReceipt>('/purchase-receipts', accessToken, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
+      body: payload,
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail?.message || 'Failed to create purchase receipt');
-    }
-
-    return response.json();
   },
 };

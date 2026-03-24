@@ -188,3 +188,11 @@ export function filterNavigationByPermissions<T extends { href: string; title: s
     }
   });
 }
+
+/**
+ * Check if user is a system administrator
+ * System admin has *.* or system.admin or role.manage permissions
+ */
+export function isSystemAdmin(userPermissions: Permission[]): boolean {
+  return hasAnyPermission(userPermissions, ['*.*', 'system.admin', 'role.manage']);
+}

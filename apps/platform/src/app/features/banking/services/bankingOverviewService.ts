@@ -1,10 +1,10 @@
 import { BankingOverview } from '../types';
 
-const API_BASE_URL = process.env['NX_CORE_API_BASE_URL'] || process.env['NX_API_BASE_URL'] || 'http://localhost:8001/api/v1';
+const API_BASE_URL = process.env['NX_CORE_API_BASE_URL'] || process.env['NX_API_BASE_URL'] || 'http://localhost:8001';
 
 class BankingOverviewService {
     private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-        const url = `${API_BASE_URL}${endpoint}`;
+        const url = `${API_BASE_URL}/api/v1${endpoint}`;
 
         const response = await fetch(url, {
             headers: {

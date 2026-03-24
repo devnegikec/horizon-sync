@@ -49,7 +49,7 @@ const API_BASE_URL = environment.apiBaseUrl;
 export class SubscriptionService {
   static async getCurrentSubscriptions(token: string): Promise<Subscription[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/subscriptions/current`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions/current`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -81,7 +81,7 @@ export class SubscriptionService {
     token: string
   ): Promise<Subscription> {
     try {
-      const response = await fetch(`${API_BASE_URL}/subscriptions`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

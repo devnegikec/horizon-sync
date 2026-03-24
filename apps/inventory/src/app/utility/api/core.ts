@@ -4,6 +4,7 @@
  */
 
 import { environment } from '../../../environments/environment';
+import { useUserStore } from '@horizon-sync/store';
 
 const BASE_URL = environment.apiCoreUrl;
 
@@ -12,6 +13,8 @@ export interface ApiRequestOptions {
   body?: unknown;
   params?: Record<string, string | number | boolean | undefined>;
   headers?: Record<string, string>;
+  responseType?: 'json' | 'blob';
+  credentials?: 'include' | 'omit' | 'same-origin';
 }
 
 export interface ApiError {
@@ -24,7 +27,7 @@ export interface ApiError {
  * Build URL with query parameters
  */
 export function buildUrl(endpoint: string, params?: Record<string, string | number | boolean | undefined>): string {
-  const url = new URL(`${BASE_URL}${endpoint}`);
+  const url = new URL(`${BASE_URL}/api/v1${endpoint}`);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
@@ -38,25 +41,37 @@ export function buildUrl(endpoint: string, params?: Record<string, string | numb
 /**
  * Generic API request function with error handling
  */
-export async function apiRequest<T>(endpoint: string, accessToken: string, options: ApiRequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, params, headers = {} } = options;
+export async function apiRequest<T>(endpoint: string, accessToken: string | undefined, options: ApiRequestOptions = {}): Promise<T> {
+  const { method = 'GET', body, params, headers = {}, responseType = 'json', credentials } = options;
 
   const url = buildUrl(endpoint, params);
 
   const requestHeaders: Record<string, string> = {
-    Authorization: `Bearer ${accessToken}`,
     ...headers,
   };
 
-  if (body && method !== 'GET') {
+  // Only add Authorization header if accessToken is provided
+  if (accessToken) {
+    requestHeaders.Authorization = `Bearer ${accessToken}`;
+  }
+
+  // Don't set Content-Type for FormData - let the browser set it with boundary
+  if (body && method !== 'GET' && !(body instanceof FormData)) {
     requestHeaders['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(url, {
+  const fetchOptions: RequestInit = {
     method,
     headers: requestHeaders,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+    body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
+  };
+
+  // Add credentials if specified
+  if (credentials) {
+    fetchOptions.credentials = credentials;
+  }
+
+  const response = await fetch(url, fetchOptions);
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -77,6 +92,11 @@ export async function apiRequest<T>(endpoint: string, accessToken: string, optio
     return {} as T;
   }
 
+  // Handle different response types
+  if (responseType === 'blob') {
+    return response.blob() as T;
+  }
+
   return response.json();
 }
 
@@ -95,4 +115,22 @@ export function buildPaginationParams(
     sort_by: sortBy,
     sort_order: sortOrder,
   };
+}
+
+/**
+ * Helper to get access token from auth context
+ */
+export function getAccessToken(): string {
+  // First try to get token from user store
+  const tokenFromStore = useUserStore.getState().accessToken;
+  if (tokenFromStore) {
+    return tokenFromStore;
+  }
+
+  // Fallback to localStorage
+  const token = localStorage.getItem('accessToken');
+  if (!token) {
+    throw new Error('No access token available');
+  }
+  return token;
 }

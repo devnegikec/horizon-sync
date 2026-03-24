@@ -4,17 +4,7 @@
  * API functions for journal entry operations
  */
 
-import { useUserStore } from '@horizon-sync/store';
-
-const API_BASE_URL = process.env.NX_API_CORE_URL || 'http://localhost:8001';
-
-function getAccessToken(): string {
-  const fromStore = useUserStore.getState().accessToken;
-  if (fromStore) return fromStore;
-  const fromStorage = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
-  if (fromStorage) return fromStorage;
-  throw new Error('No access token found');
-}
+import { apiRequest, getAccessToken, buildPaginationParams } from './core';
 
 export interface JournalEntryLine {
   id: string;
@@ -61,7 +51,7 @@ export async function fetchJournalEntries(
   pageSize = 20,
   status?: string,
   sortBy = 'posting_date',
-  sortOrder = 'desc'
+  sortOrder: 'asc' | 'desc' = 'desc'
 ): Promise<JournalEntriesResponse> {
   const accessToken = getAccessToken();
 
@@ -117,6 +107,8 @@ export async function fetchJournalEntryById(entryId: string): Promise<JournalEnt
 }
 
 export const journalEntriesApi = {
-  fetchJournalEntries,
-  fetchJournalEntryById,
+  fetchJournalEntries: (page?: number, pageSize?: number, status?: string, sortBy?: string, sortOrder?: 'asc' | 'desc') =>
+    fetchJournalEntries(page, pageSize, status, sortBy, sortOrder),
+  fetchJournalEntryById: (entryId: string) =>
+    fetchJournalEntryById(entryId),
 };

@@ -47,6 +47,12 @@ export const invoiceApi = {
       method: 'DELETE',
     }),
 
+  confirm: (accessToken: string, id: string) =>
+    apiRequest(`/invoices/${id}`, accessToken, {
+      method: 'PUT',
+      body: { status: 'pending' },
+    }),
+
   sendEmail: (accessToken: string, id: string, emailData: { to: string; subject?: string; message?: string }) =>
     apiRequest(`/invoices/${id}/send-email`, accessToken, {
       method: 'POST',

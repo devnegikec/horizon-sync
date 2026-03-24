@@ -52,7 +52,7 @@ const API_BASE_URL = environment.apiBaseUrl;
 export class OrganizationService {
   static async createOrganization(payload: CreateOrganizationPayload, token: string): Promise<unknown> {
     try {
-      const response = await fetch(`${API_BASE_URL}/identity/organizations`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/organizations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,7 +82,7 @@ export class OrganizationService {
 
   static async getOrganization(organizationId: string, token: string): Promise<Organization> {
     try {
-      const response = await fetch(`${API_BASE_URL}/identity/organizations/${organizationId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/organizations/${organizationId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -115,7 +115,7 @@ export class OrganizationService {
     token: string
   ): Promise<Organization> {
     try {
-      const response = await fetch(`${API_BASE_URL}/identity/organizations/${organizationId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/organizations/${organizationId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

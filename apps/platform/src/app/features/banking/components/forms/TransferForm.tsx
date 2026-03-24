@@ -1,7 +1,6 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Label } from '@horizon-sync/ui/components/ui/label';
@@ -14,8 +13,10 @@ import {
     SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
-import { ArrowRight } from 'lucide-react';
+import { Alert, AlertDescription } from '@horizon-sync/ui/components/ui/alert';
+import { ArrowRight, AlertCircle } from 'lucide-react';
 import { useCreateTransfer, useBankAccounts } from '../../hooks';
+import { createTransferSchema, type CreateTransferFormData } from '../../types';
 
 interface BankAccount {
     id: string;
@@ -69,15 +70,29 @@ function AccountSelectorGrid({ fromAccountId, toAccountId, accounts, errors, set
                         <SelectValue placeholder="Select destination account" />
                     </SelectTrigger>
                     <SelectContent>
-                        {accounts.filter(acc => acc.id !== fromAccountId).map((account) => (
-                            <SelectItem key={account.id} value={account.id}>
-                                {account.bank_name} - •••• {account.account_number.slice(-4)}
-                            </SelectItem>
-                        ))}
+                        {accounts.filter(acc => acc.id !== fromAccountId).length === 0 ? (
+                            <div className="p-3 text-sm text-muted-foreground text-center">
+                                {fromAccountId ? 'No other accounts available' : 'Select source account first'}
+                            </div>
+                        ) : (
+                            accounts.filter(acc => acc.id !== fromAccountId).map((account) => (
+                                <SelectItem key={account.id} value={account.id}>
+                                    {account.bank_name} - •••• {account.account_number.slice(-4)}
+                                </SelectItem>
+                            ))
+                        )}
                     </SelectContent>
                 </Select>
                 {errors.to_account_id && (
                     <p className="text-sm text-red-600">{errors.to_account_id.message}</p>
+                )}
+                {fromAccountId && toAccountId && fromAccountId === toAccountId && (
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                            Source and destination accounts cannot be the same. Please select a different destination account.
+                        </AlertDescription>
+                    </Alert>
                 )}
             </div>
         </div>
@@ -211,16 +226,6 @@ function TransferFormActions({ onCancel, isSubmitting, fromAccount, toAccount, a
     );
 }
 
-const transferSchema = z.object({
-    from_account_id: z.string().min(1, 'From account is required'),
-    to_account_id: z.string().min(1, 'To account is required'),
-    amount: z.number().positive('Amount must be positive'),
-    description: z.string().min(1, 'Description is required'),
-    reference_number: z.string().optional()
-});
-
-type TransferFormData = z.infer<typeof transferSchema>;
-
 interface TransferFormProps {
     onSuccess?: () => void;
     onCancel?: () => void;
@@ -237,8 +242,8 @@ export function TransferForm({ onSuccess, onCancel }: TransferFormProps) {
         watch,
         setValue,
         formState: { errors, isSubmitting },
-    } = useForm<TransferFormData>({
-        resolver: zodResolver(transferSchema)
+    } = useForm<CreateTransferFormData>({
+        resolver: zodResolver(createTransferSchema)
     });
 
     const watchedValues = watch();
@@ -249,7 +254,7 @@ export function TransferForm({ onSuccess, onCancel }: TransferFormProps) {
     const fromAccount = accounts.find(acc => acc.id === fromAccountId);
     const toAccount = accounts.find(acc => acc.id === toAccountId);
 
-    const onSubmit = async (data: TransferFormData) => {
+    const onSubmit = async (data: CreateTransferFormData) => {
         try {
             await createTransfer.mutateAsync(data);
             onSuccess?.();

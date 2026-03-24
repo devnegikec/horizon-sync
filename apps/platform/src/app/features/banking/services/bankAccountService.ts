@@ -1,49 +1,127 @@
-import { useUserStore } from '@horizon-sync/store';
-
 import { BankAccount, BankAccountHistory, BankAccountListResponse, CreateBankAccountFormData, UpdateBankAccountFormData } from '../types';
+import { getAccessToken } from '../../../utility/api-core';
 
 // API Base URL - should come from environment config
 // Banking endpoints are on Core Service (port 8001), not Identity Service (port 8000)
-const API_BASE_URL = process.env['NX_CORE_API_BASE_URL'] || process.env['NX_API_CORE_URL'] || 'http://localhost:8001/api/v1';
+const API_BASE_URL = process.env['NX_CORE_API_BASE_URL'] || process.env['NX_API_CORE_URL'] || 'http://localhost:8001';
 
 class BankAccountService {
     private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-        const url = `${API_BASE_URL}${endpoint}`;
+        const url = `${API_BASE_URL}/api/v1${endpoint}`;
+        console.log('Bank API Request:', url, options); // Debug logging
+
         const response = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
                 // Add auth token from your auth system
-                'Authorization': `Bearer ${this.getAccessToken()}`,
+                'Authorization': `Bearer ${getAccessToken()}`,
                 ...options?.headers,
             },
             ...options,
         });
 
+        console.log('Bank API Response:', response.status, response.statusText); // Debug logging
+
         if (!response.ok) {
             const error = await response.text();
+            console.error('Bank API Error:', error); // Debug logging
             throw new Error(`API Error: ${response.status} - ${error}`);
         }
 
-        return response.json();
+        const data = await response.json();
+        console.log('Bank API Data:', data); // Debug logging
+        return data;
     }
 
-    private getAccessToken(): string {
-        const fromStore = useUserStore.getState().accessToken;
-        if (fromStore) return fromStore;
-        const fromStorage = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
-        if (fromStorage) return fromStorage;
-        throw new Error('No access token found');
-    }
+
 
     // Create bank account linked to GL account
     async createBankAccount(glAccountId: string, data: CreateBankAccountFormData): Promise<BankAccount> {
         // Remove gl_account_id from the request body (it's passed in the URL path)
         const { gl_account_id: _, ...bankAccountData } = data;
-        
+
         return this.request<BankAccount>(`/chart-of-accounts/${glAccountId}/bank-accounts`, {
             method: 'POST',
             body: JSON.stringify(bankAccountData),
         });
+    }
+
+    // Check for duplicate bank account using country-aware banking identifiers
+    async checkDuplicateBankAccount(params: {
+        account_number?: string;
+        iban?: string;
+        routing_number?: string;
+        sort_code?: string;
+        bsb_number?: string;
+        ifsc_code?: string;
+        country_code?: string;
+        organization_id?: string;
+    }): Promise<{ isDuplicate: boolean; duplicateField?: string; existingAccount?: any }> {
+
+        // Determine the primary banking identifier based on country or available fields
+        let bankIdentifier = '';
+        let identifierType = '';
+
+        // Check in order of specificity based on country
+        const country = params.country_code?.toUpperCase();
+
+        // EU countries prioritize IBAN
+        if (country && ['DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'IE', 'FI', 'GR', 'LU'].includes(country) && params.iban) {
+            bankIdentifier = params.iban;
+            identifierType = 'iban';
+        }
+        // US uses routing + account number or just account number
+        else if (country === 'US' && params.routing_number && params.account_number) {
+            bankIdentifier = `${params.routing_number}:${params.account_number}`;
+            identifierType = 'routing_account';
+        }
+        // UK uses sort code + account number
+        else if (country === 'GB' && params.sort_code && params.account_number) {
+            bankIdentifier = `${params.sort_code.replace('-', '')}:${params.account_number}`;
+            identifierType = 'sort_account';
+        }
+        // Australia uses BSB + account number
+        else if (country === 'AU' && params.bsb_number && params.account_number) {
+            bankIdentifier = `${params.bsb_number.replace('-', '')}:${params.account_number}`;
+            identifierType = 'bsb_account';
+        }
+        // India uses IFSC + account number
+        else if (country === 'IN' && params.ifsc_code && params.account_number) {
+            bankIdentifier = `${params.ifsc_code}:${params.account_number}`;
+            identifierType = 'ifsc_account';
+        }
+        // Fallback to available identifiers
+        else if (params.iban) {
+            bankIdentifier = params.iban;
+            identifierType = 'iban';
+        }
+        else if (params.account_number) {
+            bankIdentifier = params.account_number;
+            identifierType = 'account_number';
+        }
+        else if (params.routing_number) {
+            bankIdentifier = params.routing_number;
+            identifierType = 'routing_number';
+        }
+
+        if (!bankIdentifier) {
+            return { isDuplicate: false };
+        }
+
+        // Use the generic bank_identifier parameter
+        const response = await this.request<BankAccountListResponse>(
+            `/bank-accounts?bank_identifier=${encodeURIComponent(bankIdentifier)}`
+        ).catch(() => ({ items: [] }));
+
+        if (response.items && response.items.length > 0) {
+            return {
+                isDuplicate: true,
+                duplicateField: identifierType === 'iban' ? 'iban' : 'account_number',
+                existingAccount: response.items[0]
+            };
+        }
+
+        return { isDuplicate: false };
     }
 
     // Helper method to build search parameters
@@ -98,10 +176,10 @@ class BankAccountService {
         // It returns all bank accounts for the GL account
 
         const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
-        
+
         // This endpoint returns BankAccount[] directly, not BankAccountListResponse
         const items = await this.request<BankAccount[]>(`/chart-of-accounts/${glAccountId}/bank-accounts${query}`);
-        
+
         // Wrap in BankAccountListResponse format for consistency
         return {
             items,
@@ -122,13 +200,13 @@ class BankAccountService {
         console.log('BankAccountService - updateBankAccount called');
         console.log('BankAccountService - accountId:', accountId);
         console.log('BankAccountService - data:', data);
-        console.log('BankAccountService - API URL:', `${API_BASE_URL}/bank-accounts/${accountId}`);
-        
+        console.log('BankAccountService - API URL:', `${API_BASE_URL}/api/v1/bank-accounts/${accountId}`);
+
         const result = await this.request<BankAccount>(`/bank-accounts/${accountId}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         });
-        
+
         console.log('BankAccountService - updateBankAccount result:', result);
         return result;
     }

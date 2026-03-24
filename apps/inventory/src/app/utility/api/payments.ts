@@ -4,8 +4,6 @@
  * API functions for payment operations
  */
 
-import { useUserStore } from '@horizon-sync/store';
-
 import {
   PaymentEntry,
   PaymentReference,
@@ -16,16 +14,7 @@ import {
   CancelPaymentPayload,
   PaymentFilters,
 } from '../../types/payment.types';
-// Payments API is on core-service (port 8001), not identity-service (port 8000)
-const API_BASE_URL = process.env.NX_API_CORE_URL || 'http://localhost:8001';
-
-function getAccessToken(): string {
-  const fromStore = useUserStore.getState().accessToken;
-  if (fromStore) return fromStore;
-  const fromStorage = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
-  if (fromStorage) return fromStorage;
-  throw new Error('No access token found');
-}
+import { apiRequest, buildPaginationParams, getAccessToken } from './core';
 
 /**
  * Fetch payments with optional filters
@@ -34,41 +23,22 @@ export async function fetchPayments(
   filters?: PaymentFilters
 ): Promise<PaymentsResponse> {
   const accessToken = getAccessToken();
-
-  const params = new URLSearchParams();
-
-  if (filters) {
-    if (filters.status) params.append('status', filters.status);
-    if (filters.payment_mode) params.append('payment_mode', filters.payment_mode);
-    if (filters.payment_type) params.append('payment_type', filters.payment_type);
-    if (filters.party_id) params.append('party_id', filters.party_id);
-    if (filters.date_from) params.append('date_from', filters.date_from);
-    if (filters.date_to) params.append('date_to', filters.date_to);
-    if (filters.search) params.append('search', filters.search);
-    if (filters.has_unallocated !== undefined)
-      params.append('has_unallocated', String(filters.has_unallocated));
-    if (filters.page) params.append('page', String(filters.page));
-    if (filters.page_size) params.append('page_size', String(filters.page_size));
-    if (filters.sort_by) params.append('sort_by', filters.sort_by);
-    if (filters.sort_order) params.append('sort_order', filters.sort_order);
-  }
-
-  const response = await fetch(
-    `${API_BASE_URL}/api/v1/payments?${params.toString()}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch payments');
-  }
-
-  return response.json();
+  return apiRequest<PaymentsResponse>('/payments', accessToken, {
+    params: {
+      ...(filters?.status && { status: filters.status }),
+      ...(filters?.payment_mode && { payment_mode: filters.payment_mode }),
+      ...(filters?.payment_type && { payment_type: filters.payment_type }),
+      ...(filters?.party_id && { party_id: filters.party_id }),
+      ...(filters?.date_from && { date_from: filters.date_from }),
+      ...(filters?.date_to && { date_to: filters.date_to }),
+      ...(filters?.search && { search: filters.search }),
+      ...(filters?.has_unallocated !== undefined && { has_unallocated: filters.has_unallocated }),
+      ...(filters?.page && { page: filters.page }),
+      ...(filters?.page_size && { page_size: filters.page_size }),
+      ...(filters?.sort_by && { sort_by: filters.sort_by }),
+      ...(filters?.sort_order && { sort_order: filters.sort_order }),
+    },
+  });
 }
 
 /**
@@ -76,22 +46,7 @@ export async function fetchPayments(
  */
 export async function fetchPaymentById(id: string): Promise<PaymentEntry> {
   const accessToken = getAccessToken();
-  const response = await fetch(`${API_BASE_URL}/api/v1/payments/${id}`, {
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error('Payment not found');
-    }
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch payment');
-  }
-
-  return response.json();
+  return apiRequest<PaymentEntry>(`/payments/${id}`, accessToken);
 }
 
 /**
@@ -101,21 +56,10 @@ export async function createPaymentEntry(
   data: CreatePaymentPayload
 ): Promise<PaymentEntry> {
   const accessToken = getAccessToken();
-  const response = await fetch(`${API_BASE_URL}/api/v1/payments`, {
+  return apiRequest<PaymentEntry>('/payments', accessToken, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
+    body: data,
   });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to create payment');
-  }
-
-  return response.json();
 }
 
 /**
@@ -126,24 +70,17 @@ export async function updatePaymentEntry(
   data: UpdatePaymentPayload
 ): Promise<PaymentEntry> {
   const accessToken = getAccessToken();
-  const response = await fetch(`${API_BASE_URL}/api/v1/payments/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    if (response.status === 409) {
+  try {
+    return await apiRequest<PaymentEntry>(`/payments/${id}`, accessToken, {
+      method: 'PUT',
+      body: data,
+    });
+  } catch (error: any) {
+    if (error.status === 409) {
       throw new Error('Payment cannot be updated (not in Draft status)');
     }
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to update payment');
+    throw error;
   }
-
-  return response.json();
 }
 
 /**
@@ -151,24 +88,9 @@ export async function updatePaymentEntry(
  */
 export async function confirmPaymentEntry(id: string): Promise<PaymentEntry> {
   const accessToken = getAccessToken();
-  const response = await fetch(`${API_BASE_URL}/api/v1/payments/${id}/confirm`, {
+  return apiRequest<PaymentEntry>(`/payments/${id}/confirm`, accessToken, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
   });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    const message =
-      typeof error.detail === 'string'
-        ? error.detail
-        : error.detail?.message ?? 'Failed to confirm payment';
-    throw new Error(message);
-  }
-
-  return response.json();
 }
 
 /**
@@ -183,24 +105,17 @@ export async function cancelPaymentEntry(
     cancellation_reason: reason,
   };
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/payments/${id}/cancel`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    if (response.status === 409) {
+  try {
+    return await apiRequest<PaymentEntry>(`/payments/${id}/cancel`, accessToken, {
+      method: 'POST',
+      body: payload,
+    });
+  } catch (error: any) {
+    if (error.status === 409) {
       throw new Error('Payment cannot be cancelled');
     }
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to cancel payment');
+    throw error;
   }
-
-  return response.json();
 }
 
 /**
@@ -211,31 +126,10 @@ export async function createAllocation(
   data: AllocationCreate
 ): Promise<PaymentReference> {
   const accessToken = getAccessToken();
-  const response = await fetch(
-    `${API_BASE_URL}/api/v1/payments/${paymentId}/allocations`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    const detail = error.detail;
-    const message =
-      typeof detail === 'string'
-        ? detail
-        : Array.isArray(detail)
-          ? detail.map((e: { msg?: string }) => e.msg || JSON.stringify(e)).join('; ')
-          : error.message || 'Failed to create allocation';
-    throw new Error(message);
-  }
-
-  return response.json();
+  return apiRequest<PaymentReference>(`/payments/${paymentId}/allocations`, accessToken, {
+    method: 'POST',
+    body: data,
+  });
 }
 
 /**
@@ -243,23 +137,15 @@ export async function createAllocation(
  */
 export async function deleteAllocation(allocationId: string): Promise<void> {
   const accessToken = getAccessToken();
-  const response = await fetch(
-    `${API_BASE_URL}/api/v1/payments/allocations/${allocationId}`,
-    {
+  try {
+    return await apiRequest<void>(`/payments/allocations/${allocationId}`, accessToken, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
-
-  if (!response.ok) {
-    if (response.status === 404) {
+    });
+  } catch (error: any) {
+    if (error.status === 404) {
       throw new Error('Allocation not found');
     }
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to delete allocation');
+    throw error;
   }
 }
 
@@ -267,25 +153,18 @@ export async function deleteAllocation(allocationId: string): Promise<void> {
  * Download payment receipt as PDF
  */
 export async function downloadReceipt(paymentId: string): Promise<Blob> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/v1/payments/${paymentId}/receipt`,
-    {
-      headers: {
-        'Content-Type': 'application/json',
-      },
+  try {
+    return await apiRequest<Blob>(`/payments/${paymentId}/receipt`, undefined, {
+      method: 'GET',
+      responseType: 'blob',
       credentials: 'include',
-    }
-  );
-
-  if (!response.ok) {
-    if (response.status === 404) {
+    });
+  } catch (error: any) {
+    if (error.status === 404) {
       throw new Error('Receipt not found or payment not confirmed');
     }
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to download receipt');
+    throw error;
   }
-
-  return response.blob();
 }
 
 /**
@@ -298,30 +177,17 @@ export async function getReconciliationReport(filters: {
   payment_mode?: string;
   status?: string;
 }): Promise<any> {
-  const params = new URLSearchParams();
-
-  if (filters.date_from) params.append('date_from', filters.date_from);
-  if (filters.date_to) params.append('date_to', filters.date_to);
-  if (filters.party_id) params.append('party_id', filters.party_id);
-  if (filters.payment_mode) params.append('payment_mode', filters.payment_mode);
-  if (filters.status) params.append('status', filters.status);
-
-  const response = await fetch(
-    `${API_BASE_URL}/api/v1/payments/reports/reconciliation?${params.toString()}`,
-    {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to fetch reconciliation report');
-  }
-
-  return response.json();
+  return apiRequest<any>('/payments/reports/reconciliation', undefined, {
+    method: 'GET',
+    params: {
+      ...(filters.date_from && { date_from: filters.date_from }),
+      ...(filters.date_to && { date_to: filters.date_to }),
+      ...(filters.party_id && { party_id: filters.party_id }),
+      ...(filters.payment_mode && { payment_mode: filters.payment_mode }),
+      ...(filters.status && { status: filters.status }),
+    },
+    credentials: 'include',
+  });
 }
 
 /**
@@ -337,32 +203,21 @@ export async function exportReconciliationReport(
   },
   format: 'excel' | 'pdf'
 ): Promise<void> {
-  const params = new URLSearchParams();
-
-  if (filters.date_from) params.append('date_from', filters.date_from);
-  if (filters.date_to) params.append('date_to', filters.date_to);
-  if (filters.party_id) params.append('party_id', filters.party_id);
-  if (filters.payment_mode) params.append('payment_mode', filters.payment_mode);
-  if (filters.status) params.append('status', filters.status);
-  params.append('format', format);
-
-  const response = await fetch(
-    `${API_BASE_URL}/api/v1/payments/reports/reconciliation/export?${params.toString()}`,
-    {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to export reconciliation report');
-  }
+  const blob = await apiRequest<Blob>('/payments/reports/reconciliation/export', undefined, {
+    method: 'GET',
+    params: {
+      ...(filters.date_from && { date_from: filters.date_from }),
+      ...(filters.date_to && { date_to: filters.date_to }),
+      ...(filters.party_id && { party_id: filters.party_id }),
+      ...(filters.payment_mode && { payment_mode: filters.payment_mode }),
+      ...(filters.status && { status: filters.status }),
+      format,
+    },
+    responseType: 'blob',
+    credentials: 'include',
+  });
 
   // Download the file
-  const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

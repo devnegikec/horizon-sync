@@ -25,20 +25,9 @@ import type { PaymentType, PaymentMode, CreatePaymentPayload, UpdatePaymentPaylo
 import type { SuppliersResponse } from '../../types/supplier.types';
 import { supplierApi } from '../../utility/api';
 import { customerApi } from '../../utility/api';
-import { apiRequest } from '../../utility/api/core';
+import { getAccessToken } from '../../utility/api/core';
 import { toDateInputValue } from '../../utils/payment.utils';
-
-interface BankAccount {
-  id: string;
-  bank_name: string;
-  account_number: string;
-  is_active: boolean;
-}
-
-interface BankAccountListResponse {
-  items: BankAccount[];
-  total: number;
-}
+import { useActiveBankAccounts } from '../../hooks/useBankAccounts';
 
 interface PaymentFormProps {
   initialData?: Partial<CreatePaymentPayload>;
@@ -49,18 +38,15 @@ interface PaymentFormProps {
   mode: 'create' | 'edit';
 }
 
-function getAccessTokenForApi(): string | null {
-  const fromStore = useUserStore.getState().accessToken;
-  if (fromStore) return fromStore;
-  if (typeof localStorage !== 'undefined') {
-    return localStorage.getItem('access_token');
-  }
-  return null;
-}
-
 export const PaymentForm = memo(function PaymentForm({ initialData, preselectedInvoiceId, onSubmit, onCancel, loading, mode }: PaymentFormProps) {
   const accessTokenFromStore = useUserStore((s) => s.accessToken);
-  const accessToken = accessTokenFromStore ?? getAccessTokenForApi();
+  const accessToken = accessTokenFromStore || (() => {
+    try {
+      return getAccessToken();
+    } catch {
+      return null;
+    }
+  })();
 
   const normalizedDate = initialData?.payment_date
     ? toDateInputValue(initialData.payment_date) || new Date().toISOString().split('T')[0]
@@ -89,7 +75,8 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
   // Fetch outstanding invoices for allocation
   const { invoices: outstandingInvoices, loading: invoicesLoading } = useOutstandingInvoicesForAllocation(
     formData.party_id || null,
-    formData.payment_type || 'Customer_Payment'
+    formData.payment_type || 'Customer_Payment',
+    preselectedInvoiceId
   );
 
   const {
@@ -117,20 +104,12 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
 
   // Fetch active bank accounts for Bank_Transfer payment mode
   const {
-    data: bankAccountsData,
+    data: bankAccounts,
     error: bankAccountsError,
     isFetching: bankAccountsLoading,
-  } = useQuery<BankAccountListResponse>({
-    queryKey: ['bank-accounts-active', accessToken ?? ''],
-    queryFn: () => apiRequest<BankAccountListResponse>('/bank-accounts', accessToken || '', {
-      params: { is_active: true }
-    }),
-    enabled: !!accessToken,
-    staleTime: 60_000,
-    retry: 1,
-  });
+  } = useActiveBankAccounts();
 
-  const bankAccounts = bankAccountsData?.items ?? [];
+  console.log('Available bank accounts:', bankAccounts); // Debug log
 
   const customers = customersData?.customers ?? [];
   const suppliers = suppliersData?.suppliers ?? [];
@@ -152,7 +131,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
     return null;
   }, [formData.party_id, formData.payment_type, customers, suppliers]);
 
-  const requiresReferenceNo = 
+  const requiresReferenceNo =
     formData.payment_mode === 'Check' || formData.payment_mode === 'Bank_Transfer';
 
   useEffect(() => {
@@ -164,7 +143,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
   // Sync form when initialData changes (for both edit and create modes)
   useEffect(() => {
     if (initialData) {
-      const dateVal = initialData.payment_date 
+      const dateVal = initialData.payment_date
         ? toDateInputValue(initialData.payment_date) || new Date().toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
       setFormData({
@@ -316,14 +295,14 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
               disabled={!formData.payment_type || partyLoading}>
               <SelectTrigger id="party_id">
                 <SelectValue placeholder={
-                    !formData.payment_type
-                      ? 'Select payment type first'
-                      : partyLoading
-                        ? 'Loading…'
-                        : formData.payment_type === 'Customer_Payment'
-                          ? 'Select customer'
-                          : 'Select supplier'
-                  }/>
+                  !formData.payment_type
+                    ? 'Select payment type first'
+                    : partyLoading
+                      ? 'Loading…'
+                      : formData.payment_type === 'Customer_Payment'
+                        ? 'Select customer'
+                        : 'Select supplier'
+                } />
               </SelectTrigger>
               <SelectContent>
                 {formData.payment_type === 'Customer_Payment' &&
@@ -371,7 +350,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
           step="0.01"
           placeholder="0.00"
           value={formData.amount || ''}
-          onChange={handleAmountChange}/>
+          onChange={handleAmountChange} />
         {errors.amount && (
           <p className="text-sm text-destructive">{errors.amount}</p>
         )}
@@ -399,7 +378,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
                     value="single"
                     checked={allocationType === 'single'}
                     onChange={(e) => handleAllocationTypeChange(e.target.value)}
-                    className="h-4 w-4 cursor-pointer"/>
+                    className="h-4 w-4 cursor-pointer" />
                   <Label htmlFor="single" className="font-normal cursor-pointer">
                     Single Invoice {preselectedInvoiceId && '(Pre-selected)'}
                   </Label>
@@ -411,7 +390,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
                     value="multiple"
                     checked={allocationType === 'multiple'}
                     onChange={(e) => handleAllocationTypeChange(e.target.value)}
-                    className="h-4 w-4 cursor-pointer"/>
+                    className="h-4 w-4 cursor-pointer" />
                   <Label htmlFor="multiple" className="font-normal cursor-pointer">
                     Multiple Invoices
                   </Label>
@@ -449,7 +428,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
                                     setFormData(prev => ({ ...prev, amount: selectedInvoice.balance_due }));
                                   }
                                 }}
-                                className="h-4 w-4 cursor-pointer"/>
+                                className="h-4 w-4 cursor-pointer" />
                               <Label htmlFor={`invoice-${invoice.id}`} className="flex items-center gap-2 cursor-pointer flex-1">
                                 <FileText className="h-4 w-4 text-muted-foreground" />
                                 <div className="flex-1">
@@ -479,7 +458,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
                               <div className="flex items-center space-x-3 flex-1">
                                 <Checkbox id={`invoice-multi-${invoice.id}`}
                                   checked={isSelected}
-                                  onCheckedChange={(checked) => handleInvoiceToggle(invoice.id, checked as boolean)}/>
+                                  onCheckedChange={(checked) => handleInvoiceToggle(invoice.id, checked as boolean)} />
                                 <Label htmlFor={`invoice-multi-${invoice.id}`} className="flex items-center gap-2 cursor-pointer flex-1">
                                   <FileText className="h-4 w-4 text-muted-foreground" />
                                   <div className="flex-1">
@@ -506,7 +485,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
                                   placeholder="0.00"
                                   value={allocationAmounts[invoice.id] || ''}
                                   onChange={(e) => handleAllocationAmountChange(invoice.id, e.target.value)}
-                                  className="mt-1"/>
+                                  className="mt-1" />
                               </div>
                             )}
                           </div>
@@ -527,7 +506,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
           placeholder="USD"
           maxLength={3}
           value={formData.currency_code || ''}
-          onChange={handleCurrencyChange}/>
+          onChange={handleCurrencyChange} />
         {errors.currency_code && (
           <p className="text-sm text-destructive">{errors.currency_code}</p>
         )}
@@ -538,7 +517,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
         <Input id="payment_date"
           type="date"
           value={formData.payment_date || ''}
-          onChange={handleDateChange}/>
+          onChange={handleDateChange} />
         {errors.payment_date && (
           <p className="text-sm text-destructive">{errors.payment_date}</p>
         )}
@@ -570,25 +549,34 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
             disabled={bankAccountsLoading}>
             <SelectTrigger id="bank_account_id">
               <SelectValue placeholder={
-                  bankAccountsLoading
-                    ? 'Loading bank accounts...'
-                    : bankAccounts.length === 0
-                      ? 'No active bank accounts available'
-                      : 'Select bank account'
-                }/>
+                bankAccountsLoading
+                  ? 'Loading bank accounts...'
+                  : bankAccounts?.length === 0
+                    ? 'No active bank accounts available - Create one in Banking Settings'
+                    : 'Select bank account'
+              } />
             </SelectTrigger>
             <SelectContent>
-              {bankAccounts.map((account) => (
-                <SelectItem key={account.id} value={account.id}>
-                  {account.bank_name} - ****{account.account_number.slice(-4)}
-                </SelectItem>
-              ))}
+              {bankAccounts?.length === 0 ? (
+                <div className="p-3 text-sm text-muted-foreground text-center">
+                  <p>No bank accounts available.</p>
+                  <p className="text-xs mt-1">Go to Settings → Banking to add bank accounts.</p>
+                </div>
+              ) : (
+                bankAccounts?.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.bank_name} - ****{account.account_number.slice(-4)}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
           {bankAccountsError && (
-            <p className="text-sm text-destructive">
-              Failed to load bank accounts. Check your connection and try again.
-            </p>
+            <div className="text-sm text-destructive space-y-1">
+              <p>Failed to load bank accounts. Check your connection and try again.</p>
+              <p className="text-xs">Error: {bankAccountsError instanceof Error ? bankAccountsError.message : 'Unknown error'}</p>
+              <p className="text-xs text-muted-foreground">If no bank accounts exist, go to Settings → Banking to create them.</p>
+            </div>
           )}
           {errors.bank_account_id && (
             <p className="text-sm text-destructive">{errors.bank_account_id}</p>
@@ -602,7 +590,7 @@ export const PaymentForm = memo(function PaymentForm({ initialData, preselectedI
           <Input id="reference_no"
             placeholder="Enter check number or transaction reference"
             value={formData.reference_no || ''}
-            onChange={handleReferenceChange}/>
+            onChange={handleReferenceChange} />
           {errors.reference_no && (
             <p className="text-sm text-destructive">{errors.reference_no}</p>
           )}

@@ -1,12 +1,10 @@
-import { environment } from '../../environments/environment';
 import type {
   TaxTemplate,
   TaxTemplateCreate,
   TaxTemplateUpdate,
   TaxTemplateListResponse,
 } from '../types/tax-template.types';
-
-const API_BASE_URL = environment.apiCoreUrl;
+import { apiRequest, buildPaginationParams } from '../utility/api/core';
 
 export const taxTemplateApi = {
   list: async (
@@ -18,99 +16,50 @@ export const taxTemplateApi = {
       is_active?: boolean;
     }
   ): Promise<TaxTemplateListResponse> => {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-      ...(filters?.tax_category && { tax_category: filters.tax_category }),
-      ...(filters?.is_active !== undefined && { is_active: filters.is_active.toString() }),
-    });
-
-    const response = await fetch(`${API_BASE_URL}/tax-templates?${params}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+    const response = await apiRequest<{
+      templates: TaxTemplate[];
+      pagination: {
+        page: number;
+        page_size: number;
+        total_items: number;
+        total_pages: number;
+      };
+    }>('/tax-templates', accessToken, {
+      params: {
+        ...buildPaginationParams(page, limit),
+        ...(filters?.tax_category && { tax_category: filters.tax_category }),
+        ...(filters?.is_active !== undefined && { is_active: filters.is_active }),
       },
     });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch tax templates: ${response.statusText}`);
-    }
-
-    const apiResponse = await response.json();
-    
-    // Map API response to expected format
     return {
-      data: apiResponse.templates || [],
+      data: response.templates || [],
       pagination: {
-        page: apiResponse.pagination.page,
-        limit: apiResponse.pagination.page_size,
-        total: apiResponse.pagination.total_items,
-        pages: apiResponse.pagination.total_pages,
+        page: response.pagination.page,
+        limit: response.pagination.page_size,
+        total: response.pagination.total_items,
+        pages: response.pagination.total_pages,
       },
     };
   },
 
-  getById: async (accessToken: string, id: string): Promise<TaxTemplate> => {
-    const response = await fetch(`${API_BASE_URL}/tax-templates/${id}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
+  getById: (accessToken: string, id: string): Promise<TaxTemplate> =>
+    apiRequest<TaxTemplate>(`/tax-templates/${id}`, accessToken),
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch tax template: ${response.statusText}`);
-    }
-
-    return response.json();
-  },
-
-  create: async (accessToken: string, data: TaxTemplateCreate): Promise<TaxTemplate> => {
-    const response = await fetch(`${API_BASE_URL}/tax-templates`, {
+  create: (accessToken: string, data: TaxTemplateCreate): Promise<TaxTemplate> =>
+    apiRequest<TaxTemplate>('/tax-templates', accessToken, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+      body: data,
+    }),
 
-    if (!response.ok) {
-      throw new Error(`Failed to create tax template: ${response.statusText}`);
-    }
-
-    return response.json();
-  },
-
-  update: async (accessToken: string, id: string, data: TaxTemplateUpdate): Promise<TaxTemplate> => {
-    const response = await fetch(`${API_BASE_URL}/tax-templates/${id}`, {
+  update: (accessToken: string, id: string, data: TaxTemplateUpdate): Promise<TaxTemplate> =>
+    apiRequest<TaxTemplate>(`/tax-templates/${id}`, accessToken, {
       method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+      body: data,
+    }),
 
-    if (!response.ok) {
-      throw new Error(`Failed to update tax template: ${response.statusText}`);
-    }
-
-    return response.json();
-  },
-
-  delete: async (accessToken: string, id: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/tax-templates/${id}`, {
+  delete: (accessToken: string, id: string): Promise<void> =>
+    apiRequest<void>(`/tax-templates/${id}`, accessToken, {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || `Failed to delete tax template: ${response.statusText}`);
-    }
-  },
+    }),
 };

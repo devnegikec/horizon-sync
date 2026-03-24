@@ -59,7 +59,7 @@ export class PermissionsService {
     organizationId: string, 
     accessToken: string
   ): Promise<UserPermissionsResponse> {
-    const url = `${API_BASE_URL}/identity/users/me/permissions?organization_id=${organizationId}`;
+    const url = `${API_BASE_URL}/api/v1/identity/users/me/permissions?organization_id=${organizationId}`;
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',

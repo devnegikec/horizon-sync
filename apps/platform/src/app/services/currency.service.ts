@@ -1,6 +1,6 @@
 import { environment } from '../../environments/environment';
 
-const API_BASE_URL = `${environment.apiCoreUrl}/currency/currencies`;
+const CURRENCIES_URL = `${environment.apiCoreUrl}/api/v1/currency/currencies`;
 
 export interface Currency {
   id: string;
@@ -25,7 +25,7 @@ interface CurrencyListResponse {
 
 export class CurrencyService {
   static async list(token: string): Promise<Currency[]> {
-    const response = await fetch(API_BASE_URL, {
+    const response = await fetch(CURRENCIES_URL, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -43,7 +43,7 @@ export class CurrencyService {
   }
 
   static async create(payload: CreateCurrencyPayload, token: string): Promise<Currency> {
-    const response = await fetch(API_BASE_URL, {
+    const response = await fetch(CURRENCIES_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -61,7 +61,7 @@ export class CurrencyService {
   }
 
   static async delete(id: string, token: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/${id}`, {
+    const response = await fetch(`${CURRENCIES_URL}/${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

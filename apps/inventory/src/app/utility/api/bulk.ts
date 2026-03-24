@@ -1,41 +1,15 @@
-import { buildUrl, type ApiError } from './core';
+import { apiRequest, type ApiError } from './core';
 
 // Bulk Import API helpers
 export const bulkImportApi = {
   upload: async (accessToken: string, file: File): Promise<unknown> => {
-    const url = buildUrl('/bulk-import/upload');
-    
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(url, {
+    return apiRequest<unknown>('/bulk-import/upload', accessToken, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
       body: formData,
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      const error: ApiError = {
-        message: errorText || `HTTP ${response.status}`,
-        status: response.status,
-      };
-      try {
-        error.details = JSON.parse(errorText);
-      } catch {
-        // Text is not JSON
-      }
-      throw error;
-    }
-
-    // Handle 204 No Content
-    if (response.status === 204) {
-      return {};
-    }
-
-    return response.json();
   },
 };
 
@@ -69,39 +43,14 @@ export interface BulkExportResponse {
 
 export const bulkExportApi = {
   export: async (accessToken: string, payload: BulkExportPayload): Promise<Blob> => {
-    const url = buildUrl('/bulk-export');
-
-    console.log('[bulkExportApi] Sending export request:', { url, payload });
+    console.log('[bulkExportApi] Sending export request:', { payload });
 
     // Step 1: Create export job
-    const response = await fetch(url, {
+    const data = await apiRequest<BulkExportResponse>('/bulk-export', accessToken, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(payload),
+      body: payload,
     });
 
-    console.log('[bulkExportApi] Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[bulkExportApi] Error response:', errorText);
-      const error: ApiError = {
-        message: errorText || `HTTP ${response.status}`,
-        status: response.status,
-      };
-      try {
-        error.details = JSON.parse(errorText);
-      } catch {
-        // Text is not JSON
-      }
-      throw error;
-    }
-
-    // Parse JSON response from backend
-    const data: BulkExportResponse = await response.json();
     console.log('[bulkExportApi] Job created:', data);
 
     // Check if export completed
@@ -115,28 +64,13 @@ export const bulkExportApi = {
     }
 
     // Step 2: Download the exported file
-    const downloadUrl = buildUrl(`/bulk-export/${data.id}/download`);
-    console.log('[bulkExportApi] Downloading file from:', downloadUrl);
+    console.log('[bulkExportApi] Downloading file for job:', data.id);
 
-    const downloadResponse = await fetch(downloadUrl, {
+    const blob = await apiRequest<Blob>(`/bulk-export/${data.id}/download`, accessToken, {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+      responseType: 'blob',
     });
 
-    console.log('[bulkExportApi] Download response status:', downloadResponse.status);
-
-    if (!downloadResponse.ok) {
-      const errorText = await downloadResponse.text();
-      console.error('[bulkExportApi] Download error:', errorText);
-      throw {
-        message: `Failed to download file: ${errorText || downloadResponse.status}`,
-        status: downloadResponse.status,
-      } as ApiError;
-    }
-
-    const blob = await downloadResponse.blob();
     console.log('[bulkExportApi] File downloaded, size:', blob.size);
     return blob;
   },
