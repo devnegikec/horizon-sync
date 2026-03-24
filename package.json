@@ -17,6 +17,11 @@
     "format:check:inventory": "nx format:check inventory",
     "format:check:all": "nx format:check",
     "format:write:all": "nx format:write",
+    "dev:admin": "nx serve admin",
+    "dev:all": "nx run-many -t serve -p platform inventory admin --parallel=3",
+    "build:admin": "nx build admin",
+    "test:admin": "nx test admin",
+    "lint:admin": "nx lint admin",
     "lint:fix:all": "nx run-many -t lint --fix",
     "prepare": "husky"
   },
