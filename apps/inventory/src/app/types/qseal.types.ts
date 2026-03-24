@@ -94,6 +94,7 @@ export interface CreateQSealProductPayload {
   banner_image_url?: string | null;
   email?: string | null;
   phone_number?: string | null;
+  client_product_auth_url?: string | null;
   activation_method?: string;
   sr_number_type?: string | null;
   redirect_to_client?: boolean;

@@ -9,3 +9,4 @@ export { BlocksManagement } from './BlocksManagement';
 export { SkuCustomizationManagement } from './SkuCustomizationManagement';
 export { AnalyticsManagement } from './AnalyticsManagement';
 export { ActivationManagement } from './ActivationManagement';
+export { ProductSettingsManagement } from './ProductSettingsManagement';

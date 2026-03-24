@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Package, QrCode, Palette, BarChart3, Zap } from 'lucide-react';
+import { Package, QrCode, Palette, BarChart3, Zap, Settings } from 'lucide-react';
 
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -13,13 +13,14 @@ import {
   SkuCustomizationManagement,
   AnalyticsManagement,
   ActivationManagement,
+  ProductSettingsManagement,
 } from '../components/qseal';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 });
 
-type ActiveView = 'products' | 'blocks' | 'sku_customization' | 'analytics' | 'activation';
+type ActiveView = 'products' | 'blocks' | 'sku_customization' | 'analytics' | 'activation' | 'product_settings';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -52,6 +53,7 @@ export function QSealPage() {
                 <NavItem icon={Palette} label="SKU Customization" isActive={activeView === 'sku_customization'} onClick={() => setActiveView('sku_customization')} />
                 <NavItem icon={BarChart3} label="Analytics" isActive={activeView === 'analytics'} onClick={() => setActiveView('analytics')} />
                 <NavItem icon={Zap} label="Activation" isActive={activeView === 'activation'} onClick={() => setActiveView('activation')} />
+                <NavItem icon={Settings} label="Product Settings" isActive={activeView === 'product_settings'} onClick={() => setActiveView('product_settings')} />
               </nav>
             </div>
           </header>
@@ -62,6 +64,7 @@ export function QSealPage() {
             {activeView === 'sku_customization' && <SkuCustomizationManagement />}
             {activeView === 'analytics' && <AnalyticsManagement />}
             {activeView === 'activation' && <ActivationManagement />}
+            {activeView === 'product_settings' && <ProductSettingsManagement />}
           </main>
         </div>
       </ThemeProvider>
