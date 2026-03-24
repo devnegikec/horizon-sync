@@ -4,7 +4,10 @@
  * API functions for journal entry operations
  */
 
+import { environment } from "../../../environments/environment";
+
 import { apiRequest, getAccessToken, buildPaginationParams } from './core';
+const API_BASE_URL = environment.apiCoreUrl;
 
 export interface JournalEntryLine {
   id: string;
