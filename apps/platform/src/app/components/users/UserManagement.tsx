@@ -23,7 +23,7 @@ import type { User, UserFilters } from '../../types/user.types';
 
 import { InviteUserModal } from '../InviteUserModal';
 
-import { UsersTable } from './UsersTable';
+import { UsersTable } from '@horizon-sync/ui/components';
 
 interface StatCardProps {
   title: string;
