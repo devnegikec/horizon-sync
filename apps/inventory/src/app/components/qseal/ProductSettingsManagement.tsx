@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Settings, Plus, RefreshCw, Pencil, Trash2, X, Check } from 'lucide-react';
+import { Settings, Plus, RefreshCw, Pencil, Trash2, X, Check, KeyRound } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/compo
 
 import { useQRProductSettings } from '../../hooks/useQRProductSettings';
 import type { SettingType, QRProductSetting } from '../../types/qr-product-settings.types';
+import { BrandManagement } from './BrandManagement';
 
 /* ------------------------------------------------------------------ */
 /*  Tab metadata                                                       */
@@ -265,12 +266,19 @@ export function ProductSettingsManagement() {
           {SETTING_TABS.map((tab) => (
             <TabsTrigger key={tab.key} value={tab.key}>{tab.label}</TabsTrigger>
           ))}
+          <TabsTrigger value="brands">
+            <KeyRound className="h-3.5 w-3.5 mr-1.5" />
+            Brands & Keys
+          </TabsTrigger>
         </TabsList>
         {SETTING_TABS.map((tab) => (
           <TabsContent key={tab.key} value={tab.key}>
             <SettingTypeContent settingType={tab.key} meta={tab} />
           </TabsContent>
         ))}
+        <TabsContent value="brands">
+          <BrandManagement />
+        </TabsContent>
       </Tabs>
     </div>
   );
