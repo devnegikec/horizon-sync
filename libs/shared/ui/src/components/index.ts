@@ -32,3 +32,4 @@ export * from './email';
 export * from './common';
 export * from './invoice';
 export * from './users';
+export * from './organizations';
