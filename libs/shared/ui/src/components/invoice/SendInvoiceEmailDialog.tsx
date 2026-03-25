@@ -2,19 +2,19 @@ import * as React from 'react';
 
 import { Mail } from 'lucide-react';
 
+import { Button } from '../ui/button';
 import {
-  Button,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
-  Label,
-  Textarea,
-} from '@horizon-sync/ui/components';
+} from '../ui/dialog';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
 
-import type { Invoice } from '../../types/invoice';
+import type { Invoice } from '../../types/invoice.types';
 
 interface EmailFormData {
   to: string;
@@ -48,10 +48,11 @@ export function SendInvoiceEmailDialog({
   // Reset form when dialog opens with new invoice
   React.useEffect(() => {
     if (open && invoice) {
+      const partyEmail = invoice.customer?.email || invoice.supplier?.email || '';
       setFormData({
-        to: invoice.party_email || '',
-        subject: `Invoice ${invoice.invoice_number}`,
-        body: `Dear ${invoice.party_name},\n\nPlease find attached invoice ${invoice.invoice_number} for ${invoice.currency} ${Number(invoice.grand_total).toFixed(2)}.\n\nDue Date: ${new Date(invoice.due_date).toLocaleDateString()}\n\nThank you for your business.\n\nBest regards`,
+        to: partyEmail,
+        subject: `Invoice ${invoice.invoice_no}`,
+        body: `Dear ${invoice.party_name},\n\nPlease find attached invoice ${invoice.invoice_no} for ${invoice.currency} ${Number(invoice.grand_total).toFixed(2)}.\n\nDue Date: ${new Date(invoice.due_date).toLocaleDateString()}\n\nThank you for your business.\n\nBest regards`,
       });
       setErrors({});
     }
@@ -109,7 +110,7 @@ export function SendInvoiceEmailDialog({
             <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <p className="text-sm text-muted-foreground">Invoice Number</p>
-                <p className="font-semibold">{invoice.invoice_number}</p>
+                <p className="font-semibold">{invoice.invoice_no}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Customer</p>

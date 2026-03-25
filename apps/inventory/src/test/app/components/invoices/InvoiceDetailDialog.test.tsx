@@ -2,7 +2,7 @@ import { describe, it, expect, jest } from '@jest/globals';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 import '@testing-library/jest-dom';
-import { InvoiceDetailDialog } from '../../../../app/components/invoices/InvoiceDetailDialog';
+import { InvoiceDetailDialog } from '@horizon-sync/ui';
 import type { Invoice } from '../../../../app/types/invoice';
 
 describe('InvoiceDetailDialog', () => {

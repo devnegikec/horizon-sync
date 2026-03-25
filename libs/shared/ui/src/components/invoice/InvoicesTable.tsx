@@ -3,19 +3,21 @@ import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { FileText, Plus, MoreHorizontal, Eye, Trash2, CheckCircle, Mail, User, DollarSign } from 'lucide-react';
 
-import { Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
-import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
+import { Button } from '../ui/button';
+import { Card, CardContent } from '../ui/card';
+import { TableSkeleton } from '../ui/table-skeleton';
+import { DataTable, DataTableColumnHeader } from '../data-table';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@horizon-sync/ui/components/ui/dropdown-menu';
-import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
+} from '../ui/dropdown-menu';
+import { EmptyState } from '../ui/empty-state';
 
 import type { Invoice } from '../../types/invoice.types';
-import { formatDate } from '../../utility/formatDate';
+import { formatDate } from '../../utils/formatDate';
 
 import { InvoiceStatusBadge } from './InvoiceStatusBadge';
 

@@ -1,17 +1,16 @@
 import type { Table } from '@tanstack/react-table';
 
-import { DataTableViewOptions } from '@horizon-sync/ui/components/data-table/DataTableViewOptions';
-import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
+import { DataTableViewOptions } from '../data-table/DataTableViewOptions';
+import { SearchInput } from '../ui/search-input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@horizon-sync/ui/components/ui/select';
+} from '../ui/select';
 
-import type { InvoiceFilters } from '../../hooks/useInvoiceManagement';
-import type { Invoice } from '../../types/invoice.types';
+import type { InvoiceFilters, Invoice } from '../../types/invoice.types';
 
 interface InvoiceManagementFiltersProps {
   filters: InvoiceFilters;

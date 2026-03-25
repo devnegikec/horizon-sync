@@ -1,7 +1,7 @@
 import { Plus, Download, RefreshCw } from 'lucide-react';
 
-import { Button } from '@horizon-sync/ui/components/ui/button';
-import { cn } from '@horizon-sync/ui/lib';
+import { Button } from '../ui/button';
+import { cn } from '../../lib';
 
 interface InvoiceManagementHeaderProps {
   onRefresh: () => void;

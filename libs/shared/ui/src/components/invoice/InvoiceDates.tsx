@@ -1,7 +1,7 @@
 import { Calendar } from 'lucide-react';
 
 import type { Invoice } from '../../types/invoice.types';
-import { formatDate } from '../../utility/formatDate';
+import { formatDate } from '../../utils/formatDate';
 
 export function InvoiceDates({ invoice }: { invoice: Invoice }) {
   return (

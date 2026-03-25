@@ -1,13 +1,14 @@
-import { Separator } from '@horizon-sync/ui/components';
+import { Separator } from '../ui/separator';
 
 import type { Invoice, InvoiceLineItem } from '../../types/invoice.types';
-import { formatDate } from '../../utility/formatDate';
-import { LineItemsDetailTable, TaxSummaryCollapsible } from '../common';
+import { formatDate } from '../../utils/formatDate';
+import { LineItemsDetailTable } from '../common/LineItemsDetailTable';
+import { TaxSummaryCollapsible } from '../common/TaxSummaryCollapsible';
 
 import { BankAccountDetails } from './BankAccountDetails';
+import type { BankAccount } from './BankAccountDetails';
 import { InvoiceAmountsSummary } from './InvoiceAmountsSummary';
 import { InvoiceDates } from './InvoiceDates';
-import { InvoiceHeader } from './InvoiceHeader';
 import { InvoicePartyInfo } from './InvoicePartyInfo';
 
 function buildTaxSummary(lineItems: InvoiceLineItem[]) {
@@ -93,7 +94,14 @@ function LineItemsFooter({ items, invoice, currencySymbol: sym }: { items: Invoi
   );
 }
 
-export function InvoiceContent({ invoice, currencySymbol }: { invoice: Invoice; currencySymbol: string }) {
+interface InvoiceContentProps {
+  invoice: Invoice;
+  currencySymbol: string;
+  bankAccount?: BankAccount | null;
+  bankAccountLoading?: boolean;
+}
+
+export function InvoiceContent({ invoice, currencySymbol, bankAccount, bankAccountLoading }: InvoiceContentProps) {
   const lineItems = invoice.items || invoice.line_items || [];
   const taxSummary = buildTaxSummary(lineItems);
 
@@ -125,7 +133,7 @@ export function InvoiceContent({ invoice, currencySymbol }: { invoice: Invoice; 
       <InvoiceAmountsSummary invoice={invoice} currencySymbol={currencySymbol} />
 
       {/* Bank Account Details */}
-      <BankAccountDetails />
+      <BankAccountDetails account={bankAccount} loading={bankAccountLoading} />
 
       {(invoice.reference_type || invoice.reference_no) && (
         <div className="rounded-lg border p-4 bg-muted/20">
