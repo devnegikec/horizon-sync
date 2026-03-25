@@ -3,7 +3,7 @@ import * as React from 'react';
 import { environment } from '../../environments/environment';
 import type { User, UsersResponse, UserFilters } from '../types/user.types';
 
-const USERS_URL = `${environment.apiBaseUrl}/identity/users`;
+const USERS_URL = `${environment.apiBaseUrl}/api/v1/identity/users`;
 
 interface UseUsersResult {
   users: User[];
