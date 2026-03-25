@@ -28,4 +28,12 @@ export type {
   AdminUserListResponse,
 } from './user.types';
 
+export type {
+  AdminInvoiceListItem,
+  AdminInvoiceListResponse,
+  AdminInvoiceFilters,
+  AdminInvoiceStatsResponse,
+  AdminInvoiceDetailResponse,
+} from './invoice.types';
+
 export type { PaginationMeta } from './common.types';

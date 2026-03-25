@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Building2,
   Users,
+  FileText,
   Settings,
   HelpCircle,
   Zap,
@@ -28,6 +29,7 @@ const mainNavItems: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard },
   { title: 'Organizations', href: '/organizations', icon: Building2 },
   { title: 'Users', href: '/users', icon: Users },
+  { title: 'Invoices', href: '/invoices', icon: FileText },
 ];
 
 const bottomNavItems: NavItem[] = [

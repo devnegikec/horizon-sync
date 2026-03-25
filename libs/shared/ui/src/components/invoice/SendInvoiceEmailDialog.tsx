@@ -28,6 +28,8 @@ interface SendInvoiceEmailDialogProps {
   invoice: Invoice | null;
   onSend: (invoiceId: string, emailData: EmailFormData) => Promise<void>;
   sending: boolean;
+  defaultSubject?: string;
+  defaultBody?: string;
 }
 
 export function SendInvoiceEmailDialog({
@@ -36,6 +38,8 @@ export function SendInvoiceEmailDialog({
   invoice,
   onSend,
   sending,
+  defaultSubject,
+  defaultBody,
 }: SendInvoiceEmailDialogProps) {
   const [formData, setFormData] = React.useState<EmailFormData>({
     to: '',
@@ -51,12 +55,12 @@ export function SendInvoiceEmailDialog({
       const partyEmail = invoice.customer?.email || invoice.supplier?.email || '';
       setFormData({
         to: partyEmail,
-        subject: `Invoice ${invoice.invoice_no}`,
-        body: `Dear ${invoice.party_name},\n\nPlease find attached invoice ${invoice.invoice_no} for ${invoice.currency} ${Number(invoice.grand_total).toFixed(2)}.\n\nDue Date: ${new Date(invoice.due_date).toLocaleDateString()}\n\nThank you for your business.\n\nBest regards`,
+        subject: defaultSubject ?? `Invoice ${invoice.invoice_no}`,
+        body: defaultBody ?? `Dear ${invoice.party_name},\n\nPlease find attached invoice ${invoice.invoice_no} for ${invoice.currency} ${Number(invoice.grand_total).toFixed(2)}.\n\nDue Date: ${new Date(invoice.due_date).toLocaleDateString()}\n\nThank you for your business.\n\nBest regards`,
       });
       setErrors({});
     }
-  }, [open, invoice]);
+  }, [open, invoice, defaultSubject, defaultBody]);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof EmailFormData, string>> = {};
