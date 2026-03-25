@@ -218,20 +218,22 @@ function EditMode({ org, onSave, onCancel }: {
     },
   });
 
-  const onSubmit = async (data: OrgDetailEditData) => {
-    setIsSubmitting(true);
-    setErrorMessage('');
-    try {
-      await onSave(data);
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to update organization');
-    } finally {
-      setIsSubmitting(false);
+  const doSave = handleSubmit(
+    async (data: OrgDetailEditData) => {
+      setIsSubmitting(true);
+      setErrorMessage('');
+      try {
+        await onSave(data);
+      } catch (err) {
+        setErrorMessage(err instanceof Error ? err.message : 'Failed to update organization');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
-  };
+  );
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <div className="space-y-5">
       {/* Slug (read-only) */}
       <div className="space-y-2">
         <Label>Slug</Label>
@@ -326,12 +328,12 @@ function EditMode({ org, onSave, onCancel }: {
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
           <X className="mr-2 h-4 w-4" /> Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting}
+        <Button type="button" disabled={isSubmitting} onClick={() => doSave()}
           className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white">
           {isSubmitting ? 'Saving...' : <><Save className="mr-2 h-4 w-4" /> Save Changes</>}
         </Button>
       </DialogFooter>
-    </form>
+    </div>
   );
 }
 
