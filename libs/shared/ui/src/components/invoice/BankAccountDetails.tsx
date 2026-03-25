@@ -1,20 +1,12 @@
-import * as React from 'react';
-
-import { useQuery } from '@tanstack/react-query';
 import { Building2, CreditCard, Globe } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
-import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@horizon-sync/ui/components';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Skeleton } from '../ui/skeleton';
 
-import { apiRequest } from '../../utility/api/core';
-
-interface BankAccount {
-  id: string;
+export interface BankAccount {
   bank_name: string;
   account_holder_name: string;
   account_number: string;
-  country_code: string;
-  currency: string;
   iban?: string;
   swift_code?: string;
   routing_number?: string;
@@ -23,33 +15,16 @@ interface BankAccount {
   bsb_number?: string;
   branch_name?: string;
   branch_code?: string;
-  is_primary: boolean;
 }
 
-interface BankAccountListResponse {
-  items: BankAccount[];
-  total: number;
-}
-
-interface BankAccountDetailsProps {
+export interface BankAccountDetailsProps {
+  account?: BankAccount | null;
+  loading?: boolean;
   className?: string;
 }
 
-export function BankAccountDetails({ className }: BankAccountDetailsProps) {
-  const accessToken = useUserStore((s) => s.accessToken);
-
-  const { data, isLoading, error } = useQuery<BankAccountListResponse>({
-    queryKey: ['bank-accounts-internal-primary', accessToken ?? ''],
-    queryFn: () => apiRequest<BankAccountListResponse>('/bank-accounts/internal', accessToken || '', {
-      params: { is_active: true, is_primary: true, page_size: 1 }
-    }),
-    enabled: !!accessToken,
-    staleTime: 300_000, // 5 minutes cache
-  });
-
-  const primaryAccount = data?.items?.[0];
-
-  if (isLoading) {
+export function BankAccountDetails({ account, loading, className }: BankAccountDetailsProps) {
+  if (loading) {
     return (
       <Card className={className}>
         <CardHeader>
@@ -67,8 +42,8 @@ export function BankAccountDetails({ className }: BankAccountDetailsProps) {
     );
   }
 
-  if (error || !primaryAccount) {
-    return null; // Don't show anything if no bank account is configured
+  if (!account) {
+    return null;
   }
 
   return (
@@ -84,8 +59,8 @@ export function BankAccountDetails({ className }: BankAccountDetailsProps) {
           <div className="flex items-start gap-2">
             <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
             <div>
-              <p className="font-medium">{primaryAccount.bank_name}</p>
-              <p className="text-muted-foreground">{primaryAccount.account_holder_name}</p>
+              <p className="font-medium">{account.bank_name}</p>
+              <p className="text-muted-foreground">{account.account_holder_name}</p>
             </div>
           </div>
 
@@ -93,78 +68,78 @@ export function BankAccountDetails({ className }: BankAccountDetailsProps) {
             <CreditCard className="h-4 w-4 mt-0.5 text-muted-foreground" />
             <div>
               <p className="text-muted-foreground text-xs">Account Number</p>
-              <p className="font-mono font-medium">{primaryAccount.account_number}</p>
+              <p className="font-mono font-medium">{account.account_number}</p>
             </div>
           </div>
 
-          {primaryAccount.ifsc_code && (
+          {account.ifsc_code && (
             <div className="flex items-start gap-2">
               <Globe className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
                 <p className="text-muted-foreground text-xs">IFSC Code</p>
-                <p className="font-mono font-medium">{primaryAccount.ifsc_code}</p>
+                <p className="font-mono font-medium">{account.ifsc_code}</p>
               </div>
             </div>
           )}
 
-          {primaryAccount.iban && (
+          {account.iban && (
             <div className="flex items-start gap-2">
               <Globe className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
                 <p className="text-muted-foreground text-xs">IBAN</p>
-                <p className="font-mono font-medium">{primaryAccount.iban}</p>
+                <p className="font-mono font-medium">{account.iban}</p>
               </div>
             </div>
           )}
 
-          {primaryAccount.swift_code && (
+          {account.swift_code && (
             <div className="flex items-start gap-2">
               <Globe className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
                 <p className="text-muted-foreground text-xs">SWIFT/BIC Code</p>
-                <p className="font-mono font-medium">{primaryAccount.swift_code}</p>
+                <p className="font-mono font-medium">{account.swift_code}</p>
               </div>
             </div>
           )}
 
-          {primaryAccount.routing_number && (
+          {account.routing_number && (
             <div className="flex items-start gap-2">
               <Globe className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
                 <p className="text-muted-foreground text-xs">Routing Number</p>
-                <p className="font-mono font-medium">{primaryAccount.routing_number}</p>
+                <p className="font-mono font-medium">{account.routing_number}</p>
               </div>
             </div>
           )}
 
-          {primaryAccount.sort_code && (
+          {account.sort_code && (
             <div className="flex items-start gap-2">
               <Globe className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
                 <p className="text-muted-foreground text-xs">Sort Code</p>
-                <p className="font-mono font-medium">{primaryAccount.sort_code}</p>
+                <p className="font-mono font-medium">{account.sort_code}</p>
               </div>
             </div>
           )}
 
-          {primaryAccount.bsb_number && (
+          {account.bsb_number && (
             <div className="flex items-start gap-2">
               <Globe className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
                 <p className="text-muted-foreground text-xs">BSB Number</p>
-                <p className="font-mono font-medium">{primaryAccount.bsb_number}</p>
+                <p className="font-mono font-medium">{account.bsb_number}</p>
               </div>
             </div>
           )}
 
-          {primaryAccount.branch_name && (
+          {account.branch_name && (
             <div className="flex items-start gap-2">
               <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
                 <p className="text-muted-foreground text-xs">Branch</p>
-                <p className="font-medium">{primaryAccount.branch_name}</p>
-                {primaryAccount.branch_code && (
-                  <p className="text-muted-foreground text-xs">Code: {primaryAccount.branch_code}</p>
+                <p className="font-medium">{account.branch_name}</p>
+                {account.branch_code && (
+                  <p className="text-muted-foreground text-xs">Code: {account.branch_code}</p>
                 )}
               </div>
             </div>

@@ -6,7 +6,7 @@ import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 
 import type { SalesOrder, ConvertToInvoiceRequest, ConvertToInvoiceItemRequest } from '../../types/sales-order.types';
 
-import { BankAccountDetails } from '../invoices/BankAccountDetails';
+import { BankAccountDetails } from '@horizon-sync/ui';
 
 interface CreateInvoiceDialogProps {
   open: boolean;
@@ -211,7 +211,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, salesOrder, onCreateIn
           </div>
 
           {/* Bank Account Details */}
-          <BankAccountDetails />
+          <BankAccountDetails account={undefined} loading={false} />
 
           {/* Invoice Total */}
           <div className="flex justify-end">

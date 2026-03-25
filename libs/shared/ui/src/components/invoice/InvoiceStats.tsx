@@ -1,6 +1,6 @@
 import { FileText, FilePlus, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
-import { StatCard } from '../shared';
+import { StatCard } from '../common/StatCard';
 
 interface InvoiceStatsProps {
   total: number;

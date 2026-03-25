@@ -1,6 +1,6 @@
 import type { Invoice } from '../../types/invoice.types';
-import { PartyInfoCard } from '../common';
-import type { PartyInfoData } from '../common';
+import { PartyInfoCard } from '../common/PartyInfoCard';
+import type { PartyInfoData } from '../common/PartyInfoCard';
 
 export function InvoicePartyInfo({ invoice }: { invoice: Invoice }) {
   const raw = invoice.invoice_type === 'sales' ? invoice.customer : invoice.supplier;

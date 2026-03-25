@@ -1,4 +1,4 @@
-import { Badge } from '@horizon-sync/ui/components';
+import { Badge } from '../ui/badge';
 
 import type { InvoiceStatus } from '../../types/invoice.types';
 

@@ -1,18 +1,24 @@
-import * as React from 'react';
-
-import { useQuery } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 
-import { SearchableSelect } from '@horizon-sync/search';
-import { useUserStore } from '@horizon-sync/store';
-import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
-import type { InvoiceLineItemFormData } from '../../types/invoice';
-import { itemApi } from '../../utility/api';
+export interface InvoiceLineItemFormData {
+  item_id: string;
+  description?: string;
+  quantity: number;
+  uom?: string;
+  rate: number;
+  tax_template_id?: string | null;
+}
 
-interface InvoiceLineItemTableProps {
+export interface InvoiceLineItemTableProps {
   items: InvoiceLineItemFormData[];
   onItemsChange: (items: InvoiceLineItemFormData[]) => void;
+  availableItems?: Array<{ id: string; item_name: string; item_sku?: string; uom?: string }>;
+  isLoadingItems?: boolean;
   readonly?: boolean;
   disabled?: boolean;
 }
@@ -26,33 +32,14 @@ const emptyItem: InvoiceLineItemFormData = {
   tax_template_id: null,
 };
 
-export function InvoiceLineItemTable({ items, onItemsChange, readonly = false, disabled = false }: InvoiceLineItemTableProps) {
-  const accessToken = useUserStore((s) => s.accessToken);
-
-  const { data: itemsData, isLoading } = useQuery<{ items: { id: string; item_name: string; item_sku?: string; uom?: string }[] }>({
-    queryKey: ['items-list'],
-    queryFn: () => itemApi.list(accessToken || '', 1, 100) as Promise<{ items: { id: string; item_name: string; item_sku?: string; uom?: string }[] }>,
-    enabled: !!accessToken && !readonly,
-  });
-
-  const availableItems = itemsData?.items ?? [];
-
-  // List fetcher for SearchableSelect
-  const itemListFetcher = React.useCallback(async () => {
-    if (availableItems.length > 0) {
-      return availableItems;
-    }
-    const data = await itemApi.list(accessToken || '', 1, 100) as { items: { id: string; item_name: string; item_sku?: string; uom?: string }[] };
-    return data.items;
-  }, [availableItems, accessToken]);
-
-  // Label formatter for SearchableSelect
-  const itemLabelFormatter = React.useCallback(
-    (item: { id: string; item_name: string; item_sku?: string }) =>
-      `${item.item_name}${item.item_sku ? ` (${item.item_sku})` : ''}`,
-    []
-  );
-
+export function InvoiceLineItemTable({
+  items,
+  onItemsChange,
+  availableItems = [],
+  isLoadingItems = false,
+  readonly = false,
+  disabled = false,
+}: InvoiceLineItemTableProps) {
   const handleItemChange = (index: number, field: keyof InvoiceLineItemFormData, value: string | number | null) => {
     const updated = [...items];
     updated[index] = { ...updated[index], [field]: value };
@@ -88,7 +75,7 @@ export function InvoiceLineItemTable({ items, onItemsChange, readonly = false, d
   };
 
   // Calculate tax amount for display (placeholder - will be implemented with tax templates)
-  const calculateTaxAmount = (item: InvoiceLineItemFormData) => {
+  const calculateTaxAmount = (_item: InvoiceLineItemFormData) => {
     // TODO: Implement tax calculation when tax templates are available
     return 0;
   };
@@ -146,10 +133,10 @@ export function InvoiceLineItemTable({ items, onItemsChange, readonly = false, d
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">Item #{index + 1}</span>
               {items.length > 1 && (
-                <Button type="button" 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => removeItem(index)} 
+                <Button type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeItem(index)}
                   disabled={disabled}
                   aria-label={`Remove item ${index + 1}`}>
                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -159,16 +146,22 @@ export function InvoiceLineItemTable({ items, onItemsChange, readonly = false, d
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-1">
                 <Label className="text-xs">Item *</Label>
-                <SearchableSelect entityType="items"
-                  value={item.item_id}
+                <Select
+                  value={item.item_id || undefined}
                   onValueChange={(v) => handleItemChange(index, 'item_id', v)}
-                  listFetcher={itemListFetcher}
-                  labelFormatter={itemLabelFormatter}
-                  valueKey="id"
-                  placeholder="Select an item..."
-                  disabled={disabled}
-                  isLoading={isLoading}
-                  items={availableItems}/>
+                  disabled={disabled || isLoadingItems}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={isLoadingItems ? 'Loading items...' : 'Select an item...'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableItems.map((availItem) => (
+                      <SelectItem key={availItem.id} value={availItem.id}>
+                        {availItem.item_name}{availItem.item_sku ? ` (${availItem.item_sku})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Description</Label>

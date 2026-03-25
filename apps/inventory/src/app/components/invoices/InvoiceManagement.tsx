@@ -9,11 +9,7 @@ import type { Invoice } from '../../types/invoice.types';
 import { PaymentType, type CreatePaymentPayload } from '../../types/payment.types';
 import { PaymentDialog } from '../payments/PaymentDialog';
 
-import { InvoiceDetailDialog } from './InvoiceDetailDialog';
-import { InvoiceManagementFilters } from './InvoiceManagementFilters';
-import { InvoiceManagementHeader } from './InvoiceManagementHeader';
-import { InvoicesTable } from './InvoicesTable';
-import { InvoiceStats } from './InvoiceStats';
+import { InvoiceDetailDialog, InvoiceManagementFilters, InvoiceManagementHeader, InvoicesTable, InvoiceStats } from '@horizon-sync/ui';
 
 export function InvoiceManagement() {
   const {

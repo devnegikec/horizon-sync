@@ -2,13 +2,14 @@ import { describe, it, expect, jest } from '@jest/globals';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import '@testing-library/jest-dom';
-import { InvoiceManagementFilters } from '../../../../app/components/invoices/InvoiceManagementFilters';
-import type { InvoiceFilters } from '../../../../app/components/invoices/InvoiceManagementFilters';
+import { InvoiceManagementFilters } from '@horizon-sync/ui';
+import type { InvoiceFilters } from '@horizon-sync/ui';
 
 describe('InvoiceManagementFilters', () => {
   const mockSetFilters = jest.fn();
   const defaultFilters: InvoiceFilters = {
     search: '',
+    invoice_type: 'all',
     status: 'all',
   };
 
@@ -119,9 +120,8 @@ describe('InvoiceManagementFilters', () => {
   it('displays current filter values', () => {
     const filtersWithValues: InvoiceFilters = {
       search: 'INV-001',
+      invoice_type: 'all',
       status: 'paid',
-      date_from: '2024-01-01',
-      date_to: '2024-12-31',
     };
 
     render(

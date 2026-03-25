@@ -17,7 +17,7 @@ import {
 
 import type { DeliveryNote } from '../../types/delivery-note.types';
 
-import { BankAccountDetails } from '../invoices/BankAccountDetails';
+import { BankAccountDetails } from '@horizon-sync/ui';
 
 interface ConvertToInvoiceItem {
   item_id: string; // delivery_note_item UUID
@@ -198,7 +198,7 @@ export function ConvertDNToInvoiceDialog({
           </div>
 
           {/* Bank Account Details */}
-          <BankAccountDetails />
+          <BankAccountDetails account={undefined} loading={false} />
 
           {/* Optional fields */}
           <div className="grid gap-4 md:grid-cols-2">
