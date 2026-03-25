@@ -55,6 +55,7 @@ export interface UserDetailModalConfig {
   showStatus?: boolean;
   allowEdit?: boolean;
   allowDeactivate?: boolean;
+  initialEditMode?: boolean;
 }
 
 export interface UserDetailEditData {
@@ -295,19 +296,35 @@ export function UserDetailModal({ open, onOpenChange, user, loading, onUpdate, c
   const {
     showUserType = false, showRoles = false, showPhone = false,
     showOrganization = false, showStatus = true,
-    allowEdit = false, allowDeactivate = false,
+    allowEdit = false, allowDeactivate = false, initialEditMode = false,
   } = config;
   const resolvedConfig = { showUserType, showRoles, showPhone, showOrganization, showStatus, allowEdit, allowDeactivate };
 
   const [editing, setEditing] = React.useState(false);
 
-  // Reset edit mode when dialog closes or user changes
-  React.useEffect(() => { if (!open) setEditing(false); }, [open]);
+  // Set edit mode based on initialEditMode when modal opens
+  React.useEffect(() => {
+    if (open) {
+      setEditing(initialEditMode);
+    } else {
+      setEditing(false);
+    }
+  }, [open, initialEditMode]);
 
   const handleSave = async (data: UserDetailEditData) => {
     if (!user || !onUpdate) return;
     await onUpdate(user.id, data);
     setEditing(false);
+  };
+
+  const handleCancel = () => {
+    if (config.initialEditMode) {
+      // If opened directly in edit mode, close the modal on cancel
+      onOpenChange(false);
+    } else {
+      // If switched to edit mode from view, go back to view mode
+      setEditing(false);
+    }
   };
 
   return (
@@ -336,7 +353,7 @@ export function UserDetailModal({ open, onOpenChange, user, loading, onUpdate, c
         ) : !user ? (
           <div className="py-8 text-center text-muted-foreground">User not found</div>
         ) : editing ? (
-          <EditMode user={user} config={resolvedConfig} onSave={handleSave} onCancel={() => setEditing(false)} />
+          <EditMode user={user} config={resolvedConfig} onSave={handleSave} onCancel={handleCancel} />
         ) : (
           <>
             <ViewMode user={user} config={resolvedConfig} onEdit={allowEdit ? () => setEditing(true) : undefined} />
