@@ -67,6 +67,7 @@ export function UsersPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [modalEditMode, setModalEditMode] = useState(false);
   const [fieldError, setFieldError] = useState<{ field: string; message: string } | null>(null);
   const [orgOptions, setOrgOptions] = useState<Array<{ id: string; name: string }>>([]);
   const [orgsLoading, setOrgsLoading] = useState(false);
@@ -128,10 +129,12 @@ export function UsersPage() {
 
   const handleView = (user: AdminUserListItem) => {
     setSelectedUserId(user.id);
+    setModalEditMode(false);
     setDetailModalOpen(true);
   };
   const handleEdit = (user: AdminUserListItem) => {
     setSelectedUserId(user.id);
+    setModalEditMode(true);
     setDetailModalOpen(true);
   };
 
@@ -271,7 +274,7 @@ export function UsersPage() {
       {/* User Detail / Edit Modal */}
       <UserDetailModal
         open={detailModalOpen}
-        onOpenChange={(open) => { setDetailModalOpen(open); if (!open) setSelectedUserId(null); }}
+        onOpenChange={(open) => { setDetailModalOpen(open); if (!open) { setSelectedUserId(null); setModalEditMode(false); } }}
         user={selectedUserData ?? null}
         loading={selectedUserLoading}
         onUpdate={handleUpdateUser}
@@ -282,6 +285,7 @@ export function UsersPage() {
           showOrganization: true,
           allowEdit: true,
           allowDeactivate: true,
+          initialEditMode: modalEditMode,
         }}
       />
     </div>
