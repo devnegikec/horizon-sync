@@ -9,6 +9,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { OrganizationDetailPage } from './pages/OrganizationDetailPage';
 import { OrganizationsPage } from './pages/OrganizationsPage';
+import { SystemSettingsPage } from './pages/SystemSettingsPage';
 import { UserDetailPage } from './pages/UserDetailPage';
 import { UsersPage } from './pages/UsersPage';
 
@@ -33,6 +34,7 @@ export function AppRoutes() {
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/users/new" element={<CreateUserPage />} />
                 <Route path="/users/:id" element={<UserDetailPage />} />
+                <Route path="/settings" element={<SystemSettingsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </DashboardLayout>
