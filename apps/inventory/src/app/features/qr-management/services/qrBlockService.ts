@@ -43,6 +43,14 @@ class QRBlockService {
     );
     return res.data;
   }
+
+  async listAllBlocks(params?: { page?: number; page_size?: number; status?: string }): Promise<QRBlockListResponse> {
+    const res = await axios.get(
+      `${API_BASE_URL}/api/v1/qr-products/blocks`,
+      { headers: this.getHeaders(), params },
+    );
+    return res.data;
+  }
 }
 
 export const qrBlockService = new QRBlockService();
