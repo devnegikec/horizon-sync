@@ -16,10 +16,12 @@ import {
 } from '@horizon-sync/ui/components/ui/select';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 
+import { useBrands } from '../../features/qr-management/hooks/useBrands';
 import type { CreateQSealProductPayload, QSealProduct } from '../../types/qseal.types';
 import { FormDialog } from '../containers';
 
 interface FormValues {
+  brand_id: string;
   name: string;
   generic_name: string;
   gtin: string;
@@ -49,6 +51,7 @@ const SR_NUMBER_OPTIONS = [
 ];
 
 const DEFAULT_VALUES: FormValues = {
+  brand_id: '',
   name: '',
   generic_name: '',
   gtin: '',
@@ -78,6 +81,43 @@ function FieldHint({ children }: { children: React.ReactNode }) {
   return <p className="text-xs text-muted-foreground mt-1">{children}</p>;
 }
 
+// ─── Brand Select Section ────────────────────────────────────────────────────
+
+interface BrandSelectSectionProps {
+  brandId: string;
+  onBrandChange: (id: string) => void;
+}
+
+function BrandSelectSection({ brandId, onBrandChange }: BrandSelectSectionProps) {
+  const { data, loading } = useBrands();
+  const brands = data?.brands ?? [];
+
+  return (
+    <div className="space-y-3">
+      <SectionHeader icon={Info} title="Brand" />
+      <div className="space-y-1">
+        <Label>Brand <span className="text-destructive">*</span></Label>
+        <Select value={brandId} onValueChange={onBrandChange} disabled={loading}>
+          <SelectTrigger>
+            <SelectValue placeholder={loading ? 'Loading brands…' : 'Select a brand'} />
+          </SelectTrigger>
+          <SelectContent>
+            {brands.map((b) => (
+              <SelectItem key={b.id} value={b.id}>
+                {b.name}
+                {b.short_code ? <span className="ml-1 text-muted-foreground text-xs">({b.short_code})</span> : null}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <FieldHint>Select the brand this product belongs to. The brand&apos;s ECDSA key pair will be used to sign QR codes.</FieldHint>
+      </div>
+    </div>
+  );
+}
+
+// ─── Image Drop Zone ─────────────────────────────────────────────────────────
+
 interface ImageDropZoneProps {
   label: string;
   required?: boolean;
@@ -91,8 +131,7 @@ function ImageDropZone({ label, required, hint, sizeHint, value, onChange }: Ima
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFile = (file: File) => {
-    const url = URL.createObjectURL(file);
-    onChange(url);
+    onChange(URL.createObjectURL(file));
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -105,14 +144,12 @@ function ImageDropZone({ label, required, hint, sizeHint, value, onChange }: Ima
     if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f) handleFile(f);
-  };
-
   return (
     <div className="space-y-2">
-      <Label>{label}{required && <span className="text-destructive ml-0.5">*</span>}</Label>
+      <Label>
+        {label}
+        {required && <span className="text-destructive ml-0.5">*</span>}
+      </Label>
       {value ? (
         <div className="relative rounded-lg border overflow-hidden bg-muted/30">
           <img src={value} alt={label} className="w-full h-32 object-contain" />
@@ -123,16 +160,18 @@ function ImageDropZone({ label, required, hint, sizeHint, value, onChange }: Ima
       ) : (
         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer hover:border-primary/50 transition-colors" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} onClick={() => inputRef.current?.click()} role="button" tabIndex={0} onKeyDown={handleKeyDown}>
           <Upload className="h-6 w-6 text-primary" />
-          <span className="text-sm text-muted-foreground">Drag & drop {label.toLowerCase()} here or</span>
+          <span className="text-sm text-muted-foreground">Drag &amp; drop {label.toLowerCase()} here or</span>
           <Button type="button" variant="default" size="sm">Choose File</Button>
           <span className="text-xs text-muted-foreground">{sizeHint}</span>
         </div>
       )}
-      <input ref={inputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleFileChange} />
+      <input ref={inputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
       <FieldHint>{hint}</FieldHint>
     </div>
   );
 }
+
+// ─── Product Images ───────────────────────────────────────────────────────────
 
 interface ProductImagesSectionProps {
   imageUrl: string;
@@ -152,6 +191,8 @@ function ProductImagesSection({ imageUrl, bannerImageUrl, onImageChange, onBanne
     </div>
   );
 }
+
+// ─── Product Info ─────────────────────────────────────────────────────────────
 
 interface ProductInfoSectionProps {
   register: ReturnType<typeof useForm<FormValues>>['register'];
@@ -198,6 +239,8 @@ function ProductInfoSection({ register, errors }: ProductInfoSectionProps) {
   );
 }
 
+// ─── Product URLs ─────────────────────────────────────────────────────────────
+
 interface ProductUrlsSectionProps {
   register: ReturnType<typeof useForm<FormValues>>['register'];
   errors: ReturnType<typeof useForm<FormValues>>['formState']['errors'];
@@ -224,6 +267,8 @@ function ProductUrlsSection({ register, errors }: ProductUrlsSectionProps) {
     </div>
   );
 }
+
+// ─── Activation Details ───────────────────────────────────────────────────────
 
 interface ActivationDetailsSectionProps {
   activationMethod: string;
@@ -266,6 +311,8 @@ function ActivationDetailsSection({ activationMethod, srNumberType, onActivation
   );
 }
 
+// ─── Additional Details ───────────────────────────────────────────────────────
+
 interface AdditionalDetailsSectionProps {
   register: ReturnType<typeof useForm<FormValues>>['register'];
   redirectToClient: boolean;
@@ -296,12 +343,12 @@ function AdditionalDetailsSection({ register, redirectToClient, onRedirectChange
   );
 }
 
-/** Convert empty strings to null for optional API fields */
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function emptyToNull(val: string): string | null {
-  return val ? val : null;
+  return val || null;
 }
 
-/** Convert nullable string to empty string for form fields */
 function nullToEmpty(val: string | null | undefined): string {
   return val ?? '';
 }
@@ -309,6 +356,7 @@ function nullToEmpty(val: string | null | undefined): string {
 function buildPayload(data: FormValues): CreateQSealProductPayload {
   const n = emptyToNull;
   return {
+    brand_id: n(data.brand_id),
     name: data.name,
     generic_name: n(data.generic_name),
     gtin: n(data.gtin),
@@ -329,6 +377,7 @@ function buildPayload(data: FormValues): CreateQSealProductPayload {
 function getInitialValues(product: QSealProduct): FormValues {
   const e = nullToEmpty;
   return {
+    brand_id: '',
     name: product.name,
     generic_name: e(product.generic_name),
     gtin: e(product.gtin),
@@ -346,6 +395,8 @@ function getInitialValues(product: QSealProduct): FormValues {
   };
 }
 
+// ─── Dialog ───────────────────────────────────────────────────────────────────
+
 interface QSealProductDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -358,6 +409,7 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   const isEdit = !!product;
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormValues>({ defaultValues: DEFAULT_VALUES });
 
+  const brandId = watch('brand_id');
   const activationMethod = watch('activation_method');
   const srNumberType = watch('sr_number_type');
   const redirectToClient = watch('redirect_to_client');
@@ -365,15 +417,15 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   const bannerImageUrl = watch('banner_image_url');
 
   React.useEffect(() => {
-    if (open) {
-      reset(product ? getInitialValues(product) : DEFAULT_VALUES);
-    }
+    if (open) reset(product ? getInitialValues(product) : DEFAULT_VALUES);
   }, [open, product, reset]);
 
   const onSubmit = handleSubmit((data: FormValues) => onSave(buildPayload(data)));
 
   return (
     <FormDialog open={open} onOpenChange={onOpenChange} title={isEdit ? 'Edit QSeal Product' : 'Create New Product'} size="md" onSubmit={onSubmit} submitLabel={isEdit ? 'Save Changes' : 'Create Product'} saving={saving}>
+      <BrandSelectSection brandId={brandId} onBrandChange={(v) => setValue('brand_id', v)} />
+      <Separator />
       <ProductImagesSection imageUrl={imageUrl} bannerImageUrl={bannerImageUrl} onImageChange={(v) => setValue('image_url', v)} onBannerChange={(v) => setValue('banner_image_url', v)} />
       <Separator />
       <ProductInfoSection register={register} errors={errors} />

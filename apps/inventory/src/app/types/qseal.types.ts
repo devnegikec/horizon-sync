@@ -85,6 +85,7 @@ export interface QSealProductListResponse {
 
 export interface CreateQSealProductPayload {
   name: string;
+  brand_id?: string | null;
   generic_name?: string | null;
   gtin?: string | null;
   industry?: string | null;
