@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+import { useUserStore } from '@horizon-sync/store';
+
 import { environment } from '../../../../environments/environment';
 import type { QRBlock, QRBlockCreate, QRBlockListResponse } from '../types/qrBlock.types';
 
@@ -7,8 +9,11 @@ const API_BASE_URL = environment.apiCoreUrl;
 
 class QRBlockService {
   private getHeaders() {
-    const token = localStorage.getItem('token');
-    return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const token = useUserStore.getState().accessToken;
+    return {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
   }
 
   async createBlock(productId: string, data: QRBlockCreate): Promise<QRBlock> {
