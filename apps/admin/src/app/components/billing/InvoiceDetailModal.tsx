@@ -39,7 +39,7 @@ import {
     DollarSign,
 } from 'lucide-react';
 
-import type { SubscriptionInvoiceResponse } from '../../types';
+import type { Invoice } from '../../types/billing.types';
 
 const paymentSchema = z.object({
     payment_date: z.string().min(1, 'Payment date is required'),
@@ -59,7 +59,7 @@ type PaymentFormData = z.infer<typeof paymentSchema>;
 type CreatePaymentFormData = z.infer<typeof createPaymentSchema>;
 
 interface InvoiceDetailModalProps {
-    invoice: SubscriptionInvoiceResponse;
+    invoice: Invoice;
     isOpen: boolean;
     onClose: () => void;
     onAction: (action: string, invoiceId: string, data?: any) => Promise<void>;
@@ -137,7 +137,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
     const createPaymentForm = useForm<CreatePaymentFormData>({
         resolver: zodResolver(createPaymentSchema),
         defaultValues: {
-            payment_amount: invoice.amount,
+            payment_amount: invoice.grand_total,
             payment_date: new Date().toISOString().split('T')[0],
             payment_method: '',
         },
@@ -182,7 +182,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
         { value: 'other', label: 'Other' },
     ];
 
-    const isOverdue = invoice.status === 'pending' && new Date(invoice.due_date) < new Date();
+    const isOverdue = invoice.status === 'pending' && invoice.due_date && new Date(invoice.due_date) < new Date();
     const canMarkAsSent = invoice.status === 'draft';
     const canMarkAsPaid = ['sent', 'pending', 'overdue'].includes(invoice.status);
     const canCreatePayment = ['sent', 'pending', 'overdue'].includes(invoice.status);
@@ -193,7 +193,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                 <DialogHeader>
                     <div className="flex items-center justify-between">
                         <DialogTitle className="flex items-center gap-2">
-                            Invoice {invoice.invoice_number}
+                            Invoice {invoice.invoice_no}
                             {getStatusBadge(invoice.status)}
                             {isOverdue && (
                                 <Badge variant="destructive">Overdue</Badge>
@@ -257,7 +257,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Invoice #</label>
-                                            <p className="font-medium">{invoice.invoice_number}</p>
+                                            <p className="font-medium">{invoice.invoice_no}</p>
                                         </div>
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Type</label>
@@ -265,7 +265,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                                         </div>
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Tier</label>
-                                            <div className="mt-1">{getTierBadge(invoice.subscription_tier)}</div>
+                                            <div className="mt-1">{getTierBadge(invoice.subscription_tier || 'basic')}</div>
                                         </div>
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Status</label>
@@ -286,7 +286,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Amount</label>
-                                            <p className="text-2xl font-bold">{formatCurrency(invoice.amount)}</p>
+                                            <p className="text-2xl font-bold">{formatCurrency(invoice.grand_total)}</p>
                                         </div>
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Due Date</label>
@@ -294,7 +294,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                                                 'font-medium',
                                                 isOverdue ? 'text-destructive' : 'text-foreground'
                                             )}>
-                                                {formatDate(invoice.due_date)}
+                                                {invoice.due_date ? formatDate(invoice.due_date) : 'Not set'}
                                             </p>
                                         </div>
                                     </div>
@@ -320,11 +320,11 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="text-sm font-medium text-muted-foreground">Period Start</label>
-                                        <p className="font-medium">{formatDate(invoice.billing_period_start)}</p>
+                                        <p className="font-medium">{invoice.subscription_period_start ? formatDate(invoice.subscription_period_start) : 'Not set'}</p>
                                     </div>
                                     <div>
                                         <label className="text-sm font-medium text-muted-foreground">Period End</label>
-                                        <p className="font-medium">{formatDate(invoice.billing_period_end)}</p>
+                                        <p className="font-medium">{invoice.subscription_period_end ? formatDate(invoice.subscription_period_end) : 'Not set'}</p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -375,7 +375,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                                         <div className="flex justify-end">
                                             <div className="text-right">
                                                 <p className="text-sm text-muted-foreground">Total Amount</p>
-                                                <p className="text-xl font-bold">{formatCurrency(invoice.amount)}</p>
+                                                <p className="text-xl font-bold">{formatCurrency(invoice.grand_total)}</p>
                                             </div>
                                         </div>
                                     </div>

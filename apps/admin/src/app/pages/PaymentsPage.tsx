@@ -227,15 +227,15 @@ export function PaymentsPage() {
                                 onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                             />
                         </div>
-                        <Select 
-                            value={filters.status} 
-                            onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+                        <Select
+                            value={filters.status || 'all'}
+                            onValueChange={(value) => setFilters(prev => ({ ...prev, status: value === 'all' ? '' : value }))}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">All Statuses</SelectItem>
+                                <SelectItem value="all">All Statuses</SelectItem>
                                 <SelectItem value="pending">Pending</SelectItem>
                                 <SelectItem value="completed">Completed</SelectItem>
                                 <SelectItem value="failed">Failed</SelectItem>
@@ -243,15 +243,15 @@ export function PaymentsPage() {
                                 <SelectItem value="cancelled">Cancelled</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Select 
-                            value={filters.payment_method} 
-                            onValueChange={(value) => setFilters(prev => ({ ...prev, payment_method: value }))}
+                        <Select
+                            value={filters.payment_method || 'all'}
+                            onValueChange={(value) => setFilters(prev => ({ ...prev, payment_method: value === 'all' ? '' : value }))}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Method" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">All Methods</SelectItem>
+                                <SelectItem value="all">All Methods</SelectItem>
                                 <SelectItem value="credit_card">Credit Card</SelectItem>
                                 <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                                 <SelectItem value="cash">Cash</SelectItem>

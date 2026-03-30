@@ -25,11 +25,13 @@ import { cn } from '@horizon-sync/ui/lib';
 import { toast } from '@horizon-sync/ui';
 
 import { BillingManagementService } from '../services/billing-management.service';
+import { AdminInvoiceService } from '../services/admin-invoice.service';
 import type {
     SubscriptionInvoiceResponse,
     OrganizationBillingInfo,
     BillingSummary,
 } from '../types';
+import type { Invoice, AdminInvoiceFilters } from '../types/billing.types';
 import { CreateInvoiceModal } from '../components/billing/CreateInvoiceModal';
 import { InvoiceDetailModal } from '../components/billing/InvoiceDetailModal';
 import { OrganizationBillingModal } from '../components/billing/OrganizationBillingModal';
@@ -121,7 +123,7 @@ function getTierBadge(tier: string) {
 }
 
 export function BillingManagementPage() {
-    const [invoices, setInvoices] = useState<SubscriptionInvoiceResponse[]>([]);
+    const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [organizationBilling, setOrganizationBilling] = useState<OrganizationBillingInfo[]>([]);
     const [summary, setSummary] = useState<BillingSummary | null>(null);
     const [loading, setLoading] = useState(true);
@@ -134,7 +136,7 @@ export function BillingManagementPage() {
 
     // Modals
     const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
-    const [selectedInvoice, setSelectedInvoice] = useState<SubscriptionInvoiceResponse | null>(null);
+    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [selectedOrganization, setSelectedOrganization] = useState<OrganizationBillingInfo | null>(null);
 
     useEffect(() => {
@@ -149,23 +151,24 @@ export function BillingManagementPage() {
             const summaryData = await BillingManagementService.getBillingSummary();
             setSummary(summaryData);
 
-            // Load invoices with filters
-            const invoiceFilters: any = {
+            // Load invoices with filters - Use AdminInvoiceService
+            const invoiceFilters: AdminInvoiceFilters = {
                 page,
                 page_size: PAGE_SIZE,
             };
 
             if (statusFilter !== 'all') invoiceFilters.status = statusFilter;
-            if (searchQuery) invoiceFilters.organization_name = searchQuery;
+            if (searchQuery) invoiceFilters.search = searchQuery;
 
             if (dateRange !== 'all') {
                 const days = parseInt(dateRange);
                 const startDate = new Date();
                 startDate.setDate(startDate.getDate() - days);
-                invoiceFilters.start_date = startDate.toISOString().split('T')[0];
+                startDate.setHours(0, 0, 0, 0); // Start of day
+                invoiceFilters.date_from = startDate.toISOString();
             }
 
-            const invoicesData = await BillingManagementService.getSubscriptionInvoices(invoiceFilters);
+            const invoicesData = await AdminInvoiceService.list(invoiceFilters);
             setInvoices(invoicesData.invoices);
 
             // Load organization billing data
@@ -257,13 +260,19 @@ export function BillingManagementPage() {
                     className="p-0 h-auto font-medium"
                     onClick={() => setSelectedInvoice(row.original)}
                 >
-                    {row.original.invoice_number}
+                    {row.original.invoice_no}
                 </Button>
             ),
         },
         {
-            accessorKey: 'organization_name',
-            header: 'Organization',
+            accessorKey: 'party_name',
+            header: 'Customer',
+            cell: ({ row }: any) => {
+                // Display customer organization name (party_name) rather than master org name
+                const customerName = row.original.party_name || row.original.organization_name || 'Unknown';
+                const displayName = customerName.replace(/^Organization\s+/i, '').trim();
+                return <span className="font-medium">{displayName}</span>;
+            },
         },
         {
             accessorKey: 'invoice_type',
@@ -282,7 +291,7 @@ export function BillingManagementPage() {
         {
             accessorKey: 'amount',
             header: 'Amount',
-            cell: ({ row }: any) => formatCurrency(row.original.amount),
+            cell: ({ row }: any) => formatCurrency(row.original.grand_total),
         },
         {
             accessorKey: 'status',
@@ -297,7 +306,7 @@ export function BillingManagementPage() {
         {
             accessorKey: 'created_date',
             header: 'Created',
-            cell: ({ row }: any) => formatDate(row.original.created_date),
+            cell: ({ row }: any) => formatDate(row.original.created_at),
         },
     ];
 

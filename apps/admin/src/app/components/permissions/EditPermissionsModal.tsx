@@ -260,7 +260,7 @@ export function EditPermissionsModal({
                                                                 Organization Access
                                                             </Label>
                                                             <Select
-                                                                value=""
+                                                                value={undefined}
                                                                 onValueChange={(orgId) => {
                                                                     const currentScope = organizationScopes[permission.type] || [];
                                                                     if (!currentScope.includes(orgId)) {

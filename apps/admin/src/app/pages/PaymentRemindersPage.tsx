@@ -277,15 +277,15 @@ export function PaymentRemindersPage() {
                             />
                         </div>
                         {activeTab === 'logs' && (
-                            <Select 
-                                value={filters.reminder_stage} 
-                                onValueChange={(value) => setFilters(prev => ({ ...prev, reminder_stage: value }))}
+                            <Select
+                                value={filters.reminder_stage || 'all'}
+                                onValueChange={(value) => setFilters(prev => ({ ...prev, reminder_stage: value === 'all' ? '' : value }))}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Reminder Stage" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">All Stages</SelectItem>
+                                    <SelectItem value="all">All Stages</SelectItem>
                                     <SelectItem value="gentle">Gentle</SelectItem>
                                     <SelectItem value="standard">Standard</SelectItem>
                                     <SelectItem value="firm">Firm</SelectItem>
@@ -293,15 +293,15 @@ export function PaymentRemindersPage() {
                                 </SelectContent>
                             </Select>
                         )}
-                        <Select 
-                            value={filters.status} 
-                            onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+                        <Select
+                            value={filters.status || 'all'}
+                            onValueChange={(value) => setFilters(prev => ({ ...prev, status: value === 'all' ? '' : value }))}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">All Statuses</SelectItem>
+                                <SelectItem value="all">All Statuses</SelectItem>
                                 {activeTab === 'configs' ? (
                                     <>
                                         <SelectItem value="true">Enabled</SelectItem>
@@ -415,8 +415,8 @@ export function PaymentRemindersPage() {
                                             </TableCell>
                                             <TableCell>{getReminderStageBadge(log.reminder_stage)}</TableCell>
                                             <TableCell>
-                                                <Badge variant={log.status === 'sent' ? 'success' : 
-                                                               log.status === 'failed' ? 'destructive' : 'secondary'}>
+                                                <Badge variant={log.status === 'sent' ? 'success' :
+                                                    log.status === 'failed' ? 'destructive' : 'secondary'}>
                                                     {log.status}
                                                 </Badge>
                                             </TableCell>

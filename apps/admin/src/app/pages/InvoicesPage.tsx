@@ -67,7 +67,7 @@ export function InvoicesPage() {
     const { toast } = useToast();
 
     // Use the new React Query hook
-    const { 
+    const {
         data,
         isLoading,
         isError,
@@ -87,7 +87,7 @@ export function InvoicesPage() {
         setOrgsLoading(true);
         AdminOrganizationService.list({ search: query, page: 1, page_size: 50 })
             .then((res) => setOrgOptions(res.organizations.map((o: AdminOrgListItem) => ({ id: o.id, name: o.name }))))
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setOrgsLoading(false));
     };
 
@@ -113,7 +113,7 @@ export function InvoicesPage() {
     const handleFilterChange = (key: keyof AdminInvoiceFilters, value: string | number) => {
         setFilters((prev: AdminInvoiceFilters) => ({
             ...prev,
-            [key]: value,
+            [key]: value === 'all' ? undefined : value,
             // Reset page to 1 when filters change
             page: key === 'page' ? (value as number) : 1,
         } as AdminInvoiceFilters));
@@ -295,9 +295,9 @@ export function InvoicesPage() {
                                 onChange={(e) => handleFilterChange('search', e.target.value)}
                             />
                         </div>
-                        <Select 
-                            value={filters.status || 'all'} 
-                            onValueChange={(value) => handleFilterChange('status', value === 'all' ? '' : value)}
+                        <Select
+                            value={filters.status || 'all'}
+                            onValueChange={(value) => handleFilterChange('status', value)}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Status" />
@@ -311,9 +311,9 @@ export function InvoicesPage() {
                                 <SelectItem value="cancelled">Cancelled</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Select 
-                            value={filters.organization_id || 'all'} 
-                            onValueChange={(value) => handleFilterChange('organization_id', value === 'all' ? '' : value)}
+                        <Select
+                            value={filters.organization_id || 'all'}
+                            onValueChange={(value) => handleFilterChange('organization_id', value)}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Organization" />
@@ -446,7 +446,7 @@ export function InvoicesPage() {
 
             {selectedInvoice && (
                 <InvoiceDetailModal
-                    invoice={convertToSubscriptionInvoiceResponse(selectedInvoice)}
+                    invoice={selectedInvoice}
                     isOpen={!!selectedInvoice}
                     onClose={() => setSelectedInvoice(null)}
                     onAction={handleInvoiceAction}

@@ -105,7 +105,7 @@ export class BillingManagementService {
     request: SubscriptionInvoiceCreateRequest
   ): Promise<SubscriptionInvoiceResponse> {
     return this.request<SubscriptionInvoiceResponse>(
-      '/api/v1/admin/billing/subscription-invoices',
+      '/api/v1/admin/billing/subscription-invoice',
       {
         method: 'POST',
         body: JSON.stringify(request),
@@ -113,7 +113,7 @@ export class BillingManagementService {
     );
   }
 
-  // Get all subscription invoices with filtering
+  // Get all subscription invoices with filtering - Use admin invoices endpoint
   static async getSubscriptionInvoices(params?: {
     organization_id?: string;
     master_organization_id?: string;
@@ -133,32 +133,39 @@ export class BillingManagementService {
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) {
-          queryParams.append(key, value.toString());
+          // Map start_date/end_date to date_from/date_to for backend compatibility
+          if (key === 'start_date') {
+            queryParams.append('date_from', value.toString());
+          } else if (key === 'end_date') {
+            queryParams.append('date_to', value.toString());
+          } else {
+            queryParams.append(key, value.toString());
+          }
         }
       });
     }
 
-    const endpoint = queryParams.size > 0 
-      ? `/api/v1/admin/billing/subscription-invoices?${queryParams.toString()}`
-      : '/api/v1/admin/billing/subscription-invoices';
+    const endpoint = queryParams.size > 0
+      ? `/api/v1/admin/invoices?${queryParams.toString()}`
+      : '/api/v1/admin/invoices';
 
     return this.request(endpoint);
   }
 
-  // Get specific subscription invoice
+  // Get specific subscription invoice - Use admin invoices endpoint
   static async getSubscriptionInvoice(invoiceId: string): Promise<SubscriptionInvoiceResponse> {
     return this.request<SubscriptionInvoiceResponse>(
-      `/api/v1/admin/billing/subscription-invoices/${invoiceId}`
+      `/api/v1/admin/invoices/${invoiceId}`
     );
   }
 
-  // Update subscription invoice
+  // Update subscription invoice - Use admin invoices endpoint
   static async updateSubscriptionInvoice(
     invoiceId: string,
     updates: Partial<SubscriptionInvoiceCreateRequest>
   ): Promise<SubscriptionInvoiceResponse> {
     return this.request<SubscriptionInvoiceResponse>(
-      `/api/v1/admin/billing/subscription-invoices/${invoiceId}`,
+      `/api/v1/admin/invoices/${invoiceId}`,
       {
         method: 'PUT',
         body: JSON.stringify(updates),
@@ -166,15 +173,15 @@ export class BillingManagementService {
     );
   }
 
-  // Mark invoice as sent
+  // Mark invoice as sent - Use admin invoices endpoint
   static async markInvoiceAsSent(invoiceId: string): Promise<{ success: boolean; message: string }> {
     return this.request(
-      `/api/v1/admin/billing/subscription-invoices/${invoiceId}/mark-sent`,
+      `/api/v1/admin/invoices/${invoiceId}/confirm`,
       { method: 'POST' }
     );
   }
 
-  // Mark invoice as paid
+  // Mark invoice as paid - Use admin invoices endpoint
   static async markInvoiceAsPaid(
     invoiceId: string,
     paymentData: {
@@ -185,7 +192,7 @@ export class BillingManagementService {
     }
   ): Promise<{ success: boolean; message: string }> {
     return this.request(
-      `/api/v1/admin/billing/subscription-invoices/${invoiceId}/mark-paid`,
+      `/api/v1/admin/invoices/${invoiceId}/create-payment`,
       {
         method: 'POST',
         body: JSON.stringify(paymentData),
@@ -205,7 +212,7 @@ export class BillingManagementService {
     return this.request('/api/v1/admin/billing/summary');
   }
 
-  // Get organization billing information
+  // Get organization billing information - Use customer-organizations endpoint
   static async getOrganizationBilling(params?: {
     master_organization_only?: boolean;
     has_outstanding?: boolean;
@@ -222,19 +229,26 @@ export class BillingManagementService {
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) {
-          queryParams.append(key, value.toString());
+          // Map parameters to backend-compatible format
+          if (key === 'master_organization_only') {
+            queryParams.append('billing_status', 'active');
+          } else if (key === 'has_outstanding') {
+            queryParams.append('has_outstanding', value.toString());
+          } else {
+            queryParams.append(key, value.toString());
+          }
         }
       });
     }
 
-    const endpoint = queryParams.size > 0 
-      ? `/api/v1/admin/billing/organizations?${queryParams.toString()}`
-      : '/api/v1/admin/billing/organizations';
+    const endpoint = queryParams.size > 0
+      ? `/api/v1/admin/billing/customer-organizations?${queryParams.toString()}`
+      : '/api/v1/admin/billing/customer-organizations';
 
     return this.request(endpoint);
   }
 
-  // Create payment from invoice
+  // Create payment from invoice - Use admin invoices endpoint
   static async createPaymentFromInvoice(
     invoiceId: string,
     paymentData: {
@@ -245,7 +259,7 @@ export class BillingManagementService {
     }
   ): Promise<{ payment_id: string; success: boolean; message: string }> {
     return this.request(
-      `/api/v1/admin/billing/invoices/${invoiceId}/create-payment`,
+      `/api/v1/admin/invoices/${invoiceId}/create-payment`,
       {
         method: 'POST',
         body: JSON.stringify(paymentData),
