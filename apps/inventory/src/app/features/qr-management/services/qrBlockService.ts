@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useUserStore } from '@horizon-sync/store';
 
 import { environment } from '../../../../environments/environment';
-import type { QRBlock, QRBlockCreate, QRBlockListResponse } from '../types/qrBlock.types';
+import type { QRBlock, QRBlockCreate, QRBlockListResponse, ProductItem } from '../types/qrBlock.types';
 
 const API_BASE_URL = environment.apiCoreUrl;
 
@@ -48,6 +48,26 @@ class QRBlockService {
     const res = await axios.get(
       `${API_BASE_URL}/api/v1/qr-products/blocks`,
       { headers: this.getHeaders(), params },
+    );
+    return res.data;
+  }
+
+  async getBlockItems(
+    blockId: string,
+    params?: { page?: number; page_size?: number },
+  ): Promise<{ items: ProductItem[]; pagination: QRBlockListResponse['pagination'] }> {
+    const res = await axios.get(
+      `${API_BASE_URL}/api/v1/qr-products/blocks/${blockId}/items`,
+      { headers: this.getHeaders(), params },
+    );
+    return res.data;
+  }
+
+  async getDownloadUrl(blockId: string): Promise<{ download_url: string }> {
+    // Always fetch fresh — signed URLs expire
+    const res = await axios.get(
+      `${API_BASE_URL}/api/v1/qr-products/blocks/${blockId}/download`,
+      { headers: this.getHeaders() },
     );
     return res.data;
   }

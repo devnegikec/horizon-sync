@@ -1,21 +1,20 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { QrCode, Download, Plus, RefreshCw, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { QrCode, Download, Plus, RefreshCw, X, CheckCircle2, AlertCircle, Loader2, MoreHorizontal, Eye } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
-import { Input } from '@horizon-sync/ui/components/ui/input';
-import { Label } from '@horizon-sync/ui/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 
 import { useAllQRBlocks } from '../../features/qr-management/hooks/useAllQRBlocks';
 import { useBlockStatus } from '../../features/qr-management/hooks/useBlockStatus';
-import { useCreateBlock } from '../../features/qr-management/hooks/useCreateBlock';
-import type { BlockStatus, QRBlock, QRBlockCreate, QRType, SerialNumberType } from '../../features/qr-management/types/qrBlock.types';
+import type { BlockStatus, QRBlock, QRType } from '../../features/qr-management/types/qrBlock.types';
 import { formatDate } from '../../utility/formatDate';
+
+import { BlockDetailDialog } from './BlockDetailDialog';
+import { CreateBlockDialog } from './CreateBlockDialog';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -27,13 +26,6 @@ const QR_TYPE_LABELS: Record<QRType, string> = {
   B: 'Dual — covert + overt QR per item',
   O: 'OneTime — deactivates after first scan',
   SC: 'SecureCode — 12-char secret per item',
-};
-
-const SR_TYPE_LABELS: Record<SerialNumberType, string> = {
-  R6DAN: 'R6DAN — 6-char random alphanumeric',
-  R4DAN: 'R4DAN — 4-char random alphanumeric',
-  S8DN: 'S8DN — 8-digit sequential',
-  S10DN: 'S10DN — 10-digit sequential',
 };
 
 const STATUS_BADGE: Record<BlockStatus, { label: string; className: string }> = {
@@ -112,94 +104,6 @@ function BlockStatusTracker({ blockId, onDone }: { blockId: string; onDone: () =
 }
 
 /* ------------------------------------------------------------------ */
-/*  Create block dialog                                                */
-/* ------------------------------------------------------------------ */
-
-interface CreateBlockDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCreated: (blockId: string) => void;
-}
-
-function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlockDialogProps) {
-  const { createBlock, loading, error } = useCreateBlock();
-  const [productId, setProductId] = React.useState('');
-  const [batch, setBatch] = React.useState('');
-  const [quantity, setQuantity] = React.useState(100);
-  const [qrType, setQrType] = React.useState<QRType>('D');
-  const [srType, setSrType] = React.useState<SerialNumberType>('R6DAN');
-
-  const reset = () => { setProductId(''); setBatch(''); setQuantity(100); setQrType('D'); setSrType('R6DAN'); };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const block = await createBlock(productId, { batch, quantity, qr_type: qrType, sr_number_type: srType } satisfies QRBlockCreate);
-      reset();
-      onOpenChange(false);
-      onCreated(block.id);
-    } catch { /* error shown inline */ }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Generate QR Block</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="productId">Product ID *</Label>
-            <Input id="productId" value={productId} onChange={(e) => setProductId(e.target.value)} placeholder="e.g. prod-uuid" required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="batch">Batch Name *</Label>
-            <Input id="batch" value={batch} onChange={(e) => setBatch(e.target.value)} maxLength={50} placeholder="e.g. Batch-Jan-2025" required />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="quantity">Quantity * (1–10,000)</Label>
-            <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} min={1} max={10000} required />
-          </div>
-          <div className="space-y-1.5">
-            <Label>QR Type</Label>
-            <Select value={qrType} onValueChange={(v) => setQrType(v as QRType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(QR_TYPE_LABELS) as QRType[]).map((t) => (
-                  <SelectItem key={t} value={t}>{t} — {QR_TYPE_LABELS[t].split(' — ')[1]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Serial Number Type</Label>
-            <Select value={srType} onValueChange={(v) => setSrType(v as SerialNumberType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(SR_TYPE_LABELS) as SerialNumberType[]).map((t) => (
-                  <SelectItem key={t} value={t}>{SR_TYPE_LABELS[t]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>
-            <Button type="submit" disabled={loading || !batch.trim() || !productId.trim()}>
-              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting…</> : 'Generate'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /*  Blocks table                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -208,6 +112,7 @@ interface BlocksTableProps {
   loading: boolean;
   error: string | null;
   onCreateBlock: () => void;
+  onViewBlock: (block: QRBlock) => void;
   serverPagination?: {
     totalItems: number;
     currentPage: number;
@@ -216,7 +121,7 @@ interface BlocksTableProps {
   };
 }
 
-function BlocksTable({ blocks, loading, error, onCreateBlock, serverPagination }: BlocksTableProps) {
+function BlocksTable({ blocks, loading, error, onCreateBlock, onViewBlock, serverPagination }: BlocksTableProps) {
   const [tableInstance, setTableInstance] = React.useState<Table<QRBlock> | null>(null);
 
   const serverPaginationConfig = React.useMemo(() => {
@@ -306,7 +211,29 @@ function BlocksTable({ blocks, loading, error, onCreateBlock, serverPagination }
         );
       },
     },
-  ], []);
+    {
+      id: 'actions',
+      header: () => <span className="sr-only">Actions</span>,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="text-right">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onViewBlock(row.original)}>
+                <Eye className="mr-2 h-4 w-4" />
+                View Details
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
+  ], [onViewBlock]);
 
   if (error) {
     return (
@@ -378,6 +305,7 @@ export function BlocksManagement() {
   const { data, loading, error, refetch } = useAllQRBlocks();
   const [createOpen, setCreateOpen] = React.useState(false);
   const [trackedBlockId, setTrackedBlockId] = React.useState<string | null>(null);
+  const [detailBlockId, setDetailBlockId] = React.useState<string | null>(null);
   const [page, setPage] = React.useState(1);
 
   const blocks = data?.blocks ?? [];
@@ -417,9 +345,15 @@ export function BlocksManagement() {
         loading={loading}
         error={error}
         onCreateBlock={() => setCreateOpen(true)}
+        onViewBlock={(b) => setDetailBlockId(b.id)}
         serverPagination={serverPaginationConfig}/>
 
       <CreateBlockDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={(id) => { setTrackedBlockId(id); refetch(page); }} />
+
+      <BlockDetailDialog blockId={detailBlockId}
+        open={!!detailBlockId}
+        onOpenChange={(open) => { if (!open) setDetailBlockId(null); }}
+        onRetry={() => { setDetailBlockId(null); setCreateOpen(true); }} />
     </div>
   );
 }
