@@ -10,6 +10,9 @@ import {
   FileText,
   CreditCard,
   Bell,
+  Shield,
+  Ban,
+  DollarSign,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -52,9 +55,27 @@ const mainNavItems: NavItem[] = [
     icon: Bell,
     requiresPermission: ['system_admin.billing', 'invoice.send_reminder', '*.*']
   },
+  { 
+    title: 'Billing Management', 
+    href: '/billing', 
+    icon: DollarSign,
+    requiresPermission: ['system_admin.billing', 'system_admin.master', '*.*']
+  },
+  { 
+    title: 'Organization Deactivation', 
+    href: '/organizations/deactivation', 
+    icon: Ban,
+    requiresPermission: ['system_admin.org_manager', 'system_admin.master', '*.*']
+  },
 ];
 
 const bottomNavItems: NavItem[] = [
+  { 
+    title: 'System Permissions', 
+    href: '/admin/permissions', 
+    icon: Shield,
+    requiresPermission: ['system_admin.master', '*.*']
+  },
   { 
     title: 'Settings', 
     href: '/settings', 

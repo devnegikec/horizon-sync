@@ -100,4 +100,20 @@ export class AdminUserService {
       }
     );
   }
+
+  static async searchUsers(filters: {
+    query: string;
+    page_size?: number;
+    exclude_system_admins?: boolean;
+  }): Promise<{ users: Array<{ id: string; username: string; email: string; full_name: string }> }> {
+    const params = new URLSearchParams();
+    params.append('search', filters.query);
+    if (filters.page_size) params.append('page_size', String(filters.page_size));
+    if (filters.exclude_system_admins) params.append('exclude_system_admins', 'true');
+
+    const query = params.toString();
+    const endpoint = `/api/v1/admin/users/search${query ? `?${query}` : ''}`;
+
+    return this.request<{ users: Array<{ id: string; username: string; email: string; full_name: string }> }>(endpoint);
+  }
 }
