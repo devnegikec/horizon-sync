@@ -361,8 +361,17 @@ export interface ReminderLog {
   organization_name?: string;
   invoice_id?: string;
   invoice_number?: string;
-  reminder_stage: 'gentle' | 'standard' | 'firm' | 'final';
+  recipient_name?: string;
   recipient_email: string;
+  invoice_amount?: number;
+  outstanding_amount?: number;
+  days_overdue?: number;
+  due_date?: string;
+  subject?: string;
+  reminder_stage: 'gentle' | 'standard' | 'firm' | 'final';
+  reminder_type?: string;
+  retry_count?: number;
+  triggered_by?: string;
   status: 'sent' | 'pending' | 'failed';
   sent_at: string;
   error_message?: string;

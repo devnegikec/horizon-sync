@@ -37,48 +37,48 @@ const mainNavItems: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard },
   { title: 'Organizations', href: '/organizations', icon: Building2 },
   { title: 'Users', href: '/users', icon: Users },
-  { 
-    title: 'Invoices', 
-    href: '/invoices', 
+  {
+    title: 'Invoices',
+    href: '/invoices',
     icon: FileText,
     requiresPermission: ['invoice.read', 'system_admin.billing', '*.*']
   },
-  { 
-    title: 'Payments', 
-    href: '/payments', 
+  {
+    title: 'Payments',
+    href: '/payments',
     icon: CreditCard,
     requiresPermission: ['payment.read', 'system_admin.billing', '*.*']
   },
-  { 
-    title: 'Billing', 
-    href: '/billing', 
+  {
+    title: 'Billing',
+    href: '/billing',
     icon: DollarSign,
     requiresPermission: ['system_admin.billing', 'system_admin.master', '*.*']
   },
-  { 
-    title: 'Payment Reminders', 
-    href: '/payment-reminders', 
+  {
+    title: 'Payment Reminders',
+    href: '/payment-reminders',
     icon: Bell,
     requiresPermission: ['system_admin.billing', 'invoice.send_reminder', '*.*']
   },
-  { 
-    title: 'Organization Deactivation', 
-    href: '/organizations/deactivation', 
+  {
+    title: 'Organization Deactivation',
+    href: '/organizations/deactivation',
     icon: Ban,
     requiresPermission: ['system_admin.org_manager', 'system_admin.master', '*.*']
   },
 ];
 
 const bottomNavItems: NavItem[] = [
-  { 
-    title: 'System Permissions', 
-    href: '/admin/permissions', 
+  {
+    title: 'System Permissions',
+    href: '/admin/permissions',
     icon: Shield,
     requiresPermission: ['system_admin.master', '*.*']
   },
-  { 
-    title: 'Settings', 
-    href: '/settings', 
+  {
+    title: 'Settings',
+    href: '/settings',
     icon: Settings,
     requiresPermission: ['system_admin.master', '*.*', 'settings.read']
   },

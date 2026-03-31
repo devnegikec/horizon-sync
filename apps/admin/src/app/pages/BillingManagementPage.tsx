@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 
-import { Calendar, DollarSign, FileText, TrendingUp, Download, Plus, CreditCard, Filter } from 'lucide-react';
+import { Calendar, DollarSign, FileText, TrendingUp, Download, Plus, CreditCard, Filter, MoreHorizontal, Eye, CheckCircle, Mail } from 'lucide-react';
 
 import {
     Card,
@@ -20,12 +20,18 @@ import {
     TabsContent,
     TabsList,
     TabsTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
 } from '@horizon-sync/ui/components';
 import { cn } from '@horizon-sync/ui/lib';
 import { toast } from '@horizon-sync/ui';
 
 import { BillingManagementService } from '../services/billing-management.service';
 import { AdminInvoiceService } from '../services/admin-invoice.service';
+import { PaymentReminderService } from '../services/payment-reminder.service';
 import type {
     SubscriptionInvoiceResponse,
     OrganizationBillingInfo,
@@ -214,7 +220,68 @@ export function BillingManagementPage() {
             });
         }
     };
+    // Individual action handlers
+    const handleViewInvoice = (invoice: Invoice) => {
+        setSelectedInvoice(invoice);
+    };
 
+    const handleCapturePayment = (invoice: Invoice) => {
+        setSelectedInvoice(invoice);
+        // The InvoiceDetailModal will handle the payment capture
+    };
+
+    const handleMarkAsPaid = async (invoice: Invoice) => {
+        if (confirm('Are you sure you want to mark this invoice as paid?')) {
+            await handleInvoiceAction('mark-paid', invoice.id, {
+                amount: invoice.grand_total,
+                payment_method: 'other',
+                notes: 'Marked as paid via admin panel'
+            });
+        }
+    };
+
+    const handleSendReminder = async (invoice: Invoice) => {
+        try {
+            // Map reminder stage based on invoice status/age
+            let reminderStage: 'first_reminder' | 'second_reminder' | 'final_notice' | 'deactivation_notice';
+
+            if (invoice.status === 'overdue') {
+                // For overdue invoices, use appropriate escalation
+                reminderStage = 'second_reminder'; // or 'final_notice' based on age
+            } else {
+                reminderStage = 'first_reminder';
+            }
+
+            const result = await PaymentReminderService.sendReminder({
+                organization_id: invoice.organization_id,
+                invoice_ids: [invoice.id],
+                reminder_stage: reminderStage
+            });
+
+            if (result.sent) {
+                toast({
+                    title: 'Reminder Sent Successfully',
+                    description: `${reminderStage.replace('_', ' ').toUpperCase()} sent for invoice ${invoice.invoice_no}. ${result.message || ''}`,
+                });
+                // Refresh the data to update any status changes
+                loadData();
+            } else {
+                toast({
+                    title: 'Reminder Not Sent',
+                    description: result.message || 'The reminder could not be sent at this time.',
+                    variant: 'destructive',
+                });
+            }
+        } catch (error) {
+            console.error('Failed to send reminder:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Failed to send reminder';
+            toast({
+                title: 'Error',
+                description: errorMessage,
+                variant: 'destructive',
+            });
+        }
+    };
     const handleInvoiceAction = async (action: string, invoiceId: string, data?: any) => {
         try {
             switch (action) {
@@ -256,13 +323,7 @@ export function BillingManagementPage() {
             accessorKey: 'invoice_number',
             header: 'Invoice #',
             cell: ({ row }: any) => (
-                <Button
-                    variant="link"
-                    className="p-0 h-auto font-medium"
-                    onClick={() => setSelectedInvoice(row.original)}
-                >
-                    {row.original.invoice_no}
-                </Button>
+                <span className="font-medium">{row.original.invoice_no}</span>
             ),
         },
         {
@@ -308,6 +369,56 @@ export function BillingManagementPage() {
             accessorKey: 'created_date',
             header: 'Created',
             cell: ({ row }: any) => formatDate(row.original.created_at),
+        },
+        {
+            id: 'actions',
+            header: () => <span className="sr-only">Actions</span>,
+            cell: ({ row }: any) => {
+                const invoice = row.original;
+                const canMarkAsPaid = ['sent', 'pending', 'overdue'].includes(invoice.status);
+                const canSendReminder = invoice.status === 'overdue';
+                const canCapturePayment = ['sent', 'pending', 'overdue'].includes(invoice.status);
+
+                return (
+                    <div className="text-right">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleViewInvoice(invoice)}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View
+                                </DropdownMenuItem>
+                                {canCapturePayment && (
+                                    <DropdownMenuItem onClick={() => handleCapturePayment(invoice)}>
+                                        <CreditCard className="mr-2 h-4 w-4" />
+                                        Capture Payment
+                                    </DropdownMenuItem>
+                                )}
+                                {canMarkAsPaid && (
+                                    <DropdownMenuItem onClick={() => handleMarkAsPaid(invoice)}>
+                                        <CheckCircle className="mr-2 h-4 w-4" />
+                                        Mark as Paid
+                                    </DropdownMenuItem>
+                                )}
+                                {canSendReminder && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => handleSendReminder(invoice)}>
+                                            <Mail className="mr-2 h-4 w-4" />
+                                            Send Reminder
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                );
+            },
+            enableSorting: false,
         },
     ];
 

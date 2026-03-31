@@ -56,7 +56,9 @@ export function PaymentRemindersPage() {
     const [reminderLogs, setReminderLogs] = useState<ReminderLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedConfig, setSelectedConfig] = useState<ReminderConfig | null>(null);
+    const [selectedLog, setSelectedLog] = useState<ReminderLog | null>(null);
     const [showConfigModal, setShowConfigModal] = useState(false);
+    const [showLogModal, setShowLogModal] = useState(false);
     const [activeTab, setActiveTab] = useState<'configs' | 'logs'>('configs');
     const [pagination, setPagination] = useState({
         page: 1,
@@ -148,14 +150,14 @@ export function PaymentRemindersPage() {
                 organization_ids: [masterOrgId],
                 dry_run: true
             });
-            
+
             const message = `Preview Results:\n` +
                 `Organizations: ${result.organizations}\n` +
                 `Would process: ${result.would_process || 0} invoices\n` +
                 `Would send: ${result.would_send || 0} reminders\n` +
                 `Would skip: ${result.would_skip || 0} reminders\n\n` +
                 `Breakdown by stage:\n${Object.entries(result.breakdown_by_stage || {}).map(([stage, count]) => `  ${stage}: ${count}`).join('\n')}`;
-            
+
             alert(message);
         } catch (error) {
             console.error('Failed to preview batch reminders:', error);
@@ -169,6 +171,11 @@ export function PaymentRemindersPage() {
                 {isEnabled ? 'Enabled' : 'Disabled'}
             </Badge>
         );
+    };
+
+    const handleViewLogDetails = (log: ReminderLog) => {
+        setSelectedLog(log);
+        setShowLogModal(true);
     };
 
     const getReminderStageBadge = (stage: string) => {
@@ -462,7 +469,7 @@ export function PaymentRemindersPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    onClick={() => console.log('View log details:', log)}
+                                                    onClick={() => handleViewLogDetails(log)}
                                                 >
                                                     <Eye className="h-4 w-4" />
                                                 </Button>
@@ -533,6 +540,113 @@ export function PaymentRemindersPage() {
                             </Button>
                             <Button onClick={() => setShowConfigModal(false)}>
                                 Save Configuration
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Reminder Log Details Modal */}
+            {showLogModal && selectedLog && (
+                <Dialog open={showLogModal} onOpenChange={setShowLogModal}>
+                    <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>Payment Reminder Log Details</DialogTitle>
+                            <DialogDescription>
+                                View detailed information about this payment reminder
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-6 py-4">
+                            {/* Basic Information */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Invoice Number</Label>
+                                    <p className="font-medium">{selectedLog.invoice_number || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Organization</Label>
+                                    <p className="font-medium">{selectedLog.organization_name || 'Unknown'}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Reminder Stage</Label>
+                                    <div className="mt-1">{getReminderStageBadge(selectedLog.reminder_stage)}</div>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                                    <Badge variant={selectedLog.status === 'sent' ? 'success' :
+                                        selectedLog.status === 'failed' ? 'destructive' : 'secondary'} className="mt-1">
+                                        {selectedLog.status}
+                                    </Badge>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Recipient Email</Label>
+                                    <p className="font-medium">{selectedLog.recipient_email}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Recipient Name</Label>
+                                    <p className="font-medium">{selectedLog.recipient_name || 'Unknown'}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Invoice Amount</Label>
+                                    <p className="font-medium">${selectedLog.invoice_amount || '0.00'}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Outstanding Amount</Label>
+                                    <p className="font-medium">${selectedLog.outstanding_amount || '0.00'}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Days Overdue</Label>
+                                    <p className="font-medium">{selectedLog.days_overdue || 0} days</p>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Due Date</Label>
+                                    <p className="font-medium">{selectedLog.due_date ? formatDate(selectedLog.due_date) : 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Sent At</Label>
+                                    <p className="font-medium">{selectedLog.sent_at ? formatDate(selectedLog.sent_at) : 'Not sent'}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Created At</Label>
+                                    <p className="font-medium">{formatDate(selectedLog.created_at)}</p>
+                                </div>
+                            </div>
+
+                            {/* Email Subject */}
+                            <div>
+                                <Label className="text-sm font-medium text-muted-foreground">Email Subject</Label>
+                                <p className="font-medium mt-1">{selectedLog.subject || 'N/A'}</p>
+                            </div>
+
+                            {/* Error Message (if failed) */}
+                            {selectedLog.status === 'failed' && selectedLog.error_message && (
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Error Message</Label>
+                                    <div className="mt-1 p-3 bg-red-50 border border-red-200 rounded-md">
+                                        <p className="text-sm text-red-800">{selectedLog.error_message}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Additional Info */}
+                            <div className="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <Label className="text-muted-foreground">Reminder Type</Label>
+                                    <p className="font-medium capitalize">{selectedLog.reminder_type || 'Manual'}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-muted-foreground">Retry Count</Label>
+                                    <p className="font-medium">{selectedLog.retry_count || 0}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-muted-foreground">Triggered By</Label>
+                                    <p className="font-medium capitalize">{selectedLog.triggered_by || 'System'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex justify-end">
+                            <Button onClick={() => setShowLogModal(false)}>
+                                Close
                             </Button>
                         </div>
                     </DialogContent>

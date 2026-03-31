@@ -149,8 +149,8 @@ export class PaymentReminderService {
 
   static async sendReminder(params: {
     organization_id: string;
-    invoice_id?: string;
-    reminder_stage: 'gentle' | 'standard' | 'firm' | 'final';
+    invoice_ids: string[];
+    reminder_stage: 'first_reminder' | 'second_reminder' | 'final_notice' | 'deactivation_notice';
     custom_message?: string;
   }): Promise<{
     reminder_log_id: string;
