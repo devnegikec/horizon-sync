@@ -7,6 +7,12 @@ import {
   Settings,
   HelpCircle,
   Zap,
+  FileText,
+  CreditCard,
+  Bell,
+  Shield,
+  Ban,
+  DollarSign,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -18,20 +24,64 @@ import {
 } from '@horizon-sync/ui/components/ui/tooltip';
 import { cn } from '@horizon-sync/ui/lib';
 
+import { usePermissions } from '../hooks/usePermissions';
+
 interface NavItem {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  requiresPermission?: string[];
 }
 
 const mainNavItems: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard },
   { title: 'Organizations', href: '/organizations', icon: Building2 },
   { title: 'Users', href: '/users', icon: Users },
+  {
+    title: 'Invoices',
+    href: '/invoices',
+    icon: FileText,
+    requiresPermission: ['invoice.read', 'system_admin.billing', '*.*']
+  },
+  {
+    title: 'Payments',
+    href: '/payments',
+    icon: CreditCard,
+    requiresPermission: ['payment.read', 'system_admin.billing', '*.*']
+  },
+  {
+    title: 'Billing',
+    href: '/billing',
+    icon: DollarSign,
+    requiresPermission: ['system_admin.billing', 'system_admin.master', '*.*']
+  },
+  {
+    title: 'Payment Reminders',
+    href: '/payment-reminders',
+    icon: Bell,
+    requiresPermission: ['system_admin.billing', 'invoice.send_reminder', '*.*']
+  },
+  {
+    title: 'Organization Deactivation',
+    href: '/organizations/deactivation',
+    icon: Ban,
+    requiresPermission: ['system_admin.org_manager', 'system_admin.master', '*.*']
+  },
 ];
 
 const bottomNavItems: NavItem[] = [
-  { title: 'Settings', href: '/settings', icon: Settings },
+  {
+    title: 'System Permissions',
+    href: '/admin/permissions',
+    icon: Shield,
+    requiresPermission: ['system_admin.master', '*.*']
+  },
+  {
+    title: 'Settings',
+    href: '/settings',
+    icon: Settings,
+    requiresPermission: ['system_admin.master', '*.*', 'settings.read']
+  },
   { title: 'Help', href: '/help', icon: HelpCircle },
 ];
 
@@ -89,12 +139,26 @@ export function AdminSidebar({
   onClose,
 }: AdminSidebarProps) {
   const location = useLocation();
+  const { hasAnyPermission, loading: permissionsLoading } = usePermissions();
 
   const handleLinkClick = () => {
     if (isMobile) {
       onClose?.();
     }
   };
+
+  // Filter nav items based on permissions
+  const filteredMainNavItems = mainNavItems.filter((item) => {
+    if (!item.requiresPermission) return true;
+    if (permissionsLoading) return false;
+    return hasAnyPermission(item.requiresPermission);
+  });
+
+  const filteredBottomNavItems = bottomNavItems.filter((item) => {
+    if (!item.requiresPermission) return true;
+    if (permissionsLoading) return false;
+    return hasAnyPermission(item.requiresPermission);
+  });
 
   return (
     <aside className={cn(
@@ -121,7 +185,7 @@ export function AdminSidebar({
 
       {/* Main Navigation */}
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-        {mainNavItems.map((item) => {
+        {filteredMainNavItems.map((item) => {
           const isActive = item.href === '/' ? location.pathname === '/' : location.pathname.startsWith(item.href);
           return (
             <SidebarNavItem key={item.href}
@@ -138,7 +202,7 @@ export function AdminSidebar({
 
       {/* Bottom Navigation */}
       <div className="py-4 px-3 space-y-1">
-        {bottomNavItems.map((item) => {
+        {filteredBottomNavItems.map((item) => {
           const isActive = location.pathname.startsWith(item.href);
           return (
             <SidebarNavItem key={item.href}

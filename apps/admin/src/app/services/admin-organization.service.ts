@@ -100,4 +100,18 @@ export class AdminOrganizationService {
       }
     );
   }
+
+  static async getOrganizations(filters: {
+    page_size?: number;
+    organization_type?: string;
+  }): Promise<{ organizations: Array<{ id: string; name: string; organization_type: string }> }> {
+    const params = new URLSearchParams();
+    if (filters.page_size) params.append('page_size', String(filters.page_size));
+    if (filters.organization_type) params.append('organization_type', filters.organization_type);
+
+    const query = params.toString();
+    const endpoint = `/api/v1/admin/organizations${query ? `?${query}` : ''}`;
+
+    return this.request<{ organizations: Array<{ id: string; name: string; organization_type: string }> }>(endpoint);
+  }
 }
