@@ -87,9 +87,25 @@ function BlockInfoPanel({ block, onRetry }: { block: QRBlock; onRetry?: (block: 
       )}
 
       {block.status === 'in_progress' && (
-        <div className="col-span-2 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Generating {block.quantity.toLocaleString()} QR codes…
+        <div className="col-span-2 space-y-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Generating {block.quantity.toLocaleString()} QR codes…
+          </div>
+          {block.progress !== undefined && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Progress</span>
+                <span className="font-medium">{block.progress}%</span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${block.progress}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 

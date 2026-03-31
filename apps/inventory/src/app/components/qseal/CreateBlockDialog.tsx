@@ -3,7 +3,7 @@ import * as React from 'react';
 import { Check, ChevronsUpDown, Loader2, Search } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Button } from '@horizon-sync/ui/components/ui/button';
+import { Badge, Button } from '@horizon-sync/ui/components';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
@@ -13,7 +13,9 @@ import { cn } from '@horizon-sync/ui/lib/utils';
 
 import { qrProductApi } from '../../api/qr-products';
 import { useCreateBlock } from '../../features/qr-management/hooks/useCreateBlock';
+import { useQRCredits } from '../../features/qr-management/hooks/useQRCredits';
 import type { QRBlockCreate, QRType, SerialNumberType } from '../../features/qr-management/types/qrBlock.types';
+import { notificationService } from '../../services/notificationService';
 import type { QSealProductListItem } from '../../types/qseal.types';
 
 /* ------------------------------------------------------------------ */
@@ -153,11 +155,13 @@ export interface CreateBlockDialogProps {
 
 export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlockDialogProps) {
   const { createBlock, loading, error } = useCreateBlock();
+  const { credits, loading: creditsLoading, refetch: refetchCredits } = useQRCredits();
   const [productId, setProductId] = React.useState('');
   const [batch, setBatch] = React.useState('');
   const [quantity, setQuantity] = React.useState(100);
   const [qrType, setQrType] = React.useState<QRType>('D');
   const [srType, setSrType] = React.useState<SerialNumberType>('R6DAN');
+  const [includeQrImage, setIncludeQrImage] = React.useState(true);
 
   const reset = () => {
     setProductId('');
@@ -165,23 +169,73 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
     setQuantity(100);
     setQrType('D');
     setSrType('R6DAN');
+    setIncludeQrImage(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check credits before submission
+    if (credits !== null && credits < quantity) {
+      notificationService.insufficientCredits(credits, quantity);
+      return;
+    }
+
     try {
-      const block = await createBlock(productId, { batch, quantity, qr_type: qrType, sr_number_type: srType } satisfies QRBlockCreate);
+      notificationService.blockGenerating();
+      const block = await createBlock(productId, { 
+        batch, 
+        quantity, 
+        qr_type: qrType, 
+        sr_number_type: srType,
+        qr_image: includeQrImage
+      } satisfies QRBlockCreate);
+      
+      notificationService.blockCompleted(block.batch);
       reset();
       onOpenChange(false);
       onCreated(block.id);
-    } catch { /* error shown inline */ }
+      refetchCredits(); // Refresh credits after successful creation
+    } catch (err: any) {
+      // Handle specific error codes
+      const status = err.response?.status;
+      const detail = err.response?.data?.detail || '';
+
+      if (status === 422 && detail.includes('Insufficient credits')) {
+        // Parse available/required from error message if possible
+        const match = detail.match(/available=(\d+), required=(\d+)/);
+        if (match) {
+          notificationService.insufficientCredits(parseInt(match[1]), parseInt(match[2]));
+        } else {
+          notificationService.insufficientCredits(credits || 0, quantity);
+        }
+      } else if (status === 409) {
+        notificationService.conflictError();
+      } else {
+        // Generic error already shown by hook
+      }
+    }
   };
+
+  // Determine if user has enough credits
+  const hasEnoughCredits = credits === null || credits >= quantity;
+  const showCreditWarning = credits !== null && credits < 500;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Generate QR Block</DialogTitle>
+          <DialogTitle className="flex items-center justify-between">
+            <span>Generate QR Block</span>
+            {!creditsLoading && credits !== null && (
+              <Badge 
+                variant={showCreditWarning ? 'destructive' : 'secondary'}
+                className="ml-2"
+              >
+                {credits.toLocaleString()} credits
+              </Badge>
+            )}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
@@ -195,6 +249,11 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
           <div className="space-y-1.5">
             <Label htmlFor="quantity">Quantity * (1–10,000)</Label>
             <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} min={1} max={10000} required />
+            {!hasEnoughCredits && (
+              <p className="text-xs text-destructive">
+                Insufficient credits. You need {quantity.toLocaleString()} but only have {credits?.toLocaleString() || 0}.
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>QR Type</Label>
@@ -222,10 +281,27 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
               </SelectContent>
             </Select>
           </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="includeQrImage"
+              checked={includeQrImage}
+              onChange={(e) => setIncludeQrImage(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <Label htmlFor="includeQrImage" className="text-sm font-normal cursor-pointer">
+              Include QR code images in Excel
+            </Label>
+          </div>
+          {includeQrImage && (
+            <p className="text-xs text-muted-foreground">
+              ⚠️ Including QR images will increase generation time and file size
+            </p>
+          )}
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>
-            <Button type="submit" disabled={loading || !batch.trim() || !productId}>
+            <Button type="submit" disabled={loading || !batch.trim() || !productId || !hasEnoughCredits}>
               {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting…</> : 'Generate'}
             </Button>
           </DialogFooter>
