@@ -54,13 +54,13 @@ export class PaymentReminderService {
     organization_id?: string;
     status?: string;
   }): Promise<{
-    configs: ReminderConfig[];
+    data: ReminderConfig[];
     page: number;
     total_pages: number;
-    total_count: number;
+    total: number;
   }> {
     const queryParams = new URLSearchParams();
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
         queryParams.append(key, String(value));
@@ -122,13 +122,13 @@ export class PaymentReminderService {
     date_from?: string;
     date_to?: string;
   }): Promise<{
-    logs: ReminderLog[];
+    data: ReminderLog[];
     page: number;
     total_pages: number;
-    total_count: number;
+    total: number;
   }> {
     const queryParams = new URLSearchParams();
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
         queryParams.append(key, String(value));
@@ -163,18 +163,25 @@ export class PaymentReminderService {
     });
   }
 
-  static async sendBatchReminders(params?: {
-    organization_ids?: string[];
-    reminder_stage?: 'gentle' | 'standard' | 'firm' | 'final';
+  static async sendBatchReminders(params: {
+    organization_ids: string[];
+    force_send?: boolean;
+    dry_run?: boolean;
   }): Promise<{
-    sent: number;
-    failed: number;
-    skipped: number;
-    errors: Array<{ organization_id: string; error: string }>;
+    organizations: number;
+    would_process?: number;
+    would_send?: number;
+    would_skip?: number;
+    sent?: number;
+    failed?: number;
+    skipped?: number;
+    breakdown_by_stage?: Record<string, number>;
+    breakdown_by_org?: Array<{ organization_id: string; overdue_invoices: number; would_send: number; would_skip: number; stages: Record<string, number> }>;
+    dry_run?: boolean;
   }> {
     return this.request(`/api/v1/admin/payment-reminders/send-batch`, {
       method: 'POST',
-      body: JSON.stringify(params || {}),
+      body: JSON.stringify(params),
     });
   }
 
@@ -222,7 +229,7 @@ export class PaymentReminderService {
     avg_days_to_payment: number;
   }> {
     const queryParams = new URLSearchParams();
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
         queryParams.append(key, String(value));

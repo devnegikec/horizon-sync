@@ -86,14 +86,16 @@ export function PaymentRemindersPage() {
                 page_size: 20,
                 ...filters,
             });
-            setReminderConfigs(response.configs);
+            setReminderConfigs(response?.data || []);
             setPagination({
-                page: response.page,
-                totalPages: response.total_pages,
-                totalCount: response.total_count,
+                page: response?.page || 1,
+                totalPages: response?.total_pages || 1,
+                totalCount: response?.total || 0,
             });
         } catch (error) {
             console.error('Failed to load reminder configs:', error);
+            setReminderConfigs([]);
+            setPagination({ page: 1, totalPages: 1, totalCount: 0 });
         } finally {
             setLoading(false);
         }
@@ -107,14 +109,16 @@ export function PaymentRemindersPage() {
                 page_size: 20,
                 ...filters,
             });
-            setReminderLogs(response.logs);
+            setReminderLogs(response?.data || []);
             setPagination({
-                page: response.page,
-                totalPages: response.total_pages,
-                totalCount: response.total_count,
+                page: response?.page || 1,
+                totalPages: response?.total_pages || 1,
+                totalCount: response?.total || 0,
             });
         } catch (error) {
             console.error('Failed to load reminder logs:', error);
+            setReminderLogs([]);
+            setPagination({ page: 1, totalPages: 1, totalCount: 0 });
         } finally {
             setLoading(false);
         }
@@ -122,12 +126,40 @@ export function PaymentRemindersPage() {
 
     const handleSendBatchReminders = async () => {
         try {
-            await PaymentReminderService.sendBatchReminders();
+            // Use master organization ID as default
+            const masterOrgId = '550e8400-e29b-41d4-a716-446655440001';
+            const result = await PaymentReminderService.sendBatchReminders({
+                organization_ids: [masterOrgId],
+                dry_run: false
+            });
             await loadReminderLogs(); // Refresh logs
-            alert('Batch reminders sent successfully!');
+            alert(`Batch reminders sent successfully! Processed ${result.organizations} organizations.`);
         } catch (error) {
             console.error('Failed to send batch reminders:', error);
             alert('Failed to send batch reminders');
+        }
+    };
+
+    const handlePreviewBatchReminders = async () => {
+        try {
+            // Use master organization ID as default
+            const masterOrgId = '550e8400-e29b-41d4-a716-446655440001';
+            const result = await PaymentReminderService.sendBatchReminders({
+                organization_ids: [masterOrgId],
+                dry_run: true
+            });
+            
+            const message = `Preview Results:\n` +
+                `Organizations: ${result.organizations}\n` +
+                `Would process: ${result.would_process || 0} invoices\n` +
+                `Would send: ${result.would_send || 0} reminders\n` +
+                `Would skip: ${result.would_skip || 0} reminders\n\n` +
+                `Breakdown by stage:\n${Object.entries(result.breakdown_by_stage || {}).map(([stage, count]) => `  ${stage}: ${count}`).join('\n')}`;
+            
+            alert(message);
+        } catch (error) {
+            console.error('Failed to preview batch reminders:', error);
+            alert('Failed to preview batch reminders');
         }
     };
 
@@ -178,6 +210,10 @@ export function PaymentRemindersPage() {
                     </p>
                 </div>
                 <div className="flex space-x-2">
+                    <Button onClick={handlePreviewBatchReminders} variant="outline">
+                        <Eye className="h-4 w-4 mr-2" />
+                        Preview Batch
+                    </Button>
                     <Button onClick={handleSendBatchReminders}>
                         <Send className="h-4 w-4 mr-2" />
                         Send Batch Reminders
@@ -196,7 +232,7 @@ export function PaymentRemindersPage() {
                         <div className="flex items-center space-x-2">
                             <Settings className="h-5 w-5 text-muted-foreground" />
                             <div className="space-y-1">
-                                <p className="text-2xl font-bold">{reminderConfigs.length}</p>
+                                <p className="text-2xl font-bold">{reminderConfigs?.length || 0}</p>
                                 <p className="text-xs text-muted-foreground">Active Configs</p>
                             </div>
                         </div>
@@ -208,7 +244,7 @@ export function PaymentRemindersPage() {
                             <Mail className="h-5 w-5 text-green-600" />
                             <div className="space-y-1">
                                 <p className="text-2xl font-bold">
-                                    {reminderLogs.filter(log => log.status === 'sent').length}
+                                    {reminderLogs?.filter(log => log.status === 'sent').length || 0}
                                 </p>
                                 <p className="text-xs text-muted-foreground">Sent Today</p>
                             </div>
@@ -221,7 +257,7 @@ export function PaymentRemindersPage() {
                             <Clock className="h-5 w-5 text-amber-600" />
                             <div className="space-y-1">
                                 <p className="text-2xl font-bold">
-                                    {reminderLogs.filter(log => log.status === 'pending').length}
+                                    {reminderLogs?.filter(log => log.status === 'pending').length || 0}
                                 </p>
                                 <p className="text-xs text-muted-foreground">Pending</p>
                             </div>
@@ -234,7 +270,7 @@ export function PaymentRemindersPage() {
                             <AlertTriangle className="h-5 w-5 text-red-600" />
                             <div className="space-y-1">
                                 <p className="text-2xl font-bold">
-                                    {reminderLogs.filter(log => log.status === 'failed').length}
+                                    {reminderLogs?.filter(log => log.status === 'failed').length || 0}
                                 </p>
                                 <p className="text-xs text-muted-foreground">Failed</p>
                             </div>
@@ -346,14 +382,14 @@ export function PaymentRemindersPage() {
                                             Loading configurations...
                                         </TableCell>
                                     </TableRow>
-                                ) : reminderConfigs.length === 0 ? (
+                                ) : (reminderConfigs || []).length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={6} className="text-center py-8">
                                             No reminder configurations found
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    reminderConfigs.map((config) => (
+                                    (reminderConfigs || []).map((config) => (
                                         <TableRow key={config.id}>
                                             <TableCell>
                                                 <div className="flex items-center space-x-2">
@@ -398,14 +434,14 @@ export function PaymentRemindersPage() {
                                             Loading reminder logs...
                                         </TableCell>
                                     </TableRow>
-                                ) : reminderLogs.length === 0 ? (
+                                ) : (reminderLogs || []).length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={6} className="text-center py-8">
                                             No reminder logs found
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    reminderLogs.map((log) => (
+                                    (reminderLogs || []).map((log) => (
                                         <TableRow key={log.id}>
                                             <TableCell>
                                                 <div className="flex items-center space-x-2">

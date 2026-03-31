@@ -50,16 +50,16 @@ const mainNavItems: NavItem[] = [
     requiresPermission: ['payment.read', 'system_admin.billing', '*.*']
   },
   { 
+    title: 'Billing', 
+    href: '/billing', 
+    icon: DollarSign,
+    requiresPermission: ['system_admin.billing', 'system_admin.master', '*.*']
+  },
+  { 
     title: 'Payment Reminders', 
     href: '/payment-reminders', 
     icon: Bell,
     requiresPermission: ['system_admin.billing', 'invoice.send_reminder', '*.*']
-  },
-  { 
-    title: 'Billing Management', 
-    href: '/billing', 
-    icon: DollarSign,
-    requiresPermission: ['system_admin.billing', 'system_admin.master', '*.*']
   },
   { 
     title: 'Organization Deactivation', 

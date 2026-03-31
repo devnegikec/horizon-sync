@@ -42,14 +42,16 @@ export interface SubscriptionInvoiceResponse {
 export interface OrganizationBillingInfo {
   organization_id: string;
   organization_name: string;
-  master_organization_id?: string;
-  subscription_tier: string;
-  billing_cycle: string;
-  next_billing_date: string;
-  total_outstanding: number;
-  total_paid: number;
-  invoice_count: number;
-  last_payment_date?: string;
+  billing_status: string | null;
+  subscription_start_date: string | null;
+  subscription_end_date: string | null;
+  seat_limit: number | null;
+  credit_limit: number | null;
+  billing_contact_email: string | null;
+  billing_cycle: string | null;
+  customer_since: string | null;
+  last_billed_date: string | null;
+  next_billing_date: string | null;
 }
 
 export interface BillingSummary {
@@ -265,14 +267,14 @@ export interface Invoice {
   grand_total: number;
   outstanding_amount?: number;
   created_at: string;
-  
+
   // Subscription billing fields
   billing_cycle?: string;
   subscription_period_start?: string;
   subscription_period_end?: string;
   seat_count?: number;
   credit_usage?: number;
-  
+
   // Additional optional fields for compatibility
   invoice_number?: string; // alias for invoice_no
   total_amount?: number; // alias for grand_total

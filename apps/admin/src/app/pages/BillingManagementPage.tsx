@@ -181,7 +181,8 @@ export function BillingManagementPage() {
             if (searchQuery) orgBillingFilters.organization_name = searchQuery;
 
             const orgBillingData = await BillingManagementService.getOrganizationBilling(orgBillingFilters);
-            setOrganizationBilling(orgBillingData.organizations);
+            console.log('Organization billing data loaded:', orgBillingData); // Debug log
+            setOrganizationBilling(Array.isArray(orgBillingData) ? orgBillingData : []);
 
         } catch (error) {
             console.error('Failed to load billing data:', error);
@@ -325,47 +326,47 @@ export function BillingManagementPage() {
             ),
         },
         {
-            accessorKey: 'subscription_tier',
-            header: 'Tier',
-            cell: ({ row }: any) => getTierBadge(row.original.subscription_tier),
+            accessorKey: 'billing_status',
+            header: 'Billing Status',
+            cell: ({ row }: any) => {
+                const status = row.original.billing_status || 'inactive';
+                return (
+                    <Badge variant={status === 'active' ? 'success' : 'secondary'}>
+                        {status}
+                    </Badge>
+                );
+            },
         },
         {
             accessorKey: 'billing_cycle',
             header: 'Billing Cycle',
+            cell: ({ row }: any) => row.original.billing_cycle || 'Not set',
         },
         {
-            accessorKey: 'total_outstanding',
-            header: 'Outstanding',
-            cell: ({ row }: any) => (
-                <span className={cn(
-                    'font-medium',
-                    row.original.total_outstanding > 0 ? 'text-destructive' : 'text-muted-foreground'
-                )}>
-                    {formatCurrency(row.original.total_outstanding)}
-                </span>
-            ),
+            accessorKey: 'seat_limit',
+            header: 'Seat Limit',
+            cell: ({ row }: any) => row.original.seat_limit || 'Unlimited',
         },
         {
-            accessorKey: 'total_paid',
-            header: 'Total Paid',
-            cell: ({ row }: any) => formatCurrency(row.original.total_paid),
+            accessorKey: 'credit_limit',
+            header: 'Credit Limit',
+            cell: ({ row }: any) => row.original.credit_limit ? formatCurrency(row.original.credit_limit) : 'Not set',
         },
         {
-            accessorKey: 'invoice_count',
-            header: 'Invoices',
+            accessorKey: 'subscription_start_date',
+            header: 'Subscription Start',
+            cell: ({ row }: any) =>
+                row.original.subscription_start_date
+                    ? formatDate(row.original.subscription_start_date)
+                    : 'Not started',
         },
         {
             accessorKey: 'next_billing_date',
             header: 'Next Billing',
-            cell: ({ row }: any) => formatDate(row.original.next_billing_date),
-        },
-        {
-            accessorKey: 'last_payment_date',
-            header: 'Last Payment',
             cell: ({ row }: any) =>
-                row.original.last_payment_date
-                    ? formatDate(row.original.last_payment_date)
-                    : 'N/A',
+                row.original.next_billing_date
+                    ? formatDate(row.original.next_billing_date)
+                    : 'Not scheduled',
         },
     ];
 
@@ -382,7 +383,7 @@ export function BillingManagementPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Billing Management</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Billing</h1>
                     <p className="text-muted-foreground mt-2">
                         Manage subscription invoices, payments, and billing overview
                     </p>
@@ -508,10 +509,20 @@ export function BillingManagementPage() {
                         </TabsContent>
 
                         <TabsContent value="organizations">
-                            <DataTable
-                                columns={organizationColumns}
-                                data={organizationBilling}
-                            />
+                            {loading ? (
+                                <div className="flex items-center justify-center h-64">
+                                    <div className="text-muted-foreground">Loading organizations...</div>
+                                </div>
+                            ) : organizationBilling.length === 0 ? (
+                                <div className="flex items-center justify-center h-64">
+                                    <div className="text-muted-foreground">No organizations found</div>
+                                </div>
+                            ) : (
+                                <DataTable
+                                    columns={organizationColumns}
+                                    data={organizationBilling}
+                                />
+                            )}
                         </TabsContent>
                     </Tabs>
                 </CardContent>

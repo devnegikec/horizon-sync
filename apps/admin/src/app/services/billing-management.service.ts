@@ -51,14 +51,16 @@ interface SubscriptionInvoiceResponse {
 interface OrganizationBillingInfo {
   organization_id: string;
   organization_name: string;
-  master_organization_id?: string;
-  subscription_tier: string;
-  billing_cycle: string;
-  next_billing_date: string;
-  total_outstanding: number;
-  total_paid: number;
-  invoice_count: number;
-  last_payment_date?: string;
+  billing_status: string | null;
+  subscription_start_date: string | null;
+  subscription_end_date: string | null;
+  seat_limit: number | null;
+  credit_limit: number | null;
+  billing_contact_email: string | null;
+  billing_cycle: string | null;
+  customer_since: string | null;
+  last_billed_date: string | null;
+  next_billing_date: string | null;
 }
 
 export class BillingManagementService {
@@ -217,26 +219,15 @@ export class BillingManagementService {
     master_organization_only?: boolean;
     has_outstanding?: boolean;
     subscription_tier?: string;
+    organization_name?: string;
     page?: number;
     page_size?: number;
-  }): Promise<{
-    organizations: OrganizationBillingInfo[];
-    total: number;
-    page: number;
-    page_size: number;
-  }> {
+  }): Promise<OrganizationBillingInfo[]> {
     const queryParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
-          // Map parameters to backend-compatible format
-          if (key === 'master_organization_only') {
-            queryParams.append('billing_status', 'active');
-          } else if (key === 'has_outstanding') {
-            queryParams.append('has_outstanding', value.toString());
-          } else {
-            queryParams.append(key, value.toString());
-          }
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, value.toString());
         }
       });
     }
@@ -245,7 +236,7 @@ export class BillingManagementService {
       ? `/api/v1/admin/billing/customer-organizations?${queryParams.toString()}`
       : '/api/v1/admin/billing/customer-organizations';
 
-    return this.request(endpoint);
+    return this.request<OrganizationBillingInfo[]>(endpoint);
   }
 
   // Create payment from invoice - Use admin invoices endpoint

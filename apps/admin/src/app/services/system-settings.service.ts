@@ -95,14 +95,14 @@ export class SystemSettingsService {
    * Get system settings including master org and default configurations
    */
   static async getSystemSettings(): Promise<SystemSettings> {
-    return this.request<SystemSettings>('/admin/system/settings');
+    return this.request<SystemSettings>('/api/v1/admin/system/settings');
   }
 
   /**
    * Update system settings
    */
   static async updateSystemSettings(updates: SystemSettingsUpdate): Promise<SystemSettings> {
-    return this.request<SystemSettings>('/admin/system/settings', {
+    return this.request<SystemSettings>('/api/v1/admin/system/settings', {
       method: 'PATCH',
       body: JSON.stringify(updates),
     });
@@ -112,14 +112,14 @@ export class SystemSettingsService {
    * Get master organization details
    */
   static async getMasterOrganization(): Promise<AdminOrgDetailResponse> {
-    return this.request<AdminOrgDetailResponse>('/admin/system/master-organization');
+    return this.request<AdminOrgDetailResponse>('/api/v1/admin/system/master-organization');
   }
 
   /**
    * Update master organization details
    */
   static async updateMasterOrganization(updates: Partial<AdminOrgDetailResponse>): Promise<AdminOrgDetailResponse> {
-    return this.request<AdminOrgDetailResponse>('/admin/system/master-organization', {
+    return this.request<AdminOrgDetailResponse>('/api/v1/admin/system/master-organization', {
       method: 'PATCH',
       body: JSON.stringify(updates),
     });
@@ -129,14 +129,14 @@ export class SystemSettingsService {
    * Get system admin users (users in master organization)
    */
   static async getSystemAdminUsers(): Promise<{ users: SystemAdminUser[]; total: number }> {
-    return this.request<{ users: SystemAdminUser[]; total: number }>('/admin/system/admin-users');
+    return this.request<{ users: SystemAdminUser[]; total: number }>('/api/v1/admin/system/admin-users');
   }
 
   /**
    * Create new system admin user
    */
   static async createSystemAdminUser(userData: AdminUserCreate): Promise<SystemAdminUser> {
-    return this.request<SystemAdminUser>('/admin/system/admin-users', {
+    return this.request<SystemAdminUser>('/api/v1/admin/system/admin-users', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
@@ -146,10 +146,10 @@ export class SystemSettingsService {
    * Update system admin user
    */
   static async updateSystemAdminUser(
-    userId: string, 
+    userId: string,
     updates: Partial<AdminUserCreate>
   ): Promise<SystemAdminUser> {
-    return this.request<SystemAdminUser>(`/admin/system/admin-users/${userId}`, {
+    return this.request<SystemAdminUser>(`/api/v1/admin/system/admin-users/${userId}`, {
       method: 'PATCH',
       body: JSON.stringify(updates),
     });
@@ -159,7 +159,7 @@ export class SystemSettingsService {
    * Remove system admin user (deactivate)
    */
   static async removeSystemAdminUser(userId: string): Promise<void> {
-    return this.request<void>(`/admin/system/admin-users/${userId}`, {
+    return this.request<void>(`/api/v1/admin/system/admin-users/${userId}`, {
       method: 'DELETE',
     });
   }
@@ -186,7 +186,7 @@ export class SystemSettingsService {
       total_invoices: number;
       overdue_invoices: number;
       total_revenue: string;
-    }>('/admin/system/stats');
+    }>('/api/v1/admin/system/stats');
   }
 
   /**
@@ -211,6 +211,6 @@ export class SystemSettingsService {
         search_service: 'ok' | 'error';
       };
       timestamp: string;
-    }>('/admin/system/health');
+    }>('/api/v1/admin/system/health');
   }
 }

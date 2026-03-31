@@ -97,7 +97,7 @@ export function OrganizationBillingModal({ organization, isOpen, onClose, onRefr
     const tierUpdateForm = useForm<TierUpdateFormData>({
         resolver: zodResolver(tierUpdateSchema),
         defaultValues: {
-            new_tier: organization.subscription_tier as any,
+            new_tier: 'basic', // Default to basic since subscription_tier is not in API response
             prorated: true,
             effective_date: new Date().toISOString().split('T')[0],
         },
@@ -123,8 +123,9 @@ export function OrganizationBillingModal({ organization, isOpen, onClose, onRefr
         { value: 'enterprise', label: 'Enterprise', description: 'Full features and dedicated support' },
     ];
 
-    const currentTier = organization.subscription_tier;
-    const hasOutstanding = organization.total_outstanding > 0;
+    const currentTier = organization.billing_status || 'active';
+    // Since we don't have outstanding balance info in current API response, set to false
+    const hasOutstanding = false;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -136,7 +137,7 @@ export function OrganizationBillingModal({ organization, isOpen, onClose, onRefr
                             {organization.organization_name} - Billing Details
                         </DialogTitle>
                         <div className="flex items-center gap-2">
-                            {getTierBadge(organization.subscription_tier)}
+                            {getTierBadge(organization.billing_status || 'active')}
                             {hasOutstanding && (
                                 <Badge variant="destructive">Outstanding Balance</Badge>
                             )}
@@ -158,9 +159,9 @@ export function OrganizationBillingModal({ organization, isOpen, onClose, onRefr
                                 <CardContent className="p-6">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm font-medium text-muted-foreground">Total Paid</p>
+                                            <p className="text-sm font-medium text-muted-foreground">Credit Limit</p>
                                             <p className="text-2xl font-bold text-green-600">
-                                                {formatCurrency(organization.total_paid)}
+                                                {formatCurrency(organization.credit_limit || 0)}
                                             </p>
                                         </div>
                                         <div className="bg-green-100 p-2 rounded-full">
@@ -179,7 +180,7 @@ export function OrganizationBillingModal({ organization, isOpen, onClose, onRefr
                                                 "text-2xl font-bold",
                                                 hasOutstanding ? 'text-red-600' : 'text-muted-foreground'
                                             )}>
-                                                {formatCurrency(organization.total_outstanding)}
+                                                {formatCurrency(0)}
                                             </p>
                                         </div>
                                         <div className={cn(
@@ -199,9 +200,9 @@ export function OrganizationBillingModal({ organization, isOpen, onClose, onRefr
                                 <CardContent className="p-6">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm font-medium text-muted-foreground">Total Invoices</p>
+                                            <p className="text-sm font-medium text-muted-foreground">Seat Limit</p>
                                             <p className="text-2xl font-bold">
-                                                {organization.invoice_count}
+                                                {organization.seat_limit || 0}
                                             </p>
                                         </div>
                                         <div className="bg-blue-100 p-2 rounded-full">
@@ -217,7 +218,7 @@ export function OrganizationBillingModal({ organization, isOpen, onClose, onRefr
                                         <div>
                                             <p className="text-sm font-medium text-muted-foreground">Billing Cycle</p>
                                             <p className="text-lg font-semibold capitalize">
-                                                {organization.billing_cycle}
+                                                {organization.billing_cycle || 'monthly'}
                                             </p>
                                         </div>
                                         <div className="bg-purple-100 p-2 rounded-full">
@@ -238,7 +239,7 @@ export function OrganizationBillingModal({ organization, isOpen, onClose, onRefr
                                     <div className="flex justify-between items-center">
                                         <span className="text-muted-foreground">Current Tier:</span>
                                         <div className="flex items-center gap-2">
-                                            {getTierBadge(organization.subscription_tier)}
+                                            {getTierBadge(organization.billing_status || 'active')}
                                             <Button
                                                 variant="outline"
                                                 size="sm"
@@ -251,16 +252,16 @@ export function OrganizationBillingModal({ organization, isOpen, onClose, onRefr
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-muted-foreground">Billing Cycle:</span>
-                                        <span className="font-medium capitalize">{organization.billing_cycle}</span>
+                                        <span className="font-medium capitalize">{organization.billing_cycle || 'monthly'}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-muted-foreground">Next Billing Date:</span>
-                                        <span className="font-medium">{formatDate(organization.next_billing_date)}</span>
+                                        <span className="font-medium">{organization.next_billing_date ? formatDate(organization.next_billing_date) : 'N/A'}</span>
                                     </div>
-                                    {organization.last_payment_date && (
+                                    {organization.last_billed_date && (
                                         <div className="flex justify-between items-center">
-                                            <span className="text-muted-foreground">Last Payment:</span>
-                                            <span className="font-medium">{formatDate(organization.last_payment_date)}</span>
+                                            <span className="text-muted-foreground">Last Billed:</span>
+                                            <span className="font-medium">{formatDate(organization.last_billed_date)}</span>
                                         </div>
                                     )}
                                 </CardContent>
@@ -277,12 +278,7 @@ export function OrganizationBillingModal({ organization, isOpen, onClose, onRefr
                                             {hasOutstanding ? 'Outstanding Balance' : 'Up to Date'}
                                         </Badge>
                                     </div>
-                                    {organization.master_organization_id && (
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-muted-foreground">Master Organization:</span>
-                                            <Badge variant="outline">Child Organization</Badge>
-                                        </div>
-                                    )}
+
                                 </CardContent>
                             </Card>
                         </div>
@@ -420,40 +416,45 @@ export function OrganizationBillingModal({ organization, isOpen, onClose, onRefr
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
-                                                <h4 className="font-medium mb-2">Payment Performance</h4>
+                                                <h4 className="font-medium mb-2">Subscription Details</h4>
                                                 <div className="space-y-2">
                                                     <div className="flex justify-between">
-                                                        <span className="text-sm text-muted-foreground">Total Revenue:</span>
-                                                        <span className="font-medium">{formatCurrency(organization.total_paid)}</span>
+                                                        <span className="text-sm text-muted-foreground">Billing Status:</span>
+                                                        <Badge variant={organization.billing_status === 'active' ? 'success' : 'secondary'}>
+                                                            {organization.billing_status || 'Inactive'}
+                                                        </Badge>
                                                     </div>
                                                     <div className="flex justify-between">
-                                                        <span className="text-sm text-muted-foreground">Outstanding:</span>
-                                                        <span className={cn(
-                                                            "font-medium",
-                                                            hasOutstanding ? 'text-red-600' : 'text-muted-foreground'
-                                                        )}>
-                                                            {formatCurrency(organization.total_outstanding)}
-                                                        </span>
+                                                        <span className="text-sm text-muted-foreground">Billing Cycle:</span>
+                                                        <span className="font-medium">{organization.billing_cycle || 'Not set'}</span>
                                                     </div>
                                                     <div className="flex justify-between">
-                                                        <span className="text-sm text-muted-foreground">Total Invoices:</span>
-                                                        <span className="font-medium">{organization.invoice_count}</span>
+                                                        <span className="text-sm text-muted-foreground">Seat Limit:</span>
+                                                        <span className="font-medium">{organization.seat_limit || 'Unlimited'}</span>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div>
-                                                <h4 className="font-medium mb-2">Account Health</h4>
+                                                <h4 className="font-medium mb-2">Account Information</h4>
                                                 <div className="space-y-2">
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-sm text-muted-foreground">Payment Status:</span>
-                                                        <Badge variant={hasOutstanding ? 'destructive' : 'success'}>
-                                                            {hasOutstanding ? 'Overdue' : 'Current'}
-                                                        </Badge>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-sm text-muted-foreground">Credit Limit:</span>
+                                                        <span className="font-medium">
+                                                            {organization.credit_limit ? formatCurrency(organization.credit_limit) : 'Not set'}
+                                                        </span>
                                                     </div>
                                                     <div className="flex justify-between">
-                                                        <span className="text-sm text-muted-foreground">Billing Frequency:</span>
-                                                        <span className="font-medium capitalize">{organization.billing_cycle}</span>
+                                                        <span className="text-sm text-muted-foreground">Customer Since:</span>
+                                                        <span className="font-medium">
+                                                            {organization.customer_since ? formatDate(organization.customer_since) : 'Not set'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-sm text-muted-foreground">Next Billing:</span>
+                                                        <span className="font-medium">
+                                                            {organization.next_billing_date ? formatDate(organization.next_billing_date) : 'Not scheduled'}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
