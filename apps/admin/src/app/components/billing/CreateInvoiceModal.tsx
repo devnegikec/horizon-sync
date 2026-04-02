@@ -1,398 +1,374 @@
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
+import { Input } from '@horizon-sync/ui/components/ui/input';
+import { Label } from '@horizon-sync/ui/components/ui/label';
+import { Button } from '@horizon-sync/ui/components/ui/button';
+import { Search, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { cn } from '@horizon-sync/ui/lib';
 
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    Button,
-    Badge,
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    Input,
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-    Textarea,
-    Separator,
-    Label,
+    InvoiceDialog,
+    InvoiceFormData,
+    invoiceFormSchema,
 } from '@horizon-sync/ui/components';
-import { cn } from '@horizon-sync/ui/lib';
-import {
-    Plus,
-    Trash2,
-    Calculator,
-    FileText,
-    Calendar,
-    DollarSign,
-} from 'lucide-react';
 
 import { AdminOrganizationService } from '../../services/admin-organization.service';
-import type { SubscriptionInvoiceCreateRequest, InvoiceLineItem } from '../../types';
-
-const invoiceSchema = z.object({
-    organization_id: z.string().min(1, 'Organization is required'),
-    invoice_type: z.enum(['subscription', 'setup_fee', 'overage', 'addon', 'credit_adjustment']),
-    subscription_tier: z.enum(['basic', 'pro', 'enterprise']),
-    billing_period_start: z.string().min(1, 'Billing period start is required'),
-    billing_period_end: z.string().min(1, 'Billing period end is required'),
-    amount: z.number().min(0.01, 'Amount must be greater than 0'),
-    due_date: z.string().min(1, 'Due date is required'),
-    description: z.string().optional(),
-    line_items: z.array(z.object({
-        description: z.string().min(1, 'Line item description is required'),
-        quantity: z.number().min(1, 'Quantity must be at least 1'),
-        unit_price: z.number().min(0, 'Unit price must be >= 0'),
-        total_amount: z.number().min(0, 'Total amount must be >= 0'),
-    })).optional(),
-});
-
-type InvoiceFormData = z.infer<typeof invoiceSchema>;
+import type { Invoice } from '../../types';
 
 interface CreateInvoiceModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (data: SubscriptionInvoiceCreateRequest) => Promise<void>;
+    onSubmit: (data: InvoiceFormData & { organization_id: string }) => Promise<void>;
+}
+
+interface Organization {
+    id: string;
+    name: string;
 }
 
 export function CreateInvoiceModal({ isOpen, onClose, onSubmit }: CreateInvoiceModalProps) {
-    const [organizations, setOrganizations] = useState<Array<{ id: string; name: string }>>([]);
+    const [organizations, setOrganizations] = useState<Organization[]>([]);
+    const [selectedOrgId, setSelectedOrgId] = useState<string>('');
+    const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+    const [customers, setCustomers] = useState<Array<{ id: string; customer_name: string }>>([]);
     const [loading, setLoading] = useState(false);
-    const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([]);
+    const [loadingCustomers, setLoadingCustomers] = useState(false);
+    const [loadingOrganizations, setLoadingOrganizations] = useState(false);
 
-    const form = useForm<InvoiceFormData>({
-        resolver: zodResolver(invoiceSchema),
-        defaultValues: {
-            invoice_type: 'subscription',
-            subscription_tier: 'basic',
-            line_items: [],
-        },
-    });
+    // Searchable organization/customer state
+    const [orgSearchQuery, setOrgSearchQuery] = useState('');
+    const [orgSearchResults, setOrgSearchResults] = useState<Organization[]>([]);
+    const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+    const [orgSearchLoading, setOrgSearchLoading] = useState(false);
+
+    const [availableItems] = useState<Array<{ id: string; item_name: string; item_sku?: string; uom?: string }>>([
+        { id: 'service-1', item_name: 'Professional Services', item_sku: 'SRV001', uom: 'hours' },
+        { id: 'license-1', item_name: 'Software License', item_sku: 'LIC001', uom: 'units' },
+        { id: 'support-1', item_name: 'Support Package', item_sku: 'SUP001', uom: 'months' },
+    ]);
+
+    const { toast } = useToast();
+
+    // Debounced organization search
+    const searchOrganizations = useCallback(async (query: string) => {
+        if (!query.trim()) {
+            setOrgSearchResults([]);
+            return;
+        }
+
+        setOrgSearchLoading(true);
+        try {
+            const response = await AdminOrganizationService.list({
+                search: query,
+                page_size: 50,
+                page: 1
+            });
+
+            const results = response.organizations.map((org) => ({
+                id: org.id,
+                name: org.name
+            }));
+
+            setOrgSearchResults(results);
+        } catch (error) {
+            console.error('Failed to search organizations:', error);
+            setOrgSearchResults([]);
+        } finally {
+            setOrgSearchLoading(false);
+        }
+    }, []);
+
+    // Debounced search effect
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (orgSearchQuery) {
+                searchOrganizations(orgSearchQuery);
+            } else {
+                setOrgSearchResults([]);
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [orgSearchQuery, searchOrganizations]);
 
     useEffect(() => {
         if (isOpen) {
             loadOrganizations();
+            // Reset form state when modal opens
+            setSelectedOrgId('');
+            setSelectedOrg(null);
+            setOrgSearchQuery('');
+            setOrgSearchResults([]);
+            setShowOrgDropdown(false);
         }
     }, [isOpen]);
 
-    const loadOrganizations = async () => {
-        try {
-            const response = await AdminOrganizationService.getOrganizations({
-                page_size: 100
-            });
-            setOrganizations(
-                response.organizations.map((org) => ({
-                    id: org.id,
-                    name: org.name,
-                }))
-            );
-        } catch (error) {
-            console.error('Failed to load organizations:', error);
+    // Load customers when organization is selected
+    useEffect(() => {
+        if (selectedOrgId && selectedOrg) {
+            loadCustomers(selectedOrgId);
+        } else {
+            setCustomers([]);
+        }
+    }, [selectedOrgId, selectedOrg]);
+
+    // Handle organization selection from search
+    const handleOrgSelect = (org: Organization) => {
+        setSelectedOrg(org);
+        setSelectedOrgId(org.id);
+        setOrgSearchQuery(org.name);
+        setShowOrgDropdown(false);
+    };
+
+    // Handle search input changes
+    const handleOrgSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setOrgSearchQuery(value);
+        setShowOrgDropdown(true);
+
+        // Clear selection if user types something different
+        if (selectedOrg && value !== selectedOrg.name) {
+            setSelectedOrg(null);
+            setSelectedOrgId('');
         }
     };
 
-    const handleAddLineItem = () => {
-        setLineItems(prev => [
-            ...prev,
-            { description: '', quantity: 1, unit_price: 0, total_amount: 0 }
-        ]);
+    // Handle search input focus
+    const handleOrgSearchFocus = () => {
+        setShowOrgDropdown(true);
+        if (!orgSearchQuery && organizations.length > 0) {
+            setOrgSearchResults(organizations.slice(0, 10));
+        }
     };
 
-    const handleRemoveLineItem = (index: number) => {
-        setLineItems(prev => prev.filter((_, i) => i !== index));
-    };
+    const loadOrganizations = async () => {
+        try {
+            setLoadingOrganizations(true);
+            const response = await AdminOrganizationService.list({
+                page_size: 100
+            });
+            const orgs = response.organizations.map((org) => ({
+                id: org.id,
+                name: org.name,
+            }));
+            setOrganizations(orgs);
 
-    const handleLineItemChange = (index: number, field: keyof InvoiceLineItem, value: any) => {
-        setLineItems(prev => {
-            const updated = [...prev];
-            updated[index] = {
-                ...updated[index],
-                [field]: value,
-            };
-
-            // Auto-calculate total amount
-            if (field === 'quantity' || field === 'unit_price') {
-                updated[index].total_amount = updated[index].quantity * updated[index].unit_price;
+            // If no selection and only one org, auto-select it
+            if (orgs.length === 1 && !selectedOrgId) {
+                const org = orgs[0];
+                setSelectedOrg(org);
+                setSelectedOrgId(org.id);
+                setOrgSearchQuery(org.name);
             }
-
-            return updated;
-        });
+        } catch (error) {
+            console.error('Failed to load organizations:', error);
+            toast({
+                title: 'Error',
+                description: 'Failed to load organizations',
+                variant: 'destructive',
+            });
+        } finally {
+            setLoadingOrganizations(false);
+        }
     };
 
-    const calculateInvoiceTotal = () => {
-        return lineItems.reduce((total, item) => total + item.total_amount, 0);
+    const resetForm = () => {
+        setSelectedOrg(null);
+        setSelectedOrgId('');
+        setOrgSearchQuery('');
+        setOrgSearchResults([]);
+        setShowOrgDropdown(false);
+        setCustomers([]);
+    };
+
+    const loadCustomers = async (organizationId: string) => {
+        try {
+            setLoadingCustomers(true);
+            // For admin portal, we'll use the organization as the "customer" 
+            // since it's creating invoices for organizations
+            const org = organizations.find(o => o.id === organizationId);
+            if (org) {
+                setCustomers([{
+                    id: organizationId,
+                    customer_name: org.name
+                }]);
+            }
+        } catch (error) {
+            console.error('Failed to load customers:', error);
+            toast({
+                title: 'Error',
+                description: 'Failed to load customers',
+                variant: 'destructive',
+            });
+        } finally {
+            setLoadingCustomers(false);
+        }
     };
 
     const handleSubmit = async (data: InvoiceFormData) => {
+        if (!selectedOrgId) {
+            toast({
+                title: 'Error',
+                description: 'Please select an organization',
+                variant: 'destructive',
+            });
+            return;
+        }
+
         try {
             setLoading(true);
             await onSubmit({
                 ...data,
-                line_items: lineItems.length > 0 ? lineItems : undefined,
+                organization_id: selectedOrgId,
             });
-            form.reset();
-            setLineItems([]);
+            resetForm();
             onClose();
+            toast({
+                title: 'Success',
+                description: 'Invoice created successfully',
+            });
         } catch (error) {
             console.error('Failed to create invoice:', error);
+            toast({
+                title: 'Error',
+                description: 'Failed to create invoice',
+                variant: 'destructive',
+            });
         } finally {
             setLoading(false);
         }
     };
 
-    const invoiceTypeOptions = [
-        { value: 'subscription', label: 'Subscription' },
-        { value: 'setup_fee', label: 'Setup Fee' },
-        { value: 'overage', label: 'Overage' },
-        { value: 'addon', label: 'Add-on' },
-        { value: 'credit_adjustment', label: 'Credit Adjustment' },
-    ];
-
-    const tierOptions = [
-        { value: 'basic', label: 'Basic' },
-        { value: 'pro', label: 'Pro' },
-        { value: 'enterprise', label: 'Enterprise' },
-    ];
+    // Custom validation schema for admin portal
+    const adminInvoiceSchema = invoiceFormSchema.extend({
+        // Admin portal specific extensions if needed
+    });
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>Create Subscription Invoice</DialogTitle>
-                </DialogHeader>
+        <>
+            {/* Organization Selection Header */}
+            {isOpen && !selectedOrgId && (
+                <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <div className="bg-card p-6 rounded-lg border shadow-lg w-full max-w-md mx-4">
+                        <h3 className="text-lg font-semibold mb-4">Select Customer Organization</h3>
 
-                <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-                    {/* Basic Information */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="organization_id">Organization *</Label>
-                            <Select
-                                {...form.register('organization_id')}
-                                onValueChange={(value) => form.setValue('organization_id', value)}
-                                value={form.watch('organization_id')}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select organization" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {organizations.map((org) => (
-                                        <SelectItem key={org.id} value={org.id}>
-                                            {org.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {form.formState.errors.organization_id && (
-                                <p className="text-sm text-red-500 mt-1">{form.formState.errors.organization_id.message}</p>
-                            )}
-                        </div>
+                        {/* Searchable organization selector */}
+                        <div className="space-y-4">
+                            <div className="relative">
+                                <Label htmlFor="org-search">Search Organization</Label>
+                                <div className="relative mt-1">
+                                    <Input
+                                        id="org-search"
+                                        placeholder="Type to search organizations..."
+                                        value={orgSearchQuery}
+                                        onChange={handleOrgSearchChange}
+                                        onFocus={handleOrgSearchFocus}
+                                        onBlur={() => setTimeout(() => setShowOrgDropdown(false), 200)}
+                                        className="pr-10"
+                                    />
+                                    <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 
-                        <div>
-                            <Label htmlFor="invoice_type">Invoice Type *</Label>
-                            <Select
-                                {...form.register('invoice_type')}
-                                onValueChange={(value) => form.setValue('invoice_type', value as any)}
-                                value={form.watch('invoice_type')}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {invoiceTypeOptions.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {form.formState.errors.invoice_type && (
-                                <p className="text-sm text-red-500 mt-1">{form.formState.errors.invoice_type.message}</p>
-                            )}
-                        </div>
-
-                        <div>
-                            <Label htmlFor="subscription_tier">Subscription Tier *</Label>
-                            <Select
-                                {...form.register('subscription_tier')}
-                                onValueChange={(value) => form.setValue('subscription_tier', value as any)}
-                                value={form.watch('subscription_tier')}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select tier" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {tierOptions.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {form.formState.errors.subscription_tier && (
-                                <p className="text-sm text-red-500 mt-1">{form.formState.errors.subscription_tier.message}</p>
-                            )}
-                        </div>
-
-                        <div>
-                            <Label htmlFor="amount">Amount ($) *</Label>
-                            <Input
-                                id="amount"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                {...form.register('amount', { valueAsNumber: true })}
-                            />
-                            {form.formState.errors.amount && (
-                                <p className="text-sm text-red-500 mt-1">{form.formState.errors.amount.message}</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Date Fields */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <Label htmlFor="billing_period_start">Billing Period Start *</Label>
-                            <Input
-                                id="billing_period_start"
-                                type="date"
-                                {...form.register('billing_period_start')}
-                            />
-                            {form.formState.errors.billing_period_start && (
-                                <p className="text-sm text-red-500 mt-1">{form.formState.errors.billing_period_start.message}</p>
-                            )}
-                        </div>
-
-                        <div>
-                            <Label htmlFor="billing_period_end">Billing Period End *</Label>
-                            <Input
-                                id="billing_period_end"
-                                type="date"
-                                {...form.register('billing_period_end')}
-                            />
-                            {form.formState.errors.billing_period_end && (
-                                <p className="text-sm text-red-500 mt-1">{form.formState.errors.billing_period_end.message}</p>
-                            )}
-                        </div>
-
-                        <div>
-                            <Label htmlFor="due_date">Due Date *</Label>
-                            <Input
-                                id="due_date"
-                                type="date"
-                                {...form.register('due_date')}
-                            />
-                            {form.formState.errors.due_date && (
-                                <p className="text-sm text-red-500 mt-1">{form.formState.errors.due_date.message}</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Description */}
-                    <div>
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea
-                            id="description"
-                            placeholder="Additional invoice description..."
-                            className="min-h-[80px]"
-                            {...form.register('description')}
-                        />
-                        {form.formState.errors.description && (
-                            <p className="text-sm text-red-500 mt-1">{form.formState.errors.description.message}</p>
-                        )}
-                    </div>
-
-                    {/* Line Items */}
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-medium">Line Items</h3>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={handleAddLineItem}
-                            >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Line Item
-                            </Button>
-                        </div>
-
-                        {lineItems.map((item, index) => (
-                            <Card key={index}>
-                                <CardContent className="p-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                        <div className="md:col-span-2">
-                                            <Label>Description</Label>
-                                            <Input
-                                                value={item.description}
-                                                onChange={(e) => handleLineItemChange(index, 'description', e.target.value)}
-                                                placeholder="Line item description"
-                                            />
+                                    {/* Dropdown Results */}
+                                    {showOrgDropdown && (
+                                        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto">
+                                            {orgSearchLoading ? (
+                                                <div className="p-3 text-sm text-muted-foreground">
+                                                    Searching...
+                                                </div>
+                                            ) : orgSearchResults.length > 0 ? (
+                                                <div className="py-1">
+                                                    {orgSearchResults.map((org, index) => (
+                                                        <button
+                                                            key={org.id}
+                                                            onClick={() => handleOrgSelect(org)}
+                                                            className="w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground text-sm flex items-center justify-between"
+                                                        >
+                                                            <span>{org.name}</span>
+                                                            {selectedOrg?.id === org.id && (
+                                                                <Check className="h-4 w-4 text-primary" />
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ) : orgSearchQuery ? (
+                                                <div className="p-3 text-sm text-muted-foreground">
+                                                    No organizations found for "{orgSearchQuery}"
+                                                </div>
+                                            ) : (
+                                                <div className="p-3 text-sm text-muted-foreground">
+                                                    {loadingOrganizations ? 'Loading organizations...' : 'Type to search organizations'}
+                                                </div>
+                                            )}
                                         </div>
-                                        <div>
-                                            <Label>Quantity</Label>
-                                            <Input
-                                                type="number"
-                                                min="1"
-                                                value={item.quantity}
-                                                onChange={(e) => handleLineItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label>Unit Price ($)</Label>
-                                            <Input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                value={item.unit_price}
-                                                onChange={(e) => handleLineItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-between mt-4">
-                                        <div className="text-sm text-muted-foreground">
-                                            Total: <span className="font-medium">${item.total_amount.toFixed(2)}</span>
-                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Show selected org */}
+                                {selectedOrg && !showOrgDropdown && (
+                                    <div className="mt-2 p-2 bg-accent rounded-md text-sm flex items-center justify-between">
+                                        <span>Selected: {selectedOrg.name}</span>
                                         <Button
-                                            type="button"
-                                            variant="outline"
+                                            variant="ghost"
                                             size="sm"
-                                            onClick={() => handleRemoveLineItem(index)}
+                                            onClick={() => {
+                                                setSelectedOrg(null);
+                                                setSelectedOrgId('');
+                                                setOrgSearchQuery('');
+                                            }}
+                                            className="h-auto p-1"
                                         >
-                                            <Trash2 className="h-4 w-4" />
+                                            ×
                                         </Button>
                                     </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-
-                        {lineItems.length > 0 && (
-                            <div className="text-right">
-                                <div className="inline-block bg-muted p-3 rounded-md">
-                                    <div className="text-sm text-muted-foreground">Line Items Subtotal:</div>
-                                    <div className="text-lg font-semibold">${calculateInvoiceTotal().toFixed(2)}</div>
-                                </div>
+                                )}
                             </div>
-                        )}
-                    </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center justify-end gap-3 pt-6">
-                        <Button type="button" variant="outline" onClick={onClose}>
-                            Cancel
-                        </Button>
-                        <Button type="submit" disabled={loading}>
-                            {loading ? 'Creating...' : 'Create Invoice'}
-                        </Button>
+                            {/* Action buttons */}
+                            <div className="flex gap-2 pt-4">
+                                <Button
+                                    onClick={() => {
+                                        if (selectedOrg) {
+                                            setSelectedOrgId(selectedOrg.id);
+                                        }
+                                    }}
+                                    disabled={!selectedOrg}
+                                    className="flex-1"
+                                >
+                                    Continue to Create Invoice
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        resetForm();
+                                        onClose();
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                            </div>
+                        </div>
                     </div>
-                </form>
-            </DialogContent>
-        </Dialog>
+                </div>
+            )}
+
+            {/* Invoice Creation Dialog */}
+            <InvoiceDialog
+                open={isOpen && !!selectedOrgId}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        resetForm();
+                        onClose();
+                    }
+                }}
+                onSave={handleSubmit}
+                saving={loading}
+                customers={customers}
+                validationSchema={adminInvoiceSchema}
+                invoiceTypes={['Sales', 'Purchase']}
+                availableStatuses={['Draft']}
+                availableItems={availableItems}
+                isLoadingItems={loadingCustomers}
+            />
+        </>
     );
 }

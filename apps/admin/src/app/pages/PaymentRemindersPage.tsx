@@ -42,7 +42,8 @@ import {
 } from 'lucide-react';
 
 import { PaymentReminderService } from '../services/payment-reminder.service';
-import type { ReminderConfig, ReminderLog } from '../types';
+import { AdminOrganizationService } from '../services/admin-organization.service';
+import type { ReminderConfig, ReminderLog, ReminderConfigCreateRequest, AdminOrgListItem } from '../types';
 
 interface ReminderFilter {
     search: string;
@@ -54,6 +55,7 @@ interface ReminderFilter {
 export function PaymentRemindersPage() {
     const [reminderConfigs, setReminderConfigs] = useState<ReminderConfig[]>([]);
     const [reminderLogs, setReminderLogs] = useState<ReminderLog[]>([]);
+    const [organizations, setOrganizations] = useState<AdminOrgListItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedConfig, setSelectedConfig] = useState<ReminderConfig | null>(null);
     const [selectedLog, setSelectedLog] = useState<ReminderLog | null>(null);
@@ -71,14 +73,48 @@ export function PaymentRemindersPage() {
         reminder_stage: '',
         status: '',
     });
+    
+    // Form state for creating new reminder config
+    const [newConfigForm, setNewConfigForm] = useState<ReminderConfigCreateRequest>({
+        organization_id: '',
+        reminder_type: 'auto',
+        grace_period_days: 30,
+        first_reminder_days: 30,
+        second_reminder_days: 60,
+        final_notice_days: 90,
+        auto_deactivate_days: 120,
+        reminder_frequency_days: 7,
+        max_reminders_per_stage: 3,
+        is_enabled: true,
+        first_reminder_template: 'payment_reminder_first',
+        second_reminder_template: 'payment_reminder_second',
+        final_notice_template: 'payment_reminder_final',
+        deactivation_notice_template: 'payment_reminder_deactivation',
+    });
+    const [isCreatingConfig, setIsCreatingConfig] = useState(false);
+    const [configError, setConfigError] = useState<string | null>(null);
 
     useEffect(() => {
+        loadOrganizations(); // Load organizations on component mount
         if (activeTab === 'configs') {
             loadReminderConfigs();
         } else {
             loadReminderLogs();
         }
     }, [activeTab, filters, pagination.page]);
+
+    const loadOrganizations = async () => {
+        try {
+            const response = await AdminOrganizationService.list({
+                page: 1,
+                page_size: 100 // API limit is 100, not 1000
+            });
+            setOrganizations(response.organizations || []);
+        } catch (error) {
+            console.error('Failed to load organizations:', error);
+            setOrganizations([]);
+        }
+    };
 
     const loadReminderConfigs = async () => {
         try {
@@ -124,6 +160,53 @@ export function PaymentRemindersPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleCreateConfig = async () => {
+        if (!newConfigForm.organization_id) {
+            setConfigError('Please select an organization');
+            return;
+        }
+
+        setIsCreatingConfig(true);
+        setConfigError(null);
+
+        try {
+            await PaymentReminderService.createReminderConfig(newConfigForm);
+            setShowConfigModal(false);
+            resetConfigForm();
+            loadReminderConfigs(); // Refresh the list
+        } catch (error) {
+            console.error('Failed to create reminder config:', error);
+            setConfigError(error instanceof Error ? error.message : 'Failed to create configuration');
+        } finally {
+            setIsCreatingConfig(false);
+        }
+    };
+
+    const resetConfigForm = () => {
+        setNewConfigForm({
+            organization_id: '',
+            reminder_type: 'auto',
+            grace_period_days: 30,
+            first_reminder_days: 30,
+            second_reminder_days: 60,
+            final_notice_days: 90,
+            auto_deactivate_days: 120,
+            reminder_frequency_days: 7,
+            max_reminders_per_stage: 3,
+            is_enabled: true,
+            first_reminder_template: 'payment_reminder_first',
+            second_reminder_template: 'payment_reminder_second',
+            final_notice_template: 'payment_reminder_final',
+            deactivation_notice_template: 'payment_reminder_deactivation',
+        });
+        setConfigError(null);
+    };
+
+    const handleModalOpen = () => {
+        resetConfigForm();
+        setShowConfigModal(true);
     };
 
     const handleSendBatchReminders = async () => {
@@ -225,7 +308,7 @@ export function PaymentRemindersPage() {
                         <Send className="h-4 w-4 mr-2" />
                         Send Batch Reminders
                     </Button>
-                    <Button onClick={() => setShowConfigModal(true)}>
+                    <Button onClick={handleModalOpen}>
                         <Plus className="h-4 w-4 mr-2" />
                         New Config
                     </Button>
@@ -406,7 +489,7 @@ export function PaymentRemindersPage() {
                                             </TableCell>
                                             <TableCell>{getStatusBadge(config.is_enabled)}</TableCell>
                                             <TableCell>{config.grace_period_days} days</TableCell>
-                                            <TableCell>{config.escalation_days} days</TableCell>
+                                            <TableCell>{config.first_reminder_days || config.escalation_days} days</TableCell>
                                             <TableCell>{formatDate(config.created_at)}</TableCell>
                                             <TableCell className="text-right">
                                                 <Button
@@ -513,33 +596,334 @@ export function PaymentRemindersPage() {
             {/* Configuration Modal */}
             {showConfigModal && (
                 <Dialog open={showConfigModal} onOpenChange={setShowConfigModal}>
-                    <DialogContent className="max-w-md">
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle>Reminder Configuration</DialogTitle>
+                            <DialogTitle>Create New Reminder Configuration</DialogTitle>
                             <DialogDescription>
-                                Configure payment reminder settings for organizations
+                                Configure automated payment reminder settings for an organization
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4 py-4">
+                        <div className="space-y-6 py-4">
+                            {configError && (
+                                <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
+                                    {configError}
+                                </div>
+                            )}
+
+                            {/* Organization Selection */}
                             <div>
-                                <Label>Grace Period (days)</Label>
-                                <Input type="number" placeholder="7" />
+                                <Label htmlFor="organization">Organization *</Label>
+                                <select
+                                    id="organization"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    value={newConfigForm.organization_id}
+                                    onChange={(e) => setNewConfigForm(prev => ({ ...prev, organization_id: e.target.value }))}
+                                >
+                                    <option value="">Select an organization...</option>
+                                    {organizations.map((org) => (
+                                        <option key={org.id} value={org.id}>
+                                            {org.display_name || org.name}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
+
+                            {/* Reminder Type */}
                             <div>
-                                <Label>Escalation Interval (days)</Label>
-                                <Input type="number" placeholder="3" />
+                                <Label htmlFor="reminder-type">Reminder Type</Label>
+                                <select
+                                    id="reminder-type"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    value={newConfigForm.reminder_type}
+                                    onChange={(e) => setNewConfigForm(prev => ({ ...prev, reminder_type: e.target.value as 'manual' | 'auto' | 'configured' }))}
+                                >
+                                    <option value="auto">Automatic</option>
+                                    <option value="manual">Manual</option>
+                                    <option value="configured">Configured</option>
+                                </select>
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <input type="checkbox" id="enable-reminders" />
-                                <Label htmlFor="enable-reminders">Enable automatic reminders</Label>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Grace Period */}
+                                <div>
+                                    <Label htmlFor="grace-period">Grace Period (days)</Label>
+                                    <Input
+                                        id="grace-period"
+                                        type="number"
+                                        min="0"
+                                        max="365"
+                                        value={newConfigForm.grace_period_days}
+                                        onChange={(e) => setNewConfigForm(prev => ({ ...prev, grace_period_days: parseInt(e.target.value) || 0 }))}
+                                        placeholder="30"
+                                    />
+                                </div>
+
+                                {/* Frequency */}
+                                <div>
+                                    <Label htmlFor="frequency">Reminder Frequency (days)</Label>
+                                    <Input
+                                        id="frequency"
+                                        type="number"
+                                        min="1"
+                                        max="30"
+                                        value={newConfigForm.reminder_frequency_days}
+                                        onChange={(e) => setNewConfigForm(prev => ({ ...prev, reminder_frequency_days: parseInt(e.target.value) || 7 }))}
+                                        placeholder="7"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Escalation Timeline */}
+                            <div>
+                                <Label className="text-base font-semibold">Escalation Timeline</Label>
+                                <div className="grid grid-cols-2 gap-4 mt-2">
+                                    <div>
+                                        <Label htmlFor="first-reminder">First Reminder (days overdue)</Label>
+                                        <Input
+                                            id="first-reminder"
+                                            type="number"
+                                            min="1"
+                                            max="365"
+                                            value={newConfigForm.first_reminder_days}
+                                            onChange={(e) => setNewConfigForm(prev => ({ ...prev, first_reminder_days: parseInt(e.target.value) || 30 }))}
+                                            placeholder="30"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="second-reminder">Second Reminder (days overdue)</Label>
+                                        <Input
+                                            id="second-reminder"
+                                            type="number"
+                                            min="1"
+                                            max="365"
+                                            value={newConfigForm.second_reminder_days}
+                                            onChange={(e) => setNewConfigForm(prev => ({ ...prev, second_reminder_days: parseInt(e.target.value) || 60 }))}
+                                            placeholder="60"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="final-notice">Final Notice (days overdue)</Label>
+                                        <Input
+                                            id="final-notice"
+                                            type="number"
+                                            min="1"
+                                            max="365"
+                                            value={newConfigForm.final_notice_days}
+                                            onChange={(e) => setNewConfigForm(prev => ({ ...prev, final_notice_days: parseInt(e.target.value) || 90 }))}
+                                            placeholder="90"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="auto-deactivate">Auto-Deactivate After (days)</Label>
+                                        <Input
+                                            id="auto-deactivate"
+                                            type="number"
+                                            min="1"
+                                            max="500"
+                                            value={newConfigForm.auto_deactivate_days || ''}
+                                            onChange={(e) => setNewConfigForm(prev => ({ ...prev, auto_deactivate_days: parseInt(e.target.value) || 120 }))}
+                                            placeholder="120"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Advanced Settings */}
+                            <div>
+                                <Label className="text-base font-semibold">Advanced Settings</Label>
+                                <div className="grid grid-cols-1 gap-4 mt-2">
+                                    <div>
+                                        <Label htmlFor="max-reminders">Max Reminders per Stage</Label>
+                                        <Input
+                                            id="max-reminders"
+                                            type="number"
+                                            min="1"
+                                            max="10"
+                                            value={newConfigForm.max_reminders_per_stage}
+                                            onChange={(e) => setNewConfigForm(prev => ({ ...prev, max_reminders_per_stage: parseInt(e.target.value) || 3 }))}
+                                            placeholder="3"
+                                        />
+                                    </div>
+                                    
+                                    {/* Enable/Disable Toggle */}
+                                    <div className="flex items-center space-x-2">
+                                        <input
+                                            type="checkbox"
+                                            id="enable-reminders"
+                                            checked={newConfigForm.is_enabled}
+                                            onChange={(e) => setNewConfigForm(prev => ({ ...prev, is_enabled: e.target.checked }))}
+                                        />
+                                        <Label htmlFor="enable-reminders">Enable automatic reminders</Label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Email Templates */}
+                            <div>
+                                <Label className="text-base font-semibold">Email Templates</Label>
+                                <div className="grid grid-cols-1 gap-4 mt-2">
+                                    <div>
+                                        <Label htmlFor="first-template">First Reminder Template</Label>
+                                        <Input
+                                            id="first-template"
+                                            value={newConfigForm.first_reminder_template}
+                                            onChange={(e) => setNewConfigForm(prev => ({ ...prev, first_reminder_template: e.target.value }))}
+                                            placeholder="payment_reminder_first"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="second-template">Second Reminder Template</Label>
+                                        <Input
+                                            id="second-template"
+                                            value={newConfigForm.second_reminder_template}
+                                            onChange={(e) => setNewConfigForm(prev => ({ ...prev, second_reminder_template: e.target.value }))}
+                                            placeholder="payment_reminder_second"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="final-template">Final Notice Template</Label>
+                                        <Input
+                                            id="final-template"
+                                            value={newConfigForm.final_notice_template}
+                                            onChange={(e) => setNewConfigForm(prev => ({ ...prev, final_notice_template: e.target.value }))}
+                                            placeholder="payment_reminder_final"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="deactivation-template">Deactivation Notice Template</Label>
+                                        <Input
+                                            id="deactivation-template"
+                                            value={newConfigForm.deactivation_notice_template}
+                                            onChange={(e) => setNewConfigForm(prev => ({ ...prev, deactivation_notice_template: e.target.value }))}
+                                            placeholder="payment_reminder_deactivation"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex justify-end space-x-2">
+                            <Button variant="outline" onClick={() => setShowConfigModal(false)} disabled={isCreatingConfig}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleCreateConfig} disabled={isCreatingConfig}>
+                                {isCreatingConfig ? 'Creating...' : 'Create Configuration'}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Reminder Config Details Modal */}
+            {selectedConfig && (
+                <Dialog open={!!selectedConfig} onOpenChange={() => setSelectedConfig(null)}>
+                    <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>Payment Reminder Configuration Details</DialogTitle>
+                            <DialogDescription>
+                                View detailed configuration settings for this payment reminder
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-6 py-4">
+                            {/* Basic Information */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Organization</Label>
+                                    <p className="font-medium">{selectedConfig.organization_name || 'Default'}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                                    <div className="mt-1">{getStatusBadge(selectedConfig.is_enabled)}</div>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Reminder Type</Label>
+                                    <p className="font-medium capitalize">{selectedConfig.reminder_type || 'Auto'}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-medium text-muted-foreground">Grace Period</Label>
+                                    <p className="font-medium">{selectedConfig.grace_period_days} days</p>
+                                </div>
+                            </div>
+
+                            {/* Escalation Timeline */}
+                            <div>
+                                <Label className="text-base font-semibold mb-3 block">Escalation Timeline</Label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label className="text-sm font-medium text-muted-foreground">First Reminder</Label>
+                                        <p className="font-medium">{selectedConfig.first_reminder_days || selectedConfig.escalation_days || 30} days</p>
+                                    </div>
+                                    <div>
+                                        <Label className="text-sm font-medium text-muted-foreground">Second Reminder</Label>
+                                        <p className="font-medium">{selectedConfig.second_reminder_days || 60} days</p>
+                                    </div>
+                                    <div>
+                                        <Label className="text-sm font-medium text-muted-foreground">Final Notice</Label>
+                                        <p className="font-medium">{selectedConfig.final_notice_days || 90} days</p>
+                                    </div>
+                                    <div>
+                                        <Label className="text-sm font-medium text-muted-foreground">Auto-Deactivate</Label>
+                                        <p className="font-medium">{selectedConfig.auto_deactivate_days || selectedConfig.auto_deactivate ? 'Enabled' : 'Disabled'} {selectedConfig.auto_deactivate_days ? `(${selectedConfig.auto_deactivate_days} days)` : ''}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Settings */}
+                            <div>
+                                <Label className="text-base font-semibold mb-3 block">Advanced Settings</Label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label className="text-sm font-medium text-muted-foreground">Frequency</Label>
+                                        <p className="font-medium">{selectedConfig.reminder_frequency_days || 7} days</p>
+                                    </div>
+                                    <div>
+                                        <Label className="text-sm font-medium text-muted-foreground">Max Per Stage</Label>
+                                        <p className="font-medium">{selectedConfig.max_reminders_per_stage || selectedConfig.max_reminder_count || 3}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Templates */}
+                            <div>
+                                <Label className="text-base font-semibold mb-3 block">Email Templates</Label>
+                                <div className="space-y-2">
+                                    <div>
+                                        <Label className="text-sm font-medium text-muted-foreground">First Reminder</Label>
+                                        <p className="font-medium">{selectedConfig.first_reminder_template || selectedConfig.template_gentle || 'payment_reminder_first'}</p>
+                                    </div>
+                                    <div>
+                                        <Label className="text-sm font-medium text-muted-foreground">Second Reminder</Label>
+                                        <p className="font-medium">{selectedConfig.second_reminder_template || selectedConfig.template_standard || 'payment_reminder_second'}</p>
+                                    </div>
+                                    <div>
+                                        <Label className="text-sm font-medium text-muted-foreground">Final Notice</Label>
+                                        <p className="font-medium">{selectedConfig.final_notice_template || selectedConfig.template_final || 'payment_reminder_final'}</p>
+                                    </div>
+                                    <div>
+                                        <Label className="text-sm font-medium text-muted-foreground">Deactivation Notice</Label>
+                                        <p className="font-medium">{selectedConfig.deactivation_notice_template || 'payment_reminder_deactivation'}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Audit */}
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <Label className="text-muted-foreground">Created</Label>
+                                    <p className="font-medium">{formatDate(selectedConfig.created_at)}</p>
+                                </div>
+                                <div>
+                                    <Label className="text-muted-foreground">Updated</Label>
+                                    <p className="font-medium">{formatDate(selectedConfig.updated_at)}</p>
+                                </div>
                             </div>
                         </div>
                         <div className="flex justify-end space-x-2">
-                            <Button variant="outline" onClick={() => setShowConfigModal(false)}>
-                                Cancel
+                            <Button variant="outline" onClick={() => setSelectedConfig(null)}>
+                                Close
                             </Button>
-                            <Button onClick={() => setShowConfigModal(false)}>
-                                Save Configuration
+                            <Button>
+                                Edit Configuration
                             </Button>
                         </div>
                     </DialogContent>

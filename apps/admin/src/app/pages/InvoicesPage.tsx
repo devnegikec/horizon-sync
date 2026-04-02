@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import {
+    Search,
+    Download,
+    Plus,
+    Eye,
+    FileText,
+    DollarSign,
+    Calendar,
+    Building2,
+} from 'lucide-react';
 
 import {
     Card,
     CardContent,
-    CardHeader,
-    CardTitle,
     Button,
     Input,
     Badge,
@@ -19,34 +27,16 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    Tabs,
-    TabsContent,
-    TabsList,
 } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
-import {
-    Search,
-    Filter,
-    Download,
-    Plus,
-    Eye,
-    FileText,
-    DollarSign,
-    Calendar,
-    User,
-    Building2,
-} from 'lucide-react';
+import type { InvoiceFormData } from '@horizon-sync/ui/components';
 
 import { useInvoices } from '../hooks/useInvoices';
 import { AdminInvoiceService } from '../services/admin-invoice.service';
 import { AdminOrganizationService } from '../services/admin-organization.service';
 import { CreateInvoiceModal } from '../components/billing/CreateInvoiceModal';
 import { InvoiceDetailModal } from '../components/billing/InvoiceDetailModal';
+import type { InvoiceCreateRequest } from '../types/billing.types';
 import type { Invoice, SubscriptionInvoiceResponse, AdminInvoiceFilters, AdminOrgListItem } from '../types';
 
 export function InvoicesPage() {
@@ -95,17 +85,58 @@ export function InvoicesPage() {
     const invoices = data?.invoices ?? [];
     const pagination = data?.pagination;
 
-    const handleCreateInvoice = async (invoiceData: any) => {
+    const handleCreateInvoice = async (invoiceData: InvoiceFormData & { organization_id: string }) => {
         try {
-            await AdminInvoiceService.createInvoice(invoiceData);
+            // Convert the InvoiceFormData to the expected API format
+            const apiPayload: InvoiceCreateRequest & { organization_id: string } = {
+                organization_id: invoiceData.organization_id,
+                party_id: invoiceData.party_id,
+                party_type: invoiceData.party_type.toLowerCase() as 'customer' | 'supplier',
+                posting_date: invoiceData.posting_date.toISOString(),
+                due_date: invoiceData.due_date.toISOString(),
+                currency: invoiceData.currency,
+                invoice_type: invoiceData.invoice_type.toLowerCase() as 'sales' | 'purchase',
+                status: 'draft',
+                remarks: invoiceData.remarks || '',
+                // Calculate totals from line items
+                grand_total: invoiceData.line_items.reduce((sum, item) => sum + (item.quantity * item.rate), 0),
+                outstanding_amount: invoiceData.line_items.reduce((sum, item) => sum + (item.quantity * item.rate), 0),
+                line_items: invoiceData.line_items.map(item => ({
+                    item_id: item.item_id,
+                    description: item.description || '',
+                    quantity: item.quantity,
+                    uom: item.uom || 'pcs',
+                    rate: item.rate,
+                    tax_template_id: item.tax_template_id,
+                })),
+            };
+
+            await AdminInvoiceService.createInvoice(apiPayload);
             refetch(); // Refresh the list using React Query
             setShowCreateModal(false);
             toast({
                 title: 'Success',
                 description: 'Invoice created successfully',
             });
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Failed to create invoice:', error);
+
+            // Show more specific error message if available
+            let errorMessage = 'Failed to create invoice. Please try again.';
+            if (error && typeof error === 'object' && 'response' in error) {
+                const apiError = error as { response?: { data?: { detail?: { message?: string } } } };
+                if (apiError.response?.data?.detail?.message) {
+                    errorMessage = apiError.response.data.detail.message;
+                }
+            } else if (error instanceof Error && error.message) {
+                errorMessage = error.message;
+            }
+
+            toast({
+                title: 'Error',
+                description: errorMessage,
+                variant: 'destructive',
+            });
             throw error; // Re-throw to handle in modal
         }
     };
@@ -152,17 +183,24 @@ export function InvoicesPage() {
             id: invoice.id,
             invoice_number: invoice.invoice_no || invoice.invoice_number || `INV-${invoice.id.slice(0, 8)}`,
             organization_id: invoice.organization_id,
-            invoice_type: invoice.invoice_type,
-            subscription_tier: invoice.subscription_tier || 'basic',
-            billing_period_start: invoice.posting_date || invoice.issue_date || new Date().toISOString().split('T')[0],
-            billing_period_end: invoice.due_date || new Date().toISOString().split('T')[0],
+            billing_cycle: 'monthly', // Default value since regular invoices don't have this field
+            seat_count: 1, // Default value since regular invoices don't have this field
+            credit_usage: 0,
+            base_price_per_seat: invoice.grand_total || invoice.total_amount || 0,
+            credit_rate: 0.01,
+            subscription_start_date: invoice.posting_date || invoice.issue_date || new Date().toISOString().split('T')[0],
             amount: invoice.grand_total || invoice.total_amount || 0,
             status: invoice.status,
-            due_date: invoice.due_date || new Date().toISOString().split('T')[0],
             created_date: invoice.created_at,
             paid_date: invoice.paid_date,
-            description: invoice.description,
-            line_items: invoice.line_items,
+            notes: invoice.description,
+            custom_line_items: invoice.line_items?.map(item => ({
+                id: item.id || '',
+                description: item.description,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                amount: item.total_amount || (item.quantity * item.unit_price)
+            })),
         };
     };
 

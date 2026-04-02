@@ -38,12 +38,6 @@ const mainNavItems: NavItem[] = [
   { title: 'Organizations', href: '/organizations', icon: Building2 },
   { title: 'Users', href: '/users', icon: Users },
   {
-    title: 'Invoices',
-    href: '/invoices',
-    icon: FileText,
-    requiresPermission: ['invoice.read', 'system_admin.billing', '*.*']
-  },
-  {
     title: 'Payments',
     href: '/payments',
     icon: CreditCard,

@@ -2,8 +2,8 @@ import * as React from 'react';
 import { useState } from 'react';
 
 import {
-  Building2, Users, DollarSign, Activity, ArrowUpRight, TrendingUp,
-  Calendar, RefreshCw, Package, FileText, CreditCard,
+  Building2, Users, DollarSign, Activity, ArrowUpRight,
+  RefreshCw, FileText, CreditCard,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,7 +14,7 @@ import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useDashboardOverview } from '../hooks/useDashboardOverview';
-import type { DashboardFilters, DashboardOverview, ActivityLogItem } from '../types';
+import type { DashboardFilters, ActivityLogItem } from '../types';
 
 interface StatCardProps {
   title: string;

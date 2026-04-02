@@ -1,16 +1,37 @@
 // B2B Billing System Types
 
+// Regular Invoice Types (for admin portal)
+export interface InvoiceCreateRequest {
+  party_id: string;
+  party_type: 'Customer' | 'Supplier' | 'customer' | 'supplier';
+  posting_date: string;
+  due_date: string;
+  currency: string;
+  invoice_type: 'Sales' | 'Purchase' | 'sales' | 'purchase';
+  status: 'Draft' | 'Submitted' | 'Cancelled' | 'draft' | 'submitted' | 'cancelled';
+  remarks?: string;
+  grand_total: number;
+  outstanding_amount: number;
+  line_items: InvoiceLineItemRequest[];
+}
+
+export interface InvoiceLineItemRequest {
+  item_id: string;
+  description: string;
+  quantity: number;
+  uom?: string;
+  rate: number;
+  tax_template_id?: string | null;
+}
+
+// B2B Subscription Invoice Types
 export interface SubscriptionInvoiceCreateRequest {
   organization_id: string;
-  master_organization_id?: string;
-  invoice_type: 'subscription' | 'setup_fee' | 'overage' | 'addon' | 'credit_adjustment';
-  subscription_tier: 'basic' | 'pro' | 'enterprise';
-  billing_period_start: string;
-  billing_period_end: string;
-  amount: number;
-  due_date: string;
-  description?: string;
-  line_items?: InvoiceLineItem[];
+  billing_cycle: 'monthly' | 'quarterly' | 'yearly';
+  seat_count: number;
+  credit_usage?: number;
+  base_price_per_seat?: number;
+  credit_rate?: number;
 }
 
 export interface InvoiceLineItem {
@@ -25,18 +46,24 @@ export interface SubscriptionInvoiceResponse {
   id: string;
   invoice_number: string;
   organization_id: string;
-  master_organization_id?: string;
-  invoice_type: string;
-  subscription_tier: string;
-  billing_period_start: string;
-  billing_period_end: string;
+  billing_cycle: string;
+  seat_count: number;
+  credit_usage?: number;
+  base_price_per_seat: number;
+  credit_rate?: number;
+  subscription_start_date?: string;
   amount: number;
   status: string;
-  due_date: string;
   created_date: string;
   paid_date?: string;
-  description?: string;
-  line_items?: InvoiceLineItem[];
+  notes?: string;
+  custom_line_items?: Array<{
+    id: string;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    amount: number;
+  }>;
 }
 
 export interface OrganizationBillingInfo {
@@ -286,18 +313,6 @@ export interface Invoice {
   line_items?: InvoiceLineItem[];
 }
 
-export interface InvoiceCreateRequest {
-  organization_id: string;
-  invoice_type: 'subscription' | 'setup_fee' | 'overage' | 'addon' | 'credit_adjustment';
-  subscription_tier: 'basic' | 'pro' | 'enterprise';
-  billing_period_start: string;
-  billing_period_end: string;
-  amount: number;
-  due_date: string;
-  description?: string;
-  line_items?: InvoiceLineItem[];
-}
-
 export interface InvoiceListResponse {
   invoices: Invoice[];
   pagination: {
@@ -341,17 +356,30 @@ export interface ReminderConfig {
   id: string;
   organization_id?: string;
   organization_name?: string;
+  reminder_type?: 'manual' | 'auto' | 'configured';
   is_enabled: boolean;
   grace_period_days: number;
-  escalation_days: number;
-  max_reminder_count: number;
-  auto_deactivate: boolean;
+  first_reminder_days: number;
+  second_reminder_days: number;
+  final_notice_days: number;
+  auto_deactivate_days?: number;
+  reminder_frequency_days: number;
+  max_reminders_per_stage: number;
+  escalation_sequence?: string[];
+  first_reminder_template?: string;
+  second_reminder_template?: string;
+  final_notice_template?: string;
+  deactivation_notice_template?: string;
+  created_at: string;
+  updated_at: string;
+  // Legacy fields for backward compatibility
+  escalation_days?: number;
+  max_reminder_count?: number;
+  auto_deactivate?: boolean;
   template_gentle?: string;
   template_standard?: string;
   template_firm?: string;
   template_final?: string;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface ReminderLog {
@@ -379,16 +407,20 @@ export interface ReminderLog {
 }
 
 export interface ReminderConfigCreateRequest {
-  organization_id?: string;
-  is_enabled: boolean;
-  grace_period_days: number;
-  escalation_days: number;
-  max_reminder_count: number;
-  auto_deactivate: boolean;
-  template_gentle?: string;
-  template_standard?: string;
-  template_firm?: string;
-  template_final?: string;
+  organization_id: string;
+  reminder_type?: 'manual' | 'auto' | 'configured';
+  grace_period_days?: number;
+  first_reminder_days?: number;
+  second_reminder_days?: number;
+  final_notice_days?: number;
+  auto_deactivate_days?: number;
+  reminder_frequency_days?: number;
+  max_reminders_per_stage?: number;
+  is_enabled?: boolean;
+  first_reminder_template?: string;
+  second_reminder_template?: string;
+  final_notice_template?: string;
+  deactivation_notice_template?: string;
 }
 
 // Shared Response Types
