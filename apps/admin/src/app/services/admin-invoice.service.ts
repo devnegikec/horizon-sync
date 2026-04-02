@@ -1,11 +1,11 @@
 import { useUserStore } from '@horizon-sync/store';
 
 import { environment } from '../../environments/environment';
-import type { 
-  Invoice, 
-  InvoiceCreateRequest, 
-  InvoiceListResponse, 
-  AdminInvoiceFilters 
+import type {
+  Invoice,
+  InvoiceCreateRequest,
+  InvoiceListResponse,
+  AdminInvoiceFilters
 } from '../types/billing.types';
 import { handleApiError } from '../utils/error-handler';
 
@@ -87,10 +87,17 @@ export class AdminInvoiceService {
     return this.request<Invoice>(`/api/v1/admin/invoices/${invoiceId}`);
   }
 
-  static async createInvoice(invoiceData: InvoiceCreateRequest): Promise<Invoice> {
-    return this.request<Invoice>('/api/v1/admin/invoices', {
+  static async createInvoice(invoiceData: InvoiceCreateRequest & { organization_id: string }): Promise<Invoice> {
+    const { organization_id, ...invoicePayload } = invoiceData;
+
+    return this.request<Invoice>(`/api/v1/admin/invoices?organization_id=${organization_id}`, {
       method: 'POST',
-      body: JSON.stringify(invoiceData),
+      body: JSON.stringify({
+        ...invoicePayload,
+        // Ensure proper field mapping for admin API
+        invoice_type: invoicePayload.invoice_type?.toLowerCase(),
+        party_type: invoicePayload.party_type?.toLowerCase(),
+      }),
     });
   }
 
@@ -156,7 +163,7 @@ export class AdminInvoiceService {
     format?: 'csv' | 'excel';
   }): Promise<Blob> {
     const queryParams = new URLSearchParams();
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
         queryParams.append(key, String(value));
@@ -213,7 +220,7 @@ export class AdminInvoiceService {
     status_breakdown: Record<string, number>;
   }> {
     const queryParams = new URLSearchParams();
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
         queryParams.append(key, String(value));

@@ -33,6 +33,7 @@ import { BillingManagementService } from '../services/billing-management.service
 import { AdminInvoiceService } from '../services/admin-invoice.service';
 import { PaymentReminderService } from '../services/payment-reminder.service';
 import type {
+    SubscriptionInvoiceCreateRequest,
     SubscriptionInvoiceResponse,
     OrganizationBillingInfo,
     BillingSummary,
@@ -204,7 +205,18 @@ export function BillingManagementPage() {
 
     const handleCreateInvoice = async (invoiceData: any) => {
         try {
-            await BillingManagementService.createSubscriptionInvoice(invoiceData);
+            // Transform regular invoice data to match backend subscription invoice schema
+            const subscriptionInvoiceData: SubscriptionInvoiceCreateRequest = {
+                organization_id: invoiceData.organization_id,
+                billing_cycle: 'monthly' as const, // Required field - monthly, quarterly, yearly
+                seat_count: 10, // Required field - number of seats/users (minimum 1)
+                credit_usage: 0, // Optional - credit usage amount
+                base_price_per_seat: invoiceData.line_items && invoiceData.line_items.length > 0
+                    ? invoiceData.line_items[0].rate : 10.00, // Use first item rate or default
+                credit_rate: 0.01 // Optional - price per credit unit
+            };
+
+            await BillingManagementService.createSubscriptionInvoice(subscriptionInvoiceData);
             toast({
                 title: 'Success',
                 description: 'Invoice created successfully',

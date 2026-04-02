@@ -5,46 +5,37 @@ import { handleApiError } from '../utils/error-handler';
 
 const API_CORE_URL = environment.apiCoreUrl;
 
-// Types for Billing Management
+// Types for Billing Management - Updated to match backend API
 interface SubscriptionInvoiceCreateRequest {
   organization_id: string;
-  master_organization_id?: string;
-  invoice_type: 'subscription' | 'setup_fee' | 'overage' | 'addon' | 'credit_adjustment';
-  subscription_tier: 'basic' | 'pro' | 'enterprise';
-  billing_period_start: string;
-  billing_period_end: string;
-  amount: number;
-  due_date: string;
-  description?: string;
-  line_items?: Array<{
-    description: string;
-    quantity: number;
-    unit_price: number;
-    total_amount: number;
-  }>;
+  billing_cycle: 'monthly' | 'quarterly' | 'yearly';
+  seat_count: number;
+  credit_usage?: number;
+  base_price_per_seat?: number;
+  credit_rate?: number;
 }
 
 interface SubscriptionInvoiceResponse {
   id: string;
   invoice_number: string;
   organization_id: string;
-  master_organization_id?: string;
-  invoice_type: string;
-  subscription_tier: string;
-  billing_period_start: string;
-  billing_period_end: string;
+  billing_cycle: string;
+  seat_count: number;
+  credit_usage?: number;
+  base_price_per_seat: number;
+  credit_rate?: number;
+  subscription_start_date?: string;
   amount: number;
   status: string;
-  due_date: string;
   created_date: string;
   paid_date?: string;
-  description?: string;
-  line_items?: Array<{
+  notes?: string;
+  custom_line_items?: Array<{
     id: string;
     description: string;
     quantity: number;
     unit_price: number;
-    total_amount: number;
+    amount: number;
   }>;
 }
 
@@ -178,7 +169,7 @@ export class BillingManagementService {
   // Mark invoice as sent - Use admin invoices endpoint
   static async markInvoiceAsSent(invoiceId: string): Promise<{ success: boolean; message: string }> {
     return this.request(
-      `/api/v1/admin/invoices/${invoiceId}/confirm`,
+      `/api/v1/admin/invoices/${invoiceId}/send`,
       { method: 'POST' }
     );
   }
@@ -194,7 +185,7 @@ export class BillingManagementService {
     }
   ): Promise<{ success: boolean; message: string }> {
     return this.request(
-      `/api/v1/admin/invoices/${invoiceId}/create-payment`,
+      `/api/v1/admin/invoices/${invoiceId}/mark-paid`,
       {
         method: 'POST',
         body: JSON.stringify(paymentData),

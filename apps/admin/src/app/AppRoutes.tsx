@@ -7,7 +7,6 @@ import { BillingManagementPage } from './pages/BillingManagementPage';
 import { CreateOrganizationPage } from './pages/CreateOrganizationPage';
 import { CreateUserPage } from './pages/CreateUserPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { InvoicesPage } from './pages/InvoicesPage';
 import { LoginPage } from './pages/LoginPage';
 import { OrganizationDeactivationPage } from './pages/OrganizationDeactivationPage';
 import { OrganizationDetailPage } from './pages/OrganizationDetailPage';
@@ -41,7 +40,6 @@ export function AppRoutes() {
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/users/new" element={<CreateUserPage />} />
                 <Route path="/users/:id" element={<UserDetailPage />} />
-                <Route path="/invoices" element={<InvoicesPage />} />
                 <Route path="/payments" element={<PaymentsPage />} />
                 <Route path="/payment-reminders" element={<PaymentRemindersPage />} />
                 <Route path="/billing" element={<BillingManagementPage />} />
