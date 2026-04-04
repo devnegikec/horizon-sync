@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { PlaceholderPage } from './components/PlaceholderPage';
 import BankingRoutes from './features/banking/BankingRoutes';
 import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage } from './pages';
+import { PublicQRValidation } from './pages/PublicQRValidation';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 const RevenuePage = React.lazy(() => import('inventory/RevenuePage'));
@@ -19,6 +20,9 @@ const QSealPage = React.lazy(() => import('inventory/QSealPage'));
 export function AppRoutes() {
   return (
     <Routes>
+      {/* Public QR verification - no auth required, local component */}
+      <Route path="/g/:gtin/s/:serial/:timestamp" element={<PublicQRValidation />} />
+
       {/* Public routes */}
       <Route path="/login" element={<PublicRouteWrapper element={<LoginPage />} />} />
       <Route path="/register" element={<PublicRouteWrapper element={<RegisterPage />} />} />
