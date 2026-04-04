@@ -1,0 +1,463 @@
+# QR Code Validation Architecture
+
+## Overview
+
+This document explains how QR code validation works in the QSeal system, from generation to consumer verification.
+
+## System Flow
+
+```
+┌─────────────────┐
+│  1. Generate    │
+│  QR Block       │
+│  (Backend)      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  2. Create      │
+│  Signed URLs    │
+│  with ECDSA     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  3. Generate    │
+│  QR Codes       │
+│  (Excel)        │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  4. Consumer    │
+│  Scans QR       │
+│  (Mobile)       │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  5. Open URL    │
+│  in Browser     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  6. Validation  │
+│  Page Loads     │
+│  (Frontend)     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  7. Call Auth   │
+│  API Endpoint   │
+│  (Backend)      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  8. Verify      │
+│  Signature      │
+│  (ECDSA)        │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  9. Show        │
+│  Result         │
+│  (Frontend)     │
+└─────────────────┘
+```
+
+## URL Structure
+
+### Generated QR URL Format
+
+```
+https://{domain}/g/{gtin}/s/{serial}/{timestamp}?c={signature}
+```
+
+### Example
+
+```
+http://localhost:4200/g/29734929342/s/EPHADY/1774976401039?c=MEUCIQDYSvi6...
+```
+
+### URL Components
+
+| Component   | Description              | Example           |
+| ----------- | ------------------------ | ----------------- |
+| `domain`    | Frontend domain          | `localhost:4200`  |
+| `gtin`      | Global Trade Item Number | `29734929342`     |
+| `serial`    | Unique serial number     | `EPHADY`          |
+| `timestamp` | Unix timestamp (ms)      | `1774976401039`   |
+| `signature` | Base64 ECDSA signature   | `MEUCIQDYSvi6...` |
+
+## Frontend Architecture
+
+### Route Configuration
+
+```typescript
+<BrowserRouter>
+  <Routes>
+    {/* Public QR validation - no auth */}
+    <Route
+      path="/g/:gtin/s/:serial/:timestamp"
+      element={<QRValidationPage />}
+    />
+
+    {/* Authenticated app routes */}
+    <Route path="/*" element={<MainApp />} />
+  </Routes>
+</BrowserRouter>
+```
+
+### QRValidationPage Component
+
+**Location**: `apps/inventory/src/app/pages/QRValidationPage.tsx`
+
+**Responsibilities**:
+
+1. Parse URL parameters (gtin, serial, timestamp)
+2. Extract signature from query string (?c=)
+3. Call authentication API
+4. Display validation result
+
+**States**:
+
+- `loading` - Showing spinner while validating
+- `success` - Green screen with product details
+- `error` - Red screen with error message
+
+### API Integration
+
+```typescript
+// Parse URL parameters
+const { gtin, serial, timestamp } = useParams();
+const [searchParams] = useSearchParams();
+const cipher = searchParams.get('c');
+
+// Call authentication endpoint
+const response = await fetch(`${apiUrl}/api/v1/qr-products/authenticate`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    serial_number: serial,
+    nonce: timestamp,
+    cipher: cipher,
+  }),
+});
+```
+
+## Backend Architecture
+
+### Authentication Endpoint
+
+**Endpoint**: `POST /api/v1/qr-products/authenticate`
+
+**Request**:
+
+```json
+{
+  "serial_number": "EPHADY",
+  "nonce": "1774976401039",
+  "cipher": "MEUCIQDYSvi6+bjeumWjW8xuQ/HWgDdCBSL1H9v9cvBF/zX2YQIgGVDVrvioy+kGZ+BfuHQDx1jzd7v+kfeQLDC55jaU2zU="
+}
+```
+
+**Response** (Success):
+
+```json
+{
+  "message": "Authentication successful",
+  "authentic": true,
+  "product_name": "Sample Product",
+  "brand_name": "Sample Brand",
+  "gtin": "29734929342",
+  "serial_number": "EPHADY"
+}
+```
+
+**Response** (Failure):
+
+```json
+{
+  "message": "Authentication Failed",
+  "authentic": false,
+  "product_name": null,
+  "brand_name": null,
+  "gtin": null,
+  "serial_number": null
+}
+```
+
+### Validation Logic
+
+1. **Lookup Product Item**
+   - Find by serial_number
+   - Check if product is activated
+   - Get associated brand
+
+2. **Verify Signature**
+   - Reconstruct message: `{gtin}|{serial}|{timestamp}`
+   - Decode base64 signature
+   - Verify using brand's public key (ECDSA P-256)
+
+3. **Return Result**
+   - If valid: Return product details
+   - If invalid: Return authentication failed
+
+## Security Features
+
+### Digital Signature (ECDSA P-256)
+
+- **Algorithm**: Elliptic Curve Digital Signature Algorithm
+- **Curve**: P-256 (secp256r1)
+- **Key Size**: 256 bits
+- **Signature Format**: Base64-encoded DER
+
+### Why ECDSA?
+
+1. **Tamper-proof**: Cannot modify URL without invalidating signature
+2. **Unforgeable**: Cannot create valid signatures without private key
+3. **Efficient**: Small signature size, fast verification
+4. **Standard**: Widely supported, battle-tested
+
+### What's Signed?
+
+```
+Message = "{gtin}|{serial}|{timestamp}"
+Example = "29734929342|EPHADY|1774976401039"
+```
+
+The signature proves:
+
+- The URL was generated by the brand owner
+- The GTIN, serial, and timestamp haven't been modified
+- The QR code is authentic
+
+## User Experience
+
+### Loading State
+
+```
+┌─────────────────────────┐
+│                         │
+│    🔄 Validating...     │
+│                         │
+│   Please wait while     │
+│   we verify this QR     │
+│                         │
+└─────────────────────────┘
+```
+
+### Success State
+
+```
+┌─────────────────────────┐
+│   ✅ Authentic Product  │
+│                         │
+│   Product: Widget Pro   │
+│   Brand: ACME Corp      │
+│   GTIN: 29734929342     │
+│   Serial: EPHADY        │
+│                         │
+│   🛡️ Verified Authentic │
+│                         │
+│   This product has been │
+│   verified using digital│
+│   signature technology. │
+└─────────────────────────┘
+```
+
+### Error State
+
+```
+┌─────────────────────────┐
+│   ❌ Authentication     │
+│      Failed             │
+│                         │
+│   This QR code could    │
+│   not be verified. It   │
+│   may be counterfeit or │
+│   tampered with.        │
+│                         │
+│   Please contact the    │
+│   manufacturer.         │
+└─────────────────────────┘
+```
+
+## Mobile Optimization
+
+### Responsive Design
+
+- Large touch targets
+- Readable text sizes
+- Optimized for portrait orientation
+- Fast loading (minimal dependencies)
+
+### Camera Integration
+
+- Works with native camera apps
+- Supports QR code scanning apps
+- Deep linking support
+
+### Performance
+
+- Instant validation (< 1 second)
+- Minimal data usage
+- Works on slow connections
+
+## Deployment Considerations
+
+### Production URLs
+
+For production, update QR generation to use production domain:
+
+```typescript
+// Development
+const baseUrl = 'http://localhost:4200';
+
+// Production
+const baseUrl = 'https://verify.yourdomain.com';
+```
+
+### Domain Options
+
+**Option 1: Subdomain**
+
+```
+https://verify.yourdomain.com/g/{gtin}/s/{serial}/{timestamp}?c={sig}
+```
+
+**Option 2: Main Domain**
+
+```
+https://yourdomain.com/g/{gtin}/s/{serial}/{timestamp}?c={sig}
+```
+
+**Option 3: Short Domain**
+
+```
+https://qr.yourdomain.com/g/{gtin}/s/{serial}/{timestamp}?c={sig}
+```
+
+### CDN & Caching
+
+- Static assets: Cache aggressively
+- Validation page: Cache with short TTL
+- API responses: No caching (always fresh)
+
+### SSL/TLS
+
+- **Required**: HTTPS for production
+- **Certificate**: Valid SSL certificate
+- **Security**: TLS 1.2 or higher
+
+## Analytics & Monitoring
+
+### Metrics to Track
+
+1. **Scan Volume**
+   - Total scans per day
+   - Scans per product
+   - Scans per location (if GPS enabled)
+
+2. **Validation Results**
+   - Success rate
+   - Failure reasons
+   - Counterfeit attempts
+
+3. **Performance**
+   - Validation latency
+   - API response time
+   - Page load time
+
+4. **User Behavior**
+   - Device types
+   - Browser types
+   - Geographic distribution
+
+### Implementation
+
+```typescript
+// Add analytics tracking
+useEffect(() => {
+  if (result) {
+    // Track validation result
+    analytics.track('qr_validation', {
+      serial: serial,
+      authentic: result.authentic,
+      product: result.product_name,
+      timestamp: new Date().toISOString(),
+    });
+  }
+}, [result]);
+```
+
+## Error Handling
+
+### Frontend Errors
+
+| Error          | Cause              | User Message                                                   |
+| -------------- | ------------------ | -------------------------------------------------------------- |
+| Network error  | API unreachable    | "Unable to connect. Please check your internet connection."    |
+| Invalid format | Missing URL params | "Invalid QR code format"                                       |
+| Timeout        | Slow API response  | "Validation is taking longer than expected. Please try again." |
+
+### Backend Errors
+
+| Error                 | HTTP Code | Response                         |
+| --------------------- | --------- | -------------------------------- |
+| Serial not found      | 400       | "Serial number not found"        |
+| Product not activated | 400       | "Product has not been activated" |
+| Invalid signature     | 400       | "Authentication Failed"          |
+| Server error          | 500       | "Internal server error"          |
+
+## Testing Strategy
+
+### Unit Tests
+
+- URL parsing logic
+- Signature verification
+- Error handling
+
+### Integration Tests
+
+- End-to-end validation flow
+- API integration
+- Database queries
+
+### Manual Tests
+
+- Scan real QR codes
+- Test on multiple devices
+- Test network conditions
+
+## Future Enhancements
+
+### Phase 2
+
+- [ ] Multi-language support
+- [ ] Product images
+- [ ] Warranty information
+- [ ] Purchase verification
+
+### Phase 3
+
+- [ ] Scan history for users
+- [ ] Report counterfeit button
+- [ ] Social sharing
+- [ ] Loyalty program integration
+
+### Phase 4
+
+- [ ] Offline validation (cached keys)
+- [ ] Batch validation
+- [ ] Supply chain tracking
+- [ ] Blockchain integration
+
+---
+
+**Architecture Status**: ✅ Implemented
+**Last Updated**: 2025-01-28
