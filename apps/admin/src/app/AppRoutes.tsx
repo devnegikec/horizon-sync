@@ -16,6 +16,7 @@ import { PaymentsPage } from './pages/PaymentsPage';
 import { SystemPermissionsPage } from './pages/SystemPermissionsPage';
 import { SystemSettingsPage } from './pages/SystemSettingsPage';
 import { UserDetailPage } from './pages/UserDetailPage';
+import { AuditLogsPage } from './pages/AuditLogsPage';
 import { UsersPage } from './pages/UsersPage';
 
 export function AppRoutes() {
@@ -45,6 +46,7 @@ export function AppRoutes() {
                 <Route path="/billing" element={<BillingManagementPage />} />
                 <Route path="/admin/permissions" element={<SystemPermissionsPage />} />
                 <Route path="/settings" element={<SystemSettingsPage />} />
+                <Route path="/audit-logs" element={<AuditLogsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </DashboardLayout>

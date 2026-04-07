@@ -71,3 +71,9 @@ export type {
 } from './user.types';
 
 export type { PaginationMeta } from './common.types';
+
+export type {
+  AuditLogEntry,
+  AuditLogListResponse,
+  AuditLogFilters,
+} from './audit.types';

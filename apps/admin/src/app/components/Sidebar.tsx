@@ -56,6 +56,12 @@ const mainNavItems: NavItem[] = [
     requiresPermission: ['system_admin.billing', 'invoice.send_reminder', '*.*']
   },
   {
+    title: 'Audit Logs',
+    href: '/audit-logs',
+    icon: FileText,
+    requiresPermission: ['system_admin.master', '*.*']
+  },
+  {
     title: 'Organization Deactivation',
     href: '/organizations/deactivation',
     icon: Ban,
