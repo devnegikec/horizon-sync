@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 
-import { Calendar, DollarSign, FileText, TrendingUp, Download, Plus, CreditCard, Filter, MoreHorizontal, Eye, CheckCircle, Mail } from 'lucide-react';
+import { Building2, Calendar, DollarSign, FileText, TrendingUp, Download, Plus, CreditCard, Filter, MoreHorizontal, Eye, CheckCircle, Mail } from 'lucide-react';
 
 import {
     Card,
@@ -342,9 +342,10 @@ export function BillingManagementPage() {
             accessorKey: 'party_name',
             header: 'Customer',
             cell: ({ row }: any) => {
-                // Display customer organization name (party_name) rather than master org name
-                const customerName = row.original.party_name || row.original.organization_name || 'Unknown';
-                const displayName = customerName.replace(/^Organization\s+/i, '').trim();
+                const partyName = row.original.party_name;
+                const orgName = row.original.organization_name;
+                // Use party_name if available, otherwise fall back to organization_name
+                const displayName = partyName || orgName || 'Unknown';
                 return <span className="font-medium">{displayName}</span>;
             },
         },
@@ -439,13 +440,12 @@ export function BillingManagementPage() {
             accessorKey: 'organization_name',
             header: 'Organization',
             cell: ({ row }: any) => (
-                <Button
-                    variant="link"
-                    className="p-0 h-auto font-medium"
-                    onClick={() => setSelectedOrganization(row.original)}
-                >
-                    {row.original.organization_name}
-                </Button>
+                <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#3058EE] to-[#7D97F6]">
+                        <Building2 className="h-4 w-4 text-white" />
+                    </div>
+                    <span className="font-medium">{row.original.organization_name}</span>
+                </div>
             ),
         },
         {
@@ -458,6 +458,17 @@ export function BillingManagementPage() {
                         {status}
                     </Badge>
                 );
+            },
+        },
+        {
+            accessorKey: 'tier',
+            header: 'Tier',
+            cell: ({ row }: any) => {
+                const maxUsers = row.original.seat_limit || row.original.max_users || 0;
+                let tier = 'basic';
+                if (maxUsers > 50) tier = 'enterprise';
+                else if (maxUsers > 10) tier = 'pro';
+                return getTierBadge(tier);
             },
         },
         {
@@ -490,6 +501,31 @@ export function BillingManagementPage() {
                 row.original.next_billing_date
                     ? formatDate(row.original.next_billing_date)
                     : 'Not scheduled',
+        },
+        {
+            id: 'actions',
+            header: () => <span className="sr-only">Actions</span>,
+            cell: ({ row }: any) => {
+                const org = row.original;
+                return (
+                    <div className="text-right">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setSelectedOrganization(org)}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View Billing Details
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                );
+            },
+            enableSorting: false,
         },
     ];
 

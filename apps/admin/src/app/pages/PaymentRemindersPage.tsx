@@ -26,6 +26,11 @@ import {
     DialogTitle,
     Label,
     Textarea,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
 } from '@horizon-sync/ui/components';
 import {
     Search,
@@ -33,12 +38,15 @@ import {
     Bell,
     Plus,
     Eye,
+    Edit,
+    Trash2,
     Send,
     Clock,
     Building2,
     Mail,
     Settings,
     AlertTriangle,
+    MoreHorizontal,
 } from 'lucide-react';
 
 import { PaymentReminderService } from '../services/payment-reminder.service';
@@ -74,6 +82,28 @@ export function PaymentRemindersPage() {
         status: '',
     });
     
+    const [isEditingConfig, setIsEditingConfig] = useState(false);
+    const [editConfigForm, setEditConfigForm] = useState<ReminderConfigCreateRequest & { id?: string }>({
+        organization_id: '',
+        reminder_type: 'auto',
+        grace_period_days: 30,
+        first_reminder_days: 30,
+        second_reminder_days: 60,
+        final_notice_days: 90,
+        auto_deactivate_days: 120,
+        reminder_frequency_days: 7,
+        max_reminders_per_stage: 3,
+        is_enabled: true,
+        first_reminder_template: 'payment_reminder_first',
+        second_reminder_template: 'payment_reminder_second',
+        final_notice_template: 'payment_reminder_final',
+        deactivation_notice_template: 'payment_reminder_deactivation',
+    });
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editError, setEditError] = useState<string | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [configToDelete, setConfigToDelete] = useState<ReminderConfig | null>(null);
+
     // Form state for creating new reminder config
     const [newConfigForm, setNewConfigForm] = useState<ReminderConfigCreateRequest>({
         organization_id: '',
@@ -207,6 +237,58 @@ export function PaymentRemindersPage() {
     const handleModalOpen = () => {
         resetConfigForm();
         setShowConfigModal(true);
+    };
+
+    const handleEditConfig = (config: ReminderConfig) => {
+        setEditConfigForm({
+            id: config.id,
+            organization_id: config.organization_id || '',
+            reminder_type: (config.reminder_type as 'manual' | 'auto' | 'configured') || 'auto',
+            grace_period_days: config.grace_period_days ?? 30,
+            first_reminder_days: config.first_reminder_days ?? 30,
+            second_reminder_days: config.second_reminder_days ?? 60,
+            final_notice_days: config.final_notice_days ?? 90,
+            auto_deactivate_days: config.auto_deactivate_days ?? 120,
+            reminder_frequency_days: config.reminder_frequency_days ?? 7,
+            max_reminders_per_stage: config.max_reminders_per_stage ?? 3,
+            is_enabled: config.is_enabled ?? true,
+            first_reminder_template: config.first_reminder_template || 'payment_reminder_first',
+            second_reminder_template: config.second_reminder_template || 'payment_reminder_second',
+            final_notice_template: config.final_notice_template || 'payment_reminder_final',
+            deactivation_notice_template: config.deactivation_notice_template || 'payment_reminder_deactivation',
+        });
+        setEditError(null);
+        setShowEditModal(true);
+    };
+
+    const handleSaveEditConfig = async () => {
+        if (!editConfigForm.id) return;
+        setIsEditingConfig(true);
+        setEditError(null);
+        try {
+            const { id, ...updateData } = editConfigForm;
+            await PaymentReminderService.updateReminderConfig(id, updateData);
+            setShowEditModal(false);
+            loadReminderConfigs();
+        } catch (error) {
+            console.error('Failed to update config:', error);
+            setEditError(error instanceof Error ? error.message : 'Failed to update configuration');
+        } finally {
+            setIsEditingConfig(false);
+        }
+    };
+
+    const handleDeleteConfig = async () => {
+        if (!configToDelete) return;
+        try {
+            await PaymentReminderService.deleteReminderConfig(configToDelete.id);
+            setShowDeleteConfirm(false);
+            setConfigToDelete(null);
+            loadReminderConfigs();
+        } catch (error) {
+            console.error('Failed to delete config:', error);
+            alert('Failed to delete configuration');
+        }
     };
 
     const handleSendBatchReminders = async () => {
@@ -492,13 +574,31 @@ export function PaymentRemindersPage() {
                                             <TableCell>{config.first_reminder_days || config.escalation_days} days</TableCell>
                                             <TableCell>{formatDate(config.created_at)}</TableCell>
                                             <TableCell className="text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => setSelectedConfig(config)}
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => setSelectedConfig(config)}>
+                                                            <Eye className="mr-2 h-4 w-4" />
+                                                            View Details
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => handleEditConfig(config)}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem
+                                                            className="text-destructive"
+                                                            onClick={() => { setConfigToDelete(config); setShowDeleteConfirm(true); }}
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -814,18 +914,17 @@ export function PaymentRemindersPage() {
                 </Dialog>
             )}
 
-            {/* Reminder Config Details Modal */}
-            {selectedConfig && (
+            {/* View Configuration Details Modal */}
+            {selectedConfig && !showEditModal && (
                 <Dialog open={!!selectedConfig} onOpenChange={() => setSelectedConfig(null)}>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle>Payment Reminder Configuration Details</DialogTitle>
+                            <DialogTitle>Reminder Configuration Details</DialogTitle>
                             <DialogDescription>
-                                View detailed configuration settings for this payment reminder
+                                View configuration settings for this payment reminder
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-6 py-4">
-                            {/* Basic Information */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <Label className="text-sm font-medium text-muted-foreground">Organization</Label>
@@ -844,14 +943,12 @@ export function PaymentRemindersPage() {
                                     <p className="font-medium">{selectedConfig.grace_period_days} days</p>
                                 </div>
                             </div>
-
-                            {/* Escalation Timeline */}
                             <div>
                                 <Label className="text-base font-semibold mb-3 block">Escalation Timeline</Label>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <Label className="text-sm font-medium text-muted-foreground">First Reminder</Label>
-                                        <p className="font-medium">{selectedConfig.first_reminder_days || selectedConfig.escalation_days || 30} days</p>
+                                        <p className="font-medium">{selectedConfig.first_reminder_days || 30} days</p>
                                     </div>
                                     <div>
                                         <Label className="text-sm font-medium text-muted-foreground">Second Reminder</Label>
@@ -863,14 +960,12 @@ export function PaymentRemindersPage() {
                                     </div>
                                     <div>
                                         <Label className="text-sm font-medium text-muted-foreground">Auto-Deactivate</Label>
-                                        <p className="font-medium">{selectedConfig.auto_deactivate_days || selectedConfig.auto_deactivate ? 'Enabled' : 'Disabled'} {selectedConfig.auto_deactivate_days ? `(${selectedConfig.auto_deactivate_days} days)` : ''}</p>
+                                        <p className="font-medium">{selectedConfig.auto_deactivate_days ? `${selectedConfig.auto_deactivate_days} days` : 'Disabled'}</p>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Settings */}
                             <div>
-                                <Label className="text-base font-semibold mb-3 block">Advanced Settings</Label>
+                                <Label className="text-base font-semibold mb-3 block">Settings</Label>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <Label className="text-sm font-medium text-muted-foreground">Frequency</Label>
@@ -878,35 +973,10 @@ export function PaymentRemindersPage() {
                                     </div>
                                     <div>
                                         <Label className="text-sm font-medium text-muted-foreground">Max Per Stage</Label>
-                                        <p className="font-medium">{selectedConfig.max_reminders_per_stage || selectedConfig.max_reminder_count || 3}</p>
+                                        <p className="font-medium">{selectedConfig.max_reminders_per_stage || 3}</p>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Templates */}
-                            <div>
-                                <Label className="text-base font-semibold mb-3 block">Email Templates</Label>
-                                <div className="space-y-2">
-                                    <div>
-                                        <Label className="text-sm font-medium text-muted-foreground">First Reminder</Label>
-                                        <p className="font-medium">{selectedConfig.first_reminder_template || selectedConfig.template_gentle || 'payment_reminder_first'}</p>
-                                    </div>
-                                    <div>
-                                        <Label className="text-sm font-medium text-muted-foreground">Second Reminder</Label>
-                                        <p className="font-medium">{selectedConfig.second_reminder_template || selectedConfig.template_standard || 'payment_reminder_second'}</p>
-                                    </div>
-                                    <div>
-                                        <Label className="text-sm font-medium text-muted-foreground">Final Notice</Label>
-                                        <p className="font-medium">{selectedConfig.final_notice_template || selectedConfig.template_final || 'payment_reminder_final'}</p>
-                                    </div>
-                                    <div>
-                                        <Label className="text-sm font-medium text-muted-foreground">Deactivation Notice</Label>
-                                        <p className="font-medium">{selectedConfig.deactivation_notice_template || 'payment_reminder_deactivation'}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Audit */}
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <Label className="text-muted-foreground">Created</Label>
@@ -919,12 +989,146 @@ export function PaymentRemindersPage() {
                             </div>
                         </div>
                         <div className="flex justify-end space-x-2">
-                            <Button variant="outline" onClick={() => setSelectedConfig(null)}>
-                                Close
+                            <Button variant="outline" onClick={() => setSelectedConfig(null)}>Close</Button>
+                            <Button onClick={() => { handleEditConfig(selectedConfig); setSelectedConfig(null); }}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
                             </Button>
-                            <Button>
-                                Edit Configuration
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Edit Configuration Modal */}
+            {showEditModal && (
+                <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>Edit Reminder Configuration</DialogTitle>
+                            <DialogDescription>
+                                Update payment reminder settings for this organization
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-6 py-4">
+                            {editError && (
+                                <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
+                                    {editError}
+                                </div>
+                            )}
+
+                            <div>
+                                <Label>Reminder Type</Label>
+                                <select
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                    value={editConfigForm.reminder_type}
+                                    onChange={(e) => setEditConfigForm(prev => ({ ...prev, reminder_type: e.target.value as 'manual' | 'auto' | 'configured' }))}
+                                >
+                                    <option value="auto">Automatic</option>
+                                    <option value="manual">Manual</option>
+                                    <option value="configured">Configured</option>
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label>Grace Period (days)</Label>
+                                    <Input type="number" min="0" value={editConfigForm.grace_period_days}
+                                        onChange={(e) => setEditConfigForm(prev => ({ ...prev, grace_period_days: parseInt(e.target.value) || 0 }))} />
+                                </div>
+                                <div>
+                                    <Label>Reminder Frequency (days)</Label>
+                                    <Input type="number" min="1" value={editConfigForm.reminder_frequency_days}
+                                        onChange={(e) => setEditConfigForm(prev => ({ ...prev, reminder_frequency_days: parseInt(e.target.value) || 7 }))} />
+                                </div>
+                            </div>
+
+                            <div>
+                                <Label className="text-base font-semibold">Escalation Timeline</Label>
+                                <div className="grid grid-cols-2 gap-4 mt-2">
+                                    <div>
+                                        <Label>First Reminder (days)</Label>
+                                        <Input type="number" value={editConfigForm.first_reminder_days}
+                                            onChange={(e) => setEditConfigForm(prev => ({ ...prev, first_reminder_days: parseInt(e.target.value) || 30 }))} />
+                                    </div>
+                                    <div>
+                                        <Label>Second Reminder (days)</Label>
+                                        <Input type="number" value={editConfigForm.second_reminder_days}
+                                            onChange={(e) => setEditConfigForm(prev => ({ ...prev, second_reminder_days: parseInt(e.target.value) || 60 }))} />
+                                    </div>
+                                    <div>
+                                        <Label>Final Notice (days)</Label>
+                                        <Input type="number" value={editConfigForm.final_notice_days}
+                                            onChange={(e) => setEditConfigForm(prev => ({ ...prev, final_notice_days: parseInt(e.target.value) || 90 }))} />
+                                    </div>
+                                    <div>
+                                        <Label>Auto-Deactivate (days)</Label>
+                                        <Input type="number" value={editConfigForm.auto_deactivate_days || ''}
+                                            onChange={(e) => setEditConfigForm(prev => ({ ...prev, auto_deactivate_days: parseInt(e.target.value) || 120 }))} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <Label>Max Reminders per Stage</Label>
+                                <Input type="number" min="1" max="10" value={editConfigForm.max_reminders_per_stage}
+                                    onChange={(e) => setEditConfigForm(prev => ({ ...prev, max_reminders_per_stage: parseInt(e.target.value) || 3 }))} />
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                <input type="checkbox" id="edit-enable" checked={editConfigForm.is_enabled}
+                                    onChange={(e) => setEditConfigForm(prev => ({ ...prev, is_enabled: e.target.checked }))} />
+                                <Label htmlFor="edit-enable">Enable automatic reminders</Label>
+                            </div>
+
+                            <div>
+                                <Label className="text-base font-semibold">Email Templates</Label>
+                                <div className="grid grid-cols-1 gap-4 mt-2">
+                                    <div>
+                                        <Label>First Reminder Template</Label>
+                                        <Input value={editConfigForm.first_reminder_template}
+                                            onChange={(e) => setEditConfigForm(prev => ({ ...prev, first_reminder_template: e.target.value }))} />
+                                    </div>
+                                    <div>
+                                        <Label>Second Reminder Template</Label>
+                                        <Input value={editConfigForm.second_reminder_template}
+                                            onChange={(e) => setEditConfigForm(prev => ({ ...prev, second_reminder_template: e.target.value }))} />
+                                    </div>
+                                    <div>
+                                        <Label>Final Notice Template</Label>
+                                        <Input value={editConfigForm.final_notice_template}
+                                            onChange={(e) => setEditConfigForm(prev => ({ ...prev, final_notice_template: e.target.value }))} />
+                                    </div>
+                                    <div>
+                                        <Label>Deactivation Notice Template</Label>
+                                        <Input value={editConfigForm.deactivation_notice_template}
+                                            onChange={(e) => setEditConfigForm(prev => ({ ...prev, deactivation_notice_template: e.target.value }))} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                            <Button variant="outline" onClick={() => setShowEditModal(false)} disabled={isEditingConfig}>Cancel</Button>
+                            <Button onClick={handleSaveEditConfig} disabled={isEditingConfig}>
+                                {isEditingConfig ? 'Saving...' : 'Save Changes'}
                             </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Delete Confirmation Dialog */}
+            {showDeleteConfirm && configToDelete && (
+                <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Delete Configuration</DialogTitle>
+                            <DialogDescription>
+                                Are you sure you want to delete the reminder configuration for "{configToDelete.organization_name || 'this organization'}"? This action cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex justify-end space-x-2 pt-4">
+                            <Button variant="outline" onClick={() => { setShowDeleteConfirm(false); setConfigToDelete(null); }}>Cancel</Button>
+                            <Button variant="destructive" onClick={handleDeleteConfig}>Delete</Button>
                         </div>
                     </DialogContent>
                 </Dialog>

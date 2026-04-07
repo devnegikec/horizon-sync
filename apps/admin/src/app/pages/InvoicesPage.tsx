@@ -198,8 +198,8 @@ export function InvoicesPage() {
                 id: item.id || '',
                 description: item.description,
                 quantity: item.quantity,
-                unit_price: item.unit_price,
-                amount: item.total_amount || (item.quantity * item.unit_price)
+                unit_price: item.unit_price || 0,
+                amount: item.total_amount || (item.quantity * (item.unit_price || 0))
             })),
         };
     };
