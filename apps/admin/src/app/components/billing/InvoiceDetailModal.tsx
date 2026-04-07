@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -125,6 +125,34 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
     const [activeTab, setActiveTab] = useState('details');
     const [showPaymentForm, setShowPaymentForm] = useState(false);
     const [showCreatePaymentForm, setShowCreatePaymentForm] = useState(false);
+    const [fullInvoice, setFullInvoice] = useState<Invoice>(invoice);
+
+    // Fetch full invoice detail with line items when modal opens
+    useEffect(() => {
+        if (isOpen && invoice.id) {
+            import('../../services/admin-invoice.service').then(({ AdminInvoiceService }) => {
+                AdminInvoiceService.getInvoice(invoice.id).then((detail: any) => {
+                    // Map backend items to frontend line_items format
+                    const lineItems = (detail.items || []).map((item: any) => ({
+                        id: item.id,
+                        description: item.item_name || item.description || '',
+                        quantity: Number(item.qty) || 0,
+                        unit_price: Number(item.rate) || 0,
+                        total_amount: Number(item.amount) || (Number(item.qty) * Number(item.rate)) || 0,
+                    }));
+                    setFullInvoice({
+                        ...invoice,
+                        ...detail,
+                        party_name: detail.customer?.customer_name || detail.supplier?.supplier_name || invoice.party_name,
+                        line_items: lineItems,
+                    });
+                }).catch(() => {
+                    // Fallback to the invoice from list
+                    setFullInvoice(invoice);
+                });
+            });
+        }
+    }, [isOpen, invoice.id]);
 
     const paymentForm = useForm<PaymentFormData>({
         resolver: zodResolver(paymentSchema),
@@ -182,10 +210,10 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
         { value: 'other', label: 'Other' },
     ];
 
-    const isOverdue = invoice.status === 'pending' && invoice.due_date && new Date(invoice.due_date) < new Date();
-    const canMarkAsSent = invoice.status === 'draft';
-    const canMarkAsPaid = ['sent', 'pending', 'overdue'].includes(invoice.status);
-    const canCreatePayment = ['sent', 'pending', 'overdue'].includes(invoice.status);
+    const isOverdue = fullInvoice.status === 'pending' && fullInvoice.due_date && new Date(fullInvoice.due_date) < new Date();
+    const canMarkAsSent = fullInvoice.status === 'draft';
+    const canMarkAsPaid = ['sent', 'pending', 'overdue'].includes(fullInvoice.status);
+    const canCreatePayment = ['sent', 'pending', 'overdue'].includes(fullInvoice.status);
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -193,8 +221,8 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                 <DialogHeader>
                     <div className="flex items-center justify-between">
                         <DialogTitle className="flex items-center gap-2">
-                            Invoice {invoice.invoice_no}
-                            {getStatusBadge(invoice.status)}
+                            Invoice {fullInvoice.invoice_no}
+                            {getStatusBadge(fullInvoice.status)}
                             {isOverdue && (
                                 <Badge variant="destructive">Overdue</Badge>
                             )}
@@ -257,19 +285,19 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Invoice #</label>
-                                            <p className="font-medium">{invoice.invoice_no}</p>
+                                            <p className="font-medium">{fullInvoice.invoice_no}</p>
                                         </div>
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Type</label>
-                                            <p className="capitalize">{invoice.invoice_type.replace('_', ' ')}</p>
+                                            <p className="capitalize">{fullInvoice.invoice_type.replace('_', ' ')}</p>
                                         </div>
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Tier</label>
-                                            <div className="mt-1">{getTierBadge(invoice.subscription_tier || 'basic')}</div>
+                                            <div className="mt-1">{getTierBadge(fullInvoice.subscription_tier || 'basic')}</div>
                                         </div>
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Status</label>
-                                            <div className="mt-1">{getStatusBadge(invoice.status)}</div>
+                                            <div className="mt-1">{getStatusBadge(fullInvoice.status)}</div>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -286,7 +314,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Amount</label>
-                                            <p className="text-2xl font-bold">{formatCurrency(invoice.grand_total)}</p>
+                                            <p className="text-2xl font-bold">{formatCurrency(fullInvoice.grand_total)}</p>
                                         </div>
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Due Date</label>
@@ -294,14 +322,14 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                                                 'font-medium',
                                                 isOverdue ? 'text-destructive' : 'text-foreground'
                                             )}>
-                                                {invoice.due_date ? formatDate(invoice.due_date) : 'Not set'}
+                                                {fullInvoice.due_date ? formatDate(fullInvoice.due_date) : 'Not set'}
                                             </p>
                                         </div>
                                     </div>
-                                    {invoice.paid_date && (
+                                    {fullInvoice.paid_date && (
                                         <div>
                                             <label className="text-sm font-medium text-muted-foreground">Paid Date</label>
-                                            <p className="font-medium text-success">{formatDate(invoice.paid_date)}</p>
+                                            <p className="font-medium text-success">{formatDate(fullInvoice.paid_date)}</p>
                                         </div>
                                     )}
                                 </CardContent>
@@ -320,41 +348,41 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="text-sm font-medium text-muted-foreground">Period Start</label>
-                                        <p className="font-medium">{invoice.subscription_period_start ? formatDate(invoice.subscription_period_start) : 'Not set'}</p>
+                                        <p className="font-medium">{fullInvoice.subscription_period_start ? formatDate(fullInvoice.subscription_period_start) : fullInvoice.posting_date ? formatDate(fullInvoice.posting_date) : 'Not set'}</p>
                                     </div>
                                     <div>
                                         <label className="text-sm font-medium text-muted-foreground">Period End</label>
-                                        <p className="font-medium">{invoice.subscription_period_end ? formatDate(invoice.subscription_period_end) : 'Not set'}</p>
+                                        <p className="font-medium">{fullInvoice.subscription_period_end ? formatDate(fullInvoice.subscription_period_end) : fullInvoice.due_date ? formatDate(fullInvoice.due_date) : 'Not set'}</p>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
 
                         {/* Description */}
-                        {invoice.description && (
+                        {fullInvoice.description && (
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="text-lg">Description</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-muted-foreground">{invoice.description}</p>
+                                    <p className="text-muted-foreground">{fullInvoice.description}</p>
                                 </CardContent>
                             </Card>
                         )}
                     </TabsContent>
 
                     <TabsContent value="line-items">
-                        {invoice.line_items && invoice.line_items.length > 0 ? (
+                        {fullInvoice.line_items && fullInvoice.line_items.length > 0 ? (
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Line Items</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="space-y-0">
-                                        {invoice.line_items.map((item, index) => (
+                                        {fullInvoice.line_items.map((item, index) => (
                                             <div key={item.id || index} className={cn(
                                                 "p-4 grid grid-cols-12 gap-4 items-center",
-                                                index !== invoice.line_items!.length - 1 && "border-b"
+                                                index !== fullInvoice.line_items!.length - 1 && "border-b"
                                             )}>
                                                 <div className="col-span-6">
                                                     <p className="font-medium">{item.description}</p>
@@ -375,7 +403,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                                         <div className="flex justify-end">
                                             <div className="text-right">
                                                 <p className="text-sm text-muted-foreground">Total Amount</p>
-                                                <p className="text-xl font-bold">{formatCurrency(invoice.grand_total)}</p>
+                                                <p className="text-xl font-bold">{formatCurrency(fullInvoice.grand_total)}</p>
                                             </div>
                                         </div>
                                     </div>

@@ -124,14 +124,14 @@ export class OrganizationDeactivationService {
   // Check organizations for deactivation
   static async checkOrganizationsForDeactivation(): Promise<DeactivationActionResponse[]> {
     return this.request<DeactivationActionResponse[]>(
-      '/api/v1/organization-deactivation/check-deactivations'
+      '/api/v1/organization-management/check-deactivations'
     );
   }
 
   // Get deactivation summary
   static async getDeactivationSummary(): Promise<DeactivationSummaryResponse> {
     return this.request<DeactivationSummaryResponse>(
-      '/api/v1/organization-deactivation/deactivation-summary'
+      '/api/v1/organization-management/deactivation-summary'
     );
   }
 
@@ -141,7 +141,7 @@ export class OrganizationDeactivationService {
     request: ExpireTrialRequest
   ): Promise<DeactivationActionResponse> {
     return this.request<DeactivationActionResponse>(
-      `/api/v1/organization-deactivation/expire-trial/${organizationId}`,
+      `/api/v1/organization-management/expire-trial/${organizationId}`,
       {
         method: 'POST',
         body: JSON.stringify(request),
@@ -155,7 +155,7 @@ export class OrganizationDeactivationService {
     request: ExpireSubscriptionRequest
   ): Promise<DeactivationActionResponse> {
     return this.request<DeactivationActionResponse>(
-      `/api/v1/organization-deactivation/expire-subscription/${organizationId}`,
+      `/api/v1/organization-management/expire-subscription/${organizationId}`,
       {
         method: 'POST',
         body: JSON.stringify(request),
@@ -169,7 +169,7 @@ export class OrganizationDeactivationService {
     request: SuspendOrganizationRequest
   ): Promise<DeactivationActionResponse> {
     return this.request<DeactivationActionResponse>(
-      `/api/v1/organization-deactivation/suspend/${organizationId}`,
+      `/api/v1/organization-management/suspend/${organizationId}`,
       {
         method: 'POST',
         body: JSON.stringify(request),
@@ -183,7 +183,7 @@ export class OrganizationDeactivationService {
     request: CancelSubscriptionRequest
   ): Promise<DeactivationActionResponse> {
     return this.request<DeactivationActionResponse>(
-      `/api/v1/organization-deactivation/cancel-subscription/${organizationId}`,
+      `/api/v1/organization-management/cancel-subscription/${organizationId}`,
       {
         method: 'POST',
         body: JSON.stringify(request),
@@ -197,7 +197,7 @@ export class OrganizationDeactivationService {
     request: ReactivateOrganizationRequest
   ): Promise<ReactivationResponse> {
     return this.request<ReactivationResponse>(
-      `/api/v1/organization-deactivation/reactivate/${organizationId}`,
+      `/api/v1/organization-management/reactivate/${organizationId}`,
       {
         method: 'POST',
         body: JSON.stringify(request),
@@ -212,7 +212,7 @@ export class OrganizationDeactivationService {
     suspensionReason?: string
   ): Promise<DeactivationActionResponse[]> {
     return this.request<DeactivationActionResponse[]>(
-      `/api/v1/organization-deactivation/bulk-suspension?days_overdue=${daysOverdue}&suspension_reason=${encodeURIComponent(suspensionReason || 'Bulk suspension for non-payment')}`,
+      `/api/v1/organization-management/bulk-suspension?days_overdue=${daysOverdue}&suspension_reason=${encodeURIComponent(suspensionReason || 'Bulk suspension for non-payment')}`,
       {
         method: 'POST',
         body: JSON.stringify(organizationIds),
@@ -225,7 +225,7 @@ export class OrganizationDeactivationService {
     organizationId: string
   ): Promise<OrganizationStatusResponse> {
     return this.request<OrganizationStatusResponse>(
-      `/api/v1/organization-deactivation/organization-status/${organizationId}`
+      `/api/v1/organization-management/organization-status/${organizationId}`
     );
   }
 
@@ -235,6 +235,6 @@ export class OrganizationDeactivationService {
     subscription_expired: Array<{ organization_id: string; organization_name: string; days_expired: number }>;
     payment_overdue: Array<{ organization_id: string; organization_name: string; days_overdue: number; amount_due: number }>;
   }> {
-    return this.request('/api/v1/organization-deactivation/organizations-requiring-action');
+    return this.request('/api/v1/organization-management/organizations-requiring-action');
   }
 }

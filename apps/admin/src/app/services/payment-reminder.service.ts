@@ -42,6 +42,11 @@ export class PaymentReminderService {
       handleApiError(error);
     }
 
+    // 204 No Content has no body
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     return response.json();
   }
 
