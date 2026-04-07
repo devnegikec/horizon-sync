@@ -14,6 +14,11 @@ interface AuthSessionRestoreProps {
 const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password'];
 
 /**
+ * Public route prefixes — any path starting with these is treated as public
+ */
+const PUBLIC_ROUTE_PREFIXES = ['/g/'];
+
+/**
  * Attempts to restore session from HttpOnly refresh cookie on app load
  * (when "Remember Me" was used). Shows loading until restore attempt completes.
  * Access token stays in memory; refresh token is only in cookie.
@@ -31,7 +36,8 @@ export function AuthSessionRestore({ children }: AuthSessionRestoreProps) {
     restoreSessionRef.current = restoreSession;
   }, [restoreSession]);
 
-  const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname);
+  const isPublicRoute = PUBLIC_ROUTES.includes(location.pathname)
+    || PUBLIC_ROUTE_PREFIXES.some((prefix) => location.pathname.startsWith(prefix));
 
   React.useEffect(() => {
     console.log('AuthSessionRestore effect running', {

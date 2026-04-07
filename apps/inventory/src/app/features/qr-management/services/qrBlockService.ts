@@ -71,6 +71,27 @@ class QRBlockService {
     );
     return res.data;
   }
+
+  // Public endpoint - no authentication required
+  async authenticate(data: {
+    serial_number: string;
+    nonce: string;
+    cipher: string;
+  }): Promise<{
+    message: string;
+    authentic: boolean;
+    product_name: string | null;
+    brand_name: string | null;
+    gtin: string | null;
+    serial_number: string | null;
+  }> {
+    const res = await axios.post(
+      `${API_BASE_URL}/api/v1/qr-products/authenticate`,
+      data,
+      // NO AUTH HEADER - public endpoint
+    );
+    return res.data;
+  }
 }
 
 export const qrBlockService = new QRBlockService();

@@ -21,6 +21,7 @@ export interface QRBlock {
   quantity: number;
   qr_type: QRType | null;
   status: BlockStatus;
+  progress?: number; // 0-100 percentage
   task_id: string | null;
   download_url: string | null;
   completed_at: string | null;
