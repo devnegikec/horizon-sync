@@ -13,6 +13,9 @@ export interface AuditLogEntry {
   ip_address: string | null;
   created_at: string;
   user_email: string | null;
+  user_name: string | null;
+  user_email_address: string | null;
+  organization_name: string | null;
 }
 
 export interface AuditLogListResponse {

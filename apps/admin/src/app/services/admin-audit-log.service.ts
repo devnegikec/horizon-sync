@@ -67,7 +67,10 @@ export class AdminAuditLogService {
   ): Promise<AuditLogListResponse> {
     const query = this.buildQueryString(filters);
 
-    // Fetch from both core-service and identity-service in parallel
+    // Core-service: paginated normally
+    // Identity-service: fetch with same page_size but page 1 (small dataset)
+    const identityQuery = this.buildQueryString({ ...filters, page: 1, page_size: filters?.page_size || 20 });
+
     const [coreResult, identityResult] = await Promise.allSettled([
       this.request<AuditLogListResponse>(
         API_CORE_URL,
@@ -75,7 +78,7 @@ export class AdminAuditLogService {
       ),
       this.request<AuditLogListResponse>(
         API_IDENTITY_URL,
-        `/api/v1/entity-audit-logs${query ? `?${query}` : ''}`
+        `/api/v1/entity-audit-logs${identityQuery ? `?${identityQuery}` : ''}`
       ),
     ]);
 
@@ -92,21 +95,32 @@ export class AdminAuditLogService {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
-    // Use core-service pagination as primary, add identity counts
-    const corePagination =
+    // Use core-service pagination as the driver
+    const coreP =
       coreResult.status === 'fulfilled'
         ? coreResult.value.pagination
         : { page: 1, page_size: 20, total_items: 0, total_pages: 1, has_next: false, has_prev: false };
+
+    const pageSize = filters?.page_size || coreP.page_size || 20;
     const identityTotal =
       identityResult.status === 'fulfilled'
         ? identityResult.value.pagination.total_items
         : 0;
+    const totalItems = coreP.total_items + identityTotal;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+    // Trim merged results to page_size so the table shows the correct number of rows
+    const trimmedLogs = allLogs.slice(0, pageSize);
 
     return {
-      audit_logs: allLogs,
+      audit_logs: trimmedLogs,
       pagination: {
-        ...corePagination,
-        total_items: corePagination.total_items + identityTotal,
+        page: coreP.page,
+        page_size: pageSize,
+        total_items: totalItems,
+        total_pages: totalPages,
+        has_next: coreP.page < totalPages,
+        has_prev: coreP.page > 1,
       },
     };
   }
