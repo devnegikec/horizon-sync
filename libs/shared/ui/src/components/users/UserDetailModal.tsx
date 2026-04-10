@@ -74,6 +74,9 @@ export interface UserDetailModalProps {
   loading?: boolean;
   onUpdate?: (userId: string, data: UserDetailEditData) => Promise<void>;
   config?: UserDetailModalConfig;
+  /** When true, system_admin options are shown in USER_TYPE_OPTIONS and ROLE_OPTIONS.
+   *  When false/undefined, system_admin options are filtered out. */
+  isSuperAdmin?: boolean;
 }
 
 const ROLE_OPTIONS = [
@@ -158,11 +161,13 @@ function ViewMode({ user, config, onEdit }: { user: UserDetailData; config: User
   );
 }
 
-function EditMode({ user, config, onSave, onCancel }: {
+function EditMode({ user, config, onSave, onCancel, filteredUserTypeOptions, filteredRoleOptions }: {
   user: UserDetailData;
   config: UserDetailModalConfig;
   onSave: (data: UserDetailEditData) => Promise<void>;
   onCancel: () => void;
+  filteredUserTypeOptions: readonly { value: string; label: string }[];
+  filteredRoleOptions: readonly { value: string; label: string }[];
 }) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
@@ -241,7 +246,7 @@ function EditMode({ user, config, onSave, onCancel }: {
               <Select value={watch('user_type') ?? ''} onValueChange={v => setValue('user_type', v)}>
                 <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                 <SelectContent>
-                  {USER_TYPE_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                  {filteredUserTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -255,7 +260,7 @@ function EditMode({ user, config, onSave, onCancel }: {
           <Label>Roles</Label>
           <div className="rounded-lg border border-border p-4">
             <div className="grid grid-cols-3 gap-3">
-              {ROLE_OPTIONS.map(role => (
+              {filteredRoleOptions.map(role => (
                 <div key={role.value} className="flex items-center space-x-2">
                   <Checkbox id={`ud-role-${role.value}`} checked={currentRoles.includes(role.value)}
                     onCheckedChange={checked => handleRoleToggle(role.value, !!checked)} />
@@ -292,13 +297,23 @@ function EditMode({ user, config, onSave, onCancel }: {
   );
 }
 
-export function UserDetailModal({ open, onOpenChange, user, loading, onUpdate, config = {} }: UserDetailModalProps) {
+export function UserDetailModal({ open, onOpenChange, user, loading, onUpdate, config = {}, isSuperAdmin = false }: UserDetailModalProps) {
   const {
     showUserType = false, showRoles = false, showPhone = false,
     showOrganization = false, showStatus = true,
     allowEdit = false, allowDeactivate = false, initialEditMode = false,
   } = config;
   const resolvedConfig = { showUserType, showRoles, showPhone, showOrganization, showStatus, allowEdit, allowDeactivate };
+
+  // Filter out system_admin options when the current user is not a Super Admin
+  const filteredUserTypeOptions = React.useMemo(
+    () => isSuperAdmin ? USER_TYPE_OPTIONS : USER_TYPE_OPTIONS.filter((opt) => opt.value !== 'system_admin'),
+    [isSuperAdmin]
+  );
+  const filteredRoleOptions = React.useMemo(
+    () => isSuperAdmin ? ROLE_OPTIONS : ROLE_OPTIONS.filter((opt) => opt.value !== 'system_admin'),
+    [isSuperAdmin]
+  );
 
   const [editing, setEditing] = React.useState(false);
 
@@ -353,7 +368,7 @@ export function UserDetailModal({ open, onOpenChange, user, loading, onUpdate, c
         ) : !user ? (
           <div className="py-8 text-center text-muted-foreground">User not found</div>
         ) : editing ? (
-          <EditMode user={user} config={resolvedConfig} onSave={handleSave} onCancel={handleCancel} />
+          <EditMode user={user} config={resolvedConfig} onSave={handleSave} onCancel={handleCancel} filteredUserTypeOptions={filteredUserTypeOptions} filteredRoleOptions={filteredRoleOptions} />
         ) : (
           <>
             <ViewMode user={user} config={resolvedConfig} onEdit={allowEdit ? () => setEditing(true) : undefined} />

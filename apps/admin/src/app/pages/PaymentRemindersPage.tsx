@@ -51,6 +51,8 @@ import {
 
 import { PaymentReminderService } from '../services/payment-reminder.service';
 import { AdminOrganizationService } from '../services/admin-organization.service';
+import { usePermissions } from '../hooks/usePermissions';
+import { SYSTEM_ADMIN_PERMISSIONS } from '../types/permissions';
 import type { ReminderConfig, ReminderLog, ReminderConfigCreateRequest, AdminOrgListItem } from '../types';
 
 interface ReminderFilter {
@@ -61,6 +63,10 @@ interface ReminderFilter {
 }
 
 export function PaymentRemindersPage() {
+    const { hasPermission } = usePermissions();
+    const canCreate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.BILLING_CREATE);
+    const canUpdate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.BILLING_UPDATE);
+    const canDelete = hasPermission(SYSTEM_ADMIN_PERMISSIONS.BILLING_DELETE);
     const [reminderConfigs, setReminderConfigs] = useState<ReminderConfig[]>([]);
     const [reminderLogs, setReminderLogs] = useState<ReminderLog[]>([]);
     const [organizations, setOrganizations] = useState<AdminOrgListItem[]>([]);
@@ -386,14 +392,18 @@ export function PaymentRemindersPage() {
                         <Eye className="h-4 w-4 mr-2" />
                         Preview Batch
                     </Button>
-                    <Button onClick={handleSendBatchReminders}>
-                        <Send className="h-4 w-4 mr-2" />
-                        Send Batch Reminders
-                    </Button>
-                    <Button onClick={handleModalOpen}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        New Config
-                    </Button>
+                    {canUpdate && (
+                        <Button onClick={handleSendBatchReminders}>
+                            <Send className="h-4 w-4 mr-2" />
+                            Send Batch Reminders
+                        </Button>
+                    )}
+                    {canCreate && (
+                        <Button onClick={handleModalOpen}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            New Config
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -585,18 +595,24 @@ export function PaymentRemindersPage() {
                                                             <Eye className="mr-2 h-4 w-4" />
                                                             View Details
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleEditConfig(config)}>
-                                                            <Edit className="mr-2 h-4 w-4" />
-                                                            Edit
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem
-                                                            className="text-destructive"
-                                                            onClick={() => { setConfigToDelete(config); setShowDeleteConfirm(true); }}
-                                                        >
-                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                            Delete
-                                                        </DropdownMenuItem>
+                                                        {canUpdate && (
+                                                            <DropdownMenuItem onClick={() => handleEditConfig(config)}>
+                                                                <Edit className="mr-2 h-4 w-4" />
+                                                                Edit
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        {canDelete && (
+                                                            <>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem
+                                                                    className="text-destructive"
+                                                                    onClick={() => { setConfigToDelete(config); setShowDeleteConfirm(true); }}
+                                                                >
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    Delete
+                                                                </DropdownMenuItem>
+                                                            </>
+                                                        )}
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </TableCell>

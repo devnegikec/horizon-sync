@@ -1,10 +1,11 @@
 import * as React from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { UserPlus, Send, Plus, Search, Check, ChevronsUpDown, Building2 } from 'lucide-react';
+import { UserPlus, Send, Plus, Search, Check, ChevronsUpDown, Building2, Shield } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import {
@@ -56,6 +57,14 @@ export interface CreateUserModalConfig {
   roleOptions?: Array<{ id: string; name: string; description?: string }>;
   /** Loading state for role options */
   rolesLoading?: boolean;
+  /** System admin role options for the role selector (shown when user_type = system_admin) */
+  systemAdminRoles?: SystemAdminRoleOption[];
+  /** Loading state for system admin roles */
+  systemAdminRolesLoading?: boolean;
+  /** Master organization ID — auto-selected when user_type is system_admin */
+  masterOrganizationId?: string;
+  /** Master organization display name */
+  masterOrganizationName?: string;
   /** Dialog title */
   title?: string;
   /** Dialog description */
@@ -77,6 +86,16 @@ export interface CreateUserModalFormData {
   phone?: string;
   role_id?: string;
   message?: string;
+  system_admin_role_ids?: string[];
+}
+
+/** A system admin role with its associated permissions, used for the role selector. */
+export interface SystemAdminRoleOption {
+  id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  permissions: Array<{ id: string; code: string; name: string; description: string | null }>;
 }
 
 export interface CreateUserModalProps {
@@ -86,6 +105,9 @@ export interface CreateUserModalProps {
   config?: CreateUserModalConfig;
   /** Set a field-level error from the parent (e.g. 409 duplicate email) */
   fieldError?: { field: string; message: string } | null;
+  /** When true, system_admin options are shown in USER_TYPE_OPTIONS and ROLE_CHECKBOX_OPTIONS.
+   *  When false/undefined, system_admin options are filtered out. */
+  isSuperAdmin?: boolean;
 }
 
 const ROLE_CHECKBOX_OPTIONS = [
@@ -224,6 +246,7 @@ export function CreateUserModal({
   onSubmit,
   config = {},
   fieldError,
+  isSuperAdmin = false,
 }: CreateUserModalProps) {
   const {
     showPassword = false,
@@ -238,11 +261,25 @@ export function CreateUserModal({
     showMessage = false,
     roleOptions = [],
     rolesLoading = false,
+    systemAdminRoles = [],
+    systemAdminRolesLoading = false,
+    masterOrganizationId = '',
+    masterOrganizationName = 'Master Organization',
     title = 'Create New User',
     description = 'Fill in the details to create a new user',
     submitLabel = 'Create User',
     submitIcon = 'plus',
   } = config;
+
+  // Filter out system_admin options when the current user is not a Super Admin
+  const filteredUserTypeOptions = React.useMemo(
+    () => isSuperAdmin ? USER_TYPE_OPTIONS : USER_TYPE_OPTIONS.filter((opt) => opt.value !== 'system_admin'),
+    [isSuperAdmin]
+  );
+  const filteredRoleCheckboxOptions = React.useMemo(
+    () => isSuperAdmin ? ROLE_CHECKBOX_OPTIONS : ROLE_CHECKBOX_OPTIONS.filter((opt) => opt.value !== 'system_admin'),
+    [isSuperAdmin]
+  );
 
   const schema = React.useMemo(() => buildSchema(config), [
     showPassword, showOrganization, showUserType, showRoles,
@@ -262,12 +299,15 @@ export function CreateUserModal({
     defaultValues: {
       email: '', first_name: '', last_name: '', password: '',
       organization_id: '', phone: '', roles: [], message: '',
+      system_admin_role_ids: [],
     },
   });
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
   const currentRoles = watch('roles') ?? [];
+  const currentUserType = watch('user_type') ?? '';
+  const currentSystemAdminRoleIds = watch('system_admin_role_ids') ?? [];
 
   // Apply external field errors
   React.useEffect(() => {
@@ -276,9 +316,32 @@ export function CreateUserModal({
     }
   }, [fieldError, setError]);
 
+  // Auto-select master org when user_type is system_admin, clear system admin roles when switching away
+  const isSystemAdmin = currentUserType === 'system_admin';
+  const prevUserTypeRef = React.useRef(currentUserType);
+  React.useEffect(() => {
+    if (prevUserTypeRef.current === currentUserType) return;
+    prevUserTypeRef.current = currentUserType;
+
+    if (isSystemAdmin && masterOrganizationId) {
+      setValue('organization_id', masterOrganizationId, { shouldValidate: true });
+      setValue('roles', []);
+      setValue('system_admin_role_ids', []);
+    } else {
+      setValue('system_admin_role_ids', []);
+    }
+  }, [currentUserType, isSystemAdmin, masterOrganizationId, setValue]);
+
   const handleRoleToggle = (role: string, checked: boolean) => {
     const updated = checked ? [...currentRoles, role] : currentRoles.filter((r) => r !== role);
     setValue('roles', updated, { shouldValidate: true });
+  };
+
+  const handleSystemAdminRoleToggle = (roleId: string, checked: boolean) => {
+    const updated = checked
+      ? [...currentSystemAdminRoleIds, roleId]
+      : currentSystemAdminRoleIds.filter((id) => id !== roleId);
+    setValue('system_admin_role_ids', updated);
   };
 
   const handleFormSubmit = async (data: CreateUserModalFormData) => {
@@ -318,7 +381,14 @@ export function CreateUserModal({
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(handleFormSubmit, (validationErrors) => {
+          console.error('Form validation errors:', validationErrors);
+          // Show first validation error as the error message
+          const firstError = Object.values(validationErrors)[0];
+          if (firstError?.message) {
+            setErrorMessage(String(firstError.message));
+          }
+        })} className="space-y-6">
           {/* Email */}
           <div className="space-y-2">
             <Label htmlFor="cu-email">Email Address <span className="text-destructive">*</span></Label>
@@ -355,7 +425,7 @@ export function CreateUserModal({
           )}
 
           {/* Organization (admin only — searchable by name) */}
-          {showOrganization && (
+          {showOrganization && !isSystemAdmin && (
             <OrgSearchField
               options={organizationOptions}
               loading={organizationsLoading}
@@ -366,28 +436,41 @@ export function CreateUserModal({
             />
           )}
 
-          {/* Phone + User Type row */}
-          {(showPhone || showUserType) && (
+          {/* User Type + Organization grouped section */}
+          {(showUserType || (showOrganization && isSystemAdmin)) && (
             <div className="grid grid-cols-2 gap-4">
-              {showPhone && (
-                <div className="space-y-2">
-                  <Label htmlFor="cu-phone">Phone</Label>
-                  <Input id="cu-phone" placeholder="+1 (555) 000-0000" {...register('phone')} />
-                </div>
-              )}
               {showUserType && (
                 <div className="space-y-2">
                   <Label>User Type</Label>
                   <Select value={watch('user_type') ?? ''} onValueChange={(v) => setValue('user_type', v)}>
                     <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                     <SelectContent>
-                      {USER_TYPE_OPTIONS.map((opt) => (
+                      {filteredUserTypeOptions.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               )}
+              {showOrganization && isSystemAdmin && (
+                <div className="space-y-2">
+                  <Label>Organization</Label>
+                  <Input
+                    value={masterOrganizationName}
+                    disabled
+                    className="bg-muted/50"
+                  />
+                  <p className="text-xs text-muted-foreground">System admins are assigned to the master organization</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Phone (separate row when user type is shown above) */}
+          {showPhone && (
+            <div className="space-y-2">
+              <Label htmlFor="cu-phone">Phone</Label>
+              <Input id="cu-phone" placeholder="+1 (555) 000-0000" {...register('phone')} />
             </div>
           )}
 
@@ -412,13 +495,13 @@ export function CreateUserModal({
             </div>
           )}
 
-          {/* Roles checkboxes (admin flow) */}
-          {showRoles && (
+          {/* Roles checkboxes (admin flow) — hidden when user_type is system_admin */}
+          {showRoles && !isSystemAdmin && (
             <div className="space-y-3">
               <Label>Roles</Label>
               <div className="rounded-lg border border-border p-4">
                 <div className="grid grid-cols-3 gap-3">
-                  {ROLE_CHECKBOX_OPTIONS.map((role) => (
+                  {filteredRoleCheckboxOptions.map((role) => (
                     <div key={role.value} className="flex items-center space-x-2">
                       <Checkbox id={`cu-role-${role.value}`}
                         checked={currentRoles.includes(role.value)}
@@ -431,6 +514,73 @@ export function CreateUserModal({
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* System Admin Role Selection — shown when user_type is system_admin */}
+          {currentUserType === 'system_admin' && systemAdminRoles.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-muted-foreground" />
+                <Label>System Admin Roles</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Select one or more roles to assign to this system admin user. Permissions are defined per role.
+              </p>
+              {systemAdminRolesLoading ? (
+                <div className="rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">
+                  Loading roles...
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {systemAdminRoles.map((role) => {
+                    const isSelected = currentSystemAdminRoleIds.includes(role.id);
+                    return (
+                      <div
+                        key={role.id}
+                        className={`rounded-lg border p-4 cursor-pointer transition-colors ${
+                          isSelected
+                            ? 'border-[#3058EE] bg-[#3058EE]/5'
+                            : 'border-border hover:border-muted-foreground/30'
+                        }`}
+                        onClick={() => handleSystemAdminRoleToggle(role.id, !isSelected)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            id={`cu-sa-role-${role.id}`}
+                            checked={isSelected}
+                            onCheckedChange={(checked) => handleSystemAdminRoleToggle(role.id, !!checked)}
+                            className="mt-0.5"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div className="flex-1 space-y-2">
+                            <div>
+                              <label
+                                htmlFor={`cu-sa-role-${role.id}`}
+                                className="text-sm font-medium leading-none cursor-pointer"
+                              >
+                                {role.name}
+                              </label>
+                              {role.description && (
+                                <p className="text-xs text-muted-foreground mt-1">{role.description}</p>
+                              )}
+                            </div>
+                            {isSelected && role.permissions.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {role.permissions.map((perm) => (
+                                  <Badge key={perm.id} variant="secondary" className="text-xs font-normal">
+                                    {perm.name || perm.code}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
