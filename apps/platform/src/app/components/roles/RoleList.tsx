@@ -5,8 +5,16 @@ import { Shield, Edit, Copy, Trash2, Lock } from 'lucide-react';
 import {
   Card,
   CardContent,
+  CardHeader,
+  CardTitle,
   Badge,
   Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -63,14 +71,9 @@ export function RoleList({
 
   const handleDeleteConfirm = async () => {
     if (!roleToDelete || !accessToken) return;
-
     try {
       await RoleService.deleteRole(roleToDelete.id, accessToken);
-      toast({
-        title: 'Success',
-        description: 'Role deleted successfully',
-        variant: 'default',
-      });
+      toast({ title: 'Success', description: 'Role deleted successfully', variant: 'default' });
       onDelete(roleToDelete.id);
     } catch (error) {
       toast({
@@ -88,11 +91,9 @@ export function RoleList({
 
   const handleUserCountClick = async (role: Role) => {
     if (!role.user_count || role.user_count === 0 || !accessToken) return;
-
     setSelectedRoleForUsers(role);
     setUserListDialogOpen(true);
     setLoadingUsers(true);
-
     try {
       const users = await RoleService.getRoleUsers(role.id, accessToken);
       setRoleUsers(users);
@@ -113,14 +114,14 @@ export function RoleList({
     setSelectedRoleForUsers(null);
     setRoleUsers([]);
   };
-  
+
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-6">
+      <Card className="border-border">
+        <CardContent className="p-0">
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3058EE] mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3058EE] mx-auto mb-4" />
               <p className="text-muted-foreground">Loading roles...</p>
             </div>
           </div>
@@ -131,7 +132,7 @@ export function RoleList({
 
   if (error) {
     return (
-      <Card>
+      <Card className="border-border">
         <CardContent className="p-6">
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
@@ -146,7 +147,7 @@ export function RoleList({
 
   if (roles.length === 0) {
     return (
-      <Card>
+      <Card className="border-border">
         <CardContent className="p-6">
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
@@ -163,21 +164,33 @@ export function RoleList({
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {roles.map((role) => (
-          <Card key={role.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-lg">{role.name}</h3>
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle>Roles</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Permissions</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {roles.map((role) => (
+                <TableRow key={role.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {role.name}
                       {role.is_system && (
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger>
-                              <Lock className="h-4 w-4 text-muted-foreground" />
+                              <Lock className="h-3.5 w-3.5 text-muted-foreground" />
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>System role - cannot be modified</p>
@@ -186,54 +199,91 @@ export function RoleList({
                         </TooltipProvider>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {role.description || 'No description'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Badges */}
-                <div className="flex flex-wrap gap-2">
-                  {role.is_system && (
-                    <Badge variant="secondary" className="text-xs">
-                      System
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm max-w-[250px] truncate">
+                    {role.description || '—'}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={role.is_system ? 'secondary' : 'outline'} className="text-xs">
+                      {role.is_system ? 'System' : 'Custom'}
                     </Badge>
-                  )}
-                  <Badge variant={role.is_active ? 'default' : 'outline'} className="text-xs">
-                    {role.is_active ? 'Active' : 'Inactive'}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    {role.permissions?.length || 0} permissions
-                  </Badge>
-                  {role.user_count !== undefined && (
-                    <Badge variant="outline" className={role.user_count > 0 ? 'text-xs cursor-pointer hover:bg-accent' : 'text-xs'} onClick={() => handleUserCountClick(role)}>
-                      {role.user_count} users
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={role.is_active ? 'default' : 'outline'} className="text-xs">
+                      {role.is_active ? 'Active' : 'Inactive'}
                     </Badge>
-                  )}
-                </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {(role.permissions || []).slice(0, 3).map((perm) => (
+                        <Badge key={perm.id} variant="secondary" className="text-xs">
+                          {perm.code}
+                        </Badge>
+                      ))}
+                      {(role.permissions || []).length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{role.permissions.length - 3}
+                        </Badge>
+                      )}
+                      {role.user_count !== undefined && role.user_count > 0 && (
+                        <Badge
+                          variant="outline"
+                          className="text-xs cursor-pointer hover:bg-accent"
+                          onClick={() => handleUserCountClick(role)}
+                        >
+                          {role.user_count} users
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={() => onEdit(role)} disabled={role.is_system}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Edit</p></TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={() => onClone(role)}>
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Clone</p></TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteClick(role)}
+                              disabled={role.is_system}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Delete</p></TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
-                {/* Actions */}
-                <div className="flex gap-2 pt-2 border-t">
-                  <Button variant="ghost" size="sm" onClick={() => onEdit(role)} disabled={role.is_system} className="flex-1">
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => onClone(role)} className="flex-1">
-                    <Copy className="h-4 w-4 mr-1" />
-                    Clone
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(role)} disabled={role.is_system} className="flex-1 text-destructive hover:text-destructive">
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Pagination - Show only when total items > 20 */}
+      {/* Pagination */}
       {serverPagination.totalItems > 20 && (
         <div className="flex items-center justify-between px-2 py-4">
           <div className="text-sm text-muted-foreground">

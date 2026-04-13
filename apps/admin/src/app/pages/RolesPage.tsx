@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
-import { Shield, Plus, Edit, Trash2, Key, ChevronDown, ChevronRight, Search, X } from 'lucide-react';
+import { Shield, Plus, Edit, Copy, Trash2, Lock, ChevronDown, ChevronRight, Search, X } from 'lucide-react';
 
 import {
   Card,
@@ -31,21 +31,24 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from '@horizon-sync/ui/components';
 import { cn } from '@horizon-sync/ui/lib';
 import { toast } from '@horizon-sync/ui';
 
 import { AdminRoleService } from '../services/admin-role.service';
 import type {
-  SystemAdminRole,
+  Role,
   RolePermission,
-  CreateRolePayload,
-  UpdateRolePayload,
+  RoleFormData,
   GroupedPermissions,
 } from '../services/admin-role.service';
 
 /* ------------------------------------------------------------------ */
-/*  Permission Search Bar                                             */
+/*  Permission Search Bar (matches platform PermissionSearch)         */
 /* ------------------------------------------------------------------ */
 
 interface PermissionSearchProps {
@@ -107,10 +110,10 @@ function PermissionSearch({ onSearchChange, onModuleFilter, modules, resultCount
         </div>
         <Select value={selectedModule} onValueChange={handleModuleChange}>
           <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="All Categories" />
+            <SelectValue placeholder="All Modules" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="all">All Modules</SelectItem>
             {modules.map((mod) => (
               <SelectItem key={mod} value={mod}>
                 {mod}
@@ -135,32 +138,40 @@ function PermissionSearch({ onSearchChange, onModuleFilter, modules, resultCount
 }
 
 /* ------------------------------------------------------------------ */
-/*  Permission Matrix (grouped checkboxes with category select-all)   */
+/*  Permission Matrix (matches platform PermissionMatrix exactly)     */
+/*  Uses permission.code for selection — same as platform             */
 /* ------------------------------------------------------------------ */
+
+const MODULE_ORDER = ['System Admin', 'Sales & Orders', 'Procurement', 'Inventory', 'Accounting', 'identity', 'core'];
 
 interface PermissionMatrixProps {
   permissions: GroupedPermissions;
-  selectedPermissionIds: Set<string>;
-  onPermissionToggle: (id: string) => void;
-  onBulkSelect: (ids: string[], selected: boolean) => void;
+  selectedPermissions: Set<string>;
+  onPermissionToggle: (permissionCode: string) => void;
+  onBulkSelect: (permissionCodes: string[], selected: boolean) => void;
+  allPermissions: RolePermission[];
 }
 
 function PermissionMatrix({
   permissions,
-  selectedPermissionIds,
+  selectedPermissions,
   onPermissionToggle,
   onBulkSelect,
+  allPermissions,
 }: PermissionMatrixProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [moduleFilter, setModuleFilter] = useState<string | null>(null);
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
 
   const sortedModules = useMemo(() => {
-    return Object.keys(permissions).sort((a, b) => {
-      // Put "System Admin" first, then alphabetical
-      if (a.toLowerCase().includes('system admin')) return -1;
-      if (b.toLowerCase().includes('system admin')) return 1;
-      return a.localeCompare(b);
+    const moduleNames = Object.keys(permissions);
+    return moduleNames.sort((a, b) => {
+      const aIndex = MODULE_ORDER.indexOf(a);
+      const bIndex = MODULE_ORDER.indexOf(b);
+      if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
     });
   }, [permissions]);
 
@@ -190,19 +201,19 @@ function PermissionMatrix({
 
   const getModuleSelectionState = useCallback(
     (modulePerms: RolePermission[]) => {
-      const selectedCount = modulePerms.filter((p) => selectedPermissionIds.has(p.id)).length;
+      const selectedCount = modulePerms.filter((p) => selectedPermissions.has(p.code)).length;
       if (selectedCount === 0) return 'none';
       if (selectedCount === modulePerms.length) return 'all';
       return 'some';
     },
-    [selectedPermissionIds],
+    [selectedPermissions],
   );
 
   const handleModuleSelectAll = useCallback(
-    (modulePerms: RolePermission[]) => {
-      const state = getModuleSelectionState(modulePerms);
-      const ids = modulePerms.map((p) => p.id);
-      onBulkSelect(ids, state !== 'all');
+    (module: string, perms: RolePermission[]) => {
+      const state = getModuleSelectionState(perms);
+      const permCodes = perms.map((p) => p.code);
+      onBulkSelect(permCodes, state !== 'all');
     },
     [getModuleSelectionState, onBulkSelect],
   );
@@ -215,6 +226,8 @@ function PermissionMatrix({
       return next;
     });
   }, []);
+
+  const isWildcard = (code: string) => code.includes('*');
 
   return (
     <div className="space-y-4">
@@ -238,7 +251,7 @@ function PermissionMatrix({
 
             return (
               <div key={mod} className="border rounded-lg overflow-hidden">
-                {/* Category Header */}
+                {/* Module Header */}
                 <div className="bg-muted/50 px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1">
                     {shouldBeCollapsible && (
@@ -249,7 +262,7 @@ function PermissionMatrix({
                     <Checkbox
                       id={`module-${mod}`}
                       checked={selectionState === 'all'}
-                      onCheckedChange={() => handleModuleSelectAll(modPerms)}
+                      onCheckedChange={() => handleModuleSelectAll(mod, modPerms)}
                       className={cn(selectionState === 'some' && 'data-[state=checked]:bg-primary/50')}
                       aria-label={`Select all permissions in ${mod}`}
                     />
@@ -257,20 +270,20 @@ function PermissionMatrix({
                       {mod}
                     </Label>
                     <Badge variant="secondary" className="text-xs">
-                      {modPerms.filter((p) => selectedPermissionIds.has(p.id)).length} / {modPerms.length}
+                      {modPerms.filter((p) => selectedPermissions.has(p.code)).length} / {modPerms.length}
                     </Badge>
                   </div>
                 </div>
 
-                {/* Category Permissions */}
+                {/* Module Permissions */}
                 {!isCollapsed && (
                   <div className="p-4 space-y-3">
                     {modPerms.map((perm) => (
                       <div key={perm.id} className="flex items-start gap-3 group">
                         <Checkbox
                           id={`permission-${perm.id}`}
-                          checked={selectedPermissionIds.has(perm.id)}
-                          onCheckedChange={() => onPermissionToggle(perm.id)}
+                          checked={selectedPermissions.has(perm.code)}
+                          onCheckedChange={() => onPermissionToggle(perm.code)}
                           className="mt-0.5"
                           aria-label={`${perm.name} - ${perm.code}`}
                         />
@@ -278,9 +291,16 @@ function PermissionMatrix({
                           <Label htmlFor={`permission-${perm.id}`} className="font-medium cursor-pointer block">
                             {perm.name}
                           </Label>
-                          <code className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded mt-1 inline-block">
-                            {perm.code}
-                          </code>
+                          <div className="flex items-center gap-2 mt-1">
+                            <code className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">
+                              {perm.code}
+                            </code>
+                            {isWildcard(perm.code) && (
+                              <Badge variant="outline" className="text-xs">
+                                Wildcard
+                              </Badge>
+                            )}
+                          </div>
                           {perm.description && (
                             <p className="text-sm text-muted-foreground mt-1">{perm.description}</p>
                           )}
@@ -299,134 +319,134 @@ function PermissionMatrix({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Role Form Modal (grouped permissions, matching platform pattern)  */
+/*  Role Form Dialog (matches platform RoleDialog)                    */
+/*  Uses permission codes for selection, converts to IDs on submit    */
 /* ------------------------------------------------------------------ */
 
-interface RoleFormModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface RoleFormDialogProps {
+  mode: 'create' | 'edit' | 'clone' | null;
+  role?: Role | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
   groupedPermissions: GroupedPermissions;
   permissionsLoading: boolean;
-  role?: SystemAdminRole | null;
-  onSubmit: (data: CreateRolePayload | UpdateRolePayload) => Promise<void>;
 }
 
-function RoleFormModal({
-  open,
-  onOpenChange,
+function RoleFormDialog({
+  mode,
+  role,
+  isOpen,
+  onClose,
+  onSuccess,
   groupedPermissions,
   permissionsLoading,
-  role,
-  onSubmit,
-}: RoleFormModalProps) {
-  const isEdit = !!role;
-  const [name, setName] = useState('');
-  const [code, setCode] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedPermissionIds, setSelectedPermissionIds] = useState<Set<string>>(new Set());
+}: RoleFormDialogProps) {
+  const [formData, setFormData] = useState<RoleFormData>({
+    name: '',
+    description: '',
+    permissions: [],
+  });
   const [submitting, setSubmitting] = useState(false);
 
-  // Flatten all permissions for counting
+  // Flatten all permissions for the matrix
   const allPermissions = useMemo(() => {
     const perms: RolePermission[] = [];
     Object.values(groupedPermissions).forEach((catPerms) => perms.push(...catPerms));
     return perms;
   }, [groupedPermissions]);
 
+  // Convert form permissions array to Set for easier lookup
+  const selectedPermissionsSet = useMemo(() => new Set(formData.permissions), [formData.permissions]);
+
+  // Initialize form data based on mode
   useEffect(() => {
-    if (open) {
-      if (role) {
-        setName(role.name);
-        setCode(role.code);
-        setDescription(role.description || '');
-        setSelectedPermissionIds(new Set(role.permissions.map((p) => p.id)));
-      } else {
-        setName('');
-        setCode('');
-        setDescription('');
-        setSelectedPermissionIds(new Set());
-      }
+    if (mode === 'create') {
+      setFormData({ name: '', description: '', permissions: [] });
+      return;
     }
-  }, [open, role]);
+    if (!role) return;
+    setFormData({
+      name: mode === 'clone' ? `Copy of ${role.name}` : role.name,
+      description: role.description || '',
+      permissions: role.permissions?.map((p) => p.code) || [],
+    });
+  }, [mode, role]);
 
-  const handlePermissionToggle = useCallback((id: string) => {
-    setSelectedPermissionIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+  const handlePermissionToggle = useCallback((permissionCode: string) => {
+    setFormData((prev) => {
+      const perms = new Set(prev.permissions);
+      if (perms.has(permissionCode)) perms.delete(permissionCode);
+      else perms.add(permissionCode);
+      return { ...prev, permissions: Array.from(perms) };
     });
   }, []);
 
-  const handleBulkSelect = useCallback((ids: string[], selected: boolean) => {
-    setSelectedPermissionIds((prev) => {
-      const next = new Set(prev);
-      ids.forEach((id) => {
-        if (selected) next.add(id);
-        else next.delete(id);
+  const handleBulkSelect = useCallback((permissionCodes: string[], selected: boolean) => {
+    setFormData((prev) => {
+      const perms = new Set(prev.permissions);
+      permissionCodes.forEach((code) => {
+        if (selected) perms.add(code);
+        else perms.delete(code);
       });
-      return next;
+      return { ...prev, permissions: Array.from(perms) };
     });
   }, []);
 
-  const handleSubmit = async () => {
-    if (!name.trim() || !code.trim()) {
-      toast({ title: 'Validation', description: 'Name and code are required.', variant: 'destructive' });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      toast({ title: 'Validation', description: 'Role name is required.', variant: 'destructive' });
       return;
     }
     setSubmitting(true);
     try {
-      const payload = {
-        name: name.trim(),
-        code: code.trim(),
-        description: description.trim() || undefined,
-        permission_ids: Array.from(selectedPermissionIds),
-      };
-      await onSubmit(payload);
-      onOpenChange(false);
+      if (mode === 'edit' && role) {
+        await AdminRoleService.updateRole(role.id, formData);
+        toast({ title: 'Role updated', description: `"${formData.name}" has been updated.` });
+      } else {
+        await AdminRoleService.createRole(formData);
+        toast({ title: 'Role created', description: `"${formData.name}" has been created.` });
+      }
+      onSuccess();
     } catch {
-      // error handled by caller
+      toast({ title: 'Error', description: 'Failed to save role.', variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
   };
 
+  const getDialogTitle = () => {
+    if (mode === 'create') return 'Create Role';
+    if (mode === 'edit') return 'Edit Role';
+    if (mode === 'clone') return 'Clone Role';
+    return 'Role';
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit Role' : 'Create Role'}</DialogTitle>
+          <DialogTitle>{getDialogTitle()}</DialogTitle>
           <DialogDescription>
-            {isEdit
-              ? 'Modify the role name, code, description, and permissions.'
-              : 'Define a new system admin role with specific permissions.'}
+            {mode === 'create' && 'Create a new role with specific permissions'}
+            {mode === 'edit' && 'Update role details and permissions'}
+            {mode === 'clone' && 'Create a new role based on an existing one'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-2">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Name */}
           <div className="space-y-2">
             <Label htmlFor="role-name">
-              Name <span className="text-destructive">*</span>
+              Role Name <span className="text-destructive">*</span>
             </Label>
             <Input
               id="role-name"
-              placeholder="e.g. System Billing Manager"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-
-          {/* Code */}
-          <div className="space-y-2">
-            <Label htmlFor="role-code">
-              Code <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="role-code"
-              placeholder="e.g. system_billing_manager"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
+              placeholder="Enter role name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              disabled={submitting}
             />
           </div>
 
@@ -435,19 +455,20 @@ function RoleFormModal({
             <Label htmlFor="role-description">Description</Label>
             <Textarea
               id="role-description"
-              placeholder="Optional description of this role"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Enter role description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
+              disabled={submitting}
             />
           </div>
 
-          {/* Grouped Permissions Panel */}
+          {/* Permissions Section */}
           <div className="space-y-2">
             <Label>
               Permissions{' '}
               <span className="text-xs text-muted-foreground">
-                ({selectedPermissionIds.size} selected)
+                ({formData.permissions.length} selected)
               </span>
             </Label>
             {permissionsLoading ? (
@@ -462,48 +483,104 @@ function RoleFormModal({
             ) : (
               <PermissionMatrix
                 permissions={groupedPermissions}
-                selectedPermissionIds={selectedPermissionIds}
+                selectedPermissions={selectedPermissionsSet}
                 onPermissionToggle={handlePermissionToggle}
                 onBulkSelect={handleBulkSelect}
+                allPermissions={allPermissions}
               />
             )}
           </div>
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Role'}
-          </Button>
-        </DialogFooter>
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Saving…' : mode === 'edit' ? 'Update Role' : 'Create Role'}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Roles Page                                                        */
+/*  Stat Card (matches platform StatCard)                             */
+/* ------------------------------------------------------------------ */
+
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: React.ComponentType<{ className?: string }>;
+  iconBg: string;
+  iconColor: string;
+}
+
+function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps) {
+  return (
+    <Card className="border-border hover:shadow-md transition-shadow">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p className="text-3xl font-bold tracking-tight">{value}</p>
+          </div>
+          <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl', iconBg)}>
+            <Icon className={cn('h-6 w-6', iconColor)} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Roles Page (matches platform RoleManagement layout)               */
 /* ------------------------------------------------------------------ */
 
 export function RolesPage() {
-  const [roles, setRoles] = useState<SystemAdminRole[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [groupedPermissions, setGroupedPermissions] = useState<GroupedPermissions>({});
   const [permissionsLoading, setPermissionsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
 
-  // Modal state
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingRole, setEditingRole] = useState<SystemAdminRole | null>(null);
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit' | 'clone' | null>(null);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+
+  // Delete state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [roleToDelete, setRoleToDelete] = useState<SystemAdminRole | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const totalPermissions = useMemo(
-    () => Object.values(groupedPermissions).reduce((sum, perms) => sum + perms.length, 0),
-    [groupedPermissions],
-  );
+  // Filters
+  const [searchFilter, setSearchFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+
+  const stats = useMemo(() => {
+    const total = roles.length;
+    const systemRoles = roles.filter((r) => r.is_system).length;
+    const customRoles = roles.filter((r) => !r.is_system).length;
+    const activeRoles = roles.filter((r) => r.is_active).length;
+    return { total, systemRoles, customRoles, activeRoles };
+  }, [roles]);
+
+  const filteredRoles = useMemo(() => {
+    return roles.filter((role) => {
+      if (searchFilter) {
+        const q = searchFilter.toLowerCase();
+        if (!role.name.toLowerCase().includes(q) && !(role.description || '').toLowerCase().includes(q)) {
+          return false;
+        }
+      }
+      if (typeFilter === 'system' && !role.is_system) return false;
+      if (typeFilter === 'custom' && role.is_system) return false;
+      return true;
+    });
+  }, [roles, searchFilter, typeFilter]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -528,34 +605,37 @@ export function RolesPage() {
   }, [loadData]);
 
   const handleCreate = () => {
-    setEditingRole(null);
-    setFormOpen(true);
+    setSelectedRole(null);
+    setDialogMode('create');
+    setDialogOpen(true);
   };
 
-  const handleEdit = (role: SystemAdminRole) => {
-    setEditingRole(role);
-    setFormOpen(true);
+  const handleEdit = (role: Role) => {
+    setSelectedRole(role);
+    setDialogMode('edit');
+    setDialogOpen(true);
   };
 
-  const handleDeleteClick = (role: SystemAdminRole) => {
+  const handleClone = (role: Role) => {
+    setSelectedRole(role);
+    setDialogMode('clone');
+    setDialogOpen(true);
+  };
+
+  const handleDeleteClick = (role: Role) => {
     setRoleToDelete(role);
     setDeleteConfirmOpen(true);
   };
 
-  const handleFormSubmit = async (data: CreateRolePayload | UpdateRolePayload) => {
-    try {
-      if (editingRole) {
-        await AdminRoleService.updateRole(editingRole.id, data as UpdateRolePayload);
-        toast({ title: 'Role updated', description: `"${(data as UpdateRolePayload).name || editingRole.name}" has been updated.` });
-      } else {
-        await AdminRoleService.createRole(data as CreateRolePayload);
-        toast({ title: 'Role created', description: `"${(data as CreateRolePayload).name}" has been created.` });
-      }
-      loadData();
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to save role.', variant: 'destructive' });
-      throw error;
-    }
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setDialogMode(null);
+    setSelectedRole(null);
+  };
+
+  const handleDialogSuccess = () => {
+    loadData();
+    handleDialogClose();
   };
 
   const handleDeleteConfirm = async () => {
@@ -581,7 +661,7 @@ export function RolesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Role Management</h1>
           <p className="text-muted-foreground mt-1">
-            Create and manage system admin roles and their permissions
+            Manage roles and permissions across all organizations
           </p>
         </div>
         <Button
@@ -593,48 +673,54 @@ export function RolesPage() {
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="border-border hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Total Roles</p>
-                <p className="text-3xl font-bold tracking-tight">{roles.length}</p>
-              </div>
-              <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/20')}>
-                <Shield className="h-6 w-6 text-violet-600 dark:text-violet-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-border hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Available Permissions</p>
-                <p className="text-3xl font-bold tracking-tight">{totalPermissions}</p>
-              </div>
-              <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/20')}>
-                <Key className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Stats Cards (matches platform layout) */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard title="Total Roles" value={stats.total}
+          icon={Shield} iconBg="bg-slate-100 dark:bg-slate-800" iconColor="text-slate-600 dark:text-slate-400" />
+        <StatCard title="System Roles" value={stats.systemRoles}
+          icon={Shield} iconBg="bg-[#3058EE]/10" iconColor="text-[#3058EE]" />
+        <StatCard title="Custom Roles" value={stats.customRoles}
+          icon={Shield} iconBg="bg-emerald-100 dark:bg-emerald-900/20" iconColor="text-emerald-600 dark:text-emerald-400" />
+        <StatCard title="Active Roles" value={stats.activeRoles}
+          icon={Shield} iconBg="bg-amber-100 dark:bg-amber-900/20" iconColor="text-amber-600 dark:text-amber-400" />
+      </div>
+
+      {/* Filters (matches platform) */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="relative sm:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search roles..."
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="All Types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="system">System Roles</SelectItem>
+            <SelectItem value="custom">Custom Roles</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Roles Table */}
       <Card className="border-border">
         <CardHeader>
-          <CardTitle>System Admin Roles</CardTitle>
+          <CardTitle>Roles</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Code</TableHead>
                 <TableHead>Description</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Permissions</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -642,34 +728,62 @@ export function RolesPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    Loading roles…
+                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                    <div className="flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3058EE] mx-auto mb-2" />
+                        <p>Loading roles…</p>
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ) : roles.length === 0 ? (
+              ) : filteredRoles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    No roles found. Create one to get started.
+                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                    {searchFilter || typeFilter !== 'all' ? 'No roles match your filters' : 'No roles found. Create one to get started.'}
                   </TableCell>
                 </TableRow>
               ) : (
-                roles.map((role) => (
+                filteredRoles.map((role) => (
                   <TableRow key={role.id}>
-                    <TableCell className="font-medium">{role.name}</TableCell>
-                    <TableCell>
-                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{role.code}</code>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {role.name}
+                        {role.is_system && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>System role</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
+                    <TableCell className="text-muted-foreground text-sm max-w-[250px] truncate">
                       {role.description || '—'}
                     </TableCell>
                     <TableCell>
+                      <Badge variant={role.is_system ? 'secondary' : 'outline'} className="text-xs">
+                        {role.is_system ? 'System' : 'Custom'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={role.is_active ? 'default' : 'outline'} className="text-xs">
+                        {role.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {role.permissions.slice(0, 3).map((perm) => (
+                        {(role.permissions || []).slice(0, 3).map((perm) => (
                           <Badge key={perm.id} variant="secondary" className="text-xs">
-                            {perm.code.replace('system_admin.', '')}
+                            {perm.code}
                           </Badge>
                         ))}
-                        {role.permissions.length > 3 && (
+                        {(role.permissions || []).length > 3 && (
                           <Badge variant="outline" className="text-xs">
                             +{role.permissions.length - 3}
                           </Badge>
@@ -677,15 +791,19 @@ export function RolesPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1">
                         <Button variant="outline" size="sm" onClick={() => handleEdit(role)}>
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleClone(role)}>
+                          <Copy className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-destructive hover:text-destructive"
                           onClick={() => handleDeleteClick(role)}
+                          disabled={role.is_system}
+                          className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -699,18 +817,18 @@ export function RolesPage() {
         </CardContent>
       </Card>
 
-      {/* Create / Edit Modal */}
-      <RoleFormModal
-        open={formOpen}
-        onOpenChange={(open) => {
-          setFormOpen(open);
-          if (!open) setEditingRole(null);
-        }}
-        groupedPermissions={groupedPermissions}
-        permissionsLoading={permissionsLoading}
-        role={editingRole}
-        onSubmit={handleFormSubmit}
-      />
+      {/* Create / Edit / Clone Dialog */}
+      {dialogOpen && dialogMode && (
+        <RoleFormDialog
+          mode={dialogMode}
+          role={selectedRole}
+          isOpen={dialogOpen}
+          onClose={handleDialogClose}
+          onSuccess={handleDialogSuccess}
+          groupedPermissions={groupedPermissions}
+          permissionsLoading={permissionsLoading}
+        />
+      )}
 
       {/* Delete Confirmation */}
       <ConfirmationDialog
