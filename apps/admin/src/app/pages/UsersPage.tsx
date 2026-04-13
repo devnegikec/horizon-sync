@@ -24,10 +24,16 @@ import { cn } from '@horizon-sync/ui/lib';
 import { toast } from '@horizon-sync/ui';
 
 import { useCreateUser } from '../hooks/useCreateUser';
+import { usePermissions } from '../hooks/usePermissions';
 import { useUser, useUpdateUser } from '../hooks/useUser';
 import { useUsers } from '../hooks/useUsers';
 import { AdminOrganizationService } from '../services/admin-organization.service';
+import { AdminRoleService } from '../services/admin-role.service';
+import type { SystemAdminRole } from '../services/admin-role.service';
 import type { AdminUserFilters, AdminUserListItem, AdminOrgListItem } from '../types';
+import { SYSTEM_ADMIN_PERMISSIONS } from '../types/permissions';
+
+import { useUserStore } from '@horizon-sync/store';
 
 const PAGE_SIZE = 20;
 
@@ -59,6 +65,12 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 
 export function UsersPage() {
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
+  const organization = useUserStore((s) => s.organization);
+  const canCreate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.USERS_CREATE);
+  const canUpdate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.USERS_UPDATE);
+  const canDelete = hasPermission(SYSTEM_ADMIN_PERMISSIONS.USERS_DELETE);
+  const isSuperAdmin = hasPermission(SYSTEM_ADMIN_PERMISSIONS.MASTER);
   const [search, setSearch] = useState('');
   const [activeStatus, setActiveStatus] = useState<string>('all');
   const [page, setPage] = useState(1);
@@ -71,6 +83,8 @@ export function UsersPage() {
   const [fieldError, setFieldError] = useState<{ field: string; message: string } | null>(null);
   const [orgOptions, setOrgOptions] = useState<Array<{ id: string; name: string }>>([]);
   const [orgsLoading, setOrgsLoading] = useState(false);
+  const [systemAdminRoles, setSystemAdminRoles] = useState<SystemAdminRole[]>([]);
+  const [systemAdminRolesLoading, setSystemAdminRolesLoading] = useState(false);
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
 
@@ -86,6 +100,16 @@ export function UsersPage() {
       .catch(() => setOrgOptions([]))
       .finally(() => setOrgsLoading(false));
   }, [createModalOpen]);
+
+  // Fetch system admin roles when modal opens (Super Admin only)
+  useEffect(() => {
+    if (!createModalOpen || !isSuperAdmin) return;
+    setSystemAdminRolesLoading(true);
+    AdminRoleService.listRoles()
+      .then((roles) => setSystemAdminRoles(roles))
+      .catch(() => setSystemAdminRoles([]))
+      .finally(() => setSystemAdminRolesLoading(false));
+  }, [createModalOpen, isSuperAdmin]);
 
   const handleOrgSearch = (query: string) => {
     setOrgsLoading(true);
@@ -163,6 +187,9 @@ export function UsersPage() {
           roles: data.roles as any,
           phone: data.phone || null,
           user_type: data.user_type as any,
+          ...(data.system_admin_role_ids && data.system_admin_role_ids.length > 0
+            ? { system_admin_role_ids: data.system_admin_role_ids }
+            : {}),
         },
         {
           onSuccess: (created) => {
@@ -193,11 +220,13 @@ export function UsersPage() {
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button onClick={() => setCreateModalOpen(true)}
-            className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
-            <Plus className="h-4 w-4" />
-            Create User
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setCreateModalOpen(true)}
+              className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
+              <Plus className="h-4 w-4" />
+              Create User
+            </Button>
+          )}
         </div>
       </div>
 
@@ -242,8 +271,8 @@ export function UsersPage() {
         error={null}
         hasActiveFilters={!!search || activeStatus !== 'all'}
         onView={handleView}
-        onEdit={handleEdit}
-        onCreateUser={() => setCreateModalOpen(true)}
+        onEdit={canUpdate ? handleEdit : undefined}
+        onCreateUser={canCreate ? () => setCreateModalOpen(true) : undefined}
         onTableReady={(table) => setTableInstance(table as Table<AdminUserListItem>)}
         showOrganization
         serverPagination={serverPaginationConfig}
@@ -255,6 +284,7 @@ export function UsersPage() {
         onOpenChange={setCreateModalOpen}
         onSubmit={handleCreateUser}
         fieldError={fieldError}
+        isSuperAdmin={isSuperAdmin}
         config={{
           showPassword: true,
           showOrganization: true,
@@ -264,6 +294,10 @@ export function UsersPage() {
           showUserType: true,
           showRoles: true,
           showPhone: true,
+          systemAdminRoles: systemAdminRoles,
+          systemAdminRolesLoading: systemAdminRolesLoading,
+          masterOrganizationId: organization?.id ?? '',
+          masterOrganizationName: organization?.name ?? 'Master Organization',
           title: 'Create New User',
           description: 'Create a user with organization assignment and role configuration',
           submitLabel: 'Create User',
@@ -277,15 +311,16 @@ export function UsersPage() {
         onOpenChange={(open) => { setDetailModalOpen(open); if (!open) { setSelectedUserId(null); setModalEditMode(false); } }}
         user={selectedUserData ?? null}
         loading={selectedUserLoading}
-        onUpdate={handleUpdateUser}
+        onUpdate={canUpdate ? handleUpdateUser : undefined}
+        isSuperAdmin={isSuperAdmin}
         config={{
           showUserType: true,
           showRoles: true,
           showPhone: true,
           showOrganization: true,
-          allowEdit: true,
-          allowDeactivate: true,
-          initialEditMode: modalEditMode,
+          allowEdit: canUpdate,
+          allowDeactivate: canUpdate,
+          initialEditMode: modalEditMode && canUpdate,
         }}
       />
     </div>

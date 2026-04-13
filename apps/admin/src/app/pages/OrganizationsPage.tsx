@@ -25,7 +25,9 @@ import { toast } from '@horizon-sync/ui';
 import { useCreateOrganization } from '../hooks/useCreateOrganization';
 import { useOrganization, useUpdateOrganization } from '../hooks/useOrganization';
 import { useOrganizations } from '../hooks/useOrganizations';
+import { usePermissions } from '../hooks/usePermissions';
 import type { AdminOrgFilters, AdminOrgListItem, OrgStatus } from '../types';
+import { SYSTEM_ADMIN_PERMISSIONS } from '../types/permissions';
 
 const PAGE_SIZE = 20;
 
@@ -56,6 +58,9 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 }
 
 export function OrganizationsPage() {
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.ORGANIZATIONS_CREATE);
+  const canUpdate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.ORGANIZATIONS_UPDATE);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
@@ -187,11 +192,13 @@ export function OrganizationsPage() {
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button onClick={() => setCreateModalOpen(true)}
-            className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
-            <Plus className="h-4 w-4" />
-            Create Organization
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setCreateModalOpen(true)}
+              className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
+              <Plus className="h-4 w-4" />
+              Create Organization
+            </Button>
+          )}
         </div>
       </div>
 
@@ -240,8 +247,8 @@ export function OrganizationsPage() {
         error={null}
         hasActiveFilters={!!search || statusFilter !== 'all'}
         onView={handleView}
-        onEdit={handleEdit}
-        onCreateOrg={() => setCreateModalOpen(true)}
+        onEdit={canUpdate ? handleEdit : undefined}
+        onCreateOrg={canCreate ? () => setCreateModalOpen(true) : undefined}
         onTableReady={(table) => setTableInstance(table as Table<AdminOrgListItem>)}
         serverPagination={serverPaginationConfig}
       />
@@ -259,7 +266,7 @@ export function OrganizationsPage() {
         onOpenChange={(open) => { setDetailModalOpen(open); if (!open) setSelectedOrgId(null); }}
         org={selectedOrgData ?? null}
         loading={selectedOrgLoading}
-        onUpdate={handleUpdateOrg}
+        onUpdate={canUpdate ? handleUpdateOrg : undefined}
       />
     </div>
   );

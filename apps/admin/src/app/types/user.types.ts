@@ -42,6 +42,7 @@ export interface AdminUserCreate {
   roles?: AllowedRole[];
   phone?: string | null;
   user_type?: UserType;
+  system_admin_role_ids?: string[];
 }
 
 export interface AdminUserUpdate {

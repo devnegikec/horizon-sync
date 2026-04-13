@@ -32,14 +32,18 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import type { InvoiceFormData } from '@horizon-sync/ui/components';
 
 import { useInvoices } from '../hooks/useInvoices';
+import { usePermissions } from '../hooks/usePermissions';
 import { AdminInvoiceService } from '../services/admin-invoice.service';
 import { AdminOrganizationService } from '../services/admin-organization.service';
 import { CreateInvoiceModal } from '../components/billing/CreateInvoiceModal';
 import { InvoiceDetailModal } from '../components/billing/InvoiceDetailModal';
 import type { InvoiceCreateRequest } from '../types/billing.types';
 import type { Invoice, SubscriptionInvoiceResponse, AdminInvoiceFilters, AdminOrgListItem } from '../types';
+import { SYSTEM_ADMIN_PERMISSIONS } from '../types/permissions';
 
 export function InvoicesPage() {
+    const { hasPermission } = usePermissions();
+    const canCreate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.BILLING_CREATE);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [orgOptions, setOrgOptions] = useState<Array<{ id: string; name: string }>>([]);
@@ -256,10 +260,12 @@ export function InvoicesPage() {
                         Manage customer invoices and billing
                     </p>
                 </div>
-                <Button onClick={() => setShowCreateModal(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Invoice
-                </Button>
+                {canCreate && (
+                    <Button onClick={() => setShowCreateModal(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Invoice
+                    </Button>
+                )}
             </div>
 
             {/* Stats Cards */}

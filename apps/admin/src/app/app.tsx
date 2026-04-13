@@ -7,6 +7,7 @@ import { Toaster } from '@horizon-sync/ui/components/ui/toaster';
 
 import { AppRoutes } from './AppRoutes';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { PermissionsProvider } from './contexts/PermissionsContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,8 +32,10 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <Suspense fallback={<AppLoading />}>
           <BrowserRouter>
-            <AppRoutes />
-            <Toaster />
+            <PermissionsProvider>
+              <AppRoutes />
+              <Toaster />
+            </PermissionsProvider>
           </BrowserRouter>
         </Suspense>
       </QueryClientProvider>

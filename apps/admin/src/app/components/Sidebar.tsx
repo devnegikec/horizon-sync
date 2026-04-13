@@ -13,6 +13,7 @@ import {
   Shield,
   Ban,
   DollarSign,
+  UserCog,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -30,57 +31,66 @@ interface NavItem {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  requiresPermission?: string[];
+  /** Domain name for hasPermissionForDomain check (e.g. 'users', 'billing') */
+  requiredDomain?: string;
+  /** If true, only visible to users with system_admin.master */
+  requiresMaster?: boolean;
 }
 
 const mainNavItems: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { title: 'Organizations', href: '/organizations', icon: Building2 },
-  { title: 'Users', href: '/users', icon: Users },
+  { title: 'Organizations', href: '/organizations', icon: Building2, requiredDomain: 'organizations' },
+  { title: 'Users', href: '/users', icon: Users, requiredDomain: 'users' },
   {
     title: 'Payments',
     href: '/payments',
     icon: CreditCard,
-    requiresPermission: ['payment.read', 'system_admin.billing', '*.*']
+    requiredDomain: 'billing',
   },
   {
     title: 'Billing',
     href: '/billing',
     icon: DollarSign,
-    requiresPermission: ['system_admin.billing', 'system_admin.master', '*.*']
+    requiredDomain: 'billing',
   },
   {
     title: 'Payment Reminders',
     href: '/payment-reminders',
     icon: Bell,
-    requiresPermission: ['system_admin.billing', 'invoice.send_reminder', '*.*']
+    requiredDomain: 'billing',
   },
   {
     title: 'Audit Logs',
     href: '/audit-logs',
     icon: FileText,
-    requiresPermission: ['system_admin.master', '*.*']
+    requiredDomain: 'reporting',
   },
   {
     title: 'Organization Deactivation',
     href: '/organizations/deactivation',
     icon: Ban,
-    requiresPermission: ['system_admin.org_manager', 'system_admin.master', '*.*']
+    requiredDomain: 'organizations',
   },
 ];
 
 const bottomNavItems: NavItem[] = [
   {
+    title: 'Roles',
+    href: '/roles',
+    icon: UserCog,
+    requiresMaster: true,
+  },
+  {
     title: 'System Permissions',
     href: '/admin/permissions',
     icon: Shield,
-    requiresPermission: ['system_admin.master', '*.*']
+    requiresMaster: true,
   },
   {
     title: 'Settings',
     href: '/settings',
     icon: Settings,
-    requiresPermission: ['system_admin.master', '*.*', 'settings.read']
+    requiresMaster: true,
   },
   { title: 'Help', href: '/help', icon: HelpCircle },
 ];
@@ -139,7 +149,7 @@ export function AdminSidebar({
   onClose,
 }: AdminSidebarProps) {
   const location = useLocation();
-  const { hasAnyPermission, loading: permissionsLoading } = usePermissions();
+  const { hasPermissionForDomain, hasSystemAdminMaster, loading: permissionsLoading } = usePermissions();
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -147,18 +157,16 @@ export function AdminSidebar({
     }
   };
 
-  // Filter nav items based on permissions
-  const filteredMainNavItems = mainNavItems.filter((item) => {
-    if (!item.requiresPermission) return true;
+  const isNavItemVisible = (item: NavItem): boolean => {
+    if (!item.requiredDomain && !item.requiresMaster) return true;
     if (permissionsLoading) return false;
-    return hasAnyPermission(item.requiresPermission);
-  });
+    if (item.requiresMaster) return hasSystemAdminMaster;
+    return hasPermissionForDomain(item.requiredDomain!);
+  };
 
-  const filteredBottomNavItems = bottomNavItems.filter((item) => {
-    if (!item.requiresPermission) return true;
-    if (permissionsLoading) return false;
-    return hasAnyPermission(item.requiresPermission);
-  });
+  // Filter nav items based on permissions
+  const filteredMainNavItems = mainNavItems.filter(isNavItemVisible);
+  const filteredBottomNavItems = bottomNavItems.filter(isNavItemVisible);
 
   return (
     <aside className={cn(
