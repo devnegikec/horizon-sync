@@ -111,9 +111,9 @@ export interface CreateUserModalProps {
 }
 
 const ROLE_CHECKBOX_OPTIONS = [
-  { value: 'system_admin', label: 'System Admin' },
-  { value: 'org_admin', label: 'Org Admin' },
-  { value: 'user', label: 'User' },
+  { value: 'system_admin', label: 'System Admin', description: 'Full system-level access across all organizations' },
+  { value: 'org_admin', label: 'Organization Admin', description: 'Full access to all resources within the assigned organization (inventory, invoices, users, settings)' },
+  { value: 'user', label: 'User', description: 'Standard access with permissions defined by assigned roles within the organization' },
 ] as const;
 
 const USER_TYPE_OPTIONS = [
@@ -125,7 +125,7 @@ const USER_TYPE_OPTIONS = [
 
 function buildSchema(config: CreateUserModalConfig) {
   const shape: Record<string, z.ZodTypeAny> = {
-    email: z.string().email('Please enter a valid email address'),
+    email: z.email('Please enter a valid email address'),
     first_name: z.string().min(2, 'First name must be at least 2 characters'),
     last_name: z.string().min(2, 'Last name must be at least 2 characters'),
   };
@@ -150,6 +150,8 @@ function buildSchema(config: CreateUserModalConfig) {
   if (config.showMessage) {
     shape.message = z.string().optional();
   }
+  // Always allow system_admin_role_ids to pass through
+  shape.system_admin_role_ids = z.array(z.string()).optional();
   return z.object(shape);
 }
 
@@ -307,7 +309,11 @@ export function CreateUserModal({
   const [errorMessage, setErrorMessage] = React.useState('');
   const currentRoles = watch('roles') ?? [];
   const currentUserType = watch('user_type') ?? '';
+  const currentOrgId = watch('organization_id') ?? '';
   const currentSystemAdminRoleIds = watch('system_admin_role_ids') ?? [];
+
+  // Determine if selected org is the master org
+  const isSelectedOrgMaster = !!(masterOrganizationId && currentOrgId === masterOrganizationId);
 
   // Apply external field errors
   React.useEffect(() => {
@@ -316,21 +322,20 @@ export function CreateUserModal({
     }
   }, [fieldError, setError]);
 
-  // Auto-select master org when user_type is system_admin, clear system admin roles when switching away
+  // Auto-switch user_type based on selected organization
   const isSystemAdmin = currentUserType === 'system_admin';
-  const prevUserTypeRef = React.useRef(currentUserType);
   React.useEffect(() => {
-    if (prevUserTypeRef.current === currentUserType) return;
-    prevUserTypeRef.current = currentUserType;
-
-    if (isSystemAdmin && masterOrganizationId) {
-      setValue('organization_id', masterOrganizationId, { shouldValidate: true });
+    if (isSelectedOrgMaster && currentUserType !== 'system_admin') {
+      // Master org selected → force system_admin user type
+      setValue('user_type', 'system_admin');
       setValue('roles', []);
       setValue('system_admin_role_ids', []);
-    } else {
+    } else if (!isSelectedOrgMaster && currentUserType === 'system_admin') {
+      // Switched away from master org → clear system_admin type
+      setValue('user_type', 'organization_admin');
       setValue('system_admin_role_ids', []);
     }
-  }, [currentUserType, isSystemAdmin, masterOrganizationId, setValue]);
+  }, [isSelectedOrgMaster, currentUserType, setValue]);
 
   const handleRoleToggle = (role: string, checked: boolean) => {
     const updated = checked ? [...currentRoles, role] : currentRoles.filter((r) => r !== role);
@@ -424,8 +429,8 @@ export function CreateUserModal({
             </div>
           )}
 
-          {/* Organization (admin only — searchable by name) */}
-          {showOrganization && !isSystemAdmin && (
+          {/* Organization (admin only — searchable by name, hidden when master org selected) */}
+          {showOrganization && !isSelectedOrgMaster && (
             <OrgSearchField
               options={organizationOptions}
               loading={organizationsLoading}
@@ -437,29 +442,42 @@ export function CreateUserModal({
           )}
 
           {/* User Type + Organization grouped section */}
-          {(showUserType || (showOrganization && isSystemAdmin)) && (
+          {(showUserType || (showOrganization && isSelectedOrgMaster)) && (
             <div className="grid grid-cols-2 gap-4">
               {showUserType && (
                 <div className="space-y-2">
                   <Label>User Type</Label>
-                  <Select value={watch('user_type') ?? ''} onValueChange={(v) => setValue('user_type', v)}>
-                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                    <SelectContent>
-                      {filteredUserTypeOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {isSelectedOrgMaster ? (
+                    <>
+                      <Input value="System Admin" disabled className="bg-muted/50" />
+                      <p className="text-xs text-muted-foreground">Master organization users are System Admin</p>
+                    </>
+                  ) : (
+                    <Select value={watch('user_type') ?? ''} onValueChange={(v) => setValue('user_type', v)}>
+                      <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                      <SelectContent>
+                        {filteredUserTypeOptions.filter(opt => opt.value !== 'system_admin').map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               )}
-              {showOrganization && isSystemAdmin && (
+              {showOrganization && isSelectedOrgMaster && (
                 <div className="space-y-2">
                   <Label>Organization</Label>
-                  <Input
-                    value={masterOrganizationName}
-                    disabled
-                    className="bg-muted/50"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      value={masterOrganizationName}
+                      disabled
+                      className="bg-muted/50 flex-1"
+                    />
+                    <Button type="button" variant="outline" size="sm" className="shrink-0"
+                      onClick={() => { setValue('organization_id', ''); setValue('user_type', ''); setValue('system_admin_role_ids', []); }}>
+                      Change
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground">System admins are assigned to the master organization</p>
                 </div>
               )}
@@ -495,30 +513,41 @@ export function CreateUserModal({
             </div>
           )}
 
-          {/* Roles checkboxes (admin flow) — hidden when user_type is system_admin */}
-          {showRoles && !isSystemAdmin && (
+          {/* Roles checkboxes (admin flow) — hidden when master org is selected, no system_admin option */}
+          {showRoles && !isSelectedOrgMaster && !isSystemAdmin && (
             <div className="space-y-3">
               <Label>Roles</Label>
-              <div className="rounded-lg border border-border p-4">
-                <div className="grid grid-cols-3 gap-3">
-                  {filteredRoleCheckboxOptions.map((role) => (
-                    <div key={role.value} className="flex items-center space-x-2">
-                      <Checkbox id={`cu-role-${role.value}`}
-                        checked={currentRoles.includes(role.value)}
-                        onCheckedChange={(checked) => handleRoleToggle(role.value, !!checked)} />
-                      <label htmlFor={`cu-role-${role.value}`}
-                        className="text-sm font-normal leading-none cursor-pointer">
-                        {role.label}
-                      </label>
+              <p className="text-xs text-muted-foreground">Select the role for this user within the organization</p>
+              <div className="space-y-3">
+                {filteredRoleCheckboxOptions.filter(r => r.value !== 'system_admin').map((role) => {
+                  const isSelected = currentRoles.includes(role.value);
+                  return (
+                    <div key={role.value}
+                      className={`rounded-lg border p-4 cursor-pointer transition-colors ${isSelected ? 'border-[#3058EE] bg-[#3058EE]/5' : 'border-border hover:border-muted-foreground/30'}`}
+                      onClick={() => handleRoleToggle(role.value, !isSelected)}>
+                      <div className="flex items-start gap-3">
+                        <Checkbox id={`cu-role-${role.value}`}
+                          checked={isSelected}
+                          onCheckedChange={(checked) => handleRoleToggle(role.value, !!checked)}
+                          className="mt-0.5"
+                          onClick={(e) => e.stopPropagation()} />
+                        <div className="flex-1">
+                          <label htmlFor={`cu-role-${role.value}`}
+                            className="text-sm font-medium leading-none cursor-pointer">{role.label}</label>
+                          {'description' in role && role.description && (
+                            <p className="text-xs text-muted-foreground mt-1">{role.description}</p>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* System Admin Role Selection — shown when user_type is system_admin */}
-          {currentUserType === 'system_admin' && systemAdminRoles.length > 0 && (
+          {/* System Admin Role Selection — shown when master org is selected */}
+          {(isSelectedOrgMaster || currentUserType === 'system_admin') && systemAdminRoles.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Shield className="h-4 w-4 text-muted-foreground" />

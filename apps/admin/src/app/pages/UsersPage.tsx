@@ -83,6 +83,7 @@ export function UsersPage() {
   const [fieldError, setFieldError] = useState<{ field: string; message: string } | null>(null);
   const [orgOptions, setOrgOptions] = useState<Array<{ id: string; name: string }>>([]);
   const [orgsLoading, setOrgsLoading] = useState(false);
+  const [masterOrgId, setMasterOrgId] = useState<string>('');
   const [systemAdminRoles, setSystemAdminRoles] = useState<SystemAdminRole[]>([]);
   const [systemAdminRolesLoading, setSystemAdminRolesLoading] = useState(false);
   const createMutation = useCreateUser();
@@ -96,20 +97,34 @@ export function UsersPage() {
     if (!createModalOpen) return;
     setOrgsLoading(true);
     AdminOrganizationService.list({ page: 1, page_size: 100 })
-      .then((res) => setOrgOptions(res.organizations.map((o: AdminOrgListItem) => ({ id: o.id, name: o.name }))))
+      .then((res) => {
+        setOrgOptions(res.organizations.map((o: AdminOrgListItem) => ({ id: o.id, name: o.name })));
+        // Find master org from the list
+        const master = res.organizations.find((o: AdminOrgListItem) => (o as any).organization_type === 'master');
+        if (master) setMasterOrgId(master.id);
+      })
       .catch(() => setOrgOptions([]))
       .finally(() => setOrgsLoading(false));
   }, [createModalOpen]);
 
   // Fetch system admin roles when modal opens (Super Admin only)
   useEffect(() => {
-    if (!createModalOpen || !isSuperAdmin) return;
+    if ((!createModalOpen && !detailModalOpen) || !isSuperAdmin) return;
     setSystemAdminRolesLoading(true);
     AdminRoleService.listRoles()
       .then((roles) => setSystemAdminRoles(roles))
       .catch(() => setSystemAdminRoles([]))
       .finally(() => setSystemAdminRolesLoading(false));
-  }, [createModalOpen, isSuperAdmin]);
+    // Also fetch master org ID if not already set
+    if (!masterOrgId) {
+      AdminOrganizationService.list({ page: 1, page_size: 100 })
+        .then((res) => {
+          const master = res.organizations.find((o: AdminOrgListItem) => (o as any).organization_type === 'master');
+          if (master) setMasterOrgId(master.id);
+        })
+        .catch(() => {});
+    }
+  }, [createModalOpen, detailModalOpen, isSuperAdmin, masterOrgId]);
 
   const handleOrgSearch = (query: string) => {
     setOrgsLoading(true);
@@ -296,8 +311,8 @@ export function UsersPage() {
           showPhone: true,
           systemAdminRoles: systemAdminRoles,
           systemAdminRolesLoading: systemAdminRolesLoading,
-          masterOrganizationId: organization?.id ?? '',
-          masterOrganizationName: organization?.name ?? 'Master Organization',
+          masterOrganizationId: masterOrgId,
+          masterOrganizationName: orgOptions.find(o => o.id === masterOrgId)?.name ?? 'Master Organization',
           title: 'Create New User',
           description: 'Create a user with organization assignment and role configuration',
           submitLabel: 'Create User',
@@ -321,6 +336,9 @@ export function UsersPage() {
           allowEdit: canUpdate,
           allowDeactivate: canUpdate,
           initialEditMode: modalEditMode && canUpdate,
+          systemAdminRoles: systemAdminRoles,
+          systemAdminRolesLoading: systemAdminRolesLoading,
+          masterOrganizationId: masterOrgId,
         }}
       />
     </div>
