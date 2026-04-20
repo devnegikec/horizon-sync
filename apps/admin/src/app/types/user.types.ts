@@ -29,6 +29,7 @@ export interface AdminUserDetailResponse {
   is_active: boolean;
   organization_id: string | null;
   organization_name: string | null;
+  system_admin_role_ids?: string[];
   created_at: string;
   updated_at: string | null;
 }

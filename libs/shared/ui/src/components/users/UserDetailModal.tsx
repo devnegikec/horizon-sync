@@ -45,6 +45,7 @@ export interface UserDetailData {
   display_name?: string | null;
   created_at?: string;
   updated_at?: string | null;
+  system_admin_role_ids?: string[];
 }
 
 export interface UserDetailModalConfig {
@@ -56,6 +57,12 @@ export interface UserDetailModalConfig {
   allowEdit?: boolean;
   allowDeactivate?: boolean;
   initialEditMode?: boolean;
+  /** System admin role options for editing (shown when user is system_admin type) */
+  systemAdminRoles?: Array<{ id: string; name: string; code: string; description: string | null; permissions: Array<{ id: string; code: string; name: string; description: string | null }> }>;
+  /** Loading state for system admin roles */
+  systemAdminRolesLoading?: boolean;
+  /** Master organization ID — used to determine if user belongs to master org */
+  masterOrganizationId?: string;
 }
 
 export interface UserDetailEditData {
@@ -65,6 +72,7 @@ export interface UserDetailEditData {
   user_type?: string;
   roles?: string[];
   is_active?: boolean;
+  system_admin_role_ids?: string[];
 }
 
 export interface UserDetailModalProps {
@@ -98,6 +106,7 @@ const editSchema = z.object({
   phone: z.string().optional(),
   user_type: z.string().optional(),
   roles: z.array(z.string()).optional(),
+  system_admin_role_ids: z.array(z.string()).optional(),
   is_active: z.boolean().optional(),
 });
 
@@ -154,6 +163,27 @@ function ViewMode({ user, config, onEdit }: { user: UserDetailData; config: User
               : '—'
           } />
         )}
+        {/* Show assigned system admin role permissions in view mode */}
+        {user.user_type === 'system_admin' && config.systemAdminRoles && user.system_admin_role_ids && user.system_admin_role_ids.length > 0 && (
+          <div className="col-span-2 space-y-2 pt-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Assigned Roles & Permissions</p>
+            {config.systemAdminRoles
+              .filter(role => user.system_admin_role_ids!.includes(role.id))
+              .map(role => (
+                <div key={role.id} className="rounded-lg border border-[#3058EE]/30 bg-[#3058EE]/5 p-3 space-y-2">
+                  <p className="text-sm font-medium">{role.name}</p>
+                  {role.description && <p className="text-xs text-muted-foreground">{role.description}</p>}
+                  {role.permissions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {role.permissions.map(perm => (
+                        <Badge key={perm.id} variant="secondary" className="text-xs font-normal">{perm.name || perm.code}</Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+          </div>
+        )}
         {user.created_at && <InfoRow icon={Calendar} label="Created" value={formatShortDate(user.created_at)} />}
         {user.updated_at && <InfoRow icon={Clock} label="Updated" value={formatUserDate(user.updated_at)} />}
       </div>
@@ -171,6 +201,9 @@ function EditMode({ user, config, onSave, onCancel, filteredUserTypeOptions, fil
 }) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
+  const systemAdminRoles = config.systemAdminRoles ?? [];
+  const isSystemAdminUser = user.user_type === 'system_admin';
+  const isMasterOrgUser = !!(config.masterOrganizationId && user.organization_id === config.masterOrganizationId);
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<UserDetailEditData>({
     resolver: zodResolver(editSchema) as any,
@@ -181,14 +214,23 @@ function EditMode({ user, config, onSave, onCancel, filteredUserTypeOptions, fil
       user_type: user.user_type,
       roles: user.roles ?? [],
       is_active: user.is_active ?? true,
+      system_admin_role_ids: user.system_admin_role_ids ?? [],
     },
   });
 
   const currentRoles = watch('roles') ?? [];
+  const currentSystemAdminRoleIds = watch('system_admin_role_ids') ?? [];
 
   const handleRoleToggle = (role: string, checked: boolean) => {
     const updated = checked ? [...currentRoles, role] : currentRoles.filter(r => r !== role);
     setValue('roles', updated, { shouldValidate: true });
+  };
+
+  const handleSystemAdminRoleToggle = (roleId: string, checked: boolean) => {
+    const updated = checked
+      ? [...currentSystemAdminRoleIds, roleId]
+      : currentSystemAdminRoleIds.filter(id => id !== roleId);
+    setValue('system_admin_role_ids', updated);
   };
 
   const doSave = handleSubmit(
@@ -243,19 +285,26 @@ function EditMode({ user, config, onSave, onCancel, filteredUserTypeOptions, fil
           {config.showUserType && (
             <div className="space-y-2">
               <Label>User Type</Label>
-              <Select value={watch('user_type') ?? ''} onValueChange={v => setValue('user_type', v)}>
-                <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                <SelectContent>
-                  {filteredUserTypeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              {isMasterOrgUser ? (
+                <>
+                  <Input value="System Admin" disabled className="bg-muted/50" />
+                  <p className="text-xs text-muted-foreground">Master organization users are always System Admin</p>
+                </>
+              ) : (
+                <Select value={watch('user_type') ?? ''} onValueChange={v => setValue('user_type', v)}>
+                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectContent>
+                    {filteredUserTypeOptions.filter(opt => opt.value !== 'system_admin').map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* Roles */}
-      {config.showRoles && (
+      {/* Roles — show system admin role cards for master org / system_admin users, regular checkboxes for others */}
+      {config.showRoles && !isSystemAdminUser && !isMasterOrgUser && (
         <div className="space-y-3">
           <Label>Roles</Label>
           <div className="rounded-lg border border-border p-4">
@@ -269,6 +318,49 @@ function EditMode({ user, config, onSave, onCancel, filteredUserTypeOptions, fil
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* System Admin Roles — card-based selector for master org / system_admin users */}
+      {(isSystemAdminUser || isMasterOrgUser) && systemAdminRoles.length > 0 && (
+        <div className="space-y-3">
+          <Label>System Admin Roles</Label>
+          <p className="text-xs text-muted-foreground">Select roles to assign to this system admin user.</p>
+          {config.systemAdminRolesLoading ? (
+            <div className="rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">Loading roles...</div>
+          ) : (
+            <div className="space-y-3">
+              {systemAdminRoles.map((role) => {
+                const isSelected = currentSystemAdminRoleIds.includes(role.id);
+                return (
+                  <div key={role.id}
+                    className={`rounded-lg border p-4 cursor-pointer transition-colors ${isSelected ? 'border-[#3058EE] bg-[#3058EE]/5' : 'border-border hover:border-muted-foreground/30'}`}
+                    onClick={() => handleSystemAdminRoleToggle(role.id, !isSelected)}>
+                    <div className="flex items-start gap-3">
+                      <Checkbox id={`ud-sa-role-${role.id}`} checked={isSelected}
+                        onCheckedChange={checked => handleSystemAdminRoleToggle(role.id, !!checked)}
+                        className="mt-0.5" onClick={e => e.stopPropagation()} />
+                      <div className="flex-1 space-y-2">
+                        <div>
+                          <label htmlFor={`ud-sa-role-${role.id}`} className="text-sm font-medium leading-none cursor-pointer">{role.name}</label>
+                          {role.description && <p className="text-xs text-muted-foreground mt-1">{role.description}</p>}
+                        </div>
+                        {isSelected && role.permissions.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {role.permissions.map((perm) => (
+                              <Badge key={perm.id} variant="secondary" className="text-xs font-normal">
+                                {perm.name || perm.code}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -303,7 +395,7 @@ export function UserDetailModal({ open, onOpenChange, user, loading, onUpdate, c
     showOrganization = false, showStatus = true,
     allowEdit = false, allowDeactivate = false, initialEditMode = false,
   } = config;
-  const resolvedConfig = { showUserType, showRoles, showPhone, showOrganization, showStatus, allowEdit, allowDeactivate };
+  const resolvedConfig = { showUserType, showRoles, showPhone, showOrganization, showStatus, allowEdit, allowDeactivate, systemAdminRoles: config.systemAdminRoles, systemAdminRolesLoading: config.systemAdminRolesLoading, masterOrganizationId: config.masterOrganizationId };
 
   // Filter out system_admin options when the current user is not a Super Admin
   const filteredUserTypeOptions = React.useMemo(

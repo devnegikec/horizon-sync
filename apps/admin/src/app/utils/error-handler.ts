@@ -1,6 +1,11 @@
 import { useUserStore } from '@horizon-sync/store';
 import { toast } from '@horizon-sync/ui';
 
+export interface HandleApiErrorOptions {
+  /** When true, suppress the toast notification for 403 errors */
+  silent403?: boolean;
+}
+
 /**
  * Shared API error handler for all admin services.
  * Handles 401, 403, 503, and network errors with appropriate
@@ -9,7 +14,7 @@ import { toast } from '@horizon-sync/ui';
  * Should be called in the catch block of each service's request() helper.
  * Re-throws the error so React Query can handle it too.
  */
-export function handleApiError(error: unknown): never {
+export function handleApiError(error: unknown, options?: HandleApiErrorOptions): never {
   // Network error (TypeError from fetch, or no response)
   if (error instanceof TypeError) {
     toast({
@@ -29,11 +34,13 @@ export function handleApiError(error: unknown): never {
   }
 
   if (status === 403) {
-    toast({
-      variant: 'destructive',
-      title: 'Access denied',
-      description: 'Admin access required',
-    });
+    if (!options?.silent403) {
+      toast({
+        variant: 'destructive',
+        title: 'Access denied',
+        description: 'You do not have permission for this action',
+      });
+    }
     throw error;
   }
 
