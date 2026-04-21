@@ -19,6 +19,7 @@ import { UserDetailPage } from './pages/UserDetailPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
 import { RolesPage } from './pages/RolesPage';
 import { UsersPage } from './pages/UsersPage';
+import { FeatureControlsPage } from './pages/FeatureControlsPage';
 
 export function AppRoutes() {
   return (
@@ -49,6 +50,7 @@ export function AppRoutes() {
                 <Route path="/settings" element={<SystemSettingsPage />} />
                 <Route path="/audit-logs" element={<AuditLogsPage />} />
                 <Route path="/roles" element={<RolesPage />} />
+                <Route path="/feature-controls" element={<FeatureControlsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </DashboardLayout>

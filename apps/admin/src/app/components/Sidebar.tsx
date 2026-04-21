@@ -14,6 +14,7 @@ import {
   Ban,
   DollarSign,
   UserCog,
+  ToggleLeft,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -84,6 +85,12 @@ const bottomNavItems: NavItem[] = [
     title: 'System Permissions',
     href: '/admin/permissions',
     icon: Shield,
+    requiresMaster: true,
+  },
+  {
+    title: 'Feature Controls',
+    href: '/feature-controls',
+    icon: ToggleLeft,
     requiresMaster: true,
   },
   {

@@ -45,7 +45,13 @@ function useInvoices(
   }, []);
 
   const handleFetchError = React.useCallback((err: unknown) => {
-    setError(err instanceof Error ? err.message : 'Failed to load invoices');
+    // Detect feature flag disabled (HTTP 423 with FEATURE_DISABLED code)
+    const apiErr = err as { status?: number; details?: { detail?: { code?: string } } };
+    if (apiErr?.status === 423 && apiErr?.details?.detail?.code === 'FEATURE_DISABLED') {
+      setError('FEATURE_DISABLED');
+    } else {
+      setError(err instanceof Error ? err.message : 'Failed to load invoices');
+    }
     setInvoices([]);
     setPagination(null);
   }, []);
