@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Lock } from 'lucide-react';
 
 import { Card, CardContent, ConfirmationDialog } from '@horizon-sync/ui/components';
 
@@ -67,7 +67,7 @@ export function InvoiceManagement() {
 
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
-    if (!error) return null;
+    if (!error || error === 'FEATURE_DISABLED') return null;
     return (
       <Card className="border-destructive">
         <CardContent className="p-4">
@@ -79,6 +79,24 @@ export function InvoiceManagement() {
       </Card>
     );
   }, [error]);
+
+  // Feature disabled — show informational banner instead of the full page
+  if (error === 'FEATURE_DISABLED') {
+    return (
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+            <Lock className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Invoices Not Available</h2>
+          <p className="text-muted-foreground text-center max-w-md">
+            The invoices feature is currently disabled by your administrator.
+            Contact your admin to enable it from the Feature Controls panel.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

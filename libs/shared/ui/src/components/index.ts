@@ -18,6 +18,7 @@ export * from './ui/search-input';
 export * from './ui/select';
 export * from './ui/separator';
 export * from './ui/skeleton';
+export * from './ui/switch';
 export * from './ui/table';
 export * from './ui/table-skeleton';
 export * from './ui/tabs';

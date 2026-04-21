@@ -12,6 +12,7 @@ import { DeliveryNoteManagement } from '../components/delivery-notes';
 import { PickListManagement } from '../components/picklist';
 import { QuotationManagement } from '../components/quotations';
 import { SalesOrderManagement } from '../components/sales-orders';
+import { useFeatureVisibility } from '../hooks/useFeatureVisibility';
 import type { Invoice } from '../types/invoice';
 
 // Lazy load invoice and payment management components for better performance
@@ -43,6 +44,9 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 export function RevenuePage() {
   const [activeView, setActiveView] = React.useState<ActiveView>('customers');
   const [preSelectedInvoice, setPreSelectedInvoice] = React.useState<Invoice | null>(null);
+
+  // Feature flag visibility
+  const invoicesFlag = useFeatureVisibility('invoices_enabled');
   
   // State for cross-document navigation
   const [pendingSalesOrderId, setPendingSalesOrderId] = React.useState<string | null>(null);
@@ -92,7 +96,9 @@ export function RevenuePage() {
               <NavItem icon={ShoppingCart} label="Sales Orders" isActive={activeView === 'sales_orders'} onClick={() => setActiveView('sales_orders')} />
               <NavItem icon={ClipboardList} label="Pick Lists" isActive={activeView === 'pick_lists'} onClick={() => setActiveView('pick_lists')} />
               <NavItem icon={Truck} label="Delivery Notes" isActive={activeView === 'delivery_notes'} onClick={() => setActiveView('delivery_notes')} />
-              <NavItem icon={DollarSign} label="Invoices" isActive={activeView === 'invoices'} onClick={() => setActiveView('invoices')} />
+              {invoicesFlag.visible && (
+                <NavItem icon={DollarSign} label="Invoices" isActive={activeView === 'invoices'} onClick={() => setActiveView('invoices')} />
+              )}
               <NavItem icon={Package} label="Payments" isActive={activeView === 'payments'} onClick={() => setActiveView('payments')} />
             </nav>
           </div>
