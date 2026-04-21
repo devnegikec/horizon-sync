@@ -30,6 +30,7 @@ export function FeatureControlsPage() {
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
   const [loading, setLoading] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [togglingVisibleId, setTogglingVisibleId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -37,6 +38,7 @@ export function FeatureControlsPage() {
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formEnabled, setFormEnabled] = useState(false);
+  const [formVisible, setFormVisible] = useState(true);
 
   const fetchFlags = useCallback(async () => {
     setLoading(true);
@@ -66,10 +68,23 @@ export function FeatureControlsPage() {
     }
   };
 
+  const handleToggleVisible = async (flag: FeatureFlag) => {
+    setTogglingVisibleId(flag.id);
+    try {
+      const updated = await FeatureFlagService.updateFlag(flag.id, { visible: !flag.visible });
+      setFlags((prev) => prev.map((f) => (f.id === updated.id ? updated : f)));
+    } catch {
+      toast({ title: 'Error', description: `Failed to toggle visibility for "${flag.name}"`, variant: 'destructive' });
+    } finally {
+      setTogglingVisibleId(null);
+    }
+  };
+
   const resetForm = () => {
     setFormName('');
     setFormDescription('');
     setFormEnabled(false);
+    setFormVisible(true);
   };
 
   const handleCreate = async () => {
@@ -80,6 +95,7 @@ export function FeatureControlsPage() {
         name: formName.trim(),
         description: formDescription.trim() || null,
         enabled: formEnabled,
+        visible: formVisible,
       };
       const created = await FeatureFlagService.createFlag(data);
       setFlags((prev) => [...prev, created]);
@@ -125,19 +141,20 @@ export function FeatureControlsPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Enabled</TableHead>
+                <TableHead>Visible</TableHead>
                 <TableHead>Created</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">
+                  <TableCell colSpan={5} className="text-center py-8">
                     Loading feature flags...
                   </TableCell>
                 </TableRow>
               ) : flags.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">
+                  <TableCell colSpan={5} className="text-center py-8">
                     <div className="flex flex-col items-center gap-2">
                       <ToggleLeft className="h-8 w-8 text-muted-foreground" />
                       <p className="text-muted-foreground">No feature flags found</p>
@@ -160,6 +177,14 @@ export function FeatureControlsPage() {
                         disabled={togglingId === flag.id}
                         onCheckedChange={() => handleToggle(flag)}
                         aria-label={`Toggle ${flag.name}`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={flag.visible}
+                        disabled={togglingVisibleId === flag.id}
+                        onCheckedChange={() => handleToggleVisible(flag)}
+                        aria-label={`Toggle visibility for ${flag.name}`}
                       />
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
@@ -212,6 +237,16 @@ export function FeatureControlsPage() {
               />
               <Label htmlFor="flag-enabled">
                 {formEnabled ? 'Enabled' : 'Disabled'}
+              </Label>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch
+                id="flag-visible"
+                checked={formVisible}
+                onCheckedChange={setFormVisible}
+              />
+              <Label htmlFor="flag-visible">
+                {formVisible ? 'Visible' : 'Hidden'}
               </Label>
             </div>
           </div>

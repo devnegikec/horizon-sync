@@ -10,6 +10,7 @@ export interface FeatureFlag {
   name: string;
   description: string | null;
   enabled: boolean;
+  visible: boolean;
   scope: string;
   tenant_id: string | null;
   user_id: string | null;
@@ -26,17 +27,20 @@ export interface FeatureFlagCreateData {
   name: string;
   description?: string | null;
   enabled?: boolean;
+  visible?: boolean;
 }
 
 export interface FeatureFlagUpdateData {
   name?: string;
   description?: string | null;
   enabled?: boolean;
+  visible?: boolean;
 }
 
 export interface FeatureFlagEvaluation {
   feature_name: string;
   enabled: boolean;
+  visible: boolean;
 }
 
 export class FeatureFlagService {
