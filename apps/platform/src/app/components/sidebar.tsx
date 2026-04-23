@@ -8,26 +8,29 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/compon
 import { cn } from '@horizon-sync/ui/lib';
 
 import { usePermissions } from '../hooks/usePermissions';
+import { useFeatureVisibility, useFeatureVisibilities } from '../hooks/useFeatureVisibility';
 
 interface NavItem {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** Feature flag name — when set, the item is hidden if visible=false */
+  featureFlag?: string;
 }
 
 const mainNavItems: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { title: 'Inventory', href: '/inventory', icon: Package },
-  { title: 'Revenue', href: '/revenue', icon: DollarSign },
-  { title: 'Sourcing', href: '/sourcing', icon: ShoppingCart },
-  { title: 'Books', href: '/books', icon: BookOpen },
-  { title: 'Tax & Charges', href: '/tax-charges', icon: Receipt },
-  { title: 'Subscriptions', href: '/subscriptions', icon: CreditCard },
-  { title: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { title: 'QSeal', href: '/qseal', icon: QrCode },
-  { title: 'Users', href: '/users', icon: Users },
-  { title: 'Roles', href: '/roles', icon: Shield },
-  { title: 'Reports', href: '/reports', icon: FileText },
+  { title: 'Inventory', href: '/inventory', icon: Package, featureFlag: 'inventory_module_enabled' },
+  { title: 'Revenue', href: '/revenue', icon: DollarSign, featureFlag: 'revenue_module_enabled' },
+  { title: 'Sourcing', href: '/sourcing', icon: ShoppingCart, featureFlag: 'sourcing_module_enabled' },
+  { title: 'Books', href: '/books', icon: BookOpen, featureFlag: 'book_module_enabled' },
+  { title: 'Tax & Charges', href: '/tax-charges', icon: Receipt, featureFlag: 'taxandcharges_module_enabled' },
+  { title: 'Subscriptions', href: '/subscriptions', icon: CreditCard, featureFlag: 'subscriptions_module_enabled' },
+  { title: 'Analytics', href: '/analytics', icon: BarChart3, featureFlag: 'analytics_module_enabled' },
+  { title: 'QSeal', href: '/qseal', icon: QrCode, featureFlag: 'qseal_module_enabled' },
+  { title: 'Users', href: '/users', icon: Users, featureFlag: 'users_module_enabled' },
+  { title: 'Roles', href: '/roles', icon: Shield, featureFlag: 'roles_module_enabled' },
+  { title: 'Reports', href: '/reports', icon: FileText, featureFlag: 'reports_module_enabled' },
 ];
 
 const bottomNavItems: NavItem[] = [
@@ -66,9 +69,9 @@ function SidebarNavItem({ item, isActive, collapsed, isMobile, onClick }: Sideba
             collapsed && !isMobile && 'justify-center px-2',
           )}>
           <item.icon className={cn(
-              'h-5 w-5 shrink-0 transition-colors',
-              isActive ? 'text-violet-600 dark:text-violet-400' : 'text-muted-foreground group-hover:text-foreground',
-            )}/>
+            'h-5 w-5 shrink-0 transition-colors',
+            isActive ? 'text-violet-600 dark:text-violet-400' : 'text-muted-foreground group-hover:text-foreground',
+          )} />
           {(!collapsed || isMobile) && <span>{item.title}</span>}
           {isActive && (!collapsed || isMobile) && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-500" />}
         </Link>
@@ -86,16 +89,40 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
   const location = useLocation();
   const { filterNavigation } = usePermissions();
 
+  // Get unique feature flag names from nav items
+  const featureFlagNames = React.useMemo(() =>
+    [...new Set(mainNavItems
+      .filter((item) => item.featureFlag)
+      .map((item) => item.featureFlag!)
+    )], []
+  );
+
+  // Call useFeatureVisibilities for all flags at once
+  const flagStates = useFeatureVisibilities(featureFlagNames);
+
+  // Build a map of flag name → visible (only the visible property for filtering)
+  const flagVisibility: Record<string, boolean> = React.useMemo(() => {
+    const visibility: Record<string, boolean> = {};
+    featureFlagNames.forEach(flagName => {
+      visibility[flagName] = flagStates[flagName]?.visible ?? true;
+    });
+    return visibility;
+  }, [flagStates, featureFlagNames]);
+
   const handleLinkClick = () => {
     if (isMobile) {
       onClose?.();
     }
   };
 
-  // Filter navigation items based on user permissions
+  // Filter navigation items based on user permissions, then feature flags
   const filteredMainNavItems = React.useMemo(() => {
-    return filterNavigation(mainNavItems);
-  }, [filterNavigation]);
+    const permFiltered = filterNavigation(mainNavItems);
+    return permFiltered.filter((item) => {
+      if (!item.featureFlag) return true;
+      return flagVisibility[item.featureFlag] !== false;
+    });
+  }, [filterNavigation, flagVisibility]);
 
   const filteredBottomNavItems = React.useMemo(() => {
     return filterNavigation(bottomNavItems);
@@ -103,10 +130,10 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
 
   return (
     <aside className={cn(
-        'flex flex-col h-full border-r border-border bg-card transition-all duration-300 ease-in-out',
-        !isMobile && (collapsed ? 'w-[70px]' : 'w-[260px]'),
-        isMobile && ['fixed inset-y-0 left-0 z-50 w-[260px]', open ? 'translate-x-0' : '-translate-x-full'],
-      )}>
+      'flex flex-col h-full border-r border-border bg-card transition-all duration-300 ease-in-out',
+      !isMobile && (collapsed ? 'w-[70px]' : 'w-[260px]'),
+      isMobile && ['fixed inset-y-0 left-0 z-50 w-[260px]', open ? 'translate-x-0' : '-translate-x-full'],
+    )}>
       {/* Logo Section */}
       <div className="flex h-16 items-center gap-3 px-4 border-b border-border">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500">
