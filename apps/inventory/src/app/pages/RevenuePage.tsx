@@ -13,7 +13,7 @@ import { PickListManagement } from '../components/picklist';
 import { QuotationManagement } from '../components/quotations';
 import { SalesOrderManagement } from '../components/sales-orders';
 import { useFeatureVisibility } from '../hooks/useFeatureVisibility';
-import { INVOICES_ENABLED } from '../constants/feature-flags';
+import { INVOICES_ENABLED } from '@horizon-sync/ui';
 import type { Invoice } from '../types/invoice';
 
 // Lazy load invoice and payment management components for better performance
