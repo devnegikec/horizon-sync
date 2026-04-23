@@ -7,6 +7,7 @@ import type { Table } from '@tanstack/react-table';
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
+import { FEATURE_DISABLED_CODE, HTTP_FEATURE_DISABLED } from '../constants/feature-flags';
 import type { Invoice, InvoiceResponse, InvoiceType, InvoiceStatus } from '../types/invoice.types';
 import { invoiceApi } from '../utility/api/invoices';
 
@@ -47,8 +48,8 @@ function useInvoices(
   const handleFetchError = React.useCallback((err: unknown) => {
     // Detect feature flag disabled (HTTP 423 with FEATURE_DISABLED code)
     const apiErr = err as { status?: number; details?: { detail?: { code?: string } } };
-    if (apiErr?.status === 423 && apiErr?.details?.detail?.code === 'FEATURE_DISABLED') {
-      setError('FEATURE_DISABLED');
+    if (apiErr?.status === HTTP_FEATURE_DISABLED && apiErr?.details?.detail?.code === FEATURE_DISABLED_CODE) {
+      setError(FEATURE_DISABLED_CODE);
     } else {
       setError(err instanceof Error ? err.message : 'Failed to load invoices');
     }

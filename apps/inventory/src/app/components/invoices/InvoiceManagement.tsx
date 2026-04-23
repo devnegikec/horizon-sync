@@ -5,6 +5,7 @@ import { AlertTriangle, Lock } from 'lucide-react';
 import { Card, CardContent, ConfirmationDialog } from '@horizon-sync/ui/components';
 
 import { useInvoiceManagement } from '../../hooks/useInvoiceManagement';
+import { FEATURE_DISABLED_CODE } from '../../constants/feature-flags';
 import type { Invoice } from '../../types/invoice.types';
 import { PaymentType, type CreatePaymentPayload } from '../../types/payment.types';
 import { PaymentDialog } from '../payments/PaymentDialog';
@@ -67,7 +68,7 @@ export function InvoiceManagement() {
 
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
-    if (!error || error === 'FEATURE_DISABLED') return null;
+    if (!error || error === FEATURE_DISABLED_CODE) return null;
     return (
       <Card className="border-destructive">
         <CardContent className="p-4">
@@ -81,7 +82,7 @@ export function InvoiceManagement() {
   }, [error]);
 
   // Feature disabled — show informational banner instead of the full page
-  if (error === 'FEATURE_DISABLED') {
+  if (error === FEATURE_DISABLED_CODE) {
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex flex-col items-center justify-center py-16 px-4">
