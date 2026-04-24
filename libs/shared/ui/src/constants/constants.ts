@@ -8,6 +8,8 @@
 // Feature flag names
 export const INVOICES_ENABLED = 'invoices_enabled';
 export const INVENTORY_MODULE_ENABLED = 'inventory_module_enabled';
+export const BANKING_MODULE_ENABLED = 'banking_module_enabled';
+export const PAYMENTS_MODULE_ENABLED = 'payments_module_enabled';
 
 // Error codes returned by the backend
 export const FEATURE_DISABLED_CODE = 'FEATURE_DISABLED';

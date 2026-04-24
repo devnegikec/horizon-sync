@@ -8,7 +8,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/compon
 import { cn } from '@horizon-sync/ui/lib';
 
 import { usePermissions } from '../hooks/usePermissions';
-import { useFeatureVisibility, useFeatureVisibilities } from '../hooks/useFeatureVisibility';
+import { useFeatureVisibility, useFeatureVisibilities } from '@horizon-sync/ui/hooks';
+import { environment } from '../../environments/environment';
 
 interface NavItem {
   title: string;
@@ -98,7 +99,7 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
   );
 
   // Call useFeatureVisibilities for all flags at once
-  const flagStates = useFeatureVisibilities(featureFlagNames);
+  const flagStates = useFeatureVisibilities(featureFlagNames, `${environment.apiCoreUrl}/api/v1`);
 
   // Build a map of flag name → visible (only the visible property for filtering)
   const flagVisibility: Record<string, boolean> = React.useMemo(() => {

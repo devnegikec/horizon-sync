@@ -9,15 +9,13 @@ import { useEffect, useState } from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
 
-import { environment } from '../../environments/environment';
-
 interface FeatureFlagState {
   visible: boolean;
   enabled: boolean;
   loading: boolean;
 }
 
-export function useFeatureVisibility(flagName: string): FeatureFlagState {
+export function useFeatureVisibility(flagName: string, apiBaseUrl?: string): FeatureFlagState {
   const accessToken = useUserStore((s) => s.accessToken);
   const [state, setState] = useState<FeatureFlagState>({
     visible: true,
@@ -31,10 +29,13 @@ export function useFeatureVisibility(flagName: string): FeatureFlagState {
       return;
     }
 
+    // Default API base URL if not provided
+    const baseUrl = apiBaseUrl || '/api/v1';
+
     let cancelled = false;
 
     fetch(
-      `${environment.apiCoreUrl}/api/v1/feature-flags/evaluate/${flagName}`,
+      `${baseUrl}/feature-flags/evaluate/${flagName}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     )
       .then((res) => (res.ok ? res.json() : null))
@@ -55,12 +56,12 @@ export function useFeatureVisibility(flagName: string): FeatureFlagState {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, flagName]);
+  }, [accessToken, flagName, apiBaseUrl]);
 
   return state;
 }
 
-export function useFeatureVisibilities(flagNames: string[]): Record<string, FeatureFlagState> {
+export function useFeatureVisibilities(flagNames: string[], apiBaseUrl?: string): Record<string, FeatureFlagState> {
   const accessToken = useUserStore((s) => s.accessToken);
   const [states, setStates] = useState<Record<string, FeatureFlagState>>(() => {
     const initial: Record<string, FeatureFlagState> = {};
@@ -80,12 +81,15 @@ export function useFeatureVisibilities(flagNames: string[]): Record<string, Feat
       return;
     }
 
+    // Default API base URL if not provided
+    const baseUrl = apiBaseUrl || '/api/v1';
+
     let cancelled = false;
 
     // Fetch all flags in parallel
     const promises = flagNames.map(flagName =>
       fetch(
-        `${environment.apiCoreUrl}/api/v1/feature-flags/evaluate/${flagName}`,
+        `${baseUrl}/feature-flags/evaluate/${flagName}`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       )
         .then((res) => res.ok ? res.json() : null)
@@ -113,7 +117,7 @@ export function useFeatureVisibilities(flagNames: string[]): Record<string, Feat
     return () => {
       cancelled = true;
     };
-  }, [accessToken, flagNames]);
+  }, [accessToken, flagNames, apiBaseUrl]);
 
   return states;
 }
