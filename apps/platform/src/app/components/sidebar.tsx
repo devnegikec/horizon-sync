@@ -109,6 +109,10 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
     return visibility;
   }, [flagStates, featureFlagNames]);
 
+  // True while any feature flag is still loading — hide flagged items to prevent flash
+  const flagsLoading = featureFlagNames.length > 0 &&
+    featureFlagNames.some(name => flagStates[name]?.loading);
+
   const handleLinkClick = () => {
     if (isMobile) {
       onClose?.();
@@ -120,9 +124,11 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
     const permFiltered = filterNavigation(mainNavItems);
     return permFiltered.filter((item) => {
       if (!item.featureFlag) return true;
+      // While flags are loading, hide items that have a featureFlag to prevent flash
+      if (flagsLoading) return false;
       return flagVisibility[item.featureFlag] !== false;
     });
-  }, [filterNavigation, flagVisibility]);
+  }, [filterNavigation, flagVisibility, flagsLoading]);
 
   const filteredBottomNavItems = React.useMemo(() => {
     return filterNavigation(bottomNavItems);

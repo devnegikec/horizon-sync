@@ -5,7 +5,7 @@ import { AlertTriangle, Lock } from 'lucide-react';
 import { Card, CardContent, ConfirmationDialog } from '@horizon-sync/ui/components';
 
 import { useInvoiceManagement } from '../../hooks/useInvoiceManagement';
-import { FEATURE_DISABLED_CODE } from '../../constants/feature-flags';
+import { FEATURE_DISABLED_CODE } from '@horizon-sync/ui';
 import type { Invoice } from '../../types/invoice.types';
 import { PaymentType, type CreatePaymentPayload } from '../../types/payment.types';
 import { PaymentDialog } from '../payments/PaymentDialog';
