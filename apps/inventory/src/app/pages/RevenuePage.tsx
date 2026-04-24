@@ -12,7 +12,8 @@ import { DeliveryNoteManagement } from '../components/delivery-notes';
 import { PickListManagement } from '../components/picklist';
 import { QuotationManagement } from '../components/quotations';
 import { SalesOrderManagement } from '../components/sales-orders';
-import { useFeatureVisibility } from '../hooks/useFeatureVisibility';
+import { useFeatureVisibility, useFeatureVisibilities } from '@horizon-sync/ui/hooks';
+import { environment } from '../../environments/environment';
 import { INVOICES_ENABLED } from '@horizon-sync/ui';
 import type { Invoice } from '../types/invoice';
 
@@ -46,9 +47,11 @@ export function RevenuePage() {
   const [activeView, setActiveView] = React.useState<ActiveView>('customers');
   const [preSelectedInvoice, setPreSelectedInvoice] = React.useState<Invoice | null>(null);
 
-  // Feature flag visibility
-  const invoicesFlag = useFeatureVisibility(INVOICES_ENABLED);
-  
+  // Feature flag visibility with loading state to prevent flash
+  const invoicesFlagStates = useFeatureVisibilities([INVOICES_ENABLED], `${environment.apiCoreUrl}/api/v1`);
+  const invoicesFlag = invoicesFlagStates[INVOICES_ENABLED];
+  const invoicesFlagLoading = invoicesFlag?.loading ?? true;
+
   // State for cross-document navigation
   const [pendingSalesOrderId, setPendingSalesOrderId] = React.useState<string | null>(null);
   const [pendingInvoiceId, setPendingInvoiceId] = React.useState<string | null>(null);
@@ -85,53 +88,53 @@ export function RevenuePage() {
 
   return (
     <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
+      <ThemeProvider>
 
-      <div className="min-h-screen bg-background">
-              {/* Top Navigation Bar */}
-        <header className="sticky top-0 z-50 w-full border-b bg-background">
-          <div className="container flex h-16 items-center px-4">
-            <nav className="flex items-center gap-2">
-              <NavItem icon={Users} label="Customers" isActive={activeView === 'customers'} onClick={() => setActiveView('customers')} />
-              <NavItem icon={FileText} label="Quotations" isActive={activeView === 'quotations'} onClick={() => setActiveView('quotations')} />
-              <NavItem icon={ShoppingCart} label="Sales Orders" isActive={activeView === 'sales_orders'} onClick={() => setActiveView('sales_orders')} />
-              <NavItem icon={ClipboardList} label="Pick Lists" isActive={activeView === 'pick_lists'} onClick={() => setActiveView('pick_lists')} />
-              <NavItem icon={Truck} label="Delivery Notes" isActive={activeView === 'delivery_notes'} onClick={() => setActiveView('delivery_notes')} />
-              {invoicesFlag.visible && (
-                <NavItem icon={DollarSign} label="Invoices" isActive={activeView === 'invoices'} onClick={() => setActiveView('invoices')} />
-              )}
-              <NavItem icon={Package} label="Payments" isActive={activeView === 'payments'} onClick={() => setActiveView('payments')} />
-            </nav>
-          </div>
-        </header>
+        <div className="min-h-screen bg-background">
+          {/* Top Navigation Bar */}
+          <header className="sticky top-0 z-50 w-full border-b bg-background">
+            <div className="container flex h-16 items-center px-4">
+              <nav className="flex items-center gap-2">
+                <NavItem icon={Users} label="Customers" isActive={activeView === 'customers'} onClick={() => setActiveView('customers')} />
+                <NavItem icon={FileText} label="Quotations" isActive={activeView === 'quotations'} onClick={() => setActiveView('quotations')} />
+                <NavItem icon={ShoppingCart} label="Sales Orders" isActive={activeView === 'sales_orders'} onClick={() => setActiveView('sales_orders')} />
+                <NavItem icon={ClipboardList} label="Pick Lists" isActive={activeView === 'pick_lists'} onClick={() => setActiveView('pick_lists')} />
+                <NavItem icon={Truck} label="Delivery Notes" isActive={activeView === 'delivery_notes'} onClick={() => setActiveView('delivery_notes')} />
+                {!invoicesFlagLoading && invoicesFlag?.visible && (
+                  <NavItem icon={DollarSign} label="Invoices" isActive={activeView === 'invoices'} onClick={() => setActiveView('invoices')} />
+                )}
+                <NavItem icon={Package} label="Payments" isActive={activeView === 'payments'} onClick={() => setActiveView('payments')} />
+              </nav>
+            </div>
+          </header>
 
-        {/* Main Content */}
-        <main className="container px-4 py-8">
-          {activeView === 'customers' && <CustomerManagement />}
-          {activeView === 'quotations' && <QuotationManagement />}
-          {activeView === 'sales_orders' && (
-            <SalesOrderManagement pendingSalesOrderId={pendingSalesOrderId}
-              onClearPendingSalesOrderId={() => setPendingSalesOrderId(null)}
-              onNavigateToInvoice={handleNavigateToInvoice}/>
-          )}
-          {activeView === 'pick_lists' && <PickListManagement />}
-          {activeView === 'delivery_notes' && <DeliveryNoteManagement />}
-          {activeView === 'invoices' && (
-            <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading invoices...</div>}>
-              <InvoiceManagement />
-            </React.Suspense>
-          )}
-          {activeView === 'payments' && (
-            <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading payments...</div>}>
-              <PaymentManagement preSelectedInvoice={preSelectedInvoice}
-                pendingPaymentId={pendingPaymentId}
-                onClearPendingPaymentId={() => setPendingPaymentId(null)}
-                onNavigateToInvoice={handleNavigateToInvoice}/>
-            </React.Suspense>
-          )}
-        </main>
-      </div>
-    </ThemeProvider>
+          {/* Main Content */}
+          <main className="container px-4 py-8">
+            {activeView === 'customers' && <CustomerManagement />}
+            {activeView === 'quotations' && <QuotationManagement />}
+            {activeView === 'sales_orders' && (
+              <SalesOrderManagement pendingSalesOrderId={pendingSalesOrderId}
+                onClearPendingSalesOrderId={() => setPendingSalesOrderId(null)}
+                onNavigateToInvoice={handleNavigateToInvoice} />
+            )}
+            {activeView === 'pick_lists' && <PickListManagement />}
+            {activeView === 'delivery_notes' && <DeliveryNoteManagement />}
+            {activeView === 'invoices' && (
+              <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading invoices...</div>}>
+                <InvoiceManagement />
+              </React.Suspense>
+            )}
+            {activeView === 'payments' && (
+              <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading payments...</div>}>
+                <PaymentManagement preSelectedInvoice={preSelectedInvoice}
+                  pendingPaymentId={pendingPaymentId}
+                  onClearPendingPaymentId={() => setPendingPaymentId(null)}
+                  onNavigateToInvoice={handleNavigateToInvoice} />
+              </React.Suspense>
+            )}
+          </main>
+        </div>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

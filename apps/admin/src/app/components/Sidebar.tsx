@@ -88,12 +88,6 @@ const bottomNavItems: NavItem[] = [
     requiresMaster: true,
   },
   {
-    title: 'Feature Controls',
-    href: '/feature-controls',
-    icon: ToggleLeft,
-    requiresMaster: true,
-  },
-  {
     title: 'Settings',
     href: '/settings',
     icon: Settings,

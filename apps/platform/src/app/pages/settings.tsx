@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/compo
 import { OrganizationConfigSettings } from '../features/organization/components/OrganizationConfigSettings';
 import { hasPermissionFromStore } from '../features/organization/utils/permissions';
 import { useAuth } from '../hooks';
+import { useFeatureVisibility, useFeatureVisibilities } from '@horizon-sync/ui/hooks';
+import { environment } from '../../environments/environment';
 import { BankingDashboard } from '../features/banking/components/BankingDashboard';
 import { BankAccountManager } from '../features/banking/components/BankAccountManager';
 import { PaymentCenter } from '../features/banking/components/PaymentCenter';
@@ -15,6 +17,7 @@ import { TransferWorkflow } from '../features/banking/components/TransferWorkflo
 import { BankApiConnector } from '../features/banking/components/BankApiConnector';
 import { CreateBankAccountForm } from '../features/banking/components/forms/CreateBankAccountForm';
 import { PaymentForm } from '../features/banking/components/forms/PaymentForm';
+import {BANKING_MODULE_ENABLED} from '@horizon-sync/ui';
 
 
 /**
@@ -135,6 +138,11 @@ export function SettingsPage() {
   // Check if user has permission to edit organization settings from global store
   const canEdit = hasPermissionFromStore('organization.update');
 
+  // Feature flag visibility with loading state to prevent flash
+  const bankingFlagStates = useFeatureVisibilities([BANKING_MODULE_ENABLED], `${environment.apiCoreUrl}/api/v1`);
+  const bankingFlag = bankingFlagStates[BANKING_MODULE_ENABLED];
+  const bankingFlagLoading = bankingFlag?.loading ?? true;
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Page Header */}
@@ -156,7 +164,9 @@ export function SettingsPage() {
       }} className="space-y-6">
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="banking">Banking</TabsTrigger>
+          {!bankingFlagLoading && bankingFlag?.visible && (
+            <TabsTrigger value="banking">Banking</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
