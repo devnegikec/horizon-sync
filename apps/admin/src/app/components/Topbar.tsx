@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
+import { ThemeToggle } from '@horizon-sync/ui/components/theme-toggle';
 
 import { useAdminProfile } from '../hooks/useAdminProfile';
 
@@ -63,6 +64,7 @@ export function AdminTopbar({ onMobileToggle }: AdminTopbarProps) {
 
       {/* Right Section — User Menu */}
       <div className="flex items-center gap-2">
+        <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-transparent hover:ring-violet-500/20 transition-all">

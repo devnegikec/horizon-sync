@@ -63,6 +63,11 @@ export function useFeatureVisibility(flagName: string, apiBaseUrl?: string): Fea
 
 export function useFeatureVisibilities(flagNames: string[], apiBaseUrl?: string): Record<string, FeatureFlagState> {
   const accessToken = useUserStore((s) => s.accessToken);
+
+  // Serialize to a stable string so the effect doesn't re-run on every render
+  // when the caller passes an inline array literal.
+  const flagNamesKey = flagNames.slice().sort().join(',');
+
   const [states, setStates] = useState<Record<string, FeatureFlagState>>(() => {
     const initial: Record<string, FeatureFlagState> = {};
     flagNames.forEach(flagName => {
@@ -72,9 +77,11 @@ export function useFeatureVisibilities(flagNames: string[], apiBaseUrl?: string)
   });
 
   useEffect(() => {
-    if (!accessToken || !flagNames.length) {
+    const names = flagNamesKey ? flagNamesKey.split(',') : [];
+
+    if (!accessToken || !names.length) {
       const defaults: Record<string, FeatureFlagState> = {};
-      flagNames.forEach(flagName => {
+      names.forEach(flagName => {
         defaults[flagName] = { visible: true, enabled: true, loading: false };
       });
       setStates(defaults);
@@ -87,7 +94,7 @@ export function useFeatureVisibilities(flagNames: string[], apiBaseUrl?: string)
     let cancelled = false;
 
     // Fetch all flags in parallel
-    const promises = flagNames.map(flagName =>
+    const promises = names.map(flagName =>
       fetch(
         `${baseUrl}/feature-flags/evaluate/${flagName}`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -117,7 +124,8 @@ export function useFeatureVisibilities(flagNames: string[], apiBaseUrl?: string)
     return () => {
       cancelled = true;
     };
-  }, [accessToken, flagNames, apiBaseUrl]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, flagNamesKey, apiBaseUrl]);
 
   return states;
 }
