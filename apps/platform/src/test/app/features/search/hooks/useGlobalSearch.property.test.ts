@@ -8,7 +8,7 @@
 import * as fc from 'fast-check';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useGlobalSearch } from '../../../../../app/features/search/../../../../app/features/search/hooks/useGlobalSearch';
+import { useGlobalSearch } from '../../../../../app/features/search/hooks/useGlobalSearch';
 import { SearchService } from '../../../../../app/features/search/services/search.service';
 import type { SearchResponse } from '../../../../../app/features/search/types/search.types';
 import React from 'react';

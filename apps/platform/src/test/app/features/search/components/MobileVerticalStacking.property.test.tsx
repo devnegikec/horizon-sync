@@ -8,7 +8,7 @@
 import * as fc from 'fast-check';
 import { render } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { SearchResultItem } from '../../../../../app/features/search/../../../../app/features/search/components/SearchResultItem';
+import { SearchResultItem } from '../../../../../app/features/search/components/SearchResultItem';
 import type { SearchResult } from '../../../../../app/features/search/types/search.types';
 
 /**

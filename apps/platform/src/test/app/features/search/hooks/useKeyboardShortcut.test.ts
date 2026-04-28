@@ -4,7 +4,7 @@
  */
 
 import { renderHook } from '@testing-library/react';
-import { useKeyboardShortcut } from '../../../../../app/features/search/../../../../app/features/search/hooks/useKeyboardShortcut';
+import { useKeyboardShortcut } from '../../../../../app/features/search/hooks/useKeyboardShortcut';
 
 describe('useKeyboardShortcut', () => {
   let addEventListenerSpy: jest.SpyInstance;

@@ -7,11 +7,11 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { SearchableSelect } from './SearchableSelect';
-import { useLocalSearch } from '../hooks/useLocalSearch';
+import { SearchableSelect } from '../../../../../app/features/search/components/SearchableSelect';
+import { useLocalSearch } from '../../../../../app/features/search/hooks/useLocalSearch';
 
 // Mock the useLocalSearch hook
-jest.mock('../hooks/useLocalSearch');
+jest.mock('../../../../../app/features/search/hooks/useLocalSearch');
 
 const mockUseLocalSearch = useLocalSearch as jest.MockedFunction<typeof useLocalSearch>;
 
