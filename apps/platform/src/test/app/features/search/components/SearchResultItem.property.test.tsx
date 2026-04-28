@@ -5,7 +5,7 @@
 
 import { render, screen } from '@testing-library/react';
 import * as fc from 'fast-check';
-import { SearchResultItem } from '../../../../../app/features/search/../../../../app/features/search/components/SearchResultItem';
+import { SearchResultItem } from '../../../../../app/features/search/components/SearchResultItem';
 import { SearchResult } from '../../../../../app/features/search/types/search.types';
 import { getAllEntityTypes } from '../../../../../app/features/search/constants/entityTypes';
 

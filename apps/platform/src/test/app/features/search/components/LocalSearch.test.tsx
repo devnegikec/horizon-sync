@@ -7,7 +7,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { LocalSearch } from '../../../../../app/features/search/../../../../app/features/search/components/LocalSearch';
+import { LocalSearch } from '../../../../../app/features/search/components/LocalSearch';
 import { SearchService } from '../../../../../app/features/search/services/search.service';
 import type { SearchResponse } from '../../../../../app/features/search/types/search.types';
 

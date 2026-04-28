@@ -1,6 +1,6 @@
 import * as fc from 'fast-check';
 import { renderHook, act } from '@testing-library/react';
-import { useRecentSearches } from '../../../../../app/features/search/../../../../app/features/search/hooks/useRecentSearches';
+import { useRecentSearches } from '../../../../../app/features/search/hooks/useRecentSearches';
 
 /**
  * Property-Based Tests for useRecentSearches Hook

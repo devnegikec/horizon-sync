@@ -3,7 +3,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { SearchEmptyState } from '../../../../../app/features/search/../../../../app/features/search/components/SearchEmptyState';
+import { SearchEmptyState } from '../../../../../app/features/search/components/SearchEmptyState';
 
 describe('SearchEmptyState', () => {
   it('should display message with query', () => {
