@@ -23,6 +23,10 @@
     "test:admin": "nx test admin",
     "lint:admin": "nx lint admin",
     "lint:fix:all": "nx run-many -t lint --fix",
+    "e2e:platform": "nx e2e platform-e2e",
+    "e2e:platform:headed": "nx e2e platform-e2e -- --headed",
+    "e2e:platform:chromium": "nx e2e platform-e2e -- --project=chromium",
+    "e2e:platform:chromium:headed": "nx e2e platform-e2e -- --project=chromium --headed",
     "prepare": "husky"
   },
   "private": true,
