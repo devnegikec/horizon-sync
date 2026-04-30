@@ -214,26 +214,46 @@ const DescriptionField = ({ register, charCount }: { register: UseFormRegister<O
   </div>
 );
 
-/**
- * Main OrganizationForm Component
- */
-export function OrganizationForm({
-  onSubmit,
+const FormActions = ({
+  showBackButton,
   onBack,
-  showBackButton = false,
-  submitButtonText = 'Create Organization',
-  defaultValues = {},
-  className = '',
-}: OrganizationFormProps) {
+  isSubmitting,
+  submitButtonText,
+}: {
+  showBackButton: boolean;
+  onBack?: () => void;
+  isSubmitting: boolean;
+  submitButtonText: string;
+}) => {
+  const widthClass = showBackButton ? 'flex-1' : 'w-full';
+
+  return (
+    <div className="flex gap-3">
+      {showBackButton && onBack && (
+        <Button type="button" variant="outline" onClick={onBack} className="flex-1">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+      )}
+      <Button type="submit"
+        className={`${widthClass} bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25`}
+        disabled={isSubmitting}>
+        {isSubmitting ? 'Creating...' : submitButtonText}
+      </Button>
+    </div>
+  );
+};
+
+/**
+ * Custom hook to encapsulate form state and handlers.
+ */
+function useOrganizationForm(
+  defaultValues: Partial<OrganizationFormData & { logoUrl: string }>,
+  onSubmit: (data: OrganizationFormData & { logoUrl: string }) => Promise<void>,
+) {
   const [logoPreview, setLogoPreview] = React.useState<string>(defaultValues.logoUrl || '');
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<OrganizationFormData>({
+  const form = useForm<OrganizationFormData>({
     resolver: zodResolver(organizationSchema),
     defaultValues: {
       organizationName: defaultValues.organizationName || '',
@@ -247,49 +267,59 @@ export function OrganizationForm({
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setLogoPreview(result);
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => setLogoPreview(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
-  const handleFormSubmit = async (formData: OrganizationFormData) => {
+  const handleFormSubmit = form.handleSubmit(async (formData: OrganizationFormData) => {
     await onSubmit({ ...formData, logoUrl: logoPreview });
-  };
+  });
+
+  const descriptionCharCount = form.watch('organizationDescription')?.length || 0;
+
+  return { ...form, logoPreview, handleLogoChange, handleFormSubmit, descriptionCharCount };
+}
+
+/**
+ * Main OrganizationForm Component
+ */
+export function OrganizationForm({
+  onSubmit,
+  onBack,
+  showBackButton = false,
+  submitButtonText = 'Create Organization',
+  defaultValues = {},
+  className = '',
+}: OrganizationFormProps) {
+  const {
+    register,
+    setValue,
+    logoPreview,
+    handleLogoChange,
+    handleFormSubmit,
+    descriptionCharCount,
+    formState: { errors, isSubmitting },
+  } = useOrganizationForm(defaultValues, onSubmit);
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className={`space-y-6 ${className}`}>
+    <form onSubmit={handleFormSubmit} className={`space-y-6 ${className}`}>
       <LogoUpload logoPreview={logoPreview} onLogoChange={handleLogoChange} />
 
       <OrganizationNameField register={register} errors={errors} />
 
-      <IndustryAndSizeFields setValue={setValue} 
-        errors={errors} 
+      <IndustryAndSizeFields setValue={setValue}
+        errors={errors}
         defaultIndustry={defaultValues.industry}
         defaultCompanySize={defaultValues.companySize}
         defaultOrganizationType={defaultValues.organizationType}/>
 
       <WebsiteField register={register} errors={errors} />
 
-      <DescriptionField register={register} charCount={watch('organizationDescription')?.length || 0} />
+      <DescriptionField register={register} charCount={descriptionCharCount} />
 
-      <div className="flex gap-3">
-        {showBackButton && onBack && (
-          <Button type="button" variant="outline" onClick={onBack} className="flex-1">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-        )}
-        <Button type="submit"
-          className={`${showBackButton ? 'flex-1' : 'w-full'} bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25`}
-          disabled={isSubmitting}>
-          {isSubmitting ? 'Creating...' : submitButtonText}
-        </Button>
-      </div>
+      <FormActions showBackButton={showBackButton} onBack={onBack} isSubmitting={isSubmitting} submitButtonText={submitButtonText} />
     </form>
   );
 }

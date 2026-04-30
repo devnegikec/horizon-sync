@@ -1,147 +1,110 @@
+import { coreApiClient } from '../../../utility/api-core';
 import { BankAccount, BankAccountHistory, BankAccountListResponse, CreateBankAccountFormData, UpdateBankAccountFormData } from '../types';
-import { getAccessToken } from '../../../utility/api-core';
 
-// API Base URL - should come from environment config
-// Banking endpoints are on Core Service (port 8001), not Identity Service (port 8000)
-const API_BASE_URL = process.env['NX_CORE_API_BASE_URL'] || process.env['NX_API_CORE_URL'] || 'http://localhost:8001';
+/** EU countries that prioritize IBAN for duplicate detection. */
+const EU_IBAN_COUNTRIES = new Set(['DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'IE', 'FI', 'GR', 'LU']);
 
-class BankAccountService {
-    private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-        const url = `${API_BASE_URL}/api/v1${endpoint}`;
-        console.log('Bank API Request:', url, options); // Debug logging
+interface DuplicateCheckParams {
+    account_number?: string;
+    iban?: string;
+    routing_number?: string;
+    sort_code?: string;
+    bsb_number?: string;
+    ifsc_code?: string;
+    country_code?: string;
+    organization_id?: string;
+}
 
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                // Add auth token from your auth system
-                'Authorization': `Bearer ${getAccessToken()}`,
-                ...options?.headers,
-            },
-            ...options,
-        });
+interface DuplicateCheckResult {
+    isDuplicate: boolean;
+    duplicateField?: string;
+    existingAccount?: BankAccount;
+}
 
-        console.log('Bank API Response:', response.status, response.statusText); // Debug logging
+interface IdentifierResult { identifier: string; type: string }
 
-        if (!response.ok) {
-            const error = await response.text();
-            console.error('Bank API Error:', error); // Debug logging
-            throw new Error(`API Error: ${response.status} - ${error}`);
-        }
+/** Strip dashes and join two parts with a colon. */
+function compositeId(prefix: string, suffix: string): string {
+    return `${prefix.replace(/-/g, '')}:${suffix}`;
+}
 
-        const data = await response.json();
-        console.log('Bank API Data:', data); // Debug logging
-        return data;
+/**
+ * Country-specific resolver functions.
+ * Each returns an IdentifierResult when the required fields are present, or null.
+ */
+type CountryResolver = (p: DuplicateCheckParams) => IdentifierResult | null;
+
+const COUNTRY_RESOLVERS: Record<string, CountryResolver> = {
+    US: (p) => (p.routing_number && p.account_number)
+        ? { identifier: compositeId(p.routing_number, p.account_number), type: 'routing_account' }
+        : null,
+    GB: (p) => (p.sort_code && p.account_number)
+        ? { identifier: compositeId(p.sort_code, p.account_number), type: 'sort_account' }
+        : null,
+    AU: (p) => (p.bsb_number && p.account_number)
+        ? { identifier: compositeId(p.bsb_number, p.account_number), type: 'bsb_account' }
+        : null,
+    IN: (p) => (p.ifsc_code && p.account_number)
+        ? { identifier: compositeId(p.ifsc_code, p.account_number), type: 'ifsc_account' }
+        : null,
+};
+
+/**
+ * Resolve the primary banking identifier and its type from the given params.
+ * Returns `null` when no usable identifier is found.
+ */
+function resolveBankIdentifier(params: DuplicateCheckParams): IdentifierResult | null {
+    const country = params.country_code?.toUpperCase();
+
+    // EU countries prioritize IBAN
+    if (country && EU_IBAN_COUNTRIES.has(country) && params.iban) {
+        return { identifier: params.iban, type: 'iban' };
     }
 
+    // Country-specific composite identifiers
+    const countryResolver = country ? COUNTRY_RESOLVERS[country] : undefined;
+    const countryResult = countryResolver?.(params);
+    if (countryResult) return countryResult;
 
+    // Fallback — no country match, try available fields in priority order
+    const fallbacks: Array<[string | undefined, string]> = [
+        [params.iban, 'iban'],
+        [params.account_number, 'account_number'],
+        [params.routing_number, 'routing_number'],
+    ];
+    const match = fallbacks.find(([value]) => !!value);
+    return match ? { identifier: match[0] as string, type: match[1] } : null;
+}
 
+class BankAccountService {
     // Create bank account linked to GL account
     async createBankAccount(glAccountId: string, data: CreateBankAccountFormData): Promise<BankAccount> {
         // Remove gl_account_id from the request body (it's passed in the URL path)
-        const { gl_account_id: _, ...bankAccountData } = data;
-
-        return this.request<BankAccount>(`/chart-of-accounts/${glAccountId}/bank-accounts`, {
-            method: 'POST',
-            body: JSON.stringify(bankAccountData),
-        });
+        const { gl_account_id: _glId, ...bankAccountData } = data;
+        return coreApiClient.post<BankAccount>(`/chart-of-accounts/${glAccountId}/bank-accounts`, bankAccountData);
     }
 
     // Check for duplicate bank account using country-aware banking identifiers
-    async checkDuplicateBankAccount(params: {
-        account_number?: string;
-        iban?: string;
-        routing_number?: string;
-        sort_code?: string;
-        bsb_number?: string;
-        ifsc_code?: string;
-        country_code?: string;
-        organization_id?: string;
-    }): Promise<{ isDuplicate: boolean; duplicateField?: string; existingAccount?: any }> {
-
-        // Determine the primary banking identifier based on country or available fields
-        let bankIdentifier = '';
-        let identifierType = '';
-
-        // Check in order of specificity based on country
-        const country = params.country_code?.toUpperCase();
-
-        // EU countries prioritize IBAN
-        if (country && ['DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'AT', 'PT', 'IE', 'FI', 'GR', 'LU'].includes(country) && params.iban) {
-            bankIdentifier = params.iban;
-            identifierType = 'iban';
-        }
-        // US uses routing + account number or just account number
-        else if (country === 'US' && params.routing_number && params.account_number) {
-            bankIdentifier = `${params.routing_number}:${params.account_number}`;
-            identifierType = 'routing_account';
-        }
-        // UK uses sort code + account number
-        else if (country === 'GB' && params.sort_code && params.account_number) {
-            bankIdentifier = `${params.sort_code.replace('-', '')}:${params.account_number}`;
-            identifierType = 'sort_account';
-        }
-        // Australia uses BSB + account number
-        else if (country === 'AU' && params.bsb_number && params.account_number) {
-            bankIdentifier = `${params.bsb_number.replace('-', '')}:${params.account_number}`;
-            identifierType = 'bsb_account';
-        }
-        // India uses IFSC + account number
-        else if (country === 'IN' && params.ifsc_code && params.account_number) {
-            bankIdentifier = `${params.ifsc_code}:${params.account_number}`;
-            identifierType = 'ifsc_account';
-        }
-        // Fallback to available identifiers
-        else if (params.iban) {
-            bankIdentifier = params.iban;
-            identifierType = 'iban';
-        }
-        else if (params.account_number) {
-            bankIdentifier = params.account_number;
-            identifierType = 'account_number';
-        }
-        else if (params.routing_number) {
-            bankIdentifier = params.routing_number;
-            identifierType = 'routing_number';
-        }
-
-        if (!bankIdentifier) {
+    async checkDuplicateBankAccount(params: DuplicateCheckParams): Promise<DuplicateCheckResult> {
+        const resolved = resolveBankIdentifier(params);
+        if (!resolved) {
             return { isDuplicate: false };
         }
 
-        // Use the generic bank_identifier parameter
-        const response = await this.request<BankAccountListResponse>(
-            `/bank-accounts?bank_identifier=${encodeURIComponent(bankIdentifier)}`
-        ).catch(() => ({ items: [] }));
+        const response = await coreApiClient.get<BankAccountListResponse>(
+            '/bank-accounts',
+            { bank_identifier: resolved.identifier },
+        ).catch(() => ({ items: [] } as Pick<BankAccountListResponse, 'items'>));
 
         if (response.items && response.items.length > 0) {
             return {
                 isDuplicate: true,
-                duplicateField: identifierType === 'iban' ? 'iban' : 'account_number',
-                existingAccount: response.items[0]
+                duplicateField: resolved.type === 'iban' ? 'iban' : 'account_number',
+                existingAccount: response.items[0],
             };
         }
 
         return { isDuplicate: false };
-    }
-
-    // Helper method to build search parameters
-    private buildSearchParams(params?: {
-        active?: boolean;
-        limit?: number;
-        offset?: number;
-    }): URLSearchParams {
-        const searchParams = new URLSearchParams();
-        if (params?.active !== undefined) {
-            searchParams.append('is_active', params.active.toString());
-        }
-        if (params?.limit) {
-            searchParams.append('page_size', params.limit.toString());
-        }
-        if (params?.offset) {
-            const page = Math.floor((params.offset || 0) / (params.limit || 20)) + 1;
-            searchParams.append('page', page.toString());
-        }
-        return searchParams;
     }
 
     // Get all bank accounts
@@ -150,11 +113,19 @@ class BankAccountService {
         limit?: number;
         offset?: number;
     }): Promise<BankAccount[]> {
-        const searchParams = this.buildSearchParams(params);
-        const queryString = searchParams.toString();
-        const endpoint = `/bank-accounts${queryString ? `?${queryString}` : ''}`;
+        const queryParams: Record<string, string | number | boolean | undefined> = {};
+        if (params?.active !== undefined) {
+            queryParams['is_active'] = params.active;
+        }
+        if (params?.limit) {
+            queryParams['page_size'] = params.limit;
+        }
+        if (params?.offset) {
+            const page = Math.floor((params.offset || 0) / (params.limit || 20)) + 1;
+            queryParams['page'] = page;
+        }
 
-        const response = await this.request<BankAccountListResponse>(endpoint);
+        const response = await coreApiClient.get<BankAccountListResponse>('/bank-accounts', queryParams);
         return response.items || [];
     }
 
@@ -167,18 +138,17 @@ class BankAccountService {
             offset?: number;
         }
     ): Promise<BankAccountListResponse> {
-        const searchParams = new URLSearchParams();
+        const queryParams: Record<string, string | number | boolean | undefined> = {};
         // Backend uses include_inactive, so we need to invert the active parameter
         if (params?.active !== undefined) {
-            searchParams.set('include_inactive', (!params.active).toString());
+            queryParams['include_inactive'] = !params.active;
         }
-        // Note: This endpoint doesn't support pagination (limit/offset)
-        // It returns all bank accounts for the GL account
-
-        const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
         // This endpoint returns BankAccount[] directly, not BankAccountListResponse
-        const items = await this.request<BankAccount[]>(`/chart-of-accounts/${glAccountId}/bank-accounts${query}`);
+        const items = await coreApiClient.get<BankAccount[]>(
+            `/chart-of-accounts/${glAccountId}/bank-accounts`,
+            queryParams,
+        );
 
         // Wrap in BankAccountListResponse format for consistency
         return {
@@ -192,49 +162,32 @@ class BankAccountService {
 
     // Get specific bank account
     async getBankAccount(accountId: string): Promise<BankAccount> {
-        return this.request<BankAccount>(`/bank-accounts/${accountId}`);
+        return coreApiClient.get<BankAccount>(`/bank-accounts/${accountId}`);
     }
 
     // Update bank account
     async updateBankAccount(accountId: string, data: UpdateBankAccountFormData): Promise<BankAccount> {
-        console.log('BankAccountService - updateBankAccount called');
-        console.log('BankAccountService - accountId:', accountId);
-        console.log('BankAccountService - data:', data);
-        console.log('BankAccountService - API URL:', `${API_BASE_URL}/api/v1/bank-accounts/${accountId}`);
-
-        const result = await this.request<BankAccount>(`/bank-accounts/${accountId}`, {
-            method: 'PUT',
-            body: JSON.stringify(data),
-        });
-
-        console.log('BankAccountService - updateBankAccount result:', result);
-        return result;
+        return coreApiClient.put<BankAccount>(`/bank-accounts/${accountId}`, data);
     }
 
     // Delete bank account
     async deleteBankAccount(accountId: string): Promise<void> {
-        await this.request(`/bank-accounts/${accountId}`, {
-            method: 'DELETE',
-        });
+        await coreApiClient.delete(`/bank-accounts/${accountId}`);
     }
 
     // Activate bank account
     async activateBankAccount(accountId: string): Promise<BankAccount> {
-        return this.request<BankAccount>(`/bank-accounts/${accountId}/activate`, {
-            method: 'PUT',
-        });
+        return coreApiClient.put<BankAccount>(`/bank-accounts/${accountId}/activate`);
     }
 
     // Deactivate bank account
     async deactivateBankAccount(accountId: string): Promise<BankAccount> {
-        return this.request<BankAccount>(`/bank-accounts/${accountId}/deactivate`, {
-            method: 'PUT',
-        });
+        return coreApiClient.put<BankAccount>(`/bank-accounts/${accountId}/deactivate`);
     }
 
     // Get bank account history
     async getBankAccountHistory(accountId: string): Promise<BankAccountHistory[]> {
-        return this.request<BankAccountHistory[]>(`/bank-accounts/${accountId}/history`);
+        return coreApiClient.get<BankAccountHistory[]>(`/bank-accounts/${accountId}/history`);
     }
 
     // Validate banking details
@@ -245,10 +198,7 @@ class BankAccountService {
         sort_code?: string;
         bsb_number?: string;
     }): Promise<{ valid: boolean; errors: string[] }> {
-        return this.request<{ valid: boolean; errors: string[] }>('/banking/validate', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        });
+        return coreApiClient.post<{ valid: boolean; errors: string[] }>('/banking/validate', data);
     }
 }
 
