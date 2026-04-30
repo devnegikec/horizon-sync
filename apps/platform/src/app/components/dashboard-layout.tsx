@@ -3,6 +3,7 @@ import * as React from 'react';
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { TooltipProvider } from '@horizon-sync/ui/components/ui/tooltip';
 
+import { OrganizationGuard } from './OrganizationGuard';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 
@@ -51,7 +52,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <ThemeProvider>
       <TooltipProvider>
-        <div className="flex h-screen overflow-hidden bg-background">
+        <OrganizationGuard>
+          <div className="flex h-screen overflow-hidden bg-background">
           {/* Backdrop for mobile */}
           {isMobile && sidebarOpen && (
             <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity" onClick={handleCloseSidebar} aria-hidden="true" />
@@ -70,6 +72,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </main>
           </div>
         </div>
+        </OrganizationGuard>
       </TooltipProvider>
     </ThemeProvider>
   );

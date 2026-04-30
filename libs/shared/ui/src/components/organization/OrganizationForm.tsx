@@ -11,8 +11,16 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
 
+const organizationTypes = [
+  { value: 'enterprise', label: 'Enterprise' },
+  { value: 'business', label: 'Business' },
+  { value: 'startup', label: 'Startup' },
+  { value: 'individual', label: 'Individual' },
+] as const;
+
 const organizationSchema = z.object({
   organizationName: z.string().min(2, 'Organization name is required'),
+  organizationType: z.enum(['enterprise', 'business', 'startup', 'individual'], { message: 'Please select an organization type' }),
   industry: z.string().min(1, 'Please select an industry'),
   companySize: z.string().min(1, 'Please select company size'),
   organizationDescription: z.string().max(1000, 'Description must be less than 1000 characters').optional(),
@@ -105,52 +113,76 @@ const IndustryAndSizeFields = ({
   errors,
   defaultIndustry,
   defaultCompanySize,
+  defaultOrganizationType,
 }: {
   setValue: UseFormSetValue<OrganizationFormData>;
   errors: FieldErrors<OrganizationFormData>;
   defaultIndustry?: string;
   defaultCompanySize?: string;
+  defaultOrganizationType?: string;
 }) => (
-  <div className="grid grid-cols-2 gap-4">
+  <>
     <div className="space-y-2">
-      <Label htmlFor="industry">
-        Industry <span className="text-destructive">*</span>
+      <Label htmlFor="organizationType">
+        Organization Type <span className="text-destructive">*</span>
       </Label>
-      <Select defaultValue={defaultIndustry} onValueChange={(value) => setValue('industry', value)}>
-        <SelectTrigger className={errors.industry ? 'border-destructive' : ''}>
-          <SelectValue placeholder="Select industry" />
+      <Select defaultValue={defaultOrganizationType} onValueChange={(value) => setValue('organizationType', value as OrganizationFormData['organizationType'])}>
+        <SelectTrigger className={errors.organizationType ? 'border-destructive' : ''}>
+          <Building className="h-4 w-4 text-muted-foreground mr-2" />
+          <SelectValue placeholder="Select type" />
         </SelectTrigger>
         <SelectContent>
-          {industries.map((industry) => (
-            <SelectItem key={industry} value={industry}>
-              {industry}
+          {organizationTypes.map((type) => (
+            <SelectItem key={type.value} value={type.value}>
+              {type.label}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      {errors.industry && <p className="text-sm text-destructive">{errors.industry.message}</p>}
+      {errors.organizationType && <p className="text-sm text-destructive">{errors.organizationType.message}</p>}
     </div>
 
-    <div className="space-y-2">
-      <Label htmlFor="companySize">
-        Company Size <span className="text-destructive">*</span>
-      </Label>
-      <Select defaultValue={defaultCompanySize} onValueChange={(value) => setValue('companySize', value)}>
-        <SelectTrigger className={errors.companySize ? 'border-destructive' : ''}>
-          <Users className="h-4 w-4 text-muted-foreground mr-2" />
-          <SelectValue placeholder="Select size" />
-        </SelectTrigger>
-        <SelectContent>
-          {companySizes.map((size) => (
-            <SelectItem key={size.value} value={size.value}>
-              {size.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {errors.companySize && <p className="text-sm text-destructive">{errors.companySize.message}</p>}
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="industry">
+          Industry <span className="text-destructive">*</span>
+        </Label>
+        <Select defaultValue={defaultIndustry} onValueChange={(value) => setValue('industry', value)}>
+          <SelectTrigger className={errors.industry ? 'border-destructive' : ''}>
+            <SelectValue placeholder="Select industry" />
+          </SelectTrigger>
+          <SelectContent>
+            {industries.map((industry) => (
+              <SelectItem key={industry} value={industry}>
+                {industry}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {errors.industry && <p className="text-sm text-destructive">{errors.industry.message}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="companySize">
+          Company Size <span className="text-destructive">*</span>
+        </Label>
+        <Select defaultValue={defaultCompanySize} onValueChange={(value) => setValue('companySize', value)}>
+          <SelectTrigger className={errors.companySize ? 'border-destructive' : ''}>
+            <Users className="h-4 w-4 text-muted-foreground mr-2" />
+            <SelectValue placeholder="Select size" />
+          </SelectTrigger>
+          <SelectContent>
+            {companySizes.map((size) => (
+              <SelectItem key={size.value} value={size.value}>
+                {size.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {errors.companySize && <p className="text-sm text-destructive">{errors.companySize.message}</p>}
+      </div>
     </div>
-  </div>
+  </>
 );
 
 const WebsiteField = ({ register, errors }: { register: UseFormRegister<OrganizationFormData>; errors: FieldErrors<OrganizationFormData> }) => (
@@ -205,6 +237,7 @@ export function OrganizationForm({
     resolver: zodResolver(organizationSchema),
     defaultValues: {
       organizationName: defaultValues.organizationName || '',
+      organizationType: defaultValues.organizationType || undefined,
       industry: defaultValues.industry || '',
       companySize: defaultValues.companySize || '',
       organizationDescription: defaultValues.organizationDescription || '',
@@ -234,12 +267,11 @@ export function OrganizationForm({
 
       <OrganizationNameField register={register} errors={errors} />
 
-      <IndustryAndSizeFields 
-        setValue={setValue} 
+      <IndustryAndSizeFields setValue={setValue} 
         errors={errors} 
         defaultIndustry={defaultValues.industry}
         defaultCompanySize={defaultValues.companySize}
-      />
+        defaultOrganizationType={defaultValues.organizationType}/>
 
       <WebsiteField register={register} errors={errors} />
 
@@ -252,11 +284,9 @@ export function OrganizationForm({
             Back
           </Button>
         )}
-        <Button 
-          type="submit"
+        <Button type="submit"
           className={`${showBackButton ? 'flex-1' : 'w-full'} bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25`}
-          disabled={isSubmitting}
-        >
+          disabled={isSubmitting}>
           {isSubmitting ? 'Creating...' : submitButtonText}
         </Button>
       </div>
