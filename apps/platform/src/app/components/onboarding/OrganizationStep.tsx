@@ -26,7 +26,7 @@ export function OrganizationStep() {
           description: formData.organizationDescription || '',
           website: formData.websiteUrl || '',
           industry: formData.industry,
-          organization_type: 'business',
+          organization_type: formData.organizationType,
           status: 'trial',
           email: user?.email || '',
           phone: user?.phone || '',
