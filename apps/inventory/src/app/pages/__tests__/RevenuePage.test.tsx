@@ -1,36 +1,57 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+// Polyfill matchMedia for ThemeProvider in jsdom
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
 // Mock all lazy-loaded and heavy components
 jest.mock('../../components/customers', () => ({
-  CustomerManagement: () => <div data-testid="customer-management">Customers</div>,
+  CustomerManagement: () => <div data-testid="customer-management">Customer Content</div>,
 }));
 jest.mock('../../components/quotations', () => ({
-  QuotationManagement: () => <div data-testid="quotation-management">Quotations</div>,
+  QuotationManagement: () => <div data-testid="quotation-management">Quotation Content</div>,
 }));
 jest.mock('../../components/sales-orders', () => ({
-  SalesOrderManagement: () => <div data-testid="sales-order-management">Sales Orders</div>,
+  SalesOrderManagement: () => <div data-testid="sales-order-management">Sales Order Content</div>,
 }));
 jest.mock('../../components/picklist', () => ({
-  PickListManagement: () => <div data-testid="picklist-management">Pick Lists</div>,
+  PickListManagement: () => <div data-testid="picklist-management">Pick List Content</div>,
 }));
 jest.mock('../../components/delivery-notes', () => ({
-  DeliveryNoteManagement: () => <div data-testid="delivery-note-management">Delivery Notes</div>,
+  DeliveryNoteManagement: () => <div data-testid="delivery-note-management">Delivery Note Content</div>,
 }));
 jest.mock('../../components/invoices', () => ({
-  InvoiceManagement: () => <div data-testid="invoice-management">Invoices</div>,
+  InvoiceManagement: () => <div data-testid="invoice-management">Invoice Content</div>,
 }));
 jest.mock('../../components/payments', () => ({
-  PaymentManagement: () => <div data-testid="payment-management">Payments</div>,
+  PaymentManagement: () => <div data-testid="payment-management">Payment Content</div>,
 }));
 jest.mock('@horizon-sync/ui/hooks', () => ({
   useFeatureVisibility: jest.fn(() => ({ visible: true, loading: false })),
   useFeatureVisibilities: jest.fn(() => ({
     'invoices-enabled': { visible: true, loading: false },
   })),
+  useTheme: jest.fn(() => ({ theme: 'light', setTheme: jest.fn() })),
 }));
 jest.mock('@horizon-sync/ui', () => ({
   INVOICES_ENABLED: 'invoices-enabled',
+}));
+
+// Mock ThemeProvider to avoid deep dependency chain
+jest.mock('@horizon-sync/ui/components/theme-provider', () => ({
+  ThemeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 import { RevenuePage } from '../RevenuePage';

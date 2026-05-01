@@ -1,6 +1,21 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+// Polyfill matchMedia for ThemeProvider in jsdom
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
 // Mock lazy-loaded components
 jest.mock('../../components/tax-templates', () => ({
   TaxTemplateManagement: () => <div data-testid="tax-template-management">Tax Templates Content</div>,
