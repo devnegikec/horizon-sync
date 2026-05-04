@@ -61,7 +61,7 @@ const getIconForModule = (moduleName: string): React.ComponentType<{ className?:
 
 // eslint-disable-next-line complexity
 export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserModalProps) {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
   const [roles, setRoles] = React.useState<Role[]>([]);
@@ -183,6 +183,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
         last_name: data.last_name,
         role_id: data.role_id,
         message: data.message,
+        organization_id: user?.organization_id ?? undefined,
       };
 
       await UserService.inviteUser(payload, accessToken);

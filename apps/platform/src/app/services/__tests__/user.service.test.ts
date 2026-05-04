@@ -164,7 +164,7 @@ describe('UserService', () => {
 
       expect(result).toEqual(mockInviteResponse);
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/users/invite'),
+        expect.stringContaining('/identity/invitations'),
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify(payload),

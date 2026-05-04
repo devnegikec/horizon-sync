@@ -230,21 +230,58 @@ describe('RoleService', () => {
   });
 
   describe('getGroupedPermissions', () => {
-    it('should transform API response to grouped format', async () => {
+    it('should group permissions by resource field', async () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce(
         okResponse({
           categories: [
-            { name: 'Inventory', permissions: [{ id: 'p1', code: 'inventory.items.create', name: 'Create Items' }] },
-            { name: 'Sales', permissions: [{ id: 'p2', code: 'sales.orders.read', name: 'View Orders' }] },
+            {
+              name: 'Business Operations',
+              permissions: [
+                { id: 'p1', code: 'item.create', name: 'Item Create', resource: 'item', action: 'create', module: 'core' },
+                { id: 'p2', code: 'item.read', name: 'Item Read', resource: 'item', action: 'read', module: 'core' },
+                { id: 'p3', code: 'warehouse.read', name: 'Warehouse Read', resource: 'warehouse', action: 'read', module: 'core' },
+              ],
+            },
+            {
+              name: 'Identity & Access',
+              permissions: [
+                { id: 'p4', code: 'user.create', name: 'Create User', resource: 'user', action: 'create', module: 'identity' },
+              ],
+            },
           ],
         }),
       );
 
       const result = await RoleService.getGroupedPermissions(mockToken);
 
-      expect(result.data).toHaveProperty('Inventory');
-      expect(result.data).toHaveProperty('Sales');
-      expect(result.data['Inventory']).toHaveLength(1);
+      // Grouped by resource, not by category name
+      expect(result.data).toHaveProperty('item');
+      expect(result.data).toHaveProperty('warehouse');
+      expect(result.data).toHaveProperty('user');
+      expect(result.data['item']).toHaveLength(2);
+      expect(result.data['warehouse']).toHaveLength(1);
+      expect(result.data['user']).toHaveLength(1);
+    });
+
+    it('should sort permissions within a resource by action order', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce(
+        okResponse({
+          categories: [
+            {
+              name: 'Ops',
+              permissions: [
+                { id: 'p1', code: 'item.delete', name: 'Item Delete', resource: 'item', action: 'delete', module: 'core' },
+                { id: 'p2', code: 'item.read', name: 'Item Read', resource: 'item', action: 'read', module: 'core' },
+                { id: 'p3', code: 'item.create', name: 'Item Create', resource: 'item', action: 'create', module: 'core' },
+              ],
+            },
+          ],
+        }),
+      );
+
+      const result = await RoleService.getGroupedPermissions(mockToken);
+      const actions = result.data['item'].map((p: { action: string }) => p.action);
+      expect(actions).toEqual(['read', 'create', 'delete']);
     });
 
     it('should handle empty categories', async () => {

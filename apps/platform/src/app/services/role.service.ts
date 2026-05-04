@@ -286,7 +286,11 @@ export class RoleService {
   }
 
   /**
-   * Get permissions grouped by module
+   * Get permissions grouped by resource.
+   *
+   * The API returns permissions inside category objects, but the UI needs them
+   * grouped by the `resource` field (e.g. "warehouse", "item", "user") so each
+   * collapsible row represents a single resource with its CRUD actions.
    */
   static async getGroupedPermissions(token: string): Promise<PermissionGroupedResponse> {
     try {
@@ -303,16 +307,42 @@ export class RoleService {
 
       const apiResponse = await response.json();
 
-      // Transform API response to match our expected format
-      // API returns: { categories: [{ name, permissions: [...] }] }
-      // We need: { data: { "Category Name": [...permissions] } }
+      // Flatten all permissions from every category, then group by resource
       const grouped: Record<string, Permission[]> = {};
 
       if (apiResponse.categories && Array.isArray(apiResponse.categories)) {
         apiResponse.categories.forEach((category: { name: string; permissions: Permission[] }) => {
-          if (category.name && category.permissions) {
-            grouped[category.name] = category.permissions;
+          if (!category.permissions) return;
+          category.permissions.forEach((perm: Permission) => {
+            const key = perm.resource || 'other';
+            if (!grouped[key]) {
+              grouped[key] = [];
+            }
+            grouped[key].push(perm);
+          });
+        });
+      }
+
+      // Also handle uncategorized permissions if present
+      if (apiResponse.uncategorized && Array.isArray(apiResponse.uncategorized)) {
+        apiResponse.uncategorized.forEach((perm: Permission) => {
+          const key = perm.resource || 'other';
+          if (!grouped[key]) {
+            grouped[key] = [];
           }
+          grouped[key].push(perm);
+        });
+      }
+
+      // Sort permissions within each resource group by action for consistent ordering
+      const ACTION_ORDER = ['read', 'create', 'update', 'delete', 'manage', 'execute'];
+      for (const perms of Object.values(grouped)) {
+        perms.sort((a, b) => {
+          const aIdx = ACTION_ORDER.indexOf(a.action);
+          const bIdx = ACTION_ORDER.indexOf(b.action);
+          const aOrder = aIdx === -1 ? ACTION_ORDER.length : aIdx;
+          const bOrder = bIdx === -1 ? ACTION_ORDER.length : bIdx;
+          return aOrder - bOrder;
         });
       }
 
