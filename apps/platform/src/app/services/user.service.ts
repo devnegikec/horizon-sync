@@ -37,6 +37,7 @@ export interface InviteUserPayload {
   role_id?: string;
   team_ids?: string[];
   message?: string;
+  organization_id?: string;
 }
 
 export interface InviteUserResponse {
@@ -117,7 +118,7 @@ export class UserService {
 
   static async inviteUser(payload: InviteUserPayload, token: string): Promise<InviteUserResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/invite`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/invitations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
