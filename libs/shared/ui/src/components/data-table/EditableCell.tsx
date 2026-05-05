@@ -57,13 +57,14 @@ export function EditableCell<TData, TValue>({
   return (
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div onClick={() => setIsEditing(true)}
-      className="cursor-pointer hover:bg-muted/50 rounded px-2 py-1 min-h-[32px] flex items-center">
+      className={`cursor-pointer hover:bg-muted/50 rounded px-2 py-1 min-h-[32px] flex items-center ${
+        (row.original as Record<string, unknown>)?.isNew ? 'border border-input' : ''
+      }`}>
       {String(value ?? '')}
     </div>
   );
 }
 
-// Editable cell that always shows input (spreadsheet style)
 export function EditableCellAlwaysInput<TData, TValue>({
   getValue,
   row,
@@ -150,7 +151,9 @@ export function EditableNumberCell<TData, TValue>({
   return (
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div onClick={() => setIsEditing(true)}
-      className="cursor-pointer hover:bg-muted/50 rounded px-2 py-1 min-h-[32px] flex items-center">
+      className={`cursor-pointer hover:bg-muted/50 rounded px-2 py-1 min-h-[32px] flex items-center ${
+        (row.original as Record<string, unknown>)?.isNew ? 'border border-input' : ''
+      }`}>
       {typeof value === 'number' ? value.toFixed(2) : String(value ?? '')}
     </div>
   );
