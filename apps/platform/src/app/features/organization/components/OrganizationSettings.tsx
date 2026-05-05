@@ -13,6 +13,7 @@ import type { OrganizationSettings as OrganizationSettingsType } from '../../../
 import { validateOrganizationSettings } from '../../../utils/organization-settings.utils';
 
 import { CurrencySettings } from './CurrencySettings';
+import { UomSettings } from './UomSettings';
 
 interface OrganizationSettingsProps {
   organizationId: string;
@@ -105,6 +106,12 @@ export function OrganizationSettings({
 
       {/* Currency Settings */}
       <CurrencySettings accessToken={accessToken}
+        disabled={saving || !canEdit}/>
+
+      <Separator />
+
+      {/* Unit of Measure Settings */}
+      <UomSettings accessToken={accessToken}
         disabled={saving || !canEdit}/>
 
       <Separator />
