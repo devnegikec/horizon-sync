@@ -52,15 +52,14 @@ export class OrganizationService {
     token: string,
     apiBaseUrl: string
   ): Promise<unknown> {
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/v1/identity/organizations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+    const response = await fetch(`${apiBaseUrl}/api/v1/identity/organizations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({
@@ -78,15 +77,14 @@ export class OrganizationService {
     token: string,
     apiBaseUrl: string
   ): Promise<Organization> {
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/v1/identity/organizations/${organizationId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+    const response = await fetch(`${apiBaseUrl}/api/v1/identity/organizations/${organizationId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({
