@@ -118,15 +118,29 @@ export class RoleService {
         throw response;
       }
 
-      return await response.json();
+      // API returns: { data, total, skip, limit }
+      // Frontend expects: { data, pagination: { total_count, page, page_size, ... } }
+      const raw = await response.json();
+      const page = filters.page;
+      const pageSize = filters.pageSize;
+      const total = raw.total ?? 0;
+      const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
+
+      return {
+        data: raw.data ?? [],
+        pagination: {
+          total_count: total,
+          page,
+          page_size: pageSize,
+          total_pages: totalPages,
+          has_next: page < totalPages,
+          has_prev: page > 1,
+        },
+      };
     } catch (error) {
       throw handleAPIError(error);
     }
   }
-
-  /**
-   * Get a single role by ID
-   */
   static async getRole(roleId: string, token: string): Promise<Role> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles/${roleId}?include_permissions=true`, {
@@ -240,11 +254,7 @@ export class RoleService {
         payload.description = data.description;
       }
 
-      // If permissions are being updated, convert codes to IDs
-      if (data.permissions && data.permissions.length > 0) {
-        payload.permission_ids = await this.getPermissionIds(data.permissions, token);
-      }
-
+      // Step 1: Update role metadata (name, description, etc.)
       const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles/${roleId}`, {
         method: 'PUT',
         headers: {
@@ -258,7 +268,33 @@ export class RoleService {
         throw response;
       }
 
-      return await response.json();
+      const updatedRole: Role = await response.json();
+
+      // Step 2: Update permissions via bulk assign (replace mode)
+      // The PUT endpoint does not accept permission_ids — use the dedicated bulk endpoint.
+      if (data.permissions !== undefined) {
+        const permissionIds = data.permissions.length > 0
+          ? await this.getPermissionIds(data.permissions, token)
+          : [];
+
+        const permResponse = await fetch(
+          `${API_BASE_URL}/api/v1/identity/roles/${roleId}/permissions/bulk`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ permission_ids: permissionIds, mode: 'replace' }),
+          }
+        );
+
+        if (!permResponse.ok) {
+          throw permResponse;
+        }
+      }
+
+      return updatedRole;
     } catch (error) {
       throw handleAPIError(error);
     }

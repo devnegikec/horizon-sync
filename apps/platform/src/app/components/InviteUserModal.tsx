@@ -177,6 +177,11 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     setErrorMessage('');
 
     try {
+      if (!user?.organization_id) {
+        setErrorMessage('No organization found. Please ensure you are logged in to an organization.');
+        return;
+      }
+
       const payload: InviteUserPayload = {
         email: data.email,
         first_name: data.first_name,

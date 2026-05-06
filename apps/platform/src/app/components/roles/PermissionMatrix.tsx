@@ -86,12 +86,12 @@ export function PermissionMatrix({
 
         // Search filter
         if (!searchQuery) return true;
-        const query = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase();
         return (
-          perm.name.toLowerCase().includes(query) ||
-          perm.code.toLowerCase().includes(query) ||
-          perm.resource.toLowerCase().includes(query) ||
-          perm.action.toLowerCase().includes(query)
+          perm.name.toLowerCase().includes(q) ||
+          perm.code.toLowerCase().includes(q) ||
+          perm.resource.toLowerCase().includes(q) ||
+          perm.action.toLowerCase().includes(q)
         );
       });
 
@@ -99,7 +99,6 @@ export function PermissionMatrix({
         filtered[resource] = matchingPerms.sort((a, b) => actionSortKey(a.action) - actionSortKey(b.action));
       }
     });
-
     return filtered;
   }, [permissions, sortedResources, searchQuery, moduleFilter]);
 
@@ -159,9 +158,7 @@ export function PermissionMatrix({
     if (selectedPermissions.size === 0) return null;
     const compressed = suggestWildcardCompression(selectedPermissions, allPermissions);
     const hasWildcards = compressed.some((p) => isWildcardPermission(p));
-    if (hasWildcards && compressed.length < selectedPermissions.size) {
-      return compressed;
-    }
+    if (hasWildcards && compressed.length < selectedPermissions.size) return compressed;
     return null;
   }, [selectedPermissions, allPermissions]);
 
