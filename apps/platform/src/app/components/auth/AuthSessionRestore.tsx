@@ -27,11 +27,9 @@ const PUBLIC_ROUTE_PREFIXES = ['/g/'];
 function getPersistedRefreshToken(): string | null {
   try {
     const raw = localStorage.getItem('horizon-auth');
-    console.log('[AuthSessionRestore] localStorage "horizon-auth" raw:', raw);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     const token = parsed?.state?.refreshToken || null;
-    console.log('[AuthSessionRestore] Parsed refreshToken exists:', !!token);
     return token;
   } catch (e) {
     console.error('[AuthSessionRestore] Error reading localStorage:', e);
@@ -59,15 +57,6 @@ export function AuthSessionRestore({ children }: AuthSessionRestoreProps) {
   // On initial mount: if we're on a protected route and have a persisted refresh token
   // but no access token, we need to restore the session before rendering children.
   const needsRestore = !isPublicRoute && !accessToken && !!getPersistedRefreshToken();
-
-  console.log('[AuthSessionRestore] render', {
-    pathname: location.pathname,
-    isPublicRoute,
-    hasAccessToken: !!accessToken,
-    persistedRefreshToken: !!getPersistedRefreshToken(),
-    needsRestore,
-  });
-
   const [restoring, setRestoring] = React.useState(needsRestore);
   const attemptedRef = React.useRef(false);
   const restoreSessionRef = React.useRef(restoreSession);
@@ -78,13 +67,6 @@ export function AuthSessionRestore({ children }: AuthSessionRestoreProps) {
   }, [restoreSession]);
 
   React.useEffect(() => {
-    console.log('[AuthSessionRestore] effect', {
-      isPublicRoute,
-      hasAccessToken: !!accessToken,
-      attempted: attemptedRef.current,
-      restoring,
-    });
-
     // Don't attempt restore on public routes or if already authenticated
     if (isPublicRoute || accessToken || attemptedRef.current) {
       setRestoring(false);
@@ -94,26 +76,22 @@ export function AuthSessionRestore({ children }: AuthSessionRestoreProps) {
     // No persisted refresh token — nothing to restore
     const persistedToken = getPersistedRefreshToken();
     if (!persistedToken) {
-      console.log('[AuthSessionRestore] No persisted refresh token found, skipping restore');
       setRestoring(false);
       return;
     }
 
     attemptedRef.current = true;
     setRestoring(true);
-    console.log('[AuthSessionRestore] Starting session restore...');
 
     let cancelled = false;
 
     const attemptRestore = async () => {
       try {
-        const success = await restoreSessionRef.current();
-        console.log('[AuthSessionRestore] Restore result:', success);
+        await restoreSessionRef.current();
       } catch (error) {
         console.error('[AuthSessionRestore] Restore error:', error);
       } finally {
         if (!cancelled) {
-          console.log('[AuthSessionRestore] Setting restoring=false');
           setRestoring(false);
         }
       }
@@ -126,11 +104,9 @@ export function AuthSessionRestore({ children }: AuthSessionRestoreProps) {
     };
   }, [accessToken, isPublicRoute]);
 
-  console.log('[AuthSessionRestore] will render', { restoring, isPublicRoute });
 
   // Show loading only on protected routes while restoring session
   if (restoring) {
-    console.log('[AuthSessionRestore] Showing AppLoading');
     return <AppLoading />;
   }
 

@@ -140,13 +140,6 @@ export function ItemManagement() {
     ? items.filter(item => searchResults.some(result => result.entity_id === item.id))
     : items;
 
-  console.log('[ItemManagement] Display state:', {
-    isSearchActive,
-    searchResultsCount: searchResults.length,
-    totalItems: items.length,
-    displayedItems: displayedItems.length
-  });
-
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <ItemManagementHeader onCreateItem={handleCreateItemWithOrgCheck} />
