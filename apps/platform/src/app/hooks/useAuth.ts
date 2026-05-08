@@ -1,7 +1,8 @@
 import { useCallback } from 'react';
-import { useUserStore, type User } from '@horizon-sync/store';
+import { useUserStore, type User, type Organization as StoreOrganization } from '@horizon-sync/store';
 
 import { AuthService } from '../services/auth.service';
+import { OrganizationService } from '../services/organization.service';
 import type { UserType } from '../services/auth.types';
 
 function userFromApi(u: UserType): User {
@@ -32,7 +33,7 @@ function userFromApi(u: UserType): User {
 }
 
 export function useAuth() {
-  const { user, accessToken, refreshToken, setAuth, updateUser, clearAuth } = useUserStore();
+  const { user, accessToken, refreshToken, setAuth, updateUser, clearAuth, setOrganization } = useUserStore();
 
   const login = useCallback((
     token: string,
@@ -84,6 +85,7 @@ export function useAuth() {
    * Restore session using refresh token.
    * If a refresh token exists in the store, it's used.
    * Otherwise, the backend will attempt to use HttpOnly cookies.
+   * Also fetches organization details to fully restore app state.
    */
   const restoreSession = useCallback(async (): Promise<boolean> => {
     try {
@@ -101,6 +103,30 @@ export function useAuth() {
       // If we don't get a new refresh token from API, we keep the current one
       const newRefreshToken = data.refresh_token || refreshToken || '';
       setAuth(userData, data.access_token, newRefreshToken);
+
+      // Fetch organization details if user has an organization_id
+      if (userData.organization_id) {
+        try {
+          const orgData = await OrganizationService.getOrganization(
+            userData.organization_id,
+            data.access_token
+          );
+          setOrganization({
+            id: orgData.id,
+            name: orgData.name,
+            display_name: orgData.display_name,
+            status: orgData.status as 'active' | 'inactive' | 'suspended',
+            is_active: orgData.status === 'active',
+            settings: orgData.settings || null,
+            extra_data: orgData.extra_data || null,
+            created_at: orgData.created_at,
+            updated_at: orgData.updated_at,
+          });
+        } catch (orgError) {
+          console.warn('Failed to fetch organization during session restore:', orgError);
+          // Don't fail the entire restore if org fetch fails
+        }
+      }
       
       console.log('Session restored successfully');
       return true;
@@ -108,7 +134,7 @@ export function useAuth() {
       console.error('Failed to restore session:', error);
       return false;
     }
-  }, [refreshToken, setAuth]);
+  }, [refreshToken, setAuth, setOrganization]);
 
   const fetchUserProfile = async () => {
     if (!accessToken) {
