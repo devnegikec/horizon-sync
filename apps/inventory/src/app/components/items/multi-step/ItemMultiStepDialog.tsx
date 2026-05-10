@@ -32,16 +32,20 @@ const STEPS = [
   { id: 3, title: 'Tax & Additional', description: 'Tax and custom fields' },
 ];
 
+function isStep1Valid(formData: ItemFormData): boolean {
+  return !!(
+    formData.name?.trim() &&
+    formData.itemGroupId?.trim() &&
+    formData.itemType?.trim() &&
+    formData.unitOfMeasure?.trim() &&
+    formData.status?.trim()
+  );
+}
+
 function validateStep(step: number, formData: ItemFormData): boolean {
   switch (step) {
     case 1:
-      return !!(
-        formData.name &&
-        formData.itemGroupId &&
-        formData.itemType &&
-        formData.unitOfMeasure &&
-        formData.status
-      );
+      return isStep1Valid(formData);
     case 2:
       return !!formData.defaultPrice;
     case 3:
