@@ -1,15 +1,65 @@
 import * as React from 'react';
 
-import { Package, TrendingUp, TrendingDown, RotateCcw, Truck, Calendar, Hash, Ruler, DollarSign, Layers, Archive } from 'lucide-react';
+import {
+  Package, Hash, Ruler, DollarSign, Layers, Archive, Calendar,
+  BarChart3, Weight, ShieldCheck, Tag, Box, Settings2, Loader2,
+} from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
-import { cn } from '@horizon-sync/ui/lib';
 
-import { mockPriceLevels, mockTransactions, mockSuppliers } from '../../data/items.mock';
-import type { Item, PriceLevel, ItemTransaction, Supplier } from '../../types/item.types';
+import type { Item } from '../../types/item.types';
+import { apiRequest } from '../../utility/api/core';
+
+// Full API response type for item detail
+interface ItemDetailResponse {
+  id: string;
+  organization_id: string;
+  item_code: string;
+  item_name: string;
+  description: string;
+  item_group_id: string | null;
+  item_group: { id: string; code: string; name: string } | null;
+  item_type: string;
+  uom: string;
+  maintain_stock: boolean;
+  valuation_method: string;
+  allow_negative_stock: boolean;
+  has_variants: boolean;
+  variant_of: string | null;
+  variant_attributes: Record<string, unknown>;
+  has_batch_no: boolean;
+  has_serial_no: boolean;
+  batch_number_series: string;
+  serial_number_series: string;
+  standard_rate: string;
+  valuation_rate: string;
+  enable_auto_reorder: boolean;
+  reorder_level: number;
+  reorder_qty: number;
+  min_order_qty: number;
+  max_order_qty: number;
+  weight_per_unit: string;
+  weight_uom: string;
+  inspection_required_before_purchase: boolean;
+  inspection_required_before_delivery: boolean;
+  quality_inspection_template: string | null;
+  sales_tax_template_id: string | null;
+  purchase_tax_template_id: string | null;
+  barcode: string;
+  status: string;
+  image_url: string;
+  images: string[];
+  tags: string[];
+  custom_fields: Record<string, unknown>;
+  extra_data: Record<string, unknown>;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 interface ItemDetailDialogProps {
   open: boolean;
@@ -17,7 +67,29 @@ interface ItemDetailDialogProps {
   item: Item | null;
 }
 
+// --- Shared UI helpers ---
+
 function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 py-2">
+      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium truncate">{value || <span className="text-muted-foreground">—</span>}</p>
+      </div>
+    </div>
+  );
+}
+
+function BooleanRow({ icon: Icon, label, value, trueLabel = 'Yes', falseLabel = 'No' }: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: boolean;
+  trueLabel?: string;
+  falseLabel?: string;
+}) {
   return (
     <div className="flex items-center gap-3 py-2">
       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
@@ -25,213 +97,271 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ cla
       </div>
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium">{value}</p>
+        <Badge variant={value ? 'success' : 'secondary'} className="text-xs">
+          {value ? trueLabel : falseLabel}
+        </Badge>
       </div>
     </div>
   );
 }
 
-function TransactionIcon({ type }: { type: ItemTransaction['type'] }) {
-  switch (type) {
-    case 'purchase':
-      return <TrendingUp className="h-4 w-4 text-emerald-500" />;
-    case 'sale':
-      return <TrendingDown className="h-4 w-4 text-blue-500" />;
-    case 'adjustment':
-      return <RotateCcw className="h-4 w-4 text-amber-500" />;
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border p-4">
+      <h4 className="text-sm font-semibold mb-3">{title}</h4>
+      {children}
+    </div>
+  );
+}
+
+// --- Tab content components ---
+
+function OverviewTab({ detail }: { detail: ItemDetailResponse }) {
+  return (
+    <div className="space-y-4">
+      <SectionCard title="Item Details">
+        {detail.description && (
+          <p className="text-sm text-muted-foreground mb-4">{detail.description}</p>
+        )}
+        <div className="grid grid-cols-2 gap-4">
+          <InfoRow icon={Hash} label="Item Code" value={detail.item_code} />
+          <InfoRow icon={Ruler} label="Unit of Measure" value={detail.uom} />
+          <InfoRow icon={Layers} label="Item Group" value={detail.item_group?.name} />
+          <InfoRow icon={Box} label="Item Type" value={detail.item_type ? detail.item_type.charAt(0).toUpperCase() + detail.item_type.slice(1) : ''} />
+          <InfoRow icon={Tag} label="Barcode" value={detail.barcode} />
+          <InfoRow icon={Calendar} label="Created" value={detail.created_at ? new Date(detail.created_at).toLocaleDateString() : ''} />
+          <InfoRow icon={Calendar} label="Updated" value={detail.updated_at ? new Date(detail.updated_at).toLocaleDateString() : ''} />
+        </div>
+      </SectionCard>
+
+      {detail.tags && detail.tags.length > 0 && (
+        <SectionCard title="Tags">
+          <div className="flex flex-wrap gap-2">
+            {detail.tags.map((tag) => (
+              <Badge key={tag} variant="outline">{tag}</Badge>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+    </div>
+  );
+}
+
+function StockPricingTab({ detail }: { detail: ItemDetailResponse }) {
+  const standardRate = detail.standard_rate ? parseFloat(detail.standard_rate) : 0;
+  const valuationRate = detail.valuation_rate ? parseFloat(detail.valuation_rate) : 0;
+
+  return (
+    <div className="space-y-4">
+      <SectionCard title="Pricing">
+        <div className="grid grid-cols-2 gap-4">
+          <InfoRow icon={DollarSign} label="Standard Rate" value={`$${standardRate.toFixed(2)}`} />
+          <InfoRow icon={DollarSign} label="Valuation Rate" value={valuationRate ? `$${valuationRate.toFixed(2)}` : undefined} />
+          <InfoRow icon={BarChart3} label="Valuation Method" value={detail.valuation_method} />
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Stock Settings">
+        <div className="grid grid-cols-2 gap-4">
+          <BooleanRow icon={Archive} label="Maintain Stock" value={detail.maintain_stock} />
+          <BooleanRow icon={Archive} label="Allow Negative Stock" value={detail.allow_negative_stock} />
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Variants & Tracking">
+        <div className="grid grid-cols-2 gap-4">
+          <BooleanRow icon={Layers} label="Has Variants" value={detail.has_variants} />
+          <BooleanRow icon={Hash} label="Has Batch No" value={detail.has_batch_no} />
+          <BooleanRow icon={Hash} label="Has Serial No" value={detail.has_serial_no} />
+        </div>
+        {detail.batch_number_series && (
+          <InfoRow icon={Settings2} label="Batch Number Series" value={detail.batch_number_series} />
+        )}
+        {detail.serial_number_series && (
+          <InfoRow icon={Settings2} label="Serial Number Series" value={detail.serial_number_series} />
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
+function QualityReorderTab({ detail }: { detail: ItemDetailResponse }) {
+  return (
+    <div className="space-y-4">
+      <SectionCard title="Reorder Settings">
+        <div className="grid grid-cols-2 gap-4">
+          <BooleanRow icon={Settings2} label="Auto Reorder" value={detail.enable_auto_reorder} trueLabel="Enabled" falseLabel="Disabled" />
+          <InfoRow icon={BarChart3} label="Reorder Level" value={detail.reorder_level} />
+          <InfoRow icon={BarChart3} label="Reorder Qty" value={detail.reorder_qty} />
+          <InfoRow icon={BarChart3} label="Min Order Qty" value={detail.min_order_qty} />
+          <InfoRow icon={BarChart3} label="Max Order Qty" value={detail.max_order_qty} />
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Quality Inspection">
+        <div className="grid grid-cols-2 gap-4">
+          <BooleanRow icon={ShieldCheck} label="Inspection Before Purchase" value={detail.inspection_required_before_purchase} trueLabel="Required" falseLabel="Not Required" />
+          <BooleanRow icon={ShieldCheck} label="Inspection Before Delivery" value={detail.inspection_required_before_delivery} trueLabel="Required" falseLabel="Not Required" />
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Weight">
+        <div className="grid grid-cols-2 gap-4">
+          <InfoRow icon={Weight} label="Weight Per Unit" value={detail.weight_per_unit || undefined} />
+          <InfoRow icon={Weight} label="Weight UOM" value={detail.weight_uom} />
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+function AdditionalTab({ detail }: { detail: ItemDetailResponse }) {
+  const hasImages = detail.images && detail.images.length > 0;
+  const hasCustomFields = detail.custom_fields && Object.keys(detail.custom_fields).length > 0;
+  const hasExtraData = detail.extra_data && Object.keys(detail.extra_data).length > 0;
+  const hasContent = hasImages || hasCustomFields || hasExtraData;
+
+  if (!hasContent) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+        <Settings2 className="h-8 w-8 mb-2 opacity-50" />
+        <p className="text-sm">No additional data configured</p>
+      </div>
+    );
   }
+
+  return (
+    <div className="space-y-4">
+      {hasImages && (
+        <SectionCard title="Images">
+          <div className="grid grid-cols-4 gap-2">
+            {detail.images.map((img, idx) => (
+              <img key={idx} src={img} alt={`${detail.item_name} ${idx + 1}`} className="rounded-md border object-cover h-20 w-full" />
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {hasCustomFields && (
+        <SectionCard title="Custom Fields">
+          <div className="grid grid-cols-2 gap-4">
+            {Object.entries(detail.custom_fields).map(([key, value]) => (
+              <InfoRow key={key} icon={Settings2} label={key} value={String(value)} />
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {hasExtraData && (
+        <SectionCard title="Extra Data">
+          <div className="grid grid-cols-2 gap-4">
+            {Object.entries(detail.extra_data).map(([key, value]) => (
+              <InfoRow key={key} icon={Settings2} label={key} value={String(value)} />
+            ))}
+          </div>
+        </SectionCard>
+      )}
+    </div>
+  );
+}
+
+// --- Main dialog ---
+
+function DialogHeaderSection({ detail, item, standardRate }: { detail: ItemDetailResponse | null; item: Item; standardRate: number }) {
+  return (
+    <DialogHeader>
+      <div className="flex items-center gap-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
+          <Package className="h-7 w-7 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <DialogTitle className="text-xl truncate">{detail?.item_name || item.name}</DialogTitle>
+            <Badge variant={(detail?.status || item.status) === 'active' ? 'success' : 'secondary'}>
+              {detail?.status || item.status}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">{detail?.item_code || item.itemCode}</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-2xl font-bold">${standardRate.toFixed(2)}</p>
+          <p className="text-xs text-muted-foreground">Standard Rate</p>
+        </div>
+      </div>
+    </DialogHeader>
+  );
+}
+
+function DetailTabs({ detail }: { detail: ItemDetailResponse }) {
+  return (
+    <Tabs defaultValue="overview" className="mt-4">
+      <TabsList className="w-full">
+        <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
+        <TabsTrigger value="stock" className="flex-1">Stock & Pricing</TabsTrigger>
+        <TabsTrigger value="quality" className="flex-1">Quality & Reorder</TabsTrigger>
+        <TabsTrigger value="additional" className="flex-1">Additional</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="overview" className="mt-4">
+        <OverviewTab detail={detail} />
+      </TabsContent>
+      <TabsContent value="stock" className="mt-4">
+        <StockPricingTab detail={detail} />
+      </TabsContent>
+      <TabsContent value="quality" className="mt-4">
+        <QualityReorderTab detail={detail} />
+      </TabsContent>
+      <TabsContent value="additional" className="mt-4">
+        <AdditionalTab detail={detail} />
+      </TabsContent>
+    </Tabs>
+  );
 }
 
 export function ItemDetailDialog({ open, onOpenChange, item }: ItemDetailDialogProps) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [detail, setDetail] = React.useState<ItemDetailResponse | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!open || !item?.id || !accessToken) {
+      setDetail(null);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    apiRequest<ItemDetailResponse>(`/items/${item.id}`, accessToken)
+      .then((data) => setDetail(data))
+      .catch((err) => setError(err.message || 'Failed to load item details'))
+      .finally(() => setLoading(false));
+  }, [open, item?.id, accessToken]);
+
   if (!item) return null;
 
-  const priceLevels = mockPriceLevels.filter((pl) => pl.itemId === item.id);
-  const transactions = mockTransactions.filter((t) => t.itemId === item.id);
-  const suppliers = mockSuppliers;
+  const standardRate = detail?.standard_rate ? parseFloat(detail.standard_rate) : item.defaultPrice;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
-              <Package className="h-7 w-7 text-primary" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <DialogTitle className="text-xl">{item.name}</DialogTitle>
-                <Badge variant={item.status === 'active' ? 'success' : 'secondary'}>{item.status}</Badge>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">{item.itemCode}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold">${item.defaultPrice.toFixed(2)}</p>
-              <p className="text-xs text-muted-foreground">Default Price</p>
-            </div>
+      <DialogContent className="sm:max-w-[750px] max-h-[85vh] overflow-y-auto">
+        <DialogHeaderSection detail={detail} item={item} standardRate={standardRate} />
+
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-sm text-muted-foreground">Loading details...</span>
           </div>
-        </DialogHeader>
+        )}
 
-        <Tabs defaultValue="overview" className="mt-4">
-          <TabsList className="w-full">
-            <TabsTrigger value="overview" className="flex-1">
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="pricing" className="flex-1">
-              Pricing
-            </TabsTrigger>
-            <TabsTrigger value="transactions" className="flex-1">
-              Transactions
-            </TabsTrigger>
-            <TabsTrigger value="suppliers" className="flex-1">
-              Suppliers
-            </TabsTrigger>
-          </TabsList>
+        {error && (
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+            {error}
+          </div>
+        )}
 
-          <TabsContent value="overview" className="mt-4 space-y-4">
-            <div className="rounded-lg border p-4">
-              <h4 className="text-sm font-semibold mb-3">Item Details</h4>
-              <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
-              <div className="grid grid-cols-2 gap-4">
-                <InfoRow icon={Hash} label="Item Code" value={item.itemCode} />
-                <InfoRow icon={Ruler} label="Unit of Measure" value={item.unitOfMeasure} />
-                <InfoRow icon={Layers} label="Item Group" value={item.itemGroupName} />
-                <InfoRow icon={Calendar} label="Last Updated" value={new Date(item.updatedAt).toLocaleDateString()} />
-              </div>
-            </div>
-
-            <div className="rounded-lg border p-4">
-              <h4 className="text-sm font-semibold mb-3">Stock Information</h4>
-              <div className="flex items-center gap-4">
-                <div className={cn(
-                    'flex h-16 w-16 items-center justify-center rounded-xl',
-                    item.currentStock > 50 ? 'bg-emerald-500/10' : item.currentStock > 0 ? 'bg-amber-500/10' : 'bg-destructive/10',
-                  )}>
-                  <Archive className={cn(
-                      'h-8 w-8',
-                      item.currentStock > 50 ? 'text-emerald-500' : item.currentStock > 0 ? 'text-amber-500' : 'text-destructive',
-                    )}/>
-                </div>
-                <div>
-                  <p className="text-3xl font-bold">{item.currentStock}</p>
-                  <p className="text-sm text-muted-foreground">{item.unitOfMeasure}s in stock</p>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="pricing" className="mt-4">
-            <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Quantity Range</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Effective Period</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {priceLevels.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8">
-                        <div className="flex flex-col items-center gap-2">
-                          <DollarSign className="h-8 w-8 text-muted-foreground/50" />
-                          <p className="text-sm text-muted-foreground">No special pricing configured</p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    priceLevels.map((pl) => (
-                      <TableRow key={pl.id}>
-                        <TableCell>{pl.customerName || <span className="text-muted-foreground">All Customers</span>}</TableCell>
-                        <TableCell>
-                          {pl.minQuantity}
-                          {pl.maxQuantity ? ` - ${pl.maxQuantity}` : '+'} units
-                        </TableCell>
-                        <TableCell className="font-medium">${pl.price.toFixed(2)}</TableCell>
-                        <TableCell>
-                          {pl.effectiveFrom}
-                          {pl.effectiveTo ? ` to ${pl.effectiveTo}` : ' onwards'}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="transactions" className="mt-4">
-            <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Unit Price</TableHead>
-                    <TableHead>Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
-                        <div className="flex flex-col items-center gap-2">
-                          <RotateCcw className="h-8 w-8 text-muted-foreground/50" />
-                          <p className="text-sm text-muted-foreground">No recent transactions</p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    transactions.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <TransactionIcon type={t.type} />
-                            <span className="capitalize">{t.type}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">{t.reference}</TableCell>
-                        <TableCell>{t.quantity}</TableCell>
-                        <TableCell>${t.unitPrice.toFixed(2)}</TableCell>
-                        <TableCell>{t.date}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="suppliers" className="mt-4">
-            <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {suppliers.map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Truck className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{s.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{s.contactEmail}</TableCell>
-                      <TableCell>{s.contactPhone}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
-        </Tabs>
+        {detail && !loading && <DetailTabs detail={detail} />}
       </DialogContent>
     </Dialog>
   );
