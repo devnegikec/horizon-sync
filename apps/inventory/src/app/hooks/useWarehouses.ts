@@ -65,6 +65,10 @@ export function useWarehouses(initialPage = 1, initialPageSize = 20, filters?: {
       if (memoizedFilters?.warehouseType && memoizedFilters.warehouseType !== 'all') {
         params.append('warehouse_type', memoizedFilters.warehouseType);
       }
+      if (memoizedFilters?.status && memoizedFilters.status !== 'all') {
+        // Backend expects is_active as a boolean query param
+        params.append('is_active', memoizedFilters.status === 'active' ? 'true' : 'false');
+      }
 
       const res = await fetch(`${WAREHOUSE_URL}?${params}`, {
         headers: {
