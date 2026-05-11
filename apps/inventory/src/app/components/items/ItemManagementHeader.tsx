@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Plus, Download, Upload, ChevronDown, Loader2 } from 'lucide-react';
+import { Plus, Download, Upload, ChevronDown, Loader2, FileDown } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -158,6 +158,27 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
 
   const handleImport = () => {
     setIsImportDialogOpen(true);
+  };
+
+  const handleDownloadSample = () => {
+    const csvContent = [
+      'item_code,item_name,description,item_type,status,uom,standard_rate,maintain_stock,barcode,item_group_name,valuation_method,min_order_qty,max_order_qty',
+      'ITEM-001,Laptop 15 Pro,High performance laptop with 16GB RAM,stock,active,Unit,1200.00,true,8901234567890,Electronics,fifo,1,100',
+      'ITEM-002,Office Chair Ergonomic,Adjustable ergonomic office chair,stock,active,Piece,350.00,true,8901234567891,Furniture,fifo,1,50',
+      'ITEM-003,Annual Support Contract,12-month software support and maintenance,service,active,Nos,500.00,false,,Services,,1,',
+      'ITEM-004,HDMI Cable 2m,High-speed HDMI 2.0 cable 2 meters,stock,active,Piece,15.00,true,8901234567892,Electronics,fifo,1,500',
+      'ITEM-005,Printer Paper A4,80gsm A4 printer paper ream of 500 sheets,stock,active,Ream,8.00,true,8901234567893,Stationery,fifo,5,1000',
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'items-import-sample.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -368,6 +389,24 @@ export function ItemManagementHeader({ onCreateItem }: ItemManagementHeaderProps
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {/* Sample file download */}
+            <div className="flex items-center justify-between rounded-md border border-dashed p-3 bg-muted/40">
+              <div className="text-sm">
+                <p className="font-medium">Need a template?</p>
+                <p className="text-muted-foreground">Download the sample file to see the required format.</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadSample}
+                className="shrink-0 ml-4 gap-1.5"
+              >
+                <FileDown className="h-4 w-4" />
+                Sample CSV
+              </Button>
+            </div>
+
             <div className="flex flex-col gap-2">
               <label htmlFor="file-upload" className="text-sm font-medium">
                 Select File
