@@ -1,10 +1,18 @@
 import { BankingOverview } from '../types';
 import { coreApiClient } from '../../../utility/api-core';
+import { ApiError } from '@horizon-sync/utils';
 
 class BankingOverviewService {
     // Get banking overview/dashboard data
-    async getBankingOverview(): Promise<BankingOverview> {
-        return coreApiClient.get<BankingOverview>('/banking/overview');
+    async getBankingOverview(): Promise<BankingOverview | null> {
+        try {
+            return await coreApiClient.get<BankingOverview>('/banking/overview');
+        } catch (err) {
+            if (err instanceof ApiError && err.isFeatureDisabled) {
+                return null; // Banking feature is disabled — caller should hide the UI
+            }
+            throw err;
+        }
     }
 
     // Get account balances

@@ -1,5 +1,6 @@
 import { BankTransactionListResponse, TransactionFilterParams } from '../types';
 import { coreApiClient } from '../../../utility/api-core';
+import { ApiError } from '@horizon-sync/utils';
 
 class TransactionService {
     // Get transactions for a bank account
@@ -19,10 +20,17 @@ class TransactionService {
             search: filters?.search,
         };
 
-        return coreApiClient.get<BankTransactionListResponse>(
-            `/bank-accounts/${bankAccountId}/transactions`,
-            params,
-        );
+        try {
+            return await coreApiClient.get<BankTransactionListResponse>(
+                `/bank-accounts/${bankAccountId}/transactions`,
+                params,
+            );
+        } catch (err) {
+            if (err instanceof ApiError && err.isFeatureDisabled) {
+                return { items: [], total: 0, page: 1, page_size: pageSize, total_pages: 0 };
+            }
+            throw err;
+        }
     }
 }
 

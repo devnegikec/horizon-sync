@@ -1,5 +1,5 @@
 // Tax Template Types
-export type TaxCategory = 'Input' | 'Output';
+export type TaxCategory = 'Input' | 'Output' | 'Both';
 export type TaxType = 'GST' | 'VAT' | 'CGST' | 'SGST' | 'IGST' | 'Sales Tax' | 'Custom';
 
 export interface TaxRule {
@@ -26,7 +26,7 @@ export interface TaxTemplate {
   is_active: boolean;
   applicability_rules: Record<string, any>;
   extra_data: Record<string, any>;
-  tax_rules: TaxRule[];
+  tax_rules: TaxRule[] | undefined;
   created_by: string;
   updated_by: string;
   created_at: string;

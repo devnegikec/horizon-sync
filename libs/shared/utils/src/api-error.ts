@@ -70,4 +70,9 @@ export class ApiError extends Error {
   get isValidation(): boolean {
     return this.status === 422;
   }
+
+  /** True when a feature is administratively disabled (HTTP 423 Locked). */
+  get isFeatureDisabled(): boolean {
+    return this.status === 423;
+  }
 }

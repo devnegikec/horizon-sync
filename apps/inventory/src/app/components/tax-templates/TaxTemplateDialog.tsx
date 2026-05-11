@@ -44,7 +44,7 @@ const taxTemplateFormSchema = z.object({
     .regex(/^[a-zA-Z0-9_-]+$/, 'Template code must be alphanumeric with hyphens or underscores'),
   template_name: z.string().min(1, 'Template name is required').max(200, 'Template name must be 200 characters or less'),
   description: z.string().optional(),
-  tax_category: z.enum(['Input', 'Output']),
+  tax_category: z.enum(['Input', 'Output', 'Both']),
   is_default: z.boolean(),
   is_active: z.boolean(),
   tax_rules: z.array(taxRuleSchema).min(1, 'At least one tax rule is required'),
@@ -99,6 +99,7 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
   // Reset form when dialog opens or template changes
   React.useEffect(() => {
     if (template) {
+      const existingRules = template.tax_rules ?? [];
       reset({
         template_code: template.template_code,
         template_name: template.template_name,
@@ -106,15 +107,27 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
         tax_category: template.tax_category,
         is_default: template.is_default,
         is_active: template.is_active,
-        tax_rules: template.tax_rules?.map((rule, index) => ({
-          rule_name: rule.rule_name,
-          tax_type: rule.tax_type,
-          description: rule.description || '',
-          tax_rate: rule.tax_rate,
-          account_head_id: rule.account_head_id,
-          is_compound: rule.is_compound,
-          sequence: rule.sequence || index + 1,
-        })),
+        tax_rules: existingRules.length > 0
+          ? existingRules.map((rule, index) => ({
+              rule_name: rule.rule_name,
+              tax_type: rule.tax_type,
+              description: rule.description || '',
+              tax_rate: rule.tax_rate,
+              account_head_id: rule.account_head_id,
+              is_compound: rule.is_compound,
+              sequence: rule.sequence || index + 1,
+            }))
+          : [
+              {
+                rule_name: '',
+                tax_type: '',
+                description: '',
+                tax_rate: 0,
+                account_head_id: '',
+                is_compound: false,
+                sequence: 1,
+              },
+            ],
       });
     } else {
       reset({
@@ -173,15 +186,15 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
       tax_rate: 0,
       account_head_id: '',
       is_compound: false,
-      sequence: taxRules.length + 1,
+      sequence: (taxRules?.length ?? 0) + 1,
     });
   };
 
   const handleRemoveTaxRule = (index: number) => {
-    if (taxRules.length > 1) {
+    if ((taxRules?.length ?? 0) > 1) {
       remove(index);
       // Update sequences
-      taxRules.forEach((_, idx) => {
+      (taxRules ?? []).forEach((_, idx) => {
         if (idx > index) {
           setValue(`tax_rules.${idx - 1}.sequence`, idx);
         }
@@ -263,6 +276,7 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
                       <SelectContent>
                         <SelectItem value="Output">Output (Sales)</SelectItem>
                         <SelectItem value="Input">Input (Purchase)</SelectItem>
+                        <SelectItem value="Both">Both (Sales & Purchase)</SelectItem>
                       </SelectContent>
                     </Select>
                   )}/>

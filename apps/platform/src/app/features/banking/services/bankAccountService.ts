@@ -1,4 +1,5 @@
 import { coreApiClient } from '../../../utility/api-core';
+import { ApiError } from '@horizon-sync/utils';
 import { BankAccount, BankAccountHistory, BankAccountListResponse, CreateBankAccountFormData, UpdateBankAccountFormData } from '../types';
 
 /** EU countries that prioritize IBAN for duplicate detection. */
@@ -125,8 +126,15 @@ class BankAccountService {
             queryParams['page'] = page;
         }
 
-        const response = await coreApiClient.get<BankAccountListResponse>('/bank-accounts', queryParams);
-        return response.items || [];
+        try {
+            const response = await coreApiClient.get<BankAccountListResponse>('/bank-accounts', queryParams);
+            return response.items || [];
+        } catch (err) {
+            if (err instanceof ApiError && err.isFeatureDisabled) {
+                return []; // Banking or chart_of_accounts feature is disabled
+            }
+            throw err;
+        }
     }
 
     // Get bank accounts for GL account
