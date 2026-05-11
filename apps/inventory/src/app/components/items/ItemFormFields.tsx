@@ -62,7 +62,7 @@ function ItemFormContent({
       case 3:
         return (
           <Step3TaxAdditional formData={formData}
-            setFormData={setFormData}
+            onUpdate={(updates) => setFormData((prev) => ({ ...prev, ...updates }))}
             salesTaxTemplates={salesTaxTemplates}
             purchaseTaxTemplates={purchaseTaxTemplates}
             isLoadingTaxTemplates={isLoadingTaxTemplates}/>
