@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type Table } from '@tanstack/react-table';
-import { Users, Plus, Download, CreditCard, AlertTriangle, UserCheck, RefreshCw } from 'lucide-react';
+import { Users, Plus, Download, Loader2, CreditCard, AlertTriangle, UserCheck, RefreshCw } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { DataTableViewOptions } from '@horizon-sync/ui/components/data-table/DataTableViewOptions';
@@ -155,6 +155,55 @@ export function CustomerManagement() {
     }
   };
 
+  const [isExporting, setIsExporting] = React.useState(false);
+
+  const handleExport = React.useCallback(async () => {
+    if (!accessToken) return;
+    setIsExporting(true);
+    try {
+      // Fetch all pages (backend max page_size is 100)
+      const firstPage = await customerApi.list(accessToken, 1, 100) as { customers: Customer[]; pagination: { total_pages: number } };
+      let allCustomers: Customer[] = firstPage.customers ?? [];
+      const totalPages = firstPage.pagination?.total_pages ?? 1;
+      for (let p = 2; p <= totalPages; p++) {
+        const page = await customerApi.list(accessToken, p, 100) as { customers: Customer[] };
+        allCustomers = allCustomers.concat(page.customers ?? []);
+      }
+
+      const headers = ['Customer Code', 'Customer Name', 'Email', 'Phone', 'City', 'Country', 'Status', 'Credit Limit', 'Outstanding Balance', 'Tax Number', 'Created At'];
+      const rows = allCustomers.map((c) => [
+        c.customer_code ?? '',
+        c.customer_name ?? '',
+        c.email ?? '',
+        c.phone ?? '',
+        c.city ?? '',
+        c.country ?? '',
+        c.status ?? '',
+        c.credit_limit ?? '',
+        c.outstanding_balance ?? '',
+        c.tax_number ?? '',
+        c.created_at ?? '',
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'customers.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [accessToken]);
+
   const handleStatusFilter = React.useCallback((status: string) => {
     setFilters((prev) => ({ ...prev, status, page: 1 }));
   }, []);
@@ -182,9 +231,18 @@ export function CustomerManagement() {
             <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
             Refresh
           </Button>
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
+          <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
+            {isExporting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                Export
+              </>
+            )}
           </Button>
           <Button onClick={handleCreateCustomer} variant="default" className="gap-2 text-primary-foreground shadow-lg">
             <Plus className="h-4 w-4" />

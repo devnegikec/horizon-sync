@@ -4,6 +4,7 @@ import {
   Package,
   Plus,
   Download,
+  Loader2,
   ArrowRightLeft,
   FileText,
   ClipboardCheck,
@@ -31,6 +32,8 @@ import { useStockMovements } from '../../hooks/useStockMovements';
 import { useStockReconciliations } from '../../hooks/useStockReconciliations';
 import type {
   StockEntry,
+  StockLevel,
+  StockMovement,
   StockReconciliation,
   StockLevelStats,
   StockMovementStats,
@@ -38,7 +41,7 @@ import type {
   StockReconciliationStats,
 } from '../../types/stock.types';
 import { formatQuantity } from '../../utility';
-import { stockEntryApi } from '../../utility/api/stock';
+import { stockEntryApi, stockLevelApi, stockMovementApi } from '../../utility/api/stock';
 import { ReconciliationWizard, ReconciliationDetailDialog } from '../reconciliation';
 import { useStockEntries } from '../stock-entry';
 
@@ -155,9 +158,114 @@ function StatsGrid({ stats }: { stats: StatDef[] }) {
 interface HeaderProps {
   onNewEntry: () => void;
   onReconciliation: () => void;
+  activeTab: ActiveTab;
 }
 
-function StockManagementHeader({ onNewEntry, onReconciliation }: HeaderProps) {
+function StockManagementHeader({ onNewEntry, onReconciliation, activeTab }: HeaderProps) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [isExporting, setIsExporting] = React.useState(false);
+
+  const handleExport = React.useCallback(async () => {
+    if (!accessToken) return;
+
+    setIsExporting(true);
+    try {
+      let headers: string[] = [];
+      let rows: string[][] = [];
+      let fileName = 'stock-export';
+
+      if (activeTab === 'levels') {
+        // Fetch all pages (backend max page_size is 100)
+        const firstPage = await stockLevelApi.list(accessToken, 1, 100) as { stock_levels: StockLevel[]; pagination: { total_items: number; total_pages: number } };
+        let allLevels: StockLevel[] = firstPage.stock_levels ?? [];
+        const totalPages = firstPage.pagination?.total_pages ?? 1;
+        for (let p = 2; p <= totalPages; p++) {
+          const page = await stockLevelApi.list(accessToken, p, 100) as { stock_levels: StockLevel[] };
+          allLevels = allLevels.concat(page.stock_levels ?? []);
+        }
+
+        headers = ['Item Code', 'Item Name', 'Warehouse', 'Qty On Hand', 'Qty Reserved', 'Qty Available', 'Last Counted'];
+        rows = allLevels.map((r) => [
+          r.product?.code ?? r.product_code ?? '',
+          r.product?.name ?? r.product_name ?? '',
+          r.warehouse?.name ?? r.warehouse_name ?? '',
+          String(r.quantity_on_hand),
+          String(r.quantity_reserved),
+          String(r.quantity_available),
+          r.last_counted_at ?? '',
+        ]);
+        fileName = 'stock-levels';
+      } else if (activeTab === 'movements') {
+        const firstPage = await stockMovementApi.list(accessToken, 1, 100) as { stock_movements: StockMovement[]; pagination: { total_pages: number } };
+        let allMovements: StockMovement[] = firstPage.stock_movements ?? [];
+        const totalPages = firstPage.pagination?.total_pages ?? 1;
+        for (let p = 2; p <= totalPages; p++) {
+          const page = await stockMovementApi.list(accessToken, p, 100) as { stock_movements: StockMovement[] };
+          allMovements = allMovements.concat(page.stock_movements ?? []);
+        }
+
+        headers = ['Item Code', 'Item Name', 'Warehouse', 'Movement Type', 'Quantity', 'Unit Cost', 'Reference', 'Notes', 'Performed At'];
+        rows = allMovements.map((r) => [
+          r.product?.code ?? r.product_code ?? '',
+          r.product?.name ?? r.product_name ?? '',
+          r.warehouse?.name ?? r.warehouse_name ?? '',
+          r.movement_type,
+          String(r.quantity),
+          r.unit_cost != null ? String(r.unit_cost) : '',
+          r.reference_type ? `${r.reference_type}:${r.reference_id ?? ''}` : '',
+          r.notes ?? '',
+          r.performed_at,
+        ]);
+        fileName = 'stock-movements';
+      } else if (activeTab === 'entries') {
+        const firstPage = await stockEntryApi.list(accessToken, 1, 100) as { stock_entries: StockEntry[]; pagination: { total_pages: number } };
+        let allEntries: StockEntry[] = firstPage.stock_entries ?? [];
+        const totalPages = firstPage.pagination?.total_pages ?? 1;
+        for (let p = 2; p <= totalPages; p++) {
+          const page = await stockEntryApi.list(accessToken, p, 100) as { stock_entries: StockEntry[] };
+          allEntries = allEntries.concat(page.stock_entries ?? []);
+        }
+
+        headers = ['Entry No', 'Entry Type', 'Status', 'From Warehouse', 'To Warehouse', 'Posting Date', 'Total Value', 'Created At'];
+        rows = allEntries.map((r) => [
+          r.stock_entry_no ?? '',
+          r.stock_entry_type ?? '',
+          r.status ?? '',
+          r.from_warehouse?.name ?? r.from_warehouse_name ?? '',
+          r.to_warehouse?.name ?? r.to_warehouse_name ?? '',
+          r.posting_date ?? '',
+          r.total_value != null ? String(r.total_value) : '',
+          r.created_at ?? '',
+        ]);
+        fileName = 'stock-entries';
+      } else {
+        return;
+      }
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')),
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${fileName}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [accessToken, activeTab]);
+
+  const exportLabel = activeTab === 'levels' ? 'Export Stock Levels'
+    : activeTab === 'movements' ? 'Export Movements'
+    : activeTab === 'entries' ? 'Export Entries'
+    : null;
+
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
@@ -167,10 +275,21 @@ function StockManagementHeader({ onNewEntry, onReconciliation }: HeaderProps) {
         </p>
       </div>
       <div className="flex items-center gap-3">
-        <Button variant="outline" className="gap-2">
-          <Download className="h-4 w-4" />
-          Export
-        </Button>
+        {exportLabel && (
+          <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
+            {isExporting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                {exportLabel}
+              </>
+            )}
+          </Button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button className="gap-2 text-primary-foreground shadow-lg">
@@ -433,7 +552,11 @@ export function StockManagement() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <StockManagementHeader onNewEntry={handleNewEntry} onReconciliation={handleNewReconciliation}/>
+      <StockManagementHeader
+        onNewEntry={handleNewEntry}
+        onReconciliation={handleNewReconciliation}
+        activeTab={activeTab}
+      />
       <StatsGrid stats={activeStats} />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>

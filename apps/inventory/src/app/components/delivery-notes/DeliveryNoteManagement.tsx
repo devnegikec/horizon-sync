@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Table } from '@tanstack/react-table';
@@ -7,6 +7,7 @@ import {
   Truck,
   Plus,
   Download,
+  Loader2,
   RefreshCw,
   AlertTriangle,
   Package,
@@ -41,6 +42,44 @@ export function DeliveryNoteManagement() {
     search: '',
     status: 'all',
   });
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    if (!accessToken) return;
+    setIsExporting(true);
+    try {
+      const firstPage = await deliveryNoteApi.list(accessToken, 1, 100) as { delivery_notes: Record<string, unknown>[]; pagination: { total_pages: number } };
+      let all: Record<string, unknown>[] = firstPage.delivery_notes ?? [];
+      const totalPages = firstPage.pagination?.total_pages ?? 1;
+      for (let p = 2; p <= totalPages; p++) {
+        const page = await deliveryNoteApi.list(accessToken, p, 100) as { delivery_notes: Record<string, unknown>[] };
+        all = all.concat(page.delivery_notes ?? []);
+      }
+
+      const headers = ['Delivery Note No', 'Customer', 'Delivery Date', 'Status', 'Created At'];
+      const rows = all.map((r) => [
+        String(r['delivery_note_no'] ?? ''),
+        String(r['customer_name'] ?? ''),
+        String(r['delivery_date'] ?? ''),
+        String(r['status'] ?? ''),
+        String(r['created_at'] ?? ''),
+      ]);
+
+      const csv = [headers.join(','), ...rows.map((row) => row.map((c) => `"${c.replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'delivery-notes.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [accessToken]);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -186,9 +225,8 @@ export function DeliveryNoteManagement() {
             <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
             Refresh
           </Button>
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
+          <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
+            {isExporting ? <><Loader2 className="h-4 w-4 animate-spin" />Exporting...</> : <><Download className="h-4 w-4" />Export</>}
           </Button>
           <Button className="gap-2" onClick={handleCreate}>
             <Plus className="h-4 w-4" />
