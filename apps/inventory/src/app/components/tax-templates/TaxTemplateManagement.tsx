@@ -23,7 +23,7 @@ export function TaxTemplateManagement() {
 
   const [filters, setFilters] = React.useState({
     search: '',
-    tax_category: 'all' as 'all' | 'Input' | 'Output',
+    tax_category: 'all' as 'all' | 'Input' | 'Output' | 'Both',
     is_active: 'all' as 'all' | 'true' | 'false',
     page: 1,
     pageSize: 20,
@@ -89,8 +89,13 @@ export function TaxTemplateManagement() {
     },
   });
 
-  const handleView = (template: TaxTemplate) => {
-    setSelectedTemplate(template);
+  const handleView = async (template: TaxTemplate) => {
+    try {
+      const full = await taxTemplateApi.getById(accessToken || '', template.id);
+      setSelectedTemplate(full);
+    } catch {
+      setSelectedTemplate(template); // fallback to list item
+    }
     setDetailDialogOpen(true);
   };
 
@@ -99,8 +104,13 @@ export function TaxTemplateManagement() {
     setCreateDialogOpen(true);
   };
 
-  const handleEdit = (template: TaxTemplate) => {
-    setEditTemplate(template);
+  const handleEdit = async (template: TaxTemplate) => {
+    try {
+      const full = await taxTemplateApi.getById(accessToken || '', template.id);
+      setEditTemplate(full);
+    } catch {
+      setEditTemplate(template); // fallback to list item
+    }
     setCreateDialogOpen(true);
   };
 
