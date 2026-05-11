@@ -24,6 +24,7 @@ interface ItemMultiStepDialogProps {
   isLoadingTaxTemplates?: boolean;
   onSave: (data: ItemFormData) => Promise<void>;
   initialData?: Partial<ItemFormData>;
+  isEditing?: boolean;
 }
 
 const STEPS = [
@@ -100,6 +101,7 @@ function DialogFooterButtons({
   currentStep,
   isSubmitting,
   isValid,
+  isEditing,
   onCancel,
   onPrevious,
   onNext,
@@ -108,6 +110,7 @@ function DialogFooterButtons({
   currentStep: number;
   isSubmitting: boolean;
   isValid: boolean;
+  isEditing: boolean;
   onCancel: () => void;
   onPrevious: () => void;
   onNext: () => void;
@@ -126,7 +129,7 @@ function DialogFooterButtons({
           <Button type="button" onClick={onNext} disabled={!isValid}>Next</Button>
         ) : (
           <Button type="button" onClick={onSubmit} disabled={!isValid || isSubmitting}>
-            {isSubmitting ? 'Creating...' : 'Create Item'}
+            {isSubmitting ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save Changes' : 'Create Item')}
           </Button>
         )}
       </div>
@@ -161,6 +164,7 @@ export function ItemMultiStepDialog({
   isLoadingTaxTemplates = false,
   onSave,
   initialData,
+  isEditing = false,
 }: ItemMultiStepDialogProps) {
   const [currentStep, setCurrentStep] = React.useState(1);
   const [formData, setFormData] = React.useState<ItemFormData>(() => getInitialFormData(initialData));
@@ -213,7 +217,7 @@ export function ItemMultiStepDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Create New Item</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Item' : 'Create New Item'}</DialogTitle>
         </DialogHeader>
 
         {/* Stepper */}
@@ -270,6 +274,7 @@ export function ItemMultiStepDialog({
           <DialogFooterButtons currentStep={currentStep}
             isSubmitting={isSubmitting}
             isValid={validateStep(currentStep, formData)}
+            isEditing={isEditing}
             onCancel={handleCancel}
             onPrevious={handlePrevious}
             onNext={handleNext}

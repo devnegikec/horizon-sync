@@ -1,4 +1,5 @@
 import { apiRequest, buildPaginationParams } from './core';
+import type { UpdateItemPayload } from '../../types/items-api.types';
 
 // Items API helpers
 export const itemApi = {
@@ -11,4 +12,10 @@ export const itemApi = {
     }),
 
   get: (accessToken: string, id: string) => apiRequest(`/items/${id}`, accessToken),
+
+  update: (accessToken: string, id: string, payload: Partial<UpdateItemPayload>) =>
+    apiRequest(`/items/${id}`, accessToken, {
+      method: 'PUT',
+      body: payload,
+    }),
 };
