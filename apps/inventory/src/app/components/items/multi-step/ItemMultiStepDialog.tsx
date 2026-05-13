@@ -33,8 +33,11 @@ const STEPS = [
 ];
 
 function isStep1Valid(formData: ItemFormData): boolean {
+  const nameValid = !!formData.name?.trim() && formData.name.length <= 255;
+  const descValid = !formData.description || formData.description.length <= 1000;
   return !!(
-    formData.name?.trim() &&
+    nameValid &&
+    descValid &&
     formData.itemGroupId?.trim() &&
     formData.itemType?.trim() &&
     formData.unitOfMeasure?.trim() &&
