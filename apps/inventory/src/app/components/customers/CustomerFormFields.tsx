@@ -1,6 +1,9 @@
 import * as React from 'react';
 
 import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@horizon-sync/ui/components';
+import { cn } from '@horizon-sync/ui/lib';
+
+import { isAtMaxLength } from '../../utility/validation-schemas';
 
 import { COUNTRIES } from './customer.helpers';
 import { TagInput } from './TagInput';
@@ -10,9 +13,22 @@ interface CustomerFormFieldsProps {
   formData: CustomerFormData;
   isEdit: boolean;
   onFieldChange: (field: keyof CustomerFormData, value: string | string[]) => void;
+  fieldErrors?: Record<string, string>;
 }
 
-export function CustomerFormFields({ formData, isEdit, onFieldChange }: CustomerFormFieldsProps) {
+/** Inline character count + over-limit error */
+function CharCount({ value, max }: { value: string; max: number }) {
+  const over = (value?.length || 0) > max;
+  const atLimit = isAtMaxLength(value, max);
+  return (
+    <>
+      {over && <p className="text-xs text-red-500">Cannot exceed {max} characters</p>}
+      <p className={cn('text-xs text-right', atLimit ? 'text-red-500 font-medium' : 'text-muted-foreground')}>{value?.length || 0}/{max}</p>
+    </>
+  );
+}
+
+export function CustomerFormFields({ formData, isEdit, onFieldChange, fieldErrors = {} }: CustomerFormFieldsProps) {
   return (
     <>
       {/* Basic Information */}
@@ -32,7 +48,10 @@ export function CustomerFormFields({ formData, isEdit, onFieldChange }: Customer
               value={formData.customer_name}
               onChange={(e) => onFieldChange('customer_name', e.target.value)}
               placeholder="Company Name"
+              className={cn((fieldErrors['customer_name'] || formData.customer_name.length > 255) && 'border-red-500')}
               required />
+            {fieldErrors['customer_name'] && <p className="text-xs text-red-500">{fieldErrors['customer_name']}</p>}
+            <CharCount value={formData.customer_name} max={255} />
           </div>
         </div>
 
@@ -44,7 +63,10 @@ export function CustomerFormFields({ formData, isEdit, onFieldChange }: Customer
               value={formData.email}
               onChange={(e) => onFieldChange('email', e.target.value)}
               placeholder="contact@company.com"
+              className={cn((fieldErrors['email'] || formData.email.length > 255) && 'border-red-500')}
               required />
+            {fieldErrors['email'] && <p className="text-xs text-red-500">{fieldErrors['email']}</p>}
+            <CharCount value={formData.email} max={255} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">Phone *</Label>
@@ -52,7 +74,9 @@ export function CustomerFormFields({ formData, isEdit, onFieldChange }: Customer
               value={formData.phone}
               onChange={(e) => onFieldChange('phone', e.target.value)}
               placeholder="+91-9711452000"
+              className={cn(formData.phone.length > 50 && 'border-red-500')}
               required />
+            <CharCount value={formData.phone} max={50} />
           </div>
         </div>
       </div>
@@ -66,7 +90,9 @@ export function CustomerFormFields({ formData, isEdit, onFieldChange }: Customer
             value={formData.address}
             onChange={(e) => onFieldChange('address', e.target.value)}
             placeholder="Complete address"
+            className={cn(formData.address.length > 1000 && 'border-red-500')}
             rows={2} />
+          <CharCount value={formData.address} max={1000} />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
