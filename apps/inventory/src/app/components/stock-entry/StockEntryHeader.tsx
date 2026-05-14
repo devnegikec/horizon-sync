@@ -112,9 +112,12 @@ interface StockEntryHeaderProps {
   form: StockEntryFormState;
   isEditing: boolean;
   onFieldChange: (field: keyof StockEntryFormState, value: string) => void;
+  disabled?: boolean;
+  fromWarehouseName?: string;
+  toWarehouseName?: string;
 }
 
-export function StockEntryHeader({ form, isEditing, onFieldChange }: StockEntryHeaderProps) {
+export function StockEntryHeader({ form, isEditing, onFieldChange, disabled = false, fromWarehouseName, toWarehouseName }: StockEntryHeaderProps) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -129,7 +132,8 @@ export function StockEntryHeader({ form, isEditing, onFieldChange }: StockEntryH
         <div className="space-y-2">
           <Label htmlFor="stock_entry_type">Entry Type</Label>
           <Select value={form.stock_entry_type}
-            onValueChange={(v) => onFieldChange('stock_entry_type', v)}>
+            onValueChange={(v) => onFieldChange('stock_entry_type', v)}
+            disabled={disabled}>
             <SelectTrigger>
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
@@ -147,7 +151,8 @@ export function StockEntryHeader({ form, isEditing, onFieldChange }: StockEntryH
         <div className="space-y-2">
           <Label htmlFor="status">Status</Label>
           <Select value={form.status}
-            onValueChange={(v) => onFieldChange('status', v)}>
+            onValueChange={(v) => onFieldChange('status', v)}
+            disabled={disabled}>
             <SelectTrigger>
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
@@ -166,10 +171,27 @@ export function StockEntryHeader({ form, isEditing, onFieldChange }: StockEntryH
             type="date"
             value={form.posting_date}
             onChange={(e) => onFieldChange('posting_date', e.target.value)}
-            required />
+            required
+            disabled={disabled} />
         </div>
       </div>
-      <WarehouseFields form={form} onFieldChange={onFieldChange} />
+      {!disabled && <WarehouseFields form={form} onFieldChange={onFieldChange} />}
+      {disabled && (
+        <div className="grid grid-cols-2 gap-4">
+          {fromWarehouseName && (
+            <div className="space-y-2">
+              <Label>From Warehouse</Label>
+              <Input value={fromWarehouseName} disabled />
+            </div>
+          )}
+          {toWarehouseName && (
+            <div className="space-y-2">
+              <Label>To Warehouse</Label>
+              <Input value={toWarehouseName} disabled />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

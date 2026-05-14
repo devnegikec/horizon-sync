@@ -32,7 +32,7 @@ function buildStockEntriesParams(
   filters?: Partial<StockEntryFilters>
 ): Record<string, string | number> {
   const params: Record<string, string | number> = {
-    ...buildPaginationParams(page, pageSize, 'posting_date', 'desc'),
+    ...buildPaginationParams(page, pageSize, 'created_at', 'desc'),
   };
 
   if (!filters) return params;

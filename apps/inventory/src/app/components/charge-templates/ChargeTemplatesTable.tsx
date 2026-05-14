@@ -76,7 +76,7 @@ export function ChargeTemplatesTable({
                   <td className="px-4 py-3 text-sm font-medium">{template.template_code}</td>
                   <td className="px-4 py-3 text-sm">{template.template_name}</td>
                   <td className="px-4 py-3 text-sm">
-                    <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                    <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                       {template.charge_type}
                     </span>
                   </td>
@@ -90,8 +90,8 @@ export function ChargeTemplatesTable({
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                       template.is_active
-                        ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
-                        : 'bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300'
+                        ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                        : 'bg-gray-50 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300'
                     }`}>
                       {template.is_active ? 'Active' : 'Inactive'}
                     </span>

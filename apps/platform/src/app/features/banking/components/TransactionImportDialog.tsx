@@ -207,7 +207,7 @@ export function TransactionImportDialog({
         return (
             <div className="space-y-4 mt-4">
                 <div className="grid grid-cols-3 gap-4">
-                    <div className="flex flex-col items-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                    <div className="flex flex-col items-center p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg">
                         <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400 mb-2" />
                         <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                             {importResult.imported_count}
@@ -215,7 +215,7 @@ export function TransactionImportDialog({
                         <div className="text-sm text-muted-foreground">Imported</div>
                     </div>
 
-                    <div className="flex flex-col items-center p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
+                    <div className="flex flex-col items-center p-4 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                         <AlertTriangle className="h-8 w-8 text-yellow-600 dark:text-yellow-400 mb-2" />
                         <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                             {importResult.skipped_count}
@@ -223,7 +223,7 @@ export function TransactionImportDialog({
                         <div className="text-sm text-muted-foreground">Skipped</div>
                     </div>
 
-                    <div className="flex flex-col items-center p-4 bg-red-50 dark:bg-red-950 rounded-lg">
+                    <div className="flex flex-col items-center p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
                         <XCircle className="h-8 w-8 text-red-600 dark:text-red-400 mb-2" />
                         <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                             {importResult.failed_count}

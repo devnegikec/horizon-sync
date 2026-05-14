@@ -11,6 +11,7 @@ interface StockEntryFooterProps {
   isEditing: boolean;
   submitError?: string | null;
   grandTotal: number;
+  disableSubmit?: boolean;
 }
 
 export function StockEntryFooter({
@@ -19,6 +20,7 @@ export function StockEntryFooter({
   isEditing,
   submitError,
   grandTotal,
+  disableSubmit = false,
 }: StockEntryFooterProps) {
   return (
     <div className="space-y-4">
@@ -37,7 +39,7 @@ export function StockEntryFooter({
           disabled={loading}>
           Cancel
         </Button>
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading || disableSubmit}>
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
