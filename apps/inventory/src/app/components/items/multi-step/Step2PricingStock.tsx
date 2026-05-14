@@ -59,11 +59,11 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
             </Label>
             <Input id="minOrderQty"
               type="number"
-              step="0.01"
-              min="0"
+              step="1"
+              min="1"
               value={formData.minOrderQty}
-              onChange={(e) => onUpdate({ minOrderQty: Number(e.target.value) })}
-              placeholder="0.00"
+              onChange={(e) => onUpdate({ minOrderQty: Number(e.target.value) || 1 })}
+              placeholder="1"
               required/>
           </div>
 
@@ -71,11 +71,16 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
             <Label htmlFor="maxOrderQty">Maximum Order Quantity</Label>
             <Input id="maxOrderQty"
               type="number"
-              step="0.01"
+              step="1"
               min="0"
-              value={formData.maxOrderQty}
-              onChange={(e) => onUpdate({ maxOrderQty: Number(e.target.value) })}
-              placeholder="0.00"/>
+              value={formData.maxOrderQty || ''}
+              onChange={(e) => onUpdate({ maxOrderQty: Number(e.target.value) || 0 })}
+              placeholder="0 (unlimited)"/>
+            {formData.maxOrderQty > 0 && formData.minOrderQty > formData.maxOrderQty && (
+              <p className="text-xs text-red-500">
+                Maximum order quantity must be ≥ minimum order quantity
+              </p>
+            )}
           </div>
         </div>
       </div>

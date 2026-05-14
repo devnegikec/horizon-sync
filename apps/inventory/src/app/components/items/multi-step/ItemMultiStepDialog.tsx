@@ -50,8 +50,14 @@ function validateStep(step: number, formData: ItemFormData): boolean {
   switch (step) {
     case 1:
       return isStep1Valid(formData);
-    case 2:
-      return !!formData.defaultPrice;
+    case 2: {
+      if (!formData.defaultPrice) return false;
+      // Cross-field validation: min_order_qty must be <= max_order_qty (when max > 0)
+      if (formData.maxOrderQty > 0 && formData.minOrderQty > formData.maxOrderQty) {
+        return false;
+      }
+      return true;
+    }
     case 3:
       return true;
     default:
@@ -90,7 +96,7 @@ const getInitialFormData = (initialData?: Partial<ItemFormData>): ItemFormData =
   reorderLevel: 0,
   reorderQty: 0,
   minOrderQty: 1,
-  maxOrderQty: 1,
+  maxOrderQty: 0,
   inspectionRequiredBeforePurchase: false,
   inspectionRequiredBeforeDelivery: false,
   qualityInspectionTemplate: null,

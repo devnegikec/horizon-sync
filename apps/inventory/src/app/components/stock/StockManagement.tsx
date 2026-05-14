@@ -4,6 +4,7 @@ import {
   Package,
   Plus,
   Download,
+  Upload,
   Loader2,
   ArrowRightLeft,
   FileText,
@@ -15,6 +16,14 @@ import {
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@horizon-sync/ui/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -159,11 +168,15 @@ interface HeaderProps {
   onNewEntry: () => void;
   onReconciliation: () => void;
   activeTab: ActiveTab;
+  onImportSuccess?: () => void;
 }
 
-function StockManagementHeader({ onNewEntry, onReconciliation, activeTab }: HeaderProps) {
+function StockManagementHeader({ onNewEntry, onReconciliation, activeTab, onImportSuccess }: HeaderProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [isExporting, setIsExporting] = React.useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [isImporting, setIsImporting] = React.useState(false);
 
   const handleExport = React.useCallback(async () => {
     if (!accessToken) return;
@@ -266,50 +279,206 @@ function StockManagementHeader({ onNewEntry, onReconciliation, activeTab }: Head
     : activeTab === 'entries' ? 'Export Entries'
     : null;
 
+  const handleDownloadTemplate = React.useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const { buildUrl } = await import('../../utility/api/core');
+      const url = buildUrl('/stock-entries/bulk/template/csv');
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!response.ok) throw new Error('Failed to download template');
+      const blob = await response.blob();
+      const dlUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = dlUrl;
+      link.download = 'stock_entries_template.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(dlUrl);
+    } catch {
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { title: 'Error', description: 'Failed to download template', variant: 'destructive' }
+      }));
+    }
+  }, [accessToken]);
+
+  const handleFileChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) setSelectedFile(file);
+  }, []);
+
+  const handleImportSubmit = React.useCallback(async () => {
+    if (!selectedFile || !accessToken) return;
+
+    setIsImporting(true);
+    try {
+      const { buildUrl } = await import('../../utility/api/core');
+      const url = buildUrl('/stock-entries/bulk/upload');
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `Import failed with status ${response.status}`);
+      }
+
+      const result = await response.json() as Record<string, unknown>;
+      const createdCount = Number(result?.created ?? 0);
+      const failedCount = Number(result?.failed ?? 0);
+      const totalRows = Number(result?.total_rows ?? 0);
+
+      setIsImportDialogOpen(false);
+      setSelectedFile(null);
+
+      setTimeout(() => {
+        const message = `${createdCount} of ${totalRows} stock entries created as draft${failedCount > 0 ? `. ${failedCount} failed.` : '.'}`;
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { title: '✅ Import Successful', description: message }
+        }));
+      }, 100);
+
+      if (onImportSuccess) {
+        setTimeout(() => onImportSuccess(), 1000);
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Failed to import stock entries';
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { title: 'Import Failed', description: msg, variant: 'destructive' }
+      }));
+    } finally {
+      setIsImporting(false);
+    }
+  }, [selectedFile, accessToken, onImportSuccess]);
+
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Stock Management</h1>
-        <p className="text-muted-foreground mt-1">
-          Monitor stock levels, movements, and maintain accurate records
-        </p>
-      </div>
-      <div className="flex items-center gap-3">
-        {exportLabel && (
-          <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
-            {isExporting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" />
-                {exportLabel}
-              </>
-            )}
-          </Button>
-        )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button className="gap-2 text-primary-foreground shadow-lg">
-              <Plus className="h-4 w-4" />
-              New
+    <>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Stock Management</h1>
+          <p className="text-muted-foreground mt-1">
+            Monitor stock levels, movements, and maintain accurate records
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {exportLabel && (
+            <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
+              {isExporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  {exportLabel}
+                </>
+              )}
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={onNewEntry}>
-              <FileText className="mr-2 h-4 w-4" />
-              Stock Entry
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={onReconciliation}>
-              <ArrowRightLeft className="mr-2 h-4 w-4" />
-              Reconciliation
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          )}
+          {activeTab === 'entries' && (
+            <Button variant="outline" className="gap-2" onClick={() => setIsImportDialogOpen(true)}>
+              <Upload className="h-4 w-4" />
+              Import
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="gap-2 text-primary-foreground shadow-lg">
+                <Plus className="h-4 w-4" />
+                New
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={onNewEntry}>
+                <FileText className="mr-2 h-4 w-4" />
+                Stock Entry
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={onReconciliation}>
+                <ArrowRightLeft className="mr-2 h-4 w-4" />
+                Reconciliation
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-    </div>
+
+      {/* Stock Entry Import Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+        setIsImportDialogOpen(open);
+        if (!open) setSelectedFile(null);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import Stock Entries</DialogTitle>
+            <DialogDescription>
+              Upload a CSV or XLSX file to bulk create stock entries. Entries are created as draft.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex items-center justify-between rounded-md border border-dashed p-3 bg-muted/40">
+              <div className="text-sm">
+                <p className="font-medium">Need a template?</p>
+                <p className="text-muted-foreground">Download the template with required columns.</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={handleDownloadTemplate} className="shrink-0 ml-4 gap-1.5">
+                <Download className="h-4 w-4" />
+                Template CSV
+              </Button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label htmlFor="stock-file-upload" className="text-sm font-medium">Select File</label>
+              {!selectedFile ? (
+                <label
+                  htmlFor="stock-file-upload"
+                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors"
+                >
+                  <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                  <span className="text-sm font-medium text-primary">Click to select file</span>
+                  <span className="text-xs text-muted-foreground mt-1">CSV or Excel (.csv, .xlsx)</span>
+                </label>
+              ) : (
+                <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+                  <Upload className="h-5 w-5 text-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedFile(null)} disabled={isImporting}>
+                    Change
+                  </Button>
+                </div>
+              )}
+              <input id="stock-file-upload" type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} disabled={isImporting} className="hidden" />
+            </div>
+
+            {isImporting && (
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border">
+                <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium">Uploading and processing...</p>
+                  <p className="text-muted-foreground">This may take a moment depending on file size.</p>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setSelectedFile(null); }} disabled={isImporting}>
+              Cancel
+            </Button>
+            <Button onClick={handleImportSubmit} disabled={!selectedFile || isImporting}>
+              {isImporting ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Importing...</>) : 'Import'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -556,6 +725,7 @@ export function StockManagement() {
         onNewEntry={handleNewEntry}
         onReconciliation={handleNewReconciliation}
         activeTab={activeTab}
+        onImportSuccess={entriesData.refetch}
       />
       <StatsGrid stats={activeStats} />
 

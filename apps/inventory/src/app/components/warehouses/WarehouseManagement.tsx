@@ -154,10 +154,24 @@ export function WarehouseManagement() {
       setIsImporting(true);
       const formData = new FormData();
       formData.append('file', selectedFile);
-      await apiRequest('/warehouses/import', accessToken, { method: 'POST', body: formData });
-      toast({ title: 'Success', description: `File "${selectedFile.name}" imported successfully` });
+      const result = await apiRequest<Record<string, unknown>>('/warehouses/import', accessToken, { method: 'POST', body: formData });
+
+      const createdCount = Number(result?.created ?? 0);
+      const updatedCount = Number(result?.updated ?? 0);
+      const failCount = Number(result?.failed ?? 0);
+      const totalRows = Number(result?.total_rows ?? 0);
+
       setIsImportDialogOpen(false);
       setSelectedFile(null);
+
+      setTimeout(() => {
+        const message = `${createdCount} created, ${updatedCount} updated out of ${totalRows} row(s)${failCount > 0 ? `. ${failCount} failed.` : '.'}`;
+        toast({ title: '✅ Import Successful', description: message });
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { title: '✅ Import Successful', description: message }
+        }));
+      }, 100);
+
       refetch();
     } catch (error) {
       toast({ title: 'Import Failed', description: error instanceof Error ? error.message : 'Failed to import file', variant: 'destructive' });
@@ -388,21 +402,44 @@ export function WarehouseManagement() {
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="wh-file-upload" className="text-sm font-medium">Select File</label>
-              <input
-                id="wh-file-upload"
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                onChange={handleFileChange}
-                disabled={isImporting}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
-              {selectedFile && <p className="text-sm text-muted-foreground">Selected: {selectedFile.name}</p>}
+              {!selectedFile ? (
+                <label
+                  htmlFor="wh-file-upload"
+                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors"
+                >
+                  <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                  <span className="text-sm font-medium text-primary">Click to select file</span>
+                  <span className="text-xs text-muted-foreground mt-1">CSV or Excel (.csv, .xlsx, .xls)</span>
+                </label>
+              ) : (
+                <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+                  <Upload className="h-5 w-5 text-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedFile(null)} disabled={isImporting}>
+                    Change
+                  </Button>
+                </div>
+              )}
+              <input id="wh-file-upload" type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} disabled={isImporting} className="hidden" />
             </div>
+
+            {isImporting && (
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border">
+                <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium">Uploading and processing...</p>
+                  <p className="text-muted-foreground">This may take a moment depending on file size.</p>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setSelectedFile(null); }} disabled={isImporting}>Cancel</Button>
             <Button onClick={handleImportSubmit} disabled={!selectedFile || isImporting}>
-              {isImporting ? 'Importing...' : 'Import'}
+              {isImporting ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Importing...</>) : 'Import'}
             </Button>
           </DialogFooter>
         </DialogContent>

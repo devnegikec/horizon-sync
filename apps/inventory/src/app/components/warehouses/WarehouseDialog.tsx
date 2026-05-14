@@ -129,7 +129,7 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
 
     const payload: CreateWarehousePayload = {
       name: formData.name,
-      code: formData.code,
+      code: isEditing ? formData.code : undefined,
       description: formData.description || undefined,
       warehouse_type: formData.warehouse_type,
       parent_warehouse_id: formData.parent_warehouse_id || undefined,
@@ -183,14 +183,13 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
             {/* Basic Info */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="code">Warehouse Code <span className="text-red-500">*</span></Label>
+                <Label htmlFor="code">Warehouse Code</Label>
                 <Input id="code"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  placeholder="e.g., WH-MAIN"
-                  className={cn(fieldErrors['code'] && 'border-red-500')}
-                  required/>
-                {fieldErrors['code'] && <p className="text-xs text-red-500">{fieldErrors['code']}</p>}
+                  value={isEditing ? formData.code : ''}
+                  placeholder="Auto-generated"
+                  disabled
+                  className="bg-muted/50 cursor-not-allowed"/>
+                <p className="text-xs text-muted-foreground">{isEditing ? 'Code cannot be changed' : 'Will be auto-generated on save'}</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="warehouse_type">Type</Label>

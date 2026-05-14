@@ -62,7 +62,7 @@ export const WAREHOUSE_TYPES = ['warehouse', 'store', 'virtual', 'transit'] as c
 
 export const warehouseFormSchema = z.object({
   name: z.string().min(1, 'Warehouse name is required').max(255, 'Name must be 255 characters or less'),
-  code: z.string().min(1, 'Warehouse code is required').max(50, 'Code must be 50 characters or less'),
+  code: z.string().max(50, 'Code must be 50 characters or less').optional().or(z.literal('')),
   description: z.string().max(1000, 'Description must be 1000 characters or less').optional().or(z.literal('')),
   warehouse_type: z.enum(WAREHOUSE_TYPES, { message: 'Warehouse type must be one of: warehouse, store, virtual, transit' }),
   parent_warehouse_id: z.string().optional().or(z.literal('')),
