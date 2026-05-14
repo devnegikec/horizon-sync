@@ -647,6 +647,7 @@ function useStockEntryActions(refetch: () => void) {
 export function StockManagement() {
   const [activeTab, setActiveTab] = React.useState<ActiveTab>('levels');
   const [stockEntryDialogOpen, setStockEntryDialogOpen] = React.useState(false);
+  const [stockEntryViewMode, setStockEntryViewMode] = React.useState(false);
   const [reconciliationOpen, setReconciliationOpen] = React.useState(false);
   const [selectedReconciliation, setSelectedReconciliation] = React.useState<StockReconciliation | null>(null);
   const [reconciliationDetailOpen, setReconciliationDetailOpen] = React.useState(false);
@@ -690,6 +691,7 @@ export function StockManagement() {
 
   const handleNewEntry = React.useCallback(() => {
     entryActions.clearSelected();
+    setStockEntryViewMode(false);
     setStockEntryDialogOpen(true);
   }, [entryActions]);
 
@@ -697,9 +699,19 @@ export function StockManagement() {
     setReconciliationOpen(true);
   }, []);
 
-  const handleViewOrEdit = React.useCallback(
+  const handleView = React.useCallback(
     async (entry: StockEntry) => {
       await entryActions.handleView(entry);
+      setStockEntryViewMode(true);
+      setStockEntryDialogOpen(true);
+    },
+    [entryActions],
+  );
+
+  const handleEdit = React.useCallback(
+    async (entry: StockEntry) => {
+      await entryActions.handleEdit(entry);
+      setStockEntryViewMode(false);
       setStockEntryDialogOpen(true);
     },
     [entryActions],
@@ -716,8 +728,11 @@ export function StockManagement() {
   const handleDialogClose = React.useCallback(() => {
     setStockEntryDialogOpen(false);
     entryActions.clearSelected();
+    setActiveTab('entries');
     entriesData.refetch();
-  }, [entryActions, entriesData]);
+    levelsData.refetch();
+    movementsData.refetch();
+  }, [entryActions, entriesData, levelsData, movementsData]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -748,8 +763,8 @@ export function StockManagement() {
           reconciliationsData={reconciliationsData}
           reconciliationsFilters={reconciliationsFilters}
           onReconciliationsPagination={makePaginationHandler(setReconciliationsFilters)}
-          onViewEntry={handleViewOrEdit}
-          onEditEntry={handleViewOrEdit}
+          onViewEntry={handleView}
+          onEditEntry={handleEdit}
           onDeleteEntry={entryActions.handleDelete}
           onViewReconciliation={handleViewReconciliation} />
       </Tabs>
@@ -757,6 +772,7 @@ export function StockManagement() {
       <StockEntryDialog open={stockEntryDialogOpen}
         onOpenChange={setStockEntryDialogOpen}
         entry={entryActions.selectedEntry}
+        viewMode={stockEntryViewMode}
         onCreated={handleDialogClose}
         onUpdated={handleDialogClose} />
 

@@ -39,13 +39,14 @@ export function initFormData(customer: Customer | null): CustomerFormData {
     credit_limit: customer.credit_limit,
     outstanding_balance: customer.outstanding_balance,
     status: customer.status,
-    tags: customer.tags || [],
+    tags: Array.isArray(customer.tags) ? customer.tags : [],
   };
 }
 
 export function buildSavePayload(formData: CustomerFormData): Partial<Customer> {
   return {
     ...formData,
+    customer_code: formData.customer_code || undefined,
     address: formData.address || null,
     address_line1: formData.address_line1 || null,
     address_line2: formData.address_line2 || null,

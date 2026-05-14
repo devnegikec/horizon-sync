@@ -4,6 +4,7 @@ import { FileText } from 'lucide-react';
 
  
 import { useUserStore } from '@horizon-sync/store';
+import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -69,6 +70,8 @@ function buildLinesFromEntry(entry: StockEntry): StockEntryLineRow[] {
   if (!entry.items || entry.items.length === 0) return [{ ...EMPTY_LINE }];
   return entry.items.map((item, idx) => ({
     item_id: item.item_id,
+    item_name: item.item_name || undefined,
+    item_code: item.item_code || undefined,
     qty: item.qty || 0,
     uom: item.uom || 'pcs',
     basic_rate: item.basic_rate || 0,
@@ -122,6 +125,7 @@ interface StockEntryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   entry?: StockEntry | null;
+  viewMode?: boolean;
   onCreated?: () => void;
   onUpdated?: () => void;
 }
@@ -130,6 +134,7 @@ export function StockEntryDialog({
   open,
   onOpenChange,
   entry,
+  viewMode = false,
   onCreated,
   onUpdated,
 }: StockEntryDialogProps) {
@@ -154,7 +159,7 @@ export function StockEntryDialog({
     setSubmitError(null);
   }, [entry, open]);
 
-  /* Field change handler — clears irrelevant warehouse on type switch */
+  /* Field change handler — clears irrelevant warehouse on type switch, resets items on warehouse change */
   const handleFieldChange = React.useCallback((field: keyof StockEntryFormState, value: string) => {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
@@ -164,6 +169,11 @@ export function StockEntryDialog({
       }
       return next;
     });
+
+    // Reset line items when warehouse changes (stock levels are warehouse-specific)
+    if ((field === 'from_warehouse_id' || field === 'to_warehouse_id') && value) {
+      setLineItems([{ ...EMPTY_LINE }]);
+    }
   }, []);
 
   /* CSV import handler — appends imported rows to existing items */
@@ -186,6 +196,13 @@ export function StockEntryDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+
+    const hasValidItems = lineItems.some((row) => !!row.item_id);
+    if (!hasValidItems) {
+      setSubmitError('Please add at least one item before saving.');
+      return;
+    }
+
     const wantsSubmit = form.status === 'submitted';
     const payload = buildPayload(
       wantsSubmit ? { ...form, status: 'draft' } : form,
@@ -207,6 +224,11 @@ export function StockEntryDialog({
     }
   };
 
+  const hasValidItems = React.useMemo(
+    () => lineItems.some((row) => !!row.item_id),
+    [lineItems],
+  );
+
   const grandTotal = React.useMemo(
     () => lineItems.reduce((sum, r) => sum + (r.amount || 0), 0),
     [lineItems],
@@ -221,16 +243,18 @@ export function StockEntryDialog({
               <FileText className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <DialogTitle>{isEditing ? 'Edit Stock Entry' : 'Create Stock Entry'}</DialogTitle>
+              <DialogTitle>{viewMode ? 'View Stock Entry' : isEditing ? 'Edit Stock Entry' : 'Create Stock Entry'}</DialogTitle>
               <DialogDescription>
-                {isEditing ? 'Update the stock entry details' : 'Create a new stock entry for transfers, receipts, or issues'}
+                {viewMode ? 'Stock entry details' : isEditing ? 'Update the stock entry details' : 'Create a new stock entry for transfers, receipts, or issues'}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <StockEntryHeader form={form} isEditing={isEditing} onFieldChange={handleFieldChange} />
+          <StockEntryHeader form={form} isEditing={isEditing} onFieldChange={handleFieldChange} disabled={viewMode}
+            fromWarehouseName={viewMode && entry?.from_warehouse ? `${entry.from_warehouse.name} (${entry.from_warehouse.code})` : undefined}
+            toWarehouseName={viewMode && entry?.to_warehouse ? `${entry.to_warehouse.name} (${entry.to_warehouse.code})` : undefined} />
 
           <div className="space-y-2">
             <Label htmlFor="remarks">Remarks</Label>
@@ -238,7 +262,8 @@ export function StockEntryDialog({
               value={form.remarks}
               onChange={(e) => handleFieldChange('remarks', e.target.value)}
               placeholder="Additional remarks..."
-              rows={2} />
+              rows={2}
+              disabled={viewMode} />
           </div>
 
           <Separator />
@@ -246,24 +271,29 @@ export function StockEntryDialog({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium">Line Items</h4>
-              <CsvImporter<StockEntryLineRow> parseRows={parseStockEntryCsv}
-                onImport={handleCsvImport}
-                onFileSelected={handleBulkUpload}
-                onPreviewChange={setCsvPreviewActive}
-                columnsHint="Columns: Stock Entry Type, Item Code, Quantity, UOM, Basic Rate, ..."
-                sampleCsv={STOCK_ENTRY_SAMPLE_CSV}
-                sampleFileName="stock-entry-sample.csv"
-                previewColumns={[
-                  { key: 'item_id', label: 'Item Code' },
-                  { key: 'qty', label: 'Qty' },
-                  { key: 'uom', label: 'UOM' },
-                  { key: 'basic_rate', label: 'Basic Rate' },
-                  { key: 'amount', label: 'Amount' },
-                ]} />
+              {!viewMode && (
+                <CsvImporter<StockEntryLineRow> parseRows={parseStockEntryCsv}
+                  onImport={handleCsvImport}
+                  onFileSelected={handleBulkUpload}
+                  onPreviewChange={setCsvPreviewActive}
+                  columnsHint="Columns: Stock Entry Type, Item Code, Quantity, UOM, Basic Rate, ..."
+                  sampleCsv={STOCK_ENTRY_SAMPLE_CSV}
+                  sampleFileName="stock-entry-sample.csv"
+                  previewColumns={[
+                    { key: 'item_id', label: 'Item Code' },
+                    { key: 'qty', label: 'Qty' },
+                    { key: 'uom', label: 'UOM' },
+                    { key: 'basic_rate', label: 'Basic Rate' },
+                    { key: 'amount', label: 'Amount' },
+                  ]} />
+              )}
             </div>
             {!csvPreviewActive && (
-              <StockEntryLineItemsTable items={lineItems}
+              <StockEntryLineItemsTable
+                key={form.stock_entry_type === 'material_receipt' ? form.to_warehouse_id : form.from_warehouse_id}
+                items={lineItems}
                 onItemsChange={setLineItems}
+                disabled={viewMode}
                 warehouseId={
                   form.stock_entry_type === 'material_receipt'
                     ? form.to_warehouse_id
@@ -272,11 +302,25 @@ export function StockEntryDialog({
             )}
           </div>
 
-          <StockEntryFooter onCancel={() => onOpenChange(false)}
-            loading={loading}
-            isEditing={isEditing}
-            submitError={submitError}
-            grandTotal={grandTotal}/>
+          {!viewMode && (
+            <StockEntryFooter onCancel={() => onOpenChange(false)}
+              loading={loading}
+              isEditing={isEditing}
+              submitError={submitError}
+              grandTotal={grandTotal}
+              disableSubmit={!hasValidItems}/>
+          )}
+
+          {viewMode && (
+            <div className="flex items-center justify-between pt-2">
+              <div className="text-sm font-medium">
+                Total: <span className="text-lg">{grandTotal.toFixed(2)}</span>
+              </div>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+            </div>
+          )}
         </form>
       </DialogContent>
     </Dialog>

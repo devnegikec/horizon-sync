@@ -39,7 +39,7 @@ function ErrorBanner({ message }: { message: string }) {
 function UnallocatedWarning({ items }: { items: UnallocatedItem[] }) {
   if (items.length === 0) return null;
   return (
-    <div className="rounded-md border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20 p-4">
+    <div className="rounded-md border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/30 p-4">
       <div className="flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
         <div>
@@ -248,7 +248,7 @@ export function SmartPickingDialog({ open, onOpenChange, salesOrder, onSuccess }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />

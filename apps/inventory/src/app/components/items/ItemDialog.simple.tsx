@@ -76,7 +76,7 @@ export function ItemDialogSimple({
             isLoadingTaxTemplates={isLoadingTaxTemplates}/>
 
           {error && (
-            <div className="text-sm text-red-500 bg-red-50 dark:bg-red-950 p-3 rounded-md">
+            <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-3 rounded-md">
               {error}
             </div>
           )}
