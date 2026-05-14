@@ -19,6 +19,65 @@ interface Step1BasicInfoProps {
   accessToken: string;
 }
 
+// eslint-disable-next-line complexity
+function NameField({ value, onUpdate, markTouched, showError, showMaxError }: {
+  value: string;
+  onUpdate: (data: Partial<ItemFormData>) => void;
+  markTouched: () => void;
+  showError: boolean;
+  showMaxError: boolean;
+}) {
+  const isAtLimit = (value?.length || 0) >= 255;
+  const hasError = showError || showMaxError || isAtLimit;
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="itemName">
+        Item Name <span className="text-red-500">*</span>
+      </Label>
+      <Input id="itemName"
+        value={value}
+        onChange={(e) => onUpdate({ name: e.target.value })}
+        onBlur={markTouched}
+        placeholder="Enter item name"
+        className={cn(hasError && 'border-red-500')}
+        required/>
+      {showError && (
+        <p className="text-xs text-red-500">Item name is required</p>
+      )}
+      {isAtLimit && (
+        <p className="text-xs text-red-500">Item name cannot exceed 255 characters</p>
+      )}
+      <p className={cn('text-xs text-right', isAtLimit ? 'text-red-500 font-medium' : 'text-muted-foreground')}>{value?.length || 0}/255</p>
+    </div>
+  );
+}
+
+function DescriptionField({ value, onUpdate, markTouched }: {
+  value: string;
+  onUpdate: (data: Partial<ItemFormData>) => void;
+  markTouched: () => void;
+}) {
+  const isAtLimit = (value?.length || 0) >= 1000;
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="description">Description</Label>
+      <Textarea id="description"
+        value={value}
+        onChange={(e) => onUpdate({ description: e.target.value })}
+        onBlur={markTouched}
+        placeholder="Enter item description"
+        className={cn(isAtLimit && 'border-red-500')}
+        rows={3}/>
+      {isAtLimit && (
+        <p className="text-xs text-red-500">Description cannot exceed 1000 characters</p>
+      )}
+      <p className={cn('text-xs text-right', isAtLimit ? 'text-red-500 font-medium' : 'text-muted-foreground')}>{value?.length || 0}/1000</p>
+    </div>
+  );
+}
+
 export function Step1BasicInfo({ formData, onUpdate, itemGroups, accessToken }: Step1BasicInfoProps) {
   const hasItemGroups = itemGroups.length > 0;
   const { options: uomOptions, loading: uomLoading } = useUOMOptions(accessToken);
@@ -29,6 +88,9 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups, accessToken }: 
 
   const showError = (field: string, value: string | undefined | null) =>
     touched[field] && !value?.trim();
+
+  const showMaxError = (field: string, value: string | undefined | null, max: number) =>
+    touched[field] && (value?.length || 0) > max;
 
   // Auto-select the first UOM option as default once options are loaded
   React.useEffect(() => {
@@ -56,21 +118,7 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups, accessToken }: 
             placeholder="Auto-generated"/>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="itemName">
-            Item Name <span className="text-red-500">*</span>
-          </Label>
-          <Input id="itemName"
-            value={formData.name}
-            onChange={(e) => onUpdate({ name: e.target.value })}
-            onBlur={() => markTouched('name')}
-            placeholder="Enter item name"
-            className={cn(showError('name', formData.name) && 'border-red-500')}
-            required/>
-          {showError('name', formData.name) && (
-            <p className="text-xs text-red-500">Item name is required</p>
-          )}
-        </div>
+        <NameField value={formData.name} onUpdate={onUpdate} markTouched={() => markTouched('name')} showError={!!showError('name', formData.name)} showMaxError={!!showMaxError('name', formData.name, 255)} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -153,14 +201,7 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups, accessToken }: 
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Textarea id="description"
-          value={formData.description}
-          onChange={(e) => onUpdate({ description: e.target.value })}
-          placeholder="Enter item description"
-          rows={3}/>
-      </div>
+      <DescriptionField value={formData.description} onUpdate={onUpdate} markTouched={() => markTouched('description')} />
     </div>
   );
 }

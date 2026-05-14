@@ -10,9 +10,11 @@ import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
+import { cn } from '@horizon-sync/ui/lib';
 
 import { useItemGroupMutations } from '../../hooks/useItemGroups';
 import type { ItemGroupListItem } from '../../types/item-group.types';
+import { itemGroupFormSchema, isAtMaxLength } from '../../utility/validation-schemas';
 import { UOMSelect } from '../shared/UOMSelect';
 
 interface ItemGroupDialogProps {
@@ -48,9 +50,10 @@ interface FormFieldsProps {
   set: SetField;
   isEditing: boolean;
   parentOptions: ItemGroupListItem[];
+  fieldErrors?: Record<string, string>;
 }
 
-function ItemGroupFormFields({ formData, set, isEditing, parentOptions }: FormFieldsProps) {
+function ItemGroupFormFields({ formData, set, isEditing, parentOptions, fieldErrors = {} }: FormFieldsProps) {
   return (
     <div className="grid gap-4 py-4">
       <div className="grid grid-cols-2 gap-4">
@@ -60,7 +63,11 @@ function ItemGroupFormFields({ formData, set, isEditing, parentOptions }: FormFi
             value={formData.name}
             onChange={(e) => set('name', e.target.value)}
             placeholder="e.g., Electronics"
+            className={cn((fieldErrors['name'] || formData.name.length > 255) && 'border-red-500')}
             required />
+          {fieldErrors['name'] && <p className="text-xs text-red-500">{fieldErrors['name']}</p>}
+          {formData.name.length > 255 && <p className="text-xs text-red-500">Cannot exceed 255 characters</p>}
+          <p className={cn('text-xs text-right', isAtMaxLength(formData.name, 255) ? 'text-red-500 font-medium' : 'text-muted-foreground')}>{formData.name.length}/255</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="ig-status">Status</Label>
@@ -143,6 +150,7 @@ export function ItemGroupDialog({ open, onOpenChange, itemGroup, allItemGroups, 
   const { createItemGroup, updateItemGroup, loading } = useItemGroupMutations();
   const [formData, setFormData] = React.useState(DEFAULT_FORM);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
 
   const isEditing = !!itemGroup;
 
@@ -161,6 +169,7 @@ export function ItemGroupDialog({ open, onOpenChange, itemGroup, allItemGroups, 
       setFormData(DEFAULT_FORM);
     }
     setSubmitError(null);
+    setFieldErrors({});
   }, [itemGroup, open]);
 
   const set: SetField = (key, value) =>
@@ -179,6 +188,23 @@ export function ItemGroupDialog({ open, onOpenChange, itemGroup, allItemGroups, 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    setFieldErrors({});
+
+    // Validate with Zod
+    const result = itemGroupFormSchema.safeParse({
+      ...formData,
+      is_active: typeof formData.is_active === 'boolean' ? formData.is_active : formData.is_active === 'active',
+    });
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        const path = issue.path.join('.');
+        if (!errors[path]) errors[path] = issue.message;
+      });
+      setFieldErrors(errors);
+      return;
+    }
+
     try {
       if (isEditing && itemGroup) {
         await updateItemGroup(itemGroup.id, buildPayload());
@@ -211,7 +237,7 @@ export function ItemGroupDialog({ open, onOpenChange, itemGroup, allItemGroups, 
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
-          <ItemGroupFormFields formData={formData} set={set} isEditing={isEditing} parentOptions={parentOptions}/>
+          <ItemGroupFormFields formData={formData} set={set} isEditing={isEditing} parentOptions={parentOptions} fieldErrors={fieldErrors}/>
 
           {submitError && <p className="text-sm text-destructive mb-4">{submitError}</p>}
 
