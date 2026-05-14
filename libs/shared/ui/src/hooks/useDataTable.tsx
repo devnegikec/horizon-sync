@@ -162,7 +162,9 @@ export function useDataTable<TData, TValue>({ data, columns, config = {} }: UseD
     enableSorting,
     // Server-side pagination configuration
     manualPagination: isServerPagination,
-    pageCount: isServerPagination ? Math.ceil(serverPagination.totalItems / serverPagination.pageSize) : undefined,
+    pageCount: isServerPagination
+      ? Math.max(Math.ceil(serverPagination.totalItems / serverPagination.pageSize), safeData.length > 0 ? 1 : 0)
+      : undefined,
   });
 
   const selectedRows = React.useMemo(() => {

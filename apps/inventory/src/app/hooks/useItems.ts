@@ -61,7 +61,7 @@ export function useItems(initialPage = 1, initialPageSize = 20, filters?: { sear
         params.append('item_group_id', memoizedFilters.groupId);
       }
       if (memoizedFilters?.status && memoizedFilters.status !== 'all') {
-        params.append('status', memoizedFilters.status);
+        params.append('status', memoizedFilters.status.toUpperCase());
       }
       
       const res = await fetch(`${ITEMS_URL}?${params}`, {

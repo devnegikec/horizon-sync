@@ -5,6 +5,7 @@ import { DollarSign, Package, Users, Truck, FileText, ShoppingCart, ClipboardLis
 
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
+import { Toaster } from '@horizon-sync/ui/components/ui/toaster';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { CustomerManagement } from '../components/customers';
@@ -135,6 +136,7 @@ export function RevenuePage() {
           </main>
         </div>
       </ThemeProvider>
+      <Toaster />
     </QueryClientProvider>
   );
 }
