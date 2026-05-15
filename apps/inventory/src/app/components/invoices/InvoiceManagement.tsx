@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { AlertTriangle, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Card, CardContent, ConfirmationDialog } from '@horizon-sync/ui/components';
@@ -11,6 +11,7 @@ import type { Invoice } from '../../types/invoice.types';
 import { PaymentType, type CreatePaymentPayload } from '../../types/payment.types';
 import { invoiceApi } from '../../utility/api/invoices';
 import { PaymentDialog } from '../payments/PaymentDialog';
+import { ErrorBanner } from '../common';
 
 import { InvoiceDetailDialog, InvoiceManagementFilters, InvoiceManagementHeader, InvoicesTable, InvoiceStats } from '@horizon-sync/ui';
 
@@ -111,16 +112,7 @@ export function InvoiceManagement() {
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
     if (!error || error === FEATURE_DISABLED_CODE) return null;
-    return (
-      <Card className="border-destructive">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm font-medium">Error loading invoices: {error}</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <ErrorBanner entity="invoices" message={error} />;
   }, [error]);
 
   // Feature disabled — show informational banner instead of the full page

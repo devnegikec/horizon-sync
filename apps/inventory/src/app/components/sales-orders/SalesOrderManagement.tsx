@@ -1,12 +1,11 @@
 import * as React from 'react';
 
-import { AlertTriangle } from 'lucide-react';
-
 import { Button, Card, CardContent } from '@horizon-sync/ui/components';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { useSalesOrderManagement } from '../../hooks/useSalesOrderManagement';
+import { ErrorBanner } from '../common';
 import { SmartPickingDialog } from '../smart-picking/SmartPickingDialog';
 
 import { CreateDeliveryNoteDialog } from './CreateDeliveryNoteDialog';
@@ -116,16 +115,7 @@ export function SalesOrderManagement({
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
     if (!error) return null;
-    return (
-      <Card className="border-destructive">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm font-medium">Error loading sales orders: {error}</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <ErrorBanner entity="sales orders" message={error} />;
   }, [error]);
 
   return (

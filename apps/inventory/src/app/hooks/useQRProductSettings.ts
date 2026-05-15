@@ -3,6 +3,7 @@ import * as React from 'react';
 import { useUserStore } from '@horizon-sync/store';
 
 import { qrProductSettingApi } from '../api/qr-product-settings';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 import type {
   QRProductSetting,
   QRProductSettingCreate,

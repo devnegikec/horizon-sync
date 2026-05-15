@@ -55,7 +55,9 @@ export function OrganizationStep() {
       setCurrentStep(3);
     } catch (error) {
       console.error('Failed to create organization:', error);
-      throw error;
+      // Re-throw with a user-friendly message so the form can display it
+      const message = error instanceof Error ? error.message : 'Failed to create organization. Please try again.';
+      throw new Error(message);
     }
   };
 

@@ -53,29 +53,38 @@ export function OrganizationGuard({ children }: OrganizationGuardProps) {
       status: 'active',
     };
 
-    const result = await OrganizationService.createOrganization(payload, accessToken);
-    const org = result as { id: string; name: string; display_name: string; created_at: string; updated_at: string };
+    try {
+      const result = await OrganizationService.createOrganization(payload, accessToken);
+      const org = result as { id: string; name: string; display_name: string; created_at: string; updated_at: string };
 
-    // Update user store with the new organization_id
-    updateUser({ organization_id: org.id });
+      // Update user store with the new organization_id
+      updateUser({ organization_id: org.id });
 
-    // Store the organization details
-    setOrganization({
-      id: org.id,
-      name: org.name,
-      display_name: org.display_name || org.name,
-      status: 'active',
-      is_active: true,
-      settings: null,
-      extra_data: null,
-      created_at: org.created_at,
-      updated_at: org.updated_at,
-    });
+      // Store the organization details
+      setOrganization({
+        id: org.id,
+        name: org.name,
+        display_name: org.display_name || org.name,
+        status: 'active',
+        is_active: true,
+        settings: null,
+        extra_data: null,
+        created_at: org.created_at,
+        updated_at: org.updated_at,
+      });
 
-    toast({
-      title: 'Organization created',
-      description: `${data.organizationName} has been set up successfully.`,
-    });
+      toast({
+        title: 'Organization created',
+        description: `${data.organizationName} has been set up successfully.`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create organization. Please try again.';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    }
   };
 
   return (

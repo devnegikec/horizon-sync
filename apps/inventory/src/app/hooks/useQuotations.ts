@@ -4,6 +4,7 @@ import { useUserStore } from '@horizon-sync/store';
 
 import type { Quotation, QuotationResponse } from '../types/quotation.types';
 import { quotationApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 interface UseQuotationsResult {
   quotations: Quotation[];
@@ -64,7 +65,7 @@ export function useQuotations(
       setQuotations(data.quotations ?? []);
       setPagination(data.pagination ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load quotations');
+      setError(getFriendlyErrorMessage(err));
       setQuotations([]);
       setPagination(null);
     } finally {

@@ -1,3 +1,4 @@
+import { getFriendlyErrorMessage } from '../utility/api/core';
 import { useCallback, useState } from 'react';
 
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
@@ -28,7 +29,7 @@ export function useInvoicePDFActions(invoice: Invoice | null) {
     } catch (error) {
       toast({
         title: 'Download Failed',
-        description: error instanceof Error ? error.message : 'Failed to download PDF',
+        description: getFriendlyErrorMessage(error),
         variant: 'destructive',
       });
     }
@@ -42,7 +43,7 @@ export function useInvoicePDFActions(invoice: Invoice | null) {
     } catch (error) {
       toast({
         title: 'Preview Failed',
-        description: error instanceof Error ? error.message : 'Failed to preview PDF',
+        description: getFriendlyErrorMessage(error),
         variant: 'destructive',
       });
     }
@@ -71,7 +72,7 @@ export function useInvoicePDFActions(invoice: Invoice | null) {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to prepare email',
+        description: getFriendlyErrorMessage(error),
         variant: 'destructive',
       });
     }
@@ -93,3 +94,4 @@ export function useInvoicePDFActions(invoice: Invoice | null) {
     closeEmailDialog,
   };
 }
+

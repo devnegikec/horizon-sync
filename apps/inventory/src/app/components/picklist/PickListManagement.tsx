@@ -1,13 +1,12 @@
 import * as React from 'react';
 
-import { AlertTriangle } from 'lucide-react';
-
 import { useUserStore } from '@horizon-sync/store';
 import { Card, CardContent } from '@horizon-sync/ui/components';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { usePickListManagement } from '../../hooks/usePickListManagement';
+import { ErrorBanner } from '../common';
 import type { PickList } from '../../types/pick-list.types';
 import type { DeliveryNoteCreate, DeliveryNoteUpdate } from '../../types/delivery-note.types';
 import { pickListApi } from '../../utility/api/pick-lists';
@@ -102,16 +101,7 @@ export function PickListManagement() {
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
     if (!error) return null;
-    return (
-      <Card className="border-destructive">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm font-medium">Error loading pick lists: {error}</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <ErrorBanner entity="pick lists" message={error} />;
   }, [error]);
 
   return (

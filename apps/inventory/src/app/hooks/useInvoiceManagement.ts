@@ -10,6 +10,7 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { FEATURE_DISABLED_CODE, HTTP_FEATURE_DISABLED } from '@horizon-sync/ui';
 import type { Invoice, InvoiceResponse, InvoiceType, InvoiceStatus } from '../types/invoice.types';
 import { invoiceApi } from '../utility/api/invoices';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface InvoiceFilters {
   search: string;
@@ -51,7 +52,7 @@ function useInvoices(
     if (apiErr?.status === HTTP_FEATURE_DISABLED && apiErr?.details?.detail?.code === FEATURE_DISABLED_CODE) {
       setError(FEATURE_DISABLED_CODE);
     } else {
-      setError(err instanceof Error ? err.message : 'Failed to load invoices');
+      setError(getFriendlyErrorMessage(err));
     }
     setInvoices([]);
     setPagination(null);
@@ -138,7 +139,7 @@ export function useInvoiceManagement() {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete invoice',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -158,7 +159,7 @@ export function useInvoiceManagement() {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to mark invoice as paid',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -174,7 +175,7 @@ export function useInvoiceManagement() {
       } catch (err) {
         toast({
           title: 'Error',
-          description: err instanceof Error ? err.message : 'Failed to load invoice details',
+          description: getFriendlyErrorMessage(err),
           variant: 'destructive',
         });
       }
