@@ -64,6 +64,7 @@ export interface PickList {
   created_at: string;
   updated_at: string;
   items: PickListItem[];
+  items_count?: number;
   // Legacy fields for backward compatibility
   sales_order_id?: string | null;
   sales_order_no?: string;
