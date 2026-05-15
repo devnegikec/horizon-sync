@@ -105,7 +105,7 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
   const flagVisibility: Record<string, boolean> = React.useMemo(() => {
     const visibility: Record<string, boolean> = {};
     featureFlagNames.forEach(flagName => {
-      visibility[flagName] = flagStates[flagName]?.visible ?? true;
+      visibility[flagName] = flagStates[flagName]?.visible ?? false;
     });
     return visibility;
   }, [flagStates, featureFlagNames]);
