@@ -339,6 +339,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
         // When creating, data is CreateMaterialRequestPayload
         await materialRequestApi.create(accessToken, data as CreateMaterialRequestPayload);
         toast({ title: 'Success', description: 'Material Request created successfully' });
+        setPage(1);
       }
       queryClient.invalidateQueries({ queryKey: ['material-requests'] });
       setCreateDialogOpen(false);

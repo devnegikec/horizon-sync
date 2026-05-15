@@ -283,6 +283,7 @@ export function usePaymentManagement(): UsePaymentManagementResult {
       } else {
         await paymentApi.create(accessToken, data);
         toast({ title: 'Success', description: 'Payment created successfully' });
+        setPage(1);
       }
       
       // Invalidate payment queries

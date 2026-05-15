@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
 import type { Quotation } from '../../types/quotation.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 import { formatDate } from '../../utility/formatDate';
 
 import { StatusBadge } from './StatusBadge';
@@ -154,7 +155,7 @@ export function QuotationsTable({
           const quotation = row.original;
           return (
             <div className="text-right">
-              <p className="font-semibold">{quotation.currency} {Number(quotation.grand_total).toFixed(2)}</p>
+              <p className="font-semibold">{getCurrencySymbol(quotation.currency)} {Number(quotation.grand_total).toFixed(2)}</p>
             </div>
           );
         },

@@ -328,6 +328,7 @@ export function useSalesOrderManagement() {
       } else {
         await salesOrderApi.create(accessToken, data);
         toast({ title: 'Success', description: 'Sales order created successfully' });
+        setPage(1);
       }
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
       queryClient.invalidateQueries({ queryKey: ['stock-levels'] });

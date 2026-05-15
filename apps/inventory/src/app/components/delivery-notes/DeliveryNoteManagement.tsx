@@ -163,6 +163,7 @@ export function DeliveryNoteManagement() {
       } else {
         await deliveryNoteApi.create(accessToken, data);
         toast({ title: 'Success', description: 'Delivery note created successfully' });
+        setPage(1);
       }
       queryClient.invalidateQueries({ queryKey: ['delivery-notes'] });
       setCreateDialogOpen(false);

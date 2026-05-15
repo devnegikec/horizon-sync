@@ -17,6 +17,7 @@ import {
 import { EmptyState } from '../ui/empty-state';
 
 import type { Invoice } from '../../types/invoice.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 import { formatDate } from '../../utils/formatDate';
 
 import { InvoiceStatusBadge } from './InvoiceStatusBadge';
@@ -150,11 +151,11 @@ export function InvoicesTable({
           return (
             <div className="text-right">
               <p className="font-semibold">
-                {invoice.currency} {Number(invoice.grand_total).toFixed(2)}
+                {getCurrencySymbol(invoice.currency)} {Number(invoice.grand_total).toFixed(2)}
               </p>
               {invoice.outstanding_amount > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Due: {invoice.currency} {Number(invoice.outstanding_amount).toFixed(2)}
+                  Due: {getCurrencySymbol(invoice.currency)} {Number(invoice.outstanding_amount).toFixed(2)}
                 </p>
               )}
             </div>

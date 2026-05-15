@@ -6,11 +6,13 @@ import {
 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
+import { useCurrencyStore } from '@horizon-sync/store';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
 
 import type { Item } from '../../types/item.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 import { apiRequest } from '../../utility/api/core';
 
 // Full API response type for item detail
@@ -147,7 +149,7 @@ function OverviewTab({ detail }: { detail: ItemDetailResponse }) {
   );
 }
 
-function StockPricingTab({ detail }: { detail: ItemDetailResponse }) {
+function StockPricingTab({ detail, currencySymbol }: { detail: ItemDetailResponse; currencySymbol: string }) {
   const standardRate = detail.standard_rate ? parseFloat(detail.standard_rate) : 0;
   const valuationRate = detail.valuation_rate ? parseFloat(detail.valuation_rate) : 0;
 
@@ -155,8 +157,8 @@ function StockPricingTab({ detail }: { detail: ItemDetailResponse }) {
     <div className="space-y-4">
       <SectionCard title="Pricing">
         <div className="grid grid-cols-2 gap-4">
-          <InfoRow icon={DollarSign} label="Standard Rate" value={`$${standardRate.toFixed(2)}`} />
-          <InfoRow icon={DollarSign} label="Valuation Rate" value={valuationRate ? `$${valuationRate.toFixed(2)}` : undefined} />
+          <InfoRow icon={DollarSign} label="Standard Rate" value={`${currencySymbol}${standardRate.toFixed(2)}`} />
+          <InfoRow icon={DollarSign} label="Valuation Rate" value={valuationRate ? `${currencySymbol}${valuationRate.toFixed(2)}` : undefined} />
           <InfoRow icon={BarChart3} label="Valuation Method" value={detail.valuation_method} />
         </div>
       </SectionCard>
@@ -267,7 +269,7 @@ function AdditionalTab({ detail }: { detail: ItemDetailResponse }) {
 
 // --- Main dialog ---
 
-function DialogHeaderSection({ detail, item, standardRate }: { detail: ItemDetailResponse | null; item: Item; standardRate: number }) {
+function DialogHeaderSection({ detail, item, standardRate, currencySymbol }: { detail: ItemDetailResponse | null; item: Item; standardRate: number; currencySymbol: string }) {
   return (
     <DialogHeader>
       <div className="flex items-center gap-4">
@@ -284,7 +286,7 @@ function DialogHeaderSection({ detail, item, standardRate }: { detail: ItemDetai
           <p className="text-sm text-muted-foreground mt-1">{detail?.item_code || item.itemCode}</p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-2xl font-bold">${standardRate.toFixed(2)}</p>
+          <p className="text-2xl font-bold">{currencySymbol}{standardRate.toFixed(2)}</p>
           <p className="text-xs text-muted-foreground">Standard Rate</p>
         </div>
       </div>
@@ -292,7 +294,7 @@ function DialogHeaderSection({ detail, item, standardRate }: { detail: ItemDetai
   );
 }
 
-function DetailTabs({ detail }: { detail: ItemDetailResponse }) {
+function DetailTabs({ detail, currencySymbol }: { detail: ItemDetailResponse; currencySymbol: string }) {
   return (
     <Tabs defaultValue="overview" className="mt-4">
       <TabsList className="w-full">
@@ -306,7 +308,7 @@ function DetailTabs({ detail }: { detail: ItemDetailResponse }) {
         <OverviewTab detail={detail} />
       </TabsContent>
       <TabsContent value="stock" className="mt-4">
-        <StockPricingTab detail={detail} />
+        <StockPricingTab detail={detail} currencySymbol={currencySymbol} />
       </TabsContent>
       <TabsContent value="quality" className="mt-4">
         <QualityReorderTab detail={detail} />
@@ -320,6 +322,8 @@ function DetailTabs({ detail }: { detail: ItemDetailResponse }) {
 
 export function ItemDetailDialog({ open, onOpenChange, item }: ItemDetailDialogProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
   const [detail, setDetail] = React.useState<ItemDetailResponse | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -346,7 +350,7 @@ export function ItemDetailDialog({ open, onOpenChange, item }: ItemDetailDialogP
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[750px] max-h-[85vh] overflow-y-auto">
-        <DialogHeaderSection detail={detail} item={item} standardRate={standardRate} />
+        <DialogHeaderSection detail={detail} item={item} standardRate={standardRate} currencySymbol={currencySymbol} />
 
         {loading && (
           <div className="flex items-center justify-center py-12">
@@ -361,7 +365,7 @@ export function ItemDetailDialog({ open, onOpenChange, item }: ItemDetailDialogP
           </div>
         )}
 
-        {detail && !loading && <DetailTabs detail={detail} />}
+        {detail && !loading && <DetailTabs detail={detail} currencySymbol={currencySymbol} />}
       </DialogContent>
     </Dialog>
   );
