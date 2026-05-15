@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import type { SearchResult } from '@horizon-sync/search';
 import { useUserStore, hasOrganization } from '@horizon-sync/store';
 import { CreateOrganizationModal, OrganizationService, type CreateOrganizationPayload } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 
 import { environment } from '../../../environments/environment';
 import { useItemManagement } from '../../hooks/useItemManagement';
@@ -43,6 +44,9 @@ export function ItemManagement() {
     handleEditItem,
     handleViewItem,
     handleToggleStatus,
+    confirmToggleItem,
+    setConfirmToggleItem,
+    executeToggleStatus,
     handleSaveItem,
     handleTableReady,
     serverPaginationConfig
@@ -183,6 +187,17 @@ export function ItemManagement() {
         onSubmit={handleCreateOrganization}
         title="Create Organization"
         description="You need to create an organization before you can manage inventory items."/>
+
+      {/* Toggle Status Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmToggleItem}
+        onOpenChange={(open) => { if (!open) setConfirmToggleItem(null); }}
+        title={confirmToggleItem?.status === 'active' ? 'Deactivate Item' : 'Activate Item'}
+        description={`Are you sure you want to ${confirmToggleItem?.status === 'active' ? 'deactivate' : 'activate'} "${confirmToggleItem?.item_name || confirmToggleItem?.item_code}"?`}
+        confirmLabel={confirmToggleItem?.status === 'active' ? 'Deactivate' : 'Activate'}
+        variant={confirmToggleItem?.status === 'active' ? 'destructive' : 'default'}
+        onConfirm={executeToggleStatus}
+      />
     </div>
   );
 }

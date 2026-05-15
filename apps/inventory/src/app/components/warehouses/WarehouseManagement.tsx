@@ -15,6 +15,7 @@ import {
 
 import { Button, DataTableViewOptions, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import {
   Dialog,
   DialogContent,
@@ -65,11 +66,13 @@ export function WarehouseManagement() {
   });
 
   const { warehouses, pagination, statusCounts, typeCounts, loading, error, refetch, setPage, setPageSize, currentPage, currentPageSize } = useWarehouses(1, 20, filters);
-  const { deleteWarehouse } = useWarehouseMutations();
+  const { deleteWarehouse, updateWarehouse } = useWarehouseMutations();
   const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
   const [tableInstance, setTableInstance] = useState<Table<Warehouse> | null>(null);
+  const [confirmDeleteWarehouse, setConfirmDeleteWarehouse] = useState<Warehouse | null>(null);
+  const [confirmToggleWarehouse, setConfirmToggleWarehouse] = useState<Warehouse | null>(null);
 
   // Import state
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -214,15 +217,34 @@ export function WarehouseManagement() {
     setDetailDialogOpen(true);
   };
 
-  const handleDeleteWarehouse = async (warehouse: Warehouse) => {
-    if (window.confirm(`Are you sure you want to delete "${warehouse.name}"?`)) {
-      try {
-        await deleteWarehouse(warehouse.id);
-        refetch();
-      } catch {
-        // Error handled in hook
-      }
+  const handleDeleteWarehouse = (warehouse: Warehouse) => {
+    setConfirmDeleteWarehouse(warehouse);
+  };
+
+  const executeDeleteWarehouse = async () => {
+    if (!confirmDeleteWarehouse) return;
+    try {
+      await deleteWarehouse(confirmDeleteWarehouse.id);
+      refetch();
+    } catch {
+      // Error handled in hook
     }
+    setConfirmDeleteWarehouse(null);
+  };
+
+  const handleToggleWarehouseStatus = (warehouse: Warehouse) => {
+    setConfirmToggleWarehouse(warehouse);
+  };
+
+  const executeToggleWarehouseStatus = async () => {
+    if (!confirmToggleWarehouse) return;
+    try {
+      await updateWarehouse(confirmToggleWarehouse.id, { is_active: !confirmToggleWarehouse.is_active });
+      refetch();
+    } catch {
+      // Error handled in hook
+    }
+    setConfirmToggleWarehouse(null);
   };
 
   const handleTableReady = (table: Table<Warehouse>) => {
@@ -323,6 +345,7 @@ export function WarehouseManagement() {
         onView={handleViewWarehouse}
         onEdit={handleEditWarehouse}
         onDelete={handleDeleteWarehouse}
+        onToggleStatus={handleToggleWarehouseStatus}
         onCreateWarehouse={handleCreateWarehouse}
         onTableReady={handleTableReady}
         serverPagination={serverPaginationConfig}
@@ -331,6 +354,28 @@ export function WarehouseManagement() {
       {/* Dialogs */}
       <WarehouseDialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen} warehouse={selectedWarehouse} warehouses={warehouses} onCreated={refetch} onUpdated={refetch} />
       <WarehouseDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} warehouse={selectedWarehouse} />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmDeleteWarehouse}
+        onOpenChange={(open) => { if (!open) setConfirmDeleteWarehouse(null); }}
+        title="Delete Warehouse"
+        description={`Are you sure you want to delete "${confirmDeleteWarehouse?.name}"?`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={executeDeleteWarehouse}
+      />
+
+      {/* Toggle Status Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmToggleWarehouse}
+        onOpenChange={(open) => { if (!open) setConfirmToggleWarehouse(null); }}
+        title={confirmToggleWarehouse?.is_active ? 'Deactivate Warehouse' : 'Activate Warehouse'}
+        description={`Are you sure you want to ${confirmToggleWarehouse?.is_active ? 'deactivate' : 'activate'} "${confirmToggleWarehouse?.name}"?`}
+        confirmLabel={confirmToggleWarehouse?.is_active ? 'Deactivate' : 'Activate'}
+        variant={confirmToggleWarehouse?.is_active ? 'destructive' : 'default'}
+        onConfirm={executeToggleWarehouseStatus}
+      />
 
       {/* Export Dialog */}
       <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>

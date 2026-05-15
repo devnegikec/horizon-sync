@@ -3,6 +3,7 @@ import * as React from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 import { Card, CardContent } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 
 import { useRFQManagement } from '../../hooks/useRFQManagement';
 
@@ -41,6 +42,9 @@ export function RFQManagement() {
     handleTableReady,
     handleSave,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   } = useRFQManagement();
 
   // Error display component
@@ -91,6 +95,17 @@ export function RFQManagement() {
 
       {/* Create/Edit Dialog */}
       <RFQDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} rfq={editRFQ} onSave={handleSave} saving={saving} />
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.message || ''}
+        confirmLabel={confirmAction?.type === 'delete' ? 'Delete' : confirmAction?.type === 'close' ? 'Close' : 'Send'}
+        variant={confirmAction?.type === 'send' ? 'default' : 'destructive'}
+        onConfirm={executeConfirmedAction}
+      />
     </div>
   );
 }

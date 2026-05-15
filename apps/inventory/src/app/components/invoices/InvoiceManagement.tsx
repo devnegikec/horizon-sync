@@ -40,6 +40,9 @@ export function InvoiceManagement() {
     invoiceToMarkPaid,
     confirmMarkAsPaid,
     isMarkingAsPaid,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   } = useInvoiceManagement();
 
   // Payment dialog state
@@ -198,6 +201,15 @@ export function InvoiceManagement() {
         cancelLabel="Cancel"
         loading={isMarkingAsPaid}
         onConfirm={confirmMarkAsPaid} />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog open={!!confirmAction}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.message || ''}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={executeConfirmedAction} />
     </div>
   );
 }

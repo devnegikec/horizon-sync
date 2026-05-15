@@ -57,6 +57,9 @@ interface UseRFQManagementResult {
     totalItems: number;
     onPaginationChange: (pageIndex: number, newPageSize: number) => void;
   };
+  confirmAction: { type: string; item: RFQListItem; title: string; message: string } | null;
+  setConfirmAction: React.Dispatch<React.SetStateAction<{ type: string; item: RFQListItem; title: string; message: string } | null>>;
+  executeConfirmedAction: () => void;
 }
 
 // Internal hook for fetching RFQs
@@ -246,6 +249,9 @@ export function useRFQManagement(): UseRFQManagementResult {
     }
   }, [accessToken, toast]);
 
+  // Confirmation dialog state
+  const [confirmAction, setConfirmAction] = React.useState<{ type: string; item: RFQListItem; title: string; message: string } | null>(null);
+
   const handleDelete = React.useCallback((rfq: RFQListItem) => {
     if (rfq.status !== 'draft') {
       toast({
@@ -256,10 +262,13 @@ export function useRFQManagement(): UseRFQManagementResult {
       return;
     }
 
-    if (confirm(`Are you sure you want to delete this RFQ?`)) {
-      deleteMutation.mutate(rfq.id);
-    }
-  }, [deleteMutation, toast]);
+    setConfirmAction({
+      type: 'delete',
+      item: rfq,
+      title: 'Delete RFQ',
+      message: `Are you sure you want to delete this RFQ?`,
+    });
+  }, [toast]);
 
   const handleSend = React.useCallback((rfq: RFQListItem) => {
     if (rfq.status !== 'draft') {
@@ -271,10 +280,13 @@ export function useRFQManagement(): UseRFQManagementResult {
       return;
     }
 
-    if (confirm(`Are you sure you want to send this RFQ to suppliers?`)) {
-      sendMutation.mutate(rfq.id);
-    }
-  }, [sendMutation, toast]);
+    setConfirmAction({
+      type: 'send',
+      item: rfq,
+      title: 'Send RFQ',
+      message: `Are you sure you want to send this RFQ to suppliers?`,
+    });
+  }, [toast]);
 
   const handleClose = React.useCallback((rfq: RFQListItem) => {
     if (rfq.status === 'draft' || rfq.status === 'closed') {
@@ -286,10 +298,25 @@ export function useRFQManagement(): UseRFQManagementResult {
       return;
     }
 
-    if (confirm(`Are you sure you want to close this RFQ?`)) {
-      closeMutation.mutate(rfq.id);
+    setConfirmAction({
+      type: 'close',
+      item: rfq,
+      title: 'Close RFQ',
+      message: `Are you sure you want to close this RFQ?`,
+    });
+  }, [toast]);
+
+  const executeConfirmedAction = React.useCallback(() => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'delete') {
+      deleteMutation.mutate(confirmAction.item.id);
+    } else if (confirmAction.type === 'send') {
+      sendMutation.mutate(confirmAction.item.id);
+    } else if (confirmAction.type === 'close') {
+      closeMutation.mutate(confirmAction.item.id);
     }
-  }, [closeMutation, toast]);
+    setConfirmAction(null);
+  }, [confirmAction, deleteMutation, sendMutation, closeMutation]);
 
   const handleTableReady = React.useCallback((table: Table<RFQListItem>) => {
     setTableInstance(table);
@@ -361,5 +388,8 @@ export function useRFQManagement(): UseRFQManagementResult {
     handleTableReady,
     handleSave,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   };
 }

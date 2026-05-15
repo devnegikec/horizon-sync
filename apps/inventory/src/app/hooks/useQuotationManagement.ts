@@ -204,6 +204,9 @@ export function useQuotationManagement() {
     }
   }, [accessToken, toast]);
 
+  // Confirmation dialog state
+  const [confirmAction, setConfirmAction] = React.useState<{ type: string; item: Quotation; title: string; message: string } | null>(null);
+
   const handleDelete = React.useCallback((quotation: Quotation) => {
     if (quotation.status !== 'draft') {
       toast({
@@ -214,10 +217,21 @@ export function useQuotationManagement() {
       return;
     }
 
-    if (confirm(`Are you sure you want to delete quotation ${quotation.quotation_no}?`)) {
-      deleteMutation.mutate(quotation.id);
+    setConfirmAction({
+      type: 'delete',
+      item: quotation,
+      title: 'Delete Quotation',
+      message: `Are you sure you want to delete quotation ${quotation.quotation_no}?`,
+    });
+  }, [toast]);
+
+  const executeConfirmedAction = React.useCallback(() => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'delete') {
+      deleteMutation.mutate(confirmAction.item.id);
     }
-  }, [deleteMutation, toast]);
+    setConfirmAction(null);
+  }, [confirmAction, deleteMutation]);
 
   const handleConvert = React.useCallback(async (quotation: Quotation) => {
     if (!accessToken) return;
@@ -325,6 +339,9 @@ export function useQuotationManagement() {
     handleTableReady,
     handleSave,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   };
 }
 

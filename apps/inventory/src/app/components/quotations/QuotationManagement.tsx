@@ -4,6 +4,7 @@ import { AlertTriangle } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Card, CardContent } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { useQuotationManagement } from '../../hooks/useQuotationManagement';
@@ -112,6 +113,9 @@ export function QuotationManagement() {
     handleTableReady,
     handleSave,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   } = useQuotationManagement();
 
   // Error display component
@@ -212,6 +216,17 @@ export function QuotationManagement() {
           setEmailAttachment(null);
           setQuotationForEmail(null);
         }}/>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.message || ''}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={executeConfirmedAction}
+      />
     </div>
   );
 }

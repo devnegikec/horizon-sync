@@ -71,6 +71,16 @@ export function useItemManagement() {
   }, []);
 
   const handleToggleStatus = useCallback(async (item: ApiItem) => {
+    // Set pending toggle - parent component will show confirmation dialog
+    setConfirmToggleItem(item);
+  }, []);
+
+  const [confirmToggleItem, setConfirmToggleItem] = useState<ApiItem | null>(null);
+
+  const executeToggleStatus = useCallback(async () => {
+    if (!confirmToggleItem) return;
+    const item = confirmToggleItem;
+    setConfirmToggleItem(null);
     const { accessToken } = useUserStore.getState();
     try {
       // Fetch full item to get all fields required by the PUT endpoint
@@ -158,7 +168,7 @@ export function useItemManagement() {
     } catch (err) {
       console.error('Failed to toggle item status:', err);
     }
-  }, [refetch]);
+  }, [confirmToggleItem, refetch]);
 
   const handleSaveItem = useCallback((_itemData: Partial<Item>) => {
     refetch();
@@ -198,6 +208,9 @@ export function useItemManagement() {
     handleEditItem,
     handleViewItem,
     handleToggleStatus,
+    confirmToggleItem,
+    setConfirmToggleItem,
+    executeToggleStatus,
     handleSaveItem,
     handleTableReady,
     serverPaginationConfig
