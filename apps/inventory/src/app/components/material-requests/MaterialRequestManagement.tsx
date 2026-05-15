@@ -3,6 +3,7 @@ import * as React from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 import { Card, CardContent } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 
 import { useMaterialRequestManagement } from '../../hooks/useMaterialRequestManagement';
 
@@ -40,6 +41,9 @@ export function MaterialRequestManagement() {
     handleTableReady,
     handleSave,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   } = useMaterialRequestManagement();
 
   // Error display component
@@ -102,6 +106,17 @@ export function MaterialRequestManagement() {
         onOpenChange={setCreateDialogOpen}
         materialRequest={editMaterialRequest}
         onSave={handleSave}/>
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.message || ''}
+        confirmLabel={confirmAction?.type === 'delete' ? 'Delete' : confirmAction?.type === 'cancel' ? 'Cancel' : 'Confirm'}
+        variant={confirmAction?.type === 'submit' ? 'default' : 'destructive'}
+        onConfirm={executeConfirmedAction}
+      />
     </div>
   );
 }

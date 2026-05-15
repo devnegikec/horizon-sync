@@ -3,6 +3,7 @@ import * as React from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 import { Button, Card, CardContent } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { useSalesOrderManagement } from '../../hooks/useSalesOrderManagement';
@@ -57,6 +58,9 @@ export function SalesOrderManagement({
     handleConvertToInvoice,
     handleConvertToDeliveryNote,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   } = useSalesOrderManagement();
 
   const [saving, setSaving] = React.useState(false);
@@ -199,6 +203,17 @@ export function SalesOrderManagement({
           setPickListDialogOpen(false);
           refetch();
         }}/>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.message || ''}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={executeConfirmedAction}
+      />
     </div>
   );
 }

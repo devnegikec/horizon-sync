@@ -4,6 +4,7 @@ import { AlertTriangle } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Card, CardContent } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { usePickListManagement } from '../../hooks/usePickListManagement';
@@ -39,6 +40,9 @@ export function PickListManagement() {
     handleDelete,
     handleTableReady,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   } = usePickListManagement();
 
   const [deliveryDialogOpen, setDeliveryDialogOpen] = React.useState(false);
@@ -159,6 +163,17 @@ export function PickListManagement() {
         onOpenChange={setEditDialogOpen}
         pickList={editPickList}
         onSaved={refetch}/>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.message || ''}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={executeConfirmedAction}
+      />
     </div>
   );
 }

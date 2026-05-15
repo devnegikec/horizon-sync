@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { cn } from '@horizon-sync/ui/lib';
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks';
@@ -94,6 +95,7 @@ export function AccountManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [defaultDeleteDialogOpen, setDefaultDeleteDialogOpen] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<AccountListItem | null>(null);
+  const [confirmToggleAccount, setConfirmToggleAccount] = useState<AccountListItem | null>(null);
   
   const userIsSystemAdmin = useMemo(() => {
     return isSystemAdmin(permissions?.permissions || []);
@@ -120,16 +122,19 @@ export function AccountManagement() {
     setDialogOpen(true);
   };
 
-  const handleToggleStatus = async (account: AccountListItem) => {
-    const action = account.is_active ? 'deactivate' : 'activate';
-    if (window.confirm(`Are you sure you want to ${action} account "${account.account_name}"?`)) {
-      try {
-        await toggleAccountStatus(account.id, account.is_active);
-        refetch();
-      } catch {
-        // Error handled in hook
-      }
+  const handleToggleStatus = (account: AccountListItem) => {
+    setConfirmToggleAccount(account);
+  };
+
+  const executeToggleStatus = async () => {
+    if (!confirmToggleAccount) return;
+    try {
+      await toggleAccountStatus(confirmToggleAccount.id, confirmToggleAccount.is_active);
+      refetch();
+    } catch {
+      // Error handled in hook
     }
+    setConfirmToggleAccount(null);
   };
 
   const handleTableReady = useCallback((table: Table<AccountListItem>) => {
@@ -319,6 +324,17 @@ export function AccountManagement() {
         account={accountToDelete}
         defaultAccountUsage={accountToDelete ? getDefaultAccountUsage(accountToDelete.id) : []}
         isSystemAdmin={userIsSystemAdmin}
+      />
+
+      {/* Toggle Status Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmToggleAccount}
+        onOpenChange={(open) => { if (!open) setConfirmToggleAccount(null); }}
+        title={confirmToggleAccount?.is_active ? 'Deactivate Account' : 'Activate Account'}
+        description={confirmToggleAccount ? `Are you sure you want to ${confirmToggleAccount.is_active ? 'deactivate' : 'activate'} account "${confirmToggleAccount.account_name}"?` : ''}
+        confirmLabel={confirmToggleAccount?.is_active ? 'Deactivate' : 'Activate'}
+        variant={confirmToggleAccount?.is_active ? 'destructive' : 'default'}
+        onConfirm={executeToggleStatus}
       />
     </div>
   );

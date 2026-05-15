@@ -16,6 +16,7 @@ import {
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import {
   Dialog,
   DialogContent,
@@ -622,22 +623,32 @@ function useStockEntryActions(refetch: () => void) {
     [fetchFullEntry],
   );
 
+  const [confirmDeleteEntry, setConfirmDeleteEntry] = React.useState<StockEntry | null>(null);
+
   const handleDelete = React.useCallback(
-    async (entry: StockEntry) => {
-      if (!window.confirm(`Delete stock entry "${entry.stock_entry_no}"?`)) return;
+    (entry: StockEntry) => {
+      setConfirmDeleteEntry(entry);
+    },
+    [],
+  );
+
+  const executeDeleteEntry = React.useCallback(
+    async () => {
+      if (!confirmDeleteEntry) return;
       try {
-        await deleteEntry(entry.id);
+        await deleteEntry(confirmDeleteEntry.id);
         refetch();
       } catch {
         /* error handled by hook */
       }
+      setConfirmDeleteEntry(null);
     },
-    [deleteEntry, refetch],
+    [confirmDeleteEntry, deleteEntry, refetch],
   );
 
   const clearSelected = React.useCallback(() => setSelectedEntry(null), []);
 
-  return { selectedEntry, fetchingEntry, handleView, handleEdit, handleDelete, clearSelected };
+  return { selectedEntry, fetchingEntry, handleView, handleEdit, handleDelete, clearSelected, confirmDeleteEntry, setConfirmDeleteEntry, executeDeleteEntry };
 }
 
 /* ------------------------------------------------------------------ */
@@ -783,6 +794,17 @@ export function StockManagement() {
       <ReconciliationDetailDialog open={reconciliationDetailOpen}
         onOpenChange={setReconciliationDetailOpen}
         reconciliation={selectedReconciliation} />
+
+      {/* Delete Stock Entry Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!entryActions.confirmDeleteEntry}
+        onOpenChange={(open) => { if (!open) entryActions.setConfirmDeleteEntry(null); }}
+        title="Delete Stock Entry"
+        description={`Delete stock entry "${entryActions.confirmDeleteEntry?.stock_entry_no}"?`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={entryActions.executeDeleteEntry}
+      />
     </div>
   );
 }

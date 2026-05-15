@@ -162,6 +162,9 @@ export function usePickListManagement() {
     }
   }, [accessToken, toast]);
 
+  // Confirmation dialog state
+  const [confirmAction, setConfirmAction] = React.useState<{ type: string; item: PickList; title: string; message: string } | null>(null);
+
   const handleDelete = React.useCallback((pickList: PickList) => {
     if (pickList.status !== 'draft') {
       toast({
@@ -172,10 +175,21 @@ export function usePickListManagement() {
       return;
     }
 
-    if (window.confirm(`Are you sure you want to delete pick list ${pickList.pick_list_no}?`)) {
-      deleteMutation.mutate(pickList.id);
+    setConfirmAction({
+      type: 'delete',
+      item: pickList,
+      title: 'Delete Pick List',
+      message: `Are you sure you want to delete pick list ${pickList.pick_list_no}?`,
+    });
+  }, [toast]);
+
+  const executeConfirmedAction = React.useCallback(() => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'delete') {
+      deleteMutation.mutate(confirmAction.item.id);
     }
-  }, [deleteMutation, toast]);
+    setConfirmAction(null);
+  }, [confirmAction, deleteMutation]);
 
   const handleTableReady = React.useCallback((table: Table<PickList>) => {
     setTableInstance(table);
@@ -210,5 +224,8 @@ export function usePickListManagement() {
     handleDelete,
     handleTableReady,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   };
 }

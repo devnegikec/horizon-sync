@@ -186,6 +186,9 @@ export function useInvoiceManagement() {
     setCreateDialogOpen(true);
   }, []);
 
+  // Confirmation dialog state for delete
+  const [confirmAction, setConfirmAction] = React.useState<{ type: string; item: Invoice; title: string; message: string } | null>(null);
+
   const handleDelete = React.useCallback(
     (invoice: Invoice) => {
       if (invoice.status !== 'draft') {
@@ -197,12 +200,23 @@ export function useInvoiceManagement() {
         return;
       }
 
-      if (window.confirm(`Are you sure you want to delete invoice ${invoice.invoice_no}?`)) {
-        deleteMutation.mutate(invoice.id);
-      }
+      setConfirmAction({
+        type: 'delete',
+        item: invoice,
+        title: 'Delete Invoice',
+        message: `Are you sure you want to delete invoice ${invoice.invoice_no}?`,
+      });
     },
-    [deleteMutation, toast]
+    [toast]
   );
+
+  const executeConfirmedAction = React.useCallback(() => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'delete') {
+      deleteMutation.mutate(confirmAction.item.id);
+    }
+    setConfirmAction(null);
+  }, [confirmAction, deleteMutation]);
 
   const handleMarkAsPaid = React.useCallback(
     (invoice: Invoice) => {
@@ -279,5 +293,8 @@ export function useInvoiceManagement() {
     invoiceToMarkPaid,
     confirmMarkAsPaid,
     isMarkingAsPaid: markAsPaidMutation.isPending,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   };
 }
