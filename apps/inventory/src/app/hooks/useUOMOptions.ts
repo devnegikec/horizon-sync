@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-import { apiRequest } from '../utility/api/core';
+import { apiRequest, getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface UOM {
   id: string;
@@ -42,7 +42,7 @@ export function useUOMOptions(accessToken: string) {
           }))
         );
       })
-      .catch((err) => setError(err.message || 'Failed to load UOMs'))
+      .catch((err) => setError(getFriendlyErrorMessage(err)))
       .finally(() => setLoading(false));
   }, [accessToken]);
 

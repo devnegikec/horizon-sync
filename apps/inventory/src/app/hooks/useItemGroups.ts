@@ -5,6 +5,7 @@ import { useUserStore } from '@horizon-sync/store';
 
 import type { ItemGroup, ItemGroupListItem, ItemGroupListResponse, ItemGroupCreate, ItemGroupUpdate, ItemGroupFilters } from '../types/item-group.types';
 import { itemGroupApi } from '../utility/api/item-groups';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 interface UseItemGroupsResult {
   itemGroups: ItemGroupListItem[];
@@ -49,7 +50,7 @@ export function useItemGroups(initialPage = 1, initialPageSize = 20, filters?: I
       setItemGroups(data.item_groups ?? []);
       setPagination(data.pagination ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load item groups');
+      setError(getFriendlyErrorMessage(err));
       setItemGroups([]);
       setPagination(null);
     } finally {
@@ -94,7 +95,7 @@ export function useItemGroupMutations(): UseItemGroupMutationsResult {
     try {
       return await itemGroupApi.create(accessToken, data);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to create item group';
+      const msg = getFriendlyErrorMessage(err);
       setError(msg);
       throw new Error(msg);
     } finally {
@@ -109,7 +110,7 @@ export function useItemGroupMutations(): UseItemGroupMutationsResult {
     try {
       return await itemGroupApi.update(accessToken, id, data);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to update item group';
+      const msg = getFriendlyErrorMessage(err);
       setError(msg);
       throw new Error(msg);
     } finally {
@@ -124,7 +125,7 @@ export function useItemGroupMutations(): UseItemGroupMutationsResult {
     try {
       await itemGroupApi.delete(accessToken, id);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to delete item group';
+      const msg = getFriendlyErrorMessage(err);
       setError(msg);
       throw new Error(msg);
     } finally {

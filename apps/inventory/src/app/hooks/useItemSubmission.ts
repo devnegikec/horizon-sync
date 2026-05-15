@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 import type { ApiItemGroup } from '../types/item-groups.types';
 import type { Item } from '../types/item.types';
@@ -37,7 +38,7 @@ export function useItemSubmission({ item, itemGroups, onCreated, onUpdated, onCl
       onCreated?.();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create item');
+      setError(getFriendlyErrorMessage(err));
       throw err;
     }
   };
@@ -56,7 +57,7 @@ export function useItemSubmission({ item, itemGroups, onCreated, onUpdated, onCl
       onUpdated?.();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update item');
+      setError(getFriendlyErrorMessage(err));
       throw err;
     }
   };
@@ -77,3 +78,5 @@ export function useItemSubmission({ item, itemGroups, onCreated, onUpdated, onCl
     error,
   };
 }
+
+

@@ -9,6 +9,7 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import type { Quotation, QuotationCreate, QuotationUpdate, QuotationResponse } from '../types/quotation.types';
 import { quotationApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export const QUOTATIONS_QUERY_KEY = ['quotations'] as const;
 
@@ -105,7 +106,7 @@ function useQuotations(
   const quotations: Quotation[] = data?.quotations ?? [];
   const pagination: QuotationsPagination | null = data?.pagination ?? null;
   const error: string | null = queryError
-    ? (queryError instanceof Error ? queryError.message : 'Failed to load quotations')
+    ? getFriendlyErrorMessage(queryError)
     : null;
 
   const refetch = React.useCallback(async () => {
@@ -160,7 +161,7 @@ export function useQuotationManagement() {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete quotation',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -176,7 +177,7 @@ export function useQuotationManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load quotation details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -198,7 +199,7 @@ export function useQuotationManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load quotation details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -261,7 +262,7 @@ export function useQuotationManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to convert quotation to sales order',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;
@@ -291,7 +292,7 @@ export function useQuotationManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save quotation',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;

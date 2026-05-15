@@ -17,6 +17,7 @@ import type {
   RFQManagementFilters,
 } from '../types/rfq.types';
 import { rfqApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 interface UseRFQManagementResult {
   filters: RFQManagementFilters;
@@ -106,7 +107,7 @@ function useRFQsInternal(
       setRFQs(data.rfqs ?? []);
       setPagination(data.pagination ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load RFQs');
+      setError(getFriendlyErrorMessage(err));
       setRFQs([]);
       setPagination(null);
     } finally {
@@ -165,7 +166,7 @@ export function useRFQManagement(): UseRFQManagementResult {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete RFQ',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -181,7 +182,7 @@ export function useRFQManagement(): UseRFQManagementResult {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to send RFQ',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -197,7 +198,7 @@ export function useRFQManagement(): UseRFQManagementResult {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to close RFQ',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -213,7 +214,7 @@ export function useRFQManagement(): UseRFQManagementResult {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load RFQ details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -243,7 +244,7 @@ export function useRFQManagement(): UseRFQManagementResult {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load RFQ details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -340,7 +341,7 @@ export function useRFQManagement(): UseRFQManagementResult {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save RFQ',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;

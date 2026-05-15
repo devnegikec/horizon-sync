@@ -9,6 +9,7 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import type { PickList, PickListResponse } from '../types/pick-list.types';
 import { pickListApi } from '../utility/api/pick-lists';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface PickListFilters {
   search: string;
@@ -46,7 +47,7 @@ function usePickLists(
 
   const handleFetchError = React.useCallback((err: unknown) => {
     console.error('[usePickLists] Error fetching pick lists:', err);
-    setError(err instanceof Error ? err.message : 'Failed to load pick lists');
+    setError(getFriendlyErrorMessage(err));
     setPickLists([]);
     setPagination(null);
   }, []);
@@ -141,7 +142,7 @@ export function usePickListManagement() {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete pick list',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -156,7 +157,7 @@ export function usePickListManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load pick list details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }

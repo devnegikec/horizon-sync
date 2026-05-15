@@ -15,6 +15,7 @@ import type {
   MaterialRequestListResponse,
 } from '../types/material-request.types';
 import { materialRequestApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface MaterialRequestFilters {
   search: string;
@@ -111,7 +112,7 @@ function useMaterialRequestsInternal(
       setMaterialRequests(data.material_requests ?? []);
       setPagination(data.pagination ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load material requests');
+      setError(getFriendlyErrorMessage(err));
       setMaterialRequests([]);
       setPagination(null);
     } finally {
@@ -169,7 +170,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete material request',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -185,7 +186,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to submit material request',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -201,7 +202,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to cancel material request',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -217,7 +218,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load material request details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -247,7 +248,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load material request details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -345,7 +346,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save material request',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;

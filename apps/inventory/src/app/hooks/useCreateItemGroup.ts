@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 import { useUserStore } from '@horizon-sync/store';
 
@@ -44,7 +45,7 @@ export function useCreateItemGroup(): UseCreateItemGroupResult {
       const result = await response.json();
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create item group';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -58,3 +59,4 @@ export function useCreateItemGroup(): UseCreateItemGroupResult {
     error,
   };
 }
+

@@ -16,6 +16,7 @@ import { useCustomerActions } from '../../hooks/useCustomerActions';
 import { useCustomers } from '../../hooks/useCustomers';
 import type { Customer } from '../../types/customer.types';
 import { customerApi } from '../../utility/api';
+import { ErrorBanner } from '../common';
 
 import { CustomerDetailDialog } from './CustomerDetailDialog';
 import { CustomerDialog } from './CustomerDialog';
@@ -252,16 +253,7 @@ export function CustomerManagement() {
       </div>
 
       {/* Error State */}
-      {error && (
-        <Card className="border-destructive">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm font-medium">Error loading customers: {error}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {error && <ErrorBanner entity="customers" message={error} />}
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

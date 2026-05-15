@@ -9,7 +9,6 @@ import {
   Download,
   Loader2,
   RefreshCw,
-  AlertTriangle,
   Package,
   FileCheck,
   Ban,
@@ -22,6 +21,8 @@ import { cn } from '@horizon-sync/ui/lib';
 
 import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteResponse, DeliveryNoteUpdate } from '../../types/delivery-note.types';
 import { deliveryNoteApi } from '../../utility/api';
+import { getFriendlyErrorMessage } from '../../utility/api/core';
+import { ErrorBanner } from '../common';
 import { StatCard } from '../shared';
 
 import { DeliveryNoteDetailDialog } from './DeliveryNoteDetailDialog';
@@ -131,7 +132,7 @@ export function DeliveryNoteManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load delivery note details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -168,7 +169,7 @@ export function DeliveryNoteManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save delivery note',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     } finally {
@@ -254,16 +255,7 @@ export function DeliveryNoteManagement() {
       </div>
 
       {/* Error State */}
-      {error && (
-        <Card className="border-destructive">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm font-medium">Error loading delivery notes: {(error as Error).message}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {error && <ErrorBanner entity="delivery notes" message={getFriendlyErrorMessage(error)} />}
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -301,7 +293,7 @@ export function DeliveryNoteManagement() {
       {/* Delivery Notes Table */}
       <DeliveryNotesTable deliveryNotes={deliveryNotes}
         loading={isLoading}
-        error={error ? (error as Error).message : null}
+        error={error ? getFriendlyErrorMessage(error) : null}
         hasActiveFilters={!!filters.search || filters.status !== 'all'}
         onView={handleView}
         onEdit={handleEdit}

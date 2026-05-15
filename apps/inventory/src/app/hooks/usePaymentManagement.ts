@@ -15,6 +15,7 @@ import type {
   PaymentStats 
 } from '../types/payment';
 import { formatErrorForToast } from '../utils/errorHandling';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface PaymentFilters {
   search: string;
@@ -110,7 +111,7 @@ function usePayments(
     payments: data?.payments ?? [],
     pagination: data?.pagination ?? null,
     loading: isLoading,
-    error: error instanceof Error ? error.message : error ? 'Failed to load payments' : null,
+    error: error ? getFriendlyErrorMessage(error) : null,
     refetch: async () => {
       await refetch();
     },

@@ -1,5 +1,17 @@
 import { environment } from '../../environments/environment';
 
+function getFriendlyMessage(status: number): string {
+  switch (status) {
+    case 401: return 'Your session has expired. Please log in again.';
+    case 403: return 'You do not have permission to perform this action.';
+    case 404: return 'The requested resource was not found.';
+    case 422: return 'The submitted data is invalid. Please check your input.';
+    case 500: return 'An unexpected server error occurred. Please try again later.';
+    case 502: case 503: case 504: return 'The service is temporarily unavailable. Please try again in a few moments.';
+    default: return 'Something went wrong. Please try again later.';
+  }
+}
+
 export class AuthenticationError extends Error {
   constructor(message: string) {
     super(message);
@@ -68,7 +80,7 @@ export class OrganizationService {
         const errorData = await response.json().catch(() => ({
           message: 'Failed to create organization',
         }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        throw new Error(errorData.message || errorData.detail || getFriendlyMessage(response.status));
       }
 
       return await response.json();
@@ -97,7 +109,7 @@ export class OrganizationService {
         const errorData = await response.json().catch(() => ({
           message: 'Failed to fetch organization',
         }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        throw new Error(errorData.message || errorData.detail || getFriendlyMessage(response.status));
       }
 
       return await response.json();
@@ -131,7 +143,7 @@ export class OrganizationService {
         const errorData = await response.json().catch(() => ({
           message: 'Failed to update organization',
         }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        throw new Error(errorData.message || errorData.detail || getFriendlyMessage(response.status));
       }
 
       return await response.json();

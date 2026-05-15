@@ -21,6 +21,7 @@ import type { WarehousesResponse } from '../types/warehouse.types';
 import { salesOrderApi } from '../utility/api/sales-orders';
 import { stockLevelApi } from '../utility/api/stock';
 import { warehouseApi } from '../utility/api/warehouses';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface SalesOrderFilters {
   search: string;
@@ -76,7 +77,7 @@ function useSalesOrders(
 
   const salesOrders = (data?.sales_orders ?? []) as unknown as SalesOrder[];
   const pagination = data?.pagination ?? null;
-  const error = queryError ? (queryError instanceof Error ? queryError.message : 'Failed to load sales orders') : null;
+  const error = queryError ? getFriendlyErrorMessage(queryError) : null;
 
   return { salesOrders, pagination, loading, error, refetch };
 }
@@ -192,7 +193,7 @@ export function useSalesOrderManagement() {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete sales order',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -208,7 +209,7 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load sales order details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -230,7 +231,7 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load sales order details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -276,7 +277,7 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load sales order details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -292,7 +293,7 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load sales order details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -335,7 +336,7 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save sales order',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;
@@ -357,7 +358,7 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to create invoice',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;
@@ -403,7 +404,7 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to create delivery note',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;

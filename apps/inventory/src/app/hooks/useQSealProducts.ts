@@ -4,6 +4,7 @@ import { useUserStore } from '@horizon-sync/store';
 
 import { qrProductApi } from '../api/qr-products';
 import type { QSealProductListItem, QSealFilters, QSealProductListResponse } from '../types/qseal.types';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 const PAGE_SIZE = 20;
 
@@ -54,7 +55,7 @@ export function useQSealProducts(
       setProducts(data.products);
       setPagination(data.pagination);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load QSeal products');
+      setError(getFriendlyErrorMessage(err));
       setProducts([]);
       setPagination(null);
     } finally {

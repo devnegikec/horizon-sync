@@ -5,6 +5,7 @@ import { useToast } from '@horizon-sync/ui/hooks';
 
 import type { MaterialRequest, CreateMaterialRequestPayload, UpdateMaterialRequestPayload } from '../types/material-request.types';
 import { materialRequestApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export function useMaterialRequestActions() {
   const accessToken = useUserStore((s) => s.accessToken);
@@ -30,7 +31,7 @@ export function useMaterialRequestActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create material request';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -61,7 +62,7 @@ export function useMaterialRequestActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update material request';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -92,7 +93,7 @@ export function useMaterialRequestActions() {
       });
       return true;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete material request';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -123,7 +124,7 @@ export function useMaterialRequestActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to submit material request';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -154,7 +155,7 @@ export function useMaterialRequestActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to cancel material request';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -175,3 +176,4 @@ export function useMaterialRequestActions() {
     cancelMaterialRequest,
   };
 }
+

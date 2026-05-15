@@ -5,6 +5,7 @@ import { useToast } from '@horizon-sync/ui/hooks';
 
 import type { PurchaseOrder, CreatePurchaseOrderPayload, UpdatePurchaseOrderPayload } from '../types/purchase-order.types';
 import { purchaseOrderApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export function usePurchaseOrderActions() {
   const accessToken = useUserStore((s) => s.accessToken);
@@ -30,7 +31,7 @@ export function usePurchaseOrderActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create Purchase Order';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -61,7 +62,7 @@ export function usePurchaseOrderActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update Purchase Order';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -92,7 +93,7 @@ export function usePurchaseOrderActions() {
       });
       return true;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete Purchase Order';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -123,7 +124,7 @@ export function usePurchaseOrderActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to submit Purchase Order';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -154,7 +155,7 @@ export function usePurchaseOrderActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to cancel Purchase Order';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -185,7 +186,7 @@ export function usePurchaseOrderActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to close Purchase Order';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -207,3 +208,4 @@ export function usePurchaseOrderActions() {
     closePurchaseOrder,
   };
 }
+

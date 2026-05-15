@@ -1,11 +1,10 @@
 import * as React from 'react';
 
-import { AlertTriangle } from 'lucide-react';
-
 import { Card, CardContent } from '@horizon-sync/ui/components';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 
 import { useMaterialRequestManagement } from '../../hooks/useMaterialRequestManagement';
+import { ErrorBanner } from '../common';
 
 import {
   MaterialRequestHeader,
@@ -49,16 +48,7 @@ export function MaterialRequestManagement() {
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
     if (!error) return null;
-    return (
-      <Card className="border-destructive">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm font-medium">Error loading material requests: {error}</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <ErrorBanner entity="material requests" message={error} />;
   }, [error]);
 
   return (

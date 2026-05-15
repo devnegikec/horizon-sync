@@ -1,11 +1,10 @@
 import * as React from 'react';
 
-import { AlertTriangle } from 'lucide-react';
-
 import { Card, CardContent } from '@horizon-sync/ui/components';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 
 import { useRFQManagement } from '../../hooks/useRFQManagement';
+import { ErrorBanner } from '../common';
 
 import {
   RFQHeader,
@@ -50,16 +49,7 @@ export function RFQManagement() {
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
     if (!error) return null;
-    return (
-      <Card className="border-destructive">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm font-medium">Error loading RFQs: {error}</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <ErrorBanner entity="RFQs" message={error} />;
   }, [error]);
 
   return (

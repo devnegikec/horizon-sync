@@ -4,6 +4,7 @@ import { useUserStore } from '@horizon-sync/store';
 
 import type { ItemSupplier, ItemSuppliersResponse, CreateItemSupplierPayload, UpdateItemSupplierPayload } from '../types/supplier.types';
 import { itemSupplierApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 interface UseItemSuppliersResult {
   itemSuppliers: ItemSupplier[];
@@ -55,7 +56,7 @@ export function useItemSuppliers(
       setItemSuppliers(data.item_suppliers ?? []);
       setPagination(data.pagination ?? null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load item suppliers';
+      const message = getFriendlyErrorMessage(err);
       setError(message);
       setItemSuppliers([]);
       setPagination(null);
@@ -103,7 +104,7 @@ export function useItemSupplierMutations(): UseItemSupplierMutationsResult {
         const result = (await itemSupplierApi.create(accessToken, data)) as ItemSupplier;
         return result;
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to create item supplier';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw new Error(message);
       } finally {
@@ -122,7 +123,7 @@ export function useItemSupplierMutations(): UseItemSupplierMutationsResult {
         const result = (await itemSupplierApi.update(accessToken, id, data)) as ItemSupplier;
         return result;
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to update item supplier';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw new Error(message);
       } finally {
@@ -140,7 +141,7 @@ export function useItemSupplierMutations(): UseItemSupplierMutationsResult {
       try {
         await itemSupplierApi.delete(accessToken, id);
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to delete item supplier';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw new Error(message);
       } finally {

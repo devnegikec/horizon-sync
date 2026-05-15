@@ -4,6 +4,7 @@ import { useUserStore } from '@horizon-sync/store';
 
 import { environment } from '../../environments/environment';
 import type { Customer, CustomerResponse } from '../types/customer.types';
+import { getHttpErrorMessage, getFriendlyErrorMessage } from '../utility/api/core';
 
 interface UseCustomersParams {
   page?: number;
@@ -60,14 +61,14 @@ export function useCustomers(params: UseCustomersParams = {}): UseCustomersRetur
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch customers: ${response.statusText}`);
+        throw new Error(getHttpErrorMessage(response.status));
       }
 
       const data: CustomerResponse = await response.json();
       setCustomers(data.customers);
       setPagination(data.pagination);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(getFriendlyErrorMessage(err));
       setCustomers([]);
       setPagination(null);
     } finally {

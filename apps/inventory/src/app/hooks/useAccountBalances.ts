@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 import { useUserStore } from '@horizon-sync/store';
 
@@ -64,7 +65,7 @@ export function useAccountBalances({
       setBalances(balanceMap);
     } catch (err) {
       console.error('Failed to fetch account balances:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch balances');
+      setError(getFriendlyErrorMessage(err));
       setBalances(new Map());
     } finally {
       setLoading(false);
@@ -82,3 +83,5 @@ export function useAccountBalances({
     refetch: fetchBalances,
   };
 }
+
+
