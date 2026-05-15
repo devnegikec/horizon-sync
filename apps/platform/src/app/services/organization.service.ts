@@ -30,6 +30,8 @@ export interface CreateOrganizationPayload {
   organization_type: string;
   industry: string;
   status: string;
+  country?: string;
+  base_currency?: string;
   settings?: Record<string, unknown>;
   extra_data?: Record<string, unknown>;
 }

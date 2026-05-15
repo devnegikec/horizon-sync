@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
 import type { SalesOrder } from '../../types/sales-order.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 import { formatDate } from '../../utility/formatDate';
 import { StatusBadge } from '../quotations/StatusBadge';
 
@@ -136,7 +137,7 @@ export function SalesOrdersTable({
           const so = row.original;
           return (
             <div className="text-right">
-              <p className="font-semibold">{so.currency} {Number(so.grand_total).toFixed(2)}</p>
+              <p className="font-semibold">{getCurrencySymbol(so.currency || 'INR')} {Number(so.grand_total).toFixed(2)}</p>
             </div>
           );
         },

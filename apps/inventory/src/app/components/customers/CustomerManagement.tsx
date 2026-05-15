@@ -1,12 +1,26 @@
 import * as React from 'react';
 
 import { type Table } from '@tanstack/react-table';
-import { Users, Plus, Download, Loader2, CreditCard, AlertTriangle, UserCheck, RefreshCw } from 'lucide-react';
+import { Users, Plus, Download, Upload, Loader2, CreditCard, AlertTriangle, UserCheck, RefreshCw, ChevronDown, FileDown } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { DataTableViewOptions } from '@horizon-sync/ui/components/data-table/DataTableViewOptions';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@horizon-sync/ui/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { SearchInput } from '@horizon-sync/ui/components/ui/search-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
@@ -157,53 +171,96 @@ export function CustomerManagement() {
   };
 
   const [isExporting, setIsExporting] = React.useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [isImporting, setIsImporting] = React.useState(false);
 
   const handleExport = React.useCallback(async () => {
     if (!accessToken) return;
     setIsExporting(true);
     try {
-      // Fetch all pages (backend max page_size is 100)
-      const firstPage = await customerApi.list(accessToken, 1, 100) as { customers: Customer[]; pagination: { total_pages: number } };
-      let allCustomers: Customer[] = firstPage.customers ?? [];
-      const totalPages = firstPage.pagination?.total_pages ?? 1;
-      for (let p = 2; p <= totalPages; p++) {
-        const page = await customerApi.list(accessToken, p, 100) as { customers: Customer[] };
-        allCustomers = allCustomers.concat(page.customers ?? []);
-      }
+      const blob = await customerApi.bulkExport(accessToken, {
+        status: filters.status !== 'all' ? filters.status : undefined,
+        search: filters.search || undefined,
+      });
 
-      const headers = ['Customer Code', 'Customer Name', 'Email', 'Phone', 'City', 'Country', 'Status', 'Credit Limit', 'Outstanding Balance', 'Tax Number', 'Created At'];
-      const rows = allCustomers.map((c) => [
-        c.customer_code ?? '',
-        c.customer_name ?? '',
-        c.email ?? '',
-        c.phone ?? '',
-        c.city ?? '',
-        c.country ?? '',
-        c.status ?? '',
-        c.credit_limit ?? '',
-        c.outstanding_balance ?? '',
-        c.tax_number ?? '',
-        c.created_at ?? '',
-      ]);
-
-      const csvContent = [
-        headers.join(','),
-        ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'customers.csv';
+      link.download = 'customers_export.csv';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(url);
+
+      toast({ title: 'Success', description: 'Customers exported successfully' });
+    } catch (err) {
+      toast({
+        title: 'Export Failed',
+        description: err instanceof Error ? err.message : 'Failed to export customers',
+        variant: 'destructive',
+      });
     } finally {
       setIsExporting(false);
     }
-  }, [accessToken]);
+  }, [accessToken, filters, toast]);
+
+  const handleDownloadTemplate = React.useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const blob = await customerApi.downloadTemplate(accessToken);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'customers-import-template.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to download template',
+        variant: 'destructive',
+      });
+    }
+  }, [accessToken, toast]);
+
+  const handleFileChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) setSelectedFile(file);
+  }, []);
+
+  const handleImportSubmit = React.useCallback(async () => {
+    if (!selectedFile || !accessToken) {
+      toast({ title: 'Error', description: 'Please select a file', variant: 'destructive' });
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const result = await customerApi.bulkImport(accessToken, selectedFile);
+
+      setIsImportDialogOpen(false);
+      setSelectedFile(null);
+
+      const message = result.total_rows > 0
+        ? `${result.successful_rows} of ${result.total_rows} customer(s) imported successfully${result.failed_rows > 0 ? `. ${result.failed_rows} row(s) failed.` : '.'}`
+        : 'Import completed successfully.';
+
+      toast({ title: 'Import Successful', description: message });
+
+      // Refresh customer list
+      setTimeout(() => refetch(), 500);
+    } catch (err) {
+      const errorMessage = err && typeof err === 'object' && 'message' in err
+        ? (err as { message: string }).message
+        : 'Failed to import file. Please check the format and try again.';
+      toast({ title: 'Import Failed', description: errorMessage, variant: 'destructive' });
+    } finally {
+      setIsImporting(false);
+    }
+  }, [selectedFile, accessToken, toast, refetch]);
 
   const handleStatusFilter = React.useCallback((status: string) => {
     setFilters((prev) => ({ ...prev, status, page: 1 }));
@@ -232,19 +289,24 @@ export function CustomerManagement() {
             <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
             Refresh
           </Button>
-          <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
-            {isExporting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Exporting...
-              </>
-            ) : (
-              <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                Export/Import
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExport} disabled={isExporting}>
                 <Download className="h-4 w-4" />
-                Export
-              </>
-            )}
-          </Button>
+                {isExporting ? 'Exporting...' : 'Export Customers'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)}>
+                <Upload className="h-4 w-4" />
+                Import Customers
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={handleCreateCustomer} variant="default" className="gap-2 text-primary-foreground shadow-lg">
             <Plus className="h-4 w-4" />
             Add Customer
@@ -294,6 +356,80 @@ export function CustomerManagement() {
       {/* Dialogs */}
       <CustomerDialog open={customerDialogOpen} onOpenChange={setCustomerDialogOpen} customer={selectedCustomer} onSave={handleSaveCustomer} saving={saving} />
       <CustomerDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} customer={selectedCustomer} />
+
+      {/* Import Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Import Customers</DialogTitle>
+            <DialogDescription>
+              Upload a file to import customers. Supported formats: CSV, Excel.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            {/* Template download section */}
+            <div className="flex items-center justify-between rounded-lg border border-dashed border-border p-4">
+              <div>
+                <p className="font-medium text-sm">Need a template?</p>
+                <p className="text-sm text-muted-foreground">Download the sample file to see the required format.</p>
+              </div>
+              <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={handleDownloadTemplate}>
+                <FileDown className="h-4 w-4" />
+                Sample CSV
+              </Button>
+            </div>
+
+            {/* File upload drop zone */}
+            <div>
+              <p className="font-medium text-sm mb-2">Select File</p>
+              <label
+                className={cn(
+                  'flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-8 cursor-pointer transition-colors',
+                  'hover:border-primary/50 hover:bg-accent/50',
+                  selectedFile && 'border-primary bg-accent/30'
+                )}
+              >
+                <Upload className="h-8 w-8 text-muted-foreground mb-3" />
+                {selectedFile ? (
+                  <>
+                    <p className="text-sm font-medium text-primary">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {(selectedFile.size / 1024).toFixed(1)} KB — Click to change
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-primary">Click to select file</p>
+                    <p className="text-xs text-muted-foreground mt-1">CSV or Excel (.csv, .xlsx, .xls)</p>
+                  </>
+                )}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={handleFileChange}
+                  disabled={isImporting}
+                />
+              </label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setSelectedFile(null); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleImportSubmit} disabled={!selectedFile || isImporting}>
+              {isImporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Importing...
+                </>
+              ) : (
+                'Import'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

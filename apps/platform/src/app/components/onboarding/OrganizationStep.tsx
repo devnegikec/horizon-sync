@@ -30,6 +30,8 @@ export function OrganizationStep() {
           status: 'trial',
           email: user?.email || '',
           phone: user?.phone || '',
+          country: formData.country || '',
+          base_currency: formData.baseCurrency || 'USD',
           extra_data: {
             company_size: formData.companySize,
             logo_url: formData.logoUrl,

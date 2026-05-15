@@ -44,7 +44,14 @@ export function ConvertToSalesOrderDialog({
   }, [open, quotation]);
 
   const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+      // If order_date changes and delivery_date is now before it, clear delivery_date
+      if (field === 'order_date' && prev.delivery_date && value > prev.delivery_date) {
+        updated.delivery_date = '';
+      }
+      return updated;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -168,6 +175,7 @@ export function ConvertToSalesOrderDialog({
                 <Input id="delivery_date"
                   type="date"
                   value={formData.delivery_date}
+                  min={formData.order_date}
                   onChange={(e) => handleChange('delivery_date', e.target.value)}/>
               </div>
             </div>

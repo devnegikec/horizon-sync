@@ -285,6 +285,7 @@ export function useQuotationManagement() {
       } else {
         await quotationApi.create(accessToken, data);
         toast({ title: 'Success', description: 'Quotation created successfully' });
+        setPage(1);
       }
       queryClient.invalidateQueries({ queryKey: QUOTATIONS_QUERY_KEY });
       setCreateDialogOpen(false);

@@ -82,6 +82,7 @@ export interface DeliveryNote {
   delivery_date: string | null;
   submitted_at: string | null;
   status: 'draft' | 'submitted' | 'cancelled';
+  currency?: string | null;
   remarks: string | null;
   items: DeliveryNoteItem[];
   // legacy fields (list view / older data)

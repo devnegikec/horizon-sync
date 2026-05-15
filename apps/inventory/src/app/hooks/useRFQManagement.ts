@@ -334,6 +334,7 @@ export function useRFQManagement(): UseRFQManagementResult {
       } else {
         await rfqApi.create(accessToken, data as CreateRFQPayload);
         toast({ title: 'Success', description: 'RFQ created successfully' });
+        setPage(1);
       }
       queryClient.invalidateQueries({ queryKey: ['rfqs'] });
       setCreateDialogOpen(false);

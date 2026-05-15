@@ -1,8 +1,8 @@
 import * as React from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Building, Globe, Users, FileText, ImagePlus, ArrowLeft } from 'lucide-react';
-import { useForm, UseFormRegister, FieldErrors, UseFormSetValue } from 'react-hook-form';
+import { Building, Globe, Users, FileText, ImagePlus, ArrowLeft, MapPin, DollarSign } from 'lucide-react';
+import { useForm, UseFormRegister, FieldErrors, UseFormSetValue, UseFormWatch } from 'react-hook-form';
 import * as z from 'zod';
 
 import { Button } from '../ui/button';
@@ -23,6 +23,8 @@ const organizationSchema = z.object({
   organizationType: z.enum(['enterprise', 'business', 'startup', 'individual'], { message: 'Please select an organization type' }),
   industry: z.string().min(1, 'Please select an industry'),
   companySize: z.string().min(1, 'Please select company size'),
+  country: z.string().optional(),
+  baseCurrency: z.string().optional(),
   organizationDescription: z.string().max(1000, 'Description must be less than 1000 characters').optional(),
   websiteUrl: z.string().url('Please enter a valid URL').or(z.literal('')).optional(),
 });
@@ -53,6 +55,63 @@ const companySizes = [
   { value: '201-500', label: '201-500 employees' },
   { value: '501-1000', label: '501-1000 employees' },
   { value: '1001+', label: '1000+ employees' },
+];
+
+// Country → default currency mapping
+const COUNTRY_CURRENCY_MAP: Record<string, string> = {
+  'IN': 'INR', 'US': 'USD', 'GB': 'GBP', 'EU': 'EUR', 'DE': 'EUR', 'FR': 'EUR',
+  'IT': 'EUR', 'ES': 'EUR', 'NL': 'EUR', 'AU': 'AUD', 'CA': 'CAD', 'JP': 'JPY',
+  'CN': 'CNY', 'SG': 'SGD', 'AE': 'AED', 'SA': 'SAR', 'CH': 'CHF', 'BR': 'BRL',
+  'MX': 'MXN', 'ZA': 'ZAR', 'NG': 'NGN', 'KE': 'KES', 'MY': 'MYR', 'PK': 'PKR',
+  'BD': 'BDT', 'NZ': 'NZD', 'HK': 'HKD', 'KR': 'KRW', 'SE': 'SEK', 'NO': 'NOK',
+  'DK': 'DKK', 'PL': 'PLN', 'RU': 'RUB', 'TR': 'TRY', 'EG': 'EGP', 'TH': 'THB',
+  'ID': 'IDR', 'PH': 'PHP', 'VN': 'VND', 'AR': 'ARS', 'CL': 'CLP', 'CO': 'COP',
+};
+
+const SUPPORTED_CURRENCIES_LIST = [
+  { code: 'USD', name: 'US Dollar', symbol: '$' },
+  { code: 'EUR', name: 'Euro', symbol: '€' },
+  { code: 'GBP', name: 'British Pound', symbol: '£' },
+  { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+  { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
+  { code: 'SAR', name: 'Saudi Riyal', symbol: '﷼' },
+  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+  { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
+  { code: 'CHF', name: 'Swiss Franc', symbol: 'Fr' },
+  { code: 'BRL', name: 'Brazilian Real', symbol: 'R$' },
+  { code: 'MXN', name: 'Mexican Peso', symbol: 'MX$' },
+  { code: 'ZAR', name: 'South African Rand', symbol: 'R' },
+  { code: 'NGN', name: 'Nigerian Naira', symbol: '₦' },
+  { code: 'KES', name: 'Kenyan Shilling', symbol: 'KSh' },
+  { code: 'MYR', name: 'Malaysian Ringgit', symbol: 'RM' },
+  { code: 'PKR', name: 'Pakistani Rupee', symbol: '₨' },
+  { code: 'BDT', name: 'Bangladeshi Taka', symbol: '৳' },
+];
+
+const COUNTRIES = [
+  { code: 'IN', name: 'India' }, { code: 'US', name: 'United States' },
+  { code: 'GB', name: 'United Kingdom' }, { code: 'DE', name: 'Germany' },
+  { code: 'FR', name: 'France' }, { code: 'IT', name: 'Italy' },
+  { code: 'ES', name: 'Spain' }, { code: 'NL', name: 'Netherlands' },
+  { code: 'AU', name: 'Australia' }, { code: 'CA', name: 'Canada' },
+  { code: 'JP', name: 'Japan' }, { code: 'CN', name: 'China' },
+  { code: 'SG', name: 'Singapore' }, { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'SA', name: 'Saudi Arabia' }, { code: 'CH', name: 'Switzerland' },
+  { code: 'BR', name: 'Brazil' }, { code: 'MX', name: 'Mexico' },
+  { code: 'ZA', name: 'South Africa' }, { code: 'NG', name: 'Nigeria' },
+  { code: 'KE', name: 'Kenya' }, { code: 'MY', name: 'Malaysia' },
+  { code: 'PK', name: 'Pakistan' }, { code: 'BD', name: 'Bangladesh' },
+  { code: 'NZ', name: 'New Zealand' }, { code: 'HK', name: 'Hong Kong' },
+  { code: 'KR', name: 'South Korea' }, { code: 'SE', name: 'Sweden' },
+  { code: 'NO', name: 'Norway' }, { code: 'DK', name: 'Denmark' },
+  { code: 'PL', name: 'Poland' }, { code: 'TR', name: 'Turkey' },
+  { code: 'EG', name: 'Egypt' }, { code: 'TH', name: 'Thailand' },
+  { code: 'ID', name: 'Indonesia' }, { code: 'PH', name: 'Philippines' },
+  { code: 'VN', name: 'Vietnam' }, { code: 'AR', name: 'Argentina' },
+  { code: 'CL', name: 'Chile' }, { code: 'CO', name: 'Colombia' },
 ];
 
 interface OrganizationFormProps {
@@ -185,6 +244,74 @@ const IndustryAndSizeFields = ({
   </>
 );
 
+const CountryAndCurrencyFields = ({
+  setValue,
+  watch,
+  defaultCountry,
+  defaultCurrency,
+}: {
+  setValue: UseFormSetValue<OrganizationFormData>;
+  watch: UseFormWatch<OrganizationFormData>;
+  defaultCountry?: string;
+  defaultCurrency?: string;
+}) => {
+  const selectedCountry = watch('country');
+  const selectedCurrency = watch('baseCurrency');
+
+  const handleCountryChange = (countryCode: string) => {
+    setValue('country', countryCode);
+    const suggestedCurrency = COUNTRY_CURRENCY_MAP[countryCode];
+    if (suggestedCurrency) {
+      setValue('baseCurrency', suggestedCurrency);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="country">
+          <MapPin className="inline h-3.5 w-3.5 mr-1 text-muted-foreground" />
+          Country
+        </Label>
+        <Select defaultValue={defaultCountry} value={selectedCountry} onValueChange={handleCountryChange}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select country" />
+          </SelectTrigger>
+          <SelectContent>
+            {COUNTRIES.map((c) => (
+              <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="baseCurrency">
+          <DollarSign className="inline h-3.5 w-3.5 mr-1 text-muted-foreground" />
+          Base Currency
+        </Label>
+        <Select defaultValue={defaultCurrency} value={selectedCurrency} onValueChange={(v) => setValue('baseCurrency', v)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select currency" />
+          </SelectTrigger>
+          <SelectContent>
+            {SUPPORTED_CURRENCIES_LIST.map((c) => (
+              <SelectItem key={c.code} value={c.code}>
+                <span className="font-mono mr-1">{c.symbol}</span> {c.code} — {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {selectedCountry && COUNTRY_CURRENCY_MAP[selectedCountry] && (
+          <p className="text-xs text-muted-foreground">
+            Auto-selected based on country
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const WebsiteField = ({ register, errors }: { register: UseFormRegister<OrganizationFormData>; errors: FieldErrors<OrganizationFormData> }) => (
   <div className="space-y-2">
     <Label htmlFor="websiteUrl">Website URL</Label>
@@ -260,6 +387,8 @@ function useOrganizationForm(
       organizationType: defaultValues.organizationType || undefined,
       industry: defaultValues.industry || '',
       companySize: defaultValues.companySize || '',
+      country: defaultValues.country || '',
+      baseCurrency: defaultValues.baseCurrency || '',
       organizationDescription: defaultValues.organizationDescription || '',
       websiteUrl: defaultValues.websiteUrl || '',
     },
@@ -296,6 +425,7 @@ export function OrganizationForm({
   const {
     register,
     setValue,
+    watch,
     logoPreview,
     handleLogoChange,
     handleFormSubmit,
@@ -314,6 +444,13 @@ export function OrganizationForm({
         defaultIndustry={defaultValues.industry}
         defaultCompanySize={defaultValues.companySize}
         defaultOrganizationType={defaultValues.organizationType}/>
+
+      <CountryAndCurrencyFields
+        setValue={setValue}
+        watch={watch}
+        defaultCountry={defaultValues.country}
+        defaultCurrency={defaultValues.baseCurrency}
+      />
 
       <WebsiteField register={register} errors={errors} />
 

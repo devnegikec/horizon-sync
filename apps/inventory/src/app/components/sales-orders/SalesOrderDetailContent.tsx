@@ -105,9 +105,9 @@ export function SalesOrderDetailContent({ salesOrder, currencySymbol, onViewInvo
       {salesOrder.reference_type && salesOrder.reference_id && (
         <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 p-3 text-sm">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
             <span className="text-blue-900 dark:text-blue-100">
-              Created from {salesOrder.reference_type} (Ref: {salesOrder.reference_id.slice(0, 8)}...)
+              Created from {salesOrder.reference_type} (Ref: {salesOrder.reference_no || salesOrder.reference_id})
             </span>
           </div>
         </div>
