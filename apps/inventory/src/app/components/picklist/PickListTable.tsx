@@ -112,7 +112,7 @@ export function PickListTable({
         accessorKey: 'items_count',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Items" />,
         cell: ({ row }) => {
-          const itemsCount = row.original.items?.length || 0;
+          const itemsCount = row.original.items_count ?? row.original.items?.length ?? 0;
           return <span className="text-sm">{itemsCount} item{itemsCount !== 1 ? 's' : ''}</span>;
         },
       },

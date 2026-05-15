@@ -132,7 +132,7 @@ export interface DeliveryNoteCreateItem {
 }
 
 export interface DeliveryNoteCreate {
-  delivery_note_no: string;
+  delivery_note_no?: string;
   customer_id: string;
   delivery_date: string;
   status: DeliveryNoteStatus;

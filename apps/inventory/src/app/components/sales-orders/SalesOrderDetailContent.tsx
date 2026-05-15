@@ -37,7 +37,12 @@ function getItemTaxAmount(item: any): number {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getItemTotalAmount(item: any): number {
-  return Number(item.total_amount || item.extra_data?.total_amount || item.amount || 0);
+  if (item.total_amount) return Number(item.total_amount);
+  if (item.extra_data?.total_amount) return Number(item.extra_data.total_amount);
+  const amount = Number(item.amount || 0);
+  const discount = Number(item.discount_amount || 0);
+  const tax = Number(item.tax_amount || item.extra_data?.tax_amount || 0);
+  return amount - discount + tax;
 }
 
 function buildTaxSummaryMap(lineItems: SalesOrder['items']) {
@@ -127,6 +132,8 @@ export function SalesOrderDetailContent({ salesOrder, currencySymbol, onViewInvo
             const discountAmount = Number(salesOrder.discount_amount ?? 0);
             const grandTotal = Number(salesOrder.grand_total ?? 0);
             const sym = currencySymbol;
+            const showDiscount = true; // always show discount column for sales orders
+            const showTotal = hasTaxInfo || showDiscount;
             return (
               <>
                 <tr>
@@ -136,9 +143,9 @@ export function SalesOrderDetailContent({ salesOrder, currencySymbol, onViewInvo
                   <td className="px-4 py-3" />
                   <td className="px-4 py-3 text-sm font-medium">Subtotal:</td>
                   <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalAmount.toFixed(2)}</td>
-                  <td className="px-4 py-3" />
+                  {showDiscount && <td className="px-4 py-3" />}
                   {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTax.toFixed(2)}</td>}
-                  {hasTaxInfo && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTotal.toFixed(2)}</td>}
+                  {showTotal && <td className="px-4 py-3 text-right text-sm font-medium">{sym}{subtotalTotal.toFixed(2)}</td>}
                 </tr>
                 <tr>
                   <td className="px-4 py-3" />
@@ -147,18 +154,12 @@ export function SalesOrderDetailContent({ salesOrder, currencySymbol, onViewInvo
                   <td className="px-4 py-3" />
                   <td className="px-4 py-3 text-sm font-medium">Discount:</td>
                   <td className="px-4 py-3" />
-                  <td className="px-4 py-3" />
-                  {!hasTaxInfo ? (
+                  {showDiscount && <td className="px-4 py-3" />}
+                  {hasTaxInfo && <td className="px-4 py-3" />}
+                  {showTotal && (
                     <td className="px-4 py-3 text-right text-sm text-muted-foreground">
                       {discountAmount > 0 ? `−${sym}${discountAmount.toFixed(2)}` : '—'}
                     </td>
-                  ) : (
-                    <>
-                      <td className="px-4 py-3" />
-                      <td className="px-4 py-3 text-right text-sm text-muted-foreground">
-                        {discountAmount > 0 ? `−${sym}${discountAmount.toFixed(2)}` : '—'}
-                      </td>
-                    </>
                   )}
                 </tr>
                 <tr className="border-t-2 font-semibold">
@@ -168,14 +169,10 @@ export function SalesOrderDetailContent({ salesOrder, currencySymbol, onViewInvo
                   <td className="px-4 py-3" />
                   <td className="px-4 py-3 text-sm font-semibold">Grand Total:</td>
                   <td className="px-4 py-3" />
-                  <td className="px-4 py-3" />
-                  {!hasTaxInfo ? (
+                  {showDiscount && <td className="px-4 py-3" />}
+                  {hasTaxInfo && <td className="px-4 py-3" />}
+                  {showTotal && (
                     <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
-                  ) : (
-                    <>
-                      <td className="px-4 py-3" />
-                      <td className="px-4 py-3 text-right text-sm font-semibold">{sym}{grandTotal.toFixed(2)}</td>
-                    </>
                   )}
                 </tr>
               </>

@@ -193,20 +193,38 @@ export function DeliveryNoteManagement() {
     if (!accessToken) return;
     setConvertingInvoice(true);
     try {
-      const result = await deliveryNoteApi.convertToInvoice(accessToken, deliveryNoteId, data) as { invoice_id: string; invoice_no: string; grand_total: number; message: string };
+      const result = await deliveryNoteApi.convertToInvoice(accessToken, deliveryNoteId, data) as { invoice_id: string; invoice_no: string; grand_total: number | string; message: string };
       toast({
         title: 'Success',
-        description: `Invoice ${result.invoice_no} created with total ${result.grand_total.toFixed(2)}`,
+        description: `Invoice ${result.invoice_no} created with total ${Number(result.grand_total).toFixed(2)}`,
       });
       setDetailDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['delivery-notes'] });
       refetch();
     } catch (err) {
+      // Extract user-friendly message from API error
+      let errorMessage = 'Failed to convert to invoice';
+      if (err && typeof err === 'object') {
+        const apiErr = err as { details?: { message?: string }; message?: string };
+        if (apiErr.details?.message) {
+          errorMessage = apiErr.details.message;
+        } else if (apiErr.message) {
+          try {
+            const parsed = JSON.parse(apiErr.message);
+            errorMessage = parsed.message || errorMessage;
+          } catch {
+            errorMessage = apiErr.message;
+          }
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to convert to invoice',
+        description: errorMessage,
         variant: 'destructive',
       });
+      throw err; // Re-throw so caller knows it failed
     } finally {
       setConvertingInvoice(false);
     }

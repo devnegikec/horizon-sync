@@ -55,7 +55,7 @@ export function LineItemsDetailTable<T>({
               <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
               {showDiscount && <th className="px-4 py-3 text-right text-sm font-medium">Discount</th>}
               {hasTaxInfo && <th className="px-4 py-3 text-right text-sm font-medium">Tax</th>}
-              {hasTaxInfo && <th className="px-4 py-3 text-right text-sm font-medium">Total</th>}
+              {(hasTaxInfo || showDiscount) && <th className="px-4 py-3 text-right text-sm font-medium">Total</th>}
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -103,7 +103,7 @@ export function LineItemsDetailTable<T>({
                       )}
                     </td>
                   )}
-                  {hasTaxInfo && (
+                  {(hasTaxInfo || showDiscount) && (
                     <td className="px-4 py-3 text-sm text-right font-semibold">{currencySymbol} {totalAmount.toFixed(2)}</td>
                   )}
                 </tr>

@@ -24,8 +24,10 @@ export function DeliveryNoteDetailFooter({
   convertingInvoice,
   onEdit,
 }: DeliveryNoteDetailFooterProps) {
+  const [converted, setConverted] = React.useState(false);
+
   const handleConvertToInvoice = async () => {
-    if (!onConvertToInvoice) return;
+    if (!onConvertToInvoice || converted) return;
 
     const items = (deliveryNote.items ?? []).map((item) => ({
       item_id: item.id,
@@ -34,12 +36,20 @@ export function DeliveryNoteDetailFooter({
 
     if (items.length === 0) return;
 
-    await onConvertToInvoice(deliveryNote.id, { items });
+    try {
+      await onConvertToInvoice(deliveryNote.id, { items });
+      setConverted(true);
+    } catch {
+      // Error is handled by the parent
+    }
   };
+
+  // Show convert button for non-cancelled delivery notes that haven't been converted yet
+  const canConvert = deliveryNote.status !== 'cancelled' && !converted;
 
   return (
     <DialogFooter className="p-6">
-      {onConvertToInvoice && (
+      {onConvertToInvoice && canConvert && (
         <Button variant="default" onClick={handleConvertToInvoice} disabled={convertingInvoice} className="gap-2">
           <FileText className="h-4 w-4" />
           {convertingInvoice ? 'Converting...' : 'Convert to Invoice'}
