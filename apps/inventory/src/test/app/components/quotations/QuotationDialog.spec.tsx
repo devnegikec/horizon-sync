@@ -6,10 +6,22 @@ import type { Quotation } from '../../../../app/types/quotation.types';
 
 // Mock the user store
 const mockAccessToken = 'test-token';
+const mockFetchCurrencies = jest.fn();
 jest.mock('@horizon-sync/store', () => ({
   useUserStore: jest.fn((selector) => {
     const state = { accessToken: mockAccessToken };
     return selector(state);
+  }),
+  useCurrencyStore: jest.fn((selector) => {
+    const state = {
+      currencies: [],
+      baseCurrency: 'USD',
+      loading: false,
+      error: null,
+      lastFetched: null,
+      fetchCurrencies: mockFetchCurrencies,
+    };
+    return typeof selector === 'function' ? selector(state) : state;
   }),
 }));
 
@@ -112,7 +124,7 @@ describe('QuotationDialog', () => {
       });
     });
 
-    it('should have default currency set to INR', async () => {
+    it('should have default currency set from the currency store', async () => {
       renderWithQueryClient(
         <QuotationDialog open={true}
           onOpenChange={mockOnOpenChange}
@@ -125,10 +137,10 @@ describe('QuotationDialog', () => {
         expect(screen.getByRole('heading', { name: 'Create Quotation' })).toBeTruthy();
       });
 
-      // Currency should default to INR - check for currency label and that INR appears
+      // Currency should default to the store's base currency
       expect(screen.getByText(/Currency \*/i)).toBeTruthy();
-      const inrElements = screen.getAllByText('INR');
-      expect(inrElements.length).toBeGreaterThan(0);
+      const usdElements = screen.getAllByText('USD');
+      expect(usdElements.length).toBeGreaterThan(0);
     });
 
     it('should not display status field in create mode', async () => {

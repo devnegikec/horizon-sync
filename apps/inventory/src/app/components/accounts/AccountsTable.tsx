@@ -188,7 +188,7 @@ export function AccountsTable({
             textColorClass = 'text-blue-600 dark:text-blue-400';
           }
           const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-          const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+          const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
           return (
             <TooltipProvider>
               <Tooltip>

@@ -49,7 +49,7 @@ interface LineItemWithMetadata extends QuotationLineItemCreate {
 export function LineItemTable({ items, onItemsChange, readonly = false, disabled = false, initialItemsData }: LineItemTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const [itemsWithMetadata, setItemsWithMetadata] = React.useState<LineItemWithMetadata[]>([]);
   const [itemsCache, setItemsCache] = React.useState<Map<string, QuotationLineItem>>(() => {
     // Initialize cache with initial items data if provided (for edit mode)
@@ -225,8 +225,8 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                     <td className="px-4 py-3 text-sm">{item.item_id}</td>
                     <td className="px-4 py-3 text-sm text-right">{item.qty}</td>
                     <td className="px-4 py-3 text-sm">{item.uom}</td>
-                    <td className="px-4 py-3 text-sm text-right">{Number(item.rate).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-sm text-right font-medium">{Number(item.amount).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm text-right">{currencySymbol}{Number(item.rate).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm text-right font-medium">{currencySymbol}{Number(item.amount).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>

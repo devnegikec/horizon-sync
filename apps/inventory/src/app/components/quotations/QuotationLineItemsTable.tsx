@@ -3,6 +3,7 @@ import * as React from 'react';
 import { type CellContext, type ColumnDef } from '@tanstack/react-table';
 import { AlertTriangle, Info, Trash2 } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { Button, EditableCell, EditableDataTable, EditableNumberCell, Input } from '@horizon-sync/ui/components';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 
@@ -160,7 +161,7 @@ function RateCellComponent({ getValue, row, column, table }: CellContext<Quotati
 function DiscountCellComponent({ row, table }: CellContext<QuotationLineItemCreate, unknown>) {
   const meta = table.options.meta as TableMeta | undefined;
   const disabled = meta?.disabled ?? false;
-  const sym = getCurrencySymbol(meta?.currency ?? 'INR');
+  const sym = getCurrencySymbol(meta?.currency ?? 'USD');
   const type = (row.original.discount_type || 'percentage') as 'flat' | 'percentage';
   const value = Number(row.original.discount_value ?? 0);
   const lineAmount = Number(row.original.amount ?? 0);
@@ -240,7 +241,9 @@ function TaxBreakupAmountIcon({ itemData, symbol, amount }: { itemData: Quotatio
   );
 }
 
-export function QuotationLineItemsTable({ items, onItemsChange, disabled = false, currency = 'INR', summary }: QuotationLineItemsTableProps) {
+export function QuotationLineItemsTable({ items, onItemsChange, disabled = false, currency, summary }: QuotationLineItemsTableProps) {
+  const storeCurrency = useCurrencyStore((s) => s.baseCurrency) || 'USD';
+  const effectiveCurrency = currency || storeCurrency;
   const { searchItems, getItemData, handleDataChange } = useQuotationLineItems(items, onItemsChange);
 
   const itemLabelFormatter = React.useCallback(
@@ -257,7 +260,7 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
       const amount = Number(props.row.original.amount) || 0;
       const discountAmount = Number(props.row.original.discount_amount) || 0;
       const netAmount = Math.max(0, amount - discountAmount);
-      const sym = getCurrencySymbol(currency);
+      const sym = getCurrencySymbol(effectiveCurrency);
       return (
         <div className="flex items-center text-left">
           <span>{sym}{value.toFixed(2)}</span>
@@ -286,7 +289,7 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
 
   const columns = React.useMemo<ColumnDef<QuotationLineItemCreate, unknown>[]>(
     () => {
-      const sym = getCurrencySymbol(currency);
+      const sym = getCurrencySymbol(effectiveCurrency);
       return [
       { accessorKey: 'item_id', header: 'Item', cell: ItemPickerCellComponent, size: 250 },
       { accessorKey: 'qty', header: 'Quantity', cell: disabled
@@ -359,13 +362,13 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
     () => ({
       showPagination: false,
       enableColumnVisibility: false,
-      meta: { getItemData, searchItems, itemLabelFormatter, disabled, currency },
+      meta: { getItemData, searchItems, itemLabelFormatter, disabled, currency: effectiveCurrency },
     }),
-    [getItemData, searchItems, itemLabelFormatter, disabled, currency]
+    [getItemData, searchItems, itemLabelFormatter, disabled, effectiveCurrency]
   );
 
   const renderFooter = React.useCallback(
-    () => (summary ? <SummaryFooterRows summary={summary} currency={currency} /> : null),
+    () => (summary ? <SummaryFooterRows summary={summary} currency={effectiveCurrency} /> : null),
     [summary, currency]
   );
 

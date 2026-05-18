@@ -40,7 +40,7 @@ export function CustomersTable({
   onTableReady,
 }: CustomersTableProps) {
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const [tableInstance, setTableInstance] = React.useState<Table<Customer> | null>(null);
   const [confirmDialog, setConfirmDialog] = React.useState<{
     open: boolean;

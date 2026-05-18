@@ -167,7 +167,7 @@ export function InvoiceManagement() {
         serverPagination={serverPaginationConfig} />
 
       {/* Detail Dialog */}
-      <InvoiceDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} invoice={selectedInvoice} />
+      <InvoiceDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} invoice={selectedInvoice} baseCurrency={baseCurrency || 'USD'} />
 
       {/* Payment Dialog */}
       <PaymentDialog open={paymentDialogOpen}

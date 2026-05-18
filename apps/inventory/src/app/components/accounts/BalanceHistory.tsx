@@ -124,7 +124,7 @@ export function BalanceHistory({ accountId, accountCode, accountName, currency }
   }, [history]);
 
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   return (
     <Card>
       <CardHeader>

@@ -72,7 +72,7 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
     });
   };
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   return (
     <Card className="overflow-hidden border-border hover:border-border/80 transition-all">
       <div className="p-6">

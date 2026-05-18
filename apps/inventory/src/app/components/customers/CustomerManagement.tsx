@@ -277,7 +277,7 @@ export function CustomerManagement() {
 
   const hasActiveFilters = filters.search !== '' || filters.status !== 'all';
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

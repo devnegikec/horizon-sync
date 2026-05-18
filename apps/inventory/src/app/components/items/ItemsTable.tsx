@@ -77,7 +77,7 @@ export function ItemsTable({
   }, [serverPagination]);
 
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const columns: ColumnDef<ApiItem, unknown>[] = React.useMemo(
     () => [
       {

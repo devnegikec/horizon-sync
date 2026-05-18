@@ -139,7 +139,7 @@ export function SalesOrdersTable({
           const so = row.original;
           return (
             <div className="text-right">
-              <p className="font-semibold">{getCurrencySymbol(so.currency || baseCurrency || 'INR')} {Number(so.grand_total).toFixed(2)}</p>
+              <p className="font-semibold">{getCurrencySymbol(so.currency || baseCurrency || 'USD')} {Number(so.grand_total).toFixed(2)}</p>
             </div>
           );
         },

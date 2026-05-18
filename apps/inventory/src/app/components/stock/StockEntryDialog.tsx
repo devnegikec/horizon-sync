@@ -3,7 +3,7 @@ import * as React from 'react';
 import { FileText } from 'lucide-react';
 
  
-import { useUserStore } from '@horizon-sync/store';
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
   Dialog,
@@ -18,6 +18,7 @@ import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
 import { useStockEntryMutations } from '../../hooks/useStock';
 import type { StockEntry, StockEntryFormState } from '../../types/stock.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 import { stockEntryApi } from '../../utility/api/stock';
 import { parseStockEntryCsv, STOCK_ENTRY_SAMPLE_CSV } from '../../utility/stockEntryCsvParser';
 import type { BulkUploadResult } from '../shared/CsvImporter';
@@ -140,6 +141,8 @@ export function StockEntryDialog({
 }: StockEntryDialogProps) {
   const { createEntry, updateEntry, loading } = useStockEntryMutations();
   const accessToken = useUserStore((s) => s.accessToken);
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const isEditing = !!entry;
 
   const [form, setForm] = React.useState<StockEntryFormState>({ ...DEFAULT_FORM });
@@ -314,7 +317,7 @@ export function StockEntryDialog({
           {viewMode && (
             <div className="flex items-center justify-between pt-2">
               <div className="text-sm font-medium">
-                Total: <span className="text-lg">{grandTotal.toFixed(2)}</span>
+                Total: <span className="text-lg">{currencySymbol}{grandTotal.toFixed(2)}</span>
               </div>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Close

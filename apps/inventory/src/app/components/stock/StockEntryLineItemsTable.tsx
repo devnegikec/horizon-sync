@@ -4,10 +4,11 @@ import { type CellContext, type ColumnDef } from '@tanstack/react-table';
 import { Trash2 } from 'lucide-react';
 
  
-import { useUserStore } from '@horizon-sync/store';
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { Button, EditableDataTable, EditableNumberCell } from '@horizon-sync/ui/components';
 
 import { environment } from '../../../environments/environment';
+import { getCurrencySymbol } from '../../types/currency.types';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 
 /** Minimal item shape returned by the /items/picker endpoint */
@@ -153,6 +154,8 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<StockEntr
 
 export function StockEntryLineItemsTable({ items, onItemsChange, disabled = false, warehouseId }: StockEntryLineItemsTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const itemsCacheRef = React.useRef<Map<string, PickerItem>>(new Map());
   const [cacheVersion, setCacheVersion] = React.useState(0);
 
@@ -229,7 +232,7 @@ export function StockEntryLineItemsTable({ items, onItemsChange, disabled = fals
         accessorKey: 'amount', header: 'Amount', size: 120,
         cell: ({ getValue }: CellContext<StockEntryLineRow, unknown>) => {
           const v = Number(getValue()) || 0;
-          return <div className="text-left font-medium">{v.toFixed(2)}</div>;
+          return <div className="text-left font-medium">{currencySymbol}{v.toFixed(2)}</div>;
         },
       },
       {
@@ -245,7 +248,7 @@ export function StockEntryLineItemsTable({ items, onItemsChange, disabled = fals
         },
       },
     ],
-    [disabled]
+    [disabled, currencySymbol]
   );
 
   const newRowTemplate: StockEntryLineRow = React.useMemo(

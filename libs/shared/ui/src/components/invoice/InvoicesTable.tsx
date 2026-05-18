@@ -48,7 +48,7 @@ export function InvoicesTable({
   loading,
   error,
   hasActiveFilters,
-  baseCurrency = 'INR',
+  baseCurrency = 'USD',
   onView,
   onDelete,
   onMarkAsPaid,

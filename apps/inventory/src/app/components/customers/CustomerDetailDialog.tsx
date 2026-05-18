@@ -57,7 +57,7 @@ function InfoItem({ icon: Icon, label, value }: { icon: React.ComponentType<{ cl
 
 export function CustomerDetailDialog({ open, onOpenChange, customer }: CustomerDetailDialogProps) {
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
 
   if (!customer) return null;
 

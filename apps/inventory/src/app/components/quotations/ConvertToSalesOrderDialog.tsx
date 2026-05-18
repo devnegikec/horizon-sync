@@ -3,7 +3,9 @@ import * as React from 'react';
 import { ArrowRight, FileText } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Separator } from '@horizon-sync/ui/components';
+import { useCurrencyStore } from '@horizon-sync/store';
 
+import { getCurrencySymbol } from '../../types/currency.types';
 import type { Quotation } from '../../types/quotation.types';
 
 import { LineItemTable } from './LineItemTable';
@@ -28,6 +30,7 @@ export function ConvertToSalesOrderDialog({
   onConvert, 
   converting 
 }: ConvertToSalesOrderDialogProps) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency) || 'USD';
   const [formData, setFormData] = React.useState({
     order_date: new Date().toISOString().slice(0, 10),
     delivery_date: '',
@@ -124,7 +127,7 @@ export function ConvertToSalesOrderDialog({
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Grand Total</p>
-                <p className="font-medium">{quotation.currency} {Number(quotation.grand_total).toFixed(2)}</p>
+                <p className="font-medium">{getCurrencySymbol(quotation.currency || baseCurrency)} {Number(quotation.grand_total).toFixed(2)}</p>
               </div>
             </div>
           </div>
