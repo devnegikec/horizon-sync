@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { CurrencyService, type Currency, type CreateCurrencyPayload } from '../../../services/currency.service';
+import { useCurrencyStore } from '@horizon-sync/store';
 
 interface CurrencySettingsProps {
   accessToken: string;
@@ -62,6 +63,8 @@ export function CurrencySettings({ accessToken, disabled }: CurrencySettingsProp
       })));
       setBaseCurrency(data.base_currency);
       setPendingBase(data.base_currency);
+      // Sync the global currency store
+      useCurrencyStore.setState({ baseCurrency: data.base_currency });
     } catch (err) {
       toast({
         title: 'Error',
@@ -83,6 +86,8 @@ export function CurrencySettings({ accessToken, disabled }: CurrencySettingsProp
     try {
       await CurrencyService.setBaseCurrency(pendingBase, accessToken);
       setBaseCurrency(pendingBase);
+      // Update the global currency store so all components reflect the change immediately
+      useCurrencyStore.setState({ baseCurrency: pendingBase });
       toast({ title: 'Base currency updated', description: `Base currency is now ${pendingBase}` });
     } catch (err) {
       toast({

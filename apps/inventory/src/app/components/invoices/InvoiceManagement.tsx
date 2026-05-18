@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { Lock } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { Card, CardContent, ConfirmationDialog } from '@horizon-sync/ui/components';
 
 import { useInvoiceManagement } from '../../hooks/useInvoiceManagement';
@@ -52,6 +52,7 @@ export function InvoiceManagement() {
   const [selectedInvoiceId, setSelectedInvoiceId] = React.useState<string | null>(null);
 
   const accessToken = useUserStore((s) => s.accessToken);
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
 
   // Export all invoices to CSV
   const handleExport = React.useCallback(async () => {
@@ -156,6 +157,7 @@ export function InvoiceManagement() {
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.status !== 'all' || filters.invoice_type !== 'all'}
+        baseCurrency={baseCurrency || undefined}
         onView={handleView}
         onDelete={handleDelete}
         onMarkAsPaid={handleMarkAsPaid}
