@@ -18,8 +18,10 @@ import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
+import { useCurrencyStore } from '@horizon-sync/store';
 
 import type { Customer } from '../../types/customer.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 
 interface CustomerDetailDialogProps {
   open: boolean;
@@ -54,6 +56,9 @@ function InfoItem({ icon: Icon, label, value }: { icon: React.ComponentType<{ cl
 }
 
 export function CustomerDetailDialog({ open, onOpenChange, customer }: CustomerDetailDialogProps) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+
   if (!customer) return null;
 
   const creditLimit = parseFloat(customer.credit_limit);
@@ -105,19 +110,19 @@ export function CustomerDetailDialog({ open, onOpenChange, customer }: CustomerD
             <Card className="border-border/50 shadow-sm">
               <CardContent className="p-4">
                 <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Credit Limit</p>
-                <p className="text-lg font-bold mt-1">${creditLimit.toLocaleString()}</p>
+                <p className="text-lg font-bold mt-1">{currencySymbol}{creditLimit.toLocaleString()}</p>
               </CardContent>
             </Card>
             <Card className="border-border/50 shadow-sm">
               <CardContent className="p-4">
                 <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Outstanding</p>
-                <p className="text-lg font-bold mt-1 text-amber-600">${outstandingBalance.toLocaleString()}</p>
+                <p className="text-lg font-bold mt-1 text-amber-600">{currencySymbol}{outstandingBalance.toLocaleString()}</p>
               </CardContent>
             </Card>
             <Card className="border-border/50 shadow-sm">
               <CardContent className="p-4">
                 <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Available</p>
-                <p className="text-lg font-bold mt-1 text-emerald-600">${(creditLimit - outstandingBalance).toLocaleString()}</p>
+                <p className="text-lg font-bold mt-1 text-emerald-600">{currencySymbol}{(creditLimit - outstandingBalance).toLocaleString()}</p>
               </CardContent>
             </Card>
           </div>

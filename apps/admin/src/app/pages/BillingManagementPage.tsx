@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 
 import { Building2, Calendar, DollarSign, FileText, TrendingUp, Download, Plus, CreditCard, Filter, MoreHorizontal, Eye, CheckCircle, Mail } from 'lucide-react';
+import { CurrencyIcon } from '@horizon-sync/ui';
 
 import {
     Card,
@@ -575,7 +576,7 @@ export function BillingManagementPage() {
                     <StatCard
                         title="Total Revenue"
                         value={formatCurrency(summary.total_paid)}
-                        icon={DollarSign}
+                        icon={CurrencyIcon}
                         iconBg="bg-green-50"
                         iconColor="text-green-600"
                     />

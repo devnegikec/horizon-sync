@@ -3,7 +3,7 @@ import * as React from 'react';
 import { type Table } from '@tanstack/react-table';
 import { Users, Plus, Download, Upload, Loader2, CreditCard, AlertTriangle, UserCheck, RefreshCw, ChevronDown, FileDown } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { DataTableViewOptions } from '@horizon-sync/ui/components/data-table/DataTableViewOptions';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
@@ -29,6 +29,7 @@ import { cn } from '@horizon-sync/ui/lib';
 import { useCustomerActions } from '../../hooks/useCustomerActions';
 import { useCustomers } from '../../hooks/useCustomers';
 import type { Customer } from '../../types/customer.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 import { customerApi } from '../../utility/api';
 import { ErrorBanner } from '../common';
 
@@ -275,6 +276,8 @@ export function CustomerManagement() {
   }, [customers]);
 
   const hasActiveFilters = filters.search !== '' || filters.status !== 'all';
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -321,7 +324,7 @@ export function CustomerManagement() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Total Customers" value={stats.totalCustomers} icon={Users} iconBg="bg-slate-100 dark:bg-slate-800" iconColor="text-slate-600 dark:text-slate-400" />
         <StatCard title="Active Customers" value={stats.activeCustomers} icon={UserCheck} iconBg="bg-emerald-100 dark:bg-emerald-900/20" iconColor="text-emerald-600 dark:text-emerald-400" />
-        <StatCard title="Total Credit Extended" value={`$${stats.totalCredit.toLocaleString()}`} icon={CreditCard} iconBg="bg-blue-100 dark:bg-blue-900/20" iconColor="text-blue-600 dark:text-blue-400" />
+        <StatCard title="Total Credit Extended" value={`${currencySymbol} ${stats.totalCredit.toLocaleString()}`} icon={CreditCard} iconBg="bg-blue-100 dark:bg-blue-900/20" iconColor="text-blue-600 dark:text-blue-400" />
         <StatCard title="Credit Alerts" value={stats.creditAlerts} icon={AlertTriangle} iconBg="bg-amber-100 dark:bg-amber-900/20" iconColor="text-amber-600 dark:text-amber-400" />
       </div>
 

@@ -182,8 +182,8 @@ export function ConvertToSalesOrderDialog({
 
             <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 p-3 text-sm">
               <p className="text-blue-900 dark:text-blue-100">
-                The sales order will be created with all line items from this quotation. 
-                Customer, currency, and remarks will be copied automatically.
+                The sales order will be created with all line items from this Quotation. 
+                Customer, Currency, and Remarks will be copied automatically.
               </p>
             </div>
           </div>

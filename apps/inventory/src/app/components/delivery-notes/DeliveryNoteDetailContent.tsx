@@ -5,7 +5,8 @@ import { Package, DollarSign } from 'lucide-react';
 import { Badge, Separator } from '@horizon-sync/ui/components';
 
 import type { DeliveryNote, DeliveryNoteItem } from '../../types/delivery-note.types';
-import { SUPPORTED_CURRENCIES } from '../../types/currency.types';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '../../types/currency.types';
 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return '—';
@@ -27,7 +28,7 @@ function formatDateTime(dateStr: string | null | undefined) {
   });
 }
 
-function formatCurrency(value: string | number | null | undefined, currencySymbol = '₹') {
+function formatCurrency(value: string | number | null | undefined, currencySymbol = getCurrencySymbol('INR')) {
   if (value == null) return '—';
   return `${currencySymbol}${Number(value).toFixed(2)}`;
 }
@@ -81,7 +82,7 @@ function ReferencesPanel({ dn }: { dn: DeliveryNote }) {
         <InfoField label="Type" value={refType} />
         <InfoField label="Name" value={refName} />
         <InfoField label="Code" value={refCode} />
-        {dn.pick_list_id && <InfoField label="Pick List" value={dn.pick_list_id} />}
+        {dn.pick_list_no && <InfoField label="Pick List" value={dn.pick_list_no || dn.pick_list_no} />}
       </div>
     </div>
   );
@@ -146,7 +147,6 @@ function ItemsTable({ items, currencySymbol }: { items: DeliveryNoteItem[]; curr
       </div>
       <div className="flex justify-end">
         <div className="flex items-center gap-3 bg-muted/50 rounded-lg px-6 py-3">
-          <DollarSign className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium text-muted-foreground">Grand Total</span>
           <span className="text-lg font-bold">{formatCurrency(grandTotal, currencySymbol)}</span>
         </div>
@@ -156,11 +156,7 @@ function ItemsTable({ items, currencySymbol }: { items: DeliveryNoteItem[]; curr
 }
 
 export function DeliveryNoteDetailContent({ deliveryNote }: { deliveryNote: DeliveryNote }) {
-  const currencySymbol = React.useMemo(() => {
-    const code = deliveryNote.currency || 'INR';
-    const found = SUPPORTED_CURRENCIES.find((c: { code: string; symbol: string }) => c.code === code);
-    return found?.symbol || code;
-  }, [deliveryNote.currency]);
+  const currencySymbol = getCurrencySymbol(deliveryNote.currency || 'INR');
   return (
     <div className="p-2 space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

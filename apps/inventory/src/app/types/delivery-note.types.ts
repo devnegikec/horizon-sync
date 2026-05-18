@@ -75,7 +75,8 @@ export interface DeliveryNote {
   customer?: DeliveryNoteCustomer;
   warehouse_id: string;
   warehouse?: DeliveryNoteWarehouse;
-  pick_list_id: string | null;
+  pick_list_id?: string;
+  pick_list_no?: string;
   reference_type: string | null;
   reference_id: string | null;
   reference?: DeliveryNoteReference;
@@ -139,6 +140,7 @@ export interface DeliveryNoteCreate {
   status: DeliveryNoteStatus;
   warehouse_id: string;
   pick_list_id?: string;
+  pick_list_no?: string;
   reference_type?: string;
   reference_id?: string;
   remarks?: string;

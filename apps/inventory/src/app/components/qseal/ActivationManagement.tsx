@@ -6,6 +6,9 @@ import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
+import { useCurrencyStore } from '@horizon-sync/store';
+
+import { getCurrencySymbol } from '../../types/currency.types';
 
 interface ActivationBatch {
   id: string;
@@ -31,6 +34,8 @@ const STATUS_CONFIG: Record<ActivationBatch['status'], { label: string; variant:
 };
 
 export function ActivationManagement() {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
   const batches = MOCK_BATCHES;
 
   const stats = React.useMemo(() => ({
@@ -121,7 +126,7 @@ export function ActivationManagement() {
                       </TableCell>
                       <TableCell>{batch.manufacturing_date}</TableCell>
                       <TableCell>{batch.destination_market}</TableCell>
-                      <TableCell>${batch.pricing.toFixed(2)}</TableCell>
+                      <TableCell>{currencySymbol}{batch.pricing.toFixed(2)}</TableCell>
                       <TableCell><Badge variant={cfg.variant}>{cfg.label}</Badge></TableCell>
                     </TableRow>
                   );

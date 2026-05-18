@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/compo
 import { OrganizationConfigSettings } from '../features/organization/components/OrganizationConfigSettings';
 import { hasPermissionFromStore } from '../features/organization/utils/permissions';
 import { useAuth } from '../hooks';
-import { useFeatureVisibility, useFeatureVisibilities } from '@horizon-sync/ui/hooks';
+import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
 import { environment } from '../../environments/environment';
 import { BankingDashboard } from '../features/banking/components/BankingDashboard';
 import { BankAccountManager } from '../features/banking/components/BankAccountManager';
@@ -33,6 +33,12 @@ export function SettingsPage() {
   const location = useLocation();
   const { user, accessToken, isAuthenticated } = useAuth();
   const isBankingRoute = location.pathname.startsWith('/settings/banking');
+
+  // Feature flag visibility with loading state to prevent flash
+  // NOTE: Must be called before any early returns (React hooks rule)
+  const bankingFlagStates = useFeatureVisibilities([BANKING_MODULE_ENABLED], `${environment.apiCoreUrl}/api/v1`, accessToken);
+  const bankingFlag = bankingFlagStates[BANKING_MODULE_ENABLED];
+  const bankingFlagLoading = bankingFlag?.loading ?? true;
 
   // Banking route handler function
   const RenderBankingRoute = () => {
@@ -137,11 +143,6 @@ export function SettingsPage() {
 
   // Check if user has permission to edit organization settings from global store
   const canEdit = hasPermissionFromStore('organization.update');
-
-  // Feature flag visibility with loading state to prevent flash
-  const bankingFlagStates = useFeatureVisibilities([BANKING_MODULE_ENABLED], `${environment.apiCoreUrl}/api/v1`);
-  const bankingFlag = bankingFlagStates[BANKING_MODULE_ENABLED];
-  const bankingFlagLoading = bankingFlag?.loading ?? true;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

@@ -112,7 +112,7 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
               rule_name: rule.rule_name,
               tax_type: rule.tax_type,
               description: rule.description || '',
-              tax_rate: rule.tax_rate,
+              tax_rate: Number(rule.tax_rate) || 0,
               account_head_id: rule.account_head_id,
               is_compound: rule.is_compound,
               sequence: rule.sequence || index + 1,

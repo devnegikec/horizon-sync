@@ -2,8 +2,11 @@ import * as React from 'react';
 
 import { Plus, Trash2, AlertCircle } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { Button, Input, Label, Badge } from '@horizon-sync/ui/components';
 
+
+import { getCurrencySymbol } from '../../types/currency.types';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 
 // Generic line item interface that all document types should extend
@@ -73,6 +76,8 @@ export function EditableLineItemsTable<T extends BaseLineItem>({
   showItemGroup = true,
   validateQuantity,
 }: EditableLineItemsTableProps<T>) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
   const [itemsCache, setItemsCache] = React.useState<Map<string, ItemData>>(() => {
     const initialCache = new Map<string, ItemData>();
     initialItemsData.forEach((item) => {
@@ -436,6 +441,8 @@ function PricingFields<T extends BaseLineItem>({
   taxAmount,
   onItemChange,
 }: PricingFieldsProps<T>) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
   return (
     <div className="grid gap-3 md:grid-cols-2">
       <div className="space-y-1">
@@ -464,7 +471,7 @@ function PricingFields<T extends BaseLineItem>({
               )}
             </div>
             {item.tax_amount ? (
-              <p className="text-xs text-muted-foreground">Tax Amount: ₹{taxAmount.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Tax Amount: {currencySymbol}{taxAmount.toFixed(2)}</p>
             ) : null}
           </div>
         </div>

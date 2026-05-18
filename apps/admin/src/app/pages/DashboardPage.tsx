@@ -12,6 +12,7 @@ import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
 import { cn } from '@horizon-sync/ui/lib';
+import { CurrencyIcon } from '@horizon-sync/ui';
 
 import { useDashboardOverview } from '../hooks/useDashboardOverview';
 import { usePermissions } from '../hooks/usePermissions';
@@ -196,8 +197,8 @@ export function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         {[
           { title: 'Total Invoiced', value: formatRevenue(data?.revenue.total_invoiced), icon: FileText, iconBg: 'bg-gradient-to-br from-emerald-500 to-emerald-600' },
-          { title: 'Total Outstanding', value: formatRevenue(data?.revenue.total_outstanding), icon: DollarSign, iconBg: 'bg-gradient-to-br from-amber-500 to-orange-500' },
-          { title: 'Total Received', value: formatRevenue(data?.revenue.total_received), icon: CreditCard, iconBg: 'bg-gradient-to-br from-[#3058EE] to-[#7D97F6]' },
+          { title: 'Total Outstanding', value: formatRevenue(data?.revenue.total_outstanding), icon: CurrencyIcon, iconBg: 'bg-gradient-to-br from-amber-500 to-orange-500' },
+          { title: 'Total Received', value: formatRevenue(data?.revenue.total_received), icon: CurrencyIcon, iconBg: 'bg-gradient-to-br from-[#3058EE] to-[#7D97F6]' },
         ].map((stat, index) => (
           <div key={stat.title} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${(index + 4) * 100}ms` }}>
             <StatCard {...stat} loading={isLoading} />
