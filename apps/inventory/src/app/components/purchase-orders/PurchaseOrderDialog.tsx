@@ -52,7 +52,7 @@ export function PurchaseOrderDialog({
   const { suppliers = [] } = useSuppliers();
   const { items = [] } = useItems();
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   
   // Load RFQs only when dialog is open to avoid unnecessary API calls
   const { rfqs = [], loading: rfqsLoading, error: rfqsError } = useRFQs(

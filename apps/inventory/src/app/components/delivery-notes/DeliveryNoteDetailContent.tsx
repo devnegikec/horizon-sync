@@ -28,7 +28,7 @@ function formatDateTime(dateStr: string | null | undefined) {
   });
 }
 
-function formatCurrency(value: string | number | null | undefined, currencySymbol = getCurrencySymbol('INR')) {
+function formatCurrency(value: string | number | null | undefined, currencySymbol = getCurrencySymbol('USD')) {
   if (value == null) return '—';
   return `${currencySymbol}${Number(value).toFixed(2)}`;
 }
@@ -156,7 +156,8 @@ function ItemsTable({ items, currencySymbol }: { items: DeliveryNoteItem[]; curr
 }
 
 export function DeliveryNoteDetailContent({ deliveryNote }: { deliveryNote: DeliveryNote }) {
-  const currencySymbol = getCurrencySymbol(deliveryNote.currency || 'INR');
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(deliveryNote.currency || baseCurrency || 'USD');
   return (
     <div className="p-2 space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

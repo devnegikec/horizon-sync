@@ -35,7 +35,7 @@ const STATUS_CONFIG: Record<ActivationBatch['status'], { label: string; variant:
 
 export function ActivationManagement() {
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const batches = MOCK_BATCHES;
 
   const stats = React.useMemo(() => ({

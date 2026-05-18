@@ -12,7 +12,7 @@ interface BankingOverviewStatsProps {
 
 export function BankingOverviewStats({ data }: BankingOverviewStatsProps) {
     const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-    const currencyCode = baseCurrency || 'INR';
+    const currencyCode = baseCurrency || 'USD';
 
     const stats = [
         {

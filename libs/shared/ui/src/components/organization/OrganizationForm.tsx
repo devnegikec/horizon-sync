@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Building, Globe, Users, FileText, ImagePlus, ArrowLeft, MapPin, DollarSign } from 'lucide-react';
+import { Building, Globe, Users, FileText, ImagePlus, ArrowLeft, MapPin } from 'lucide-react';
 import { useForm, UseFormRegister, FieldErrors, UseFormSetValue, UseFormWatch } from 'react-hook-form';
 import * as z from 'zod';
 
@@ -24,7 +24,7 @@ const organizationSchema = z.object({
   organizationType: z.enum(['enterprise', 'business', 'startup', 'individual'], { message: 'Please select an organization type' }),
   industry: z.string().min(1, 'Please select an industry'),
   companySize: z.string().min(1, 'Please select company size'),
-  country: z.string().optional(),
+  country: z.string().min(1, 'Please select a country'),
   baseCurrency: z.string().optional(),
   organizationDescription: z.string().max(1000, 'Description must be less than 1000 characters').optional(),
   websiteUrl: z.string().url('Please enter a valid URL').or(z.literal('')).optional(),
@@ -248,11 +248,13 @@ const IndustryAndSizeFields = ({
 const CountryAndCurrencyFields = ({
   setValue,
   watch,
+  errors,
   defaultCountry,
   defaultCurrency,
 }: {
   setValue: UseFormSetValue<OrganizationFormData>;
   watch: UseFormWatch<OrganizationFormData>;
+  errors: FieldErrors<OrganizationFormData>;
   defaultCountry?: string;
   defaultCurrency?: string;
 }) => {
@@ -267,17 +269,16 @@ const CountryAndCurrencyFields = ({
     }
   };
 
-  const baseCurrency = 'INR'; // Default; actual value passed from consuming app context
-  const currencySymbol = getCurrencySymbol(baseCurrency);
+  const currencySymbol = getCurrencySymbol(selectedCurrency || 'INR');
   return (
     <div className="grid grid-cols-2 gap-4">
       <div className="space-y-2">
         <Label htmlFor="country">
           <MapPin className="inline h-3.5 w-3.5 mr-1 text-muted-foreground" />
-          Country
+          Country <span className="text-destructive">*</span>
         </Label>
         <Select defaultValue={defaultCountry} value={selectedCountry} onValueChange={handleCountryChange}>
-          <SelectTrigger>
+          <SelectTrigger className={errors.country ? 'border-destructive' : ''}>
             <SelectValue placeholder="Select country" />
           </SelectTrigger>
           <SelectContent>
@@ -286,6 +287,7 @@ const CountryAndCurrencyFields = ({
             ))}
           </SelectContent>
         </Select>
+        {errors.country && <p className="text-sm text-destructive">{errors.country.message}</p>}
       </div>
 
       <div className="space-y-2">
@@ -294,8 +296,8 @@ const CountryAndCurrencyFields = ({
           Base Currency
         </Label>
         <Select defaultValue={defaultCurrency} value={selectedCurrency} onValueChange={(v) => setValue('baseCurrency', v)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select currency" />
+          <SelectTrigger className={selectedCountry ? 'bg-muted/50 pointer-events-none' : ''}>
+            <SelectValue placeholder="Select a country first" />
           </SelectTrigger>
           <SelectContent>
             {SUPPORTED_CURRENCIES_LIST.map((c) => (
@@ -337,10 +339,11 @@ const DescriptionField = ({ register, charCount }: { register: UseFormRegister<O
       <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
       <Textarea id="organizationDescription"
         placeholder="Tell us about your organization..."
+        maxLength={1000}
         {...register('organizationDescription')}
         className="pl-10 min-h-[100px] resize-none"/>
     </div>
-    <p className="text-xs text-muted-foreground text-right">{charCount}/1000 characters</p>
+    <p className={`text-xs text-right ${charCount >= 1000 ? 'text-destructive' : 'text-muted-foreground'}`}>{charCount}/1000 characters</p>
   </div>
 );
 
@@ -451,6 +454,7 @@ export function OrganizationForm({
       <CountryAndCurrencyFields
         setValue={setValue}
         watch={watch}
+        errors={errors}
         defaultCountry={defaultValues.country}
         defaultCurrency={defaultValues.baseCurrency}
       />

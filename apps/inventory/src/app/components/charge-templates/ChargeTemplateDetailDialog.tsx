@@ -17,7 +17,7 @@ interface ChargeTemplateDetailDialogProps {
 
 export function ChargeTemplateDetailDialog({ open, onOpenChange, template, onEdit }: ChargeTemplateDetailDialogProps) {
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
 
   if (!template) return null;
 

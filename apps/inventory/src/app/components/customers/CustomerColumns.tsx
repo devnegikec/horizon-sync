@@ -37,7 +37,7 @@ function getStatusBadge(status: Customer['status']) {
 }
 
 export function createCustomerColumns({ onViewCustomer, onEditCustomer, onToggleStatus, currencySymbol }: CustomerColumnsProps): ColumnDef<Customer>[] {
-  const symbol = currencySymbol || getCurrencySymbol('INR');
+  const symbol = currencySymbol || getCurrencySymbol('USD');
   return [
     {
       accessorKey: 'customer_name',

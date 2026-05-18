@@ -11,7 +11,7 @@ interface SalesOrderStatsProps {
   currency?: string;
 }
 
-export function SalesOrderStats({ total, confirmed, confirmedValue, pendingDelivery, currency = 'INR' }: SalesOrderStatsProps) {
+export function SalesOrderStats({ total, confirmed, confirmedValue, pendingDelivery, currency = 'USD' }: SalesOrderStatsProps) {
   const currencySymbol = getCurrencySymbol(currency);
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

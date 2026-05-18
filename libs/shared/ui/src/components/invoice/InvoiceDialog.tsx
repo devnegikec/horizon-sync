@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
 import * as z from 'zod';
@@ -102,6 +103,7 @@ export function InvoiceDialog({
   bankAccount,
   bankAccountLoading,
 }: InvoiceDialogProps) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
   const isEdit = !!invoice;
 
   const form = useForm<InvoiceFormData>({
@@ -111,7 +113,7 @@ export function InvoiceDialog({
       party_type: 'Customer',
       posting_date: new Date(),
       due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      currency: 'INR',
+      currency: baseCurrency || 'USD',
       invoice_type: 'Sales',
       status: 'Draft',
       remarks: '',
@@ -149,7 +151,7 @@ export function InvoiceDialog({
         party_type: partyType as 'Customer' | 'Supplier',
         posting_date: new Date(invoice.posting_date),
         due_date: new Date(invoice.due_date),
-        currency: invoice.currency,
+        currency: invoice.currency || baseCurrency || 'USD',
         invoice_type: typeMap[invoice.invoice_type] || (invoice.invoice_type as 'Sales' | 'Purchase' | 'Debit Note' | 'Credit Note'),
         status: statusMap[invoice.status] || 'Draft',
         remarks: invoice.remarks || '',
@@ -172,7 +174,7 @@ export function InvoiceDialog({
         party_type: 'Customer',
         posting_date: new Date(),
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        currency: 'INR',
+        currency: baseCurrency || 'USD',
         invoice_type: 'Sales',
         status: 'Draft',
         remarks: '',
@@ -181,7 +183,7 @@ export function InvoiceDialog({
         line_items: [],
       });
     }
-  }, [invoice, open, reset]);
+  }, [invoice, open, reset, baseCurrency]);
 
   const discountType = watch('discount_type') ?? 'percentage';
   const discountValueStr = watch('discount_value');

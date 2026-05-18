@@ -323,7 +323,7 @@ function DetailTabs({ detail, currencySymbol }: { detail: ItemDetailResponse; cu
 export function ItemDetailDialog({ open, onOpenChange, item }: ItemDetailDialogProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const [detail, setDetail] = React.useState<ItemDetailResponse | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);

@@ -77,7 +77,7 @@ export function EditableLineItemsTable<T extends BaseLineItem>({
   validateQuantity,
 }: EditableLineItemsTableProps<T>) {
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const [itemsCache, setItemsCache] = React.useState<Map<string, ItemData>>(() => {
     const initialCache = new Map<string, ItemData>();
     initialItemsData.forEach((item) => {
@@ -442,7 +442,7 @@ function PricingFields<T extends BaseLineItem>({
   onItemChange,
 }: PricingFieldsProps<T>) {
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   return (
     <div className="grid gap-3 md:grid-cols-2">
       <div className="space-y-1">

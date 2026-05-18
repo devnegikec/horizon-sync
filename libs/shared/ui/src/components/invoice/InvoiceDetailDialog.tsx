@@ -22,6 +22,7 @@ export interface InvoiceDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoice: Invoice | null;
+  baseCurrency?: string;
   onDownloadPDF?: () => void;
   onPreviewPDF?: () => void;
   onSendEmail?: () => void;
@@ -40,6 +41,7 @@ export function InvoiceDetailDialog({
   open,
   onOpenChange,
   invoice,
+  baseCurrency,
   onDownloadPDF,
   onPreviewPDF,
   onSendEmail,
@@ -50,7 +52,7 @@ export function InvoiceDetailDialog({
 }: InvoiceDetailDialogProps) {
   if (!invoice) return null;
 
-  const currencySymbol = getCurrencySymbol(invoice.currency);
+  const currencySymbol = getCurrencySymbol(invoice.currency || baseCurrency || 'USD');
 
   return (
     <>
