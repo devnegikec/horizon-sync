@@ -10,6 +10,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
+import { getCurrencySymbol } from '../../types/currency.types';
 
 const organizationTypes = [
   { value: 'enterprise', label: 'Enterprise' },
@@ -266,6 +267,8 @@ const CountryAndCurrencyFields = ({
     }
   };
 
+  const baseCurrency = 'INR'; // Default; actual value passed from consuming app context
+  const currencySymbol = getCurrencySymbol(baseCurrency);
   return (
     <div className="grid grid-cols-2 gap-4">
       <div className="space-y-2">
@@ -287,7 +290,7 @@ const CountryAndCurrencyFields = ({
 
       <div className="space-y-2">
         <Label htmlFor="baseCurrency">
-          <DollarSign className="inline h-3.5 w-3.5 mr-1 text-muted-foreground" />
+          <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
           Base Currency
         </Label>
         <Select defaultValue={defaultCurrency} value={selectedCurrency} onValueChange={(v) => setValue('baseCurrency', v)}>

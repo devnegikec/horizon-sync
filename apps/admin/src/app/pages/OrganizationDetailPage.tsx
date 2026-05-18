@@ -27,6 +27,8 @@ import {
 } from '@horizon-sync/ui/components/ui/alert-dialog';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
 import {
   Card,
   CardContent,
@@ -81,6 +83,8 @@ function dash(value: string | null | undefined): string {
 }
 
 function SummaryCards({ org, loading }: { org?: AdminOrgDetailResponse; loading: boolean }) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <Card>
@@ -104,7 +108,7 @@ function SummaryCards({ org, loading }: { org?: AdminOrgDetailResponse; loading:
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Payment Total</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
         </CardHeader>
         <CardContent>
           {loading ? (

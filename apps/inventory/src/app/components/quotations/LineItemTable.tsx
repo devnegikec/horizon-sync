@@ -3,10 +3,11 @@ import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Trash2, AlertCircle } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { Button, Input, Label, Badge } from '@horizon-sync/ui/components';
 
 import { environment } from '../../../environments/environment';
+import { getCurrencySymbol } from '../../types/currency.types';
 import type { QuotationLineItemCreate, QuotationLineItem } from '../../types/quotation.types';
 
 import { ItemPickerSelect } from './ItemPickerSelect';
@@ -47,6 +48,8 @@ interface LineItemWithMetadata extends QuotationLineItemCreate {
 
 export function LineItemTable({ items, onItemsChange, readonly = false, disabled = false, initialItemsData }: LineItemTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
   const [itemsWithMetadata, setItemsWithMetadata] = React.useState<LineItemWithMetadata[]>([]);
   const [itemsCache, setItemsCache] = React.useState<Map<string, QuotationLineItem>>(() => {
     // Initialize cache with initial items data if provided (for edit mode)
@@ -352,7 +355,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                   </div>
                   {(item.discount_amount && Number(item.discount_amount) > 0) && (
                     <p className="text-xs text-muted-foreground">
-                      Discount: −₹{Number(item.discount_amount).toFixed(2)}
+                      Discount: −{currencySymbol}{Number(item.discount_amount).toFixed(2)}
                     </p>
                   )}
                 </div>
@@ -377,7 +380,7 @@ export function LineItemTable({ items, onItemsChange, readonly = false, disabled
                     </div>
                     {item.tax_amount ? (
                       <p className="text-xs text-muted-foreground">
-                        Tax Amount: ₹{taxAmount}
+                        Tax Amount: {currencySymbol}{taxAmount}
                       </p>
                     ) : null}
                   </div>

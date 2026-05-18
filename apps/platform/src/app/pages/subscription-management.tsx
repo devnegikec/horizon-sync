@@ -8,6 +8,9 @@ import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { cn } from '@horizon-sync/ui/lib';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
+
 
 import { AddSubscriptionModal } from '../components/AddSubscriptionModal';
 import { useAuth } from '../hooks';
@@ -68,7 +71,8 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
       day: '2-digit',
     });
   };
-
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
   return (
     <Card className="overflow-hidden border-border hover:border-border/80 transition-all">
       <div className="p-6">
@@ -93,7 +97,7 @@ function SubscriptionCard({ subscription }: { subscription: Subscription }) {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg mb-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <DollarSign className="h-4 w-4" />
+              <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
               Monthly Cost
             </div>
             <p className="font-semibold text-lg">$499</p>

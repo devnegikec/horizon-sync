@@ -40,6 +40,9 @@ import {
 
 import { AdminPaymentService } from '../services/admin-payment.service';
 import type { Payment } from '../types/billing.types';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
+import { CurrencyIcon } from '@horizon-sync/ui';
 
 interface PaymentFilter {
     search: string;
@@ -54,6 +57,8 @@ export function PaymentsPage() {
     const [payments, setPayments] = useState<Payment[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+    const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+    const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
     const [pagination, setPagination] = useState({
         page: 1,
         totalPages: 1,
@@ -114,7 +119,7 @@ export function PaymentsPage() {
         const methodConfig = {
             credit_card: { label: 'Credit Card', icon: CreditCard },
             bank_transfer: { label: 'Bank Transfer', icon: Building2 },
-            cash: { label: 'Cash', icon: DollarSign },
+            cash: { label: 'Cash', icon: CurrencyIcon },
             check: { label: 'Check', icon: CheckCircle },
         };
 
@@ -143,7 +148,6 @@ export function PaymentsPage() {
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString();
     };
-
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -172,7 +176,7 @@ export function PaymentsPage() {
                 <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center space-x-2">
-                            <DollarSign className="h-5 w-5 text-green-600" />
+                            <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
                             <div className="space-y-1">
                                 <p className="text-2xl font-bold">
                                     {formatCurrency(

@@ -3,8 +3,10 @@ import * as React from 'react';
 import { Edit, DollarSign } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
+import { useCurrencyStore } from '@horizon-sync/store';
 
 import type { ChargeTemplate } from '../../types/charge-template.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 
 interface ChargeTemplateDetailDialogProps {
   open: boolean;
@@ -14,6 +16,9 @@ interface ChargeTemplateDetailDialogProps {
 }
 
 export function ChargeTemplateDetailDialog({ open, onOpenChange, template, onEdit }: ChargeTemplateDetailDialogProps) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
+
   if (!template) return null;
 
   return (
@@ -22,7 +27,7 @@ export function ChargeTemplateDetailDialog({ open, onOpenChange, template, onEdi
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-3">
-              <DollarSign className="h-5 w-5" />
+              <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
               Charge Template Details
             </DialogTitle>
           </div>
@@ -70,7 +75,7 @@ export function ChargeTemplateDetailDialog({ open, onOpenChange, template, onEdi
               {template.calculation_method === 'FIXED' ? (
                 <div>
                   <p className="text-sm text-muted-foreground">Fixed Amount</p>
-                  <p className="text-2xl font-bold">${template.fixed_amount?.toFixed(2)}</p>
+                  <p className="text-2xl font-bold">{currencySymbol}{template.fixed_amount?.toFixed(2)}</p>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">

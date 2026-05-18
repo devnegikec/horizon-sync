@@ -7,9 +7,11 @@ import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 import { cn } from '@horizon-sync/ui/lib';
 
+import { useUserStore } from '@horizon-sync/store';
 import { usePermissions } from '../hooks/usePermissions';
-import { useFeatureVisibility, useFeatureVisibilities } from '@horizon-sync/ui/hooks';
+import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
 import { environment } from '../../environments/environment';
+import { CurrencyIcon } from '@horizon-sync/ui';
 
 interface NavItem {
   title: string;
@@ -22,7 +24,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard },
   { title: 'Inventory', href: '/inventory', icon: Package, featureFlag: 'inventory_module_enabled' },
-  { title: 'Revenue', href: '/revenue', icon: DollarSign, featureFlag: 'revenue_module_enabled' },
+  { title: 'Revenue', href: '/revenue', icon: CurrencyIcon, featureFlag: 'revenue_module_enabled' },
   { title: 'Sourcing', href: '/sourcing', icon: ShoppingCart, featureFlag: 'sourcing_module_enabled' },
   { title: 'Books', href: '/books', icon: BookOpen, featureFlag: 'book_module_enabled' },
   { title: 'Tax & Charges', href: '/tax-charges', icon: Receipt, featureFlag: 'taxandcharges_module_enabled' },
@@ -89,6 +91,7 @@ function SidebarNavItem({ item, isActive, collapsed, isMobile, onClick }: Sideba
 export function Sidebar({ open = true, collapsed = false, isMobile = false, onClose }: SidebarProps) {
   const location = useLocation();
   const { filterNavigation } = usePermissions();
+  const accessToken = useUserStore((s) => s.accessToken);
 
   // Get unique feature flag names from nav items
   const featureFlagNames = React.useMemo(() =>
@@ -99,7 +102,7 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
   );
 
   // Call useFeatureVisibilities for all flags at once
-  const flagStates = useFeatureVisibilities(featureFlagNames, `${environment.apiCoreUrl}/api/v1`);
+  const flagStates = useFeatureVisibilities(featureFlagNames, `${environment.apiCoreUrl}/api/v1`, accessToken);
 
   // Build a map of flag name → visible (only the visible property for filtering)
   const flagVisibility: Record<string, boolean> = React.useMemo(() => {

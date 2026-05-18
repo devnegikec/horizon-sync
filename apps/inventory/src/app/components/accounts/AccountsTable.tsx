@@ -22,9 +22,10 @@ import {
 
 import { useAccountBalances } from '../../hooks/useAccountBalances';
 import type { AccountListItem } from '../../types/account.types';
-import { getCurrencySymbol } from '../../types/currency.types';
 import { formatDate } from '../../utility/formatDate';
 import { ACCOUNT_TYPE_COLORS } from '../../utils/accountColors';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
 
 export interface AccountsTableProps {
   accounts: AccountListItem[];
@@ -186,7 +187,8 @@ export function AccountsTable({
             pillBgClass = 'bg-blue-50 dark:bg-blue-900/20';
             textColorClass = 'text-blue-600 dark:text-blue-400';
           }
-
+          const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+          const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
           return (
             <TooltipProvider>
               <Tooltip>
@@ -198,7 +200,7 @@ export function AccountsTable({
                     </span>
                     {currencyCode !== 'USD' && (
                       <span className="text-xs text-muted-foreground pl-2">
-                        ≈ ${Math.abs(balance.base_currency_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ≈ {currencySymbol}{Math.abs(balance.base_currency_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     )}
                   </div>
@@ -222,7 +224,7 @@ export function AccountsTable({
                       {currencyCode !== 'USD' && (
                         <div className="flex justify-between gap-4">
                           <span className="text-muted-foreground">Base Currency (USD):</span>
-                          <span className="font-medium">${balance.base_currency_balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="font-medium">{currencySymbol}{balance.base_currency_balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       )}
                       <div className="flex justify-between gap-4 pt-1 border-t">

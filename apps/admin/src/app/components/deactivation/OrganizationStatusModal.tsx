@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
 
 import {
     Dialog,
@@ -171,6 +173,8 @@ export function OrganizationStatusModal({
     onActionRequest,
     loading = false,
 }: OrganizationStatusModalProps) {
+    const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+    const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
     const [deactivationHistory, setDeactivationHistory] = useState<DeactivationHistory[]>([
         // Mock data - replace with actual API call
         {
@@ -256,7 +260,7 @@ export function OrganizationStatusModal({
                             <Card className="border-destructive">
                                 <CardContent className="p-4">
                                     <div className="flex items-center gap-2">
-                                        <DollarSign className="h-5 w-5 text-destructive" />
+                                        <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
                                         <div>
                                             <p className="font-medium text-destructive">Outstanding Balance</p>
                                             <p className="text-sm text-muted-foreground">

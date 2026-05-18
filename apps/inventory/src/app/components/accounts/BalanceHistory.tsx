@@ -13,8 +13,9 @@ import {
 } from '@horizon-sync/ui/components/ui/select';
 
 import type { AccountBalance, AccountBalanceHistoryResponse } from '../../types/account.types';
-import { getCurrencySymbol } from '../../types/currency.types';
 import { accountApi } from '../../utility/api/accounts';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
 
 interface BalanceHistoryProps {
   accountId: string;
@@ -122,6 +123,8 @@ export function BalanceHistory({ accountId, accountCode, accountName, currency }
     return { current, min, max, avg, trend };
   }, [history]);
 
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
   return (
     <Card>
       <CardHeader>
@@ -172,7 +175,7 @@ export function BalanceHistory({ accountId, accountCode, accountName, currency }
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-4 rounded-lg border bg-card">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                  <DollarSign className="h-4 w-4" />
+                  <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
                   Current Balance
                 </div>
                 <div className="text-2xl font-bold">{formatCurrency(stats.current)}</div>

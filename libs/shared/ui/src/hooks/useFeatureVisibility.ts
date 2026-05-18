@@ -8,10 +8,12 @@
  * Successful responses are cached in sessionStorage so that if core-service
  * goes down mid-session, the last-known state is preserved rather than
  * hiding features the user was already using.
+ *
+ * NOTE: This hook does NOT import from @horizon-sync/store to avoid
+ * Module Federation circular dependency. The accessToken must be passed
+ * as a parameter by the consuming app.
  */
 import { useEffect, useState } from 'react';
-
-import { useUserStore } from '@horizon-sync/store';
 
 interface FeatureFlagState {
   visible: boolean;
@@ -44,8 +46,7 @@ function setCachedState(flagName: string, state: { visible: boolean; enabled: bo
   }
 }
 
-export function useFeatureVisibility(flagName: string, apiBaseUrl?: string): FeatureFlagState {
-  const accessToken = useUserStore((s) => s.accessToken);
+export function useFeatureVisibility(flagName: string, apiBaseUrl?: string, accessToken?: string | null): FeatureFlagState {
   const [state, setState] = useState<FeatureFlagState>(() => {
     // On mount, check cache first — if we have a previous successful response, use it
     const cached = getCachedState(flagName);
@@ -83,7 +84,7 @@ export function useFeatureVisibility(flagName: string, apiBaseUrl?: string): Fea
       })
       .catch(() => {
         if (cancelled) return;
-        // Network error (core-service down) — use cache if available, otherwise deny
+        // Network error (core-service down) — use cache or deny
         const cached = getCachedState(flagName);
         setState(cached || { visible: false, enabled: false, loading: false, error: true });
       });
@@ -96,9 +97,7 @@ export function useFeatureVisibility(flagName: string, apiBaseUrl?: string): Fea
   return state;
 }
 
-export function useFeatureVisibilities(flagNames: string[], apiBaseUrl?: string): Record<string, FeatureFlagState> {
-  const accessToken = useUserStore((s) => s.accessToken);
-
+export function useFeatureVisibilities(flagNames: string[], apiBaseUrl?: string, accessToken?: string | null): Record<string, FeatureFlagState> {
   // Serialize to a stable string so the effect doesn't re-run on every render
   const flagNamesKey = flagNames.slice().sort().join(',');
 

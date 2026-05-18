@@ -1,6 +1,7 @@
 import { DollarSign } from 'lucide-react';
 
 import type { Invoice } from '../../types/invoice.types';
+import { CurrencyIcon } from '@horizon-sync/ui';
 
 export function InvoiceAmountsSummary({ invoice, currencySymbol }: { invoice: Invoice; currencySymbol: string }) {
   return (
@@ -8,10 +9,7 @@ export function InvoiceAmountsSummary({ invoice, currencySymbol }: { invoice: In
       <div className="flex justify-between items-center">
         <span className="text-sm text-muted-foreground">Grand Total</span>
         <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
-          <span className="text-lg font-semibold">
             {currencySymbol} {Number(invoice.grand_total).toFixed(2)}
-          </span>
         </div>
       </div>
       {invoice.outstanding_amount > 0 && (

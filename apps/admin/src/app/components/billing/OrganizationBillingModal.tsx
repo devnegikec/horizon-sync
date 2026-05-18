@@ -30,6 +30,8 @@ import {
     Separator,
 } from '@horizon-sync/ui/components';
 import { cn } from '@horizon-sync/ui/lib';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
 import {
     Building2,
     DollarSign,
@@ -90,6 +92,8 @@ function getTierBadge(tier: string) {
 }
 
 export function OrganizationBillingModal({ organization, isOpen, onClose, onRefresh }: OrganizationBillingModalProps) {
+    const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+    const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
     const [loading, setLoading] = useState(false);
     const [showTierUpdate, setShowTierUpdate] = useState(false);
     const [activeTab, setActiveTab] = useState('overview');
@@ -165,7 +169,7 @@ export function OrganizationBillingModal({ organization, isOpen, onClose, onRefr
                                             </p>
                                         </div>
                                         <div className="bg-green-100 p-2 rounded-full">
-                                            <DollarSign className="h-5 w-5 text-green-600" />
+                                            <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
                                         </div>
                                     </div>
                                 </CardContent>

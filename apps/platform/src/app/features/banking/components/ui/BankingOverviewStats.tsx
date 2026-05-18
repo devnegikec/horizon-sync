@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 import { BankingOverview } from '../../types';
 import { TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react';
+import { CurrencyIcon } from '@horizon-sync/ui';
 
 interface BankingOverviewStatsProps {
     data: BankingOverview;
@@ -15,7 +16,7 @@ export function BankingOverviewStats({ data }: BankingOverviewStatsProps) {
                 style: 'currency',
                 currency: 'USD',
             }).format(data.total_balance),
-            icon: DollarSign,
+            icon: CurrencyIcon,
             trend: null,
         },
         {

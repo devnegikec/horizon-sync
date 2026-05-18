@@ -151,11 +151,11 @@ export function InvoicesTable({
           return (
             <div className="text-right">
               <p className="font-semibold">
-                {getCurrencySymbol(invoice.currency)} {Number(invoice.grand_total).toFixed(2)}
+                {getCurrencySymbol(invoice.currency || 'INR')} {Number(invoice.grand_total).toFixed(2)}
               </p>
               {invoice.outstanding_amount > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Due: {getCurrencySymbol(invoice.currency)} {Number(invoice.outstanding_amount).toFixed(2)}
+                  Due: {getCurrencySymbol(invoice.currency || 'INR')} {Number(invoice.outstanding_amount).toFixed(2)}
                 </p>
               )}
             </div>

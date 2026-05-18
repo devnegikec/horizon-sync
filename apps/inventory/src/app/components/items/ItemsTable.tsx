@@ -16,6 +16,8 @@ import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
 import type { ApiItem } from '../../types/items-api.types';
 import { formatDate } from '../../utility/formatDate';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '../../types/currency.types';
 
 export interface ItemsTableProps {
   items: ApiItem[];
@@ -74,6 +76,8 @@ export function ItemsTable({
     };
   }, [serverPagination]);
 
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
   const columns: ColumnDef<ApiItem, unknown>[] = React.useMemo(
     () => [
       {
@@ -106,7 +110,7 @@ export function ItemsTable({
       {
         accessorKey: 'standard_rate',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Standard Rate" />,
-        cell: ({ row }) => row.original.standard_rate ?? '',
+        cell: ({ row }) => row.original.standard_rate != null ? `${currencySymbol}${row.original.standard_rate}` : '',
       },
       {
         accessorKey: 'status',
