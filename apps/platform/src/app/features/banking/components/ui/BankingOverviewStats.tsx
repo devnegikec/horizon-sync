@@ -3,19 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/compo
 import { BankingOverview } from '../../types';
 import { TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react';
 import { CurrencyIcon } from '@horizon-sync/ui';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
 
 interface BankingOverviewStatsProps {
     data: BankingOverview;
 }
 
 export function BankingOverviewStats({ data }: BankingOverviewStatsProps) {
+    const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+    const currencyCode = baseCurrency || 'INR';
+
     const stats = [
         {
             title: 'Total Balance',
-            value: new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-            }).format(data.total_balance),
+            value: `${getCurrencySymbol(currencyCode)} ${Number(data.total_balance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             icon: CurrencyIcon,
             trend: null,
         },

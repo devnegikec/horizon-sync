@@ -7,11 +7,17 @@ import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { useUserStore } from '@horizon-sync/store';
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { usePermissions } from '../hooks/usePermissions';
 import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
 import { environment } from '../../environments/environment';
 import { CurrencyIcon } from '@horizon-sync/ui';
+
+/** Wrapper that reads baseCurrency from the store and passes it to CurrencyIcon */
+function DynamicCurrencyIcon({ className }: { className?: string }) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  return <CurrencyIcon className={className} currency={baseCurrency} />;
+}
 
 interface NavItem {
   title: string;
@@ -24,7 +30,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard },
   { title: 'Inventory', href: '/inventory', icon: Package, featureFlag: 'inventory_module_enabled' },
-  { title: 'Revenue', href: '/revenue', icon: CurrencyIcon, featureFlag: 'revenue_module_enabled' },
+  { title: 'Revenue', href: '/revenue', icon: DynamicCurrencyIcon, featureFlag: 'revenue_module_enabled' },
   { title: 'Sourcing', href: '/sourcing', icon: ShoppingCart, featureFlag: 'sourcing_module_enabled' },
   { title: 'Books', href: '/books', icon: BookOpen, featureFlag: 'book_module_enabled' },
   { title: 'Tax & Charges', href: '/tax-charges', icon: Receipt, featureFlag: 'taxandcharges_module_enabled' },

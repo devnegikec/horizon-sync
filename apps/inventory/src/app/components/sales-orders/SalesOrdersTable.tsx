@@ -12,6 +12,7 @@ import type { SalesOrder } from '../../types/sales-order.types';
 import { getCurrencySymbol } from '../../types/currency.types';
 import { formatDate } from '../../utility/formatDate';
 import { StatusBadge } from '../quotations/StatusBadge';
+import { useCurrencyStore } from '@horizon-sync/store';
 
 export interface SalesOrdersTableProps {
   salesOrders: SalesOrder[];
@@ -45,6 +46,7 @@ export function SalesOrdersTable({
   onTableReady,
   serverPagination,
 }: SalesOrdersTableProps) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
   const [tableInstance, setTableInstance] = React.useState<Table<SalesOrder> | null>(null);
 
   React.useEffect(() => {
@@ -137,7 +139,7 @@ export function SalesOrdersTable({
           const so = row.original;
           return (
             <div className="text-right">
-              <p className="font-semibold">{getCurrencySymbol(so.currency || 'INR')} {Number(so.grand_total).toFixed(2)}</p>
+              <p className="font-semibold">{getCurrencySymbol(so.currency || baseCurrency || 'INR')} {Number(so.grand_total).toFixed(2)}</p>
             </div>
           );
         },

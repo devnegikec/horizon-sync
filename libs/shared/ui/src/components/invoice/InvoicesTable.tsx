@@ -27,6 +27,8 @@ export interface InvoicesTableProps {
   loading: boolean;
   error: string | null;
   hasActiveFilters: boolean;
+  /** Base currency code from the org settings (e.g. 'INR', 'USD'). Used as fallback when invoice.currency is null. */
+  baseCurrency?: string;
   onView: (invoice: Invoice) => void;
   onDelete: (invoice: Invoice) => void;
   onMarkAsPaid: (invoice: Invoice) => void;
@@ -46,6 +48,7 @@ export function InvoicesTable({
   loading,
   error,
   hasActiveFilters,
+  baseCurrency = 'INR',
   onView,
   onDelete,
   onMarkAsPaid,
@@ -151,11 +154,11 @@ export function InvoicesTable({
           return (
             <div className="text-right">
               <p className="font-semibold">
-                {getCurrencySymbol(invoice.currency || 'INR')} {Number(invoice.grand_total).toFixed(2)}
+                {getCurrencySymbol(invoice.currency || baseCurrency)} {Number(invoice.grand_total).toFixed(2)}
               </p>
               {invoice.outstanding_amount > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Due: {getCurrencySymbol(invoice.currency || 'INR')} {Number(invoice.outstanding_amount).toFixed(2)}
+                  Due: {getCurrencySymbol(invoice.currency || baseCurrency)} {Number(invoice.outstanding_amount).toFixed(2)}
                 </p>
               )}
             </div>
