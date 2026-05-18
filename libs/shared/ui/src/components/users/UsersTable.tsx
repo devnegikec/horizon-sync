@@ -254,7 +254,9 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
   if (error) {
     return (
       <Card><CardContent className="p-0">
-        <div className="p-4 text-destructive text-sm border-b">{error}</div>
+        <div className="p-4 text-destructive text-sm border-b">
+          Error loading users: {error}
+        </div>
       </CardContent></Card>
     );
   }

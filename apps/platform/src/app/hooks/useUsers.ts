@@ -5,6 +5,27 @@ import type { User, UsersResponse, UserFilters } from '../types/user.types';
 
 const USERS_URL = `${environment.apiBaseUrl}/api/v1/identity/users`;
 
+/** Map HTTP status codes to user-friendly error messages */
+function getFriendlyHttpError(status: number): string {
+  switch (status) {
+    case 401: return 'Your session has expired. Please log in again.';
+    case 403: return 'You do not have permission to view users.';
+    case 404: return 'The users service endpoint was not found.';
+    case 422: return 'The submitted data is invalid. Please check your input.';
+    case 500: return 'An unexpected server error occurred. Please try again later.';
+    case 502: case 503: case 504: return 'The service is temporarily unavailable. Please try again in a few moments.';
+    default: return `Something went wrong (Error ${status}). Please try again later.`;
+  }
+}
+
+/** Map network/fetch errors to user-friendly messages */
+function getFriendlyNetworkError(message: string): string {
+  if (message.includes('Failed to fetch') || message.includes('NetworkError') || message.includes('ERR_CONNECTION_REFUSED')) {
+    return 'The service is temporarily unavailable. Please try again in a few moments.';
+  }
+  return message;
+}
+
 interface UseUsersResult {
   users: User[];
   pagination: UsersResponse['pagination'] | null;
@@ -69,8 +90,7 @@ export function useUsers(
       });
 
       if (!res.ok) {
-        const message = `Error ${res.status}: ${res.statusText}`;
-        throw new Error(message);
+        throw new Error(getFriendlyHttpError(res.status));
       }
 
       const data = (await res.json()) as UsersResponse;
@@ -79,7 +99,7 @@ export function useUsers(
       setStatusCounts(data.status_counts ?? null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load users';
-      setError(message);
+      setError(getFriendlyNetworkError(message));
       setUsers([]);
       setPagination(null);
       setStatusCounts(null);
