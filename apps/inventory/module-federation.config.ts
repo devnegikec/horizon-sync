@@ -10,6 +10,7 @@ const config: ModuleFederationConfig = {
     './TaxChargesPage': './src/app/pages/TaxChargesPage.tsx',
     './PaymentsPage': './src/app/pages/PaymentsPage.tsx',
     './QSealPage': './src/app/pages/QSealPage.tsx',
+    './WMSPage': './src/app/pages/WMSPage.tsx',
   },
   shared: (libraryName, defaultConfig) => {
     // Share React and React-DOM as singletons

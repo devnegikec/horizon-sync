@@ -16,6 +16,7 @@ const BooksPage = React.lazy(() => import('inventory/BooksPage'));
 const TaxChargesPage = React.lazy(() => import('inventory/TaxChargesPage'));
 const PaymentsPage = React.lazy(() => import('inventory/PaymentsPage'));
 const QSealPage = React.lazy(() => import('inventory/QSealPage'));
+const WMSPage = React.lazy(() => import('inventory/WMSPage'));
 
 export function AppRoutes() {
   return (
@@ -58,6 +59,7 @@ function ProtectedRouteWrapper() {
           <Route path="/books" element={<BooksPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="/qseal" element={<QSealPage />} />
+          <Route path="/wms" element={<WMSPage />} />
           <Route path="/tax-charges" element={<TaxChargesPage />} />
           <Route path="/subscriptions" element={<SubscriptionManagementPage />} />
           <Route path="/analytics" element={<AnalyticsPlaceholder />} />
