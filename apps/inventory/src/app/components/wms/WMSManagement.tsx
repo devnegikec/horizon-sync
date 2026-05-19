@@ -2,12 +2,13 @@ import * as React from 'react';
 
 import { Warehouse, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Truck, MapPin } from 'lucide-react';
 
-import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
+import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useWarehouses } from '../../hooks/useWarehouses';
+
 import { DispatchList } from './DispatchList';
 import { GateVerificationPanel } from './GateVerificationPanel';
 import { InboundScanPanel } from './InboundScanPanel';
@@ -26,11 +27,9 @@ interface NavItemProps {
 
 function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
   return (
-    <Button
-      variant={isActive ? 'default' : 'ghost'}
+    <Button variant={isActive ? 'default' : 'ghost'}
       className={cn('gap-2 justify-start', isActive && 'bg-primary text-primary-foreground')}
-      onClick={onClick}
-    >
+      onClick={onClick}>
       <Icon className="h-4 w-4" />
       {label}
     </Button>
@@ -121,10 +120,8 @@ export function WMSManagement() {
               </p>
             </div>
             {selectedWarehouseId ? (
-              <InboundScanPanel
-                warehouseId={selectedWarehouseId}
-                onSlipGenerated={() => setActiveView('receiving')}
-              />
+              <InboundScanPanel warehouseId={selectedWarehouseId}
+                onSlipGenerated={() => setActiveView('receiving')}/>
             ) : (
               <div className="text-sm text-muted-foreground">Select a warehouse to start scanning.</div>
             )}
@@ -165,19 +162,15 @@ export function WMSManagement() {
             </div>
             <div className="max-w-lg space-y-3">
               <div className="flex gap-2">
-                <input
-                  className="flex-1 border rounded-md px-3 py-2 text-sm bg-background font-mono"
+                <input className="flex-1 border rounded-md px-3 py-2 text-sm bg-background font-mono"
                   placeholder="Enter Pick List ID..."
                   value={gatePickListId}
-                  onChange={(e) => setGatePickListId(e.target.value)}
-                />
+                  onChange={(e) => setGatePickListId(e.target.value)}/>
               </div>
               {gatePickListId && (
                 <div className="border rounded-lg p-4 bg-card">
-                  <GateVerificationPanel
-                    pickListId={gatePickListId}
-                    onDispatchCreated={() => setActiveView('dispatch')}
-                  />
+                  <GateVerificationPanel pickListId={gatePickListId}
+                    onDispatchCreated={() => setActiveView('dispatch')}/>
                 </div>
               )}
             </div>
