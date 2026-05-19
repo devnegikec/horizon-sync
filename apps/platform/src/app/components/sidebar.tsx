@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { LayoutDashboard, Package, BarChart3, Settings, Users, FileText, HelpCircle, Zap, CreditCard, DollarSign, ShoppingCart, BookOpen, Shield, Receipt, Building2, QrCode } from 'lucide-react';
+import { LayoutDashboard, Package, BarChart3, Settings, Users, FileText, HelpCircle, Zap, CreditCard, DollarSign, ShoppingCart, BookOpen, Shield, Receipt, Building2, QrCode, Warehouse } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
@@ -29,6 +29,7 @@ const mainNavItems: NavItem[] = [
   { title: 'Subscriptions', href: '/subscriptions', icon: CreditCard, featureFlag: 'subscriptions_module_enabled' },
   { title: 'Analytics', href: '/analytics', icon: BarChart3, featureFlag: 'analytics_module_enabled' },
   { title: 'QSeal', href: '/qseal', icon: QrCode, featureFlag: 'qseal_module_enabled' },
+  { title: 'WMS', href: '/wms', icon: Warehouse, featureFlag: 'wms_module_enabled' },
   { title: 'Users', href: '/users', icon: Users, featureFlag: 'users_module_enabled' },
   { title: 'Roles', href: '/roles', icon: Shield, featureFlag: 'roles_module_enabled' },
   { title: 'Reports', href: '/reports', icon: FileText, featureFlag: 'reports_module_enabled' },
