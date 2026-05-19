@@ -9,6 +9,9 @@ import {
   RefreshResponse,
   ForgotPasswordPayload,
   ResetPasswordPayload,
+  AcceptInvitationPayload,
+  AcceptInvitationResponse,
+  InvitationValidateResponse,
   ApiErrorResponse,
   UserType,
 } from './auth.types';
@@ -172,6 +175,14 @@ async function loginWithCredentials(payload: LoginPayload): Promise<LoginRespons
 export class AuthService {
   static async register(payload: RegisterPayload): Promise<RegisterResponse> {
     return apiRequest<RegisterResponse>('/identity/register', 'POST', payload);
+  }
+
+  static async validateInvitationToken(token: string): Promise<InvitationValidateResponse> {
+    return apiRequest<InvitationValidateResponse>(`/identity/invitations/validate/${encodeURIComponent(token)}`, 'GET');
+  }
+
+  static async acceptInvitation(payload: AcceptInvitationPayload): Promise<AcceptInvitationResponse> {
+    return apiRequest<AcceptInvitationResponse>('/identity/invitations/accept', 'POST', payload);
   }
 
   /**

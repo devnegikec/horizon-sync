@@ -52,7 +52,7 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 }
 
 export function UserManagement() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [filters, setFilters] = useState<UserFilters>({
     search: '',
     status: 'all',
@@ -63,6 +63,7 @@ export function UserManagement() {
     users,
     pagination,
     statusCounts,
+    pendingInvitationCount,
     loading,
     error,
     refetch,
@@ -70,7 +71,7 @@ export function UserManagement() {
     setPageSize,
     currentPage,
     currentPageSize,
-  } = useUsers(1, 20, filters, accessToken);
+  } = useUsers(1, 20, filters, accessToken, user?.organization_id);
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [tableInstance, setTableInstance] = useState<Table<User> | null>(null);
@@ -124,18 +125,24 @@ export function UserManagement() {
     }
   }, [accessToken]);
 
+
   // Reset to first page when filters change
   useEffect(() => {
     setPage(1);
   }, [filters, setPage]);
 
+  const visibleUsers = useMemo(
+    () => users.filter((item) => item.id !== user?.id),
+    [users, user?.id]
+  );
+
   const stats = useMemo(() => {
     const total = pagination?.total_items ?? 0;
     const active = statusCounts?.active ?? 0;
-    const pending = statusCounts?.pending ?? 0;
+    const pending = pendingInvitationCount;
     const mfaEnabled = statusCounts?.mfa_enabled ?? 0;
     return { total, active, pending, mfaEnabled };
-  }, [pagination, statusCounts]);
+  }, [pagination, pendingInvitationCount, statusCounts]);
 
   const handleInviteUser = () => {
     setInviteModalOpen(true);
@@ -246,7 +253,7 @@ export function UserManagement() {
       </div>
 
       {/* Users Table */}
-      <UsersTable users={users}
+      <UsersTable users={visibleUsers}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.status !== 'all' || filters.userType !== 'all'}
