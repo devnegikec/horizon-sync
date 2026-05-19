@@ -9,6 +9,7 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import type { PickList, PickListResponse } from '../types/pick-list.types';
 import { pickListApi } from '../utility/api/pick-lists';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface PickListFilters {
   search: string;
@@ -46,7 +47,7 @@ function usePickLists(
 
   const handleFetchError = React.useCallback((err: unknown) => {
     console.error('[usePickLists] Error fetching pick lists:', err);
-    setError(err instanceof Error ? err.message : 'Failed to load pick lists');
+    setError(getFriendlyErrorMessage(err));
     setPickLists([]);
     setPagination(null);
   }, []);
@@ -141,7 +142,7 @@ export function usePickListManagement() {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete pick list',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -156,11 +157,14 @@ export function usePickListManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load pick list details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
   }, [accessToken, toast]);
+
+  // Confirmation dialog state
+  const [confirmAction, setConfirmAction] = React.useState<{ type: string; item: PickList; title: string; message: string } | null>(null);
 
   const handleDelete = React.useCallback((pickList: PickList) => {
     if (pickList.status !== 'draft') {
@@ -172,10 +176,21 @@ export function usePickListManagement() {
       return;
     }
 
-    if (window.confirm(`Are you sure you want to delete pick list ${pickList.pick_list_no}?`)) {
-      deleteMutation.mutate(pickList.id);
+    setConfirmAction({
+      type: 'delete',
+      item: pickList,
+      title: 'Delete Pick List',
+      message: `Are you sure you want to delete pick list ${pickList.pick_list_no}?`,
+    });
+  }, [toast]);
+
+  const executeConfirmedAction = React.useCallback(() => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'delete') {
+      deleteMutation.mutate(confirmAction.item.id);
     }
-  }, [deleteMutation, toast]);
+    setConfirmAction(null);
+  }, [confirmAction, deleteMutation]);
 
   const handleTableReady = React.useCallback((table: Table<PickList>) => {
     setTableInstance(table);
@@ -210,5 +225,8 @@ export function usePickListManagement() {
     handleDelete,
     handleTableReady,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   };
 }

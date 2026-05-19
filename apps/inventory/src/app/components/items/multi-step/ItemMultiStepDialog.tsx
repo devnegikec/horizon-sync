@@ -24,6 +24,7 @@ interface ItemMultiStepDialogProps {
   isLoadingTaxTemplates?: boolean;
   onSave: (data: ItemFormData) => Promise<void>;
   initialData?: Partial<ItemFormData>;
+  isEditing?: boolean;
 }
 
 const STEPS = [
@@ -32,18 +33,31 @@ const STEPS = [
   { id: 3, title: 'Tax & Additional', description: 'Tax and custom fields' },
 ];
 
+function isStep1Valid(formData: ItemFormData): boolean {
+  const nameValid = !!formData.name?.trim() && formData.name.length <= 255;
+  const descValid = !formData.description || formData.description.length <= 1000;
+  return !!(
+    nameValid &&
+    descValid &&
+    formData.itemGroupId?.trim() &&
+    formData.itemType?.trim() &&
+    formData.unitOfMeasure?.trim() &&
+    formData.status?.trim()
+  );
+}
+
 function validateStep(step: number, formData: ItemFormData): boolean {
   switch (step) {
     case 1:
-      return !!(
-        formData.name &&
-        formData.itemGroupId &&
-        formData.itemType &&
-        formData.unitOfMeasure &&
-        formData.status
-      );
-    case 2:
-      return !!formData.defaultPrice;
+      return isStep1Valid(formData);
+    case 2: {
+      if (!formData.defaultPrice) return false;
+      // Cross-field validation: min_order_qty must be <= max_order_qty (when max > 0)
+      if (formData.maxOrderQty > 0 && formData.minOrderQty > formData.maxOrderQty) {
+        return false;
+      }
+      return true;
+    }
     case 3:
       return true;
     default:
@@ -82,7 +96,7 @@ const getInitialFormData = (initialData?: Partial<ItemFormData>): ItemFormData =
   reorderLevel: 0,
   reorderQty: 0,
   minOrderQty: 1,
-  maxOrderQty: 1,
+  maxOrderQty: 0,
   inspectionRequiredBeforePurchase: false,
   inspectionRequiredBeforeDelivery: false,
   qualityInspectionTemplate: null,
@@ -96,6 +110,7 @@ function DialogFooterButtons({
   currentStep,
   isSubmitting,
   isValid,
+  isEditing,
   onCancel,
   onPrevious,
   onNext,
@@ -104,6 +119,7 @@ function DialogFooterButtons({
   currentStep: number;
   isSubmitting: boolean;
   isValid: boolean;
+  isEditing: boolean;
   onCancel: () => void;
   onPrevious: () => void;
   onNext: () => void;
@@ -122,7 +138,7 @@ function DialogFooterButtons({
           <Button type="button" onClick={onNext} disabled={!isValid}>Next</Button>
         ) : (
           <Button type="button" onClick={onSubmit} disabled={!isValid || isSubmitting}>
-            {isSubmitting ? 'Creating...' : 'Create Item'}
+            {isSubmitting ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save Changes' : 'Create Item')}
           </Button>
         )}
       </div>
@@ -157,6 +173,7 @@ export function ItemMultiStepDialog({
   isLoadingTaxTemplates = false,
   onSave,
   initialData,
+  isEditing = false,
 }: ItemMultiStepDialogProps) {
   const [currentStep, setCurrentStep] = React.useState(1);
   const [formData, setFormData] = React.useState<ItemFormData>(() => getInitialFormData(initialData));
@@ -209,7 +226,7 @@ export function ItemMultiStepDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Create New Item</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Item' : 'Create New Item'}</DialogTitle>
         </DialogHeader>
 
         {/* Stepper */}
@@ -266,6 +283,7 @@ export function ItemMultiStepDialog({
           <DialogFooterButtons currentStep={currentStep}
             isSubmitting={isSubmitting}
             isValid={validateStep(currentStep, formData)}
+            isEditing={isEditing}
             onCancel={handleCancel}
             onPrevious={handlePrevious}
             onNext={handleNext}

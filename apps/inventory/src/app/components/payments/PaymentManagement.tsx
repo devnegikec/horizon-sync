@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { DollarSign, Plus } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { usePaymentActions } from '../../hooks/usePaymentActions';
@@ -107,14 +108,24 @@ export function PaymentManagement({
   }, []);
 
   const handleConfirmPayment = useCallback(async (payment: PaymentEntry) => {
-    const paymentIdentifier = payment.receipt_number || payment.id;
-    if (window.confirm(`Are you sure you want to confirm payment ${paymentIdentifier}?`)) {
-      const result = await confirmPayment(payment.id);
-      if (result) {
-        refetch();
+    setConfirmPaymentEntry(payment);
+  }, []);
+
+  const [confirmPaymentEntry, setConfirmPaymentEntry] = useState<PaymentEntry | null>(null);
+
+  const executeConfirmPayment = useCallback(async () => {
+    if (!confirmPaymentEntry) return;
+    const result = await confirmPayment(confirmPaymentEntry.id);
+    if (result) {
+      // If this was triggered from detail dialog, close it
+      if (paymentForDetail && paymentForDetail.id === confirmPaymentEntry.id) {
+        setDetailDialogOpen(false);
+        setPaymentForDetail(null);
       }
+      refetch();
     }
-  }, [confirmPayment, refetch]);
+    setConfirmPaymentEntry(null);
+  }, [confirmPaymentEntry, confirmPayment, refetch, paymentForDetail]);
 
   const handleCancelPayment = useCallback(async (payment: PaymentEntry) => {
     const cancellationReason = window.prompt('Please enter cancellation reason:');
@@ -142,17 +153,9 @@ export function PaymentManagement({
   const handleDetailConfirm = useCallback(
     async () => {
       if (!paymentForDetail) return;
-      const paymentIdentifier = paymentForDetail.receipt_number || paymentForDetail.id;
-      if (window.confirm(`Are you sure you want to confirm payment ${paymentIdentifier}?`)) {
-        const result = await confirmPayment(paymentForDetail.id);
-        if (result) {
-          setDetailDialogOpen(false);
-          setPaymentForDetail(null);
-          refetch();
-        }
-      }
+      setConfirmPaymentEntry(paymentForDetail);
     },
-    [paymentForDetail, confirmPayment, refetch]
+    [paymentForDetail]
   );
 
   const handleDetailCancel = useCallback(
@@ -258,6 +261,17 @@ export function PaymentManagement({
           onAllocationChange={handleDetailAllocationChange}
           loading={detailLoading}/>
       )}
+
+      {/* Confirm Payment Dialog */}
+      <ConfirmationDialog
+        open={!!confirmPaymentEntry}
+        onOpenChange={(open) => { if (!open) setConfirmPaymentEntry(null); }}
+        title="Confirm Payment"
+        description={`Are you sure you want to confirm payment ${confirmPaymentEntry?.receipt_number || confirmPaymentEntry?.id || ''}?`}
+        confirmLabel="Confirm"
+        variant="default"
+        onConfirm={executeConfirmPayment}
+      />
     </div>
   );
 }

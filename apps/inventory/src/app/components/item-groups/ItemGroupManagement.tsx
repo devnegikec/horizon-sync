@@ -1,3 +1,5 @@
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
+
 import { useItemGroupManagement } from '../../hooks/useItemGroupManagement';
 
 import { ItemGroupDetailDialog } from './ItemGroupDetailDialog';
@@ -28,11 +30,14 @@ export function ItemGroupManagement() {
     handleDelete,
     handleTableReady,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   } = useItemGroupManagement();
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <ItemGroupManagementHeader onCreateGroup={handleCreate} />
+      <ItemGroupManagementHeader onCreateGroup={handleCreate} onImportSuccess={refetch} itemGroups={itemGroups} />
 
       <ItemGroupStats total={stats.total} active={stats.active} />
 
@@ -61,6 +66,17 @@ export function ItemGroupManagement() {
       <ItemGroupDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         itemGroup={selectedGroup}/>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.message || ''}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={executeConfirmedAction}
+      />
     </div>
   );
 }

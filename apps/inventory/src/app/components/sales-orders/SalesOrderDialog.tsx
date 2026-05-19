@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 
  
-import { useUserStore } from '@horizon-sync/store';
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 
 import type { CustomerResponse } from '../../types/customer.types';
@@ -181,7 +181,7 @@ const DEFAULT_FORM: SalesOrderFormData = {
   customer_id: '',
   order_date: new Date().toISOString().slice(0, 10),
   delivery_date: '',
-  currency: 'INR',
+  currency: 'USD',
   status: 'draft',
   remarks: '',
   discount_type: 'percentage',
@@ -224,9 +224,10 @@ function getDialogTitle(isEdit: boolean): string {
 
 export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, saving }: SalesOrderDialogProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency) || 'USD';
   const isEdit = !!salesOrder;
 
-  const [formData, setFormData] = React.useState<SalesOrderFormData>({ ...DEFAULT_FORM });
+  const [formData, setFormData] = React.useState<SalesOrderFormData>({ ...DEFAULT_FORM, currency: baseCurrency });
   const [items, setItems] = React.useState<QuotationLineItemCreate[]>([{ ...emptyItem, sort_order: 1 }]);
 
   const { data: customersData } = useQuery<CustomerResponse>({
@@ -239,9 +240,13 @@ export function SalesOrderDialog({ open, onOpenChange, salesOrder, onSave, savin
 
   const initializeFormData = React.useCallback(() => {
     const derived = deriveFormData(salesOrder);
+    // Use base currency from store for new sales orders
+    if (!salesOrder) {
+      derived.form.currency = baseCurrency;
+    }
     setFormData(derived.form);
     setItems(derived.items);
-  }, [salesOrder]);
+  }, [salesOrder, baseCurrency]);
 
   React.useEffect(() => { initializeFormData(); }, [initializeFormData, open]);
 

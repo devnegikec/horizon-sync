@@ -4,6 +4,7 @@ import { useUserStore } from '@horizon-sync/store';
 
 import type { InvoiceForAllocation } from '../types/payment.types';
 import { invoiceApi } from '../utility/api/invoices';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 /**
  * Fetches invoices for a party that have outstanding balance > 0, for payment allocation.
@@ -64,7 +65,7 @@ export function useOutstandingInvoicesForAllocation(
       }));
       setInvoices(mapped);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load invoices');
+      setError(getFriendlyErrorMessage(err));
       setInvoices([]);
     } finally {
       setLoading(false);

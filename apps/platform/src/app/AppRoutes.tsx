@@ -6,7 +6,7 @@ import { DashboardLayout, DashboardHome, AuthGuard, PublicRoute } from './compon
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PlaceholderPage } from './components/PlaceholderPage';
 import BankingRoutes from './features/banking/BankingRoutes';
-import { RegisterPage, LoginPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage } from './pages';
+import { RegisterPage, LoginPage, AcceptInvitationPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage } from './pages';
 import { PublicQRValidation } from './pages/PublicQRValidation';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
@@ -16,6 +16,7 @@ const BooksPage = React.lazy(() => import('inventory/BooksPage'));
 const TaxChargesPage = React.lazy(() => import('inventory/TaxChargesPage'));
 const PaymentsPage = React.lazy(() => import('inventory/PaymentsPage'));
 const QSealPage = React.lazy(() => import('inventory/QSealPage'));
+const WMSPage = React.lazy(() => import('inventory/WMSPage'));
 
 export function AppRoutes() {
   return (
@@ -26,6 +27,7 @@ export function AppRoutes() {
       {/* Public routes */}
       <Route path="/login" element={<PublicRouteWrapper element={<LoginPage />} />} />
       <Route path="/register" element={<PublicRouteWrapper element={<RegisterPage />} />} />
+      <Route path="/accept-invitation" element={<PublicRouteWrapper element={<AcceptInvitationPage />} />} />
       <Route path="/forgot-password" element={<PublicRouteWrapper element={<ForgotPasswordPage />} />} />
       <Route path="/reset-password" element={<PublicRouteWrapper element={<ResetPasswordPage />} />} />
       <Route path="/onboarding"
@@ -58,6 +60,7 @@ function ProtectedRouteWrapper() {
           <Route path="/books" element={<BooksPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="/qseal" element={<QSealPage />} />
+          <Route path="/wms" element={<WMSPage />} />
           <Route path="/tax-charges" element={<TaxChargesPage />} />
           <Route path="/subscriptions" element={<SubscriptionManagementPage />} />
           <Route path="/analytics" element={<AnalyticsPlaceholder />} />

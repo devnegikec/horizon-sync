@@ -1,3 +1,4 @@
+import { getFriendlyErrorMessage } from '../utility/api/core';
 import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
@@ -46,7 +47,7 @@ export function useCustomerActions() {
         console.error('Error updating customer status:', error);
         toast({
           title: 'Error',
-          description: error instanceof Error ? error.message : 'Failed to update customer status',
+          description: getFriendlyErrorMessage(error),
           variant: 'destructive',
         });
       } finally {
@@ -61,3 +62,4 @@ export function useCustomerActions() {
     loading,
   };
 }
+

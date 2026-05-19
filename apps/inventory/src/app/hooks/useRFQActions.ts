@@ -4,6 +4,7 @@ import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { rfqApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export function useRFQActions() {
   const accessToken = useUserStore((s) => s.accessToken);
@@ -29,7 +30,7 @@ export function useRFQActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to send RFQ';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -60,7 +61,7 @@ export function useRFQActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to close RFQ';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -91,7 +92,7 @@ export function useRFQActions() {
       });
       return true;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete RFQ';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -110,3 +111,4 @@ export function useRFQActions() {
     deleteRFQ,
   };
 }
+

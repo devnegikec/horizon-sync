@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useItems } from '../../hooks/useItems';
@@ -76,6 +77,7 @@ export function SupplierManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedItemSupplier, setSelectedItemSupplier] = useState<ItemSupplier | null>(null);
   const [tableInstance, setTableInstance] = useState<Table<ItemSupplier> | null>(null);
+  const [confirmDeleteLink, setConfirmDeleteLink] = useState<ItemSupplier | null>(null);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -113,18 +115,19 @@ export function SupplierManagement() {
     setDialogOpen(true);
   };
 
-  const handleDeleteLink = async (itemSupplier: ItemSupplier) => {
-    const itemName = itemMap.get(itemSupplier.item_id) || 'this item';
-    const supplierName = supplierMap.get(itemSupplier.supplier_id) || 'this supplier';
+  const handleDeleteLink = (itemSupplier: ItemSupplier) => {
+    setConfirmDeleteLink(itemSupplier);
+  };
 
-    if (window.confirm(`Are you sure you want to remove the link between "${itemName}" and "${supplierName}"?`)) {
-      try {
-        await deleteItemSupplier(itemSupplier.id);
-        refetch();
-      } catch {
-        // Error handled in hook
-      }
+  const executeDeleteLink = async () => {
+    if (!confirmDeleteLink) return;
+    try {
+      await deleteItemSupplier(confirmDeleteLink.id);
+      refetch();
+    } catch {
+      // Error handled in hook
     }
+    setConfirmDeleteLink(null);
   };
 
   const handleTableReady = (table: Table<ItemSupplier>) => {
@@ -251,6 +254,17 @@ export function SupplierManagement() {
         }))}
         onCreated={refetch}
         onUpdated={refetch}/>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmDeleteLink}
+        onOpenChange={(open) => { if (!open) setConfirmDeleteLink(null); }}
+        title="Remove Supplier Link"
+        description={confirmDeleteLink ? `Are you sure you want to remove the link between "${itemMap.get(confirmDeleteLink.item_id) || 'this item'}" and "${supplierMap.get(confirmDeleteLink.supplier_id) || 'this supplier'}"?` : ''}
+        confirmLabel="Remove"
+        variant="destructive"
+        onConfirm={executeDeleteLink}
+      />
     </div>
   );
 }

@@ -1,8 +1,10 @@
 import * as React from 'react';
 
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { TooltipProvider } from '@horizon-sync/ui/components/ui/tooltip';
 
+import { environment } from '../../environments/environment';
 import { OrganizationGuard } from './OrganizationGuard';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
@@ -15,6 +17,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
   const [isMobile, setIsMobile] = React.useState(false);
+
+  // Fetch currencies on mount so the base currency is available everywhere
+  const accessToken = useUserStore((s) => s.accessToken);
+  const fetchCurrencies = useCurrencyStore((s) => s.fetchCurrencies);
+  React.useEffect(() => {
+    if (accessToken && environment.apiCoreUrl) {
+      fetchCurrencies(environment.apiCoreUrl, accessToken);
+    }
+  }, [accessToken, fetchCurrencies]);
 
   // Detect mobile/desktop on mount and resize
   React.useEffect(() => {

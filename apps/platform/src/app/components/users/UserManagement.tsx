@@ -1,7 +1,7 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 
 import { type Table } from '@tanstack/react-table';
-import { Users, UserCheck, UserLockIcon, Shield, Download, UserPlus } from 'lucide-react';
+import { Users, UserCheck, UserLockIcon, Shield, Download, Loader2, UserPlus } from 'lucide-react';
 
 import {
   Card,
@@ -17,8 +17,8 @@ import {
 } from '@horizon-sync/ui/components';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { useAuth } from '../../hooks';
-import { useUsers } from '../../hooks/useUsers';
+import { environment } from '../../../environments/environment';
+import { useAuth, useUsers } from '../../hooks';
 import type { User, UserFilters } from '../../types/user.types';
 
 import { InviteUserModal } from '../InviteUserModal';
@@ -52,7 +52,7 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 }
 
 export function UserManagement() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [filters, setFilters] = useState<UserFilters>({
     search: '',
     status: 'all',
@@ -63,6 +63,7 @@ export function UserManagement() {
     users,
     pagination,
     statusCounts,
+    pendingInvitationCount,
     loading,
     error,
     refetch,
@@ -70,23 +71,78 @@ export function UserManagement() {
     setPageSize,
     currentPage,
     currentPageSize,
-  } = useUsers(1, 20, filters, accessToken);
+  } = useUsers(1, 20, filters, accessToken, user?.organization_id);
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [tableInstance, setTableInstance] = useState<Table<User> | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    if (!accessToken) return;
+    setIsExporting(true);
+    try {
+      const USERS_URL = `${environment.apiBaseUrl}/api/v1/identity/users`;
+      let all: User[] = [];
+      let page = 1;
+      let totalPages = 1;
+
+      do {
+        const params = new URLSearchParams({ page: String(page), page_size: '100' });
+        const res = await fetch(`${USERS_URL}?${params}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!res.ok) break;
+        const data = await res.json() as { users: User[]; pagination: { total_pages: number } };
+        all = all.concat(data.users ?? []);
+        totalPages = data.pagination?.total_pages ?? 1;
+        page++;
+      } while (page <= totalPages);
+
+      const headers = ['Email', 'First Name', 'Last Name', 'Display Name', 'User Type', 'Status', 'Email Verified', 'Created At'];
+      const rows = all.map((u) => [
+        u.email ?? '',
+        u.first_name ?? '',
+        u.last_name ?? '',
+        u.display_name ?? '',
+        u.user_type ?? '',
+        u.status ?? '',
+        u.email_verified ? 'Yes' : 'No',
+        u.created_at ?? '',
+      ]);
+
+      const csv = [headers.join(','), ...rows.map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'users.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [accessToken]);
+
 
   // Reset to first page when filters change
   useEffect(() => {
     setPage(1);
   }, [filters, setPage]);
 
+  const visibleUsers = useMemo(
+    () => users.filter((item) => item.id !== user?.id),
+    [users, user?.id]
+  );
+
   const stats = useMemo(() => {
     const total = pagination?.total_items ?? 0;
     const active = statusCounts?.active ?? 0;
-    const pending = statusCounts?.pending ?? 0;
+    const pending = pendingInvitationCount;
     const mfaEnabled = statusCounts?.mfa_enabled ?? 0;
     return { total, active, pending, mfaEnabled };
-  }, [pagination, statusCounts]);
+  }, [pagination, pendingInvitationCount, statusCounts]);
 
   const handleInviteUser = () => {
     setInviteModalOpen(true);
@@ -122,9 +178,12 @@ export function UserManagement() {
           <p className="text-muted-foreground mt-1">Manage team members, roles, and access permissions</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
+          <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
+            {isExporting ? (
+              <><Loader2 className="h-4 w-4 animate-spin" />Exporting...</>
+            ) : (
+              <><Download className="h-4 w-4" />Export</>
+            )}
           </Button>
           <Button onClick={handleInviteUser}
             className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
@@ -184,7 +243,8 @@ export function UserManagement() {
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="user">User</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="organization_admin">Admin</SelectItem>
+                <SelectItem value="guest">Guest</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -193,7 +253,7 @@ export function UserManagement() {
       </div>
 
       {/* Users Table */}
-      <UsersTable users={users}
+      <UsersTable users={visibleUsers}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.status !== 'all' || filters.userType !== 'all'}

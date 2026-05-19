@@ -9,6 +9,9 @@ import {
   RefreshResponse,
   ForgotPasswordPayload,
   ResetPasswordPayload,
+  AcceptInvitationPayload,
+  AcceptInvitationResponse,
+  InvitationValidateResponse,
   ApiErrorResponse,
   UserType,
 } from './auth.types';
@@ -19,7 +22,7 @@ const API_BASE_URL = environment.apiBaseUrl;
  * Utility function to handle API errors consistently
  */
 async function handleApiError(response: Response): Promise<never> {
-  let message = `HTTP error! status: ${response.status}`;
+  let message = '';
 
   try {
     const errorData: ApiErrorResponse = await response.json();
@@ -31,10 +34,15 @@ async function handleApiError(response: Response): Promise<never> {
       message = errorData;
     } else if (errorData && typeof errorData === 'object') {
       // Handle validation errors or other structured errors
-      message = JSON.stringify(errorData);
+      const msg = (errorData as unknown as Record<string, unknown>).message || (errorData as unknown as Record<string, unknown>).detail;
+      message = typeof msg === 'string' ? msg : '';
     }
   } catch {
-    // If JSON parsing fails, use status-based messages
+    // JSON parsing failed (e.g., nginx HTML response for 502)
+  }
+
+  // If no message extracted from response body, use status-based friendly messages
+  if (!message) {
     switch (response.status) {
       case 400:
         message = 'Invalid request. Please check your input and try again.';
@@ -54,11 +62,22 @@ async function handleApiError(response: Response): Promise<never> {
       case 422:
         message = 'Validation error. Please check your input.';
         break;
+      case 423:
+        message = 'Your account has been locked. Please contact support.';
+        break;
+      case 429:
+        message = 'Too many attempts. Please wait a moment and try again.';
+        break;
       case 500:
-        message = 'Server error. Please try again later.';
+        message = 'An unexpected server error occurred. Please try again later.';
+        break;
+      case 502:
+      case 503:
+      case 504:
+        message = 'The service is temporarily unavailable. Please try again in a few moments.';
         break;
       default:
-        message = `HTTP error! status: ${response.status}`;
+        message = 'Something went wrong. Please try again later.';
     }
   }
 
@@ -114,8 +133,11 @@ async function apiRequest<T>(
     return responseData;
   } catch (error) {
     console.error('API request error:', error);
+    if (error instanceof TypeError && (error.message === 'Failed to fetch' || error.message.includes('NetworkError'))) {
+      throw new Error('Unable to connect to the server. Please check your internet connection or try again later.');
+    }
     if (error instanceof Error) throw error;
-    throw new Error('An unexpected error occurred');
+    throw new Error('An unexpected error occurred. Please try again later.');
   }
 }
 
@@ -129,12 +151,18 @@ async function apiRequest<T>(
  */
 async function loginWithCredentials(payload: LoginPayload): Promise<LoginResponse> {
   const url = `${API_BASE_URL}/api/v1/identity/login`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-    credentials: 'include',
-  });
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      credentials: 'include',
+    });
+  } catch {
+    throw new Error('Unable to connect to the server. Please check your internet connection or try again later.');
+  }
 
   if (!response.ok) {
     await handleApiError(response);
@@ -147,6 +175,14 @@ async function loginWithCredentials(payload: LoginPayload): Promise<LoginRespons
 export class AuthService {
   static async register(payload: RegisterPayload): Promise<RegisterResponse> {
     return apiRequest<RegisterResponse>('/identity/register', 'POST', payload);
+  }
+
+  static async validateInvitationToken(token: string): Promise<InvitationValidateResponse> {
+    return apiRequest<InvitationValidateResponse>(`/identity/invitations/validate/${encodeURIComponent(token)}`, 'GET');
+  }
+
+  static async acceptInvitation(payload: AcceptInvitationPayload): Promise<AcceptInvitationResponse> {
+    return apiRequest<AcceptInvitationResponse>('/identity/invitations/accept', 'POST', payload);
   }
 
   /**

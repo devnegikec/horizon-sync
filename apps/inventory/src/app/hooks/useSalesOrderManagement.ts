@@ -21,6 +21,7 @@ import type { WarehousesResponse } from '../types/warehouse.types';
 import { salesOrderApi } from '../utility/api/sales-orders';
 import { stockLevelApi } from '../utility/api/stock';
 import { warehouseApi } from '../utility/api/warehouses';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface SalesOrderFilters {
   search: string;
@@ -76,7 +77,7 @@ function useSalesOrders(
 
   const salesOrders = (data?.sales_orders ?? []) as unknown as SalesOrder[];
   const pagination = data?.pagination ?? null;
-  const error = queryError ? (queryError instanceof Error ? queryError.message : 'Failed to load sales orders') : null;
+  const error = queryError ? getFriendlyErrorMessage(queryError) : null;
 
   return { salesOrders, pagination, loading, error, refetch };
 }
@@ -192,7 +193,7 @@ export function useSalesOrderManagement() {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete sales order',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -208,7 +209,7 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load sales order details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -230,11 +231,14 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load sales order details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
   }, [accessToken, toast]);
+
+  // Confirmation dialog state
+  const [confirmAction, setConfirmAction] = React.useState<{ type: string; item: SalesOrder; title: string; message: string } | null>(null);
 
   const handleDelete = React.useCallback((salesOrder: SalesOrder) => {
     if (salesOrder.status !== 'draft') {
@@ -246,10 +250,21 @@ export function useSalesOrderManagement() {
       return;
     }
 
-    if (confirm(`Are you sure you want to delete sales order ${salesOrder.sales_order_no}?`)) {
-      deleteMutation.mutate(salesOrder.id);
+    setConfirmAction({
+      type: 'delete',
+      item: salesOrder,
+      title: 'Delete Sales Order',
+      message: `Are you sure you want to delete sales order ${salesOrder.sales_order_no}?`,
+    });
+  }, [toast]);
+
+  const executeConfirmedAction = React.useCallback(() => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'delete') {
+      deleteMutation.mutate(confirmAction.item.id);
     }
-  }, [deleteMutation, toast]);
+    setConfirmAction(null);
+  }, [confirmAction, deleteMutation]);
 
   const handleCreateInvoice = React.useCallback(async (salesOrder: SalesOrder) => {
     if (!accessToken) return;
@@ -262,7 +277,7 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load sales order details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -278,7 +293,7 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load sales order details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -313,6 +328,7 @@ export function useSalesOrderManagement() {
       } else {
         await salesOrderApi.create(accessToken, data);
         toast({ title: 'Success', description: 'Sales order created successfully' });
+        setPage(1);
       }
       queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
       queryClient.invalidateQueries({ queryKey: ['stock-levels'] });
@@ -321,7 +337,7 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save sales order',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;
@@ -343,7 +359,7 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to create invoice',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;
@@ -389,7 +405,7 @@ export function useSalesOrderManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to create delivery note',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;
@@ -440,5 +456,8 @@ export function useSalesOrderManagement() {
     handleConvertToInvoice,
     handleConvertToDeliveryNote,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   };
 }

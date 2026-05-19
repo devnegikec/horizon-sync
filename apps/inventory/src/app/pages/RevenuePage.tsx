@@ -5,6 +5,7 @@ import { DollarSign, Package, Users, Truck, FileText, ShoppingCart, ClipboardLis
 
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
+import { Toaster } from '@horizon-sync/ui/components/ui/toaster';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { CustomerManagement } from '../components/customers';
@@ -12,7 +13,8 @@ import { DeliveryNoteManagement } from '../components/delivery-notes';
 import { PickListManagement } from '../components/picklist';
 import { QuotationManagement } from '../components/quotations';
 import { SalesOrderManagement } from '../components/sales-orders';
-import { useFeatureVisibility, useFeatureVisibilities } from '@horizon-sync/ui/hooks';
+import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
+import { useUserStore } from '@horizon-sync/store';
 import { environment } from '../../environments/environment';
 import { INVOICES_ENABLED } from '@horizon-sync/ui';
 import type { Invoice } from '../types/invoice';
@@ -46,9 +48,10 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 export function RevenuePage() {
   const [activeView, setActiveView] = React.useState<ActiveView>('customers');
   const [preSelectedInvoice, setPreSelectedInvoice] = React.useState<Invoice | null>(null);
+  const accessToken = useUserStore((s) => s.accessToken);
 
   // Feature flag visibility with loading state to prevent flash
-  const invoicesFlagStates = useFeatureVisibilities([INVOICES_ENABLED], `${environment.apiCoreUrl}/api/v1`);
+  const invoicesFlagStates = useFeatureVisibilities([INVOICES_ENABLED], `${environment.apiCoreUrl}/api/v1`, accessToken);
   const invoicesFlag = invoicesFlagStates[INVOICES_ENABLED];
   const invoicesFlagLoading = invoicesFlag?.loading ?? true;
 
@@ -135,6 +138,7 @@ export function RevenuePage() {
           </main>
         </div>
       </ThemeProvider>
+      <Toaster />
     </QueryClientProvider>
   );
 }

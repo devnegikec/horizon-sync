@@ -3,35 +3,66 @@
  * Calls GET /api/v1/feature-flags/evaluate/{flagName}
  * and returns { visible, enabled, loading }.
  *
- * Safe defaults: visible=true, enabled=true while loading or on error.
+ * SECURITY: Defaults to visible=false (deny by default).
+ * Features are only shown when the API explicitly confirms enabled=true.
+ * Successful responses are cached in sessionStorage so that if core-service
+ * goes down mid-session, the last-known state is preserved rather than
+ * hiding features the user was already using.
+ *
+ * NOTE: This hook does NOT import from @horizon-sync/store to avoid
+ * Module Federation circular dependency. The accessToken must be passed
+ * as a parameter by the consuming app.
  */
 import { useEffect, useState } from 'react';
-
-import { useUserStore } from '@horizon-sync/store';
 
 interface FeatureFlagState {
   visible: boolean;
   enabled: boolean;
   loading: boolean;
+  error?: boolean;
 }
 
-export function useFeatureVisibility(flagName: string, apiBaseUrl?: string): FeatureFlagState {
-  const accessToken = useUserStore((s) => s.accessToken);
-  const [state, setState] = useState<FeatureFlagState>({
-    visible: true,
-    enabled: true,
-    loading: true,
+const CACHE_PREFIX = 'ff_cache_';
+
+function getCachedState(flagName: string): FeatureFlagState | null {
+  try {
+    const raw = sessionStorage.getItem(`${CACHE_PREFIX}${flagName}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed.visible === 'boolean' && typeof parsed.enabled === 'boolean') {
+      return { visible: parsed.visible, enabled: parsed.enabled, loading: false };
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return null;
+}
+
+function setCachedState(flagName: string, state: { visible: boolean; enabled: boolean }) {
+  try {
+    sessionStorage.setItem(`${CACHE_PREFIX}${flagName}`, JSON.stringify(state));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function useFeatureVisibility(flagName: string, apiBaseUrl?: string, accessToken?: string | null): FeatureFlagState {
+  const [state, setState] = useState<FeatureFlagState>(() => {
+    // On mount, check cache first — if we have a previous successful response, use it
+    const cached = getCachedState(flagName);
+    if (cached) return { ...cached, loading: true }; // still loading to refresh, but show cached
+    // Deny by default — hidden until confirmed
+    return { visible: false, enabled: false, loading: true };
   });
 
   useEffect(() => {
     if (!accessToken || !flagName) {
-      setState({ visible: true, enabled: true, loading: false });
+      // No auth — deny access
+      setState({ visible: false, enabled: false, loading: false });
       return;
     }
 
-    // Default API base URL if not provided
     const baseUrl = apiBaseUrl || '/api/v1';
-
     let cancelled = false;
 
     fetch(
@@ -42,15 +73,20 @@ export function useFeatureVisibility(flagName: string, apiBaseUrl?: string): Fea
       .then((data) => {
         if (cancelled) return;
         if (data && typeof data.visible === 'boolean') {
-          setState({ visible: data.visible, enabled: data.enabled, loading: false });
+          const newState = { visible: data.visible, enabled: data.enabled, loading: false };
+          setState(newState);
+          setCachedState(flagName, { visible: data.visible, enabled: data.enabled });
         } else {
-          setState({ visible: true, enabled: true, loading: false });
+          // Non-OK response or unexpected shape — use cache or deny
+          const cached = getCachedState(flagName);
+          setState(cached || { visible: false, enabled: false, loading: false, error: true });
         }
       })
       .catch(() => {
-        if (!cancelled) {
-          setState({ visible: true, enabled: true, loading: false });
-        }
+        if (cancelled) return;
+        // Network error (core-service down) — use cache or deny
+        const cached = getCachedState(flagName);
+        setState(cached || { visible: false, enabled: false, loading: false, error: true });
       });
 
     return () => {
@@ -61,17 +97,17 @@ export function useFeatureVisibility(flagName: string, apiBaseUrl?: string): Fea
   return state;
 }
 
-export function useFeatureVisibilities(flagNames: string[], apiBaseUrl?: string): Record<string, FeatureFlagState> {
-  const accessToken = useUserStore((s) => s.accessToken);
-
+export function useFeatureVisibilities(flagNames: string[], apiBaseUrl?: string, accessToken?: string | null): Record<string, FeatureFlagState> {
   // Serialize to a stable string so the effect doesn't re-run on every render
-  // when the caller passes an inline array literal.
   const flagNamesKey = flagNames.slice().sort().join(',');
 
   const [states, setStates] = useState<Record<string, FeatureFlagState>>(() => {
     const initial: Record<string, FeatureFlagState> = {};
     flagNames.forEach(flagName => {
-      initial[flagName] = { visible: true, enabled: true, loading: true };
+      const cached = getCachedState(flagName);
+      initial[flagName] = cached
+        ? { ...cached, loading: true }
+        : { visible: false, enabled: false, loading: true };
     });
     return initial;
   });
@@ -82,34 +118,44 @@ export function useFeatureVisibilities(flagNames: string[], apiBaseUrl?: string)
     if (!accessToken || !names.length) {
       const defaults: Record<string, FeatureFlagState> = {};
       names.forEach(flagName => {
-        defaults[flagName] = { visible: true, enabled: true, loading: false };
+        defaults[flagName] = { visible: false, enabled: false, loading: false };
       });
       setStates(defaults);
       return;
     }
 
-    // Default API base URL if not provided
     const baseUrl = apiBaseUrl || '/api/v1';
-
     let cancelled = false;
 
-    // Fetch all flags in parallel
     const promises = names.map(flagName =>
       fetch(
         `${baseUrl}/feature-flags/evaluate/${flagName}`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       )
         .then((res) => res.ok ? res.json() : null)
-        .then((data) => ({
-          flagName,
-          state: data && typeof data.visible === 'boolean'
-            ? { visible: data.visible, enabled: data.enabled, loading: false }
-            : { visible: true, enabled: true, loading: false }
-        }))
-        .catch(() => ({
-          flagName,
-          state: { visible: true, enabled: true, loading: false }
-        }))
+        .then((data) => {
+          if (data && typeof data.visible === 'boolean') {
+            setCachedState(flagName, { visible: data.visible, enabled: data.enabled });
+            return {
+              flagName,
+              state: { visible: data.visible, enabled: data.enabled, loading: false } as FeatureFlagState
+            };
+          }
+          // Unexpected response — use cache or deny
+          const cached = getCachedState(flagName);
+          return {
+            flagName,
+            state: cached || { visible: false, enabled: false, loading: false, error: true } as FeatureFlagState
+          };
+        })
+        .catch(() => {
+          // Network error — use cache or deny
+          const cached = getCachedState(flagName);
+          return {
+            flagName,
+            state: cached || { visible: false, enabled: false, loading: false, error: true } as FeatureFlagState
+          };
+        })
     );
 
     Promise.all(promises).then((results) => {

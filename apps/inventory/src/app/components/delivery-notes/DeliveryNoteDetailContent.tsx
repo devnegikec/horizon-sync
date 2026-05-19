@@ -5,6 +5,8 @@ import { Package, DollarSign } from 'lucide-react';
 import { Badge, Separator } from '@horizon-sync/ui/components';
 
 import type { DeliveryNote, DeliveryNoteItem } from '../../types/delivery-note.types';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '../../types/currency.types';
 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return '—';
@@ -26,9 +28,9 @@ function formatDateTime(dateStr: string | null | undefined) {
   });
 }
 
-function formatCurrency(value: string | number | null | undefined) {
+function formatCurrency(value: string | number | null | undefined, currencySymbol = getCurrencySymbol('USD')) {
   if (value == null) return '—';
-  return `$${Number(value).toFixed(2)}`;
+  return `${currencySymbol}${Number(value).toFixed(2)}`;
 }
 
 function InfoField({ label, value }: { label: string; value: string }) {
@@ -80,13 +82,13 @@ function ReferencesPanel({ dn }: { dn: DeliveryNote }) {
         <InfoField label="Type" value={refType} />
         <InfoField label="Name" value={refName} />
         <InfoField label="Code" value={refCode} />
-        {dn.pick_list_id && <InfoField label="Pick List" value={dn.pick_list_id} />}
+        {dn.pick_list_no && <InfoField label="Pick List" value={dn.pick_list_no || dn.pick_list_no} />}
       </div>
     </div>
   );
 }
 
-function ItemRow({ item, index }: { item: DeliveryNoteItem; index: number }) {
+function ItemRow({ item, index, currencySymbol }: { item: DeliveryNoteItem; index: number; currencySymbol: string }) {
   return (
     <tr className="hover:bg-muted/30">
       <td className="px-4 py-3 text-sm text-muted-foreground">{index + 1}</td>
@@ -101,8 +103,8 @@ function ItemRow({ item, index }: { item: DeliveryNoteItem; index: number }) {
       </td>
       <td className="px-4 py-3 text-right text-sm font-medium">{Number(item.qty).toFixed(3)}</td>
       <td className="px-4 py-3"><Badge variant="outline" className="text-xs">{item.uom}</Badge></td>
-      <td className="px-4 py-3 text-right text-sm">{formatCurrency(item.rate)}</td>
-      <td className="px-4 py-3 text-right text-sm font-semibold">{formatCurrency(item.amount)}</td>
+      <td className="px-4 py-3 text-right text-sm">{formatCurrency(item.rate, currencySymbol)}</td>
+      <td className="px-4 py-3 text-right text-sm font-semibold">{formatCurrency(item.amount, currencySymbol)}</td>
       <td className="px-4 py-3 text-xs text-muted-foreground">
         {item.batch_no ?? (item.serial_nos?.length ? item.serial_nos.join(', ') : '—')}
       </td>
@@ -110,7 +112,7 @@ function ItemRow({ item, index }: { item: DeliveryNoteItem; index: number }) {
   );
 }
 
-function ItemsTable({ items }: { items: DeliveryNoteItem[] }) {
+function ItemsTable({ items, currencySymbol }: { items: DeliveryNoteItem[]; currencySymbol: string }) {
   if (!items || items.length === 0) {
     return (
       <div className="rounded-lg border">
@@ -138,16 +140,15 @@ function ItemsTable({ items }: { items: DeliveryNoteItem[] }) {
           </thead>
           <tbody className="divide-y">
             {items.map((item, idx) => (
-              <ItemRow key={item.id} item={item} index={idx} />
+              <ItemRow key={item.id} item={item} index={idx} currencySymbol={currencySymbol} />
             ))}
           </tbody>
         </table>
       </div>
       <div className="flex justify-end">
         <div className="flex items-center gap-3 bg-muted/50 rounded-lg px-6 py-3">
-          <DollarSign className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium text-muted-foreground">Grand Total</span>
-          <span className="text-lg font-bold">{formatCurrency(grandTotal)}</span>
+          <span className="text-lg font-bold">{formatCurrency(grandTotal, currencySymbol)}</span>
         </div>
       </div>
     </>
@@ -155,6 +156,8 @@ function ItemsTable({ items }: { items: DeliveryNoteItem[] }) {
 }
 
 export function DeliveryNoteDetailContent({ deliveryNote }: { deliveryNote: DeliveryNote }) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(deliveryNote.currency || baseCurrency || 'USD');
   return (
     <div className="p-2 space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -167,7 +170,7 @@ export function DeliveryNoteDetailContent({ deliveryNote }: { deliveryNote: Deli
 
       <div className="space-y-4">
         <h3 className="text-lg font-bold">Line Items ({deliveryNote.items?.length ?? 0})</h3>
-        <ItemsTable items={deliveryNote.items ?? []} />
+        <ItemsTable items={deliveryNote.items ?? []} currencySymbol={currencySymbol} />
       </div>
 
       {deliveryNote.remarks && (

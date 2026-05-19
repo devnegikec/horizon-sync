@@ -12,6 +12,7 @@ import type {
   CreateStockReconciliationPayload,
 } from '../types/stock.types';
 import { stockMovementApi, stockEntryApi, stockReconciliationApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 // Export query hooks from their individual files
 export { useStockLevels } from './useStockLevels';
@@ -40,7 +41,7 @@ export function useStockMovementMutations(): UseStockMovementMutationsResult {
         const result = (await stockMovementApi.create(accessToken, data)) as StockMovement;
         return result;
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to create stock movement';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw new Error(message);
       } finally {
@@ -76,7 +77,7 @@ export function useStockEntryMutations(): UseStockEntryMutationsResult {
         const result = (await stockEntryApi.create(accessToken, data)) as StockEntry;
         return result;
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to create stock entry';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw new Error(message);
       } finally {
@@ -95,7 +96,7 @@ export function useStockEntryMutations(): UseStockEntryMutationsResult {
         const result = (await stockEntryApi.update(accessToken, id, data)) as StockEntry;
         return result;
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to update stock entry';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw new Error(message);
       } finally {
@@ -113,7 +114,7 @@ export function useStockEntryMutations(): UseStockEntryMutationsResult {
       try {
         await stockEntryApi.delete(accessToken, id);
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to delete stock entry';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw new Error(message);
       } finally {
@@ -149,7 +150,7 @@ export function useStockReconciliationMutations(): UseStockReconciliationMutatio
         const result = (await stockReconciliationApi.create(accessToken, data)) as StockReconciliation;
         return result;
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to create reconciliation';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw new Error(message);
       } finally {
@@ -168,7 +169,7 @@ export function useStockReconciliationMutations(): UseStockReconciliationMutatio
         const result = (await stockReconciliationApi.update(accessToken, id, data)) as StockReconciliation;
         return result;
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to update reconciliation';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw new Error(message);
       } finally {
@@ -186,7 +187,7 @@ export function useStockReconciliationMutations(): UseStockReconciliationMutatio
       try {
         await stockReconciliationApi.delete(accessToken, id);
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to delete reconciliation';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw new Error(message);
       } finally {
@@ -198,3 +199,4 @@ export function useStockReconciliationMutations(): UseStockReconciliationMutatio
 
   return { createReconciliation, updateReconciliation, deleteReconciliation, loading, error };
 }
+

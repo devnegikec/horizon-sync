@@ -5,6 +5,7 @@ import { useUserStore } from '@horizon-sync/store';
 import { environment } from '../../environments/environment';
 import type { StockLevel, StockLevelsResponse, StockLevelStats, StockLevelFilters } from '../types/stock.types';
 import { buildUrl, buildPaginationParams } from '../utility';
+import { getHttpErrorMessage, getFriendlyErrorMessage } from '../utility/api/core';
 
 const STOCK_LEVELS_URL = `${environment.apiCoreUrl}/stock-levels`;
 
@@ -90,8 +91,7 @@ export function useStockLevels(options: {
       });
 
       if (!res.ok) {
-        const message = `Error ${res.status}: ${res.statusText}`;
-        throw new Error(message);
+        throw new Error(getHttpErrorMessage(res.status));
       }
 
       const data = (await res.json()) as StockLevelsResponse;
@@ -107,8 +107,7 @@ export function useStockLevels(options: {
         setStats(calculatedStats);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load stock levels';
-      setError(message);
+      setError(getFriendlyErrorMessage(err));
       setStockLevels([]);
       setPagination(null);
       setStats(null);

@@ -17,6 +17,8 @@ import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
 import {
   Select,
   SelectContent,
@@ -77,6 +79,8 @@ interface MasterOrgSetupProps {
 export function MasterOrgSetup({ className = '' }: MasterOrgSetupProps) {
   const [activeTab, setActiveTab] = useState<'organization' | 'subscription' | 'system' | 'users' | 'featureControls'>('organization');
   const { canModifySystemSettings } = usePermissions();
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
 
   // Use hooks for data fetching
   const { data: settings, isLoading: settingsLoading, error: settingsError } = useSystemSettings();
@@ -255,7 +259,6 @@ export function MasterOrgSetup({ className = '' }: MasterOrgSetupProps) {
       </Card>
     );
   }
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Tab Navigation */}
@@ -277,7 +280,7 @@ export function MasterOrgSetup({ className = '' }: MasterOrgSetupProps) {
               : 'text-muted-foreground hover:text-foreground'
             }`}
         >
-          <DollarSign className="h-4 w-4 inline-block mr-2" />
+          <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
           Subscription
         </button>
         <button
@@ -439,7 +442,7 @@ export function MasterOrgSetup({ className = '' }: MasterOrgSetupProps) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+              <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
               Subscription & Pricing Configuration
             </CardTitle>
             <CardDescription>

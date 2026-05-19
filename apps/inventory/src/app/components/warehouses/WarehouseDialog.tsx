@@ -8,9 +8,11 @@ import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
+import { cn } from '@horizon-sync/ui/lib';
 
 import { useWarehouseMutations } from '../../hooks/useWarehouses';
 import type { Warehouse, CreateWarehousePayload, WarehouseType } from '../../types/warehouse.types';
+import { warehouseFormSchema, isAtMaxLength } from '../../utility/validation-schemas';
 
 interface WarehouseDialogProps {
   open: boolean;
@@ -50,6 +52,7 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
     is_default: false,
   });
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
 
   const isEditing = !!warehouse;
 
@@ -103,10 +106,30 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    setFieldErrors({});
+
+    // Validate with Zod schema
+    const validationData = {
+      ...formData,
+      total_capacity: formData.total_capacity ? parseInt(formData.total_capacity, 10) : undefined,
+      is_active: formData.is_active,
+      is_default: formData.is_default,
+    };
+
+    const result = warehouseFormSchema.safeParse(validationData);
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        const path = issue.path.join('.');
+        if (!errors[path]) errors[path] = issue.message;
+      });
+      setFieldErrors(errors);
+      return;
+    }
 
     const payload: CreateWarehousePayload = {
       name: formData.name,
-      code: formData.code,
+      code: isEditing ? formData.code : undefined,
       description: formData.description || undefined,
       warehouse_type: formData.warehouse_type,
       parent_warehouse_id: formData.parent_warehouse_id || undefined,
@@ -162,10 +185,11 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
               <div className="space-y-2">
                 <Label htmlFor="code">Warehouse Code</Label>
                 <Input id="code"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  placeholder="e.g., WH-MAIN"
-                  required/>
+                  value={isEditing ? formData.code : ''}
+                  placeholder="Auto-generated"
+                  disabled
+                  className="bg-muted/50 cursor-not-allowed"/>
+                <p className="text-xs text-muted-foreground">{isEditing ? 'Code cannot be changed' : 'Will be auto-generated on save'}</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="warehouse_type">Type</Label>
@@ -186,12 +210,16 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="name">Warehouse Name</Label>
+              <Label htmlFor="name">Warehouse Name <span className="text-red-500">*</span></Label>
               <Input id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Enter warehouse name"
+                className={cn((fieldErrors['name'] || formData.name.length > 255) && 'border-red-500')}
                 required/>
+              {fieldErrors['name'] && <p className="text-xs text-red-500">{fieldErrors['name']}</p>}
+              {formData.name.length > 255 && <p className="text-xs text-red-500">Cannot exceed 255 characters</p>}
+              <p className={cn('text-xs text-right', isAtMaxLength(formData.name, 255) ? 'text-red-500 font-medium' : 'text-muted-foreground')}>{formData.name.length}/255</p>
             </div>
 
             <div className="space-y-2">
@@ -200,7 +228,11 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Enter warehouse description"
+                className={cn((fieldErrors['description'] || formData.description.length > 1000) && 'border-red-500')}
                 rows={2}/>
+              {fieldErrors['description'] && <p className="text-xs text-red-500">{fieldErrors['description']}</p>}
+              {formData.description.length > 1000 && <p className="text-xs text-red-500">Cannot exceed 1000 characters</p>}
+              <p className={cn('text-xs text-right', isAtMaxLength(formData.description, 1000) ? 'text-red-500 font-medium' : 'text-muted-foreground')}>{formData.description.length}/1000</p>
             </div>
 
             <div className="space-y-2">

@@ -7,7 +7,7 @@ import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectV
 interface TaxTemplateManagementFiltersProps {
   filters: {
     search: string;
-    tax_category: 'all' | 'Input' | 'Output';
+    tax_category: 'all' | 'Input' | 'Output' | 'Both';
     is_active: 'all' | 'true' | 'false';
   };
   onFilterChange: (key: string, value: string) => void;
@@ -41,6 +41,7 @@ export function TaxTemplateManagementFilters({
             <SelectItem value="all">All Categories</SelectItem>
             <SelectItem value="Input">Input (Purchase)</SelectItem>
             <SelectItem value="Output">Output (Sales)</SelectItem>
+            <SelectItem value="Both">Both (Sales & Purchase)</SelectItem>
           </SelectContent>
         </Select>
       </div>

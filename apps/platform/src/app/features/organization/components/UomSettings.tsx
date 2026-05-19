@@ -190,7 +190,7 @@ export function UomSettings({ accessToken, disabled }: UomSettingsProps) {
       },
       {
         id: 'actions',
-        header: '',
+        header: 'Action',
         cell: DeleteCell as ColumnDef<UomRow, string>['cell'],
         size: 50,
       },
@@ -223,21 +223,36 @@ export function UomSettings({ accessToken, disabled }: UomSettingsProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Units of Measure</CardTitle>
-        <CardDescription>
-          Manage units of measure for your organization. Click the save icon to confirm a new unit after filling in the fields.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Units of Measure</CardTitle>
+            <CardDescription>
+              Manage units of measure for your organization. Click the save icon to confirm a new unit after filling in the fields.
+            </CardDescription>
+          </div>
+          {!disabled && (
+            <button
+              type="button"
+              onClick={() => setUoms(prev => [...prev, { ...EMPTY_ROW }])}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 shrink-0"
+            >
+              + Add Unit
+            </button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
-        <EditableDataTable data={uoms}
-          columns={columns}
-          config={config}
-          onDataChange={handleDataChange}
-          enableAddRow={!disabled}
-          enableDeleteRow={false}
-          newRowTemplate={EMPTY_ROW}
-          addRowLabel="Add Unit"
-          heading="" />
+        <div className={uoms.length > 10 ? 'max-h-[480px] overflow-y-auto pr-1' : undefined}>
+          <EditableDataTable data={uoms}
+            columns={columns}
+            config={config}
+            onDataChange={handleDataChange}
+            enableAddRow={false}
+            enableDeleteRow={false}
+            newRowTemplate={EMPTY_ROW}
+            addRowLabel="Add Unit"
+            heading="" />
+        </div>
         {saving && (
           <div className="text-muted-foreground text-sm mt-2">Saving...</div>
         )}

@@ -99,9 +99,17 @@ export function QuotationFormFields({
         <Label htmlFor="remarks">Remarks</Label>
         <Textarea id="remarks"
           value={formData.remarks}
-          onChange={(e) => onFieldChange('remarks', e.target.value)}
+          onChange={(e) => {
+            if (e.target.value.length <= 1000) {
+              onFieldChange('remarks', e.target.value);
+            }
+          }}
+          maxLength={1000}
           placeholder="Additional notes..."
           rows={2} />
+        <p className="text-xs text-muted-foreground text-right">
+          {formData.remarks.length}/1000
+        </p>
       </div>
     </>
   );

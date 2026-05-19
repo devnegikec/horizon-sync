@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
 import type { ItemGroupListItem } from '../../types/item-group.types';
+import { ErrorBanner } from '../common';
 import { formatDate } from '../../utility/formatDate';
 
 export interface ItemGroupsTableProps {
@@ -139,11 +140,7 @@ export function ItemGroupsTable({ itemGroups, loading, error, hasActiveFilters, 
   };
 
   if (error) {
-    return (
-      <Card><CardContent className="p-0">
-        <div className="p-4 text-destructive text-sm border-b">{error}</div>
-      </CardContent></Card>
-    );
+    return <ErrorBanner entity="item groups" message={error} />;
   }
 
   if (loading) {

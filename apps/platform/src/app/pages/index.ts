@@ -1,5 +1,6 @@
 export * from './register';
 export * from './login';
+export * from './accept-invitation';
 export * from './user-management';
 export * from './subscription-management';
 export * from './forgot-password';

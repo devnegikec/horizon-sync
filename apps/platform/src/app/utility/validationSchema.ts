@@ -80,7 +80,26 @@ export const resetPasswordSchema = z
     path: ['confirm_password'],
   });
 
+export const acceptInvitationSchema = z
+  .object({
+    first_name: z.string().max(50).optional(),
+    last_name: z.string().max(50).optional(),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+        'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
+      ),
+    confirm_password: z.string().min(1, 'Please confirm your password'),
+  })
+  .refine((data) => data.password === data.confirm_password, {
+    message: "Passwords don't match",
+    path: ['confirm_password'],
+  });
+
 export type RegisterFormData = z.infer<typeof registerSchema>;
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+export type AcceptInvitationFormData = z.infer<typeof acceptInvitationSchema>;

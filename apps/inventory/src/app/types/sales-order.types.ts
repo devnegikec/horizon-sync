@@ -80,6 +80,7 @@ export interface SalesOrder {
   status: SalesOrderStatus;
   reference_type?: string | null;
   reference_id?: string | null;
+  reference_no?: string | null;
   remarks?: string | null;
   items: SalesOrderLineItem[];
   submitted_at?: string | null;

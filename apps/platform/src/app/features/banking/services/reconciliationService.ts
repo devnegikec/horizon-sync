@@ -10,6 +10,7 @@ import {
     ReconciliationReportFilters,
 } from '../types';
 import { coreApiClient } from '../../../utility/api-core';
+import { ApiError } from '@horizon-sync/utils';
 
 class ReconciliationService {
     // Get unreconciled transactions
@@ -18,10 +19,15 @@ class ReconciliationService {
         dateFrom: string,
         dateTo: string
     ): Promise<UnreconciledTransaction[]> {
-        return coreApiClient.get<UnreconciledTransaction[]>(
-            '/reconciliations/unreconciled-transactions',
-            { bank_account_id: bankAccountId, date_from: dateFrom, date_to: dateTo },
-        );
+        try {
+            return await coreApiClient.get<UnreconciledTransaction[]>(
+                '/reconciliations/unreconciled-transactions',
+                { bank_account_id: bankAccountId, date_from: dateFrom, date_to: dateTo },
+            );
+        } catch (err) {
+            if (err instanceof ApiError && err.isFeatureDisabled) return [];
+            throw err;
+        }
     }
 
     // Get unreconciled journal entries
@@ -30,15 +36,25 @@ class ReconciliationService {
         dateFrom: string,
         dateTo: string
     ): Promise<UnreconciledJournalEntry[]> {
-        return coreApiClient.get<UnreconciledJournalEntry[]>(
-            '/reconciliations/unreconciled-journal-entries',
-            { gl_account_id: glAccountId, date_from: dateFrom, date_to: dateTo },
-        );
+        try {
+            return await coreApiClient.get<UnreconciledJournalEntry[]>(
+                '/reconciliations/unreconciled-journal-entries',
+                { gl_account_id: glAccountId, date_from: dateFrom, date_to: dateTo },
+            );
+        } catch (err) {
+            if (err instanceof ApiError && err.isFeatureDisabled) return [];
+            throw err;
+        }
     }
 
     // Get bank account balance
-    async getBankAccountBalance(bankAccountId: string): Promise<BankAccountBalance> {
-        return coreApiClient.get<BankAccountBalance>(`/bank-accounts/${bankAccountId}/balance`);
+    async getBankAccountBalance(bankAccountId: string): Promise<BankAccountBalance | null> {
+        try {
+            return await coreApiClient.get<BankAccountBalance>(`/bank-accounts/${bankAccountId}/balance`);
+        } catch (err) {
+            if (err instanceof ApiError && err.isFeatureDisabled) return null;
+            throw err;
+        }
     }
 
     // Get suggested matches
@@ -47,11 +63,16 @@ class ReconciliationService {
         dateFrom?: string,
         dateTo?: string
     ): Promise<SuggestedMatch[]> {
-        return coreApiClient.get<SuggestedMatch[]>('/reconciliations/suggested', {
-            bank_account_id: bankAccountId,
-            date_from: dateFrom,
-            date_to: dateTo,
-        });
+        try {
+            return await coreApiClient.get<SuggestedMatch[]>('/reconciliations/suggested', {
+                bank_account_id: bankAccountId,
+                date_from: dateFrom,
+                date_to: dateTo,
+            });
+        } catch (err) {
+            if (err instanceof ApiError && err.isFeatureDisabled) return [];
+            throw err;
+        }
     }
 
     // Confirm suggested match

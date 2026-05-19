@@ -4,6 +4,7 @@ import { useToast } from '@horizon-sync/ui/hooks';
 
 import type { PaymentReference, AllocationCreate } from '../types/payment.types';
 import { paymentApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export function useInvoiceAllocations(paymentId: string | null) {
   const { toast } = useToast();
@@ -26,7 +27,7 @@ export function useInvoiceAllocations(paymentId: string | null) {
       const payment = await paymentApi.fetchPaymentById(paymentId);
       setAllocations(payment.payment_references || []);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch allocations';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       console.error('Error fetching allocations:', err);
       setAllocations([]);
@@ -61,7 +62,7 @@ export function useInvoiceAllocations(paymentId: string | null) {
       await fetchAllocations();
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create allocation';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -93,7 +94,7 @@ export function useInvoiceAllocations(paymentId: string | null) {
       await fetchAllocations();
       return true;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to remove allocation';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -138,3 +139,4 @@ export function useInvoiceAllocations(paymentId: string | null) {
     refetch,
   };
 }
+

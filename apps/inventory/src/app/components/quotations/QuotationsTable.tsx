@@ -3,12 +3,14 @@ import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { Download, Eye, Edit, FileText, Mail, MoreHorizontal, Plus, Trash2, User, Lock } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
 import type { Quotation } from '../../types/quotation.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 import { formatDate } from '../../utility/formatDate';
 
 import { StatusBadge } from './StatusBadge';
@@ -52,6 +54,7 @@ export function QuotationsTable({
   serverPagination
 }: QuotationsTableProps) {
   const [tableInstance, setTableInstance] = React.useState<Table<Quotation> | null>(null);
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency) || 'USD';
 
   // Call onTableReady when table instance changes
   React.useEffect(() => {
@@ -152,9 +155,10 @@ export function QuotationsTable({
         header: ({ column }) => <DataTableColumnHeader column={column} title="Grand Total" />,
         cell: ({ row }) => {
           const quotation = row.original;
+          const currency = quotation.currency || baseCurrency;
           return (
             <div className="text-right">
-              <p className="font-semibold">{quotation.currency} {Number(quotation.grand_total).toFixed(2)}</p>
+              <p className="font-semibold">{getCurrencySymbol(currency)} {Number(quotation.grand_total).toFixed(2)}</p>
             </div>
           );
         },

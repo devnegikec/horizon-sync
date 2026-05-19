@@ -9,6 +9,7 @@ import type {
   StockEntryFilters,
 } from '../../types/stock.types';
 import { buildUrl, buildPaginationParams } from '../../utility';
+import { getFriendlyErrorMessage } from '../../utility/api/core';
 
 export interface UseStockEntriesResult {
   data: StockEntry[];
@@ -32,7 +33,7 @@ function buildStockEntriesParams(
   filters?: Partial<StockEntryFilters>
 ): Record<string, string | number> {
   const params: Record<string, string | number> = {
-    ...buildPaginationParams(page, pageSize, 'posting_date', 'desc'),
+    ...buildPaginationParams(page, pageSize, 'created_at', 'desc'),
   };
 
   if (!filters) return params;
@@ -162,7 +163,7 @@ export function useStockEntries(options: {
         setStats(calculatedStats);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load stock entries';
+      const message = getFriendlyErrorMessage(err);
       setError(message);
       setStockEntries([]);
       setPagination(null);

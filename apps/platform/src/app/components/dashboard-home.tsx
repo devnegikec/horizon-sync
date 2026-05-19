@@ -5,6 +5,7 @@ import { ArrowUpRight, ArrowDownRight, Package, Users, DollarSign, Activity, Tre
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { cn } from '@horizon-sync/ui/lib';
+import { CurrencyIcon } from '@horizon-sync/ui';
 
 interface StatCardProps {
   title: string;
@@ -43,7 +44,7 @@ const stats: StatCardProps[] = [
     value: '$45,231.89',
     change: '+20.1%',
     changeType: 'positive',
-    icon: DollarSign,
+    icon: CurrencyIcon,
     iconBg: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
   },
   {

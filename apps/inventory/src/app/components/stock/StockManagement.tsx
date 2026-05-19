@@ -4,6 +4,8 @@ import {
   Package,
   Plus,
   Download,
+  Upload,
+  Loader2,
   ArrowRightLeft,
   FileText,
   ClipboardCheck,
@@ -14,6 +16,15 @@ import {
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@horizon-sync/ui/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +42,8 @@ import { useStockMovements } from '../../hooks/useStockMovements';
 import { useStockReconciliations } from '../../hooks/useStockReconciliations';
 import type {
   StockEntry,
+  StockLevel,
+  StockMovement,
   StockReconciliation,
   StockLevelStats,
   StockMovementStats,
@@ -38,7 +51,7 @@ import type {
   StockReconciliationStats,
 } from '../../types/stock.types';
 import { formatQuantity } from '../../utility';
-import { stockEntryApi } from '../../utility/api/stock';
+import { stockEntryApi, stockLevelApi, stockMovementApi } from '../../utility/api/stock';
 import { ReconciliationWizard, ReconciliationDetailDialog } from '../reconciliation';
 import { useStockEntries } from '../stock-entry';
 
@@ -155,42 +168,318 @@ function StatsGrid({ stats }: { stats: StatDef[] }) {
 interface HeaderProps {
   onNewEntry: () => void;
   onReconciliation: () => void;
+  activeTab: ActiveTab;
+  onImportSuccess?: () => void;
 }
 
-function StockManagementHeader({ onNewEntry, onReconciliation }: HeaderProps) {
+function StockManagementHeader({ onNewEntry, onReconciliation, activeTab, onImportSuccess }: HeaderProps) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [isExporting, setIsExporting] = React.useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [isImporting, setIsImporting] = React.useState(false);
+
+  const handleExport = React.useCallback(async () => {
+    if (!accessToken) return;
+
+    setIsExporting(true);
+    try {
+      let headers: string[] = [];
+      let rows: string[][] = [];
+      let fileName = 'stock-export';
+
+      if (activeTab === 'levels') {
+        // Fetch all pages (backend max page_size is 100)
+        const firstPage = await stockLevelApi.list(accessToken, 1, 100) as { stock_levels: StockLevel[]; pagination: { total_items: number; total_pages: number } };
+        let allLevels: StockLevel[] = firstPage.stock_levels ?? [];
+        const totalPages = firstPage.pagination?.total_pages ?? 1;
+        for (let p = 2; p <= totalPages; p++) {
+          const page = await stockLevelApi.list(accessToken, p, 100) as { stock_levels: StockLevel[] };
+          allLevels = allLevels.concat(page.stock_levels ?? []);
+        }
+
+        headers = ['Item Code', 'Item Name', 'Warehouse', 'Qty On Hand', 'Qty Reserved', 'Qty Available', 'Last Counted'];
+        rows = allLevels.map((r) => [
+          r.product?.code ?? r.product_code ?? '',
+          r.product?.name ?? r.product_name ?? '',
+          r.warehouse?.name ?? r.warehouse_name ?? '',
+          String(r.quantity_on_hand),
+          String(r.quantity_reserved),
+          String(r.quantity_available),
+          r.last_counted_at ?? '',
+        ]);
+        fileName = 'stock-levels';
+      } else if (activeTab === 'movements') {
+        const firstPage = await stockMovementApi.list(accessToken, 1, 100) as { stock_movements: StockMovement[]; pagination: { total_pages: number } };
+        let allMovements: StockMovement[] = firstPage.stock_movements ?? [];
+        const totalPages = firstPage.pagination?.total_pages ?? 1;
+        for (let p = 2; p <= totalPages; p++) {
+          const page = await stockMovementApi.list(accessToken, p, 100) as { stock_movements: StockMovement[] };
+          allMovements = allMovements.concat(page.stock_movements ?? []);
+        }
+
+        headers = ['Item Code', 'Item Name', 'Warehouse', 'Movement Type', 'Quantity', 'Unit Cost', 'Reference', 'Notes', 'Performed At'];
+        rows = allMovements.map((r) => [
+          r.product?.code ?? r.product_code ?? '',
+          r.product?.name ?? r.product_name ?? '',
+          r.warehouse?.name ?? r.warehouse_name ?? '',
+          r.movement_type,
+          String(r.quantity),
+          r.unit_cost != null ? String(r.unit_cost) : '',
+          r.reference_type ? `${r.reference_type}:${r.reference_id ?? ''}` : '',
+          r.notes ?? '',
+          r.performed_at,
+        ]);
+        fileName = 'stock-movements';
+      } else if (activeTab === 'entries') {
+        const firstPage = await stockEntryApi.list(accessToken, 1, 100) as { stock_entries: StockEntry[]; pagination: { total_pages: number } };
+        let allEntries: StockEntry[] = firstPage.stock_entries ?? [];
+        const totalPages = firstPage.pagination?.total_pages ?? 1;
+        for (let p = 2; p <= totalPages; p++) {
+          const page = await stockEntryApi.list(accessToken, p, 100) as { stock_entries: StockEntry[] };
+          allEntries = allEntries.concat(page.stock_entries ?? []);
+        }
+
+        headers = ['Entry No', 'Entry Type', 'Status', 'From Warehouse', 'To Warehouse', 'Posting Date', 'Total Value', 'Created At'];
+        rows = allEntries.map((r) => [
+          r.stock_entry_no ?? '',
+          r.stock_entry_type ?? '',
+          r.status ?? '',
+          r.from_warehouse?.name ?? r.from_warehouse_name ?? '',
+          r.to_warehouse?.name ?? r.to_warehouse_name ?? '',
+          r.posting_date ?? '',
+          r.total_value != null ? String(r.total_value) : '',
+          r.created_at ?? '',
+        ]);
+        fileName = 'stock-entries';
+      } else {
+        return;
+      }
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')),
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${fileName}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [accessToken, activeTab]);
+
+  const exportLabel = activeTab === 'levels' ? 'Export Stock Levels'
+    : activeTab === 'movements' ? 'Export Movements'
+    : activeTab === 'entries' ? 'Export Entries'
+    : null;
+
+  const handleDownloadTemplate = React.useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const { buildUrl } = await import('../../utility/api/core');
+      const url = buildUrl('/stock-entries/bulk/template/csv');
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!response.ok) throw new Error('Failed to download template');
+      const blob = await response.blob();
+      const dlUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = dlUrl;
+      link.download = 'stock_entries_template.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(dlUrl);
+    } catch {
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { title: 'Error', description: 'Failed to download template', variant: 'destructive' }
+      }));
+    }
+  }, [accessToken]);
+
+  const handleFileChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) setSelectedFile(file);
+  }, []);
+
+  const handleImportSubmit = React.useCallback(async () => {
+    if (!selectedFile || !accessToken) return;
+
+    setIsImporting(true);
+    try {
+      const { buildUrl } = await import('../../utility/api/core');
+      const url = buildUrl('/stock-entries/bulk/upload');
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `Import failed with status ${response.status}`);
+      }
+
+      const result = await response.json() as Record<string, unknown>;
+      const createdCount = Number(result?.created ?? 0);
+      const failedCount = Number(result?.failed ?? 0);
+      const totalRows = Number(result?.total_rows ?? 0);
+
+      setIsImportDialogOpen(false);
+      setSelectedFile(null);
+
+      setTimeout(() => {
+        const message = `${createdCount} of ${totalRows} stock entries created as draft${failedCount > 0 ? `. ${failedCount} failed.` : '.'}`;
+        window.dispatchEvent(new CustomEvent('app:toast', {
+          detail: { title: '✅ Import Successful', description: message }
+        }));
+      }, 100);
+
+      if (onImportSuccess) {
+        setTimeout(() => onImportSuccess(), 1000);
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Failed to import stock entries';
+      window.dispatchEvent(new CustomEvent('app:toast', {
+        detail: { title: 'Import Failed', description: msg, variant: 'destructive' }
+      }));
+    } finally {
+      setIsImporting(false);
+    }
+  }, [selectedFile, accessToken, onImportSuccess]);
+
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Stock Management</h1>
-        <p className="text-muted-foreground mt-1">
-          Monitor stock levels, movements, and maintain accurate records
-        </p>
-      </div>
-      <div className="flex items-center gap-3">
-        <Button variant="outline" className="gap-2">
-          <Download className="h-4 w-4" />
-          Export
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button className="gap-2 text-primary-foreground shadow-lg">
-              <Plus className="h-4 w-4" />
-              New
+    <>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Stock Management</h1>
+          <p className="text-muted-foreground mt-1">
+            Monitor stock levels, movements, and maintain accurate records
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {exportLabel && (
+            <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
+              {isExporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  {exportLabel}
+                </>
+              )}
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={onNewEntry}>
-              <FileText className="mr-2 h-4 w-4" />
-              Stock Entry
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={onReconciliation}>
-              <ArrowRightLeft className="mr-2 h-4 w-4" />
-              Reconciliation
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          )}
+          {activeTab === 'entries' && (
+            <Button variant="outline" className="gap-2" onClick={() => setIsImportDialogOpen(true)}>
+              <Upload className="h-4 w-4" />
+              Import
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="gap-2 text-primary-foreground shadow-lg">
+                <Plus className="h-4 w-4" />
+                New
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={onNewEntry}>
+                <FileText className="mr-2 h-4 w-4" />
+                Stock Entry
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={onReconciliation}>
+                <ArrowRightLeft className="mr-2 h-4 w-4" />
+                Reconciliation
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-    </div>
+
+      {/* Stock Entry Import Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+        setIsImportDialogOpen(open);
+        if (!open) setSelectedFile(null);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import Stock Entries</DialogTitle>
+            <DialogDescription>
+              Upload a CSV or XLSX file to bulk create stock entries. Entries are created as draft.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex items-center justify-between rounded-md border border-dashed p-3 bg-muted/40">
+              <div className="text-sm">
+                <p className="font-medium">Need a template?</p>
+                <p className="text-muted-foreground">Download the template with required columns.</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={handleDownloadTemplate} className="shrink-0 ml-4 gap-1.5">
+                <Download className="h-4 w-4" />
+                Template CSV
+              </Button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label htmlFor="stock-file-upload" className="text-sm font-medium">Select File</label>
+              {!selectedFile ? (
+                <label
+                  htmlFor="stock-file-upload"
+                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors"
+                >
+                  <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                  <span className="text-sm font-medium text-primary">Click to select file</span>
+                  <span className="text-xs text-muted-foreground mt-1">CSV or Excel (.csv, .xlsx)</span>
+                </label>
+              ) : (
+                <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+                  <Upload className="h-5 w-5 text-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedFile(null)} disabled={isImporting}>
+                    Change
+                  </Button>
+                </div>
+              )}
+              <input id="stock-file-upload" type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} disabled={isImporting} className="hidden" />
+            </div>
+
+            {isImporting && (
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border">
+                <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium">Uploading and processing...</p>
+                  <p className="text-muted-foreground">This may take a moment depending on file size.</p>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsImportDialogOpen(false); setSelectedFile(null); }} disabled={isImporting}>
+              Cancel
+            </Button>
+            <Button onClick={handleImportSubmit} disabled={!selectedFile || isImporting}>
+              {isImporting ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Importing...</>) : 'Import'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -334,22 +623,32 @@ function useStockEntryActions(refetch: () => void) {
     [fetchFullEntry],
   );
 
+  const [confirmDeleteEntry, setConfirmDeleteEntry] = React.useState<StockEntry | null>(null);
+
   const handleDelete = React.useCallback(
-    async (entry: StockEntry) => {
-      if (!window.confirm(`Delete stock entry "${entry.stock_entry_no}"?`)) return;
+    (entry: StockEntry) => {
+      setConfirmDeleteEntry(entry);
+    },
+    [],
+  );
+
+  const executeDeleteEntry = React.useCallback(
+    async () => {
+      if (!confirmDeleteEntry) return;
       try {
-        await deleteEntry(entry.id);
+        await deleteEntry(confirmDeleteEntry.id);
         refetch();
       } catch {
         /* error handled by hook */
       }
+      setConfirmDeleteEntry(null);
     },
-    [deleteEntry, refetch],
+    [confirmDeleteEntry, deleteEntry, refetch],
   );
 
   const clearSelected = React.useCallback(() => setSelectedEntry(null), []);
 
-  return { selectedEntry, fetchingEntry, handleView, handleEdit, handleDelete, clearSelected };
+  return { selectedEntry, fetchingEntry, handleView, handleEdit, handleDelete, clearSelected, confirmDeleteEntry, setConfirmDeleteEntry, executeDeleteEntry };
 }
 
 /* ------------------------------------------------------------------ */
@@ -359,6 +658,7 @@ function useStockEntryActions(refetch: () => void) {
 export function StockManagement() {
   const [activeTab, setActiveTab] = React.useState<ActiveTab>('levels');
   const [stockEntryDialogOpen, setStockEntryDialogOpen] = React.useState(false);
+  const [stockEntryViewMode, setStockEntryViewMode] = React.useState(false);
   const [reconciliationOpen, setReconciliationOpen] = React.useState(false);
   const [selectedReconciliation, setSelectedReconciliation] = React.useState<StockReconciliation | null>(null);
   const [reconciliationDetailOpen, setReconciliationDetailOpen] = React.useState(false);
@@ -402,6 +702,7 @@ export function StockManagement() {
 
   const handleNewEntry = React.useCallback(() => {
     entryActions.clearSelected();
+    setStockEntryViewMode(false);
     setStockEntryDialogOpen(true);
   }, [entryActions]);
 
@@ -409,9 +710,19 @@ export function StockManagement() {
     setReconciliationOpen(true);
   }, []);
 
-  const handleViewOrEdit = React.useCallback(
+  const handleView = React.useCallback(
     async (entry: StockEntry) => {
       await entryActions.handleView(entry);
+      setStockEntryViewMode(true);
+      setStockEntryDialogOpen(true);
+    },
+    [entryActions],
+  );
+
+  const handleEdit = React.useCallback(
+    async (entry: StockEntry) => {
+      await entryActions.handleEdit(entry);
+      setStockEntryViewMode(false);
       setStockEntryDialogOpen(true);
     },
     [entryActions],
@@ -428,12 +739,20 @@ export function StockManagement() {
   const handleDialogClose = React.useCallback(() => {
     setStockEntryDialogOpen(false);
     entryActions.clearSelected();
+    setActiveTab('entries');
     entriesData.refetch();
-  }, [entryActions, entriesData]);
+    levelsData.refetch();
+    movementsData.refetch();
+  }, [entryActions, entriesData, levelsData, movementsData]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <StockManagementHeader onNewEntry={handleNewEntry} onReconciliation={handleNewReconciliation}/>
+      <StockManagementHeader
+        onNewEntry={handleNewEntry}
+        onReconciliation={handleNewReconciliation}
+        activeTab={activeTab}
+        onImportSuccess={entriesData.refetch}
+      />
       <StatsGrid stats={activeStats} />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
@@ -455,8 +774,8 @@ export function StockManagement() {
           reconciliationsData={reconciliationsData}
           reconciliationsFilters={reconciliationsFilters}
           onReconciliationsPagination={makePaginationHandler(setReconciliationsFilters)}
-          onViewEntry={handleViewOrEdit}
-          onEditEntry={handleViewOrEdit}
+          onViewEntry={handleView}
+          onEditEntry={handleEdit}
           onDeleteEntry={entryActions.handleDelete}
           onViewReconciliation={handleViewReconciliation} />
       </Tabs>
@@ -464,6 +783,7 @@ export function StockManagement() {
       <StockEntryDialog open={stockEntryDialogOpen}
         onOpenChange={setStockEntryDialogOpen}
         entry={entryActions.selectedEntry}
+        viewMode={stockEntryViewMode}
         onCreated={handleDialogClose}
         onUpdated={handleDialogClose} />
 
@@ -474,6 +794,17 @@ export function StockManagement() {
       <ReconciliationDetailDialog open={reconciliationDetailOpen}
         onOpenChange={setReconciliationDetailOpen}
         reconciliation={selectedReconciliation} />
+
+      {/* Delete Stock Entry Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!entryActions.confirmDeleteEntry}
+        onOpenChange={(open) => { if (!open) entryActions.setConfirmDeleteEntry(null); }}
+        title="Delete Stock Entry"
+        description={`Delete stock entry "${entryActions.confirmDeleteEntry?.stock_entry_no}"?`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={entryActions.executeDeleteEntry}
+      />
     </div>
   );
 }

@@ -194,4 +194,45 @@ describe('UserService', () => {
         .rejects.toThrow('Failed to invite user');
     });
   });
+
+  describe('getPendingInvitationCount', () => {
+    it('should fetch the pending invitation count successfully', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ total: 3, data: [], skip: 0, limit: 1 }),
+      });
+
+      const total = await UserService.getPendingInvitationCount('org-1', mockToken);
+
+      expect(total).toBe(3);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/identity/invitations?organization_id=org-1&status=pending&skip=0&limit=1'),
+        expect.objectContaining({
+          method: 'GET',
+        }),
+      );
+    });
+
+    it('should return zero when the response has no total', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: [], skip: 0, limit: 1 }),
+      });
+
+      const total = await UserService.getPendingInvitationCount('org-1', mockToken);
+
+      expect(total).toBe(0);
+    });
+
+    it('should throw on HTTP error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        json: async () => ({ message: 'Forbidden' }),
+      });
+
+      await expect(UserService.getPendingInvitationCount('org-1', mockToken))
+        .rejects.toThrow('Forbidden');
+    });
+  });
 });

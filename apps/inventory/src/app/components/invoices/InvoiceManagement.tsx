@@ -1,14 +1,17 @@
 import * as React from 'react';
 
-import { AlertTriangle, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { Card, CardContent, ConfirmationDialog } from '@horizon-sync/ui/components';
 
 import { useInvoiceManagement } from '../../hooks/useInvoiceManagement';
 import { FEATURE_DISABLED_CODE } from '@horizon-sync/ui';
 import type { Invoice } from '../../types/invoice.types';
 import { PaymentType, type CreatePaymentPayload } from '../../types/payment.types';
+import { invoiceApi } from '../../utility/api/invoices';
 import { PaymentDialog } from '../payments/PaymentDialog';
+import { ErrorBanner } from '../common';
 
 import { InvoiceDetailDialog, InvoiceManagementFilters, InvoiceManagementHeader, InvoicesTable, InvoiceStats } from '@horizon-sync/ui';
 
@@ -38,12 +41,53 @@ export function InvoiceManagement() {
     invoiceToMarkPaid,
     confirmMarkAsPaid,
     isMarkingAsPaid,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   } = useInvoiceManagement();
 
   // Payment dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = React.useState(false);
   const [paymentInitialData, setPaymentInitialData] = React.useState<Partial<CreatePaymentPayload> | null>(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = React.useState<string | null>(null);
+
+  const accessToken = useUserStore((s) => s.accessToken);
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+
+  // Export all invoices to CSV
+  const handleExport = React.useCallback(async () => {
+    if (!accessToken) return;
+    const firstPage = await invoiceApi.list(accessToken, 1, 100);
+    let all = firstPage.invoices ?? [];
+    const totalPages = firstPage.pagination?.total_pages ?? 1;
+    for (let p = 2; p <= totalPages; p++) {
+      const page = await invoiceApi.list(accessToken, p, 100);
+      all = all.concat(page.invoices ?? []);
+    }
+    const headers = ['Invoice No', 'Party', 'Type', 'Status', 'Currency', 'Grand Total', 'Outstanding', 'Posting Date', 'Due Date', 'Created At'];
+    const rows = all.map((r) => [
+      r.invoice_no ?? '',
+      r.party_name ?? '',
+      r.invoice_type ?? '',
+      r.status ?? '',
+      r.currency ?? '',
+      String(r.grand_total ?? ''),
+      String(r.outstanding_amount ?? ''),
+      r.posting_date ?? '',
+      r.due_date ?? '',
+      r.created_at ?? '',
+    ]);
+    const csv = [headers.join(','), ...rows.map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'invoices.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [accessToken]);
 
   // Handle create payment from invoice
   const handleCreatePayment = React.useCallback((invoice: Invoice) => {
@@ -69,16 +113,7 @@ export function InvoiceManagement() {
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
     if (!error || error === FEATURE_DISABLED_CODE) return null;
-    return (
-      <Card className="border-destructive">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm font-medium">Error loading invoices: {error}</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <ErrorBanner entity="invoices" message={error} />;
   }, [error]);
 
   // Feature disabled — show informational banner instead of the full page
@@ -102,7 +137,7 @@ export function InvoiceManagement() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <InvoiceManagementHeader onRefresh={refetch} onCreateInvoice={handleCreate} isLoading={loading} />
+      <InvoiceManagementHeader onRefresh={refetch} onCreateInvoice={handleCreate} onExport={handleExport} isLoading={loading} />
 
       {/* Error State */}
       {ErrorDisplay}
@@ -122,6 +157,7 @@ export function InvoiceManagement() {
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.status !== 'all' || filters.invoice_type !== 'all'}
+        baseCurrency={baseCurrency || undefined}
         onView={handleView}
         onDelete={handleDelete}
         onMarkAsPaid={handleMarkAsPaid}
@@ -131,7 +167,7 @@ export function InvoiceManagement() {
         serverPagination={serverPaginationConfig} />
 
       {/* Detail Dialog */}
-      <InvoiceDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} invoice={selectedInvoice} />
+      <InvoiceDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} invoice={selectedInvoice} baseCurrency={baseCurrency || 'USD'} />
 
       {/* Payment Dialog */}
       <PaymentDialog open={paymentDialogOpen}
@@ -159,6 +195,15 @@ export function InvoiceManagement() {
         cancelLabel="Cancel"
         loading={isMarkingAsPaid}
         onConfirm={confirmMarkAsPaid} />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog open={!!confirmAction}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.message || ''}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={executeConfirmedAction} />
     </div>
   );
 }

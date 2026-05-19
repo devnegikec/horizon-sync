@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 import { useUserStore } from '@horizon-sync/store';
 
 import type { SendEmailRequest, SendEmailResponse } from '../types/communication.types';
 import { communicationApi } from '../utility/api/communications';
+
 
 export const useSendEmail = () => {
   const accessToken = useUserStore((s) => s.accessToken);
@@ -22,7 +24,7 @@ export const useSendEmail = () => {
       const result = await communicationApi.sendEmail(accessToken, data);
       return result;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to send email';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       throw err;
     } finally {
@@ -32,3 +34,5 @@ export const useSendEmail = () => {
 
   return { sendEmail, loading, error };
 };
+
+

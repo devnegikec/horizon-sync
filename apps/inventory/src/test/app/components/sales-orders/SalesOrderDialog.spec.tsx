@@ -5,11 +5,23 @@ import { SalesOrderDialog } from '../../../../app/components/sales-orders/SalesO
 import type { SalesOrder } from '../../../../app/types/sales-order.types';
 import { customerApi } from '../../../../app/utility/api/customers';
 
-// Mock the user store
+// Mock the user and currency stores
+const mockFetchCurrencies = jest.fn();
 jest.mock('@horizon-sync/store', () => ({
   useUserStore: jest.fn(() => ({
     accessToken: 'mock-token',
   })),
+  useCurrencyStore: jest.fn((selector) => {
+    const state = {
+      currencies: [],
+      baseCurrency: 'USD',
+      loading: false,
+      error: null,
+      lastFetched: null,
+      fetchCurrencies: mockFetchCurrencies,
+    };
+    return typeof selector === 'function' ? selector(state) : state;
+  }),
 }));
 
 // Mock the customer API
@@ -201,7 +213,7 @@ describe('SalesOrderDialog', () => {
       });
 
       const currencySelect = screen.getByLabelText('Currency *');
-      expect(currencySelect).toHaveTextContent('INR');
+      expect(currencySelect).toHaveTextContent('USD');
     });
 
     it('should show placeholder for auto-generated sales order number', () => {

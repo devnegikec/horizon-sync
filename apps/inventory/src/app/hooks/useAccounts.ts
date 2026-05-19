@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 import { useUserStore } from '@horizon-sync/store';
 
@@ -61,7 +62,7 @@ export function useAccounts(
       setPagination(response.pagination || null);
     } catch (err) {
       console.error('Error fetching accounts:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch accounts');
+      setError(getFriendlyErrorMessage(err));
       setAccounts([]);
       setPagination(null);
     } finally {
@@ -107,3 +108,5 @@ export function useAccounts(
     currentSortOrder,
   };
 }
+
+

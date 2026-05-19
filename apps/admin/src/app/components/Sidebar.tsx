@@ -12,9 +12,7 @@ import {
   Bell,
   Shield,
   Ban,
-  DollarSign,
   UserCog,
-  ToggleLeft,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -25,8 +23,16 @@ import {
   TooltipTrigger,
 } from '@horizon-sync/ui/components/ui/tooltip';
 import { cn } from '@horizon-sync/ui/lib';
+import { CurrencyIcon } from '@horizon-sync/ui';
+import { useCurrencyStore } from '@horizon-sync/store';
 
 import { usePermissions } from '../hooks/usePermissions';
+
+/** Wrapper that reads baseCurrency from the store and passes it to CurrencyIcon */
+function DynamicCurrencyIcon({ className }: { className?: string }) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  return <CurrencyIcon className={className} currency={baseCurrency} />;
+}
 
 interface NavItem {
   title: string;
@@ -51,7 +57,7 @@ const mainNavItems: NavItem[] = [
   {
     title: 'Billing',
     href: '/billing',
-    icon: DollarSign,
+    icon: DynamicCurrencyIcon,
     requiredDomain: 'billing',
   },
   {

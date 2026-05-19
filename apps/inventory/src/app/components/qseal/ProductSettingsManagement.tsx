@@ -5,6 +5,7 @@ import { Settings, Plus, RefreshCw, Pencil, Trash2, X, Check, KeyRound } from 'l
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
@@ -138,6 +139,7 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
 
   const [addingNew, setAddingNew] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [confirmDeleteSetting, setConfirmDeleteSetting] = React.useState<QRProductSetting | null>(null);
 
   const handleCreate = async (formData: SettingFormData) => {
     try {
@@ -157,13 +159,18 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
     }
   };
 
-  const handleDelete = async (setting: QRProductSetting) => {
-    if (!window.confirm(`Delete "${setting.label}"? This cannot be undone.`)) return;
+  const handleDelete = (setting: QRProductSetting) => {
+    setConfirmDeleteSetting(setting);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDeleteSetting) return;
     try {
-      await deleteSetting(setting.id);
+      await deleteSetting(confirmDeleteSetting.id);
     } catch {
       // error surfaced via hook state
     }
+    setConfirmDeleteSetting(null);
   };
 
   const handleToggleActive = async (setting: QRProductSetting) => {
@@ -239,6 +246,17 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
             </TableBody>
           </Table>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmationDialog
+          open={!!confirmDeleteSetting}
+          onOpenChange={(open) => { if (!open) setConfirmDeleteSetting(null); }}
+          title="Delete Setting"
+          description={confirmDeleteSetting ? `Delete "${confirmDeleteSetting.label}"? This cannot be undone.` : ''}
+          confirmLabel="Delete"
+          variant="destructive"
+          onConfirm={executeDelete}
+        />
       </CardContent>
     </Card>
   );

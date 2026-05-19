@@ -9,6 +9,7 @@ import type {
   StockReconciliationFilters,
 } from '../types/stock.types';
 import { buildUrl, buildPaginationParams } from '../utility';
+import { getHttpErrorMessage, getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface UseStockReconciliationsResult {
   data: StockReconciliation[];
@@ -71,8 +72,7 @@ export function useStockReconciliations(options: {
       });
 
       if (!res.ok) {
-        const message = `Error ${res.status}: ${res.statusText}`;
-        throw new Error(message);
+        throw new Error(getHttpErrorMessage(res.status));
       }
 
       const data = (await res.json()) as StockReconciliationsResponse;
@@ -88,8 +88,7 @@ export function useStockReconciliations(options: {
         setStats(calculatedStats);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load stock reconciliations';
-      setError(message);
+      setError(getFriendlyErrorMessage(err));
       setStockReconciliations([]);
       setPagination(null);
       setStats(null);

@@ -20,12 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
+import { useCurrencyStore } from '@horizon-sync/store';
 
 import { useItems } from '../../hooks/useItems';
 import { usePurchaseOrderActions } from '../../hooks/usePurchaseOrderActions';
 import { useRFQs } from '../../hooks/useRFQs';
 import { useSuppliers } from '../../hooks/useSuppliers';
 import type { PurchaseOrder, CreatePurchaseOrderPayload } from '../../types/purchase-order.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 
 interface PurchaseOrderDialogProps {
   open: boolean;
@@ -49,6 +51,8 @@ export function PurchaseOrderDialog({
   const { createPurchaseOrder, updatePurchaseOrder, loading } = usePurchaseOrderActions();
   const { suppliers = [] } = useSuppliers();
   const { items = [] } = useItems();
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   
   // Load RFQs only when dialog is open to avoid unnecessary API calls
   const { rfqs = [], loading: rfqsLoading, error: rfqsError } = useRFQs(
@@ -294,19 +298,19 @@ export function PurchaseOrderDialog({
           <div className="border rounded-lg p-4 bg-muted/50 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Subtotal:</span>
-              <span className="font-medium">${subtotal.toFixed(2)}</span>
+              <span className="font-medium">{currencySymbol}{subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Tax ({taxRate}%):</span>
-              <span className="font-medium">${taxAmount.toFixed(2)}</span>
+              <span className="font-medium">{currencySymbol}{taxAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Discount:</span>
-              <span className="font-medium">-${discountAmount.toFixed(2)}</span>
+              <span className="font-medium">-{currencySymbol}{discountAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-lg font-bold pt-2 border-t">
               <span>Grand Total:</span>
-              <span>${grandTotal.toFixed(2)}</span>
+              <span>{currencySymbol}{grandTotal.toFixed(2)}</span>
             </div>
           </div>
         </div>

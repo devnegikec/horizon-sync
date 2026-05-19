@@ -1,15 +1,23 @@
 import * as React from 'react';
 
-import { LayoutDashboard, Package, BarChart3, Settings, Users, FileText, HelpCircle, Zap, CreditCard, DollarSign, ShoppingCart, BookOpen, Shield, Receipt, Building2, QrCode } from 'lucide-react';
+import { LayoutDashboard, Package, BarChart3, Settings, Users, FileText, HelpCircle, Zap, CreditCard, DollarSign, ShoppingCart, BookOpen, Shield, Receipt, Building2, QrCode, Warehouse } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 import { cn } from '@horizon-sync/ui/lib';
 
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { usePermissions } from '../hooks/usePermissions';
-import { useFeatureVisibility, useFeatureVisibilities } from '@horizon-sync/ui/hooks';
+import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
 import { environment } from '../../environments/environment';
+import { CurrencyIcon } from '@horizon-sync/ui';
+
+/** Wrapper that reads baseCurrency from the store and passes it to CurrencyIcon */
+function DynamicCurrencyIcon({ className }: { className?: string }) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  return <CurrencyIcon className={className} currency={baseCurrency} />;
+}
 
 interface NavItem {
   title: string;
@@ -22,13 +30,14 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard },
   { title: 'Inventory', href: '/inventory', icon: Package, featureFlag: 'inventory_module_enabled' },
-  { title: 'Revenue', href: '/revenue', icon: DollarSign, featureFlag: 'revenue_module_enabled' },
+  { title: 'Revenue', href: '/revenue', icon: DynamicCurrencyIcon, featureFlag: 'revenue_module_enabled' },
   { title: 'Sourcing', href: '/sourcing', icon: ShoppingCart, featureFlag: 'sourcing_module_enabled' },
   { title: 'Books', href: '/books', icon: BookOpen, featureFlag: 'book_module_enabled' },
   { title: 'Tax & Charges', href: '/tax-charges', icon: Receipt, featureFlag: 'taxandcharges_module_enabled' },
   { title: 'Subscriptions', href: '/subscriptions', icon: CreditCard, featureFlag: 'subscriptions_module_enabled' },
   { title: 'Analytics', href: '/analytics', icon: BarChart3, featureFlag: 'analytics_module_enabled' },
   { title: 'QSeal', href: '/qseal', icon: QrCode, featureFlag: 'qseal_module_enabled' },
+  { title: 'WMS', href: '/wms', icon: Warehouse, featureFlag: 'wms_module_enabled' },
   { title: 'Users', href: '/users', icon: Users, featureFlag: 'users_module_enabled' },
   { title: 'Roles', href: '/roles', icon: Shield, featureFlag: 'roles_module_enabled' },
   { title: 'Reports', href: '/reports', icon: FileText, featureFlag: 'reports_module_enabled' },
@@ -89,6 +98,7 @@ function SidebarNavItem({ item, isActive, collapsed, isMobile, onClick }: Sideba
 export function Sidebar({ open = true, collapsed = false, isMobile = false, onClose }: SidebarProps) {
   const location = useLocation();
   const { filterNavigation } = usePermissions();
+  const accessToken = useUserStore((s) => s.accessToken);
 
   // Get unique feature flag names from nav items
   const featureFlagNames = React.useMemo(() =>
@@ -99,13 +109,13 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
   );
 
   // Call useFeatureVisibilities for all flags at once
-  const flagStates = useFeatureVisibilities(featureFlagNames, `${environment.apiCoreUrl}/api/v1`);
+  const flagStates = useFeatureVisibilities(featureFlagNames, `${environment.apiCoreUrl}/api/v1`, accessToken);
 
   // Build a map of flag name → visible (only the visible property for filtering)
   const flagVisibility: Record<string, boolean> = React.useMemo(() => {
     const visibility: Record<string, boolean> = {};
     featureFlagNames.forEach(flagName => {
-      visibility[flagName] = flagStates[flagName]?.visible ?? true;
+      visibility[flagName] = flagStates[flagName]?.visible ?? false;
     });
     return visibility;
   }, [flagStates, featureFlagNames]);

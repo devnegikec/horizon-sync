@@ -16,11 +16,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horiz
 import { cn } from '@horizon-sync/ui/lib';
 
 import type { Customer } from '../../types/customer.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 
 interface CustomerColumnsProps {
   onViewCustomer: (customer: Customer) => void;
   onEditCustomer: (customer: Customer) => void;
   onToggleStatus: (customer: Customer, newStatus: Customer['status']) => void;
+  currencySymbol?: string;
 }
 
 function getStatusBadge(status: Customer['status']) {
@@ -34,7 +36,8 @@ function getStatusBadge(status: Customer['status']) {
   }
 }
 
-export function createCustomerColumns({ onViewCustomer, onEditCustomer, onToggleStatus }: CustomerColumnsProps): ColumnDef<Customer>[] {
+export function createCustomerColumns({ onViewCustomer, onEditCustomer, onToggleStatus, currencySymbol }: CustomerColumnsProps): ColumnDef<Customer>[] {
+  const symbol = currencySymbol || getCurrencySymbol('USD');
   return [
     {
       accessorKey: 'customer_name',
@@ -102,7 +105,7 @@ export function createCustomerColumns({ onViewCustomer, onEditCustomer, onToggle
       header: 'Credit Limit',
       cell: ({ row }) => {
         const creditLimit = parseFloat(row.original.credit_limit);
-        return <span className="font-medium">${creditLimit.toLocaleString()}</span>;
+        return <span className="font-medium">{symbol}{creditLimit.toLocaleString()}</span>;
       },
     },
     {
@@ -117,7 +120,7 @@ export function createCustomerColumns({ onViewCustomer, onEditCustomer, onToggle
         return (
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className={cn('font-medium', creditUtilization > 90 && 'text-destructive')}>${balance.toLocaleString()}</span>
+              <span className={cn('font-medium', creditUtilization > 90 && 'text-destructive')}>{symbol}{balance.toLocaleString()}</span>
               {creditUtilization > 90 && <AlertTriangle className="h-4 w-4 text-destructive" />}
             </div>
             {creditLimit > 0 && (

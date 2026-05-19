@@ -31,6 +31,9 @@ export function useItemGroupManagement() {
   const [selectedGroup, setSelectedGroup] = useState<ItemGroupListItem | null>(null);
   const [tableInstance, setTableInstance] = useState<Table<ItemGroupListItem> | null>(null);
 
+  // Confirmation dialog state
+  const [confirmAction, setConfirmAction] = useState<{ type: string; item: ItemGroupListItem; title: string; message: string } | null>(null);
+
   // Reset to first page when filters change
   useEffect(() => {
     setPage(1);
@@ -56,15 +59,27 @@ export function useItemGroupManagement() {
     setDetailDialogOpen(true);
   }, []);
 
-  const handleDelete = useCallback(async (group: ItemGroupListItem) => {
-    if (!window.confirm(`Delete "${group.name}"? This may fail if the group has items.`)) return;
-    try {
-      await deleteItemGroup(group.id);
-      refetch();
-    } catch {
-      // error surfaced by hook or toast
+  const handleDelete = useCallback((group: ItemGroupListItem) => {
+    setConfirmAction({
+      type: 'delete',
+      item: group,
+      title: 'Delete Item Group',
+      message: `Delete "${group.name}"? This may fail if the group has items.`,
+    });
+  }, []);
+
+  const executeConfirmedAction = useCallback(async () => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'delete') {
+      try {
+        await deleteItemGroup(confirmAction.item.id);
+        refetch();
+      } catch {
+        // error surfaced by hook or toast
+      }
     }
-  }, [deleteItemGroup, refetch]);
+    setConfirmAction(null);
+  }, [confirmAction, deleteItemGroup, refetch]);
 
   const handleTableReady = useCallback((table: Table<ItemGroupListItem>) => {
     setTableInstance(table);
@@ -100,5 +115,8 @@ export function useItemGroupManagement() {
     handleDelete,
     handleTableReady,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   };
 }

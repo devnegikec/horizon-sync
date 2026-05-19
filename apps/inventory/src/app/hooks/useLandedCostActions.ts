@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 import { useUserStore } from '@horizon-sync/store';
 
@@ -28,7 +29,7 @@ export function useLandedCostActions() {
         const result = await landedCostApi.create(accessToken, payload);
         return result;
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to create landed cost voucher';
+        const errorMessage = getFriendlyErrorMessage(err);
         setError(errorMessage);
         console.error('Error creating landed cost voucher:', err);
         return null;
@@ -53,7 +54,7 @@ export function useLandedCostActions() {
         const result = await landedCostApi.update(accessToken, id, payload);
         return result;
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to update landed cost voucher';
+        const errorMessage = getFriendlyErrorMessage(err);
         setError(errorMessage);
         console.error('Error updating landed cost voucher:', err);
         return null;
@@ -78,7 +79,7 @@ export function useLandedCostActions() {
         await landedCostApi.delete(accessToken, id);
         return true;
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to delete landed cost voucher';
+        const errorMessage = getFriendlyErrorMessage(err);
         setError(errorMessage);
         console.error('Error deleting landed cost voucher:', err);
         return false;
@@ -97,3 +98,5 @@ export function useLandedCostActions() {
     deleteLandedCost,
   };
 }
+
+

@@ -41,7 +41,7 @@ export interface Warehouse {
 
 export interface CreateWarehousePayload {
   name: string;
-  code: string;
+  code?: string;
   description?: string;
   parent_warehouse_id?: string | null;
   warehouse_type: WarehouseType;
