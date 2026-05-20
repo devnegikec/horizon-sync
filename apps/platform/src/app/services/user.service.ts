@@ -46,10 +46,10 @@ export interface InviteUserPayload {
   email: string;
   first_name: string;
   last_name: string;
+  organization_id: string;
   role_id?: string;
   team_ids?: string[];
   message?: string;
-  organization_id?: string;
 }
 
 export interface InviteUserResponse {
@@ -130,7 +130,7 @@ export class UserService {
 
   static async getUsers(page = 1, pageSize = 20, token: string): Promise<UsersResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users?page=${page}&page_size=${pageSize}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/users?page=${page}&page_size=${pageSize}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

@@ -54,7 +54,7 @@ export class OrganizationService {
     token: string,
     apiBaseUrl: string
   ): Promise<unknown> {
-    const response = await fetch(`${apiBaseUrl}/identity/organizations`, {
+    const response = await fetch(`${apiBaseUrl}/api/v1/identity/organizations`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -79,7 +79,7 @@ export class OrganizationService {
     token: string,
     apiBaseUrl: string
   ): Promise<Organization> {
-    const response = await fetch(`${apiBaseUrl}/identity/organizations/${organizationId}`, {
+    const response = await fetch(`${apiBaseUrl}/api/v1/identity/organizations/${organizationId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
