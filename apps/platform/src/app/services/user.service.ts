@@ -50,7 +50,6 @@ export interface InviteUserPayload {
   role_id?: string;
   team_ids?: string[];
   message?: string;
-  organization_id?: string;
 }
 
 export interface InviteUserResponse {
