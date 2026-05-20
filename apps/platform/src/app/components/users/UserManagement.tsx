@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
 
 import { type Table } from '@tanstack/react-table';
-import { Users, UserCheck, UserLockIcon, Shield, Download, Loader2, UserPlus } from 'lucide-react';
+import { Check, ChevronsUpDown, Users, UserCheck, UserLockIcon, Shield, Download, Loader2, UserPlus, X } from 'lucide-react';
 
 import {
   Card,
@@ -14,17 +14,91 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from '@horizon-sync/ui/components';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { environment } from '../../../environments/environment';
 import { useAuth, useUsers } from '../../hooks';
+import { usePermissions } from '../../hooks/usePermissions';
+import { RoleService } from '../../services/role.service';
 import type { User, UserFilters } from '../../types/user.types';
 
 import { InviteUserModal } from '../InviteUserModal';
 
 import { UsersTable } from '@horizon-sync/ui/components';
+import { UserViewDialog } from './UserViewDialog';
 
+// ── Searchable role filter list rendered inside the Popover ──────────────────
+function RoleFilterList({
+  roles,
+  selected,
+  onSelect,
+}: {
+  roles: string[];
+  selected: string;
+  onSelect: (role: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const filtered = useMemo(
+    () => roles.filter(r => r.toLowerCase().includes(query.toLowerCase())),
+    [roles, query]
+  );
+
+  return (
+    <div className="flex flex-col gap-1">
+      {/* Search input */}
+      <div className="relative">
+        <input
+          autoFocus
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search roles..."
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
+        />
+      </div>
+
+      {/* Options list */}
+      <div className="max-h-[220px] overflow-y-auto mt-1 space-y-0.5">
+        {/* All Roles */}
+        <button
+          type="button"
+          onClick={() => onSelect('')}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground',
+            !selected && 'bg-accent/50 font-medium'
+          )}
+        >
+          <Check className={cn('h-3.5 w-3.5 shrink-0', !selected ? 'opacity-100' : 'opacity-0')} />
+          All Roles
+        </button>
+
+        {filtered.length === 0 && (
+          <p className="px-2 py-3 text-center text-xs text-muted-foreground">No roles found</p>
+        )}
+
+        {filtered.map(role => (
+          <button
+            key={role}
+            type="button"
+            onClick={() => onSelect(role)}
+            className={cn(
+              'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground text-left',
+              selected === role && 'bg-accent/50 font-medium'
+            )}
+          >
+            <Check className={cn('h-3.5 w-3.5 shrink-0', selected === role ? 'opacity-100' : 'opacity-0')} />
+            <span className="truncate">{role}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Stat card ─────────────────────────────────────────────────────────────────
 interface StatCardProps {
   title: string;
   value: string | number;
@@ -53,11 +127,31 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 
 export function UserManagement() {
   const { accessToken, user } = useAuth();
+  const { hasPermission } = usePermissions();
+  const canInvite = hasPermission('user.invite') || hasPermission('user.create') || hasPermission('user.*') || hasPermission('*.*');
+  const canExport = hasPermission('user.read') || hasPermission('user.*') || hasPermission('*.*');
   const [filters, setFilters] = useState<UserFilters>({
     search: '',
     status: 'all',
-    userType: 'all',
+    roleName: '',
   });
+
+  // Fetch org roles for the role filter dropdown
+  const [orgRoles, setOrgRoles] = useState<string[]>([]);
+  const [rolePopoverOpen, setRolePopoverOpen] = useState(false);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    RoleService.getRoles(
+      { search: '', isSystem: null, isActive: true, page: 1, pageSize: 100 },
+      accessToken
+    )
+      .then(res => {
+        const names = (res.data ?? []).map(r => r.name).sort();
+        setOrgRoles(names);
+      })
+      .catch(() => { /* silently ignore — filter just won't populate */ });
+  }, [accessToken]);
 
   const {
     users,
@@ -74,6 +168,8 @@ export function UserManagement() {
   } = useUsers(1, 20, filters, accessToken, user?.organization_id);
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [tableInstance, setTableInstance] = useState<Table<User> | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -131,21 +227,37 @@ export function UserManagement() {
     setPage(1);
   }, [filters, setPage]);
 
-  const visibleUsers = useMemo(
-    () => users.filter((item) => item.id !== user?.id),
-    [users, user?.id]
-  );
+  const visibleUsers = useMemo(() => {
+    let result = users.filter(item => item.id !== user?.id);
+    // Client-side role name filter
+    if (filters.roleName) {
+      result = result.filter(u =>
+        u.roles && u.roles.some(r => r === filters.roleName)
+      );
+    }
+    return result;
+  }, [users, user?.id, filters.roleName]);
 
   const stats = useMemo(() => {
     const total = pagination?.total_items ?? 0;
-    const active = statusCounts?.active ?? 0;
+    // statusCounts includes the current user (who is hidden from the table).
+    // Subtract 1 from active if the current user is active so the stat matches
+    // what's actually shown in the table.
+    const rawActive = statusCounts?.active ?? 0;
+    const currentUserIsActive = user?.status === 'active' || user?.is_active === true;
+    const active = Math.max(0, rawActive - (currentUserIsActive ? 1 : 0));
     const pending = pendingInvitationCount;
     const mfaEnabled = statusCounts?.mfa_enabled ?? 0;
-    return { total, active, pending, mfaEnabled };
-  }, [pagination, pendingInvitationCount, statusCounts]);
+    return { total: Math.max(0, total - 1), active, pending, mfaEnabled };
+  }, [pagination, pendingInvitationCount, statusCounts, user]);
 
   const handleInviteUser = () => {
     setInviteModalOpen(true);
+  };
+
+  const handleViewUser = (user: User) => {
+    setSelectedUser(user);
+    setViewDialogOpen(true);
   };
 
   const handleInviteSuccess = () => {
@@ -178,18 +290,22 @@ export function UserManagement() {
           <p className="text-muted-foreground mt-1">Manage team members, roles, and access permissions</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
-            {isExporting ? (
-              <><Loader2 className="h-4 w-4 animate-spin" />Exporting...</>
-            ) : (
-              <><Download className="h-4 w-4" />Export</>
-            )}
-          </Button>
-          <Button onClick={handleInviteUser}
-            className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
-            <UserPlus className="h-4 w-4" />
-            Invite User
-          </Button>
+          {canExport && (
+            <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
+              {isExporting ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />Exporting...</>
+              ) : (
+                <><Download className="h-4 w-4" />Export</>
+              )}
+            </Button>
+          )}
+          {canInvite && (
+            <Button onClick={handleInviteUser}
+              className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
+              <UserPlus className="h-4 w-4" />
+              Invite User
+            </Button>
+          )}
         </div>
       </div>
 
@@ -223,7 +339,8 @@ export function UserManagement() {
           <SearchInput className="sm:w-80"
             placeholder="Search by name or email..."
             onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
+            {/* Status filter */}
             <Select value={filters.status} onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="All Status" />
@@ -236,17 +353,57 @@ export function UserManagement() {
                 <SelectItem value="suspended">Suspended</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filters.userType} onValueChange={(value) => setFilters((prev) => ({ ...prev, userType: value }))}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="All Roles" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="user">User</SelectItem>
-                <SelectItem value="organization_admin">Admin</SelectItem>
-                <SelectItem value="guest">Guest</SelectItem>
-              </SelectContent>
-            </Select>
+
+            {/* Role filter — searchable popover */}
+            <Popover open={rolePopoverOpen} onOpenChange={setRolePopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={rolePopoverOpen}
+                  className={cn(
+                    'w-[180px] justify-between font-normal',
+                    filters.roleName && 'border-primary text-primary'
+                  )}
+                >
+                  <span className="truncate text-sm">
+                    {filters.roleName || 'All Roles'}
+                  </span>
+                  <div className="flex items-center gap-1 ml-2 shrink-0">
+                    {filters.roleName && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="rounded-full hover:bg-muted p-0.5"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFilters(prev => ({ ...prev, roleName: '' }));
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.stopPropagation();
+                            setFilters(prev => ({ ...prev, roleName: '' }));
+                          }
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </span>
+                    )}
+                    <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                  </div>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-2" align="start">
+                <RoleFilterList
+                  roles={orgRoles}
+                  selected={filters.roleName}
+                  onSelect={(role) => {
+                    setFilters(prev => ({ ...prev, roleName: role }));
+                    setRolePopoverOpen(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
         <div className="flex items-center">{tableInstance && <DataTableViewOptions table={tableInstance} />}</div>
@@ -256,13 +413,23 @@ export function UserManagement() {
       <UsersTable users={visibleUsers}
         loading={loading}
         error={error}
-        hasActiveFilters={!!filters.search || filters.status !== 'all' || filters.userType !== 'all'}
+        hasActiveFilters={!!filters.search || filters.status !== 'all' || !!filters.roleName}
         onInviteUser={handleInviteUser}
+        onView={handleViewUser}
         onTableReady={handleTableReady}
+        showVerified
+        showLastLogin
         serverPagination={serverPaginationConfig}/>
 
       {/* Invite User Modal */}
       <InviteUserModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} onSuccess={handleInviteSuccess} />
+
+      {/* User View Dialog */}
+      <UserViewDialog
+        user={selectedUser}
+        isOpen={viewDialogOpen}
+        onClose={() => { setViewDialogOpen(false); setSelectedUser(null); }}
+      />
     </div>
   );
 }

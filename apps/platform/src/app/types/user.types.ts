@@ -12,6 +12,8 @@ export interface User {
   avatar_url?: string | null;
   phone?: string | null;
   mfa_enabled?: boolean;
+  /** Org-level role names assigned to this user (e.g. ["Sales Agent", "Viewer"]) */
+  roles?: string[];
 }
 
 export interface UsersResponse {
@@ -36,5 +38,6 @@ export interface UsersResponse {
 export interface UserFilters {
   search: string;
   status: string;
-  userType: string;
+  /** Org-level role name filter (e.g. "Sales Agent"). Empty string = all. */
+  roleName: string;
 }

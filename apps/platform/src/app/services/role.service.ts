@@ -322,11 +322,14 @@ export class RoleService {
   }
 
   /**
-   * Get permissions grouped by resource.
+   * Get permissions grouped by module → resource.
    *
-   * The API returns permissions inside category objects, but the UI needs them
-   * grouped by the `resource` field (e.g. "warehouse", "item", "user") so each
-   * collapsible row represents a single resource with its CRUD actions.
+   * The API now returns:
+   *   { modules: [...], categories: [...], uncategorized: [...] }
+   *
+   * We build two things from this:
+   *   1. `modules`  — the new module-grouped structure for the module-toggle UI
+   *   2. `data`     — the legacy flat map { resource: Permission[] } for PermissionMatrix
    */
   static async getGroupedPermissions(token: string): Promise<PermissionGroupedResponse> {
     try {
@@ -343,46 +346,55 @@ export class RoleService {
 
       const apiResponse = await response.json();
 
-      // Flatten all permissions from every category, then group by resource
+      // ── Build legacy flat map from modules (preferred) or categories (fallback) ──
       const grouped: Record<string, Permission[]> = {};
 
-      if (apiResponse.categories && Array.isArray(apiResponse.categories)) {
-        apiResponse.categories.forEach((category: { name: string; permissions: Permission[] }) => {
+      if (apiResponse.modules && Array.isArray(apiResponse.modules)) {
+        // New structure: modules → resources → permissions
+        apiResponse.modules.forEach((mod: { resources: Array<{ key: string; permissions: Permission[] }> }) => {
+          mod.resources.forEach((resource) => {
+            const key = resource.key || 'other';
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(...resource.permissions);
+          });
+        });
+      } else if (apiResponse.categories && Array.isArray(apiResponse.categories)) {
+        // Legacy fallback: categories → permissions grouped by resource
+        apiResponse.categories.forEach((category: { permissions: Permission[] }) => {
           if (!category.permissions) return;
           category.permissions.forEach((perm: Permission) => {
             const key = perm.resource || 'other';
-            if (!grouped[key]) {
-              grouped[key] = [];
-            }
+            if (!grouped[key]) grouped[key] = [];
             grouped[key].push(perm);
           });
         });
       }
 
-      // Also handle uncategorized permissions if present
+      // Also handle uncategorized permissions
       if (apiResponse.uncategorized && Array.isArray(apiResponse.uncategorized)) {
         apiResponse.uncategorized.forEach((perm: Permission) => {
           const key = perm.resource || 'other';
-          if (!grouped[key]) {
-            grouped[key] = [];
-          }
+          if (!grouped[key]) grouped[key] = [];
           grouped[key].push(perm);
         });
       }
 
-      // Sort permissions within each resource group by action for consistent ordering
+      // Sort permissions within each resource group by action
       const ACTION_ORDER = ['read', 'create', 'update', 'delete', 'manage', 'execute'];
       for (const perms of Object.values(grouped)) {
         perms.sort((a, b) => {
           const aIdx = ACTION_ORDER.indexOf(a.action);
           const bIdx = ACTION_ORDER.indexOf(b.action);
-          const aOrder = aIdx === -1 ? ACTION_ORDER.length : aIdx;
-          const bOrder = bIdx === -1 ? ACTION_ORDER.length : bIdx;
-          return aOrder - bOrder;
+          return (aIdx === -1 ? ACTION_ORDER.length : aIdx) - (bIdx === -1 ? ACTION_ORDER.length : bIdx);
         });
       }
 
-      return { data: grouped };
+      return {
+        modules: apiResponse.modules ?? [],
+        categories: apiResponse.categories ?? [],
+        uncategorized: apiResponse.uncategorized ?? [],
+        data: grouped,
+      };
     } catch (error) {
       throw handleAPIError(error);
     }
