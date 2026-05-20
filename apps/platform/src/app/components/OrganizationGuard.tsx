@@ -153,28 +153,38 @@ export function OrganizationGuard({ children }: OrganizationGuardProps) {
     }
   };
 
-  // Show loading overlay while setting up the organization
-  if (settingUp) {
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm">
-        <Loader2 className="h-10 w-10 animate-spin text-[#3058EE]" />
-        <div className="text-center space-y-2 mt-4">
-          <p className="text-lg font-semibold">Setting up your organization...</p>
-          <p className="text-sm text-muted-foreground">
-            Configuring currencies, chart of accounts, and default settings
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
       {children}
+      {/*
+        Loading overlay — rendered on top of the modal instead of replacing it,
+        so the OrganizationForm (and react-hook-form state) stays mounted.
+        That way, if the create-organization request fails (e.g. duplicate name),
+        the user's other field values are preserved.
+      */}
+      {settingUp && (
+        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm">
+          <Loader2 className="h-10 w-10 animate-spin text-[#3058EE]" />
+          <div className="text-center space-y-2 mt-4">
+            <p className="text-lg font-semibold">Setting up your organization...</p>
+            <p className="text-sm text-muted-foreground">
+              Configuring currencies, chart of accounts, and default settings
+            </p>
+          </div>
+        </div>
+      )}
       <CreateOrganizationModal
         open={needsOrganization}
         onOpenChange={() => {
           /* non-dismissible — user must create an org */
+        }}
+        onCancelAttempt={() => {
+          toast({
+            title: 'Organization setup is required',
+            description:
+              'You must complete the organization setup to continue using Horizon Sync.',
+            variant: 'destructive',
+          });
         }}
         onSubmit={handleCreateOrganization}
         title="Set Up Your Organization"
