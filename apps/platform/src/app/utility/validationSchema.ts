@@ -1,5 +1,7 @@
 import * as z from 'zod';
 
+import { describeExpectedLength, getCountry } from './countries';
+
 // Work email validation - must be a valid email from a company domain (not free email providers)
 // const workEmailValidation = z
 //   .string()
@@ -37,10 +39,16 @@ export const registerSchema = z
       .string()
       .min(2, 'Last name must be at least 2 characters')
       .max(50, 'Last name must be less than 50 characters'),
+    country: z
+      .string()
+      .min(2, 'Please select your country'),
+    phone_country_code: z
+      .string()
+      .regex(/^\+\d{1,4}$/, 'Invalid country dial code'),
     phone: z
       .string()
-      .min(10, 'Phone number must be at least 10 digits')
-      .regex(/^\d+$/, 'Phone number must contain only digits'),
+      .min(1, 'Contact number is required')
+      .regex(/^\d+$/, 'Contact number must contain digits only'),
     password: z
       .string()
       .min(8, 'Password must be at least 8 characters')
@@ -53,11 +61,32 @@ export const registerSchema = z
   .refine((data) => data.password === data.confirm_password, {
     message: "Passwords don't match",
     path: ['confirm_password'],
+  })
+  .superRefine((data, ctx) => {
+    // Country-specific phone-number length validation
+    if (!data.country || !data.phone || !/^\d+$/.test(data.phone)) return;
+    const country = getCountry(data.country);
+    if (!country) return;
+    const lens = Array.isArray(country.phoneLength) ? country.phoneLength : [country.phoneLength];
+    if (!lens.includes(data.phone.length)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['phone'],
+        message: `Enter a valid ${country.name} mobile number (${describeExpectedLength(country)}).`,
+      });
+    }
   });
 
 export const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(1, 'Password is required'),
+  // Differentiate "empty" vs "invalid format" with separate messages.
+  email: z
+    .string()
+    .min(1, 'Email field is required')
+    .email('Please enter a valid email address'),
+  password: z
+    .string()
+    .min(1, 'Password field is required')
+    .min(8, 'Password is not valid'),
 });
 
 export const forgotPasswordSchema = z.object({
