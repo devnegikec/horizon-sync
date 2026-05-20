@@ -16,8 +16,10 @@ import {
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useAuth } from '../../hooks';
+import { usePermissions } from '../../hooks/usePermissions';
 import type { RoleFilters, DialogMode, Role } from '../../types/role.types';
 
+import { usePermissions as useRolePermissions } from './hooks';
 import { useRoles } from './hooks';
 import { RoleDialog } from './RoleDialog';
 import { RoleList } from './RoleList';
@@ -50,6 +52,11 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 
 export function RoleManagement() {
   const { accessToken } = useAuth();
+  const { hasPermission } = usePermissions();
+  const canCreateRole = hasPermission('role.create') || hasPermission('role.manage') || hasPermission('role.*') || hasPermission('*.*');
+
+  // Fetch module-grouped permissions once — shared between RoleList view dialog and RoleDialog
+  const { modules } = useRolePermissions(accessToken);
   const [filters, setFilters] = useState<Omit<RoleFilters, 'page' | 'pageSize'>>({
     search: '',
     isSystem: null,
@@ -143,13 +150,15 @@ export function RoleManagement() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            onClick={handleCreateRole}
-            className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
-          >
-            <Plus className="h-4 w-4" />
-            Create Role
-          </Button>
+          {canCreateRole && (
+            <Button
+              onClick={handleCreateRole}
+              className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
+            >
+              <Plus className="h-4 w-4" />
+              Create Role
+            </Button>
+          )}
         </div>
       </div>
 
@@ -243,6 +252,7 @@ export function RoleManagement() {
         onEdit={handleEditRole}
         onClone={handleCloneRole}
         onDelete={handleDeleteRole}
+        modules={modules}
         serverPagination={serverPaginationConfig}
       />
 

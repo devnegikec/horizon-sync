@@ -92,9 +92,6 @@ export function useUsers(
       if (filters?.status && filters.status !== 'all') {
         params.append('status', filters.status);
       }
-      if (filters?.userType && filters.userType !== 'all') {
-        params.append('user_type', filters.userType);
-      }
 
       const res = await fetch(`${USERS_URL}?${params}`, {
         headers: {
@@ -111,7 +108,6 @@ export function useUsers(
       let invitationCount = 0;
       const shouldLoadInvitations =
         organizationId &&
-        (!filters?.userType || filters.userType === 'all') &&
         (!filters?.status || filters.status === 'all' || filters.status === 'pending');
 
       if (shouldLoadInvitations) {

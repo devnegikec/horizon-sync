@@ -46,7 +46,7 @@ export interface InviteUserPayload {
   email: string;
   first_name: string;
   last_name: string;
-  organization_id: string;
+  organization_id?: string;
   role_id?: string;
   team_ids?: string[];
   message?: string;

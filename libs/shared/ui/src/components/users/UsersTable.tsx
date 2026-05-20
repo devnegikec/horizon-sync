@@ -136,6 +136,19 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
         accessorKey: 'user_type',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Role" />,
         cell: ({ row }) => {
+          const user = row.original as UsersTableUser;
+          // Show org-level role names when available, fall back to user_type badge
+          if (user.roles && user.roles.length > 0) {
+            return (
+              <div className="flex flex-wrap gap-1">
+                {user.roles.map((role) => (
+                  <Badge key={role} variant="secondary" className="text-xs">
+                    {role}
+                  </Badge>
+                ))}
+              </div>
+            );
+          }
           const typeBadge = getUserTypeBadge(row.original.user_type);
           return <Badge variant={typeBadge.variant}>{typeBadge.label}</Badge>;
         },
