@@ -35,9 +35,9 @@ interface RoleListProps {
   loading: boolean;
   error: string | null;
   hasActiveFilters: boolean;
-  onEdit: (role: Role) => void;
-  onClone: (role: Role) => void;
-  onDelete: (roleId: string) => void;
+  onEdit?: (role: Role) => void;
+  onClone?: (role: Role) => void;
+  onDelete?: (roleId: string) => void;
   /** Module-grouped permissions for the view dialog */
   modules?: ModuleGroup[];
   serverPagination: {
@@ -85,7 +85,7 @@ export function RoleList({
     try {
       await RoleService.deleteRole(roleToDelete.id, accessToken);
       toast({ title: 'Success', description: 'Role deleted successfully', variant: 'default' });
-      onDelete(roleToDelete.id);
+      onDelete?.(roleToDelete.id);
     } catch (error) {
       toast({
         title: 'Error',
@@ -259,42 +259,48 @@ export function RoleList({
                           <TooltipContent><p>View permissions</p></TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="sm" onClick={() => onEdit(role)} disabled={role.is_system}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent><p>Edit</p></TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="sm" onClick={() => onClone(role)}>
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent><p>Clone</p></TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteClick(role)}
-                              disabled={role.is_system}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent><p>Delete</p></TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      {onEdit && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="sm" onClick={() => onEdit(role)} disabled={role.is_system}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Edit</p></TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      {onClone && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="sm" onClick={() => onClone(role)}>
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Clone</p></TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      {onDelete && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteClick(role)}
+                                disabled={role.is_system}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Delete</p></TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

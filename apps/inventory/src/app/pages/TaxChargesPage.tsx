@@ -35,6 +35,17 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
   );
 }
 
+function LoadingState({ message }: { message: string }) {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3058EE] mx-auto mb-4" />
+        <p className="text-muted-foreground">{message}</p>
+      </div>
+    </div>
+  );
+}
+
 export function TaxChargesPage() {
   const [activeView, setActiveView] = React.useState<ActiveView>('tax_templates');
 
@@ -49,11 +60,11 @@ export function TaxChargesPage() {
                 <NavItem icon={Receipt}
                   label="Tax Templates"
                   isActive={activeView === 'tax_templates'}
-                  onClick={() => setActiveView('tax_templates')}/>
+                  onClick={() => setActiveView('tax_templates')} />
                 <NavItem icon={DollarSign}
                   label="Charge Templates"
                   isActive={activeView === 'charge_templates'}
-                  onClick={() => setActiveView('charge_templates')}/>
+                  onClick={() => setActiveView('charge_templates')} />
               </nav>
             </div>
           </header>
@@ -61,12 +72,12 @@ export function TaxChargesPage() {
           {/* Main Content */}
           <main className="container px-4 py-8">
             {activeView === 'tax_templates' && (
-              <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading tax templates...</div>}>
+              <React.Suspense fallback={<LoadingState message="Loading tax templates..." />}>
                 <TaxTemplateManagement />
               </React.Suspense>
             )}
             {activeView === 'charge_templates' && (
-              <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading charge templates...</div>}>
+              <React.Suspense fallback={<LoadingState message="Loading charge templates..." />}>
                 <ChargeTemplateManagement />
               </React.Suspense>
             )}

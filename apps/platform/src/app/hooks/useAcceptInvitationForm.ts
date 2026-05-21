@@ -45,6 +45,8 @@ export function useAcceptInvitationForm() {
       try {
         const result = await AuthService.validateInvitationToken(token);
         setInvitation(result);
+        form.setValue('first_name', result.first_name ?? '', { shouldValidate: !!result.first_name });
+        form.setValue('last_name', result.last_name ?? '', { shouldValidate: !!result.last_name });
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unable to validate invitation token. Please try again.';
         setError(message);
@@ -69,8 +71,8 @@ export function useAcceptInvitationForm() {
       await AuthService.acceptInvitation({
         token,
         password: data.password,
-        first_name: data.first_name || undefined,
-        last_name: data.last_name || undefined,
+        first_name: invitation?.first_name || data.first_name,
+        last_name: invitation?.last_name || data.last_name,
       });
 
       setSuccess('Invitation accepted successfully. Redirecting to login...');
@@ -102,5 +104,6 @@ export function useAcceptInvitationForm() {
     handleSubmit: form.handleSubmit(onSubmit),
     errors: form.formState.errors,
     watch: form.watch,
+    hasInvitedName: !!(invitation?.first_name && invitation?.last_name),
   };
 }

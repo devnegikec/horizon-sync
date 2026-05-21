@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components';
+import { useUserStore } from '@horizon-sync/store';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useAuth } from '../../hooks';
@@ -30,6 +31,24 @@ interface StatCardProps {
   icon: React.ComponentType<{ className?: string }>;
   iconBg: string;
   iconColor: string;
+}
+
+function canManageIdentity(
+  currentUser: { user_type?: string; roles?: string[]; role?: { name?: string }; organization_id?: string | null } | null | undefined,
+  permissionRoles: string[] = []
+) {
+  const userType = currentUser?.user_type?.toLowerCase();
+  const roles = [
+    ...(currentUser?.roles ?? []),
+    currentUser?.role?.name ?? '',
+    ...permissionRoles,
+  ].map((role) => role.toLowerCase().replace(/[_-]+/g, ' ').trim()).filter(Boolean);
+  return !currentUser?.organization_id
+    || userType === 'admin'
+    || userType === 'administrator'
+    || userType === 'organization_admin'
+    || userType === 'organization_owner'
+    || roles.some((role) => role === 'admin' || role === 'administrator' || role === 'organization admin' || role === 'organization owner' || role === 'owner');
 }
 
 function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps) {
@@ -51,9 +70,11 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 }
 
 export function RoleManagement() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const { hasPermission } = usePermissions();
-  const canCreateRole = hasPermission('role.create') || hasPermission('role.manage') || hasPermission('role.*') || hasPermission('*.*');
+  const permissionRoles = useUserStore((state) => state.permissions.roles);
+  const canModifyRoles = canManageIdentity(user, permissionRoles);
+  const canCreateRole = canModifyRoles || hasPermission('role.create') || hasPermission('role.manage') || hasPermission('role.*') || hasPermission('*.*');
 
   // Fetch module-grouped permissions once — shared between RoleList view dialog and RoleDialog
   const { modules } = useRolePermissions(accessToken);
@@ -249,9 +270,9 @@ export function RoleManagement() {
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.isSystem !== null || filters.isActive !== null}
-        onEdit={handleEditRole}
-        onClone={handleCloneRole}
-        onDelete={handleDeleteRole}
+        onEdit={canModifyRoles ? handleEditRole : undefined}
+        onClone={canModifyRoles ? handleCloneRole : undefined}
+        onDelete={canModifyRoles ? handleDeleteRole : undefined}
         modules={modules}
         serverPagination={serverPaginationConfig}
       />
