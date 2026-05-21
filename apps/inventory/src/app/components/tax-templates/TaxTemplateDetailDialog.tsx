@@ -88,7 +88,7 @@ export function TaxTemplateDetailDialog({ open, onOpenChange, template, onEdit }
                       <tr key={rule.id}>
                         <td className="px-4 py-3 text-sm">{rule.rule_name}</td>
                         <td className="px-4 py-3 text-sm">{rule.tax_type}</td>
-                        <td className="px-4 py-3 text-sm text-right">{rule.tax_rate.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-sm text-right">{Number(rule.tax_rate).toFixed(2)}</td>
                         <td className="px-4 py-3 text-center">
                           {rule.is_compound && (
                             <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">

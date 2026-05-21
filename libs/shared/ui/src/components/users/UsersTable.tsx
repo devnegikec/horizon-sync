@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { Users, MoreHorizontal, Eye, Edit, Key, Mail, Shield, Clock, UserPlus } from 'lucide-react';
+import { Users, MoreHorizontal, Eye, Edit, Key, Mail, Shield, Clock, UserPlus, Trash2 } from 'lucide-react';
 
 import { DataTable, DataTableColumnHeader } from '../data-table';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -16,7 +16,6 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { EmptyState } from '../ui/empty-state';
-import { TableSkeleton } from '../ui/table-skeleton';
 import { getStatusBadgeProps, getUserInitials, getUserTypeBadge, formatUserDate, formatShortDate } from '../../utils/user-utils';
 
 /** Minimal user shape the table needs. Both platform User and admin AdminUserListItem satisfy this. */
@@ -44,6 +43,7 @@ export interface UsersTableProps<T extends UsersTableUser = UsersTableUser> {
   hasActiveFilters: boolean;
   onView?: (user: T) => void;
   onEdit?: (user: T) => void;
+  onDelete?: (user: T) => void;
   onResetPassword?: (user: T) => void;
   onManagePermissions?: (user: T) => void;
   onResendInvitation?: (user: T) => void;
@@ -78,6 +78,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
   hasActiveFilters,
   onView,
   onEdit,
+  onDelete,
   onResetPassword,
   onManagePermissions,
   onResendInvitation,
@@ -113,7 +114,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
     const cols: ColumnDef<T, unknown>[] = [
       {
         accessorKey: 'display_name',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="User" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="User" className="ml-3" />,
         cell: ({ row }) => {
           const user = row.original;
           return (
@@ -134,7 +135,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
       },
       {
         accessorKey: 'user_type',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Role" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Role" className="ml-3" />,
         cell: ({ row }) => {
           const user = row.original as UsersTableUser;
           // Show org-level role names when available, fall back to user_type badge
@@ -155,7 +156,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
       },
       {
         accessorKey: 'status',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" className="ml-3" />,
         cell: ({ row }) => {
           const statusBadge = getStatusBadgeProps(getUserStatus(row.original));
           return <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>;
@@ -166,7 +167,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
     if (showOrganization) {
       cols.push({
         accessorKey: 'organization_name',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Organization" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Organization" className="ml-3" />,
         cell: ({ row }) => (
           <span className="text-sm">{(row.original as UsersTableUser).organization_name ?? '—'}</span>
         ),
@@ -176,7 +177,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
     if (showVerified) {
       cols.push({
         accessorKey: 'email_verified',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Verified" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Verified" className="ml-3" />,
         cell: ({ row }) => {
           const verified = (row.original as UsersTableUser).email_verified;
           return (
@@ -191,7 +192,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
     if (showLastLogin) {
       cols.push({
         accessorKey: 'last_login_at',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Last Login" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Last Login" className="ml-3" />,
         cell: ({ row }) => (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
@@ -204,7 +205,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
     cols.push(
       {
         accessorKey: 'created_at',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Created" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Created" className="ml-3" />,
         cell: ({ row }) => <span className="text-sm">{formatShortDate(row.original.created_at)}</span>,
       },
       {
@@ -212,7 +213,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
         header: () => <span className="sr-only">Actions</span>,
         cell: ({ row }) => {
           const user = row.original;
-          const hasActions = onView || onEdit || onResetPassword || onManagePermissions || onResendInvitation;
+          const hasActions = onView || onEdit || onDelete || onResetPassword || onManagePermissions || onResendInvitation;
           if (!hasActions) return null;
           return (
             <div className="text-right">
@@ -231,7 +232,12 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
                       <Edit className="mr-2 h-4 w-4" />Edit User
                     </DropdownMenuItem>
                   )}
-                  {(onView || onEdit) && (onResetPassword || onManagePermissions || onResendInvitation) && <DropdownMenuSeparator />}
+                  {onDelete && (
+                    <DropdownMenuItem onClick={() => onDelete(user)} className="text-destructive focus:text-destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />Deactivate User
+                    </DropdownMenuItem>
+                  )}
+                  {(onView || onEdit || onDelete) && (onResetPassword || onManagePermissions || onResendInvitation) && <DropdownMenuSeparator />}
                   {onResetPassword && (
                     <DropdownMenuItem onClick={() => onResetPassword(user)}>
                       <Key className="mr-2 h-4 w-4" />Reset Password
@@ -257,7 +263,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
     );
 
     return cols;
-  }, [onView, onEdit, onResetPassword, onManagePermissions, onResendInvitation, showOrganization, showVerified, showLastLogin]);
+  }, [onView, onEdit, onDelete, onResetPassword, onManagePermissions, onResendInvitation, showOrganization, showVerified, showLastLogin]);
 
   const renderViewOptions = (table: Table<T>) => {
     if (table !== tableInstance) setTableInstance(table);
@@ -276,9 +282,16 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
 
   if (loading) {
     return (
-      <Card><CardContent className="p-0">
-        <TableSkeleton columns={showOrganization ? 8 : 7} rows={10} showHeader />
-      </CardContent></Card>
+      <Card className="border-border">
+        <CardContent className="p-0">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3058EE] mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading users...</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 

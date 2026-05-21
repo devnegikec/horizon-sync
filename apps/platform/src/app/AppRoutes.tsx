@@ -9,6 +9,7 @@ import { PlaceholderPage } from './components/PlaceholderPage';
 import BankingRoutes from './features/banking/BankingRoutes';
 import { RegisterPage, LoginPage, AcceptInvitationPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage } from './pages';
 import { PublicQRValidation } from './pages/PublicQRValidation';
+import { AppLoading } from './components/AppLoading';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 const RevenuePage = React.lazy(() => import('inventory/RevenuePage'));
@@ -54,7 +55,7 @@ function ProtectedRouteWrapper() {
       <DashboardLayout>
         <Routes>
           {/* Always accessible to authenticated users */}
-          <Route path="/" element={<DashboardHome />} />
+          <Route path="/" element={<React.Suspense fallback={<AppLoading message="Loading dashboard..." />}><DashboardHome /></React.Suspense>} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/help" element={<HelpPlaceholder />} />
 
@@ -73,7 +74,7 @@ function ProtectedRouteWrapper() {
           {/* Sales & Orders */}
           <Route path="/revenue" element={
             <PermissionGuard required={['invoice.read', 'sales_order.read', 'invoice.*', 'sales_order.*', '*.*']}>
-              <RevenuePage />
+              <React.Suspense fallback={<AppLoading message="Loading revenue..." />}><RevenuePage /></React.Suspense>
             </PermissionGuard>
           } />
 
@@ -87,12 +88,12 @@ function ProtectedRouteWrapper() {
           {/* Inventory */}
           <Route path="/inventory" element={
             <PermissionGuard required={['item.read', 'item.*', '*.*']}>
-              <Inventory />
+              <React.Suspense fallback={<AppLoading message="Loading inventory..." />}><Inventory /></React.Suspense>
             </PermissionGuard>
           } />
           <Route path="/wms" element={
             <PermissionGuard required={['warehouse.read', 'stock_entry.read', 'warehouse.*', '*.*']}>
-              <WMSPage />
+              <React.Suspense fallback={<AppLoading message="Loading WMS..." />}><WMSPage /></React.Suspense>
             </PermissionGuard>
           } />
 
@@ -109,7 +110,7 @@ function ProtectedRouteWrapper() {
           } />
           <Route path="/tax-charges" element={
             <PermissionGuard required={['chart_of_account.read', 'chart_of_account.*', '*.*']}>
-              <TaxChargesPage />
+              <React.Suspense fallback={<AppLoading message="Loading tax & charges..." />}><TaxChargesPage /></React.Suspense>
             </PermissionGuard>
           } />
 
@@ -126,7 +127,7 @@ function ProtectedRouteWrapper() {
           } />
 
           {/* QSeal — accessible to all authenticated users (public product verification) */}
-          <Route path="/qseal" element={<QSealPage />} />
+          <Route path="/qseal" element={<React.Suspense fallback={<AppLoading message="Loading QSeal..." />}><QSealPage /></React.Suspense>} />
 
           {/* Analytics & Reports */}
           <Route path="/analytics" element={

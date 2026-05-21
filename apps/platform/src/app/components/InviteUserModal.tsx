@@ -17,10 +17,25 @@ import { UserService, InviteUserPayload } from '../services/user.service';
 import type { Role, ModuleGroup } from '../types/role.types';
 import { ModulePermissionMatrix } from './roles/ModulePermissionMatrix';
 
+const namePattern = /^[A-Za-z][A-Za-z' -]*[A-Za-z]$/;
+
 const inviteUserSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  first_name: z.string().min(2, 'First name must be at least 2 characters'),
-  last_name: z.string().min(2, 'Last name must be at least 2 characters'),
+  email: z.string()
+    .trim()
+    .min(1, 'Email address is required')
+    .email('Please enter a valid email address')
+    .max(254, 'Email address is too long')
+    .transform((value) => value.toLowerCase()),
+  first_name: z.string()
+    .trim()
+    .min(2, 'First name must be at least 2 characters')
+    .max(50, 'First name cannot exceed 50 characters')
+    .regex(namePattern, 'First name can contain only letters, spaces, hyphens, and apostrophes'),
+  last_name: z.string()
+    .trim()
+    .min(2, 'Last name must be at least 2 characters')
+    .max(50, 'Last name cannot exceed 50 characters')
+    .regex(namePattern, 'Last name can contain only letters, spaces, hyphens, and apostrophes'),
   role_id: z.string().optional(),
   message: z.string().optional(),
 });
@@ -179,123 +194,123 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
 
         {/* Scrollable form body */}
         <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col flex-1 min-h-0">
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-          {/* Email */}
-          <div className="space-y-2">
-            <Label htmlFor="email">
-              Email Address <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="user@example.com"
-              {...register('email')}
-              className={errors.email ? 'border-destructive' : ''}
-            />
-            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-            <p className="text-xs text-muted-foreground">Invitation will be sent to this email</p>
-          </div>
-
-          {/* Name */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+            {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="first_name">
-                First Name <span className="text-destructive">*</span>
+              <Label htmlFor="email">
+                Email Address <span className="text-destructive">*</span>
               </Label>
               <Input
-                id="first_name"
-                placeholder="John"
-                {...register('first_name')}
-                className={errors.first_name ? 'border-destructive' : ''}
+                id="email"
+                type="email"
+                placeholder="user@example.com"
+                {...register('email')}
+                className={errors.email ? 'border-destructive' : ''}
               />
-              {errors.first_name && <p className="text-sm text-destructive">{errors.first_name.message}</p>}
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+              <p className="text-xs text-muted-foreground">Invitation will be sent to this email</p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="last_name">
-                Last Name <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="last_name"
-                placeholder="Doe"
-                {...register('last_name')}
-                className={errors.last_name ? 'border-destructive' : ''}
-              />
-              {errors.last_name && <p className="text-sm text-destructive">{errors.last_name.message}</p>}
-            </div>
-          </div>
 
-          {/* Role selector */}
-          <div className="space-y-2">
-            <Label htmlFor="role_id">Assign Role</Label>
-            <Select onValueChange={handleRoleChange} value={selectedRoleId} disabled={rolesLoading}>
-              <SelectTrigger>
-                <SelectValue placeholder={rolesLoading ? 'Loading roles...' : 'Choose a role'} />
-              </SelectTrigger>
-              <SelectContent>
-                {roles.length === 0 && !rolesLoading && (
-                  <SelectItem value="" disabled>No roles available</SelectItem>
-                )}
-                {roles.map((role) => (
-                  <SelectItem key={role.id} value={role.id}>
-                    <div className="flex flex-col">
-                      <span>{role.name}</span>
-                      {role.description && (
-                        <span className="text-xs text-muted-foreground">{role.description}</span>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">Select the primary role for this user</p>
-          </div>
-
-          {/* Role permissions preview — read-only module view */}
-          {selectedRoleId && (
-            <div className="space-y-3">
-              <div>
-                <h3 className="font-semibold text-sm">
-                  Permissions granted by{' '}
-                  <span className="text-[#3058EE]">{selectedRole?.name ?? 'this role'}</span>
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {permissionsLoading
-                    ? 'Loading permissions...'
-                    : roleModules.length === 0
-                    ? 'This role has no specific module permissions'
-                    : 'The user will have access to the following features'}
-                </p>
+            {/* Name */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="first_name">
+                  First Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="first_name"
+                  placeholder="John"
+                  {...register('first_name')}
+                  className={errors.first_name ? 'border-destructive' : ''}
+                />
+                {errors.first_name && <p className="text-sm text-destructive">{errors.first_name.message}</p>}
               </div>
-
-              {permissionsLoading ? (
-                <div className="flex items-center justify-center p-8">
-                  <p className="text-sm text-muted-foreground">Loading permissions...</p>
-                </div>
-              ) : roleModules.length > 0 ? (
-                <div className="max-h-[320px] overflow-y-auto rounded-lg border p-1">
-                  <ModulePermissionMatrix
-                    modules={roleModules}
-                    selectedPermissions={rolePermissionCodes}
-                    onPermissionToggle={() => { /* read-only */ }}
-                    onBulkSelect={() => { /* read-only */ }}
-                    readOnly
-                  />
-                </div>
-              ) : null}
+              <div className="space-y-2">
+                <Label htmlFor="last_name">
+                  Last Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="last_name"
+                  placeholder="Doe"
+                  {...register('last_name')}
+                  className={errors.last_name ? 'border-destructive' : ''}
+                />
+                {errors.last_name && <p className="text-sm text-destructive">{errors.last_name.message}</p>}
+              </div>
             </div>
-          )}
 
-          {/* Error */}
-          {errorMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
-              <p className="text-sm">{errorMessage}</p>
+            {/* Role selector */}
+            <div className="space-y-2">
+              <Label htmlFor="role_id">Assign Role</Label>
+              <Select onValueChange={handleRoleChange} value={selectedRoleId} disabled={rolesLoading}>
+                <SelectTrigger>
+                  <SelectValue placeholder={rolesLoading ? 'Loading roles...' : 'Choose a role'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.length === 0 && !rolesLoading && (
+                    <SelectItem value="" disabled>No roles available</SelectItem>
+                  )}
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      <div className="flex flex-col">
+                        <span>{role.name}</span>
+                        {role.description && (
+                          <span className="text-xs text-muted-foreground">{role.description}</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Select the primary role for this user</p>
             </div>
-          )}
 
-        </div>{/* end scrollable body */}
+            {/* Role permissions preview — read-only module view */}
+            {selectedRoleId && (
+              <div className="space-y-3">
+                <div>
+                  <h3 className="font-semibold text-sm">
+                    Permissions granted by{' '}
+                    <span className="text-[#3058EE]">{selectedRole?.name ?? 'this role'}</span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {permissionsLoading
+                      ? 'Loading permissions...'
+                      : roleModules.length === 0
+                        ? 'This role has no specific module permissions'
+                        : 'The user will have access to the following features'}
+                  </p>
+                </div>
 
-        {/* Fixed footer */}
-        <div className="px-6 py-4 border-t shrink-0 flex justify-end gap-3">
+                {permissionsLoading ? (
+                  <div className="flex items-center justify-center p-8">
+                    <p className="text-sm text-muted-foreground">Loading permissions...</p>
+                  </div>
+                ) : roleModules.length > 0 ? (
+                  <div className="max-h-[320px] overflow-y-auto rounded-lg border p-1">
+                    <ModulePermissionMatrix
+                      modules={roleModules}
+                      selectedPermissions={rolePermissionCodes}
+                      onPermissionToggle={() => { /* read-only */ }}
+                      onBulkSelect={() => { /* read-only */ }}
+                      readOnly
+                    />
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {/* Error */}
+            {errorMessage && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
+                <p className="text-sm">{errorMessage}</p>
+              </div>
+            )}
+
+          </div>{/* end scrollable body */}
+
+          {/* Fixed footer */}
+          <div className="px-6 py-4 border-t shrink-0 flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
               Cancel
             </Button>

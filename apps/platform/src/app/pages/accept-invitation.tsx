@@ -19,6 +19,7 @@ export function AcceptInvitationPage() {
     register,
     handleSubmit,
     errors,
+    hasInvitedName,
   } = useAcceptInvitationForm();
 
   return (
@@ -89,7 +90,7 @@ export function AcceptInvitationPage() {
                         registration={register('first_name')}
                         error={errors.first_name}
                         testId="accept-invitation-first-name"
-                        required={false}
+                        readOnly={hasInvitedName}
                       />
                       <RegistrationFormInput
                         id="last_name"
@@ -98,7 +99,7 @@ export function AcceptInvitationPage() {
                         registration={register('last_name')}
                         error={errors.last_name}
                         testId="accept-invitation-last-name"
-                        required={false}
+                        readOnly={hasInvitedName}
                       />
                     </div>
                     <RegistrationFormInput

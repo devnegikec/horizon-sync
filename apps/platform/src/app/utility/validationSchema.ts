@@ -2,6 +2,13 @@ import * as z from 'zod';
 
 import { describeExpectedLength, getCountry } from './countries';
 
+const namePattern = /^[A-Za-z][A-Za-z' -]*[A-Za-z]$/;
+const validatedName = (fieldName: string) => z.string()
+  .trim()
+  .min(2, `${fieldName} must be at least 2 characters`)
+  .max(50, `${fieldName} cannot exceed 50 characters`)
+  .regex(namePattern, `${fieldName} can contain only letters, spaces, hyphens, and apostrophes`);
+
 // Work email validation - must be a valid email from a company domain (not free email providers)
 // const workEmailValidation = z
 //   .string()
@@ -111,8 +118,8 @@ export const resetPasswordSchema = z
 
 export const acceptInvitationSchema = z
   .object({
-    first_name: z.string().max(50).optional(),
-    last_name: z.string().max(50).optional(),
+    first_name: validatedName('First name'),
+    last_name: validatedName('Last name'),
     password: z
       .string()
       .min(8, 'Password must be at least 8 characters')

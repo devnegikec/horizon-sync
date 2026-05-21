@@ -31,7 +31,12 @@ const taxRuleSchema = z.object({
   rule_name: z.string().min(1, 'Rule name is required'),
   tax_type: z.string().min(1, 'Tax type is required'),
   description: z.string().optional(),
-  tax_rate: z.number().min(0, 'Rate must be 0 or greater').max(100, 'Rate cannot exceed 100'),
+  tax_rate: z.string()
+    .min(1, 'Tax rate is required')
+    .transform((value) => Number(value))
+    .refine((value) => Number.isFinite(value), 'Tax rate is required')
+    .refine((value) => value >= 0, 'Rate must be 0 or greater')
+    .refine((value) => value <= 100, 'Rate cannot exceed 100'),
   account_head_id: z.string().min(1, 'Account head is required'),
   is_compound: z.boolean(),
   sequence: z.number().int().positive(),
@@ -50,7 +55,8 @@ const taxTemplateFormSchema = z.object({
   tax_rules: z.array(taxRuleSchema).min(1, 'At least one tax rule is required'),
 });
 
-type TaxTemplateFormData = z.infer<typeof taxTemplateFormSchema>;
+type TaxTemplateFormInput = z.input<typeof taxTemplateFormSchema>;
+type TaxTemplateFormData = z.output<typeof taxTemplateFormSchema>;
 
 interface TaxTemplateDialogProps {
   open: boolean;
@@ -65,7 +71,7 @@ const TAX_TYPES = ['GST', 'VAT', 'CGST', 'SGST', 'IGST', 'Sales Tax', 'Service T
 export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving }: TaxTemplateDialogProps) {
   const isEdit = !!template;
 
-  const form = useForm<TaxTemplateFormData>({
+  const form = useForm<TaxTemplateFormInput, unknown, TaxTemplateFormData>({
     resolver: zodResolver(taxTemplateFormSchema),
     defaultValues: {
       template_code: '',
@@ -79,7 +85,7 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
           rule_name: '',
           tax_type: 'GST',
           description: '',
-          tax_rate: 0,
+          tax_rate: '0',
           account_head_id: '',
           is_compound: false,
           sequence: 1,
@@ -109,25 +115,25 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
         is_active: template.is_active,
         tax_rules: existingRules.length > 0
           ? existingRules.map((rule, index) => ({
-              rule_name: rule.rule_name,
-              tax_type: rule.tax_type,
-              description: rule.description || '',
-              tax_rate: Number(rule.tax_rate) || 0,
-              account_head_id: rule.account_head_id,
-              is_compound: rule.is_compound,
-              sequence: rule.sequence || index + 1,
-            }))
+            rule_name: rule.rule_name,
+            tax_type: rule.tax_type,
+            description: rule.description || '',
+            tax_rate: String(Number(rule.tax_rate) || 0),
+            account_head_id: rule.account_head_id,
+            is_compound: rule.is_compound,
+            sequence: rule.sequence || index + 1,
+          }))
           : [
-              {
-                rule_name: '',
-                tax_type: '',
-                description: '',
-                tax_rate: 0,
-                account_head_id: '',
-                is_compound: false,
-                sequence: 1,
-              },
-            ],
+            {
+              rule_name: '',
+              tax_type: '',
+              description: '',
+              tax_rate: '0',
+              account_head_id: '',
+              is_compound: false,
+              sequence: 1,
+            },
+          ],
       });
     } else {
       reset({
@@ -142,7 +148,7 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
             rule_name: '',
             tax_type: '',
             description: '',
-            tax_rate: 0,
+            tax_rate: '0',
             account_head_id: '',
             is_compound: false,
             sequence: 1,
@@ -164,7 +170,7 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
         rule_name: rule.rule_name,
         tax_type: rule.tax_type,
         description: rule.description || undefined,
-        tax_rate: rule.tax_rate,
+        tax_rate: Number(rule.tax_rate),
         account_head_id: rule.account_head_id,
         is_compound: rule.is_compound,
         sequence: rule.sequence,
@@ -183,7 +189,7 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
       rule_name: '',
       tax_type: 'GST',
       description: '',
-      tax_rate: 0,
+      tax_rate: '0',
       account_head_id: '',
       is_compound: false,
       sequence: (taxRules?.length ?? 0) + 1,
@@ -213,7 +219,7 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
           {/* Basic Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Basic Information</h3>
-            
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="template_code">
@@ -225,8 +231,8 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
                     <Input {...field}
                       id="template_code"
                       placeholder="e.g., GST_18"
-                      disabled={isEdit}/>
-                  )}/>
+                      disabled={isEdit} />
+                  )} />
                 {errors.template_code && (
                   <p className="text-sm text-destructive">{errors.template_code.message}</p>
                 )}
@@ -241,8 +247,8 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
                   render={({ field }) => (
                     <Input {...field}
                       id="template_name"
-                      placeholder="e.g., GST 18%"/>
-                  )}/>
+                      placeholder="e.g., GST 18%" />
+                  )} />
                 {errors.template_name && (
                   <p className="text-sm text-destructive">{errors.template_name.message}</p>
                 )}
@@ -257,8 +263,8 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
                   <Textarea {...field}
                     id="description"
                     placeholder="Optional description..."
-                    rows={2}/>
-                )}/>
+                    rows={2} />
+                )} />
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
@@ -279,7 +285,7 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
                         <SelectItem value="Both">Both (Sales & Purchase)</SelectItem>
                       </SelectContent>
                     </Select>
-                  )}/>
+                  )} />
                 {errors.tax_category && (
                   <p className="text-sm text-destructive">{errors.tax_category.message}</p>
                 )}
@@ -291,8 +297,8 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
                   render={({ field }) => (
                     <Checkbox id="is_default"
                       checked={field.value}
-                      onCheckedChange={field.onChange}/>
-                  )}/>
+                      onCheckedChange={field.onChange} />
+                  )} />
                 <Label htmlFor="is_default" className="cursor-pointer">
                   Set as Default
                 </Label>
@@ -304,8 +310,8 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
                   render={({ field }) => (
                     <Checkbox id="is_active"
                       checked={field.value}
-                      onCheckedChange={field.onChange}/>
-                  )}/>
+                      onCheckedChange={field.onChange} />
+                  )} />
                 <Label htmlFor="is_active" className="cursor-pointer">
                   Active
                 </Label>
@@ -355,8 +361,8 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
                         control={control}
                         render={({ field }) => (
                           <Input {...field}
-                            placeholder="e.g., CGST"/>
-                        )}/>
+                            placeholder="e.g., CGST" />
+                        )} />
                       {errors.tax_rules?.[index]?.rule_name && (
                         <p className="text-sm text-destructive">
                           {errors.tax_rules[index]?.rule_name?.message}
@@ -383,7 +389,7 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
                               ))}
                             </SelectContent>
                           </Select>
-                        )}/>
+                        )} />
                       {errors.tax_rules?.[index]?.tax_type && (
                         <p className="text-sm text-destructive">
                           {errors.tax_rules[index]?.tax_type?.message}
@@ -401,12 +407,16 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
                         control={control}
                         render={({ field }) => (
                           <Input {...field}
+                            value={field.value}
                             type="number"
                             step="0.01"
                             min="0"
                             max="100"
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}/>
-                        )}/>
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              field.onChange(value);
+                            }} />
+                        )} />
                       {errors.tax_rules?.[index]?.tax_rate && (
                         <p className="text-sm text-destructive">
                           {errors.tax_rules[index]?.tax_rate?.message}
@@ -422,8 +432,8 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
                         control={control}
                         render={({ field }) => (
                           <Input {...field}
-                            placeholder="Account ID"/>
-                        )}/>
+                            placeholder="Account ID" />
+                        )} />
                       {errors.tax_rules?.[index]?.account_head_id && (
                         <p className="text-sm text-destructive">
                           {errors.tax_rules[index]?.account_head_id?.message}
@@ -437,8 +447,8 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
                         render={({ field }) => (
                           <Checkbox id={`tax_rules.${index}.is_compound`}
                             checked={field.value}
-                            onCheckedChange={field.onChange}/>
-                        )}/>
+                            onCheckedChange={field.onChange} />
+                        )} />
                       <Label htmlFor={`tax_rules.${index}.is_compound`} className="cursor-pointer">
                         Compound Tax
                       </Label>
@@ -451,8 +461,8 @@ export function TaxTemplateDialog({ open, onOpenChange, template, onSave, saving
                       control={control}
                       render={({ field }) => (
                         <Input {...field}
-                          placeholder="Optional description..."/>
-                      )}/>
+                          placeholder="Optional description..." />
+                      )} />
                   </div>
                 </div>
               ))}

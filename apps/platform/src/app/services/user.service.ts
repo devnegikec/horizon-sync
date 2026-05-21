@@ -90,6 +90,8 @@ export interface UpdateUserPayload {
   first_name?: string;
   last_name?: string;
   display_name?: string;
+  status?: string;
+  is_active?: boolean;
   phone?: string;
   preferences?: Record<string, unknown>;
   extra_data?: Record<string, unknown>;
@@ -180,6 +182,33 @@ export class UserService {
         throw error;
       }
       throw new Error('An unexpected error occurred while inviting user');
+    }
+  }
+
+  static async updateUser(userId: string, payload: UpdateUserPayload, token: string): Promise<User> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Failed to update user',
+        }));
+        throw new Error(errorData.message || errorData.detail || getFriendlyMessage(response.status));
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred while updating user');
     }
   }
 

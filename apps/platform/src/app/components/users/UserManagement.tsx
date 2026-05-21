@@ -1,7 +1,10 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { type Table } from '@tanstack/react-table';
 import { Check, ChevronsUpDown, Users, UserCheck, UserLockIcon, Shield, Download, Loader2, UserPlus, X } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
 import {
   Card,
@@ -17,19 +20,154 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  Input,
+  Label,
+  UsersTable,
 } from '@horizon-sync/ui/components';
+import { useUserStore } from '@horizon-sync/store';
+import { useToast } from '@horizon-sync/ui/hooks';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { environment } from '../../../environments/environment';
 import { useAuth, useUsers } from '../../hooks';
 import { usePermissions } from '../../hooks/usePermissions';
 import { RoleService } from '../../services/role.service';
+import { UserService } from '../../services/user.service';
 import type { User, UserFilters } from '../../types/user.types';
 
 import { InviteUserModal } from '../InviteUserModal';
-
-import { UsersTable } from '@horizon-sync/ui/components';
 import { UserViewDialog } from './UserViewDialog';
+
+const namePattern = /^[A-Za-z][A-Za-z' -]*[A-Za-z]$/;
+
+const userDetailsSchema = z.object({
+  first_name: z.string()
+    .trim()
+    .min(2, 'First name must be at least 2 characters')
+    .max(50, 'First name cannot exceed 50 characters')
+    .regex(namePattern, 'First name can contain only letters, spaces, hyphens, and apostrophes'),
+  last_name: z.string()
+    .trim()
+    .min(2, 'Last name must be at least 2 characters')
+    .max(50, 'Last name cannot exceed 50 characters')
+    .regex(namePattern, 'Last name can contain only letters, spaces, hyphens, and apostrophes'),
+});
+
+type UserDetailsFormData = z.infer<typeof userDetailsSchema>;
+
+function isOrganizationOwnerOrAdmin(
+  currentUser: { user_type?: string; roles?: string[]; role?: { name?: string }; organization_id?: string | null } | null | undefined,
+  permissionRoles: string[] = []
+) {
+  const userType = currentUser?.user_type?.toLowerCase();
+  const roles = [
+    ...(currentUser?.roles ?? []),
+    currentUser?.role?.name ?? '',
+    ...permissionRoles,
+  ].map((role) => role.toLowerCase().replace(/[_-]+/g, ' ').trim()).filter(Boolean);
+  return !currentUser?.organization_id
+    || userType === 'admin'
+    || userType === 'administrator'
+    || userType === 'organization_admin'
+    || userType === 'organization_owner'
+    || roles.some((role) => role === 'admin' || role === 'administrator' || role === 'organization admin' || role === 'organization owner' || role === 'owner');
+}
+
+function isOrganizationOwnerUser(
+  currentUser: { user_type?: string; roles?: string[]; role?: { name?: string } } | null | undefined,
+  permissionRoles: string[] = []
+) {
+  const userType = currentUser?.user_type?.toLowerCase();
+  const roles = [
+    ...(currentUser?.roles ?? []),
+    currentUser?.role?.name ?? '',
+    ...permissionRoles,
+  ].map((role) => role.toLowerCase().replace(/[_-]+/g, ' ').trim()).filter(Boolean);
+  return userType === 'organization_owner'
+    || userType === 'owner'
+    || roles.some((role) => role === 'organization owner' || role === 'owner');
+}
+
+function isOrganizationAdminUser(
+  currentUser: { user_type?: string; roles?: string[]; role?: { name?: string } } | null | undefined,
+  permissionRoles: string[] = []
+) {
+  const userType = currentUser?.user_type?.toLowerCase();
+  const roles = [
+    ...(currentUser?.roles ?? []),
+    currentUser?.role?.name ?? '',
+    ...permissionRoles,
+  ].map((role) => role.toLowerCase().replace(/[_-]+/g, ' ').trim()).filter(Boolean);
+  return userType === 'admin'
+    || userType === 'administrator'
+    || userType === 'organization_admin'
+    || roles.some((role) => role === 'admin' || role === 'administrator' || role === 'organization admin');
+}
+
+function EditUserDialog({
+  user,
+  open,
+  onOpenChange,
+  onSubmit,
+}: {
+  user: User | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: UserDetailsFormData) => Promise<void>;
+}) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const form = useForm<UserDetailsFormData>({
+    resolver: zodResolver(userDetailsSchema),
+    values: {
+      first_name: user?.first_name ?? '',
+      last_name: user?.last_name ?? '',
+    },
+  });
+
+  const handleSubmit = form.handleSubmit(async (data) => {
+    setIsSubmitting(true);
+    try {
+      await onSubmit(data);
+      onOpenChange(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit User Details</DialogTitle>
+          <DialogDescription>Update the user's first and last name.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit_first_name">First Name</Label>
+            <Input id="edit_first_name" {...form.register('first_name')} className={form.formState.errors.first_name ? 'border-destructive' : ''} />
+            {form.formState.errors.first_name && <p className="text-sm text-destructive">{form.formState.errors.first_name.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit_last_name">Last Name</Label>
+            <Input id="edit_last_name" {...form.register('last_name')} className={form.formState.errors.last_name ? 'border-destructive' : ''} />
+            {form.formState.errors.last_name && <p className="text-sm text-destructive">{form.formState.errors.last_name.message}</p>}
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // ── Searchable role filter list rendered inside the Popover ──────────────────
 function RoleFilterList({
@@ -128,8 +266,13 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 export function UserManagement() {
   const { accessToken, user } = useAuth();
   const { hasPermission } = usePermissions();
-  const canInvite = hasPermission('user.invite') || hasPermission('user.create') || hasPermission('user.*') || hasPermission('*.*');
-  const canExport = hasPermission('user.read') || hasPermission('user.*') || hasPermission('*.*');
+  const permissionRoles = useUserStore((state) => state.permissions.roles);
+  const { toast } = useToast();
+  const canModifyUsers = isOrganizationOwnerOrAdmin(user, permissionRoles);
+  const isCurrentUserOwner = isOrganizationOwnerUser(user, permissionRoles);
+  const shouldHideOwners = isOrganizationAdminUser(user, permissionRoles) && !isCurrentUserOwner;
+  const canInvite = canModifyUsers || hasPermission('user.invite') || hasPermission('user.create') || hasPermission('user.*') || hasPermission('*.*');
+  const canExport = canModifyUsers || hasPermission('user.read') || hasPermission('user.*') || hasPermission('*.*');
   const [filters, setFilters] = useState<UserFilters>({
     search: '',
     status: 'all',
@@ -169,6 +312,7 @@ export function UserManagement() {
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [tableInstance, setTableInstance] = useState<Table<User> | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -189,7 +333,7 @@ export function UserManagement() {
         });
         if (!res.ok) break;
         const data = await res.json() as { users: User[]; pagination: { total_pages: number } };
-        all = all.concat(data.users ?? []);
+        all = all.concat((data.users ?? []).filter((item) => !shouldHideOwners || !isOrganizationOwnerUser(item)));
         totalPages = data.pagination?.total_pages ?? 1;
         page++;
       } while (page <= totalPages);
@@ -219,7 +363,7 @@ export function UserManagement() {
     } finally {
       setIsExporting(false);
     }
-  }, [accessToken]);
+  }, [accessToken, shouldHideOwners]);
 
 
   // Reset to first page when filters change
@@ -229,6 +373,9 @@ export function UserManagement() {
 
   const visibleUsers = useMemo(() => {
     let result = users.filter(item => item.id !== user?.id);
+    if (shouldHideOwners) {
+      result = result.filter(item => !isOrganizationOwnerUser(item));
+    }
     // Client-side role name filter
     if (filters.roleName) {
       result = result.filter(u =>
@@ -236,7 +383,7 @@ export function UserManagement() {
       );
     }
     return result;
-  }, [users, user?.id, filters.roleName]);
+  }, [users, user?.id, shouldHideOwners, filters.roleName]);
 
   const stats = useMemo(() => {
     const total = pagination?.total_items ?? 0;
@@ -256,8 +403,77 @@ export function UserManagement() {
   };
 
   const handleViewUser = (user: User) => {
+    if (shouldHideOwners && isOrganizationOwnerUser(user)) return;
     setSelectedUser(user);
     setViewDialogOpen(true);
+  };
+
+  const handleEditUser = (user: User) => {
+    if (shouldHideOwners && isOrganizationOwnerUser(user)) {
+      toast({
+        variant: 'destructive',
+        title: 'Action not allowed',
+        description: 'Administrators cannot modify organization owner accounts.',
+      });
+      return;
+    }
+    setSelectedUser(user);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateUser = async (data: UserDetailsFormData) => {
+    if (!accessToken || !selectedUser) return;
+    if (shouldHideOwners && isOrganizationOwnerUser(selectedUser)) {
+      toast({
+        variant: 'destructive',
+        title: 'Action not allowed',
+        description: 'Administrators cannot modify organization owner accounts.',
+      });
+      return;
+    }
+    try {
+      await UserService.updateUser(selectedUser.id, {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        display_name: `${data.first_name} ${data.last_name}`.trim(),
+      }, accessToken);
+      toast({ title: 'User updated', description: 'User details updated successfully.' });
+      refetch();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Update failed',
+        description: error instanceof Error ? error.message : 'Failed to update user details.',
+      });
+      throw error;
+    }
+  };
+
+  const handleDeleteUser = async (targetUser: User) => {
+    if (!accessToken) return;
+    if (shouldHideOwners && isOrganizationOwnerUser(targetUser)) {
+      toast({
+        variant: 'destructive',
+        title: 'Action not allowed',
+        description: 'Administrators cannot deactivate organization owner accounts.',
+      });
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to deactivate ${targetUser.first_name} ${targetUser.last_name}?`)) return;
+    try {
+      await UserService.updateUser(targetUser.id, {
+        status: 'inactive',
+        is_active: false,
+      }, accessToken);
+      toast({ title: 'User deactivated', description: 'User deactivated successfully.' });
+      refetch();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Deactivate failed',
+        description: error instanceof Error ? error.message : 'Failed to deactivate user.',
+      });
+    }
   };
 
   const handleInviteSuccess = () => {
@@ -315,22 +531,22 @@ export function UserManagement() {
           value={stats.total}
           icon={Users}
           iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"/>
+          iconColor="text-slate-600 dark:text-slate-400" />
         <StatCard title="Active Users"
           value={stats.active}
           icon={UserCheck}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"/>
+          iconColor="text-emerald-600 dark:text-emerald-400" />
         <StatCard title="Pending Invites"
           value={stats.pending}
           icon={UserLockIcon}
           iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"/>
+          iconColor="text-amber-600 dark:text-amber-400" />
         <StatCard title="MFA Enabled"
           value={stats.mfaEnabled}
           icon={Shield}
           iconBg="bg-[#3058EE]/10"
-          iconColor="text-[#3058EE]"/>
+          iconColor="text-[#3058EE]" />
       </div>
 
       {/* Filters */}
@@ -338,7 +554,7 @@ export function UserManagement() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <SearchInput className="sm:w-80"
             placeholder="Search by name or email..."
-            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
+            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))} />
           <div className="flex gap-3 flex-wrap">
             {/* Status filter */}
             <Select value={filters.status} onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
@@ -416,13 +632,25 @@ export function UserManagement() {
         hasActiveFilters={!!filters.search || filters.status !== 'all' || !!filters.roleName}
         onInviteUser={handleInviteUser}
         onView={handleViewUser}
+        onEdit={canModifyUsers ? handleEditUser : undefined}
+        onDelete={canModifyUsers ? handleDeleteUser : undefined}
         onTableReady={handleTableReady}
         showVerified
         showLastLogin
-        serverPagination={serverPaginationConfig}/>
+        serverPagination={serverPaginationConfig} />
 
       {/* Invite User Modal */}
       <InviteUserModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} onSuccess={handleInviteSuccess} />
+
+      <EditUserDialog
+        user={selectedUser}
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          setEditDialogOpen(open);
+          if (!open) setSelectedUser(null);
+        }}
+        onSubmit={handleUpdateUser}
+      />
 
       {/* User View Dialog */}
       <UserViewDialog
