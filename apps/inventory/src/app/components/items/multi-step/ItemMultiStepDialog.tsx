@@ -33,17 +33,22 @@ const STEPS = [
   { id: 3, title: 'Tax & Additional', description: 'Tax and custom fields' },
 ];
 
+const SKU_PATTERN = /^[a-zA-Z0-9-]*$/;
+
+function isSkuValid(sku: string): boolean {
+  return !sku || (sku.length <= 100 && SKU_PATTERN.test(sku));
+}
+
+// eslint-disable-next-line complexity
 function isStep1Valid(formData: ItemFormData): boolean {
-  const nameValid = !!formData.name?.trim() && formData.name.length <= 255;
-  const descValid = !formData.description || formData.description.length <= 1000;
-  return !!(
-    nameValid &&
-    descValid &&
-    formData.itemGroupId?.trim() &&
-    formData.itemType?.trim() &&
-    formData.unitOfMeasure?.trim() &&
-    formData.status?.trim()
-  );
+  if (!formData.name?.trim() || formData.name.length > 255) return false;
+  if (formData.description && formData.description.length > 1000) return false;
+  if (!isSkuValid(formData.sku)) return false;
+  if (!formData.itemGroupId?.trim()) return false;
+  if (!formData.itemType?.trim()) return false;
+  if (!formData.unitOfMeasure?.trim()) return false;
+  if (!formData.status?.trim()) return false;
+  return true;
 }
 
 function validateStep(step: number, formData: ItemFormData): boolean {
@@ -68,6 +73,7 @@ function validateStep(step: number, formData: ItemFormData): boolean {
 const getInitialFormData = (initialData?: Partial<ItemFormData>): ItemFormData => ({
   itemCode: '',
   name: '',
+  sku: '',
   description: '',
   itemGroupId: '',
   itemType: 'stock',

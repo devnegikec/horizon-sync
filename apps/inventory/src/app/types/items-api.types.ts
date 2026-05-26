@@ -33,6 +33,7 @@ export interface ItemsResponse {
 export interface CreateItemPayload {
   item_code: string;
   item_name: string;
+  sku?: string | null;
   description: string;
   item_group_id: string;
   item_type: string;
@@ -82,6 +83,7 @@ export interface UpdateItemPayload {
   organization_id?: string;
   item_code: string;
   item_name: string;
+  sku?: string | null;
   description: string;
   item_group_id: string;
   item_group: UpdateItemGroupRef;
