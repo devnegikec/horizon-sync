@@ -47,6 +47,8 @@ export interface CsvImporterProps<T> {
   previewColumns?: { key: string; label: string }[];
   /** Called when the preview table is shown or hidden — useful to hide sibling UI */
   onPreviewChange?: (active: boolean) => void;
+  /** Disables the Import CSV button */
+  disabled?: boolean;
 }
 
 // ------------------------------------------------------------------ //
@@ -231,6 +233,7 @@ export function CsvImporter<T>({
   sampleFileName = 'sample.csv',
   previewColumns,
   onPreviewChange,
+  disabled = false,
 }: CsvImporterProps<T>) {
   const [parseErrors, setParseErrors] = React.useState<ParseError[]>([]);
   const [fileName, setFileName] = React.useState<string | null>(null);
@@ -306,7 +309,7 @@ export function CsvImporter<T>({
     <div className="space-y-2">
       {!showPreview && (
         <div className="flex items-center gap-2 flex-wrap">
-          <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+          <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4 mr-1" />
             Import CSV
           </Button>
