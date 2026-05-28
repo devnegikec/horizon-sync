@@ -190,7 +190,7 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
   console.log('2. data.lineItems:', data.lineItems);
   console.log('3. data.lineItems.length:', data.lineItems?.length);
   console.log('4. Is lineItems an array?', Array.isArray(data.lineItems));
-  
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -215,10 +215,14 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
         return 'Purchase Order';
       case 'invoice':
         return 'Invoice';
+      case 'asn':
+        return 'Advance Stock Notice';
       default:
         return 'Document';
     }
   };
+
+  const isAsn = data.type === 'asn';
 
   console.log('5. About to render, lineItems check:', {
     exists: !!data.lineItems,
@@ -233,11 +237,13 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
       <Page size="A4" style={styles.page}>
         {/* Company Header */}
         <View style={styles.companySection}>
-          <Text style={styles.companyName}>{data.companyName || 'Your Company Name'}</Text>
+          <Text style={styles.companyName}>
+            {isAsn ? `Sender: ${data.companyName || 'N/A'}` : (data.companyName || 'Your Company Name')}
+          </Text>
           {data.companyAddress && <Text style={styles.companyDetails}>{data.companyAddress}</Text>}
           {data.companyPhone && <Text style={styles.companyDetails}>Phone: {data.companyPhone}</Text>}
           {data.companyEmail && <Text style={styles.companyDetails}>Email: {data.companyEmail}</Text>}
-          {data.companyTaxId && <Text style={styles.companyDetails}>Tax ID: {data.companyTaxId}</Text>}
+          {data.companyTaxId && !isAsn && <Text style={styles.companyDetails}>Tax ID: {data.companyTaxId}</Text>}
         </View>
 
         {/* Document Title */}
@@ -277,10 +283,10 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
           </View>
 
           <View style={styles.infoBlock}>
-            <Text style={styles.infoLabel}>Customer</Text>
+            <Text style={styles.infoLabel}>{isAsn ? 'For' : 'Customer'}</Text>
             <Text style={styles.infoValue}>{data.customerName}</Text>
 
-            {data.customerCode && (
+            {!isAsn && data.customerCode && (
               <>
                 <Text style={styles.infoLabel}>Customer Code</Text>
                 <Text style={styles.infoValue}>{data.customerCode}</Text>
@@ -290,22 +296,22 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
             {data.customerAddress && <Text style={styles.companyDetails}>{data.customerAddress}</Text>}
             {data.customerPhone && <Text style={styles.companyDetails}>Phone: {data.customerPhone}</Text>}
             {data.customerEmail && <Text style={styles.companyDetails}>Email: {data.customerEmail}</Text>}
-            {data.customerTaxNumber && <Text style={styles.companyDetails}>Tax No: {data.customerTaxNumber}</Text>}
+            {data.customerTaxNumber && !isAsn && <Text style={styles.companyDetails}>Tax No: {data.customerTaxNumber}</Text>}
           </View>
         </View>
 
         {/* Line Items Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.col1}>#</Text>
-            <Text style={styles.col2}>Item</Text>
-            <Text style={styles.col3}>Qty</Text>
-            <Text style={styles.col4}>UOM</Text>
-            <Text style={styles.col5}>Rate</Text>
-            <Text style={styles.col6}>Amount</Text>
-            <Text style={styles.col7}>Discount</Text>
-            <Text style={styles.col8}>Tax</Text>
-            <Text style={styles.col9}>Total</Text>
+            <Text style={isAsn ? { width: '5%' } : styles.col1}>#</Text>
+            <Text style={isAsn ? { width: '55%' } : styles.col2}>Item</Text>
+            <Text style={isAsn ? { width: '25%' } : styles.col4}>UOM</Text>
+            <Text style={isAsn ? { width: '15%', textAlign: 'right' } : styles.col3}>Qty</Text>
+            {!isAsn && <Text style={styles.col5}>Rate</Text>}
+            {!isAsn && <Text style={styles.col6}>Amount</Text>}
+            {!isAsn && <Text style={styles.col7}>Discount</Text>}
+            {!isAsn && <Text style={styles.col8}>Tax</Text>}
+            {!isAsn && <Text style={styles.col9}>Total</Text>}
           </View>
 
           {(!data.lineItems || data.lineItems.length === 0) && (
@@ -320,34 +326,36 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
             console.log('Rendering line item:', item);
             return (
               <View key={item.index} style={styles.tableRow}>
-                <Text style={styles.col1}>{item.index}</Text>
-                <View style={styles.col2}>
+                <Text style={isAsn ? { width: '5%' } : styles.col1}>{item.index}</Text>
+                <View style={isAsn ? { width: '55%' } : styles.col2}>
                   <Text style={styles.itemName}>{item.itemName}</Text>
                   {item.itemCode && <Text style={styles.itemCode}>{item.itemCode}</Text>}
-                  {item.taxInfo && (
+                  {item.taxInfo && !isAsn && (
                     <Text style={styles.taxInfo}>
                       {item.taxInfo.breakup.map((tax) => `${tax.rule_name} ${tax.rate}%`).join(', ')}
                     </Text>
                   )}
                 </View>
-                <Text style={styles.col3}>{Number(item.quantity ?? 0).toFixed(3)}</Text>
-                <Text style={styles.col4}>{item.uom}</Text>
-                <Text style={styles.col5}>{formatCurrency(item.rate)}</Text>
-                <Text style={styles.col6}>{formatCurrency(item.amount)}</Text>
-                <Text style={styles.col7}>
-                  {item.discountAmount != null && item.discountAmount > 0
-                    ? `−${formatCurrency(item.discountAmount)}`
-                    : '—'}
-                </Text>
-                <Text style={styles.col8}>{item.taxAmount ? formatCurrency(item.taxAmount) : '—'}</Text>
-                <Text style={styles.col9}>{formatCurrency(item.totalAmount)}</Text>
+                <Text style={isAsn ? { width: '25%' } : styles.col4}>{item.uom}</Text>
+                <Text style={isAsn ? { width: '15%', textAlign: 'right' } : styles.col3}>{Number(item.quantity ?? 0).toFixed(3)}</Text>
+                {!isAsn && <Text style={styles.col5}>{formatCurrency(item.rate)}</Text>}
+                {!isAsn && <Text style={styles.col6}>{formatCurrency(item.amount)}</Text>}
+                {!isAsn && (
+                  <Text style={styles.col7}>
+                    {item.discountAmount != null && item.discountAmount > 0
+                      ? `−${formatCurrency(item.discountAmount)}`
+                      : '—'}
+                  </Text>
+                )}
+                {!isAsn && <Text style={styles.col8}>{item.taxAmount ? formatCurrency(item.taxAmount) : '—'}</Text>}
+                {!isAsn && <Text style={styles.col9}>{formatCurrency(item.totalAmount)}</Text>}
               </View>
             );
           })}
         </View>
 
         {/* Tax Summary */}
-        {data.taxSummary && data.taxSummary.length > 0 && (
+        {!isAsn && data.taxSummary && data.taxSummary.length > 0 && (
           <View style={styles.taxSummarySection}>
             <Text style={styles.taxSummaryTitle}>Tax Summary</Text>
             {data.taxSummary.map((tax, index) => (
@@ -371,23 +379,27 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
           </View>
         )}
 
-        {/* Totals: Subtotal → Organization Discount → Total Tax → Grand Total */}
+        {/* Totals */}
         <View style={styles.totalsSection}>
-          <View style={styles.totalRow}>
-            <Text>Subtotal:</Text>
-            <Text>{formatCurrency(data.subtotal)}</Text>
-          </View>
-          <View style={styles.totalRow}>
-            <Text>Organization Discount:</Text>
-            <Text>{data.discountAmount > 0 ? `−${formatCurrency(data.discountAmount)}` : formatCurrency(0)}</Text>
-          </View>
-          <View style={styles.totalRow}>
-            <Text>Total Tax:</Text>
-            <Text>{formatCurrency(data.totalTax)}</Text>
-          </View>
-          <View style={styles.grandTotalRow}>
-            <Text>Grand Total:</Text>
-            <Text>{formatCurrency(data.grandTotal)}</Text>
+          {!isAsn && (
+            <>
+              <View style={styles.totalRow}>
+                <Text>Subtotal:</Text>
+                <Text>{formatCurrency(data.subtotal)}</Text>
+              </View>
+              <View style={styles.totalRow}>
+                <Text>Organization Discount:</Text>
+                <Text>{data.discountAmount > 0 ? `−${formatCurrency(data.discountAmount)}` : formatCurrency(0)}</Text>
+              </View>
+              <View style={styles.totalRow}>
+                <Text>Total Tax:</Text>
+                <Text>{formatCurrency(data.totalTax)}</Text>
+              </View>
+            </>
+          )}
+          <View style={isAsn ? { ...styles.grandTotalRow, borderTop: 'none' } : styles.grandTotalRow}>
+            <Text>{isAsn ? 'Total Quantity:' : 'Grand Total:'}</Text>
+            <Text>{isAsn ? Number(data.grandTotal ?? 0).toFixed(3) : formatCurrency(data.grandTotal)}</Text>
           </View>
         </View>
 

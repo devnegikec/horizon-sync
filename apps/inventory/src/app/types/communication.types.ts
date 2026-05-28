@@ -7,7 +7,8 @@ export type DocType =
   | 'purchase_receipt'
   | 'payment'
   | 'rfq'
-  | 'material_request';
+  | 'material_request'
+  | 'asn';
 
 export type CommunicationChannel = 'email' | 'whatsapp' | 'sms' | 'webhook';
 
