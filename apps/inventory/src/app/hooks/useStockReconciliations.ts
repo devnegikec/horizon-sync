@@ -48,6 +48,13 @@ export function useStockReconciliations(options: {
     if (options.pageSize !== undefined) setCurrentPageSize(options.pageSize);
   }, [options.pageSize]);
 
+  const status = filters?.status;
+  const search = filters?.search;
+  const warehouseId = filters?.warehouse_id;
+
+  // Memoize filters to prevent unnecessary re-renders when parent passes new object references
+  const memoizedFilters = React.useMemo(() => filters, [status, search, warehouseId]);
+
   const fetchStockReconciliations = React.useCallback(async () => {
     if (!accessToken) {
       setStockReconciliations([]);
@@ -62,7 +69,7 @@ export function useStockReconciliations(options: {
     setError(null);
 
     try {
-      const params = buildStockReconciliationsParams(currentPage, currentPageSize, filters);
+      const params = buildStockReconciliationsParams(currentPage, currentPageSize, memoizedFilters);
       const url = buildUrl('/stock-reconciliations', params);
 
       const res = await fetch(url, {
@@ -95,7 +102,7 @@ export function useStockReconciliations(options: {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, currentPage, currentPageSize, filters]);
+  }, [accessToken, currentPage, currentPageSize, memoizedFilters, warehouseId]);
 
   React.useEffect(() => {
     fetchStockReconciliations();
@@ -130,7 +137,7 @@ function buildStockReconciliationsParams(
   if (!filters) return params;
 
   // Add filters to API params if provided
-  const filterKeys: Array<keyof StockReconciliationFilters> = ['status', 'search'];
+  const filterKeys: Array<keyof StockReconciliationFilters> = ['status', 'warehouse_id', 'search'];
 
   filterKeys.forEach((key) => {
     const value = filters[key];
@@ -148,11 +155,11 @@ function buildStockReconciliationsParams(
  */
 function calculateStats(stockReconciliations: StockReconciliation[]): StockReconciliationStats {
   const totalReconciliations = stockReconciliations.length;
-  
+
   // Count reconciliations by status
   const pendingCount = stockReconciliations.filter((sr) => sr.status === 'draft').length;
   const completedCount = stockReconciliations.filter((sr) => sr.status === 'submitted').length;
-  
+
   // Calculate total adjustments
   const totalAdjustments = stockReconciliations.reduce((sum, sr) => {
     const diff = typeof sr.total_difference === 'number' ? sr.total_difference : parseFloat(String(sr.total_difference || 0));

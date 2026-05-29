@@ -16,6 +16,7 @@ import { getFriendlyErrorMessage } from '../utility/api/core';
 export interface AsnOrderFilters {
   search: string;
   status: string;
+  warehouse_id: string;
 }
 
 const asnOrdersQueryKey = ['asn-orders'] as const;
@@ -23,12 +24,12 @@ const asnOrdersQueryKey = ['asn-orders'] as const;
 function useAsnOrders(
   initialPage: number,
   initialPageSize: number,
-  filters?: { search?: string; status?: string }
+  filters?: { search?: string; status?: string; warehouse_id?: string }
 ) {
   const accessToken = useUserStore((s) => s.accessToken);
   const memoizedFilters = React.useMemo(
     () => filters,
-    [filters?.search, filters?.status]
+    [filters?.search, filters?.status, filters?.warehouse_id]
   );
 
   const queryKey = React.useMemo(
@@ -37,14 +38,15 @@ function useAsnOrders(
       initialPage,
       initialPageSize,
       memoizedFilters?.status ?? 'all',
+      memoizedFilters?.warehouse_id ?? 'all',
       memoizedFilters?.search ?? '',
     ] as const,
-    [initialPage, initialPageSize, memoizedFilters?.status, memoizedFilters?.search]
+    [initialPage, initialPageSize, memoizedFilters?.status, memoizedFilters?.warehouse_id, memoizedFilters?.search]
   );
 
   const {
     data,
-    isLoading: loading,
+    isFetching: loading,
     error: queryError,
     refetch,
   } = useQuery({
@@ -57,6 +59,7 @@ function useAsnOrders(
         initialPageSize,
         {
           status: memoizedFilters?.status !== 'all' ? memoizedFilters?.status : undefined,
+          warehouse_id: memoizedFilters?.warehouse_id || undefined,
           search: memoizedFilters?.search || undefined,
         }
       ) as AsnOrderListResponse;
@@ -80,11 +83,13 @@ export function useAsnOrderManagement() {
   const [filters, setFilters] = React.useState<AsnOrderFilters>({
     search: '',
     status: 'all',
+    warehouse_id: '',
   });
 
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
   const [saving, setSaving] = React.useState(false);
+  const [recentlyCreatedId, setRecentlyCreatedId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setPage(1);
@@ -108,6 +113,8 @@ export function useAsnOrderManagement() {
     },
   });
 
+  const clearRecentlyCreatedRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleSave = React.useCallback(async (data: AsnOrderCreate | AsnOrderUpdate, id?: string) => {
     if (!accessToken) return;
 
@@ -117,8 +124,13 @@ export function useAsnOrderManagement() {
         await asnOrderApi.update(accessToken, id, data);
         toast({ title: 'Success', description: 'ASN order updated successfully' });
       } else {
-        await asnOrderApi.create(accessToken, data);
-        toast({ title: 'Success', description: 'ASN order created successfully' });
+        const created = await asnOrderApi.create(accessToken, data) as { id?: string; asn_order_no?: string };
+        toast({ title: 'Success', description: `ASN order ${created?.asn_order_no || 'created'} successfully` });
+        if (created?.id) {
+          setRecentlyCreatedId(created.id);
+          if (clearRecentlyCreatedRef.current) clearTimeout(clearRecentlyCreatedRef.current);
+          clearRecentlyCreatedRef.current = setTimeout(() => setRecentlyCreatedId(null), 10000);
+        }
         setPage(1);
       }
       queryClient.invalidateQueries({ queryKey: ['asn-orders'] });
@@ -161,5 +173,6 @@ export function useAsnOrderManagement() {
     deleteMutation,
     serverPaginationConfig,
     saving,
+    recentlyCreatedId,
   };
 }

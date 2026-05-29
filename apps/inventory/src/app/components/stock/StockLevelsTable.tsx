@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { Package, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Package, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 
 import { Badge, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -190,7 +190,11 @@ export function StockLevelsTable({ stockLevels, loading, error, hasActiveFilters
     return (
       <Card>
         <CardContent className="p-0">
-          <TableSkeleton columns={8} rows={10} showHeader={true} />
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin mb-3" />
+            <p className="text-sm font-medium">Loading Stock Levels...</p>
+          </div>
+          <TableSkeleton columns={8} rows={8} showHeader={true} />
         </CardContent>
       </Card>
     );
@@ -232,7 +236,7 @@ export function StockLevelsTable({ stockLevels, loading, error, hasActiveFilters
           filterPlaceholder="Search by item name, code, or warehouse..."
           renderViewOptions={renderViewOptions}
           fixedHeader={true}
-          maxHeight="auto"/>
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );

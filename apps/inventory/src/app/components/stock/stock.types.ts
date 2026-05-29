@@ -1,5 +1,5 @@
 export interface StockFilters {
     search: string;
-    stockType: string;
+    warehouseId: string;
     status: string;
 }

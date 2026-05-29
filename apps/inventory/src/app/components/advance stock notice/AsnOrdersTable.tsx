@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { FileText, MoreHorizontal, Eye, Edit, Trash2 } from 'lucide-react';
+import { FileText, MoreHorizontal, Eye, Edit, Trash2, Loader2 } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -52,6 +52,8 @@ export interface AsnOrdersTableProps {
     totalItems: number;
     onPaginationChange: (pageIndex: number, pageSize: number) => void;
   };
+  /** ID of the most recently created ASN order to highlight */
+  recentlyCreatedId?: string | null;
 }
 
 export function AsnOrdersTable({
@@ -65,6 +67,7 @@ export function AsnOrdersTable({
   onCreateOrder,
   onTableReady,
   serverPagination,
+  recentlyCreatedId,
 }: AsnOrdersTableProps) {
   const [tableInstance, setTableInstance] = React.useState<Table<AsnOrder> | null>(null);
 
@@ -94,7 +97,17 @@ export function AsnOrdersTable({
         header: ({ column }) => <DataTableColumnHeader column={column} title="ASN Order #" />,
         cell: ({ row }) => {
           const orderNo = row.original.asn_order_no;
-          return <code className="text-sm font-medium">{orderNo}</code>;
+          const isNew = recentlyCreatedId && row.original.id === recentlyCreatedId;
+          return (
+            <div className="flex items-center gap-2">
+              <code className="text-sm font-medium">{orderNo}</code>
+              {isNew && (
+                <Badge variant="success" className="text-[10px] px-1.5 py-0">
+                  New
+                </Badge>
+              )}
+            </div>
+          );
         },
       },
       {
@@ -182,7 +195,7 @@ export function AsnOrdersTable({
         enableSorting: false,
       },
     ],
-    [onView, onEdit, onDelete]
+    [onView, onEdit, onDelete, recentlyCreatedId]
   );
 
   const renderViewOptions = (table: Table<AsnOrder>) => {
@@ -191,6 +204,13 @@ export function AsnOrdersTable({
     }
     return null;
   };
+
+  const getRowClassName = React.useCallback((row: AsnOrder) => {
+    if (recentlyCreatedId && row.id === recentlyCreatedId) {
+      return 'animate-flash-green';
+    }
+    return undefined;
+  }, [recentlyCreatedId]);
 
   if (error) {
     return (
@@ -206,7 +226,11 @@ export function AsnOrdersTable({
     return (
       <Card>
         <CardContent className="p-0">
-          <TableSkeleton columns={6} rows={10} showHeader={true} />
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin mb-3" />
+            <p className="text-sm font-medium">Loading ASN Orders...</p>
+          </div>
+          <TableSkeleton columns={6} rows={8} showHeader={true} />
         </CardContent>
       </Card>
     );
@@ -257,6 +281,7 @@ export function AsnOrdersTable({
           }}
           filterPlaceholder="Search by ASN order number..."
           renderViewOptions={renderViewOptions}
+          getRowClassName={getRowClassName}
           fixedHeader
           maxHeight="auto"
         />
