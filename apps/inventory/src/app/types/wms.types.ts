@@ -203,7 +203,7 @@ export interface ReceivingSlip {
 }
 
 export interface PaginatedReceivingSlips {
-  slips: ReceivingSlip[];
+  receiving_slips: ReceivingSlip[];
   pagination: WMSPagination;
 }
 

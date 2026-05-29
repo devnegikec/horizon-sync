@@ -12,6 +12,7 @@ import type {
   ReceivingSlip,
   PaginatedReceivingSlips,
   PutAwayList,
+  PutAwayItem,
   PickList,
   PaginatedPickLists,
   PickScanResult,
@@ -166,6 +167,18 @@ export const putAwayApi = {
 
   getPutAwayList: (token: string, id: string) =>
     req<PutAwayList>(`${BASE}/put-away-lists/${id}`, token),
+
+  completeItem: (token: string, listId: string, itemId: string, binId?: string) =>
+    req<PutAwayItem>(`${BASE}/put-away-lists/${listId}/items/${itemId}/complete`, token, {
+      method: 'POST',
+      body: JSON.stringify(binId ? { bin_id: binId } : {}),
+    }),
+
+  skipItem: (token: string, listId: string, itemId: string, reason: string) =>
+    req<PutAwayItem>(`${BASE}/put-away-lists/${listId}/items/${itemId}/skip`, token, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
 };
 
 // ============================================

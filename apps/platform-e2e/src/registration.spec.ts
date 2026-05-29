@@ -53,6 +53,7 @@ function mockRegistrationApi(page: import('@playwright/test').Page) {
   });
 }
 
+
 test.describe('User Registration @auth', () => {
   test('should register a new user and redirect to home page @smoke @regression @cross-browser @headless', async ({
     page,
@@ -113,3 +114,4 @@ test.describe('User Registration @auth', () => {
     await expect(profilePage.phoneValue).toHaveText(testRegistrationUser.phone);
   });
 });
+
