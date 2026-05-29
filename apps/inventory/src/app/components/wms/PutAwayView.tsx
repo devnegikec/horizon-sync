@@ -2,13 +2,14 @@ import * as React from 'react';
 
 import { RefreshCw, ChevronDown, ChevronRight, CheckCircle2, SkipForward } from 'lucide-react';
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { usePutAwayLists, usePutAwayList } from '../../hooks/useWMS';
 import type { PutAwayItem, PutAwayList } from '../../types/wms.types';
+
 import { WMSStatusBadge } from './WMSStatusBadge';
 
 // ─── Item row with Complete / Skip actions ───────────────────────────────────
@@ -68,14 +69,16 @@ function PutAwayItemRow({ item, onComplete, onSkip }: ItemRowProps) {
         <td className="px-4 py-2 text-right">
           {!isDone && (
             <div className="flex items-center justify-end gap-1">
-              <Button size="sm" variant="outline"
+              <Button size="sm"
+variant="outline"
                 className="text-green-600 border-green-200 hover:bg-green-50 gap-1 h-7 px-2 text-xs"
                 disabled={busy}
                 onClick={handleComplete}>
                 <CheckCircle2 className="h-3 w-3" />
                 Complete
               </Button>
-              <Button size="sm" variant="outline"
+              <Button size="sm"
+variant="outline"
                 className="text-muted-foreground gap-1 h-7 px-2 text-xs"
                 disabled={busy}
                 onClick={() => setSkipping((s) => !s)}>
@@ -90,12 +93,10 @@ function PutAwayItemRow({ item, onComplete, onSkip }: ItemRowProps) {
         <tr>
           <td colSpan={6} className="px-4 py-2 bg-muted/30">
             <div className="flex items-center gap-2">
-              <Input
-                className="flex-1 h-8 text-sm"
+              <Input className="flex-1 h-8 text-sm"
                 placeholder="Skip reason..."
                 value={skipReason}
-                onChange={(e) => setSkipReason(e.target.value)}
-              />
+                onChange={(e) => setSkipReason(e.target.value)}/>
               <Button size="sm" variant="destructive" className="h-8" disabled={!skipReason.trim() || busy} onClick={handleSkip}>
                 Confirm Skip
               </Button>
@@ -138,13 +139,11 @@ function PutAwayDetail({ listId }: { listId: string }) {
           </tr>
         )}
         {list.items.map((item) => (
-          <PutAwayItemRow
-            key={item.id}
+          <PutAwayItemRow key={item.id}
             item={item}
             listId={listId}
             onComplete={completeItem}
-            onSkip={skipItem}
-          />
+            onSkip={skipItem}/>
         ))}
       </tbody>
     </table>
@@ -225,19 +224,17 @@ export function PutAwayView({ warehouseId }: PutAwayViewProps) {
               )}
               {lists.map((list) => (
                 <React.Fragment key={list.id}>
-                  <tr
-                    className="hover:bg-muted/30 transition-colors cursor-pointer"
-                    onClick={() => setExpandedId(expandedId === list.id ? null : list.id)}
-                  >
+                  <tr className="hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => setExpandedId(expandedId === list.id ? null : list.id)}>
                     <td className="px-4 py-3 text-muted-foreground">
                       {expandedId === list.id
                         ? <ChevronDown className="h-4 w-4" />
                         : <ChevronRight className="h-4 w-4" />}
                     </td>
-                    <td className="px-4 py-3 font-mono font-medium">{list.list_number}</td>
+                    <td className="px-4 py-3 font-mono font-medium">{list.put_away_list_no}</td>
                     <td className="px-4 py-3"><WMSStatusBadge status={list.status} /></td>
-                    <td className="px-4 py-3 text-right">{list.items.length}</td>
-                    <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{list.worker_id ?? '—'}</td>
+                    <td className="px-4 py-3 text-right">{list.total_items}</td>
+                    <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{list.assigned_to ?? '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {list.created_at ? new Date(list.created_at).toLocaleDateString() : '—'}
                     </td>

@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { RefreshCw, Eye, Loader2 } from 'lucide-react';
+import { RefreshCw, Eye, Loader2, PackageOpen } from 'lucide-react';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -151,7 +151,7 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
   const [viewLoading, setViewLoading] = React.useState(false);
   const [dialogOpen, setDialogOpen] = React.useState(false);
 
-  const { data, loading, error, refetch, approveSlip, rejectSlip, getSlip } = useReceivingSlips({
+  const { data, loading, error, refetch, approveSlip, rejectSlip, getSlip, generatePutAway } = useReceivingSlips({
     warehouse_id: warehouseId,
     status: statusFilter === 'all' ? undefined : statusFilter,
     page,
@@ -192,6 +192,16 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
       setRejectReason('');
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to reject', variant: 'destructive' });
+    }
+  };
+
+  const handleGeneratePutAway = async (slip: ReceivingSlip) => {
+    if (!window.confirm(`Generate put-away list from ${slip.slip_number}?`)) return;
+    try {
+      await generatePutAway(slip.id);
+      toast({ title: 'Put-away generated', description: `Put-away list created from ${slip.slip_number}.` });
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to generate put-away', variant: 'destructive' });
     }
   };
 
@@ -255,10 +265,7 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button size="sm" variant="ghost" className="gap-1 h-7 px-2 text-xs" onClick={() => handleView(slip)}>
-                            <Eye className="h-3.5 w-3.5" />
-                            View
-                          </Button>
+
                           {slip.status === 'pending_review' && (
                             <>
                               <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:bg-green-50 h-7 px-2 text-xs" onClick={() => handleApprove(slip)}>
@@ -268,6 +275,16 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
                                 Reject
                               </Button>
                             </>
+                          )}
+                          <Button size="sm" variant="ghost" className="gap-1 h-7 px-2 text-xs" onClick={() => handleView(slip)}>
+                            <Eye className="h-3.5 w-3.5" />
+                            View
+                          </Button>
+                          {slip.status === 'pending_putaway' && (
+                            <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50 h-7 px-2 text-xs" onClick={() => handleGeneratePutAway(slip)}>
+                              <PackageOpen className="h-3.5 w-3.5 mr-1" />
+                              Put-Away
+                            </Button>
                           )}
                         </div>
                       </td>

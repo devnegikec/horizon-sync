@@ -226,7 +226,17 @@ export function useReceivingSlips(params: { warehouse_id?: string; status?: stri
     [accessToken],
   );
 
-  return { data, loading, error, refetch: fetch, approveSlip, rejectSlip, getSlip };
+  const generatePutAway = React.useCallback(
+    async (slipId: string): Promise<PutAwayList> => {
+      if (!accessToken) throw new Error('Not authenticated');
+      const result = await putAwayApi.generateFromSlip(accessToken, slipId);
+      await fetch();
+      return result;
+    },
+    [accessToken, fetch],
+  );
+
+  return { data, loading, error, refetch: fetch, approveSlip, rejectSlip, getSlip, generatePutAway };
 }
 
 // ============================================
