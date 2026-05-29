@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@horizon-sync/store';
 import { Badge, Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
-import { Truck, Trash2, Mail, Eye, Download } from 'lucide-react';
+import { Truck, Trash2, Mail, Eye, Download, Loader2 } from 'lucide-react';
 import { StatusBadge } from '../quotations/StatusBadge';
 import { usePDFGeneration } from '../../hooks/usePDFGeneration';
 import { useEmailWithPdfAttachment } from '../../hooks/useEmailWithPdfAttachment';
@@ -226,6 +226,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   const [formData, setFormData] = React.useState<AsnOrderFormData>({ ...DEFAULT_FORM });
   const [warehouseError, setWarehouseError] = React.useState('');
   const [importStatus, setImportStatus] = React.useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [importing, setImporting] = React.useState(false);
   const [clearKey, setClearKey] = React.useState(0);
   const { toast } = useToast();
 
@@ -271,6 +272,8 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
     } else if (open && !asnOrder) {
       setFormData({ ...DEFAULT_FORM });
       setLineItems([{ ...EMPTY_LINE }]);
+      setImportStatus(null);
+      setWarehouseError('');
     }
   }, [open, asnOrder]);
 
@@ -302,49 +305,54 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
       return;
     }
 
-    const resolveItem = async (row: AsnEntryLineRow): Promise<AsnEntryLineRow> => {
-      if (!row.item_code || !accessToken) return row;
-      try {
-        const url = `${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(row.item_code)}&warehouse_id=${encodeURIComponent(formData.warehouse_id_from)}`;
-        const response = await fetch(url, {
-          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        });
-        if (!response.ok) return row;
-        const data = await response.json();
-        const match = data.items?.find((item: { item_code?: string }) =>
-          item.item_code?.toLowerCase() === row.item_code?.toLowerCase()
-        ) || data.items?.[0];
-        if (match) {
-          return {
-            ...row,
-            item_id: match.id,
-            item_name: match.item_name,
-            item_code: match.item_code || row.item_code,
-            uom: match.uom || row.uom || 'pcs',
-          };
+    setImporting(true);
+    try {
+      const resolveItem = async (row: AsnEntryLineRow): Promise<AsnEntryLineRow> => {
+        if (!row.item_code || !accessToken) return row;
+        try {
+          const url = `${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(row.item_code)}&warehouse_id=${encodeURIComponent(formData.warehouse_id_from)}`;
+          const response = await fetch(url, {
+            headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          });
+          if (!response.ok) return row;
+          const data = await response.json();
+          const match = data.items?.find((item: { item_code?: string }) =>
+            item.item_code?.toLowerCase() === row.item_code?.toLowerCase()
+          ) || data.items?.[0];
+          if (match) {
+            return {
+              ...row,
+              item_id: match.id,
+              item_name: match.item_name,
+              item_code: match.item_code || row.item_code,
+              uom: match.uom || row.uom || 'pcs',
+            };
+          }
+        } catch {
+          // ignore resolution failures, keep unresolved row
         }
-      } catch {
-        // ignore resolution failures, keep unresolved row
+        return row;
+      };
+
+      const resolvedRows = await Promise.all(rows.map(resolveItem));
+
+      const resolvedCount = resolvedRows.filter((r) => !!r.item_id).length;
+      const unresolvedCount = resolvedRows.length - resolvedCount;
+
+      setLineItems((prev) => {
+        const existing = prev.filter((r) => !!r.item_id);
+        const offset = existing.length;
+        const imported = resolvedRows.map((r, i) => ({ ...r, sort_order: offset + i + 1 }));
+        return existing.length > 0 ? [...existing, ...imported] : imported;
+      });
+
+      if (unresolvedCount > 0) {
+        setImportStatus({ type: 'error', message: `${unresolvedCount} item(s) could not be auto-resolved — please select them manually` });
+      } else if (resolvedCount > 0) {
+        setImportStatus({ type: 'success', message: `${resolvedCount} item(s) imported successfully` });
       }
-      return row;
-    };
-
-    const resolvedRows = await Promise.all(rows.map(resolveItem));
-
-    const resolvedCount = resolvedRows.filter((r) => !!r.item_id).length;
-    const unresolvedCount = resolvedRows.length - resolvedCount;
-
-    setLineItems((prev) => {
-      const existing = prev.filter((r) => !!r.item_id);
-      const offset = existing.length;
-      const imported = resolvedRows.map((r, i) => ({ ...r, sort_order: offset + i + 1 }));
-      return existing.length > 0 ? [...existing, ...imported] : imported;
-    });
-
-    if (unresolvedCount > 0) {
-      setImportStatus({ type: 'error', message: `${unresolvedCount} item(s) could not be auto-resolved — please select them manually` });
-    } else if (resolvedCount > 0) {
-      setImportStatus({ type: 'success', message: `${resolvedCount} item(s) imported successfully` });
+    } finally {
+      setImporting(false);
     }
   }, [accessToken, formData.warehouse_id_from, formData.warehouse_id_to]);
 
@@ -443,7 +451,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                     onImport={handleCsvImport}
                     // onFileSelected={handleBulkUpload}
                     onPreviewChange={setCsvPreviewActive}
-                    disabled={!formData.warehouse_id_from || !formData.warehouse_id_to}
+                    disabled={importing || !formData.warehouse_id_from || !formData.warehouse_id_to}
                     sampleCsv={ASN_ENTRY_SAMPLE_CSV}
                     sampleFileName="asn-order-sample.csv"
                     previewColumns={[
@@ -457,7 +465,13 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                       Clear All
                     </Button>
                   )}
-                  {importStatus && (
+                  {importing && (
+                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Importing...
+                    </span>
+                  )}
+                  {importStatus && !importing && (
                     <Badge variant={importStatus.type === 'success' ? 'success' : 'destructive'}>
                       {importStatus.message}
                     </Badge>
