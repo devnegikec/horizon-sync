@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { useWarehouses } from '../../hooks/useWarehouses';
+import { useMyWarehouses } from '../../hooks/useMyWarehouses';
 import { DispatchList } from './DispatchList';
 import { GateVerificationPanel } from './GateVerificationPanel';
 import { InboundScanPanel } from './InboundScanPanel';
@@ -42,7 +42,7 @@ export function WMSManagement() {
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('');
   const [gatePickListId, setGatePickListId] = React.useState<string>('');
 
-  const { warehouses, loading: warehousesLoading } = useWarehouses(1, 100);
+  const { warehouses, loading: warehousesLoading } = useMyWarehouses();
 
   // Auto-select first warehouse
   React.useEffect(() => {
