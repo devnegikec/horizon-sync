@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Search, Bell, Menu, PanelLeftClose, PanelLeft, LogOut } from 'lucide-react';
+import { Search, Menu, PanelLeftClose, PanelLeft, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { ThemeToggle } from '@horizon-sync/ui/components/theme-toggle';
@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/compon
 import { useAuth } from '../hooks';
 import { GlobalSearch } from '../features/search/components/GlobalSearch';
 import { useKeyboardShortcut } from '../features/search/hooks/useKeyboardShortcut';
+import { NotificationBell } from './notifications/NotificationBell';
 
 interface TopbarProps {
   sidebarCollapsed: boolean;
@@ -45,7 +46,7 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
   // Handle navigation from search results
   const handleNavigate = (entityType: string, entityId: string) => {
     console.log('[Topbar] Navigating to:', { entityType, entityId });
-    
+
     // Map entity types to routes
     // Note: Detail pages may not exist yet, so we navigate to the list page
     const routeMap: Record<string, string> = {
@@ -58,7 +59,7 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
     };
 
     const route = routeMap[entityType] || `/${entityType}`;
-    
+
     // TODO: Once detail pages are implemented, use: `${route}/${entityId}`
     // For now, just navigate to the list page
     console.log('[Topbar] Navigating to route:', route);
@@ -68,12 +69,12 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
   // Get user initials for avatar fallback
   const userInitials = user?.email
     ? user.email
-        .split('@')[0]
-        .split('.')
-        .map((part) => part[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
+      .split('@')[0]
+      .split('.')
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
     : 'U';
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4 gap-4">
@@ -112,15 +113,7 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
       <div className="flex items-center gap-2">
         <ThemeToggle />
 
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-violet-500 ring-2 ring-card" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Notifications</TooltipContent>
-        </Tooltip>
+        <NotificationBell />
 
         {/* User Menu */}
         <DropdownMenu>
