@@ -2,9 +2,10 @@ import * as React from 'react';
 
 import { FileText } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
+
 import { useEmailWithPdfAttachment } from '../../hooks/useEmailWithPdfAttachment';
 import { useQuotationPDFActions } from '../../hooks/useQuotationPDFActions';
-import { useCurrencyStore } from '@horizon-sync/store';
 import { getCurrencySymbol } from '../../types/currency.types';
 import type { Quotation, QuotationDetailDialogProps } from '../../types/quotation.types';
 import { DetailDialogContainer, EmailComposer } from '../common';
