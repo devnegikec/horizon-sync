@@ -5,7 +5,7 @@
 export type Permission = string;
 
 /**
- * Check if user has a specific permission
+ * Check if user has a specific permission.
  * Supports wildcard permissions like "*.*", "user.*" etc.
  */
 export function hasPermission(userPermissions: Permission[], requiredPermission: string): boolean {
@@ -13,21 +13,20 @@ export function hasPermission(userPermissions: Permission[], requiredPermission:
     return false;
   }
 
-  // Check for exact match first
+  // Exact match
   if (userPermissions.includes(requiredPermission)) {
     return true;
   }
 
-  // Check for wildcard permissions
   for (const permission of userPermissions) {
+    // Super admin wildcard — grants everything
     if (permission === '*.*') {
-      // Super admin permission - has access to everything
       return true;
     }
 
-    if (permission.endsWith('*')) {
-      // Check if permission starts with the required permission prefix
-      const prefix = permission.slice(0, -1); // Remove the '*'
+    // Resource wildcard: "user.*" grants "user.read", "user.create", etc.
+    if (permission.endsWith('.*')) {
+      const prefix = permission.slice(0, -1); // e.g. "user."
       if (requiredPermission.startsWith(prefix)) {
         return true;
       }
@@ -52,93 +51,146 @@ export function hasAllPermissions(userPermissions: Permission[], requiredPermiss
 }
 
 /**
- * Navigation permission checks
+ * Navigation permission checks.
+ *
+ * Permission codes match what the identity-service actually issues:
+ *   - Identity:    user.*, role.*, org.*
+ *   - Sales:       customer.*, sales_order.*, invoice.*
+ *   - Procurement: supplier.*, purchase_order.*
+ *   - Inventory:   item.*, warehouse.*, stock_entry.*
+ *   - Accounting:  chart_of_account.*, payment.*
  */
 export const NavigationPermissions = {
   // Users management
   users: {
-    view: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'user.*', 'user.read', 'user.manage']),
-    create: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'user.*', 'user.create', 'user.manage']),
-    update: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'user.*', 'user.update', 'user.manage']),
-    delete: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'user.*', 'user.delete', 'user.manage']),
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'user.*', 'user.read', 'user.manage']),
+    create: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'user.*', 'user.create', 'user.manage']),
+    update: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'user.*', 'user.update', 'user.manage']),
+    delete: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'user.*', 'user.delete', 'user.manage']),
   },
 
   // Roles management
   roles: {
-    view: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'role.*', 'role.read', 'role.manage']),
-    create: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'role.*', 'role.create', 'role.manage']),
-    update: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'role.*', 'role.update', 'role.manage']),
-    delete: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'role.*', 'role.delete', 'role.manage']),
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'role.*', 'role.read', 'role.manage']),
+    create: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'role.*', 'role.create', 'role.manage']),
+    update: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'role.*', 'role.update', 'role.manage']),
+    delete: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'role.*', 'role.delete', 'role.manage']),
+  },
+
+  // Revenue / Sales — maps to invoice + sales_order permissions
+  revenue: {
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'invoice.*', 'invoice.read', 'sales_order.*', 'sales_order.read']),
+    create: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'invoice.*', 'invoice.create', 'sales_order.*', 'sales_order.create']),
+  },
+
+  // Sourcing — maps to purchase_order + supplier permissions
+  sourcing: {
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'purchase_order.*', 'purchase_order.read', 'supplier.*', 'supplier.read']),
+    create: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'purchase_order.*', 'purchase_order.create', 'supplier.*', 'supplier.create']),
+  },
+
+  // Inventory — maps to item permissions
+  inventory: {
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'item.*', 'item.read']),
+    create: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'item.*', 'item.create']),
+    update: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'item.*', 'item.update']),
+    delete: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'item.*', 'item.delete']),
+  },
+
+  // WMS — maps to warehouse + pick_list permissions
+  wms: {
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'warehouse.*', 'warehouse.read', 'stock_entry.*', 'stock_entry.read', 'pick_list.*', 'pick_list.read']),
+    create: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'warehouse.*', 'warehouse.create', 'stock_entry.*', 'stock_entry.create', 'pick_list.*', 'pick_list.create']),
+    manage: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'warehouse.*', 'stock_entry.*', 'pick_list.*']),
+  },
+
+  // ASN / Advance Stock Notice
+  asn: {
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'asn_order.*', 'asn_order.read']),
+    create: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'asn_order.*', 'asn_order.create']),
+    update: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'asn_order.*', 'asn_order.update']),
+    manage: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'asn_order.*']),
+  },
+
+  // Books / Accounting — maps to chart_of_account permissions
+  books: {
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'chart_of_account.*', 'chart_of_account.read']),
+    create: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'chart_of_account.*', 'chart_of_account.create']),
+  },
+
+  // Payments — maps to payment permissions
+  payments: {
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'payment.*', 'payment.read']),
+    create: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'payment.*', 'payment.create']),
   },
 
   // Reports
   reports: {
-    view: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'report.*', 'report.read', 'report.view']),
-    generate: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'report.*', 'report.generate']),
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'report.*', 'report.read', 'report.view']),
   },
 
   // Analytics
   analytics: {
-    view: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'analytics.*', 'analytics.read', 'analytics.view']),
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'analytics.*', 'analytics.read']),
   },
 
   // Settings
   settings: {
-    view: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'settings.*', 'settings.read', 'settings.view']),
-    update: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'settings.*', 'settings.update', 'settings.manage']),
-  },
-
-  // Inventory
-  inventory: {
-    view: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'inventory.*', 'inventory.read', 'inventory.view']),
-    create: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'inventory.*', 'inventory.create']),
-    update: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'inventory.*', 'inventory.update']),
-    delete: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'inventory.*', 'inventory.delete']),
-  },
-
-  // Revenue
-  revenue: {
-    view: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'revenue.*', 'revenue.read', 'revenue.view']),
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'settings.*', 'settings.read', 'org.*', 'org.read']),
+    update: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'settings.*', 'settings.update', 'org.*', 'org.update']),
   },
 
   // Subscriptions
   subscriptions: {
-    view: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'subscription.*', 'subscription.read', 'subscription.view']),
-    manage: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'subscription.*', 'subscription.manage']),
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'subscription.*', 'subscription.read']),
+    manage: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'subscription.*', 'subscription.manage']),
   },
 
   // Banking
   banking: {
-    view: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'banking.*', 'banking.read', 'banking.view']),
-    manage: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'banking.*', 'banking.manage']),
-    create: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'banking.*', 'banking.create']),
-    update: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'banking.*', 'banking.update']),
-    delete: (userPermissions: Permission[]) => 
-      hasAnyPermission(userPermissions, ['*.*', 'banking.*', 'banking.delete']),
+    view: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'banking.*', 'banking.read', 'payment.*', 'payment.read']),
+    manage: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'banking.*', 'banking.manage']),
+    create: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'banking.*', 'banking.create']),
+    update: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'banking.*', 'banking.update']),
+    delete: (p: Permission[]) =>
+      hasAnyPermission(p, ['*.*', 'banking.*', 'banking.delete']),
   },
 };
 
@@ -163,26 +215,32 @@ export function filterNavigationByPermissions<T extends { href: string; title: s
         return NavigationPermissions.users.view(userPermissions);
       case '/roles':
         return NavigationPermissions.roles.view(userPermissions);
+      case '/revenue':
+        return NavigationPermissions.revenue.view(userPermissions);
+      case '/sourcing':
+        return NavigationPermissions.sourcing.view(userPermissions);
+      case '/inventory':
+        return NavigationPermissions.inventory.view(userPermissions);
+      case '/wms':
+        return NavigationPermissions.wms.view(userPermissions);
+      case '/books':
+        return NavigationPermissions.books.view(userPermissions);
+      case '/payments':
+        return NavigationPermissions.payments.view(userPermissions);
       case '/reports':
         return NavigationPermissions.reports.view(userPermissions);
       case '/analytics':
         return NavigationPermissions.analytics.view(userPermissions);
       case '/settings':
         return NavigationPermissions.settings.view(userPermissions);
-      case '/inventory':
-        return NavigationPermissions.inventory.view(userPermissions);
-      case '/revenue':
-        return NavigationPermissions.revenue.view(userPermissions);
       case '/subscriptions':
         return NavigationPermissions.subscriptions.view(userPermissions);
       case '/banking':
         return NavigationPermissions.banking.view(userPermissions);
-      // Dashboard, help, and profile are typically accessible to all authenticated users
+      // Dashboard, help, and profile are accessible to all authenticated users
       case '/':
       case '/help':
       case '/profile':
-      case '/sourcing':
-      case '/books':
       default:
         return true;
     }
@@ -191,7 +249,6 @@ export function filterNavigationByPermissions<T extends { href: string; title: s
 
 /**
  * Check if user is a system administrator
- * System admin has *.* or system.admin or role.manage permissions
  */
 export function isSystemAdmin(userPermissions: Permission[]): boolean {
   return hasAnyPermission(userPermissions, ['*.*', 'system.admin', 'role.manage']);

@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { FileText } from 'lucide-react';
 
- 
+
 import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
@@ -311,7 +311,7 @@ export function StockEntryDialog({
               isEditing={isEditing}
               submitError={submitError}
               grandTotal={grandTotal}
-              disableSubmit={!hasValidItems}/>
+              disableSubmit={!hasValidItems} />
           )}
 
           {viewMode && (

@@ -79,6 +79,29 @@ export interface ResetPasswordPayload {
   new_password: string;
 }
 
+export interface AcceptInvitationPayload {
+  token: string;
+  password: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+export interface AcceptInvitationResponse {
+  message: string;
+  user_id: string;
+  organization_id: string;
+  email: string;
+}
+
+export interface InvitationValidateResponse {
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  organization_id: string;
+  organization_name?: string;
+  expires_at: string;
+}
+
 export interface ApiError {
   message: string;
   details?: unknown;

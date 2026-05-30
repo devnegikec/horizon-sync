@@ -46,10 +46,10 @@ export interface InviteUserPayload {
   email: string;
   first_name: string;
   last_name: string;
+  organization_id?: string;
   role_id?: string;
   team_ids?: string[];
   message?: string;
-  organization_id?: string;
 }
 
 export interface InviteUserResponse {
@@ -59,10 +59,39 @@ export interface InviteUserResponse {
   invitation_url: string;
 }
 
+export interface InvitationResponse {
+  id: string;
+  organization_id: string;
+  email: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  role_id?: string | null;
+  role_name?: string | null;
+  custom_permission_ids?: string[] | null;
+  team_ids?: string[] | null;
+  invited_by_id?: string | null;
+  invited_by_email?: string | null;
+  status: string;
+  expires_at: string;
+  accepted_at?: string | null;
+  message?: string | null;
+  extra_data?: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface InvitationListResponse {
+  data: InvitationResponse[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
 export interface UpdateUserPayload {
   first_name?: string;
   last_name?: string;
   display_name?: string;
+  status?: string;
+  is_active?: boolean;
   phone?: string;
   preferences?: Record<string, unknown>;
   extra_data?: Record<string, unknown>;
@@ -103,7 +132,7 @@ export class UserService {
 
   static async getUsers(page = 1, pageSize = 20, token: string): Promise<UsersResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users?page=${page}&page_size=${pageSize}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/users?page=${page}&page_size=${pageSize}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -153,6 +182,112 @@ export class UserService {
         throw error;
       }
       throw new Error('An unexpected error occurred while inviting user');
+    }
+  }
+
+  static async updateUser(userId: string, payload: UpdateUserPayload, token: string): Promise<User> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Failed to update user',
+        }));
+        throw new Error(errorData.message || errorData.detail || getFriendlyMessage(response.status));
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred while updating user');
+    }
+  }
+
+  static async getPendingInvitationCount(
+    organizationId: string,
+    token: string
+  ): Promise<number> {
+    try {
+      const params = new URLSearchParams({
+        organization_id: organizationId,
+        status: 'pending',
+        skip: '0',
+        limit: '1',
+      });
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/invitations?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Failed to fetch pending invitations',
+        }));
+        throw new Error(errorData.message || errorData.detail || getFriendlyMessage(response.status));
+      }
+
+      const data = (await response.json()) as InvitationListResponse;
+      return data.total ?? 0;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred while fetching pending invitations');
+    }
+  }
+
+  static async getPendingInvitations(
+    organizationId: string,
+    token: string,
+    search = '',
+    skip = 0,
+    limit = 100
+  ): Promise<InvitationListResponse> {
+    try {
+      const params = new URLSearchParams({
+        organization_id: organizationId,
+        status: 'pending',
+        skip: String(skip),
+        limit: String(limit),
+      });
+      if (search) {
+        params.append('search', search);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/invitations?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Failed to fetch pending invitations',
+        }));
+        throw new Error(errorData.message || errorData.detail || getFriendlyMessage(response.status));
+      }
+
+      const data = (await response.json()) as InvitationListResponse;
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred while fetching pending invitations');
     }
   }
 }

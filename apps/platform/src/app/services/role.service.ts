@@ -118,15 +118,29 @@ export class RoleService {
         throw response;
       }
 
-      return await response.json();
+      // API returns: { data, total, skip, limit }
+      // Frontend expects: { data, pagination: { total_count, page, page_size, ... } }
+      const raw = await response.json();
+      const page = filters.page;
+      const pageSize = filters.pageSize;
+      const total = raw.total ?? 0;
+      const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
+
+      return {
+        data: raw.data ?? [],
+        pagination: {
+          total_count: total,
+          page,
+          page_size: pageSize,
+          total_pages: totalPages,
+          has_next: page < totalPages,
+          has_prev: page > 1,
+        },
+      };
     } catch (error) {
       throw handleAPIError(error);
     }
   }
-
-  /**
-   * Get a single role by ID
-   */
   static async getRole(roleId: string, token: string): Promise<Role> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles/${roleId}?include_permissions=true`, {
@@ -240,11 +254,7 @@ export class RoleService {
         payload.description = data.description;
       }
 
-      // If permissions are being updated, convert codes to IDs
-      if (data.permissions && data.permissions.length > 0) {
-        payload.permission_ids = await this.getPermissionIds(data.permissions, token);
-      }
-
+      // Step 1: Update role metadata (name, description, etc.)
       const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles/${roleId}`, {
         method: 'PUT',
         headers: {
@@ -258,7 +268,33 @@ export class RoleService {
         throw response;
       }
 
-      return await response.json();
+      const updatedRole: Role = await response.json();
+
+      // Step 2: Update permissions via bulk assign (replace mode)
+      // The PUT endpoint does not accept permission_ids — use the dedicated bulk endpoint.
+      if (data.permissions !== undefined) {
+        const permissionIds = data.permissions.length > 0
+          ? await this.getPermissionIds(data.permissions, token)
+          : [];
+
+        const permResponse = await fetch(
+          `${API_BASE_URL}/api/v1/identity/roles/${roleId}/permissions/bulk`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ permission_ids: permissionIds, mode: 'replace' }),
+          }
+        );
+
+        if (!permResponse.ok) {
+          throw permResponse;
+        }
+      }
+
+      return updatedRole;
     } catch (error) {
       throw handleAPIError(error);
     }
@@ -286,11 +322,14 @@ export class RoleService {
   }
 
   /**
-   * Get permissions grouped by resource.
+   * Get permissions grouped by module → resource.
    *
-   * The API returns permissions inside category objects, but the UI needs them
-   * grouped by the `resource` field (e.g. "warehouse", "item", "user") so each
-   * collapsible row represents a single resource with its CRUD actions.
+   * The API now returns:
+   *   { modules: [...], categories: [...], uncategorized: [...] }
+   *
+   * We build two things from this:
+   *   1. `modules`  — the new module-grouped structure for the module-toggle UI
+   *   2. `data`     — the legacy flat map { resource: Permission[] } for PermissionMatrix
    */
   static async getGroupedPermissions(token: string): Promise<PermissionGroupedResponse> {
     try {
@@ -307,46 +346,55 @@ export class RoleService {
 
       const apiResponse = await response.json();
 
-      // Flatten all permissions from every category, then group by resource
+      // ── Build legacy flat map from modules (preferred) or categories (fallback) ──
       const grouped: Record<string, Permission[]> = {};
 
-      if (apiResponse.categories && Array.isArray(apiResponse.categories)) {
-        apiResponse.categories.forEach((category: { name: string; permissions: Permission[] }) => {
+      if (apiResponse.modules && Array.isArray(apiResponse.modules)) {
+        // New structure: modules → resources → permissions
+        apiResponse.modules.forEach((mod: { resources: Array<{ key: string; permissions: Permission[] }> }) => {
+          mod.resources.forEach((resource) => {
+            const key = resource.key || 'other';
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(...resource.permissions);
+          });
+        });
+      } else if (apiResponse.categories && Array.isArray(apiResponse.categories)) {
+        // Legacy fallback: categories → permissions grouped by resource
+        apiResponse.categories.forEach((category: { permissions: Permission[] }) => {
           if (!category.permissions) return;
           category.permissions.forEach((perm: Permission) => {
             const key = perm.resource || 'other';
-            if (!grouped[key]) {
-              grouped[key] = [];
-            }
+            if (!grouped[key]) grouped[key] = [];
             grouped[key].push(perm);
           });
         });
       }
 
-      // Also handle uncategorized permissions if present
+      // Also handle uncategorized permissions
       if (apiResponse.uncategorized && Array.isArray(apiResponse.uncategorized)) {
         apiResponse.uncategorized.forEach((perm: Permission) => {
           const key = perm.resource || 'other';
-          if (!grouped[key]) {
-            grouped[key] = [];
-          }
+          if (!grouped[key]) grouped[key] = [];
           grouped[key].push(perm);
         });
       }
 
-      // Sort permissions within each resource group by action for consistent ordering
+      // Sort permissions within each resource group by action
       const ACTION_ORDER = ['read', 'create', 'update', 'delete', 'manage', 'execute'];
       for (const perms of Object.values(grouped)) {
         perms.sort((a, b) => {
           const aIdx = ACTION_ORDER.indexOf(a.action);
           const bIdx = ACTION_ORDER.indexOf(b.action);
-          const aOrder = aIdx === -1 ? ACTION_ORDER.length : aIdx;
-          const bOrder = bIdx === -1 ? ACTION_ORDER.length : bIdx;
-          return aOrder - bOrder;
+          return (aIdx === -1 ? ACTION_ORDER.length : aIdx) - (bIdx === -1 ? ACTION_ORDER.length : bIdx);
         });
       }
 
-      return { data: grouped };
+      return {
+        modules: apiResponse.modules ?? [],
+        categories: apiResponse.categories ?? [],
+        uncategorized: apiResponse.uncategorized ?? [],
+        data: grouped,
+      };
     } catch (error) {
       throw handleAPIError(error);
     }

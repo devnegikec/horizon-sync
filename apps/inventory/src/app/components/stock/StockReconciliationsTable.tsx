@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { FileText, Plus, MoreHorizontal, Eye, Edit, Trash2 } from 'lucide-react';
+import { FileText, Plus, MoreHorizontal, Eye, Edit, Trash2, Loader2 } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -220,7 +220,11 @@ export function StockReconciliationsTable({
     return (
       <Card>
         <CardContent className="p-0">
-          <TableSkeleton columns={8} rows={10} showHeader={true} />
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin mb-3" />
+            <p className="text-sm font-medium">Loading Reconciliations...</p>
+          </div>
+          <TableSkeleton columns={8} rows={8} showHeader={true} />
         </CardContent>
       </Card>
     );
@@ -245,7 +249,7 @@ export function StockReconciliationsTable({
                     Create Stock Reconciliation
                   </Button>
                 ) : undefined
-              }/>
+              } />
           </div>
         </CardContent>
       </Card>
@@ -270,7 +274,7 @@ export function StockReconciliationsTable({
           filterPlaceholder="Search by reconciliation number..."
           renderViewOptions={renderViewOptions}
           fixedHeader
-          maxHeight="auto"/>
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );

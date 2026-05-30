@@ -44,6 +44,7 @@ function buildStockEntriesParams(
     'status',
     'from_warehouse_id',
     'to_warehouse_id',
+    'warehouse_id',
     'search',
   ];
 
@@ -63,11 +64,11 @@ function buildStockEntriesParams(
  */
 function calculateStats(stockEntries: StockEntry[]): StockEntryStats {
   const totalEntries = stockEntries.length;
-  
+
   // Count entries by status
   const draftCount = stockEntries.filter((se) => se.status === 'draft').length;
   const submittedCount = stockEntries.filter((se) => se.status === 'submitted').length;
-  
+
   // Calculate total value
   const totalValue = stockEntries.reduce((sum, se) => {
     const value = typeof se.total_value === 'number' ? se.total_value : parseFloat(String(se.total_value || 0));
@@ -111,6 +112,7 @@ export function useStockEntries(options: {
   const status = filters?.status;
   const fromWarehouseId = filters?.from_warehouse_id;
   const toWarehouseId = filters?.to_warehouse_id;
+  const warehouseId = filters?.warehouse_id;
   const search = filters?.search;
 
   // Memoize filters to prevent unnecessary re-renders
@@ -119,6 +121,7 @@ export function useStockEntries(options: {
     status,
     fromWarehouseId,
     toWarehouseId,
+    warehouseId,
     search,
   ]);
 

@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { ArrowDownUp, TrendingUp, TrendingDown, RefreshCw, Package } from 'lucide-react';
+import { ArrowDownUp, TrendingUp, TrendingDown, RefreshCw, Package, Loader2 } from 'lucide-react';
 
 import { Badge, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -221,7 +221,11 @@ export function StockMovementsTable({ stockMovements, loading, error, hasActiveF
     return (
       <Card>
         <CardContent className="p-0">
-          <TableSkeleton columns={9} rows={10} showHeader={true} />
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin mb-3" />
+            <p className="text-sm font-medium">Loading Movements...</p>
+          </div>
+          <TableSkeleton columns={9} rows={8} showHeader={true} />
         </CardContent>
       </Card>
     );
@@ -236,7 +240,7 @@ export function StockMovementsTable({ stockMovements, loading, error, hasActiveF
               title="No stock movements found"
               description={
                 hasActiveFilters ? 'Try adjusting your search or filters' : 'Stock movements will appear here once inventory transactions occur'
-              }/>
+              } />
           </div>
         </CardContent>
       </Card>
@@ -261,7 +265,7 @@ export function StockMovementsTable({ stockMovements, loading, error, hasActiveF
           filterPlaceholder="Search by item name, code, or warehouse..."
           renderViewOptions={renderViewOptions}
           fixedHeader
-          maxHeight="auto"/>
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );

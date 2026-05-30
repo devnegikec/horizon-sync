@@ -9,6 +9,9 @@ import {
   RefreshResponse,
   ForgotPasswordPayload,
   ResetPasswordPayload,
+  AcceptInvitationPayload,
+  AcceptInvitationResponse,
+  InvitationValidateResponse,
   ApiErrorResponse,
   UserType,
 } from './auth.types';
@@ -174,6 +177,14 @@ export class AuthService {
     return apiRequest<RegisterResponse>('/identity/register', 'POST', payload);
   }
 
+  static async validateInvitationToken(token: string): Promise<InvitationValidateResponse> {
+    return apiRequest<InvitationValidateResponse>(`/identity/invitations/validate/${encodeURIComponent(token)}`, 'GET');
+  }
+
+  static async acceptInvitation(payload: AcceptInvitationPayload): Promise<AcceptInvitationResponse> {
+    return apiRequest<AcceptInvitationResponse>('/identity/invitations/accept', 'POST', payload);
+  }
+
   /**
    * Login with credentials: 'include' so backend can set HttpOnly, Secure, SameSite=Lax
    * cookies. Send remember_me so backend can use persistent (30d) vs session cookie.
@@ -232,12 +243,30 @@ export class AuthService {
     });
   }
 
-  static async forgotPassword(payload: ForgotPasswordPayload): Promise<void> {
-    return apiRequest<void>('/identity/forgot-password', 'POST', payload);
+  static async forgotPassword(
+    payload: ForgotPasswordPayload,
+  ): Promise<{ message: string; retry_after_seconds: number }> {
+    return apiRequest<{ message: string; retry_after_seconds: number }>(
+      '/identity/forgot-password',
+      'POST',
+      payload,
+    );
   }
 
   static async resetPassword(payload: ResetPasswordPayload): Promise<void> {
     return apiRequest<void>('/identity/reset-password', 'POST', payload);
+  }
+
+  /**
+   * Verify whether a password-reset token is still valid (unused & unexpired)
+   * without consuming it. Used to short-circuit the reset form when the link
+   * has already been used or has expired.
+   */
+  static async verifyResetToken(token: string): Promise<{ valid: boolean }> {
+    return apiRequest<{ valid: boolean }>(
+      `/identity/verify-reset-token?token=${encodeURIComponent(token)}`,
+      'GET',
+    );
   }
 
   static async getUserProfile(token: string): Promise<UserType> {

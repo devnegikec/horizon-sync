@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Shield, Edit, Copy, Trash2, Lock } from 'lucide-react';
+import { Shield, Edit, Copy, Trash2, Lock, Eye } from 'lucide-react';
 
 import {
   Card,
@@ -24,9 +24,10 @@ import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useAuth } from '../../hooks';
 import { RoleService } from '../../services/role.service';
-import type { Role } from '../../types/role.types';
+import type { ModuleGroup, Role } from '../../types/role.types';
 
 import { DeleteRoleDialog } from './DeleteRoleDialog';
+import { RoleViewDialog } from './RoleViewDialog';
 import { UserListDialog } from './UserListDialog';
 
 interface RoleListProps {
@@ -34,9 +35,11 @@ interface RoleListProps {
   loading: boolean;
   error: string | null;
   hasActiveFilters: boolean;
-  onEdit: (role: Role) => void;
-  onClone: (role: Role) => void;
-  onDelete: (roleId: string) => void;
+  onEdit?: (role: Role) => void;
+  onClone?: (role: Role) => void;
+  onDelete?: (roleId: string) => void;
+  /** Module-grouped permissions for the view dialog */
+  modules?: ModuleGroup[];
   serverPagination: {
     pageIndex: number;
     pageSize: number;
@@ -53,6 +56,7 @@ export function RoleList({
   onEdit,
   onClone,
   onDelete,
+  modules = [],
   serverPagination,
 }: RoleListProps) {
   const { accessToken } = useAuth();
@@ -63,10 +67,17 @@ export function RoleList({
   const [selectedRoleForUsers, setSelectedRoleForUsers] = useState<Role | null>(null);
   const [roleUsers, setRoleUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [roleToView, setRoleToView] = useState<Role | null>(null);
 
   const handleDeleteClick = (role: Role) => {
     setRoleToDelete(role);
     setDeleteDialogOpen(true);
+  };
+
+  const handleViewClick = (role: Role) => {
+    setRoleToView(role);
+    setViewDialogOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
@@ -74,7 +85,7 @@ export function RoleList({
     try {
       await RoleService.deleteRole(roleToDelete.id, accessToken);
       toast({ title: 'Success', description: 'Role deleted successfully', variant: 'default' });
-      onDelete(roleToDelete.id);
+      onDelete?.(roleToDelete.id);
     } catch (error) {
       toast({
         title: 'Error',
@@ -241,39 +252,55 @@ export function RoleList({
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="outline" size="sm" onClick={() => onEdit(role)} disabled={role.is_system}>
-                              <Edit className="h-4 w-4" />
+                            <Button variant="outline" size="sm" onClick={() => handleViewClick(role)}>
+                              <Eye className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent><p>Edit</p></TooltipContent>
+                          <TooltipContent><p>View permissions</p></TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="sm" onClick={() => onClone(role)}>
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent><p>Clone</p></TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteClick(role)}
-                              disabled={role.is_system}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent><p>Delete</p></TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      {onEdit && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="sm" onClick={() => onEdit(role)} disabled={role.is_system}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Edit</p></TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      {onClone && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="sm" onClick={() => onClone(role)}>
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Clone</p></TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      {onDelete && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteClick(role)}
+                                disabled={role.is_system}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Delete</p></TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -312,6 +339,14 @@ export function RoleList({
       {selectedRoleForUsers && (
         <UserListDialog roleName={selectedRoleForUsers.name} users={loadingUsers ? [] : roleUsers} isOpen={userListDialogOpen} onClose={handleUserListDialogClose} />
       )}
+
+      {/* Role View Dialog */}
+      <RoleViewDialog
+        role={roleToView}
+        modules={modules}
+        isOpen={viewDialogOpen}
+        onClose={() => { setViewDialogOpen(false); setRoleToView(null); }}
+      />
     </>
   );
 }

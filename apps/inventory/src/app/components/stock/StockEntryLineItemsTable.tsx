@@ -3,7 +3,7 @@ import * as React from 'react';
 import { type CellContext, type ColumnDef } from '@tanstack/react-table';
 import { Trash2 } from 'lucide-react';
 
- 
+
 import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { Button, EditableDataTable, EditableNumberCell } from '@horizon-sync/ui/components';
 
@@ -222,7 +222,8 @@ export function StockEntryLineItemsTable({ items, onItemsChange, disabled = fals
     () => [
       { accessorKey: 'item_id', header: 'Item Name', cell: ItemPickerCellComponent, size: 250 },
       { accessorKey: 'qty', header: 'Quantity', cell: QtyCellComponent, size: 100 },
-      { accessorKey: 'uom', header: 'UOM', size: 80,
+      {
+        accessorKey: 'uom', header: 'UOM', size: 80,
         cell: ({ getValue }: CellContext<StockEntryLineRow, unknown>) => (
           <div className="px-2 py-1 text-sm text-muted-foreground">{String(getValue() ?? '')}</div>
         ),

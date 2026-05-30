@@ -12,15 +12,17 @@ interface FormInputFieldProps {
   error?: FieldError;
   testId?: string;
   required?: boolean;
+  disabled?: boolean;
+  readOnly?: boolean;
 }
 
-export function RegistrationFormInput({ id, label, type = 'text', placeholder, registration, error, testId, required = true }: FormInputFieldProps) {
+export function RegistrationFormInput({ id, label, type = 'text', placeholder, registration, error, testId, required = true, disabled = false, readOnly = false }: FormInputFieldProps) {
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>
         {label} {required && <span className="text-destructive">*</span>}
       </Label>
-      <Input id={id} type={type} placeholder={placeholder} {...registration} className={error ? 'border-destructive' : ''} data-testid={testId} />
+      <Input id={id} type={type} placeholder={placeholder} {...registration} className={error ? 'border-destructive' : ''} data-testid={testId} disabled={disabled} readOnly={readOnly} />
       {error && <p className="text-sm text-destructive">{error.message}</p>}
     </div>
   );

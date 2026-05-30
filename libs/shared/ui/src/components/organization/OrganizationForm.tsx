@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Building, Globe, Users, FileText, ImagePlus, ArrowLeft, MapPin } from 'lucide-react';
+import { Building, Globe, Users, FileText, ImagePlus, ArrowLeft, MapPin, Trash2 } from 'lucide-react';
 import { useForm, UseFormRegister, FieldErrors, UseFormSetValue, UseFormWatch } from 'react-hook-form';
 import * as z from 'zod';
 
@@ -128,23 +128,59 @@ interface OrganizationFormProps {
  * Helper Components
  */
 
-const LogoUpload = ({ logoPreview, onLogoChange }: { logoPreview: string; onLogoChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
-  <div className="flex flex-col items-center gap-4 pb-4">
-    <label htmlFor="logo-upload"
-      className="group relative flex h-28 w-28 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/50 hover:bg-muted cursor-pointer transition-colors">
+const LogoUpload = ({
+  logoPreview,
+  onLogoChange,
+  onLogoRemove,
+}: {
+  logoPreview: string;
+  onLogoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onLogoRemove: () => void;
+}) => {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  return (
+    <div className="flex flex-col items-center gap-3 pb-4">
+      <label
+        htmlFor="logo-upload"
+        className="group relative flex h-40 w-40 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+      >
+        {logoPreview ? (
+          <img src={logoPreview} alt="Organization logo" className="h-full w-full object-contain rounded-xl p-3" />
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+            <ImagePlus className="h-10 w-10" />
+            <span className="text-xs">Upload Logo</span>
+          </div>
+        )}
+        <input
+          id="logo-upload"
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          onChange={onLogoChange}
+          className="sr-only"
+        />
+      </label>
       {logoPreview ? (
-        <img src={logoPreview} alt="Organization logo" className="h-full w-full object-contain rounded-xl p-2" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (inputRef.current) inputRef.current.value = '';
+            onLogoRemove();
+          }}
+          className="text-destructive hover:text-destructive"
+        >
+          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+          Remove image
+        </Button>
       ) : (
-        <div className="flex flex-col items-center gap-2 text-muted-foreground">
-          <ImagePlus className="h-8 w-8" />
-          <span className="text-xs">Upload Logo</span>
-        </div>
+        <p className="text-sm text-muted-foreground">Add your organization logo</p>
       )}
-      <input id="logo-upload" type="file" accept="image/*" onChange={onLogoChange} className="sr-only" />
-    </label>
-    <p className="text-sm text-muted-foreground">Add your organization logo</p>
-  </div>
-);
+    </div>
+  );
+};
 
 const OrganizationNameField = ({
   register,
@@ -162,7 +198,7 @@ const OrganizationNameField = ({
       <Input id="organizationName"
         placeholder="Acme Inc."
         {...register('organizationName')}
-        className={`pl-10 ${errors.organizationName ? 'border-destructive' : ''}`}/>
+        className={`pl-10 ${errors.organizationName ? 'border-destructive' : ''}`} />
     </div>
     {errors.organizationName && <p className="text-sm text-destructive">{errors.organizationName.message}</p>}
   </div>
@@ -326,7 +362,7 @@ const WebsiteField = ({ register, errors }: { register: UseFormRegister<Organiza
         type="url"
         placeholder="https://www.example.com"
         {...register('websiteUrl')}
-        className={`pl-10 ${errors.websiteUrl ? 'border-destructive' : ''}`}/>
+        className={`pl-10 ${errors.websiteUrl ? 'border-destructive' : ''}`} />
     </div>
     {errors.websiteUrl && <p className="text-sm text-destructive">{errors.websiteUrl.message}</p>}
   </div>
@@ -341,7 +377,7 @@ const DescriptionField = ({ register, charCount }: { register: UseFormRegister<O
         placeholder="Tell us about your organization..."
         maxLength={1000}
         {...register('organizationDescription')}
-        className="pl-10 min-h-[100px] resize-none"/>
+        className="pl-10 min-h-[100px] resize-none" />
     </div>
     <p className={`text-xs text-right ${charCount >= 1000 ? 'text-destructive' : 'text-muted-foreground'}`}>{charCount}/1000 characters</p>
   </div>
@@ -408,13 +444,15 @@ function useOrganizationForm(
     reader.readAsDataURL(file);
   };
 
+  const handleLogoRemove = () => setLogoPreview('');
+
   const handleFormSubmit = form.handleSubmit(async (formData: OrganizationFormData) => {
     await onSubmit({ ...formData, logoUrl: logoPreview });
   });
 
   const descriptionCharCount = form.watch('organizationDescription')?.length || 0;
 
-  return { ...form, logoPreview, handleLogoChange, handleFormSubmit, descriptionCharCount };
+  return { ...form, logoPreview, handleLogoChange, handleLogoRemove, handleFormSubmit, descriptionCharCount };
 }
 
 /**
@@ -434,6 +472,7 @@ export function OrganizationForm({
     watch,
     logoPreview,
     handleLogoChange,
+    handleLogoRemove,
     handleFormSubmit,
     descriptionCharCount,
     formState: { errors, isSubmitting },
@@ -441,7 +480,11 @@ export function OrganizationForm({
 
   return (
     <form onSubmit={handleFormSubmit} className={`space-y-6 ${className}`}>
-      <LogoUpload logoPreview={logoPreview} onLogoChange={handleLogoChange} />
+      <LogoUpload
+        logoPreview={logoPreview}
+        onLogoChange={handleLogoChange}
+        onLogoRemove={handleLogoRemove}
+      />
 
       <OrganizationNameField register={register} errors={errors} />
 
@@ -449,7 +492,7 @@ export function OrganizationForm({
         errors={errors}
         defaultIndustry={defaultValues.industry}
         defaultCompanySize={defaultValues.companySize}
-        defaultOrganizationType={defaultValues.organizationType}/>
+        defaultOrganizationType={defaultValues.organizationType} />
 
       <CountryAndCurrencyFields
         setValue={setValue}

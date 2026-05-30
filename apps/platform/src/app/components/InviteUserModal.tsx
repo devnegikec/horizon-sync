@@ -1,13 +1,12 @@
 import * as React from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { UserPlus, Send, Package, CreditCard, Users2 } from 'lucide-react';
+import { Send, UserPlus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
@@ -15,12 +14,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '../hooks';
 import { RoleService } from '../services/role.service';
 import { UserService, InviteUserPayload } from '../services/user.service';
-import type { Role, Permission } from '../types/role.types';
+import type { Role, ModuleGroup } from '../types/role.types';
+import { ModulePermissionMatrix } from './roles/ModulePermissionMatrix';
+
+const namePattern = /^[A-Za-z][A-Za-z' -]*[A-Za-z]$/;
 
 const inviteUserSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  first_name: z.string().min(2, 'First name must be at least 2 characters'),
-  last_name: z.string().min(2, 'Last name must be at least 2 characters'),
+  email: z.string()
+    .trim()
+    .min(1, 'Email address is required')
+    .email('Please enter a valid email address')
+    .max(254, 'Email address is too long')
+    .transform((value) => value.toLowerCase()),
+  first_name: z.string()
+    .trim()
+    .min(2, 'First name must be at least 2 characters')
+    .max(50, 'First name cannot exceed 50 characters')
+    .regex(namePattern, 'First name can contain only letters, spaces, hyphens, and apostrophes'),
+  last_name: z.string()
+    .trim()
+    .min(2, 'Last name must be at least 2 characters')
+    .max(50, 'Last name cannot exceed 50 characters')
+    .regex(namePattern, 'Last name can contain only letters, spaces, hyphens, and apostrophes'),
   role_id: z.string().optional(),
   message: z.string().optional(),
 });
@@ -33,32 +48,6 @@ interface InviteUserModalProps {
   onSuccess?: () => void;
 }
 
-interface PermissionGroup {
-  title: string;
-  icon: React.ComponentType<{ className?: string }>;
-  permissions: Array<{
-    id: string;
-    code: string;
-    name: string;
-    checked: boolean;
-  }>;
-}
-
-// Icon mapping for permission groups
-const getIconForModule = (moduleName: string): React.ComponentType<{ className?: string }> => {
-  const lowerModule = moduleName.toLowerCase();
-  if (lowerModule.includes('crm') || lowerModule.includes('sales') || lowerModule.includes('customer')) {
-    return Users2;
-  }
-  if (lowerModule.includes('inventory') || lowerModule.includes('stock') || lowerModule.includes('warehouse')) {
-    return Package;
-  }
-  if (lowerModule.includes('billing') || lowerModule.includes('subscription') || lowerModule.includes('payment')) {
-    return CreditCard;
-  }
-  return Package; // Default icon
-};
-
 // eslint-disable-next-line complexity
 export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserModalProps) {
   const { accessToken, user } = useAuth();
@@ -68,6 +57,8 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
   const [rolesLoading, setRolesLoading] = React.useState(false);
   const [selectedRoleId, setSelectedRoleId] = React.useState<string>('');
   const [permissionsLoading, setPermissionsLoading] = React.useState(false);
+  const [roleModules, setRoleModules] = React.useState<ModuleGroup[]>([]);
+  const [rolePermissionCodes, setRolePermissionCodes] = React.useState<Set<string>>(new Set());
 
   const {
     register,
@@ -79,21 +70,12 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     resolver: zodResolver(inviteUserSchema),
   });
 
-  const [permissionGroups, setPermissionGroups] = React.useState<PermissionGroup[]>([]);
-
   const fetchRoles = React.useCallback(async () => {
     if (!accessToken) return;
-
     setRolesLoading(true);
     try {
       const response = await RoleService.getRoles(
-        {
-          search: '',
-          isSystem: null,
-          isActive: true,
-          page: 1,
-          pageSize: 100,
-        },
+        { search: '', isSystem: null, isActive: true, page: 1, pageSize: 100 },
         accessToken
       );
       setRoles(response.data || []);
@@ -105,77 +87,58 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     }
   }, [accessToken]);
 
-  const transformPermissionsToGroups = React.useCallback((groupedData: Record<string, Permission[]>, rolePermissionIds: Set<string>): PermissionGroup[] => {
-    return Object.entries(groupedData).map(([moduleName, permissions]) => ({
-      title: moduleName,
-      icon: getIconForModule(moduleName),
-      permissions: (permissions as Permission[]).map((perm) => ({
-        id: perm.id,
-        code: perm.code,
-        name: perm.name,
-        checked: rolePermissionIds.has(perm.id),
-      })),
-    }));
-  }, []);
-
   const fetchPermissionsForRole = React.useCallback(async (roleId: string) => {
     if (!accessToken) return;
-
     setPermissionsLoading(true);
     try {
-      // Fetch the selected role with permissions
       const selectedRole = await RoleService.getRole(roleId, accessToken);
-      const rolePermissionIds = new Set(selectedRole.permissions?.map((p) => p.id) || []);
+      const roleCodes = new Set(selectedRole.permissions?.map((p) => p.code) || []);
+      setRolePermissionCodes(roleCodes);
 
-      // Fetch all grouped permissions
       const groupedResponse = await RoleService.getGroupedPermissions(accessToken);
-      const groupedData = groupedResponse.data || {};
 
-      // Transform API response to UI format
-      const groups = transformPermissionsToGroups(groupedData, rolePermissionIds);
-      setPermissionGroups(groups);
+      // Build module view showing only permissions this role has
+      const filteredModules: ModuleGroup[] = (groupedResponse.modules ?? [])
+        .map((mod) => ({
+          ...mod,
+          resources: mod.resources
+            .map((res) => ({
+              ...res,
+              permissions: res.permissions.filter((p) => roleCodes.has(p.code)),
+            }))
+            .filter((res) => res.permissions.length > 0),
+        }))
+        .filter((mod) => mod.resources.length > 0);
+
+      setRoleModules(filteredModules);
     } catch (error) {
       console.error('Failed to fetch permissions:', error);
       setErrorMessage('Failed to load permissions. Please try again.');
     } finally {
       setPermissionsLoading(false);
     }
-  }, [accessToken, transformPermissionsToGroups]);
+  }, [accessToken]);
 
-  // Fetch roles when modal opens
   React.useEffect(() => {
-    if (open && accessToken) {
-      fetchRoles();
-    }
+    if (open && accessToken) fetchRoles();
   }, [open, accessToken, fetchRoles]);
 
-  // Fetch permissions when role is selected
   React.useEffect(() => {
     if (selectedRoleId && accessToken) {
       fetchPermissionsForRole(selectedRoleId);
     } else {
-      // Reset permissions when no role is selected
-      setPermissionGroups([]);
+      setRoleModules([]);
+      setRolePermissionCodes(new Set());
     }
   }, [selectedRoleId, accessToken, fetchPermissionsForRole]);
-
-  const togglePermission = (groupIndex: number, permissionIndex: number) => {
-    setPermissionGroups((prev) => {
-      const newGroups = [...prev];
-      newGroups[groupIndex].permissions[permissionIndex].checked = !newGroups[groupIndex].permissions[permissionIndex].checked;
-      return newGroups;
-    });
-  };
 
   const handleFormSubmit = React.useCallback(async (data: InviteUserFormData) => {
     if (!accessToken) {
       setErrorMessage('You must be logged in to invite users');
       return;
     }
-
     setIsSubmitting(true);
     setErrorMessage('');
-
     try {
       const payload: InviteUserPayload = {
         email: data.email,
@@ -185,35 +148,24 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
         message: data.message,
         organization_id: user?.organization_id ?? undefined,
       };
-
       await UserService.inviteUser(payload, accessToken);
-
-      // Reset form and close modal
       reset();
-      setPermissionGroups((prev) =>
-        prev.map((group) => ({
-          ...group,
-          permissions: group.permissions.map((p) => ({ ...p, checked: false })),
-        })),
-      );
+      setSelectedRoleId('');
+      setRoleModules([]);
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
-      if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('An unexpected error occurred. Please try again.');
-      }
+      setErrorMessage(error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [accessToken, reset, onOpenChange, onSuccess]);
+  }, [accessToken, reset, onOpenChange, onSuccess, user?.organization_id]);
 
   const handleClose = () => {
     reset();
     setErrorMessage('');
     setSelectedRoleId('');
-    setPermissionGroups([]);
+    setRoleModules([]);
     onOpenChange(false);
   };
 
@@ -222,10 +174,13 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     setSelectedRoleId(roleId);
   };
 
+  const selectedRole = roles.find((r) => r.id === selectedRoleId);
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl flex flex-col max-h-[90vh] p-0 gap-0">
+        {/* Fixed header */}
+        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#3058EE] to-[#7D97F6]">
               <UserPlus className="h-5 w-5 text-white" />
@@ -237,123 +192,135 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-          {/* Email Address */}
-          <div className="space-y-2">
-            <Label htmlFor="email">
-              Email Address <span className="text-destructive">*</span>
-            </Label>
-            <Input id="email"
-              type="email"
-              placeholder="user@example.com"
-              {...register('email')}
-              className={errors.email ? 'border-destructive' : ''}/>
-            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-            <p className="text-xs text-muted-foreground">Invitation will be sent to this email</p>
-          </div>
-
-          {/* First Name and Last Name */}
-          <div className="grid grid-cols-2 gap-4">
+        {/* Scrollable form body */}
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+            {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="first_name">
-                First Name <span className="text-destructive">*</span>
+              <Label htmlFor="email">
+                Email Address <span className="text-destructive">*</span>
               </Label>
-              <Input id="first_name" placeholder="John" {...register('first_name')} className={errors.first_name ? 'border-destructive' : ''} />
-              {errors.first_name && <p className="text-sm text-destructive">{errors.first_name.message}</p>}
+              <Input
+                id="email"
+                type="email"
+                placeholder="user@example.com"
+                {...register('email')}
+                className={errors.email ? 'border-destructive' : ''}
+              />
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+              <p className="text-xs text-muted-foreground">Invitation will be sent to this email</p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="last_name">
-                Last Name <span className="text-destructive">*</span>
-              </Label>
-              <Input id="last_name" placeholder="Doe" {...register('last_name')} className={errors.last_name ? 'border-destructive' : ''} />
-              {errors.last_name && <p className="text-sm text-destructive">{errors.last_name.message}</p>}
-            </div>
-          </div>
-
-          {/* Assign Role */}
-          <div className="space-y-2">
-            <Label htmlFor="role_id">Assign Role</Label>
-            <Select onValueChange={handleRoleChange} value={selectedRoleId} disabled={rolesLoading}>
-              <SelectTrigger>
-                <SelectValue placeholder={rolesLoading ? 'Loading roles...' : 'Choose a role'} />
-              </SelectTrigger>
-              <SelectContent>
-                {roles.length === 0 && !rolesLoading && (
-                  <SelectItem value="" disabled>No roles available</SelectItem>
-                )}
-                {roles.map((role) => (
-                  <SelectItem key={role.id} value={role.id}>
-                    {role.name}
-                    {role.description && <span className="text-muted-foreground ml-2">({role.description})</span>}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">Select primary role for this user</p>
-          </div>
-
-          {/* Role Permissions */}
-          {selectedRoleId && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-sm">Role Permissions</h3>
-                <p className="text-xs text-muted-foreground">
-                  {permissionsLoading ? 'Loading permissions...' : 'Permissions assigned to the selected role'}
-                </p>
+            {/* Name */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="first_name">
+                  First Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="first_name"
+                  placeholder="John"
+                  {...register('first_name')}
+                  className={errors.first_name ? 'border-destructive' : ''}
+                />
+                {errors.first_name && <p className="text-sm text-destructive">{errors.first_name.message}</p>}
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="last_name">
+                  Last Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="last_name"
+                  placeholder="Doe"
+                  {...register('last_name')}
+                  className={errors.last_name ? 'border-destructive' : ''}
+                />
+                {errors.last_name && <p className="text-sm text-destructive">{errors.last_name.message}</p>}
+              </div>
+            </div>
 
-              {permissionsLoading ? (
-                <div className="flex items-center justify-center p-8">
-                  <p className="text-sm text-muted-foreground">Loading permissions...</p>
-                </div>
-              ) : permissionGroups.length === 0 ? (
-                <div className="flex items-center justify-center p-8">
-                  <p className="text-sm text-muted-foreground">No permissions available</p>
-                </div>
-              ) : (
-                <div className="space-y-4 max-h-[400px] overflow-y-auto">
-                  {permissionGroups.map((group, groupIndex) => (
-                    <div key={group.title} className="rounded-lg border border-border p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <group.icon className="h-5 w-5 text-muted-foreground" />
-                        <h4 className="font-semibold text-sm">{group.title}</h4>
+            {/* Role selector */}
+            <div className="space-y-2">
+              <Label htmlFor="role_id">Assign Role</Label>
+              <Select onValueChange={handleRoleChange} value={selectedRoleId} disabled={rolesLoading}>
+                <SelectTrigger>
+                  <SelectValue placeholder={rolesLoading ? 'Loading roles...' : 'Choose a role'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.length === 0 && !rolesLoading && (
+                    <SelectItem value="" disabled>No roles available</SelectItem>
+                  )}
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      <div className="flex flex-col">
+                        <span>{role.name}</span>
+                        {role.description && (
+                          <span className="text-xs text-muted-foreground">{role.description}</span>
+                        )}
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {group.permissions.map((permission, permissionIndex) => (
-                          <div key={permission.id} className="flex items-center space-x-2">
-                            <Checkbox id={permission.id}
-                              checked={permission.checked}
-                              disabled={true}
-                              onCheckedChange={() => togglePermission(groupIndex, permissionIndex)}/>
-                            <label htmlFor={permission.id}
-                              className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                              {permission.name}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Select the primary role for this user</p>
+            </div>
+
+            {/* Role permissions preview — read-only module view */}
+            {selectedRoleId && (
+              <div className="space-y-3">
+                <div>
+                  <h3 className="font-semibold text-sm">
+                    Permissions granted by{' '}
+                    <span className="text-[#3058EE]">{selectedRole?.name ?? 'this role'}</span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {permissionsLoading
+                      ? 'Loading permissions...'
+                      : roleModules.length === 0
+                        ? 'This role has no specific module permissions'
+                        : 'The user will have access to the following features'}
+                  </p>
                 </div>
-              )}
-            </div>
-          )}
 
-          {/* Error Message */}
-          {errorMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
-              <p className="text-sm">{errorMessage}</p>
-            </div>
-          )}
+                {permissionsLoading ? (
+                  <div className="flex items-center justify-center p-8">
+                    <p className="text-sm text-muted-foreground">Loading permissions...</p>
+                  </div>
+                ) : roleModules.length > 0 ? (
+                  <div className="max-h-[320px] overflow-y-auto rounded-lg border p-1">
+                    <ModulePermissionMatrix
+                      modules={roleModules}
+                      selectedPermissions={rolePermissionCodes}
+                      onPermissionToggle={() => { /* read-only */ }}
+                      onBulkSelect={() => { /* read-only */ }}
+                      readOnly
+                    />
+                  </div>
+                ) : null}
+              </div>
+            )}
 
-          <DialogFooter>
+            {/* Error */}
+            {errorMessage && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
+                <p className="text-sm">{errorMessage}</p>
+              </div>
+            )}
+
+          </div>{/* end scrollable body */}
+
+          {/* Fixed footer */}
+          <div className="px-6 py-4 border-t shrink-0 flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white"
+            >
               {isSubmitting ? (
-                <>Sending...</>
+                'Sending...'
               ) : (
                 <>
                   <Send className="mr-2 h-4 w-4" />
@@ -361,7 +328,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
                 </>
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

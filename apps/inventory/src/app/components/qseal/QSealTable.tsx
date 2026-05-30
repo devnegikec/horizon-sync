@@ -3,7 +3,7 @@ import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { QrCode, Plus, MoreHorizontal, Eye, Edit, Power, PowerOff } from 'lucide-react';
 
-import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
+import { Badge, Button, Card, CardContent } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import {
   DropdownMenu,
@@ -227,7 +227,12 @@ export function QSealTable({
     return (
       <Card>
         <CardContent className="p-0">
-          <TableSkeleton columns={6} rows={10} showHeader />
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3058EE] mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading QSeal products...</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );

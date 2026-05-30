@@ -45,6 +45,18 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
     </Button>
   );
 }
+
+function LoadingState({ message }: { message: string }) {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3058EE] mx-auto mb-4" />
+        <p className="text-muted-foreground">{message}</p>
+      </div>
+    </div>
+  );
+}
+
 export function RevenuePage() {
   const [activeView, setActiveView] = React.useState<ActiveView>('customers');
   const [preSelectedInvoice, setPreSelectedInvoice] = React.useState<Invoice | null>(null);
@@ -123,12 +135,12 @@ export function RevenuePage() {
             {activeView === 'pick_lists' && <PickListManagement />}
             {activeView === 'delivery_notes' && <DeliveryNoteManagement />}
             {activeView === 'invoices' && (
-              <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading invoices...</div>}>
+              <React.Suspense fallback={<LoadingState message="Loading invoices..." />}>
                 <InvoiceManagement />
               </React.Suspense>
             )}
             {activeView === 'payments' && (
-              <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading payments...</div>}>
+              <React.Suspense fallback={<LoadingState message="Loading payments..." />}>
                 <PaymentManagement preSelectedInvoice={preSelectedInvoice}
                   pendingPaymentId={pendingPaymentId}
                   onClearPendingPaymentId={() => setPendingPaymentId(null)}

@@ -11,10 +11,15 @@ import {
   ClipboardCheck,
   Boxes,
   AlertTriangle,
+  Building2,
+  ChevronsUpDown,
+  Check,
+  X,
 } from 'lucide-react';
 
+import { Button, DataTableViewOptions, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { useUserStore } from '@horizon-sync/store';
-import { Button } from '@horizon-sync/ui/components/ui/button';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import {
@@ -32,14 +37,26 @@ import {
   DropdownMenuTrigger,
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@horizon-sync/ui/components/ui/popover';
+import { Input } from '@horizon-sync/ui/components/ui/input';
 import { cn } from '@horizon-sync/ui/lib';
 
- 
+
 
 import { useStockEntryMutations } from '../../hooks/useStock';
 import { useStockLevels } from '../../hooks/useStockLevels';
 import { useStockMovements } from '../../hooks/useStockMovements';
 import { useStockReconciliations } from '../../hooks/useStockReconciliations';
+import { useAsnOrderManagement } from '../../hooks/useAsnOrderManagement';
+import { useMyWarehouses } from '../../hooks/useMyWarehouses';
+import { asnOrderApi } from '../../utility/api/asn-orders';
+import type { AsnOrder } from '../../types/asn-order.types';
+import type { PaginationInfo } from '../../types/quotation.types';
+import { AsnOrdersTable } from '../advance stock notice/AsnOrdersTable';
 import type {
   StockEntry,
   StockLevel,
@@ -61,12 +78,15 @@ import { StockEntryDialog } from './StockEntryDialog';
 import { StockLevelsTable } from './StockLevelsTable';
 import { StockMovementsTable } from './StockMovementsTable';
 import { StockReconciliationsTable } from './StockReconciliationsTable';
+import { StockFilters } from './stock.types';
+import { useState } from 'react';
+import { AsnOrderDialog } from '../advance stock notice/AsnOrderDialog';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ActiveTab = 'levels' | 'movements' | 'entries' | 'reconciliations';
+type ActiveTab = 'levels' | 'movements' | 'entries' | 'reconciliations' | 'asn';
 
 interface StatDef {
   title: string;
@@ -167,12 +187,13 @@ function StatsGrid({ stats }: { stats: StatDef[] }) {
 
 interface HeaderProps {
   onNewEntry: () => void;
+  onAsN: () => void;
   onReconciliation: () => void;
   activeTab: ActiveTab;
   onImportSuccess?: () => void;
 }
 
-function StockManagementHeader({ onNewEntry, onReconciliation, activeTab, onImportSuccess }: HeaderProps) {
+function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab, onImportSuccess }: HeaderProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [isExporting, setIsExporting] = React.useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
@@ -277,8 +298,8 @@ function StockManagementHeader({ onNewEntry, onReconciliation, activeTab, onImpo
 
   const exportLabel = activeTab === 'levels' ? 'Export Stock Levels'
     : activeTab === 'movements' ? 'Export Movements'
-    : activeTab === 'entries' ? 'Export Entries'
-    : null;
+      : activeTab === 'entries' ? 'Export Entries'
+        : null;
 
   const handleDownloadTemplate = React.useCallback(async () => {
     if (!accessToken) return;
@@ -400,6 +421,10 @@ function StockManagementHeader({ onNewEntry, onReconciliation, activeTab, onImpo
                 <FileText className="mr-2 h-4 w-4" />
                 Stock Entry
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={onAsN}>
+                <FileText className="mr-2 h-4 w-4" />
+                Advance Stock Notice
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={onReconciliation}>
                 <ArrowRightLeft className="mr-2 h-4 w-4" />
                 Reconciliation
@@ -487,6 +512,15 @@ function StockManagementHeader({ onNewEntry, onReconciliation, activeTab, onImpo
 /*  Sub-component: Tab content panels                                  */
 /* ------------------------------------------------------------------ */
 
+interface AsnOrderManagementData {
+  asnOrders: AsnOrder[];
+  pagination?: PaginationInfo | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
+  recentlyCreatedId?: string | null;
+}
+
 interface TabPanelsProps {
   levelsData: ReturnType<typeof useStockLevels>;
   levelsFilters: { page: number; pageSize: number };
@@ -500,10 +534,21 @@ interface TabPanelsProps {
   reconciliationsData: ReturnType<typeof useStockReconciliations>;
   reconciliationsFilters: { page: number; pageSize: number };
   onReconciliationsPagination: (pageIndex: number, pageSize: number) => void;
+  asnData: AsnOrderManagementData;
+  asnPagination?: {
+    pageIndex: number;
+    pageSize: number;
+    totalItems: number;
+    onPaginationChange: (pageIndex: number, pageSize: number) => void;
+  };
   onViewEntry?: (entry: StockEntry) => void;
   onEditEntry?: (entry: StockEntry) => void;
   onDeleteEntry?: (entry: StockEntry) => void;
   onViewReconciliation?: (reconciliation: StockReconciliation) => void;
+  onViewAsn?: (order: AsnOrder) => void;
+  onEditAsn?: (order: AsnOrder) => void;
+  onDeleteAsn?: (order: AsnOrder) => void;
+  onCreateAsn?: () => void;
 }
 
 function TabPanels({
@@ -519,10 +564,16 @@ function TabPanels({
   reconciliationsData,
   reconciliationsFilters,
   onReconciliationsPagination,
+  asnData,
+  asnPagination,
   onViewEntry,
   onEditEntry,
   onDeleteEntry,
   onViewReconciliation,
+  onViewAsn,
+  onEditAsn,
+  onDeleteAsn,
+  onCreateAsn,
 }: TabPanelsProps) {
   return (
     <>
@@ -577,6 +628,20 @@ function TabPanels({
             totalItems: reconciliationsData.pagination?.total_items || 0,
             onPaginationChange: onReconciliationsPagination,
           }} />
+      </TabsContent>
+      <TabsContent value="asn" className="mt-4">
+        <AsnOrdersTable
+          asnOrders={asnData.asnOrders}
+          loading={asnData.loading}
+          error={asnData.error}
+          hasActiveFilters={false}
+          onView={onViewAsn}
+          onEdit={onEditAsn}
+          onDelete={onDeleteAsn}
+          onCreateOrder={onCreateAsn}
+          serverPagination={asnPagination}
+          recentlyCreatedId={asnData.recentlyCreatedId}
+        />
       </TabsContent>
     </>
   );
@@ -659,6 +724,10 @@ export function StockManagement() {
   const [activeTab, setActiveTab] = React.useState<ActiveTab>('levels');
   const [stockEntryDialogOpen, setStockEntryDialogOpen] = React.useState(false);
   const [stockEntryViewMode, setStockEntryViewMode] = React.useState(false);
+  const [asnOrderDialogOpen, setAsnOrderDialogOpen] = React.useState(false);
+  const [asnViewMode, setAsnViewMode] = React.useState(false);
+  const [selectedAsnOrder, setSelectedAsnOrder] = React.useState<AsnOrder | null>(null);
+  const [confirmDeleteAsnOrder, setConfirmDeleteAsnOrder] = React.useState<AsnOrder | null>(null);
   const [reconciliationOpen, setReconciliationOpen] = React.useState(false);
   const [selectedReconciliation, setSelectedReconciliation] = React.useState<StockReconciliation | null>(null);
   const [reconciliationDetailOpen, setReconciliationDetailOpen] = React.useState(false);
@@ -668,15 +737,126 @@ export function StockManagement() {
   const [entriesFilters, setEntriesFilters] = React.useState({ ...DEFAULT_PAGINATION });
   const [reconciliationsFilters, setReconciliationsFilters] = React.useState({ ...DEFAULT_PAGINATION });
 
-  const levelsData = useStockLevels({ page: levelsFilters.page, pageSize: levelsFilters.pageSize });
-  const movementsData = useStockMovements({ page: movementsFilters.page, pageSize: movementsFilters.pageSize });
-  const entriesData = useStockEntries({ page: entriesFilters.page, pageSize: entriesFilters.pageSize });
-  const reconciliationsData = useStockReconciliations({ page: reconciliationsFilters.page, pageSize: reconciliationsFilters.pageSize });
+  /* ---------- global filters ---------- */
+  const [filters, setFilters] = useState<StockFilters>({
+    search: '',
+    warehouseId: '',
+    status: 'all',
+  });
+  const [warehouseSearch, setWarehouseSearch] = useState('');
+  const [warehouseOpen, setWarehouseOpen] = useState(false);
+
+  const asnManagement = useAsnOrderManagement();
+  const setAsnFilters = asnManagement.setFilters;
+  const asnRefetch = asnManagement.refetch;
+
+  // Reset pagination on any filter change (SearchInput already debounces onSearch internally)
+  React.useEffect(() => {
+    const reset = { ...DEFAULT_PAGINATION };
+    setLevelsFilters(reset);
+    setMovementsFilters(reset);
+    setEntriesFilters(reset);
+    setReconciliationsFilters(reset);
+  }, [filters.warehouseId, filters.status, filters.search]);
+
+  /* ---------- data hooks with filters ---------- */
+  const levelsData = useStockLevels({
+    page: levelsFilters.page,
+    pageSize: levelsFilters.pageSize,
+    filters: {
+      warehouse_id: filters.warehouseId,
+      search: filters.search,
+    },
+  });
+  const movementsData = useStockMovements({
+    page: movementsFilters.page,
+    pageSize: movementsFilters.pageSize,
+    filters: {
+      warehouse_id: filters.warehouseId,
+      search: filters.search,
+    },
+  });
+  const entriesData = useStockEntries({
+    page: entriesFilters.page,
+    pageSize: entriesFilters.pageSize,
+    filters: {
+      warehouse_id: filters.warehouseId,
+      status: filters.status,
+      search: filters.search,
+    },
+  });
+  const reconciliationsData = useStockReconciliations({
+    page: reconciliationsFilters.page,
+    pageSize: reconciliationsFilters.pageSize,
+    filters: {
+      warehouse_id: filters.warehouseId,
+      status: filters.status,
+      search: filters.search,
+    },
+  });
 
   const entryActions = useStockEntryActions(entriesData.refetch);
+  const accessToken = useUserStore((s) => s.accessToken);
+  const { toast } = useToast();
+
+  /* ---------- warehouse selector ---------- */
+  const { warehouses: allWarehouses, loading: warehousesLoading } = useMyWarehouses();
+  const filteredWarehouses = React.useMemo(() => {
+    if (!warehouseSearch) return allWarehouses;
+    const q = warehouseSearch.toLowerCase();
+    return allWarehouses.filter(
+      (w) =>
+        w.name.toLowerCase().includes(q) ||
+        w.code?.toLowerCase().includes(q) ||
+        w.city?.toLowerCase().includes(q),
+    );
+  }, [allWarehouses, warehouseSearch]);
+  const selectedWarehouse = allWarehouses.find((w) => w.id === filters.warehouseId);
+
+  // Sync global filters → ASN management
+  React.useEffect(() => {
+    setAsnFilters({
+      search: filters.search,
+      status: filters.status,
+      warehouse_id: filters.warehouseId,
+    });
+  }, [filters.search, filters.status, filters.warehouseId, setAsnFilters]);
+
+  /* ---------- status options per tab ---------- */
+  const statusOptions = React.useMemo(() => {
+    if (activeTab === 'entries') {
+      return [
+        { value: 'all', label: 'All Status' },
+        { value: 'draft', label: 'Draft' },
+        { value: 'submitted', label: 'Submitted' },
+        { value: 'cancelled', label: 'Cancelled' },
+      ];
+    }
+    if (activeTab === 'reconciliations') {
+      return [
+        { value: 'all', label: 'All Status' },
+        { value: 'draft', label: 'Draft' },
+        { value: 'submitted', label: 'Submitted' },
+        { value: 'cancelled', label: 'Cancelled' },
+      ];
+    }
+    if (activeTab === 'asn') {
+      return [
+        { value: 'all', label: 'All Status' },
+        { value: 'draft', label: 'Draft' },
+        { value: 'confirmed', label: 'Confirmed' },
+        { value: 'partially_delivered', label: 'Partially Delivered' },
+        { value: 'delivered', label: 'Delivered' },
+        { value: 'closed', label: 'Closed' },
+        { value: 'cancelled', label: 'Cancelled' },
+      ];
+    }
+    return [];
+  }, [activeTab]);
 
   const handleTabChange = React.useCallback((newTab: string) => {
     setActiveTab(newTab as ActiveTab);
+    setFilters((prev) => ({ ...prev, status: 'all' }));
     const reset = { ...DEFAULT_PAGINATION };
     const setters: Record<string, React.Dispatch<React.SetStateAction<typeof DEFAULT_PAGINATION>>> = {
       levels: setLevelsFilters,
@@ -685,7 +865,7 @@ export function StockManagement() {
       reconciliations: setReconciliationsFilters,
     };
     setters[newTab]?.(reset);
-  }, []);
+  }, [setFilters]);
 
   const makePaginationHandler = React.useCallback(
     (setter: React.Dispatch<React.SetStateAction<typeof DEFAULT_PAGINATION>>) =>
@@ -705,6 +885,77 @@ export function StockManagement() {
     setStockEntryViewMode(false);
     setStockEntryDialogOpen(true);
   }, [entryActions]);
+
+  const handleNewAsN = React.useCallback(() => {
+    entryActions.clearSelected();
+    setSelectedAsnOrder(null);
+    setAsnViewMode(false);
+    setAsnOrderDialogOpen(true);
+  }, [entryActions]);
+
+  const handleAsnDialogClose = React.useCallback(() => {
+    setAsnOrderDialogOpen(false);
+    setSelectedAsnOrder(null);
+    setActiveTab('asn');
+    asnRefetch();
+  }, [asnRefetch, setActiveTab]);
+
+  const handleViewAsn = React.useCallback(
+    async (order: AsnOrder) => {
+      try {
+        const fullOrder = await asnOrderApi.get(accessToken || '', order.id) as AsnOrder;
+        setSelectedAsnOrder(fullOrder);
+        setAsnViewMode(true);
+        setAsnOrderDialogOpen(true);
+      } catch {
+        toast({
+          title: 'Error',
+          description: 'Failed to load ASN order details',
+          variant: 'destructive',
+        });
+      }
+    },
+    [accessToken, toast],
+  );
+
+  const handleEditAsn = React.useCallback(
+    async (order: AsnOrder) => {
+      try {
+        const fullOrder = await asnOrderApi.get(accessToken || '', order.id) as AsnOrder;
+        setSelectedAsnOrder(fullOrder);
+        setAsnViewMode(false);
+        setAsnOrderDialogOpen(true);
+      } catch {
+        toast({
+          title: 'Error',
+          description: 'Failed to load ASN order details',
+          variant: 'destructive',
+        });
+      }
+    },
+    [accessToken, toast],
+  );
+
+  const handleDeleteAsn = React.useCallback(
+    (order: AsnOrder) => {
+      setConfirmDeleteAsnOrder(order);
+    },
+    [],
+  );
+
+  const executeDeleteAsn = React.useCallback(
+    async () => {
+      if (!confirmDeleteAsnOrder) return;
+      try {
+        await asnManagement.deleteMutation.mutateAsync(confirmDeleteAsnOrder.id);
+        asnManagement.refetch();
+      } catch {
+        /* error handled by mutation */
+      }
+      setConfirmDeleteAsnOrder(null);
+    },
+    [confirmDeleteAsnOrder, asnManagement.deleteMutation, asnManagement.refetch],
+  );
 
   const handleNewReconciliation = React.useCallback(() => {
     setReconciliationOpen(true);
@@ -749,18 +1000,149 @@ export function StockManagement() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <StockManagementHeader
         onNewEntry={handleNewEntry}
+        onAsN={handleNewAsN}
         onReconciliation={handleNewReconciliation}
         activeTab={activeTab}
         onImportSuccess={entriesData.refetch}
       />
       <StatsGrid stats={activeStats} />
+      {/* Filters */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <SearchInput
+            className="sm:w-80"
+            placeholder={
+              activeTab === 'levels'
+                ? 'Search by item name or code...'
+                : activeTab === 'movements'
+                  ? 'Search by item name, code, notes...'
+                  : activeTab === 'entries'
+                    ? 'Search by entry no, remarks...'
+                    : activeTab === 'reconciliations'
+                      ? 'Search by reconciliation no...'
+                      : 'Search by ASN order no...'
+            }
+            value={filters.search}
+            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
+          />
+          {/* Warehouse selector */}
+          <Popover open={warehouseOpen} onOpenChange={setWarehouseOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={warehouseOpen}
+                className="w-[220px] justify-between"
+              >
+                <span className="flex items-center gap-2 truncate">
+                  <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  {selectedWarehouse ? selectedWarehouse.name : 'All Warehouses'}
+                </span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[220px] p-0">
+              <div className="p-2">
+                <Input
+                  placeholder="Search warehouses..."
+                  value={warehouseSearch}
+                  onChange={(e) => setWarehouseSearch(e.target.value)}
+                  className="mb-2"
+                />
+                <div className="max-h-60 overflow-auto space-y-1">
+                  <button
+                    className="w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                    onClick={() => {
+                      setFilters((prev) => ({ ...prev, warehouseId: '' }));
+                      setWarehouseOpen(false);
+                    }}
+                  >
+                    <span className="h-4 w-4 flex items-center justify-center">
+                      {!filters.warehouseId && <Check className="h-4 w-4" />}
+                    </span>
+                    All Warehouses
+                  </button>
+                  {warehousesLoading && (
+                    <div className="px-2 py-1 text-sm text-muted-foreground">Loading...</div>
+                  )}
+                  {filteredWarehouses.map((w) => (
+                    <button
+                      key={w.id}
+                      className="w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                      onClick={() => {
+                        setFilters((prev) => ({ ...prev, warehouseId: w.id }));
+                        setWarehouseOpen(false);
+                      }}
+                    >
+                      <span className="h-4 w-4 flex items-center justify-center">
+                        {filters.warehouseId === w.id && <Check className="h-4 w-4" />}
+                      </span>
+                      <span className="truncate">{w.name}</span>
+                    </button>
+                  ))}
+                  {!warehousesLoading && filteredWarehouses.length === 0 && (
+                    <div className="px-2 py-1 text-sm text-muted-foreground">No warehouses found</div>
+                  )}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Status — shown only on tabs that support it */}
+          {statusOptions.length > 0 && (
+            <Select value={filters.status} onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Clear all filters */}
+          {(filters.search || filters.warehouseId || filters.status !== 'all') && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setFilters({ search: '', warehouseId: '', status: 'all' })
+              }
+              className="gap-1 text-muted-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear
+            </Button>
+          )}
+        </div>
+      </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
-          <TabsTrigger value="levels">Stock Levels</TabsTrigger>
-          <TabsTrigger value="movements">Movements</TabsTrigger>
-          <TabsTrigger value="entries">Stock Entries</TabsTrigger>
-          <TabsTrigger value="reconciliations">Reconciliations</TabsTrigger>
+          <TabsTrigger value="levels" className="gap-1.5">
+            Stock Levels
+            {activeTab === 'levels' && levelsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          </TabsTrigger>
+          <TabsTrigger value="movements" className="gap-1.5">
+            Movements
+            {activeTab === 'movements' && movementsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          </TabsTrigger>
+          <TabsTrigger value="entries" className="gap-1.5">
+            Stock Entries
+            {activeTab === 'entries' && entriesData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          </TabsTrigger>
+          <TabsTrigger value="reconciliations" className="gap-1.5">
+            Reconciliations
+            {activeTab === 'reconciliations' && reconciliationsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          </TabsTrigger>
+          <TabsTrigger value="asn" className="gap-1.5">
+            Advance Stock Notice
+            {activeTab === 'asn' && asnManagement.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          </TabsTrigger>
         </TabsList>
         <TabPanels levelsData={levelsData}
           levelsFilters={levelsFilters}
@@ -774,11 +1156,25 @@ export function StockManagement() {
           reconciliationsData={reconciliationsData}
           reconciliationsFilters={reconciliationsFilters}
           onReconciliationsPagination={makePaginationHandler(setReconciliationsFilters)}
+          asnData={{
+            asnOrders: asnManagement.asnOrders,
+            pagination: asnManagement.pagination,
+            loading: asnManagement.loading,
+            error: asnManagement.error,
+            refetch: asnManagement.refetch,
+            recentlyCreatedId: asnManagement.recentlyCreatedId,
+          }}
+          asnPagination={asnManagement.serverPaginationConfig}
           onViewEntry={handleView}
           onEditEntry={handleEdit}
           onDeleteEntry={entryActions.handleDelete}
-          onViewReconciliation={handleViewReconciliation} />
+          onViewReconciliation={handleViewReconciliation}
+          onViewAsn={handleViewAsn}
+          onEditAsn={handleEditAsn}
+          onDeleteAsn={handleDeleteAsn}
+          onCreateAsn={handleNewAsN} />
       </Tabs>
+
 
       <StockEntryDialog open={stockEntryDialogOpen}
         onOpenChange={setStockEntryDialogOpen}
@@ -786,6 +1182,16 @@ export function StockManagement() {
         viewMode={stockEntryViewMode}
         onCreated={handleDialogClose}
         onUpdated={handleDialogClose} />
+
+      <AsnOrderDialog open={asnOrderDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) handleAsnDialogClose();
+          else setAsnOrderDialogOpen(true);
+        }}
+        viewMode={asnViewMode}
+        onSave={asnManagement.handleSave}
+        saving={asnManagement.saving}
+        asnOrder={selectedAsnOrder} />
 
       <ReconciliationWizard open={reconciliationOpen}
         onOpenChange={setReconciliationOpen}
@@ -804,6 +1210,17 @@ export function StockManagement() {
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={entryActions.executeDeleteEntry}
+      />
+
+      {/* Delete ASN Order Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmDeleteAsnOrder}
+        onOpenChange={(open) => { if (!open) setConfirmDeleteAsnOrder(null); }}
+        title="Delete ASN Order"
+        description={`Delete ASN order "${confirmDeleteAsnOrder?.asn_order_no}"?`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={executeDeleteAsn}
       />
     </div>
   );

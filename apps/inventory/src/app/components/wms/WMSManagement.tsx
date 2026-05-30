@@ -9,6 +9,7 @@ import { cn } from '@horizon-sync/ui/lib';
 
 import { useWarehouses } from '../../hooks/useWarehouses';
 
+import { useMyWarehouses } from '../../hooks/useMyWarehouses';
 import { DispatchList } from './DispatchList';
 import { GateVerificationPanel } from './GateVerificationPanel';
 import { InboundScanPanel } from './InboundScanPanel';
@@ -42,7 +43,7 @@ export function WMSManagement() {
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('');
   const [gatePickListId, setGatePickListId] = React.useState<string>('');
 
-  const { warehouses, loading: warehousesLoading } = useWarehouses(1, 100);
+  const { warehouses, loading: warehousesLoading } = useMyWarehouses();
 
   // Auto-select first warehouse
   React.useEffect(() => {
@@ -50,6 +51,17 @@ export function WMSManagement() {
       setSelectedWarehouseId(warehouses[0].id);
     }
   }, [warehouses, selectedWarehouseId]);
+
+  if (warehousesLoading && !selectedWarehouseId) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3058EE] mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading WMS...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
