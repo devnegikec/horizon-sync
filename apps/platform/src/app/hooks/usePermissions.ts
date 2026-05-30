@@ -91,6 +91,14 @@ export function usePermissions() {
     return NavigationPermissions.inventory.view(permissionsData.permissions);
   }, [permissionsData.permissions]);
 
+  const canViewWMS = React.useCallback(() => {
+    return NavigationPermissions.wms.view(permissionsData.permissions);
+  }, [permissionsData.permissions]);
+
+  const canViewASN = React.useCallback(() => {
+    return NavigationPermissions.asn.view(permissionsData.permissions);
+  }, [permissionsData.permissions]);
+
   const canViewRevenue = React.useCallback(() => {
     return NavigationPermissions.revenue.view(permissionsData.permissions);
   }, [permissionsData.permissions]);
@@ -117,11 +125,11 @@ export function usePermissions() {
     roles: permissionsData.roles,
     hasAccess: permissionsData.hasAccess,
     lastFetched: permissionsData.lastFetched,
-    
+
     // Local loading/error state
     loading: state.loading,
     error: state.error,
-    
+
     // Actions
     fetchPermissions,
     clearPermissions,
@@ -138,6 +146,8 @@ export function usePermissions() {
     canViewAnalytics,
     canViewSettings,
     canViewInventory,
+    canViewWMS,
+    canViewASN,
     canViewRevenue,
     canViewSubscriptions,
     canViewBanking,
