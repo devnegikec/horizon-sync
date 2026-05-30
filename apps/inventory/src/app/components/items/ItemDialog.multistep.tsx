@@ -29,6 +29,7 @@ function itemToFormData(item: Item): Partial<ItemFormData> {
   return {
     itemCode: item.itemCode ?? '',
     name: item.name ?? '',
+    sku: item.sku ?? '',
     description: item.description ?? '',
     itemGroupId: item.itemGroupId ?? '',
     itemType: item.itemType ?? 'stock',

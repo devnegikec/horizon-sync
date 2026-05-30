@@ -12,6 +12,7 @@ import type {
   ReceivingSlip,
   PaginatedReceivingSlips,
   PutAwayList,
+  PutAwayItem,
   PickList,
   PaginatedPickLists,
   PickScanResult,
@@ -161,11 +162,26 @@ export const putAwayApi = {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
     });
-    return req<{ put_away_lists: PutAwayList[]; pagination: unknown }>(`${BASE}/put-away-lists?${p}`, token);
+    return req<{ put_away_lists: PutAwayList[]; pagination: unknown }>(`${BASE}/put-away?${p}`, token);
   },
 
   getPutAwayList: (token: string, id: string) =>
-    req<PutAwayList>(`${BASE}/put-away-lists/${id}`, token),
+    req<PutAwayList>(`${BASE}/put-away/${id}`, token),
+
+  completeItem: (token: string, listId: string, itemId: string, binId?: string) =>
+    req<PutAwayItem>(`${BASE}/put-away/${listId}/items/${itemId}/complete`, token, {
+      method: 'POST',
+      body: JSON.stringify(binId ? { bin_id: binId } : {}),
+    }),
+
+  skipItem: (token: string, listId: string, itemId: string, reason: string) =>
+    req<PutAwayItem>(`${BASE}/put-away/${listId}/items/${itemId}/skip`, token, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+
+  generateFromSlip: (token: string, slipId: string) =>
+    req<PutAwayList>(`${BASE}/put-away/generate-from-slip/${slipId}`, token, { method: 'POST', body: '{}' }),
 };
 
 // ============================================

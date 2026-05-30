@@ -19,6 +19,8 @@ interface Step1BasicInfoProps {
   accessToken: string;
 }
 
+const SKU_PATTERN = /^[a-zA-Z0-9-]*$/;
+
 // eslint-disable-next-line complexity
 function NameField({ value, onUpdate, markTouched, showError, showMaxError }: {
   value: string;
@@ -49,6 +51,46 @@ function NameField({ value, onUpdate, markTouched, showError, showMaxError }: {
         <p className="text-xs text-red-500">Item name cannot exceed 255 characters</p>
       )}
       <p className={cn('text-xs text-right', isAtLimit ? 'text-red-500 font-medium' : 'text-muted-foreground')}>{value?.length || 0}/255</p>
+    </div>
+  );
+}
+
+// eslint-disable-next-line complexity
+function SKUField({ value, onUpdate, markTouched, touched }: {
+  value: string;
+  onUpdate: (data: Partial<ItemFormData>) => void;
+  markTouched: () => void;
+  touched: boolean;
+}) {
+  const isAtLimit = (value?.length || 0) > 100;
+  const isInvalidChars = value.length > 0 && !SKU_PATTERN.test(value);
+  const hasError = touched && (isAtLimit || isInvalidChars);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Allow only alphanumeric and hyphens
+    const raw = e.target.value;
+    if (raw === '' || SKU_PATTERN.test(raw)) {
+      onUpdate({ sku: raw });
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="itemSku">SKU</Label>
+      <Input id="itemSku"
+        value={value}
+        onChange={handleChange}
+        onBlur={markTouched}
+        placeholder="e.g. WIDGET-001"
+        className={cn(hasError && 'border-red-500')}
+        maxLength={100}/>
+      {touched && isAtLimit && (
+        <p className="text-xs text-red-500">SKU cannot exceed 100 characters</p>
+      )}
+      {touched && isInvalidChars && (
+        <p className="text-xs text-red-500">SKU can only contain letters, numbers, and hyphens</p>
+      )}
+      <p className={cn('text-xs text-right', isAtLimit ? 'text-red-500 font-medium' : 'text-muted-foreground')}>{value?.length || 0}/100</p>
     </div>
   );
 }
@@ -110,15 +152,9 @@ export function Step1BasicInfo({ formData, onUpdate, itemGroups, accessToken }: 
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="itemCode">Item Code</Label>
-          <Input id="itemCode"
-            value={formData.itemCode}
-            disabled
-            placeholder="Auto-generated"/>
-        </div>
-
         <NameField value={formData.name} onUpdate={onUpdate} markTouched={() => markTouched('name')} showError={!!showError('name', formData.name)} showMaxError={!!showMaxError('name', formData.name, 255)} />
+
+        <SKUField value={formData.sku} onUpdate={onUpdate} markTouched={() => markTouched('sku')} touched={!!touched['sku']} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">

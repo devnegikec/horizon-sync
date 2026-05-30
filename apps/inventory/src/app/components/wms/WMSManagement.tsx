@@ -1,11 +1,13 @@
 import * as React from 'react';
 
-import { Warehouse, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Truck, MapPin } from 'lucide-react';
+import { Warehouse, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Truck, MapPin, PackageCheck } from 'lucide-react';
 
-import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
+import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { cn } from '@horizon-sync/ui/lib';
+
+import { useWarehouses } from '../../hooks/useWarehouses';
 
 import { useMyWarehouses } from '../../hooks/useMyWarehouses';
 import { DispatchList } from './DispatchList';
@@ -13,9 +15,10 @@ import { GateVerificationPanel } from './GateVerificationPanel';
 import { InboundScanPanel } from './InboundScanPanel';
 import { LocationTreeView } from './LocationTreeView';
 import { PickListView } from './PickListView';
+import { PutAwayView } from './PutAwayView';
 import { ReceivingSlipList } from './ReceivingSlipList';
 
-type WMSView = 'layout' | 'inbound' | 'receiving' | 'outbound' | 'gate' | 'dispatch';
+type WMSView = 'layout' | 'inbound' | 'receiving' | 'putaway' | 'outbound' | 'gate' | 'dispatch';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -26,11 +29,9 @@ interface NavItemProps {
 
 function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
   return (
-    <Button
-      variant={isActive ? 'default' : 'ghost'}
+    <Button variant={isActive ? 'default' : 'ghost'}
       className={cn('gap-2 justify-start', isActive && 'bg-primary text-primary-foreground')}
-      onClick={onClick}
-    >
+      onClick={onClick}>
       <Icon className="h-4 w-4" />
       {label}
     </Button>
@@ -97,6 +98,7 @@ export function WMSManagement() {
           <NavItem icon={MapPin} label="Layout" isActive={activeView === 'layout'} onClick={() => setActiveView('layout')} />
           <NavItem icon={ArrowDownToLine} label="Inbound Scan" isActive={activeView === 'inbound'} onClick={() => setActiveView('inbound')} />
           <NavItem icon={Warehouse} label="Receiving Slips" isActive={activeView === 'receiving'} onClick={() => setActiveView('receiving')} />
+          <NavItem icon={PackageCheck} label="Put-Away" isActive={activeView === 'putaway'} onClick={() => setActiveView('putaway')} />
           <NavItem icon={ArrowUpFromLine} label="Pick Lists" isActive={activeView === 'outbound'} onClick={() => setActiveView('outbound')} />
           <NavItem icon={ShieldCheck} label="Gate Verification" isActive={activeView === 'gate'} onClick={() => setActiveView('gate')} />
           <NavItem icon={Truck} label="Dispatches" isActive={activeView === 'dispatch'} onClick={() => setActiveView('dispatch')} />
@@ -132,10 +134,8 @@ export function WMSManagement() {
               </p>
             </div>
             {selectedWarehouseId ? (
-              <InboundScanPanel
-                warehouseId={selectedWarehouseId}
-                onSlipGenerated={() => setActiveView('receiving')}
-              />
+              <InboundScanPanel warehouseId={selectedWarehouseId}
+                onSlipGenerated={() => setActiveView('receiving')}/>
             ) : (
               <div className="text-sm text-muted-foreground">Select a warehouse to start scanning.</div>
             )}
@@ -151,6 +151,18 @@ export function WMSManagement() {
               </p>
             </div>
             <ReceivingSlipList warehouseId={selectedWarehouseId || undefined} />
+          </div>
+        )}
+
+        {activeView === 'putaway' && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Put-Away Lists</h2>
+              <p className="text-sm text-muted-foreground">
+                Put-away lists are generated automatically when a receiving slip is approved. Click a row to see its items.
+              </p>
+            </div>
+            <PutAwayView warehouseId={selectedWarehouseId || undefined} />
           </div>
         )}
 
@@ -176,19 +188,15 @@ export function WMSManagement() {
             </div>
             <div className="max-w-lg space-y-3">
               <div className="flex gap-2">
-                <input
-                  className="flex-1 border rounded-md px-3 py-2 text-sm bg-background font-mono"
+                <input className="flex-1 border rounded-md px-3 py-2 text-sm bg-background font-mono"
                   placeholder="Enter Pick List ID..."
                   value={gatePickListId}
-                  onChange={(e) => setGatePickListId(e.target.value)}
-                />
+                  onChange={(e) => setGatePickListId(e.target.value)}/>
               </div>
               {gatePickListId && (
                 <div className="border rounded-lg p-4 bg-card">
-                  <GateVerificationPanel
-                    pickListId={gatePickListId}
-                    onDispatchCreated={() => setActiveView('dispatch')}
-                  />
+                  <GateVerificationPanel pickListId={gatePickListId}
+                    onDispatchCreated={() => setActiveView('dispatch')}/>
                 </div>
               )}
             </div>

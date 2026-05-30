@@ -203,7 +203,7 @@ export interface ReceivingSlip {
 }
 
 export interface PaginatedReceivingSlips {
-  slips: ReceivingSlip[];
+  receiving_slips: ReceivingSlip[];
   pagination: WMSPagination;
 }
 
@@ -228,12 +228,19 @@ export interface PutAwayItem {
 export interface PutAwayList {
   id: string;
   organization_id: string;
-  list_number: string;
-  receiving_slip_id: string;
+  put_away_list_no: string;
   warehouse_id: string;
-  worker_id: string | null;
+  receiving_slip_id: string | null;
+  reference_type: string | null;
+  reference_id: string | null;
   status: PutAwayStatus;
+  total_items: number;
+  completed_items: number;
+  pending_items: number;
+  remarks: string | null;
+  assigned_to: string | null;
   items: PutAwayItem[];
+  completed_at: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
