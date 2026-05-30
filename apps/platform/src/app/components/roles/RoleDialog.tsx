@@ -59,30 +59,6 @@ const ROLE_TEMPLATES = [
     permissionPatterns: ['item.', 'warehouse.', 'stock_entry.', 'batch.', 'serial.'],
   },
   {
-    code: 'wms_supervisor',
-    name: 'WMS Supervisor',
-    description: 'Full warehouse operations across all warehouses (mother warehouse) — layout, inbound, put-away, outbound, gate, ASN, and dispatches',
-    permissionPatterns: ['warehouse.', 'pick_list.', 'asn_order.', 'stock_entry.', 'item.read', 'batch.read', 'serial.read'],
-  },
-  {
-    code: 'wms_manager',
-    name: 'WMS Manager',
-    description: 'Warehouse manager for assigned warehouse(s) — inbound, put-away, outbound, picking, and ASN coordination',
-    permissionPatterns: ['warehouse.', 'pick_list.', 'asn_order.', 'stock_entry.', 'item.read', 'batch.read', 'serial.read'],
-  },
-  {
-    code: 'wms_operator',
-    name: 'WMS Operator',
-    description: 'Floor worker — dock scanning, put-away execution, picking, and gate verification (no admin)',
-    permissionPatterns: ['warehouse.read', 'pick_list.read', 'pick_list.update', 'stock_entry.read', 'item.read', 'batch.read', 'serial.read'],
-  },
-  {
-    code: 'asn_coordinator',
-    name: 'ASN Coordinator',
-    description: 'Manages advance stock notices (ASN) and inter-warehouse transfers — create, confirm, and track fulfillment',
-    permissionPatterns: ['asn_order.', 'warehouse.read', 'stock_entry.read', 'item.read', 'pick_list.read'],
-  },
-  {
     code: 'viewer',
     name: 'Viewer',
     description: 'Read-only across all modules',

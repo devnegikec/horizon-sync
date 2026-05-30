@@ -52,7 +52,7 @@ import { useStockLevels } from '../../hooks/useStockLevels';
 import { useStockMovements } from '../../hooks/useStockMovements';
 import { useStockReconciliations } from '../../hooks/useStockReconciliations';
 import { useAsnOrderManagement } from '../../hooks/useAsnOrderManagement';
-import { useMyWarehouses } from '../../hooks/useMyWarehouses';
+import { useWarehouses } from '../../hooks/useWarehouses';
 import { asnOrderApi } from '../../utility/api/asn-orders';
 import type { AsnOrder } from '../../types/asn-order.types';
 import type { PaginationInfo } from '../../types/quotation.types';
@@ -800,7 +800,7 @@ export function StockManagement() {
   const { toast } = useToast();
 
   /* ---------- warehouse selector ---------- */
-  const { warehouses: allWarehouses, loading: warehousesLoading } = useMyWarehouses();
+  const { warehouses: allWarehouses, loading: warehousesLoading } = useWarehouses(1, 100);
   const filteredWarehouses = React.useMemo(() => {
     if (!warehouseSearch) return allWarehouses;
     const q = warehouseSearch.toLowerCase();
