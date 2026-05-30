@@ -9,8 +9,6 @@ export type { ApiRequestOptions, ApiError } from './core';
 
 // Domain API clients
 export { warehouseApi } from './warehouses';
-export { warehouseUserApi } from './warehouseUsers';
-export type { AssignedWarehouse } from './warehouseUsers';
 export { stockLevelApi, stockMovementApi, stockEntryApi, stockReconciliationApi } from './stock';
 export { customerApi } from './customers';
 export { itemSupplierApi, supplierApi } from './suppliers';

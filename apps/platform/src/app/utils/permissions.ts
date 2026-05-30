@@ -113,26 +113,10 @@ export const NavigationPermissions = {
       hasAnyPermission(p, ['*.*', 'item.*', 'item.delete']),
   },
 
-  // WMS — maps to warehouse + pick_list permissions
+  // WMS — maps to warehouse permissions
   wms: {
     view: (p: Permission[]) =>
-      hasAnyPermission(p, ['*.*', 'warehouse.*', 'warehouse.read', 'stock_entry.*', 'stock_entry.read', 'pick_list.*', 'pick_list.read']),
-    create: (p: Permission[]) =>
-      hasAnyPermission(p, ['*.*', 'warehouse.*', 'warehouse.create', 'stock_entry.*', 'stock_entry.create', 'pick_list.*', 'pick_list.create']),
-    manage: (p: Permission[]) =>
-      hasAnyPermission(p, ['*.*', 'warehouse.*', 'stock_entry.*', 'pick_list.*']),
-  },
-
-  // ASN / Advance Stock Notice
-  asn: {
-    view: (p: Permission[]) =>
-      hasAnyPermission(p, ['*.*', 'asn_order.*', 'asn_order.read']),
-    create: (p: Permission[]) =>
-      hasAnyPermission(p, ['*.*', 'asn_order.*', 'asn_order.create']),
-    update: (p: Permission[]) =>
-      hasAnyPermission(p, ['*.*', 'asn_order.*', 'asn_order.update']),
-    manage: (p: Permission[]) =>
-      hasAnyPermission(p, ['*.*', 'asn_order.*']),
+      hasAnyPermission(p, ['*.*', 'warehouse.*', 'warehouse.read', 'stock_entry.*', 'stock_entry.read']),
   },
 
   // Books / Accounting — maps to chart_of_account permissions
