@@ -100,6 +100,7 @@ export interface InvitationValidateResponse {
   organization_id: string;
   organization_name?: string;
   expires_at: string;
+  extra_data?: Record<string, unknown> | null;
 }
 
 export interface ApiError {

@@ -15,7 +15,8 @@ interface AsnOrderFormFieldsProps {
     status: AsnOrderStatus;
     remarks: string;
   };
-  warehouses: Array<{ id: string; name: string }>;
+  warehousesFrom: Array<{ id: string; name: string }>;
+  warehousesTo: Array<{ id: string; name: string }>;
   isEdit: boolean;
   readOnly?: boolean;
   availableStatuses: AsnOrderStatus[];
@@ -26,7 +27,8 @@ interface AsnOrderFormFieldsProps {
 
 export function AsnOrderFormFields({
   formData,
-  warehouses,
+  warehousesFrom,
+  warehousesTo,
   isEdit,
   readOnly = false,
   availableStatuses,
@@ -58,7 +60,7 @@ export function AsnOrderFormFields({
                 <SelectValue placeholder="Select warehouse" />
               </SelectTrigger>
               <SelectContent>
-                {warehouses.map((c) => (
+                {warehousesFrom.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
                   </SelectItem>
@@ -76,7 +78,7 @@ export function AsnOrderFormFields({
                 <SelectValue placeholder="Select warehouse" />
               </SelectTrigger>
               <SelectContent>
-                {warehouses.map((c) => (
+                {warehousesTo.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
                   </SelectItem>

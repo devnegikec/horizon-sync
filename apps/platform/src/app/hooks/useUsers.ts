@@ -111,16 +111,24 @@ export function useUsers(
         (!filters?.status || filters.status === 'all' || filters.status === 'pending');
 
       if (shouldLoadInvitations) {
-        const invitationResponse = await UserService.getPendingInvitations(
-          organizationId,
-          accessToken,
-          filters?.search ?? '',
-          0,
-          100
-        );
+        const [pendingResponse, expiredResponse] = await Promise.all([
+          UserService.getInvitations(organizationId, accessToken, {
+            status: 'pending',
+            search: filters?.search ?? '',
+            skip: 0,
+            limit: 100,
+          }),
+          UserService.getInvitations(organizationId, accessToken, {
+            status: 'expired',
+            search: filters?.search ?? '',
+            skip: 0,
+            limit: 100,
+          }),
+        ]);
 
-        invitationCount = invitationResponse.total ?? 0;
-        invitationRows = invitationResponse.data.map((invitation: PendingInvitation) => ({
+        const allInvitations = [...(pendingResponse.data ?? []), ...(expiredResponse.data ?? [])];
+        invitationCount = (pendingResponse.total ?? 0) + (expiredResponse.total ?? 0);
+        invitationRows = allInvitations.map((invitation: PendingInvitation) => ({
           id: invitation.id,
           email: invitation.email,
           first_name: invitation.first_name ?? '',
