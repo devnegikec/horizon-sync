@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { Users, MoreHorizontal, Eye, Edit, Key, Mail, Shield, Clock, UserPlus, Trash2 } from 'lucide-react';
+import { Users, MoreHorizontal, Eye, Edit, Key, Mail, Shield, ShieldCheck, Clock, UserPlus, Trash2 } from 'lucide-react';
 
 import { DataTable, DataTableColumnHeader } from '../data-table';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -46,6 +46,7 @@ export interface UsersTableProps<T extends UsersTableUser = UsersTableUser> {
   onDelete?: (user: T) => void;
   onResetPassword?: (user: T) => void;
   onManagePermissions?: (user: T) => void;
+  onManageRoles?: (user: T) => void;
   onResendInvitation?: (user: T) => void;
   onInviteUser?: () => void;
   onCreateUser?: () => void;
@@ -81,6 +82,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
   onDelete,
   onResetPassword,
   onManagePermissions,
+  onManageRoles,
   onResendInvitation,
   onInviteUser,
   onCreateUser,
@@ -213,7 +215,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
         header: () => <span className="sr-only">Actions</span>,
         cell: ({ row }) => {
           const user = row.original;
-          const hasActions = onView || onEdit || onDelete || onResetPassword || onManagePermissions || onResendInvitation;
+          const hasActions = onView || onEdit || onDelete || onResetPassword || onManagePermissions || onManageRoles || onResendInvitation;
           if (!hasActions) return null;
           return (
             <div className="text-right">
@@ -237,7 +239,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
                       <Trash2 className="mr-2 h-4 w-4" />Deactivate User
                     </DropdownMenuItem>
                   )}
-                  {(onView || onEdit || onDelete) && (onResetPassword || onManagePermissions || onResendInvitation) && <DropdownMenuSeparator />}
+                  {(onView || onEdit || onDelete) && (onResetPassword || onManagePermissions || onManageRoles || onResendInvitation) && <DropdownMenuSeparator />}
                   {onResetPassword && (
                     <DropdownMenuItem onClick={() => onResetPassword(user)}>
                       <Key className="mr-2 h-4 w-4" />Reset Password
@@ -246,6 +248,11 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
                   {onManagePermissions && (
                     <DropdownMenuItem onClick={() => onManagePermissions(user)}>
                       <Shield className="mr-2 h-4 w-4" />Manage Permissions
+                    </DropdownMenuItem>
+                  )}
+                  {onManageRoles && (
+                    <DropdownMenuItem onClick={() => onManageRoles(user)}>
+                      <ShieldCheck className="mr-2 h-4 w-4" />Manage Roles
                     </DropdownMenuItem>
                   )}
                   {onResendInvitation && (user as UsersTableUser).status === 'pending' && (
@@ -263,7 +270,7 @@ export function UsersTable<T extends UsersTableUser = UsersTableUser>({
     );
 
     return cols;
-  }, [onView, onEdit, onDelete, onResetPassword, onManagePermissions, onResendInvitation, showOrganization, showVerified, showLastLogin]);
+  }, [onView, onEdit, onDelete, onResetPassword, onManagePermissions, onManageRoles, onResendInvitation, showOrganization, showVerified, showLastLogin]);
 
   const renderViewOptions = (table: Table<T>) => {
     if (table !== tableInstance) setTableInstance(table);

@@ -39,19 +39,19 @@ export interface ItemsTableProps {
   };
 }
 
-export function ItemsTable({ 
-  items, 
-  loading, 
-  error, 
-  hasActiveFilters, 
-  onView, 
-  onEdit, 
-  onToggleStatus, 
-  onCreateItem, 
+export function ItemsTable({
+  items,
+  loading,
+  error,
+  hasActiveFilters,
+  onView,
+  onEdit,
+  onToggleStatus,
+  onCreateItem,
   onBulkUpload,
   onCreateOrganization,
-  onTableReady, 
-  serverPagination 
+  onTableReady,
+  serverPagination
 }: ItemsTableProps) {
   const [tableInstance, setTableInstance] = React.useState<Table<ApiItem> | null>(null);
 
@@ -158,7 +158,10 @@ export function ItemsTable({
                     Edit Item
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => onToggleStatus(item)}>
+                  <DropdownMenuItem
+                    onClick={() => onToggleStatus(item)}
+                    className={isActive ? 'text-destructive focus:text-destructive' : undefined}
+                  >
                     {isActive ? (
                       <>
                         <PowerOff className="mr-2 h-4 w-4" />
@@ -220,20 +223,20 @@ export function ItemsTable({
   // Show organization error or empty state
   if (isOrganizationError || items.length === 0) {
     const isOrgError = isOrganizationError;
-    
+
     return (
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState icon={<Package className="h-12 w-12" />} 
-              title={isOrgError ? "Organization Required" : "No items found"} 
+            <EmptyState icon={<Package className="h-12 w-12" />}
+              title={isOrgError ? "Organization Required" : "No items found"}
               description={
-                isOrgError 
+                isOrgError
                   ? "You need to create an organization before you can manage inventory items."
-                  : hasActiveFilters 
-                    ? 'Try adjusting your search or filters' 
+                  : hasActiveFilters
+                    ? 'Try adjusting your search or filters'
                     : 'Get started by adding your first item'
-              } 
+              }
               action={
                 isOrgError ? (
                   <div className="flex flex-col gap-3 items-center">
@@ -262,7 +265,7 @@ export function ItemsTable({
                     Add Item
                   </Button>
                 ) : undefined
-              }/>
+              } />
           </div>
         </CardContent>
       </Card>
@@ -286,7 +289,7 @@ export function ItemsTable({
           }}
           renderViewOptions={handleTableReady}
           fixedHeader
-          maxHeight="auto"/>
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );

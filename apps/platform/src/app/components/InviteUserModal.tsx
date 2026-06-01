@@ -1,21 +1,31 @@
 import * as React from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Send, UserPlus } from 'lucide-react';
+import { Info, Send, UserPlus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
+import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 
 import { useAuth } from '../hooks';
+import { environment } from '../../environments/environment';
 import { RoleService } from '../services/role.service';
 import { UserService, InviteUserPayload } from '../services/user.service';
 import type { Role, ModuleGroup } from '../types/role.types';
 import { ModulePermissionMatrix } from './roles/ModulePermissionMatrix';
+
+interface WarehouseOption {
+  id: string;
+  name: string;
+  code: string;
+}
+
+const SCOPED_WMS_ROLE_NAMES = ['WMS Supervisor', 'WMS Manager', 'WMS Operator', 'ASN Coordinator'];
 
 const namePattern = /^[A-Za-z][A-Za-z' -]*[A-Za-z]$/;
 
@@ -59,6 +69,12 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
   const [permissionsLoading, setPermissionsLoading] = React.useState(false);
   const [roleModules, setRoleModules] = React.useState<ModuleGroup[]>([]);
   const [rolePermissionCodes, setRolePermissionCodes] = React.useState<Set<string>>(new Set());
+  const [warehouses, setWarehouses] = React.useState<WarehouseOption[]>([]);
+  const [warehousesLoading, setWarehousesLoading] = React.useState(false);
+  const [warehouseError, setWarehouseError] = React.useState('');
+  const [selectedWarehouseIds, setSelectedWarehouseIds] = React.useState<Set<string>>(new Set());
+  const [showWarehouseValidation, setShowWarehouseValidation] = React.useState(false);
+  const [warehouseRole, setWarehouseRole] = React.useState('operator');
 
   const {
     register,
@@ -84,6 +100,33 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
       setErrorMessage('Failed to load roles. Please try again.');
     } finally {
       setRolesLoading(false);
+    }
+  }, [accessToken]);
+
+  const fetchWarehouses = React.useCallback(async () => {
+    if (!accessToken) return;
+    setWarehousesLoading(true);
+    try {
+      const url = `${environment.apiCoreUrl}/api/v1/warehouses?page=1&page_size=100&is_active=true`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Failed to fetch warehouses: ${response.status} ${errText}`);
+      }
+      const data = await response.json();
+      setWarehouses(data.warehouses || []);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to fetch warehouses';
+      console.error(msg);
+      setWarehouseError(msg);
+    } finally {
+      setWarehousesLoading(false);
     }
   }, [accessToken]);
 
@@ -120,8 +163,11 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
   }, [accessToken]);
 
   React.useEffect(() => {
-    if (open && accessToken) fetchRoles();
-  }, [open, accessToken, fetchRoles]);
+    if (open && accessToken) {
+      fetchRoles();
+      fetchWarehouses();
+    }
+  }, [open, accessToken, fetchRoles, fetchWarehouses]);
 
   React.useEffect(() => {
     if (selectedRoleId && accessToken) {
@@ -132,9 +178,18 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     }
   }, [selectedRoleId, accessToken, fetchPermissionsForRole]);
 
+  const selectedRole = roles.find((r) => r.id === selectedRoleId);
+  const isScopedWmsRole = selectedRole ? SCOPED_WMS_ROLE_NAMES.includes(selectedRole.name) : false;
+  const isSupervisorRole = selectedRole?.name === 'WMS Supervisor';
+
   const handleFormSubmit = React.useCallback(async (data: InviteUserFormData) => {
     if (!accessToken) {
       setErrorMessage('You must be logged in to invite users');
+      return;
+    }
+    if (isScopedWmsRole && selectedWarehouseIds.size === 0) {
+      setShowWarehouseValidation(true);
+      setErrorMessage('Please select at least one warehouse for this role');
       return;
     }
     setIsSubmitting(true);
@@ -147,11 +202,35 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
         role_id: data.role_id,
         message: data.message,
         organization_id: user?.organization_id ?? undefined,
+        extra_data: {
+          warehouse_ids: Array.from(selectedWarehouseIds),
+          warehouse_role: warehouseRole,
+        },
       };
       await UserService.inviteUser(payload, accessToken);
+
+      // Create pending warehouse assignments
+      if (isScopedWmsRole && selectedWarehouseIds.size > 0) {
+        const pendingUrl = `${environment.apiCoreUrl}/api/v1/warehouse-users/pending`;
+        await fetch(pendingUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            email: data.email,
+            warehouse_ids: Array.from(selectedWarehouseIds),
+            role: warehouseRole,
+            is_primary: selectedRole?.name === 'WMS Supervisor',
+          }),
+        });
+      }
+
       reset();
       setSelectedRoleId('');
       setRoleModules([]);
+      setSelectedWarehouseIds(new Set());
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
@@ -159,22 +238,62 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     } finally {
       setIsSubmitting(false);
     }
-  }, [accessToken, reset, onOpenChange, onSuccess, user?.organization_id]);
+  }, [
+    accessToken,
+    reset,
+    onOpenChange,
+    onSuccess,
+    user?.organization_id,
+    isScopedWmsRole,
+    selectedWarehouseIds,
+    warehouseRole,
+    selectedRole?.name,
+  ]);
 
   const handleClose = () => {
     reset();
     setErrorMessage('');
     setSelectedRoleId('');
     setRoleModules([]);
+    setSelectedWarehouseIds(new Set());
+    setWarehouseError('');
+    setShowWarehouseValidation(false);
     onOpenChange(false);
   };
 
   const handleRoleChange = (roleId: string) => {
     setValue('role_id', roleId);
     setSelectedRoleId(roleId);
+    setSelectedWarehouseIds(new Set());
+    setWarehouseError('');
+    setShowWarehouseValidation(false);
+    // Default warehouse_role based on role name
+    const role = roles.find((r) => r.id === roleId);
+    const name = role?.name ?? '';
+    if (name === 'WMS Supervisor') setWarehouseRole('supervisor');
+    else if (name === 'WMS Manager') setWarehouseRole('manager');
+    else if (name === 'WMS Operator') setWarehouseRole('operator');
+    else if (name === 'ASN Coordinator') setWarehouseRole('coordinator');
+    else setWarehouseRole('operator');
   };
 
-  const selectedRole = roles.find((r) => r.id === selectedRoleId);
+  // Auto-select all warehouses for Supervisor when warehouses load
+  React.useEffect(() => {
+    if (isSupervisorRole && warehouses.length > 0 && !warehousesLoading) {
+      setSelectedWarehouseIds(new Set(warehouses.map((w) => w.id)));
+      setShowWarehouseValidation(false);
+    }
+  }, [isSupervisorRole, warehouses, warehousesLoading]);
+
+  const toggleWarehouse = (warehouseId: string) => {
+    setSelectedWarehouseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(warehouseId)) next.delete(warehouseId);
+      else next.add(warehouseId);
+      return next;
+    });
+    setShowWarehouseValidation(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -264,6 +383,60 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
               </Select>
               <p className="text-xs text-muted-foreground">Select the primary role for this user</p>
             </div>
+
+            {/* Warehouse assignment for scoped WMS roles */}
+            {selectedRoleId && isScopedWmsRole && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="font-semibold">Assign Warehouses <span className="text-destructive">*</span></Label>
+                  <p className="text-xs text-muted-foreground">
+                    {warehousesLoading
+                      ? 'Loading warehouses...'
+                      : isSupervisorRole
+                        ? 'Supervisor has access to all warehouses by default. Uncheck to restrict access.'
+                        : 'Select the warehouses this user will have access to'}
+                  </p>
+                </div>
+
+                {isSupervisorRole && !warehousesLoading && !warehouseError && warehouses.length > 0 && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-700">
+                    <Info className="h-4 w-4 shrink-0" />
+                    <p className="text-sm">
+                      All warehouses are auto-selected. You can uncheck specific warehouses below to restrict access.
+                    </p>
+                  </div>
+                )}
+
+                {warehousesLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading warehouses...</p>
+                ) : warehouseError ? (
+                  <p className="text-sm text-destructive">{warehouseError}</p>
+                ) : warehouses.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No warehouses available</p>
+                ) : (
+                  <div className="max-h-[200px] overflow-y-auto rounded-lg border p-2 space-y-1">
+                    {warehouses.map((wh) => (
+                      <label
+                        key={wh.id}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedWarehouseIds.has(wh.id)}
+                          onCheckedChange={() => toggleWarehouse(wh.id)}
+                        />
+                        <span className="text-sm">
+                          {wh.name} {wh.code ? `(${wh.code})` : ''}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {showWarehouseValidation && selectedWarehouseIds.size === 0 && isScopedWmsRole && (
+                  <p className="text-xs text-destructive">At least one warehouse must be selected</p>
+                )}
+              </div>
+            )}
 
             {/* Role permissions preview — read-only module view */}
             {selectedRoleId && (

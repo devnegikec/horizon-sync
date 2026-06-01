@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type Table } from '@tanstack/react-table';
-import { Check, ChevronsUpDown, Users, UserCheck, UserLockIcon, Shield, Download, Loader2, UserPlus, X } from 'lucide-react';
+import { Check, ChevronsUpDown, Users, UserCheck, UserLockIcon, Shield, Download, Loader2, UserPlus, X, RefreshCw } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
@@ -29,6 +29,7 @@ import {
   Label,
   UsersTable,
 } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks';
 import { cn } from '@horizon-sync/ui/lib';
@@ -41,6 +42,7 @@ import { UserService } from '../../services/user.service';
 import type { User, UserFilters } from '../../types/user.types';
 
 import { InviteUserModal } from '../InviteUserModal';
+import { ManageRolesDialog } from './ManageRolesDialog';
 import { UserViewDialog } from './UserViewDialog';
 
 const namePattern = /^[A-Za-z][A-Za-z' -]*[A-Za-z]$/;
@@ -313,9 +315,12 @@ export function UserManagement() {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [tableInstance, setTableInstance] = useState<Table<User> | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [confirmDeactivateUser, setConfirmDeactivateUser] = useState<User | null>(null);
+  const [isDeactivating, setIsDeactivating] = useState(false);
 
   const handleExport = useCallback(async () => {
     if (!accessToken) return;
@@ -449,7 +454,20 @@ export function UserManagement() {
     }
   };
 
-  const handleDeleteUser = async (targetUser: User) => {
+  const handleManageRoles = (targetUser: User) => {
+    if (shouldHideOwners && isOrganizationOwnerUser(targetUser)) {
+      toast({
+        variant: 'destructive',
+        title: 'Action not allowed',
+        description: 'Administrators cannot modify organization owner accounts.',
+      });
+      return;
+    }
+    setSelectedUser(targetUser);
+    setRolesDialogOpen(true);
+  };
+
+  const handleDeleteUser = (targetUser: User) => {
     if (!accessToken) return;
     if (shouldHideOwners && isOrganizationOwnerUser(targetUser)) {
       toast({
@@ -459,19 +477,50 @@ export function UserManagement() {
       });
       return;
     }
-    if (!window.confirm(`Are you sure you want to deactivate ${targetUser.first_name} ${targetUser.last_name}?`)) return;
+    setConfirmDeactivateUser(targetUser);
+  };
+
+  const executeDeactivateUser = async () => {
+    if (!accessToken || !confirmDeactivateUser) return;
+    setIsDeactivating(true);
     try {
-      await UserService.updateUser(targetUser.id, {
+      await UserService.updateUser(confirmDeactivateUser.id, {
         status: 'inactive',
         is_active: false,
       }, accessToken);
       toast({ title: 'User deactivated', description: 'User deactivated successfully.' });
+      setConfirmDeactivateUser(null);
       refetch();
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Deactivate failed',
         description: error instanceof Error ? error.message : 'Failed to deactivate user.',
+      });
+    } finally {
+      setIsDeactivating(false);
+    }
+  };
+
+  const handleResendInvitation = async (targetUser: User) => {
+    if (!accessToken) return;
+    if (targetUser.status !== 'pending' && targetUser.status !== 'expired') {
+      toast({
+        variant: 'destructive',
+        title: 'Cannot resend',
+        description: 'Only pending or expired invitations can be resent.',
+      });
+      return;
+    }
+    try {
+      await UserService.resendInvitation(targetUser.id, accessToken);
+      toast({ title: 'Invitation resent', description: `Invitation sent to ${targetUser.email}.` });
+      refetch();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Resend failed',
+        description: error instanceof Error ? error.message : 'Failed to resend invitation.',
       });
     }
   };
@@ -506,6 +555,10 @@ export function UserManagement() {
           <p className="text-muted-foreground mt-1">Manage team members, roles, and access permissions</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="outline" className="gap-2" onClick={refetch} disabled={loading}>
+            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+            Refresh
+          </Button>
           {canExport && (
             <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
               {isExporting ? (
@@ -634,6 +687,8 @@ export function UserManagement() {
         onView={handleViewUser}
         onEdit={canModifyUsers ? handleEditUser : undefined}
         onDelete={canModifyUsers ? handleDeleteUser : undefined}
+        onManageRoles={canModifyUsers ? handleManageRoles : undefined}
+        onResendInvitation={canInvite ? handleResendInvitation : undefined}
         onTableReady={handleTableReady}
         showVerified
         showLastLogin
@@ -657,6 +712,28 @@ export function UserManagement() {
         user={selectedUser}
         isOpen={viewDialogOpen}
         onClose={() => { setViewDialogOpen(false); setSelectedUser(null); }}
+      />
+
+      {/* Deactivate User Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmDeactivateUser}
+        onOpenChange={(open) => { if (!open) setConfirmDeactivateUser(null); }}
+        title="Deactivate User"
+        description={confirmDeactivateUser ? `Are you sure you want to deactivate "${confirmDeactivateUser.first_name} ${confirmDeactivateUser.last_name}"?` : ''}
+        confirmLabel="Deactivate"
+        variant="destructive"
+        loading={isDeactivating}
+        onConfirm={executeDeactivateUser}
+      />
+
+      {/* Manage Roles Dialog */}
+      <ManageRolesDialog
+        user={selectedUser}
+        organizationId={user?.organization_id ?? null}
+        isOpen={rolesDialogOpen}
+        onClose={() => { setRolesDialogOpen(false); setSelectedUser(null); }}
+        onSuccess={() => { refetch(); }}
+        accessToken={accessToken}
       />
     </div>
   );

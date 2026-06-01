@@ -13,6 +13,8 @@ export function getStatusBadgeProps(status: string | boolean): {
       return { variant: 'success', label: 'Active' };
     case 'pending':
       return { variant: 'warning', label: 'Pending' };
+    case 'expired':
+      return { variant: 'destructive', label: 'Expired' };
     case 'inactive':
       return { variant: 'secondary', label: 'Inactive' };
     case 'suspended':

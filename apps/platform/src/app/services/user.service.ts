@@ -50,6 +50,7 @@ export interface InviteUserPayload {
   role_id?: string;
   team_ids?: string[];
   message?: string;
+  extra_data?: Record<string, unknown>;
 }
 
 export interface InviteUserResponse {
@@ -248,22 +249,22 @@ export class UserService {
     }
   }
 
-  static async getPendingInvitations(
+  static async getInvitations(
     organizationId: string,
     token: string,
-    search = '',
-    skip = 0,
-    limit = 100
+    options: { status?: string; search?: string; skip?: number; limit?: number } = {}
   ): Promise<InvitationListResponse> {
     try {
       const params = new URLSearchParams({
         organization_id: organizationId,
-        status: 'pending',
-        skip: String(skip),
-        limit: String(limit),
+        skip: String(options.skip ?? 0),
+        limit: String(options.limit ?? 100),
       });
-      if (search) {
-        params.append('search', search);
+      if (options.status) {
+        params.append('status', options.status);
+      }
+      if (options.search) {
+        params.append('search', options.search);
       }
 
       const response = await fetch(`${API_BASE_URL}/api/v1/identity/invitations?${params}`, {
@@ -276,7 +277,7 @@ export class UserService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({
-          message: 'Failed to fetch pending invitations',
+          message: 'Failed to fetch invitations',
         }));
         throw new Error(errorData.message || errorData.detail || getFriendlyMessage(response.status));
       }
@@ -287,7 +288,70 @@ export class UserService {
       if (error instanceof Error) {
         throw error;
       }
-      throw new Error('An unexpected error occurred while fetching pending invitations');
+      throw new Error('An unexpected error occurred while fetching invitations');
+    }
+  }
+
+  static async resendInvitation(invitationId: string, token: string): Promise<InvitationResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/invitations/${invitationId}/resend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Failed to resend invitation',
+        }));
+        throw new Error(errorData.message || errorData.detail || getFriendlyMessage(response.status));
+      }
+
+      const data = (await response.json()) as InvitationResponse;
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred while resending invitation');
+    }
+  }
+
+  static async updateUserRoles(
+    userId: string,
+    organizationId: string,
+    roleIds: string[],
+    token: string
+  ): Promise<{ user_id: string; organization_id: string; roles: string[] }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/users/${userId}/roles`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          organization_id: organizationId,
+          role_ids: roleIds,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Failed to update user roles',
+        }));
+        throw new Error(errorData.message || errorData.detail || getFriendlyMessage(response.status));
+      }
+
+      const data = (await response.json()) as { user_id: string; organization_id: string; roles: string[] };
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred while updating user roles');
     }
   }
 }

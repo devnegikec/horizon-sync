@@ -2,9 +2,12 @@ import { apiRequest, buildPaginationParams } from './core';
 
 // Warehouse API helpers
 export const warehouseApi = {
-  list: (accessToken: string, page = 1, pageSize = 20) =>
+  list: (accessToken: string, page = 1, pageSize = 20, scope?: 'assigned' | 'all') =>
     apiRequest('/warehouses', accessToken, {
-      params: buildPaginationParams(page, pageSize),
+      params: {
+        ...buildPaginationParams(page, pageSize),
+        ...(scope ? { scope } : {}),
+      },
     }),
 
   get: (accessToken: string, id: string) => apiRequest(`/warehouses/${id}`, accessToken),

@@ -230,18 +230,31 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   const [clearKey, setClearKey] = React.useState(0);
   const { toast } = useToast();
 
-  const { data: warehousesData } = useQuery<WarehousesResponse>({
-    queryKey: ['customers-list'],
-    queryFn: () => warehouseApi.list(accessToken || '', 1, 100) as Promise<WarehousesResponse>,
+  const { data: allWarehousesData } = useQuery<WarehousesResponse>({
+    queryKey: ['warehouses-list', 'asn-all'],
+    queryFn: () => warehouseApi.list(accessToken || '', 1, 100, 'all') as Promise<WarehousesResponse>,
     enabled: !!accessToken && open,
   });
 
-  const warehouses = warehousesData?.warehouses ?? [];
+  const { data: assignedWarehousesData } = useQuery<WarehousesResponse>({
+    queryKey: ['warehouses-list', 'asn-assigned'],
+    queryFn: () => warehouseApi.list(accessToken || '', 1, 100, 'assigned') as Promise<WarehousesResponse>,
+    enabled: !!accessToken && open,
+  });
+
+  const allWarehouses = allWarehousesData?.warehouses ?? [];
+  const assignedWarehouses = assignedWarehousesData?.warehouses ?? [];
+
+  const warehousesFrom = assignedWarehouses;
+  const warehousesTo = React.useMemo(
+    () => allWarehouses.filter((w) => w.id !== formData.warehouse_id_from),
+    [allWarehouses, formData.warehouse_id_from]
+  );
 
   const targetWarehouse = React.useMemo(() => {
     if (!asnOrder?.warehouse_id_to) return null;
-    return warehouses.find((w) => w.id === asnOrder.warehouse_id_to) || null;
-  }, [asnOrder?.warehouse_id_to, warehouses]);
+    return allWarehouses.find((w) => w.id === asnOrder.warehouse_id_to) || null;
+  }, [asnOrder?.warehouse_id_to, allWarehouses]);
 
   const { loading: pdfLoading, handleDownload, handlePreview, handleGenerateBase64 } = useAsnOrderPDFActions(targetWarehouse);
   const { emailDialogOpen, pdfAttachment, openEmailWithPdf, handleEmailClose, handleEmailSuccess } = useEmailWithPdfAttachment();
@@ -276,6 +289,16 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
       setWarehouseError('');
     }
   }, [open, asnOrder]);
+
+  // Auto-populate "By" warehouse from user's assigned warehouses on creation
+  React.useEffect(() => {
+    if (open && !asnOrder && assignedWarehouses.length > 0 && !formData.warehouse_id_from) {
+      const defaultWh = assignedWarehouses.find((w) => w.is_default) || assignedWarehouses[0];
+      if (defaultWh) {
+        setFormData((prev) => ({ ...prev, warehouse_id_from: defaultWh.id }));
+      }
+    }
+  }, [open, asnOrder, assignedWarehouses, formData.warehouse_id_from]);
 
   // Real-time warehouse equality validation
   React.useEffect(() => {
@@ -438,7 +461,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <AsnOrderFormFields formData={formData} warehouses={warehouses} isEdit={isEdit} readOnly={isReadOnly}
+            <AsnOrderFormFields formData={formData} warehousesFrom={warehousesFrom} warehousesTo={warehousesTo} isEdit={isEdit} readOnly={isReadOnly}
               availableStatuses={availableStatuses} statusLabels={STATUS_LABELS} onFieldChange={handleChange}
               warehouseError={warehouseError} />
 
