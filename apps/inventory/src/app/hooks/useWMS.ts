@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
 
-import { inboundApi, layoutApi, outboundApi, putAwayApi } from '../utility/api/wms';
+import { inboundApi, layoutApi, outboundApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi } from '../utility/api/wms';
 import type {
   DispatchListResponse,
   DispatchRecord,
@@ -21,6 +21,9 @@ import type {
   ScanResult,
   ScanSession,
   SessionSummary,
+  WMSWorkerListResponse,
+  WMSDeviceListResponse,
+  WMSDashboardStats,
 } from '../types/wms.types';
 
 // ============================================
@@ -537,4 +540,91 @@ export function useDispatches(params: { page?: number; page_size?: number; vehic
   );
 
   return { data, loading, error, refetch: fetch, createDispatch };
+}
+
+// ============================================
+// WMS WORKERS HOOK
+// ============================================
+
+export function useWMSWorkers(params: { warehouse_id?: string; status?: string; search?: string; page?: number; page_size?: number }) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [data, setData] = React.useState<WMSWorkerListResponse | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const fetch = React.useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await wmsWorkerApi.list(accessToken, params);
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load workers');
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, params.warehouse_id, params.status, params.search, params.page, params.page_size]);
+
+  React.useEffect(() => { fetch(); }, [fetch]);
+
+  return { data, loading, error, refetch: fetch };
+}
+
+// ============================================
+// WMS DEVICES HOOK
+// ============================================
+
+export function useWMSDevices(params: { warehouse_id?: string; status?: string; search?: string; page?: number; page_size?: number }) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [data, setData] = React.useState<WMSDeviceListResponse | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const fetch = React.useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await wmsDeviceApi.list(accessToken, params);
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load devices');
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, params.warehouse_id, params.status, params.search, params.page, params.page_size]);
+
+  React.useEffect(() => { fetch(); }, [fetch]);
+
+  return { data, loading, error, refetch: fetch };
+}
+
+// ============================================
+// WMS DASHBOARD HOOK
+// ============================================
+
+export function useWMSDashboard(params: { warehouse_id?: string; period?: string; date?: string }) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [data, setData] = React.useState<WMSDashboardStats | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const fetch = React.useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await wmsDashboardApi.getStats(accessToken, params);
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard stats');
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, params.warehouse_id, params.period, params.date]);
+
+  React.useEffect(() => { fetch(); }, [fetch]);
+
+  return { data, loading, error, refetch: fetch };
 }

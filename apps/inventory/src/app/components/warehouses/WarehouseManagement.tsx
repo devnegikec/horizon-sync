@@ -176,6 +176,7 @@ export function WarehouseManagement() {
       }, 100);
 
       refetch();
+      window.dispatchEvent(new CustomEvent('warehouse:changed', { detail: { source: 'import' } }));
     } catch (error) {
       toast({ title: 'Import Failed', description: error instanceof Error ? error.message : 'Failed to import file', variant: 'destructive' });
     } finally {
@@ -352,7 +353,14 @@ export function WarehouseManagement() {
       />
 
       {/* Dialogs */}
-      <WarehouseDialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen} warehouse={selectedWarehouse} warehouses={warehouses} onCreated={refetch} onUpdated={refetch} />
+      <WarehouseDialog
+        open={warehouseDialogOpen}
+        onOpenChange={setWarehouseDialogOpen}
+        warehouse={selectedWarehouse}
+        warehouses={warehouses}
+        onCreated={() => { refetch(); window.dispatchEvent(new CustomEvent('warehouse:changed', { detail: { source: 'create' } })); }}
+        onUpdated={() => { refetch(); window.dispatchEvent(new CustomEvent('warehouse:changed', { detail: { source: 'update' } })); }}
+      />
       <WarehouseDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} warehouse={selectedWarehouse} />
 
       {/* Delete Confirmation Dialog */}

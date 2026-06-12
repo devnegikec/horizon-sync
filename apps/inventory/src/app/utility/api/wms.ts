@@ -23,6 +23,18 @@ import type {
   GateSessionRequest,
   DispatchRecord,
   DispatchListResponse,
+  WMSWorker,
+  WMSWorkerListResponse,
+  WMSWorkerCreate,
+  WMSWorkerUpdate,
+  WMSDevice,
+  WMSDeviceListResponse,
+  WMSDeviceCreate,
+  WMSDeviceUpdate,
+  CopyStockRequest,
+  StockImportRequest,
+  StockImportResult,
+  WMSDashboardStats,
 } from '../../types/wms.types';
 
 const BASE = `${environment.apiCoreUrl}/api/v1`;
@@ -254,4 +266,104 @@ export const outboundApi = {
 
   getDispatch: (token: string, id: string) =>
     req<DispatchRecord>(`${BASE}/outbound/dispatches/${id}`, token),
+};
+
+// ============================================
+// WMS WORKERS
+// ============================================
+
+export const wmsWorkerApi = {
+  create: (token: string, data: WMSWorkerCreate) =>
+    req<WMSWorker>(`${BASE}/wms-workers`, token, { method: 'POST', body: JSON.stringify(data) }),
+
+  list: (token: string, params: { warehouse_id?: string; status?: string; search?: string; page?: number; page_size?: number }) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
+    });
+    return req<WMSWorkerListResponse>(`${BASE}/wms-workers?${p}`, token);
+  },
+
+  get: (token: string, id: string) =>
+    req<WMSWorker>(`${BASE}/wms-workers/${id}`, token),
+
+  update: (token: string, id: string, data: WMSWorkerUpdate) =>
+    req<WMSWorker>(`${BASE}/wms-workers/${id}`, token, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  delete: (token: string, id: string) =>
+    req<void>(`${BASE}/wms-workers/${id}`, token, { method: 'DELETE' }),
+
+  regenerateBarcode: (token: string, id: string) =>
+    req<WMSWorker>(`${BASE}/wms-workers/${id}/regenerate-barcode`, token, { method: 'POST', body: '{}' }),
+
+  barcodeLogin: (barcode: string) =>
+    req<{ access_token: string; token_type: string; expires_in: number; worker: WMSWorker }>(`${BASE}/wms-workers/login/barcode`, '', {
+      method: 'POST',
+      body: JSON.stringify({ barcode }),
+      headers: { 'Content-Type': 'application/json' },
+    }),
+};
+
+// ============================================
+// WMS DEVICES
+// ============================================
+
+export const wmsDeviceApi = {
+  create: (token: string, data: WMSDeviceCreate) =>
+    req<WMSDevice>(`${BASE}/wms-devices`, token, { method: 'POST', body: JSON.stringify(data) }),
+
+  list: (token: string, params: { warehouse_id?: string; status?: string; search?: string; page?: number; page_size?: number }) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
+    });
+    return req<WMSDeviceListResponse>(`${BASE}/wms-devices?${p}`, token);
+  },
+
+  get: (token: string, id: string) =>
+    req<WMSDevice>(`${BASE}/wms-devices/${id}`, token),
+
+  update: (token: string, id: string, data: WMSDeviceUpdate) =>
+    req<WMSDevice>(`${BASE}/wms-devices/${id}`, token, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  delete: (token: string, id: string) =>
+    req<void>(`${BASE}/wms-devices/${id}`, token, { method: 'DELETE' }),
+};
+
+// ============================================
+// BIN STOCK COPY / EXPORT / IMPORT
+// ============================================
+
+export const binStockApi = {
+  copy: (token: string, data: CopyStockRequest) =>
+    req<unknown>(`${BASE}/bin-stock/copy`, token, { method: 'POST', body: JSON.stringify(data) }),
+
+  exportCsv: (token: string, params?: { warehouse_id?: string; item_id?: string; bin_id?: string }) => {
+    const p = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
+      });
+    }
+    return fetch(`${BASE}/bin-stock/export/csv?${p}`, { headers: headers(token) });
+  },
+
+  import: (token: string, data: StockImportRequest) =>
+    req<StockImportResult>(`${BASE}/bin-stock/import`, token, { method: 'POST', body: JSON.stringify(data) }),
+};
+
+// ============================================
+// WMS DASHBOARD
+// ============================================
+
+export const wmsDashboardApi = {
+  getStats: (token: string, params?: { warehouse_id?: string; period?: string; date?: string; page?: number; page_size?: number }) => {
+    const p = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
+      });
+    }
+    return req<WMSDashboardStats>(`${BASE}/wms-dashboard/stats?${p}`, token);
+  },
 };
