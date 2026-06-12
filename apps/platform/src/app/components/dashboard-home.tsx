@@ -12,7 +12,7 @@ import { WMSDashboardHome } from './wms-dashboard-home';
 
 // ── WMS role detection ────────────────────────────────────────────────────────
 
-const WMS_ROLE_NAMES = ['WMS Supervisor', 'WMS Manager'];
+const WMS_ROLE_NAMES = ['WMS Admin', 'WMS Manager'];
 
 function useIsWmsRole(): boolean {
   const roles = useUserStore((s) => s.permissions.roles);

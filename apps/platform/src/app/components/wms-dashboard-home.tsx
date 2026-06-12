@@ -179,6 +179,12 @@ const QuickActions = [
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+interface WarehouseOption {
+  id: string;
+  name: string;
+  code: string;
+}
+
 export function WMSDashboardHome() {
   const accessToken = useUserStore((s) => s.accessToken);
   const [period, setPeriod] = React.useState<'week' | 'month' | 'year'>('week');
@@ -189,11 +195,32 @@ export function WMSDashboardHome() {
   const [allActivity, setAllActivity] = React.useState<ActivityItem[]>([]);
   const [loadingAll, setLoadingAll] = React.useState(false);
 
+  // Warehouse selector
+  const [warehouses, setWarehouses] = React.useState<WarehouseOption[]>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('all');
+  const [warehousesLoading, setWarehousesLoading] = React.useState(false);
+
+  // Fetch user's accessible warehouses
+  React.useEffect(() => {
+    if (!accessToken) return;
+    setWarehousesLoading(true);
+    fetch(`${environment.apiCoreUrl}/api/v1/warehouse-users/my-warehouses`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((res) => res.ok ? res.json() : Promise.reject())
+      .then((data) => setWarehouses(data.warehouses || []))
+      .catch(() => setWarehouses([]))
+      .finally(() => setWarehousesLoading(false));
+  }, [accessToken]);
+
   const fetchStats = React.useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ period, date: anchorDate.toISOString(), page: '1', page_size: '5' });
+      if (selectedWarehouseId !== 'all') {
+        params.set('warehouse_id', selectedWarehouseId);
+      }
       const res = await fetch(`${environment.apiCoreUrl}/api/v1/wms-dashboard/stats?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -203,12 +230,11 @@ export function WMSDashboardHome() {
       setShowAllActivity(false);
       setAllActivity([]);
     } catch {
-      // Use dummy fallback — dashboard always renders
       setStats(null);
     } finally {
       setLoading(false);
     }
-  }, [accessToken, period, anchorDate]);
+  }, [accessToken, period, anchorDate, selectedWarehouseId]);
 
   React.useEffect(() => { fetchStats(); }, [fetchStats]);
 
@@ -217,6 +243,9 @@ export function WMSDashboardHome() {
     setLoadingAll(true);
     try {
       const params = new URLSearchParams({ period, date: anchorDate.toISOString(), page: '1', page_size: '100' });
+      if (selectedWarehouseId !== 'all') {
+        params.set('warehouse_id', selectedWarehouseId);
+      }
       const res = await fetch(`${environment.apiCoreUrl}/api/v1/wms-dashboard/stats?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -226,7 +255,7 @@ export function WMSDashboardHome() {
       }
     } catch { /* use what we have */ }
     finally { setLoadingAll(false); }
-  }, [accessToken, period, anchorDate]);
+  }, [accessToken, period, anchorDate, selectedWarehouseId]);
 
   const handleViewAll = () => {
     if (!showAllActivity) { setShowAllActivity(true); fetchAllActivity(); }
@@ -281,7 +310,25 @@ export function WMSDashboardHome() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Warehouse filter */}
+          <select
+            value={selectedWarehouseId}
+            onChange={(e) => setSelectedWarehouseId(e.target.value)}
+            disabled={warehousesLoading}
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            <option value="all">
+              {warehousesLoading ? 'Loading...' : `All Warehouses (${warehouses.length})`}
+            </option>
+            {warehouses.map((wh) => (
+              <option key={wh.id} value={wh.id}>
+                {wh.name} ({wh.code})
+              </option>
+            ))}
+          </select>
+
+          {/* Period controls */}
           <Button variant="outline" size="sm" onClick={prevPeriod} disabled={loading}>
             <ArrowLeft className="h-4 w-4" />
           </Button>

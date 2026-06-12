@@ -25,7 +25,8 @@ interface WarehouseOption {
   code: string;
 }
 
-const SCOPED_WMS_ROLE_NAMES = ['WMS Supervisor', 'WMS Manager', 'WMS Operator', 'ASN Coordinator'];
+const SCOPED_WMS_ROLE_NAMES = ['WMS Manager', 'WMS Operator', 'ASN Coordinator'];
+const GLOBAL_WMS_ROLE_NAMES = ['WMS Admin'];
 
 const namePattern = /^[A-Za-z][A-Za-z' -]*[A-Za-z]$/;
 
@@ -180,7 +181,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
 
   const selectedRole = roles.find((r) => r.id === selectedRoleId);
   const isScopedWmsRole = selectedRole ? SCOPED_WMS_ROLE_NAMES.includes(selectedRole.name) : false;
-  const isSupervisorRole = selectedRole?.name === 'WMS Supervisor';
+  const isGlobalWmsRole = selectedRole ? GLOBAL_WMS_ROLE_NAMES.includes(selectedRole.name) : false;
 
   const handleFormSubmit = React.useCallback(async (data: InviteUserFormData) => {
     if (!accessToken) {
@@ -212,12 +213,6 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
       // Create pending warehouse assignments
       if (isScopedWmsRole && selectedWarehouseIds.size > 0) {
         const pendingUrl = `${environment.apiCoreUrl}/api/v1/warehouse-users/pending`;
-        // is_primary=true grants the user global visibility of ALL warehouses (like a mother-warehouse
-        // supervisor). Only set it when the Supervisor role is selected AND no warehouses were manually
-        // deselected (i.e. the admin kept all warehouses checked, meaning unrestricted access).
-        const isPrimary =
-          selectedRole?.name === 'WMS Supervisor' &&
-          selectedWarehouseIds.size === warehouses.length;
         await fetch(pendingUrl, {
           method: 'POST',
           headers: {
@@ -228,7 +223,25 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
             email: data.email,
             warehouse_ids: Array.from(selectedWarehouseIds),
             role: warehouseRole,
-            is_primary: isPrimary,
+            is_primary: false,
+          }),
+        });
+      }
+
+      // WMS Admin: auto-assign ALL warehouses with is_primary=true (global access)
+      if (isGlobalWmsRole && warehouses.length > 0) {
+        const pendingUrl = `${environment.apiCoreUrl}/api/v1/warehouse-users/pending`;
+        await fetch(pendingUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            email: data.email,
+            warehouse_ids: warehouses.map((w) => w.id),
+            role: 'supervisor',
+            is_primary: true,
           }),
         });
       }
@@ -276,20 +289,14 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     // Default warehouse_role based on role name
     const role = roles.find((r) => r.id === roleId);
     const name = role?.name ?? '';
-    if (name === 'WMS Supervisor') setWarehouseRole('supervisor');
+    if (name === 'WMS Admin') setWarehouseRole('supervisor');
     else if (name === 'WMS Manager') setWarehouseRole('manager');
     else if (name === 'WMS Operator') setWarehouseRole('operator');
     else if (name === 'ASN Coordinator') setWarehouseRole('coordinator');
     else setWarehouseRole('operator');
   };
 
-  // Auto-select all warehouses for Supervisor when warehouses load
-  React.useEffect(() => {
-    if (isSupervisorRole && warehouses.length > 0 && !warehousesLoading) {
-      setSelectedWarehouseIds(new Set(warehouses.map((w) => w.id)));
-      setShowWarehouseValidation(false);
-    }
-  }, [isSupervisorRole, warehouses, warehousesLoading]);
+  // No auto-select needed — WMS Admin doesn't show the warehouse picker
 
   const toggleWarehouse = (warehouseId: string) => {
     setSelectedWarehouseIds((prev) => {
@@ -391,6 +398,14 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
             </div>
 
             {/* Warehouse assignment for scoped WMS roles */}
+            {selectedRoleId && isGlobalWmsRole && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-700">
+                <Info className="h-4 w-4 shrink-0" />
+                <p className="text-sm">
+                  WMS Admin has access to <strong>all warehouses</strong> by default. No warehouse selection needed.
+                </p>
+              </div>
+            )}
             {selectedRoleId && isScopedWmsRole && (
               <div className="space-y-3">
                 <div>
@@ -398,20 +413,9 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
                   <p className="text-xs text-muted-foreground">
                     {warehousesLoading
                       ? 'Loading warehouses...'
-                      : isSupervisorRole
-                        ? 'Supervisor has access to all warehouses by default. Uncheck to restrict access.'
-                        : 'Select the warehouses this user will have access to'}
+                      : 'Select the warehouses this user will have access to'}
                   </p>
                 </div>
-
-                {isSupervisorRole && !warehousesLoading && !warehouseError && warehouses.length > 0 && (
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-700">
-                    <Info className="h-4 w-4 shrink-0" />
-                    <p className="text-sm">
-                      All warehouses are auto-selected. You can uncheck specific warehouses below to restrict access.
-                    </p>
-                  </div>
-                )}
 
                 {warehousesLoading ? (
                   <p className="text-sm text-muted-foreground">Loading warehouses...</p>
