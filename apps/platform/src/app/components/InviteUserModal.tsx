@@ -107,7 +107,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     if (!accessToken) return;
     setWarehousesLoading(true);
     try {
-      const url = `${environment.apiCoreUrl}/api/v1/warehouses?page=1&page_size=100&is_active=true`;
+      const url = `${environment.apiCoreUrl}/api/v1/warehouses?page=1&page_size=100&is_active=true&scope=all`;
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -212,6 +212,12 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
       // Create pending warehouse assignments
       if (isScopedWmsRole && selectedWarehouseIds.size > 0) {
         const pendingUrl = `${environment.apiCoreUrl}/api/v1/warehouse-users/pending`;
+        // is_primary=true grants the user global visibility of ALL warehouses (like a mother-warehouse
+        // supervisor). Only set it when the Supervisor role is selected AND no warehouses were manually
+        // deselected (i.e. the admin kept all warehouses checked, meaning unrestricted access).
+        const isPrimary =
+          selectedRole?.name === 'WMS Supervisor' &&
+          selectedWarehouseIds.size === warehouses.length;
         await fetch(pendingUrl, {
           method: 'POST',
           headers: {
@@ -222,7 +228,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
             email: data.email,
             warehouse_ids: Array.from(selectedWarehouseIds),
             role: warehouseRole,
-            is_primary: selectedRole?.name === 'WMS Supervisor',
+            is_primary: isPrimary,
           }),
         });
       }

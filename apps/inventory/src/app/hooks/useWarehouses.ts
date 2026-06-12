@@ -58,6 +58,7 @@ export function useWarehouses(initialPage = 1, initialPageSize = 20, filters?: {
         page_size: String(currentPageSize),
         sort_by: 'created-at',
         sort_order: 'desc',
+        scope: 'all',
       })
       // Add filters to API params if provided
       if (memoizedFilters?.search) {

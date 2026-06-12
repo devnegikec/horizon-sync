@@ -455,6 +455,225 @@ export interface WorkerTaskListResponse {
 }
 
 // ============================================
+// WMS WORKER TYPES
+// ============================================
+
+export interface WMSWorker {
+  id: string;
+  organization_id: string;
+  warehouse_id: string;
+  first_name: string;
+  last_name: string;
+  display_name: string | null;
+  email: string | null;
+  phone: string | null;
+  login_username: string | null;
+  barcode: string | null;
+  employee_id: string | null;
+  role: string;
+  status: string;
+  is_active: boolean;
+  last_login_at: string | null;
+  extra_data: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WMSWorkerListResponse {
+  workers: WMSWorker[];
+  pagination: WMSPagination;
+}
+
+export interface WMSWorkerCreate {
+  warehouse_id: string;
+  first_name: string;
+  last_name: string;
+  display_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  login_username?: string | null;
+  employee_id?: string | null;
+  password?: string | null;
+  barcode?: string | null;
+  role?: string;
+  status?: string;
+}
+
+export interface WMSWorkerUpdate {
+  warehouse_id?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  display_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  login_username?: string | null;
+  employee_id?: string | null;
+  password?: string | null;
+  barcode?: string | null;
+  role?: string | null;
+  status?: string | null;
+  is_active?: boolean | null;
+}
+
+// ============================================
+// WMS DEVICE TYPES
+// ============================================
+
+export interface WMSDevice {
+  id: string;
+  organization_id: string;
+  warehouse_id: string;
+  name: string;
+  device_code: string;
+  device_type: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  serial_number: string | null;
+  os_version: string | null;
+  assigned_to_worker_id: string | null;
+  status: string;
+  last_synced_at: string | null;
+  extra_data: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WMSDeviceListResponse {
+  devices: WMSDevice[];
+  pagination: WMSPagination;
+}
+
+export interface WMSDeviceCreate {
+  warehouse_id: string;
+  name: string;
+  device_code: string;
+  device_type?: string | null;
+  manufacturer?: string | null;
+  model?: string | null;
+  serial_number?: string | null;
+  os_version?: string | null;
+  assigned_to_worker_id?: string | null;
+  status?: string;
+}
+
+export interface WMSDeviceUpdate {
+  warehouse_id?: string | null;
+  name?: string | null;
+  device_code?: string | null;
+  device_type?: string | null;
+  manufacturer?: string | null;
+  model?: string | null;
+  serial_number?: string | null;
+  os_version?: string | null;
+  assigned_to_worker_id?: string | null;
+  status?: string | null;
+}
+
+// ============================================
+// STOCK COPY / EXPORT / IMPORT TYPES
+// ============================================
+
+export interface CopyStockRequest {
+  source_bin_id: string;
+  target_bin_id: string;
+  item_id: string;
+  quantity: number;
+  batch_number?: string | null;
+}
+
+export interface StockImportRow {
+  bin_code: string;
+  sku: string;
+  quantity: number;
+  batch_number?: string | null;
+}
+
+export interface StockImportRequest {
+  warehouse_id: string;
+  rows: StockImportRow[];
+  overwrite_existing?: boolean;
+}
+
+export interface StockImportResult {
+  imported: number;
+  updated: number;
+  errors: string[];
+}
+
+// ============================================
+// WMS DASHBOARD TYPES
+// ============================================
+
+export interface WMSChartBucket {
+  label: string;
+  qty: number;
+  value: number;
+}
+
+export interface WMSActivityItem {
+  type: string;
+  title: string;
+  status: string;
+  warehouse_id: string | null;
+  worker_name: string | null;
+  created_at: string | null;
+}
+
+export interface WMSActivityPagination {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+export interface WMSDashboardStats {
+  period: string;
+  period_start: string;
+  period_end: string;
+  // New rich fields
+  stats?: {
+    total_stock_items: number;
+    assigned_warehouses: number;
+    low_stock_count: number;
+    out_of_stock_count: number;
+    active_workers: number;
+  };
+  stock_overview?: {
+    inbound: {
+      total_qty: number;
+      total_value: number;
+      receiving_slips: number;
+      chart: WMSChartBucket[];
+    };
+    outbound: {
+      total_qty: number;
+      total_value: number;
+      dispatches: number;
+      chart: WMSChartBucket[];
+    };
+  };
+  activity_pagination?: WMSActivityPagination;
+  // Legacy fields (backward compat with WMS DashboardPanel)
+  inbound: {
+    receiving_slips: number;
+    items_received: number;
+    stock_in_qty: number;
+  };
+  outbound: {
+    dispatches: number;
+    stock_out_qty: number;
+  };
+  current_stock: {
+    total_records: number;
+    total_quantity: number;
+  };
+  workers_count: number;
+  recent_activity: WMSActivityItem[];
+}
+
+// ============================================
 // SHARED TYPES
 // ============================================
 
