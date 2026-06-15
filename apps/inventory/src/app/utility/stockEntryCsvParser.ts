@@ -31,8 +31,9 @@ export interface ParseResult {
 
 export const STOCK_ENTRY_SAMPLE_CSV = [
   'Stock Entry Type,Posting Date,Posting Time,From Warehouse Code,To Warehouse Code,Item Code,Description,Remarks,Quantity,UOM,Basic Rate,Valuation Rate,Batch Number',
-  'material_receipt,2026-02-25,09:00,,WH-MXR-02,ITM-2026-00001,test description,no remarks,10,KG,908.00,807.50,BT-008',
-  'material_issue,2026-02-25,09:00,WH-MXR-02,,ITM-2026-00002,another item,,5,PCS,150.00,150.00,',
+  'material_receipt,2026-06-12,09:00,,<YOUR_WAREHOUSE_CODE>,ITM-2026-00001,Laptop 15 Pro,Inbound shipment,10,Nos,45000.00,45000.00,BATCH-LP-2026-01',
+  'material_receipt,2026-06-12,09:00,,<YOUR_WAREHOUSE_CODE>,ITM-2026-00004,HDMI Cable 2m,,50,Nos,350.00,350.00,',
+  'material_issue,2026-06-12,10:00,<YOUR_WAREHOUSE_CODE>,,ITM-2026-00002,Office Chair Ergonomic,Issued to floor,5,Nos,8500.00,8500.00,',
 ].join('\n');
 
 // ------------------------------------------------------------------ //
