@@ -9,8 +9,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
+import { useUserStore } from '@horizon-sync/store';
 
-import { useWarehouses } from '../../hooks/useWarehouses';
+import { environment } from '../../../environments/environment';
 import type { StockEntryFormState } from '../../types/stock.types';
 
 const ENTRY_TYPE_OPTIONS = [
@@ -27,6 +28,32 @@ const STATUS_OPTIONS = [
   { value: 'cancelled', label: 'Cancelled' },
 ] as const;
 
+interface AssignedWarehouse {
+  id: string;
+  name: string;
+  code: string;
+}
+
+function useAssignedWarehouses() {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [warehouses, setWarehouses] = React.useState<AssignedWarehouse[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!accessToken) { setWarehouses([]); setLoading(false); return; }
+    setLoading(true);
+    fetch(`${environment.apiCoreUrl}/api/v1/warehouse-users/my-warehouses`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((res) => res.ok ? res.json() : Promise.reject())
+      .then((data) => setWarehouses(data.warehouses ?? []))
+      .catch(() => setWarehouses([]))
+      .finally(() => setLoading(false));
+  }, [accessToken]);
+
+  return { warehouses, loading };
+}
+
 interface WarehouseSelectorProps {
   label: string;
   htmlId: string;
@@ -35,7 +62,14 @@ interface WarehouseSelectorProps {
 }
 
 function WarehouseSelector({ label, htmlId, value, onChange }: WarehouseSelectorProps) {
-  const { warehouses, loading } = useWarehouses(1, 100);
+  const { warehouses, loading } = useAssignedWarehouses();
+
+  // Auto-select if only one warehouse is assigned and no value is set yet
+  React.useEffect(() => {
+    if (!loading && warehouses.length === 1 && !value) {
+      onChange(warehouses[0].id);
+    }
+  }, [loading, warehouses, value, onChange]);
 
   return (
     <div className="space-y-2">
