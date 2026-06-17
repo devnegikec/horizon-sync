@@ -326,7 +326,7 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
   const [viewMode, setViewMode] = React.useState<'3d' | '2d'>('3d');
   const [canvasSize, setCanvasSize] = React.useState({ w: 800, h: 520 });
 
-  const { activeBins, layout, loading, error, statusLoading, refetch, refetchStatus } =
+  const { activeBins, layout, loading, error, statusLoading, wsConnected, refetch, refetchStatus } =
     useWarehouse3D(warehouseId);
 
   // Observe container width for responsive canvas
@@ -581,6 +581,16 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {statusLoading && <Loader2 className="h-3 w-3 animate-spin" />}
           <span>{activeBins.length} bins</span>
+          {wsConnected ? (
+            <Badge variant="secondary" className="gap-1 text-emerald-700 bg-emerald-100 px-1.5 py-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+              Live
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="text-muted-foreground px-1.5 py-0">
+              Polling
+            </Badge>
+          )}
           {layout && <span className="font-medium">{layout.warehouse.name}</span>}
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={refetchStatus}>
             <RefreshCw className="h-3.5 w-3.5" />
