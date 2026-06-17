@@ -2,9 +2,12 @@ import { environment } from '../../../environments/environment';
 import type {
   FloorPlanApplyRequest,
   FloorPlanApplyResponse,
+  FloorPlanDeleteResponse,
   FloorPlanPreviewRequest,
   FloorPlanPreviewResponse,
   FloorPlanResponse,
+  FloorPlanUpdateRequest,
+  FloorPlanUpdateResponse,
 } from '../../types/floorplan.types';
 
 const BASE = `${environment.apiCoreUrl}/api/v1/floor-plans`;
@@ -46,4 +49,19 @@ export const floorPlanApi = {
   /** Get a single floor plan by ID. */
   get: (token: string, id: string) =>
     req<FloorPlanResponse>(`${BASE}/${id}`, token),
+
+  /** Update an existing floor plan and re-generate locations. */
+  update: (token: string, id: string, body: FloorPlanUpdateRequest) =>
+    req<FloorPlanUpdateResponse>(`${BASE}/${id}`, token, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+
+  /** Delete (soft-delete) a floor plan. Optionally deactivate its locations. */
+  delete: (token: string, id: string, deactivateLocations = false) =>
+    req<FloorPlanDeleteResponse>(
+      `${BASE}/${id}?deactivate_locations=${deactivateLocations}`,
+      token,
+      { method: 'DELETE' },
+    ),
 };

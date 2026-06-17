@@ -183,3 +183,25 @@ export interface FlatBin extends LayoutBin {
   live_is_reserved?: boolean;
   live_reserved_by?: StatusReservedBy | null;
 }
+
+// ---- Bin Stock Detail (GET /wms-3d/bin/{bin_id}/stock) — FR-3D-04 ----
+
+export interface BinStockItem {
+  item_id: string;
+  item_name: string;
+  item_code: string;
+  sku: string | null;
+  quantity_on_hand: number;
+  batch_number: string | null;
+  expiry_date: string | null;
+  uom: string | null;
+  created_at: string | null;
+}
+
+export interface BinStockDetailResponse {
+  bin_id: string;
+  bin_code: string | null;
+  items: BinStockItem[];
+  total_quantity: number;
+  total_items: number;
+}

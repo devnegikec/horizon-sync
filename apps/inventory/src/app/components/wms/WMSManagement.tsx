@@ -318,6 +318,14 @@ export function WMSManagement() {
 
 function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | null }) {
   const [layoutTab, setLayoutTab] = React.useState<LayoutTab>('tree');
+  const [treeKey, setTreeKey] = React.useState(0);
+
+  /** Refresh the location tree after a layout is applied/updated/deleted. */
+  const handleLayoutChanged = React.useCallback(() => {
+    setTreeKey((k) => k + 1);
+    // Switch to tree tab so the user can see the change
+    setLayoutTab('tree');
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -352,12 +360,12 @@ function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | nul
         <div className="p-4">
           {layoutTab === 'tree' && (
             selectedWarehouseId
-              ? <LocationTreeView warehouseId={selectedWarehouseId} />
+              ? <LocationTreeView key={treeKey} warehouseId={selectedWarehouseId} />
               : <p className="text-sm text-muted-foreground">Select a warehouse to view its layout.</p>
           )}
           {layoutTab === 'designer' && (
             selectedWarehouseId
-              ? <WarehouseLayoutDesigner warehouseId={selectedWarehouseId} />
+              ? <WarehouseLayoutDesigner warehouseId={selectedWarehouseId} onApplied={handleLayoutChanged} />
               : <p className="text-sm text-muted-foreground">Select a warehouse to use the Layout Designer.</p>
           )}
         </div>

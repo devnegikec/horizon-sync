@@ -1,5 +1,6 @@
 import { environment } from '../../../environments/environment';
 import type {
+  BinStockDetailResponse,
   LayoutResponse,
   StatusResponse,
   SuggestRequest,
@@ -66,4 +67,8 @@ export const wms3dApi = {
       method: 'POST',
       body: '{}',
     }),
+
+  /** Get detailed stock items stored in a specific bin (FR-3D-04). */
+  getBinStock: (token: string, binId: string) =>
+    req<BinStockDetailResponse>(`${BASE}/bin/${binId}/stock`, token),
 };
