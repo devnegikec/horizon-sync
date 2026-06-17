@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Box,
   Clock,
+  Flame,
   Info,
   Layers,
   Loader2,
@@ -11,16 +12,27 @@ import {
   RefreshCw,
   RotateCcw,
   Sparkles,
+  Target,
+  X,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
+import { Input } from '@horizon-sync/ui/components/ui/input';
+import { Label } from '@horizon-sync/ui/components/ui/label';
 import { cn } from '@horizon-sync/ui/lib';
 
+import { useUserStore } from '@horizon-sync/store';
+
+import { environment } from '../../../environments/environment';
 import { useWarehouse3D } from '../../hooks/useWarehouse3D';
-import type { FlatBin } from '../../types/wms3d.types';
+import { wms3dApi } from '../../utility/api/wms3d';
+import type { FlatBin, Suggestion } from '../../types/wms3d.types';
+import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
+
+const NIL_UUID = '00000000-0000-0000-0000-000000000000';
 
 // ─── Isometric projection constants ──────────────────────────────────────────
 const BASE_TW = 48; // tile width in px (2× TH)
@@ -68,6 +80,18 @@ function getInactiveBinColors(): FaceColors {
   return { top: '#f1f5f9', right: '#64748b', left: '#94a3b8', border: '#cbd5e1' };
 }
 
+/** Pure fill-density gradient (green 0% → yellow 50% → red 100%) for heat-map mode. */
+function getHeatColors(fillPct: number): FaceColors {
+  const t = Math.max(0, Math.min(1, (fillPct ?? 0) / 100));
+  const hue = 120 * (1 - t); // 120=green → 0=red
+  return {
+    top: `hsl(${hue}, 85%, 75%)`,
+    right: `hsl(${hue}, 70%, 40%)`,
+    left: `hsl(${hue}, 72%, 54%)`,
+    border: `hsl(${hue}, 75%, 62%)`,
+  };
+}
+
 // ─── Isometric projection ─────────────────────────────────────────────────────
 function worldToScreen(
   wx: number,
@@ -94,6 +118,7 @@ function drawBin(
   TH: number,
   ZH: number,
   pulseAlpha = 0,
+  lod = false,
 ) {
   const p = (x: number, y: number, z: number) => worldToScreen(x, y, z, ox, oy, TW, TH, ZH);
 
@@ -125,9 +150,11 @@ function drawBin(
     ctx.closePath();
     ctx.fillStyle = fill;
     ctx.fill();
-    ctx.strokeStyle = colors.border;
-    ctx.lineWidth = 0.6;
-    ctx.stroke();
+    if (!lod) {
+      ctx.strokeStyle = colors.border;
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+    }
   };
 
   drawFace([[r1x, r1y], [r2x, r2y], [r3x, r3y], [r4x, r4y]], colors.right);
@@ -312,6 +339,198 @@ function WarehouseLegend() {
   );
 }
 
+// ─── BinSuggestionPanel ───────────────────────────────────────────────────────
+interface PickerItem {
+  id: string;
+  item_code: string;
+  item_name: string;
+}
+
+function BinSuggestionPanel({
+  warehouseId,
+  onResults,
+  onFocusBin,
+  onClose,
+}: {
+  warehouseId: string;
+  onResults: (suggestions: Suggestion[]) => void;
+  onFocusBin: (binId: string) => void;
+  onClose: () => void;
+}) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [taskType, setTaskType] = React.useState<'put_away' | 'pick'>('put_away');
+  const [itemId, setItemId] = React.useState('');
+  const [itemData, setItemData] = React.useState<PickerItem | null>(null);
+  const [quantity, setQuantity] = React.useState(1);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [results, setResults] = React.useState<Suggestion[]>([]);
+
+  const searchItems = React.useCallback(
+    async (query: string): Promise<PickerItem[]> => {
+      if (!accessToken) return [];
+      const res = await fetch(
+        `${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(query)}`,
+        { headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' } },
+      );
+      if (!res.ok) throw new Error('Failed to fetch items');
+      const data = await res.json();
+      return (data.items ?? []) as PickerItem[];
+    },
+    [accessToken],
+  );
+
+  const labelFormatter = React.useCallback(
+    (i: PickerItem) => `${i.item_name} (${i.item_code})`,
+    [],
+  );
+
+  const handleFind = async () => {
+    if (!accessToken || !itemId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await wms3dApi.suggest(accessToken, {
+        task_type: taskType,
+        item_id: itemId,
+        quantity,
+        warehouse_id: warehouseId,
+        worker_id: NIL_UUID,
+        limit: 10,
+      });
+      setResults(resp.suggestions);
+      onResults(resp.suggestions);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Suggestion failed');
+      setResults([]);
+      onResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClear = () => {
+    setResults([]);
+    onResults([]);
+  };
+
+  return (
+    <div className="w-80 shrink-0 rounded-lg border bg-card shadow-lg p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="font-semibold text-sm flex items-center gap-1.5">
+          <Target className="h-4 w-4 text-amber-600" />
+          Find Optimal Bins
+        </p>
+        <Button variant="ghost" size="icon" className="h-6 w-6 -mr-1" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="flex gap-1.5">
+        <Button
+          variant={taskType === 'put_away' ? 'default' : 'outline'}
+          size="sm"
+          className="flex-1 text-xs h-8"
+          onClick={() => setTaskType('put_away')}>
+          Put-away
+        </Button>
+        <Button
+          variant={taskType === 'pick' ? 'default' : 'outline'}
+          size="sm"
+          className="flex-1 text-xs h-8"
+          onClick={() => setTaskType('pick')}>
+          Pick
+        </Button>
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-xs">Item</Label>
+        <ItemPickerSelect
+          value={itemId}
+          onValueChange={(v) => setItemId(v)}
+          searchItems={searchItems}
+          labelFormatter={labelFormatter}
+          valueKey="id"
+          placeholder="Select an item…"
+          searchPlaceholder="Search items…"
+          minSearchLength={2}
+          selectedItemData={itemData}
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-xs">Quantity</Label>
+        <Input
+          type="number"
+          min={1}
+          value={quantity}
+          onChange={(e) => setQuantity(Math.max(1, parseFloat(e.target.value) || 1))}
+          className="h-8 text-xs"
+        />
+      </div>
+
+      <Button
+        size="sm"
+        className="w-full gap-1.5"
+        onClick={handleFind}
+        disabled={loading || !itemId}>
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+        Suggest bins
+      </Button>
+
+      {error && (
+        <p className="text-xs text-destructive flex items-start gap-1">
+          <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          {error}
+        </p>
+      )}
+
+      {results.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground">
+              {results.length} ranked suggestions
+            </p>
+            <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={handleClear}>
+              Clear
+            </Button>
+          </div>
+          <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+            {results.map((s) => (
+              <button
+                key={s.bin_id}
+                onClick={() => onFocusBin(s.bin_id)}
+                className="w-full text-left rounded-md border p-2 hover:bg-accent transition-colors space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-xs font-medium truncate">
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px] shrink-0">
+                      #{s.rank}
+                    </Badge>
+                    <span className="font-mono truncate">{s.bin_code ?? s.bin_id.slice(0, 8)}</span>
+                  </span>
+                  <span className="text-[10px] text-amber-700 font-semibold shrink-0">
+                    {s.score.toFixed(0)} pts
+                  </span>
+                </div>
+                {s.reasons.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground line-clamp-2">
+                    {s.reasons.join(' · ')}
+                  </p>
+                )}
+                <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <span>Avail: {s.available_capacity.toFixed(0)}</span>
+                  <span>~{s.estimated_time_seconds}s</span>
+                  {s.expiry_date && <span>Exp: {s.expiry_date}</span>}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -322,8 +541,10 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
   const [zoom, setZoom] = React.useState(1.0);
   const [offset, setOffset] = React.useState({ x: 0, y: 0 });
   const [selectedBinId, setSelectedBinId] = React.useState<string | null>(null);
-  const [suggestedIds, _setSuggestedIds] = React.useState<Set<string>>(new Set());
+  const [suggestedIds, setSuggestedIds] = React.useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = React.useState<'3d' | '2d'>('3d');
+  const [colorMode, setColorMode] = React.useState<'status' | 'heat'>('status');
+  const [showSuggest, setShowSuggest] = React.useState(false);
   const [canvasSize, setCanvasSize] = React.useState({ w: 800, h: 520 });
 
   const { activeBins, layout, loading, error, statusLoading, wsConnected, refetch, refetchStatus } =
@@ -397,19 +618,27 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
         (b) => (b.live_is_reserved ?? b.is_reserved) || suggestedIds.has(b.id),
       );
 
+      // Level-of-detail: skip per-face strokes for dense scenes / low zoom
+      const lod = sorted.length > 600 || zoom < 0.55;
+
+      const colorFor = (bin: FlatBin) => {
+        const fillPct = bin.live_fill_pct ?? bin.fill_percentage;
+        const isRes = bin.live_is_reserved ?? bin.is_reserved;
+        const isSug = suggestedIds.has(bin.id);
+        const isSelected = bin.id === selectedBinId;
+        if (!bin.is_active) return getInactiveBinColors();
+        if (colorMode === 'heat' && !isSug && !isSelected) return getHeatColors(fillPct);
+        return getBinColors(fillPct, isRes, isSug, isSelected, bin.has_expiring_items);
+      };
+
       if (viewMode === '2d') {
         // 2D top-down grid view
         ctx.save();
         ctx.translate(ox, oy);
         for (const bin of sorted) {
           const { x: wx, y: wy } = bin.position;
-          const fillPct = bin.live_fill_pct ?? bin.fill_percentage;
-          const isRes = bin.live_is_reserved ?? bin.is_reserved;
-          const isSug = suggestedIds.has(bin.id);
           const isSelected = bin.id === selectedBinId;
-          const colors = bin.is_active
-            ? getBinColors(fillPct, isRes, isSug, isSelected, bin.has_expiring_items)
-            : getInactiveBinColors();
+          const colors = colorFor(bin);
           const gap = 2;
           const bw = TW - gap;
           const bh = TH - gap;
@@ -417,24 +646,24 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
           const by = wy * TH + gap / 2;
           ctx.fillStyle = colors.left;
           ctx.fillRect(bx, by, bw, bh);
-          ctx.strokeStyle = colors.border;
-          ctx.lineWidth = isSelected ? 2 : 0.5;
-          ctx.strokeRect(bx, by, bw, bh);
+          if (!lod || isSelected) {
+            ctx.strokeStyle = colors.border;
+            ctx.lineWidth = isSelected ? 2 : 0.5;
+            ctx.strokeRect(bx, by, bw, bh);
+          }
         }
         ctx.restore();
       } else {
         // Isometric 3D view
         for (const bin of sorted) {
           const { x: wx, y: wy, z: wz } = bin.position;
-          const fillPct = bin.live_fill_pct ?? bin.fill_percentage;
           const isRes = bin.live_is_reserved ?? bin.is_reserved;
           const isSug = suggestedIds.has(bin.id);
           const isSelected = bin.id === selectedBinId;
-          const colors = bin.is_active
-            ? getBinColors(fillPct, isRes, isSug, isSelected, bin.has_expiring_items)
-            : getInactiveBinColors();
+          const colors = colorFor(bin);
           const shouldPulse = (isRes || isSug) && bin.is_active ? pulse : 0;
-          drawBin(ctx, wx, wy, wz, colors, ox, oy, TW, TH, ZH, shouldPulse);
+          // Keep strokes on selected/suggested bins even under LOD
+          drawBin(ctx, wx, wy, wz, colors, ox, oy, TW, TH, ZH, shouldPulse, lod && !isSelected && !isSug);
         }
       }
 
@@ -450,7 +679,7 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
       animRunning = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [sorted, zoom, offset, selectedBinId, suggestedIds, viewMode]);
+  }, [sorted, zoom, offset, selectedBinId, suggestedIds, viewMode, colorMode]);
 
   // Click handler
   const handleCanvasClick = React.useCallback(
@@ -498,6 +727,23 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
     centeredRef.current = false;
     setZoom(1.0);
   };
+
+  // Center the view on a specific bin and select it (from suggestion list)
+  const focusBin = React.useCallback(
+    (binId: string) => {
+      const bin = activeBins.find((b) => b.id === binId);
+      if (!bin) return;
+      setSelectedBinId(binId);
+      const TW = BASE_TW * zoom;
+      const TH = BASE_TH * zoom;
+      const ZH = BASE_ZH * zoom;
+      const { x, y, z } = bin.position;
+      const sx = (x - y) * (TW / 2);
+      const sy = (x + y) * (TH / 2) - z * ZH;
+      setOffset({ x: canvasSize.w / 2 - sx, y: canvasSize.h / 2 - sy });
+    },
+    [activeBins, zoom, canvasSize],
+  );
 
   const selectedBin = selectedBinId
     ? activeBins.find((b) => b.id === selectedBinId) ?? null
@@ -577,6 +823,23 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
           <Button variant="outline" size="icon" className="h-8 w-8" onClick={resetView}>
             <RotateCcw className="h-4 w-4" />
           </Button>
+          <div className="w-px h-5 bg-border mx-1" />
+          <Button
+            variant={colorMode === 'heat' ? 'default' : 'outline'}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setColorMode((m) => (m === 'heat' ? 'status' : 'heat'))}>
+            <Flame className="h-4 w-4" />
+            Heat-map
+          </Button>
+          <Button
+            variant={showSuggest ? 'default' : 'outline'}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setShowSuggest((s) => !s)}>
+            <Target className="h-4 w-4" />
+            Suggest
+          </Button>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {statusLoading && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -615,6 +878,18 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
             onWheel={handleWheel}
           />
         </div>
+
+        {showSuggest && (
+          <BinSuggestionPanel
+            warehouseId={warehouseId}
+            onResults={(s) => setSuggestedIds(new Set(s.map((x) => x.bin_id)))}
+            onFocusBin={focusBin}
+            onClose={() => {
+              setShowSuggest(false);
+              setSuggestedIds(new Set());
+            }}
+          />
+        )}
 
         {selectedBin && (
           <BinDetailPanel bin={selectedBin} onClose={() => setSelectedBinId(null)} />
