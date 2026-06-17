@@ -17,9 +17,11 @@ import { PickListView } from './PickListView';
 import { PutAwayView } from './PutAwayView';
 import { ReceivingSlipList } from './ReceivingSlipList';
 import { Warehouse3DView } from './Warehouse3DView';
+import { WarehouseLayoutDesigner } from './WarehouseLayoutDesigner';
 import { WorkersManagementPanel } from './WorkersManagementPanel';
 
 type WMSView = 'layout' | '3d' | 'inbound' | 'outbound' | 'stock' | 'manage';
+type LayoutTab = 'tree' | 'designer';
 type InboundSection = 'receiving' | 'putaway';
 type OutboundSection = 'pick' | 'gate' | 'dispatch';
 
@@ -122,21 +124,7 @@ export function WMSManagement() {
       {/* Content */}
       <div>
         {activeView === 'layout' && (
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold">Warehouse Layout</h2>
-              <p className="text-sm text-muted-foreground">
-                Hierarchical view of zones, aisles, bays, levels, and bins with capacity indicators.
-              </p>
-            </div>
-            {selectedWarehouseId ? (
-              <div className="border rounded-lg p-4 bg-card">
-                <LocationTreeView warehouseId={selectedWarehouseId} />
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground p-4">Select a warehouse to view its layout.</div>
-            )}
-          </div>
+          <LayoutView selectedWarehouseId={selectedWarehouseId} />
         )}
 
         {activeView === '3d' && (
@@ -323,6 +311,56 @@ export function WMSManagement() {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | null }) {
+  const [layoutTab, setLayoutTab] = React.useState<LayoutTab>('tree');
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-4">
+        <div>
+          <h2 className="text-lg font-semibold">Warehouse Layout</h2>
+          <p className="text-sm text-muted-foreground">
+            View the location hierarchy or design a new layout from scratch.
+          </p>
+        </div>
+      </div>
+
+      <div className="border rounded-lg overflow-hidden">
+        <div className="flex border-b">
+          <button
+            className={cn('px-4 py-2 text-sm font-medium', layoutTab === 'tree' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+            onClick={() => setLayoutTab('tree')}>
+            <span className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              Location Tree
+            </span>
+          </button>
+          <button
+            className={cn('px-4 py-2 text-sm font-medium', layoutTab === 'designer' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+            onClick={() => setLayoutTab('designer')}>
+            <span className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Layout Designer
+            </span>
+          </button>
+        </div>
+        <div className="p-4">
+          {layoutTab === 'tree' && (
+            selectedWarehouseId
+              ? <LocationTreeView warehouseId={selectedWarehouseId} />
+              : <p className="text-sm text-muted-foreground">Select a warehouse to view its layout.</p>
+          )}
+          {layoutTab === 'designer' && (
+            selectedWarehouseId
+              ? <WarehouseLayoutDesigner warehouseId={selectedWarehouseId} />
+              : <p className="text-sm text-muted-foreground">Select a warehouse to use the Layout Designer.</p>
+          )}
+        </div>
       </div>
     </div>
   );
