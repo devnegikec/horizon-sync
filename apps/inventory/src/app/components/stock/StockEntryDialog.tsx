@@ -1,6 +1,8 @@
 import * as React from 'react';
 
-import { FileText } from 'lucide-react';
+import { FileText, Loader2 } from 'lucide-react';
+
+import { Badge } from '@horizon-sync/ui/components';
 
 
 import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
@@ -153,6 +155,8 @@ export function StockEntryDialog({
   const [csvPreviewActive, setCsvPreviewActive] = React.useState(false);
   const [sampleItems, setSampleItems] = React.useState<Array<{ item_code: string; item_name: string; uom?: string }>>([]);
   const [warehouseMap, setWarehouseMap] = React.useState<Record<string, string>>({});
+  const [importStatus, setImportStatus] = React.useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [importing, setImporting] = React.useState(false);
 
   /* Fetch a few items for the sample CSV */
   React.useEffect(() => {
@@ -221,11 +225,69 @@ export function StockEntryDialog({
   }, []);
 
   const handleBulkUpload = React.useCallback(async (file: File): Promise<BulkUploadResult> => {
-    if (!accessToken) throw new Error('Not authenticated');
-    const result = await stockEntryApi.bulkUpload(accessToken, file) as BulkUploadResult;
-    onCreated?.();
-    return result;
-  }, [accessToken, onCreated]);
+    const text = await file.text();
+    const { rows, errors } = parseStockEntryCsv(text);
+
+    const whId = form.stock_entry_type === 'material_receipt' ? form.to_warehouse_id : form.from_warehouse_id;
+
+    if (rows.length > 0 && whId && accessToken) {
+      setImporting(true);
+      try {
+        const resolveItem = async (row: StockEntryLineRow): Promise<StockEntryLineRow> => {
+          if (!row.item_id || !accessToken) return row;
+          try {
+            const url = `${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(row.item_id)}&warehouse_id=${encodeURIComponent(whId)}`;
+            const response = await fetch(url, {
+              headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+            });
+            if (!response.ok) return row;
+            const data = await response.json();
+            const match = data.items?.find((item: { item_code?: string }) =>
+              item.item_code?.toLowerCase() === row.item_id?.toLowerCase()
+            ) || data.items?.[0];
+            if (match) {
+              return {
+                ...row,
+                item_id: match.id,
+                item_name: match.item_name,
+                item_code: match.item_code || row.item_id,
+                uom: match.uom || row.uom || 'pcs',
+                basic_rate: row.basic_rate || parseFloat(match.standard_rate || '0') || 0,
+                amount: row.qty * (row.basic_rate || parseFloat(match.standard_rate || '0') || 0),
+              };
+            }
+          } catch {
+            // ignore resolution failures
+          }
+          return row;
+        };
+
+        const resolvedRows = await Promise.all(rows.map(resolveItem));
+
+        const resolvedCount = resolvedRows.filter((r) => !!r.item_name).length;
+        const unresolvedCount = rows.length - resolvedCount;
+
+        handleCsvImport(resolvedRows);
+
+        if (unresolvedCount > 0) {
+          setImportStatus({ type: 'error', message: `${unresolvedCount} item(s) could not be auto-resolved — please select them manually` });
+        } else if (resolvedCount > 0) {
+          setImportStatus({ type: 'success', message: `${resolvedCount} item(s) imported successfully` });
+        }
+      } finally {
+        setImporting(false);
+      }
+    } else if (rows.length > 0) {
+      handleCsvImport(rows);
+    }
+
+    return {
+      total_rows: rows.length,
+      created: rows.length,
+      failed: errors.length,
+      errors,
+    };
+  }, [handleCsvImport, accessToken, form.stock_entry_type, form.to_warehouse_id, form.from_warehouse_id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -306,20 +368,33 @@ export function StockEntryDialog({
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium">Line Items</h4>
               {!viewMode && (
-                <CsvImporter<StockEntryLineRow> parseRows={parseStockEntryCsv}
-                  onImport={handleCsvImport}
-                  onFileSelected={handleBulkUpload}
-                  onPreviewChange={setCsvPreviewActive}
-                  columnsHint="Columns: Stock Entry Type, Item Code, Quantity, UOM, Basic Rate, ..."
-                  sampleCsv={sampleCsvContent}
-                  sampleFileName="stock-entry-sample.csv"
-                  previewColumns={[
-                    { key: 'item_id', label: 'Item Code' },
-                    { key: 'qty', label: 'Qty' },
-                    { key: 'uom', label: 'UOM' },
-                    { key: 'basic_rate', label: 'Basic Rate' },
-                    { key: 'amount', label: 'Amount' },
-                  ]} />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <CsvImporter<StockEntryLineRow> parseRows={parseStockEntryCsv}
+                    onImport={handleCsvImport}
+                    onFileSelected={handleBulkUpload}
+                    onPreviewChange={setCsvPreviewActive}
+                    columnsHint="Columns: Stock Entry Type, Item Code, Quantity, UOM, Basic Rate, ..."
+                    sampleCsv={sampleCsvContent}
+                    sampleFileName="stock-entry-sample.csv"
+                    previewColumns={[
+                      { key: 'item_id', label: 'Item Code' },
+                      { key: 'qty', label: 'Qty' },
+                      { key: 'uom', label: 'UOM' },
+                      { key: 'basic_rate', label: 'Basic Rate' },
+                      { key: 'amount', label: 'Amount' },
+                    ]} />
+                  {importing && (
+                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Resolving items...
+                    </span>
+                  )}
+                  {importStatus && !importing && (
+                    <Badge variant={importStatus.type === 'success' ? 'success' : 'destructive'}>
+                      {importStatus.message}
+                    </Badge>
+                  )}
+                </div>
               )}
             </div>
             {!csvPreviewActive && (
