@@ -20,7 +20,9 @@ import { useStockEntryMutations } from '../../hooks/useStock';
 import type { StockEntry, StockEntryFormState } from '../../types/stock.types';
 import { getCurrencySymbol } from '../../types/currency.types';
 import { stockEntryApi } from '../../utility/api/stock';
-import { parseStockEntryCsv, STOCK_ENTRY_SAMPLE_CSV } from '../../utility/stockEntryCsvParser';
+import { itemApi } from '../../utility/api/items';
+import { environment } from '../../../environments/environment';
+import { parseStockEntryCsv, buildStockEntrySampleCsv } from '../../utility/stockEntryCsvParser';
 import type { BulkUploadResult } from '../shared/CsvImporter';
 import { CsvImporter } from '../shared/CsvImporter';
 import { StockEntryHeader, StockEntryFooter } from '../stock-entry';
@@ -149,6 +151,35 @@ export function StockEntryDialog({
   const [lineItems, setLineItems] = React.useState<StockEntryLineRow[]>([{ ...EMPTY_LINE }]);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [csvPreviewActive, setCsvPreviewActive] = React.useState(false);
+  const [sampleItems, setSampleItems] = React.useState<Array<{ item_code: string; item_name: string; uom?: string }>>([]);
+  const [warehouseMap, setWarehouseMap] = React.useState<Record<string, string>>({});
+
+  /* Fetch a few items for the sample CSV */
+  React.useEffect(() => {
+    if (!accessToken) return;
+    itemApi.list(accessToken, 1, 5).then((resp: unknown) => {
+      const data = resp as { items?: Array<{ item_code: string; item_name: string; uom?: string }> } | null;
+      if (data?.items) setSampleItems(data.items);
+    }).catch(() => { /* non-critical */ });
+
+    // Fetch warehouse codes for sample CSV (id → code lookup)
+    fetch(`${environment.apiCoreUrl}/api/v1/warehouse-users/my-warehouses`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((res) => res.ok ? res.json() : Promise.reject())
+      .then((data: { warehouses?: Array<{ id: string; code: string }> }) => {
+        const map: Record<string, string> = {};
+        for (const wh of data.warehouses ?? []) map[wh.id] = wh.code;
+        setWarehouseMap(map);
+      })
+      .catch(() => { /* non-critical */ });
+  }, [accessToken]);
+
+  const sampleCsvContent = React.useMemo(() => {
+    const whId = form.to_warehouse_id || form.from_warehouse_id || '';
+    const whCode = warehouseMap[whId] || undefined;
+    return buildStockEntrySampleCsv(sampleItems.length > 0 ? sampleItems : undefined, whCode);
+  }, [sampleItems, warehouseMap, form.to_warehouse_id, form.from_warehouse_id]);
 
   /* Reset form when dialog opens / entry changes */
   React.useEffect(() => {
@@ -280,7 +311,7 @@ export function StockEntryDialog({
                   onFileSelected={handleBulkUpload}
                   onPreviewChange={setCsvPreviewActive}
                   columnsHint="Columns: Stock Entry Type, Item Code, Quantity, UOM, Basic Rate, ..."
-                  sampleCsv={STOCK_ENTRY_SAMPLE_CSV}
+                  sampleCsv={sampleCsvContent}
                   sampleFileName="stock-entry-sample.csv"
                   previewColumns={[
                     { key: 'item_id', label: 'Item Code' },

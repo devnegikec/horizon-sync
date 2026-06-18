@@ -118,7 +118,7 @@ export function RevenuePage() {
                 {!invoicesFlagLoading && invoicesFlag?.visible && (
                   <NavItem icon={DollarSign} label="Invoices" isActive={activeView === 'invoices'} onClick={() => setActiveView('invoices')} />
                 )}
-                <NavItem icon={Package} label="Payments" isActive={activeView === 'payments'} onClick={() => setActiveView('payments')} />
+                {/* Payments hidden — will be enabled later */}
               </nav>
             </div>
           </header>

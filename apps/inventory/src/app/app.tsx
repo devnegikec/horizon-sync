@@ -15,7 +15,7 @@ import { WarehouseManagement } from './components/warehouses';
 import { WMSManagement } from './components/wms/WMSManagement';
 import PublicQRValidation from './pages/PublicQRValidation';
 
-type ActiveView = 'items' | 'warehouses' | 'stock' | 'item-group' | 'qseal' | 'wms';
+type ActiveView = 'items' | 'warehouses' | 'stock' | 'item-group' | 'qseal';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -46,7 +46,6 @@ function MainApp() {
             <NavItem icon={Warehouse} label="Warehouses" isActive={activeView === 'warehouses'} onClick={() => setActiveView('warehouses')} />
             <NavItem icon={Layers} label="Item Groups" isActive={activeView === 'item-group'} onClick={() => setActiveView('item-group')} />
             <NavItem icon={Boxes} label="Stock" isActive={activeView === 'stock'} onClick={() => setActiveView('stock')} />
-            <NavItem icon={Forklift} label="WMS" isActive={activeView === 'wms'} onClick={() => setActiveView('wms')} />
             <NavItem icon={QrCode} label="QSeal" isActive={activeView === 'qseal'} onClick={() => setActiveView('qseal')} />
           </nav>
         </div>
@@ -57,7 +56,6 @@ function MainApp() {
         {activeView === 'warehouses' && <WarehouseManagement />}
         {activeView === 'item-group' && <ItemGroupManagement />}
         {activeView === 'stock' && <StockManagement />}
-        {activeView === 'wms' && <WMSManagement />}
         {activeView === 'qseal' && <QSealManagement />}
       </main>
     </div>
