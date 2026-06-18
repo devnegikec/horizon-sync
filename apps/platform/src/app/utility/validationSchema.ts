@@ -55,7 +55,7 @@ export const registerSchema = z
     phone: z
       .string()
       .min(1, 'Contact number is required')
-      .regex(/^\d+$/, 'Contact number must contain digits only'),
+      .regex(/^\d+$/, 'Invalid mobile number'),
     password: z
       .string()
       .min(8, 'Password must be at least 8 characters')

@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { Loader2 } from 'lucide-react';
-import { FieldErrors, UseFormRegister, UseFormSetValue, UseFormWatch } from 'react-hook-form';
+import { FieldErrors, UseFormClearErrors, UseFormRegister, UseFormSetValue, UseFormWatch } from 'react-hook-form';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
@@ -29,10 +29,11 @@ type RegistrationFormProps = {
   errors: ReturnType<typeof useRegistrationForm>['errors'];
   setValue: ReturnType<typeof useRegistrationForm>['setValue'];
   watch: ReturnType<typeof useRegistrationForm>['watch'];
+  clearErrors: ReturnType<typeof useRegistrationForm>['clearErrors'];
   isSubmitting: boolean;
 };
 
-function RegistrationFormBody({ register, handleSubmit, errors, setValue, watch, isSubmitting }: RegistrationFormProps) {
+function RegistrationFormBody({ register, handleSubmit, errors, setValue, watch, clearErrors, isSubmitting }: RegistrationFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <RegistrationFormInput id="email"
@@ -56,7 +57,7 @@ function RegistrationFormBody({ register, handleSubmit, errors, setValue, watch,
           error={errors.last_name}
           testId="registration-last-name" />
       </div>
-      <FormFieldsGroup register={register} errors={errors} setValue={setValue} watch={watch} />
+      <FormFieldsGroup register={register} errors={errors} setValue={setValue} watch={watch} clearErrors={clearErrors} />
       <Button type="submit"
         className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
         disabled={isSubmitting}
@@ -75,12 +76,12 @@ function RegistrationFormBody({ register, handleSubmit, errors, setValue, watch,
 }
 
 export function RegistrationForm() {
-  const { register, handleSubmit, errors, setValue, watch, isSubmitting } = useRegistrationForm();
+  const { register, handleSubmit, errors, setValue, watch, clearErrors, isSubmitting } = useRegistrationForm();
   return (
     <Card className="w-full max-w-md border-none shadow-2xl">
       <RegistrationHeader />
       <CardContent>
-        <RegistrationFormBody register={register} handleSubmit={handleSubmit} errors={errors} setValue={setValue} watch={watch} isSubmitting={isSubmitting} />
+        <RegistrationFormBody register={register} handleSubmit={handleSubmit} errors={errors} setValue={setValue} watch={watch} clearErrors={clearErrors} isSubmitting={isSubmitting} />
       </CardContent>
       <RegistrationFooter />
     </Card>
@@ -92,9 +93,10 @@ interface FormFieldsGroupProps {
   errors: FieldErrors<RegisterFormData>;
   setValue: UseFormSetValue<RegisterFormData>;
   watch: UseFormWatch<RegisterFormData>;
+  clearErrors: UseFormClearErrors<RegisterFormData>;
 }
 
-function CountryAndPhoneFields({ register, errors, setValue, watch }: FormFieldsGroupProps) {
+function CountryAndPhoneFields({ register, errors, setValue, watch, clearErrors }: FormFieldsGroupProps) {
   const selectedCountry = watch('country');
   const dialCode = watch('phone_country_code');
   const country = selectedCountry ? getCountry(selectedCountry) : undefined;
@@ -106,8 +108,9 @@ function CountryAndPhoneFields({ register, errors, setValue, watch }: FormFields
     setValue('country', code, { shouldValidate: true });
     const next = getDialCodeByCountry(code);
     if (next) setValue('phone_country_code', next, { shouldValidate: true });
-    // Re-validate phone when country changes (length rules differ).
-    setValue('phone', watch('phone') ?? '', { shouldValidate: true });
+    // Only update the phone value so the placeholder hint changes; do NOT
+    // force validation here — validation runs only on submit.
+    setValue('phone', watch('phone') ?? '', { shouldValidate: false });
   };
 
   // Strip non-digits and clamp to country-specific max length so the field
@@ -116,8 +119,10 @@ function CountryAndPhoneFields({ register, errors, setValue, watch }: FormFields
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
       const cleaned = e.target.value.replace(/\D/g, '').slice(0, maxPhoneLen);
       if (cleaned !== e.target.value) {
-        setValue('phone', cleaned, { shouldValidate: true });
+        setValue('phone', cleaned, { shouldValidate: false });
       }
+      // Clear any existing phone error as soon as the user starts typing.
+      clearErrors('phone');
     },
   });
 
@@ -181,10 +186,10 @@ function CountryAndPhoneFields({ register, errors, setValue, watch }: FormFields
   );
 }
 
-function FormFieldsGroup({ register, errors, setValue, watch }: FormFieldsGroupProps) {
+function FormFieldsGroup({ register, errors, setValue, watch, clearErrors }: FormFieldsGroupProps) {
   return (
     <>
-      <CountryAndPhoneFields register={register} errors={errors} setValue={setValue} watch={watch} />
+      <CountryAndPhoneFields register={register} errors={errors} setValue={setValue} watch={watch} clearErrors={clearErrors} />
       <RegistrationFormInput id="password"
         label="Password"
         type="password"
