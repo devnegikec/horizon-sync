@@ -68,7 +68,7 @@ const DEFAULT_VALUES: FormValues = {
   banner_image_url: '',
 };
 
-function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
+function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ className?: string }>; title: string }) {
   return (
     <div className="flex items-center gap-2 text-primary">
       <Icon className="h-4 w-4" />

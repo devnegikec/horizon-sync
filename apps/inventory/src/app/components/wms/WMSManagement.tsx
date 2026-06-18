@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Warehouse, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Truck, MapPin, PackageCheck, Boxes, Users, Monitor, Settings } from 'lucide-react';
+import { Warehouse, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Truck, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers } from 'lucide-react';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -16,9 +16,12 @@ import { LocationTreeView } from './LocationTreeView';
 import { PickListView } from './PickListView';
 import { PutAwayView } from './PutAwayView';
 import { ReceivingSlipList } from './ReceivingSlipList';
+import { Warehouse3DView } from './Warehouse3DView';
+import { WarehouseLayoutDesigner } from './WarehouseLayoutDesigner';
 import { WorkersManagementPanel } from './WorkersManagementPanel';
 
-type WMSView = 'layout' | 'inbound' | 'outbound' | 'stock' | 'manage';
+type WMSView = 'layout' | '3d' | 'inbound' | 'outbound' | 'stock' | 'manage';
+type LayoutTab = 'tree' | 'designer';
 type InboundSection = 'receiving' | 'putaway';
 type OutboundSection = 'pick' | 'gate' | 'dispatch';
 
@@ -110,6 +113,7 @@ export function WMSManagement() {
       <div className="border-b">
         <nav className="flex items-center gap-1 pb-0 overflow-x-auto">
           <NavItem icon={MapPin} label="Layout" isActive={activeView === 'layout'} onClick={() => setActiveView('layout')} />
+          <NavItem icon={Layers} label="3D View" isActive={activeView === '3d'} onClick={() => setActiveView('3d')} />
           <NavItem icon={ArrowDownToLine} label="Inbound" isActive={activeView === 'inbound'} onClick={() => setActiveView('inbound')} />
           <NavItem icon={ArrowUpFromLine} label="Outbound" isActive={activeView === 'outbound'} onClick={() => setActiveView('outbound')} />
           <NavItem icon={Boxes} label="Stock" isActive={activeView === 'stock'} onClick={() => setActiveView('stock')} />
@@ -120,19 +124,21 @@ export function WMSManagement() {
       {/* Content */}
       <div>
         {activeView === 'layout' && (
+          <LayoutView selectedWarehouseId={selectedWarehouseId} />
+        )}
+
+        {activeView === '3d' && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-lg font-semibold">Warehouse Layout</h2>
+              <h2 className="text-lg font-semibold">3D Warehouse View</h2>
               <p className="text-sm text-muted-foreground">
-                Hierarchical view of zones, aisles, bays, levels, and bins with capacity indicators.
+                Live isometric view of bin fill levels, reservations, and expiry status. Click any bin for details.
               </p>
             </div>
             {selectedWarehouseId ? (
-              <div className="border rounded-lg p-4 bg-card">
-                <LocationTreeView warehouseId={selectedWarehouseId} />
-              </div>
+              <Warehouse3DView warehouseId={selectedWarehouseId} />
             ) : (
-              <div className="text-sm text-muted-foreground p-4">Select a warehouse to view its layout.</div>
+              <div className="text-sm text-muted-foreground p-4">Select a warehouse to view the 3D layout.</div>
             )}
           </div>
         )}
@@ -305,6 +311,64 @@ export function WMSManagement() {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | null }) {
+  const [layoutTab, setLayoutTab] = React.useState<LayoutTab>('tree');
+  const [treeKey, setTreeKey] = React.useState(0);
+
+  /** Refresh the location tree after a layout is applied/updated/deleted. */
+  const handleLayoutChanged = React.useCallback(() => {
+    setTreeKey((k) => k + 1);
+    // Switch to tree tab so the user can see the change
+    setLayoutTab('tree');
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-4">
+        <div>
+          <h2 className="text-lg font-semibold">Warehouse Layout</h2>
+          <p className="text-sm text-muted-foreground">
+            View the location hierarchy or design a new layout from scratch.
+          </p>
+        </div>
+      </div>
+
+      <div className="border rounded-lg overflow-hidden">
+        <div className="flex border-b">
+          <button
+            className={cn('px-4 py-2 text-sm font-medium', layoutTab === 'tree' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+            onClick={() => setLayoutTab('tree')}>
+            <span className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              Location Tree
+            </span>
+          </button>
+          <button
+            className={cn('px-4 py-2 text-sm font-medium', layoutTab === 'designer' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+            onClick={() => setLayoutTab('designer')}>
+            <span className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Layout Designer
+            </span>
+          </button>
+        </div>
+        <div className="p-4">
+          {layoutTab === 'tree' && (
+            selectedWarehouseId
+              ? <LocationTreeView key={treeKey} warehouseId={selectedWarehouseId} />
+              : <p className="text-sm text-muted-foreground">Select a warehouse to view its layout.</p>
+          )}
+          {layoutTab === 'designer' && (
+            selectedWarehouseId
+              ? <WarehouseLayoutDesigner warehouseId={selectedWarehouseId} onApplied={handleLayoutChanged} />
+              : <p className="text-sm text-muted-foreground">Select a warehouse to use the Layout Designer.</p>
+          )}
+        </div>
       </div>
     </div>
   );
