@@ -139,16 +139,30 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<StockEntr
 
   const itemData = meta.getItemData?.(itemId);
 
+  // If the cache doesn't yet have this item (first render after import/edit),
+  // but the row already carries item_name/item_code, build a temporary
+  // PickerItem so the user sees the label immediately instead of the placeholder.
+  const csvPlaceholderItem: PickerItem | null =
+    !itemData && (row.original.item_name || row.original.item_code)
+      ? {
+          id: itemId || '',
+          item_code: row.original.item_code || '',
+          item_name: row.original.item_name || row.original.item_code || '',
+          uom: row.original.uom || null,
+          standard_rate: row.original.basic_rate != null ? String(row.original.basic_rate) : null,
+        }
+      : null;
+
   return (
     <ItemPickerSelect value={itemId}
       onValueChange={(id) => handleItemSelection(meta, row.index, id)}
       searchItems={meta.searchItems ?? defaultSearchItems}
       labelFormatter={meta.itemLabelFormatter ?? defaultLabelFormatter}
       valueKey="id"
-      placeholder="Search items..."
-      searchPlaceholder="Search items..."
+      placeholder={csvPlaceholderItem ? 'Click to select item…' : 'Search items...'}
+      searchPlaceholder={csvPlaceholderItem ? `Search: ${csvPlaceholderItem.item_name}` : 'Search items...'}
       minSearchLength={2}
-      selectedItemData={itemData || null} />
+      selectedItemData={itemData || csvPlaceholderItem} />
   );
 }
 
@@ -163,11 +177,11 @@ export function StockEntryLineItemsTable({ items, onItemsChange, disabled = fals
   React.useEffect(() => {
     let seeded = false;
     items.forEach((row) => {
-      if (row.item_id && row.item_name && !itemsCacheRef.current.has(row.item_id)) {
+      if (row.item_id && !itemsCacheRef.current.has(row.item_id)) {
         itemsCacheRef.current.set(row.item_id, {
           id: row.item_id,
           item_code: row.item_code || '',
-          item_name: row.item_name,
+          item_name: row.item_name || row.item_id,
           uom: row.uom || null,
           standard_rate: row.basic_rate != null ? String(row.basic_rate) : null,
         });
