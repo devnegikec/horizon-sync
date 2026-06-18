@@ -105,5 +105,6 @@ export function useRegistrationForm() {
     reset: form.reset,
     watch: form.watch,
     setValue: form.setValue,
+    clearErrors: form.clearErrors,
   };
 }
