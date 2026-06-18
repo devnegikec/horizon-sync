@@ -22,6 +22,7 @@ import {
 
 import { wmsWorkerApi } from '../../utility/api/wms';
 import type { WMSWorker, WMSWorkerCreate, WMSWorkerUpdate } from '../../types/wms.types';
+import { WorkersTable } from './WorkersTable';
 
 /**
  * Generate a QR code as an SVG string using a simple matrix encoding.
@@ -616,63 +617,16 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
         </div>
       </div>
 
-      {loading && workers.length === 0 && (
-        <div className="space-y-3">
-          {[1,2,3].map((i) => <Card key={i} className="animate-pulse h-16" />)}
-        </div>
-      )}
-
-      {!loading && workers.length === 0 && (
-        <div className="text-sm text-muted-foreground p-4 border rounded-lg bg-muted/40">No workers found. Add a worker to get started.</div>
-      )}
-
-      <div className="space-y-3">
-        {workers.map((w) => (
-          <Card key={w.id} className="overflow-hidden">
-            <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{w.display_name || `${w.first_name} ${w.last_name}`}</span>
-                  <Badge variant={w.status === 'active' ? 'default' : 'secondary'} className="capitalize">{w.status}</Badge>
-                  <Badge variant="outline" className="capitalize">{w.role}</Badge>
-                </div>
-                <div className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-muted-foreground">Email</span>
-                    <span>{w.email || '\u2014'}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-muted-foreground">Phone</span>
-                    <span>{w.phone || '\u2014'}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-muted-foreground">Login Username</span>
-                    <span>{w.login_username || '\u2014'}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-muted-foreground">Employee ID</span>
-                    <span>{w.employee_id || '\u2014'}</span>
-                  </div>
-                </div>
-                {w.barcode && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <QrCode className="h-3 w-3" />
-                    <span className="font-mono">{w.barcode}</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-2">
-                {w.barcode && (
-                  <Button variant="ghost" size="icon" title="Print QR Code" onClick={() => handlePrintBarcode(w.barcode!, w.display_name || `${w.first_name} ${w.last_name}`, w.employee_id)}><Printer className="h-4 w-4" /></Button>
-                )}
-                <Button variant="ghost" size="icon" title="Regenerate QR Code" onClick={() => handleRegenerateBarcode(w)}><RefreshCw className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(w)}><UserCog className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Disable" onClick={() => handleDelete(w)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <WorkersTable
+        workers={workers}
+        loading={loading}
+        onEdit={openEdit}
+        onDelete={handleDelete}
+        onPrintQR={(w) => handlePrintBarcode(w.barcode!, w.display_name || `${w.first_name} ${w.last_name}`, w.employee_id)}
+        onRegenerateQR={handleRegenerateBarcode}
+        onCreateWorker={openCreate}
+        hasSearch={!!search}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
