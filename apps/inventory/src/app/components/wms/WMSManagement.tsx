@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Warehouse, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Truck, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers } from 'lucide-react';
+import { Warehouse, ArrowDownToLine, ArrowUpFromLine, Box, ShieldCheck, Truck, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers } from 'lucide-react';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -20,8 +20,8 @@ import { Warehouse3DView } from './Warehouse3DView';
 import { WarehouseLayoutDesigner } from './WarehouseLayoutDesigner';
 import { WorkersManagementPanel } from './WorkersManagementPanel';
 
-type WMSView = 'layout' | '3d' | 'inbound' | 'outbound' | 'stock' | 'manage';
-type LayoutTab = 'tree' | 'designer';
+type WMSView = 'layout' | 'inbound' | 'outbound' | 'stock' | 'manage';
+type LayoutTab = 'tree' | 'designer' | '3d';
 type InboundSection = 'receiving' | 'putaway';
 type OutboundSection = 'pick' | 'gate' | 'dispatch';
 
@@ -113,7 +113,6 @@ export function WMSManagement() {
       <div className="border-b">
         <nav className="flex items-center gap-1 pb-0 overflow-x-auto">
           <NavItem icon={MapPin} label="Layout" isActive={activeView === 'layout'} onClick={() => setActiveView('layout')} />
-          <NavItem icon={Layers} label="3D View" isActive={activeView === '3d'} onClick={() => setActiveView('3d')} />
           <NavItem icon={ArrowDownToLine} label="Inbound" isActive={activeView === 'inbound'} onClick={() => setActiveView('inbound')} />
           <NavItem icon={ArrowUpFromLine} label="Outbound" isActive={activeView === 'outbound'} onClick={() => setActiveView('outbound')} />
           <NavItem icon={Boxes} label="Stock" isActive={activeView === 'stock'} onClick={() => setActiveView('stock')} />
@@ -125,22 +124,6 @@ export function WMSManagement() {
       <div>
         {activeView === 'layout' && (
           <LayoutView selectedWarehouseId={selectedWarehouseId} />
-        )}
-
-        {activeView === '3d' && (
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold">3D Warehouse View</h2>
-              <p className="text-sm text-muted-foreground">
-                Live isometric view of bin fill levels, reservations, and expiry status. Click any bin for details.
-              </p>
-            </div>
-            {selectedWarehouseId ? (
-              <Warehouse3DView warehouseId={selectedWarehouseId} />
-            ) : (
-              <div className="text-sm text-muted-foreground p-4">Select a warehouse to view the 3D layout.</div>
-            )}
-          </div>
         )}
 
         {activeView === 'inbound' && (
@@ -356,6 +339,14 @@ function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | nul
               Layout Designer
             </span>
           </button>
+          <button
+            className={cn('px-4 py-2 text-sm font-medium', layoutTab === '3d' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+            onClick={() => setLayoutTab('3d')}>
+            <span className="flex items-center gap-2">
+              <Box className="h-4 w-4" />
+              3D View
+            </span>
+          </button>
         </div>
         <div className="p-4">
           {layoutTab === 'tree' && (
@@ -367,6 +358,11 @@ function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | nul
             selectedWarehouseId
               ? <WarehouseLayoutDesigner warehouseId={selectedWarehouseId} onApplied={handleLayoutChanged} />
               : <p className="text-sm text-muted-foreground">Select a warehouse to use the Layout Designer.</p>
+          )}
+          {layoutTab === '3d' && (
+            selectedWarehouseId
+              ? <Warehouse3DView warehouseId={selectedWarehouseId} />
+              : <p className="text-sm text-muted-foreground">Select a warehouse to view the 3D layout.</p>
           )}
         </div>
       </div>
