@@ -87,14 +87,14 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
     if (!accessToken) return;
     setLoading(true);
     try {
-      const result = await wmsWorkerApi.list(accessToken, { warehouse_id: warehouseId, search: search || undefined });
+      const result = await wmsWorkerApi.list(accessToken, { search: search || undefined });
       setWorkers(result.workers);
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to load workers', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, [accessToken, warehouseId, search, toast]);
+  }, [accessToken, search, toast]);
 
   React.useEffect(() => { fetchWorkers(); }, [fetchWorkers]);
 

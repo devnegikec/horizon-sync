@@ -4,6 +4,8 @@ import { type Table } from '@tanstack/react-table';
 import { Users, UserCheck, UserX, Shield, Download, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+import { useUserStore } from '@horizon-sync/store';
+import { toast } from '@horizon-sync/ui';
 import {
   Card,
   CardContent,
@@ -21,7 +23,6 @@ import {
 } from '@horizon-sync/ui/components';
 import type { UsersTableUser, CreateUserModalFormData, UserDetailEditData } from '@horizon-sync/ui/components';
 import { cn } from '@horizon-sync/ui/lib';
-import { toast } from '@horizon-sync/ui';
 
 import { useCreateUser } from '../hooks/useCreateUser';
 import { usePermissions } from '../hooks/usePermissions';
@@ -33,7 +34,6 @@ import type { SystemAdminRole } from '../services/admin-role.service';
 import type { AdminUserFilters, AdminUserListItem, AdminOrgListItem } from '../types';
 import { SYSTEM_ADMIN_PERMISSIONS } from '../types/permissions';
 
-import { useUserStore } from '@horizon-sync/store';
 
 const PAGE_SIZE = 20;
 
@@ -67,9 +67,9 @@ export function UsersPage() {
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
   const organization = useUserStore((s) => s.organization);
-  const canCreate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.USERS_CREATE);
-  const canUpdate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.USERS_UPDATE);
-  const canDelete = hasPermission(SYSTEM_ADMIN_PERMISSIONS.USERS_DELETE);
+  const canCreate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.USERS_CREATE) || hasPermission('warehouse.manage');
+  const canUpdate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.USERS_UPDATE) || hasPermission('warehouse.manage');
+  const canDelete = hasPermission(SYSTEM_ADMIN_PERMISSIONS.USERS_DELETE) || hasPermission('warehouse.manage');
   const isSuperAdmin = hasPermission(SYSTEM_ADMIN_PERMISSIONS.MASTER);
   const [search, setSearch] = useState('');
   const [activeStatus, setActiveStatus] = useState<string>('all');
@@ -247,12 +247,21 @@ export function UsersPage() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard title="Total Users" value={stats.total}
-          icon={Users} iconBg="bg-slate-100 dark:bg-slate-800" iconColor="text-slate-600 dark:text-slate-400" />
-        <StatCard title="Active Users" value={stats.active}
-          icon={UserCheck} iconBg="bg-emerald-100 dark:bg-emerald-900/20" iconColor="text-emerald-600 dark:text-emerald-400" />
-        <StatCard title="Inactive Users" value={stats.inactive}
-          icon={UserX} iconBg="bg-red-100 dark:bg-red-900/20" iconColor="text-red-600 dark:text-red-400" />
+        <StatCard title="Total Users"
+value={stats.total}
+          icon={Users}
+iconBg="bg-slate-100 dark:bg-slate-800"
+iconColor="text-slate-600 dark:text-slate-400" />
+        <StatCard title="Active Users"
+value={stats.active}
+          icon={UserCheck}
+iconBg="bg-emerald-100 dark:bg-emerald-900/20"
+iconColor="text-emerald-600 dark:text-emerald-400" />
+        <StatCard title="Inactive Users"
+value={stats.inactive}
+          icon={UserX}
+iconBg="bg-red-100 dark:bg-red-900/20"
+iconColor="text-red-600 dark:text-red-400" />
       </div>
 
       {/* Filters */}
@@ -280,8 +289,7 @@ export function UsersPage() {
       </div>
 
       {/* Users Table */}
-      <UsersTable
-        users={users as (AdminUserListItem & UsersTableUser)[]}
+      <UsersTable users={users as (AdminUserListItem & UsersTableUser)[]}
         loading={isLoading}
         error={null}
         hasActiveFilters={!!search || activeStatus !== 'all'}
@@ -290,12 +298,10 @@ export function UsersPage() {
         onCreateUser={canCreate ? () => setCreateModalOpen(true) : undefined}
         onTableReady={(table) => setTableInstance(table as Table<AdminUserListItem>)}
         showOrganization
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
       {/* Create User Modal */}
-      <CreateUserModal
-        open={createModalOpen}
+      <CreateUserModal open={createModalOpen}
         onOpenChange={setCreateModalOpen}
         onSubmit={handleCreateUser}
         fieldError={fieldError}
@@ -317,12 +323,10 @@ export function UsersPage() {
           description: 'Create a user with organization assignment and role configuration',
           submitLabel: 'Create User',
           submitIcon: 'plus',
-        }}
-      />
+        }}/>
 
       {/* User Detail / Edit Modal */}
-      <UserDetailModal
-        open={detailModalOpen}
+      <UserDetailModal open={detailModalOpen}
         onOpenChange={(open) => { setDetailModalOpen(open); if (!open) { setSelectedUserId(null); setModalEditMode(false); } }}
         user={selectedUserData ?? null}
         loading={selectedUserLoading}
@@ -339,8 +343,7 @@ export function UsersPage() {
           systemAdminRoles: systemAdminRoles,
           systemAdminRolesLoading: systemAdminRolesLoading,
           masterOrganizationId: masterOrgId,
-        }}
-      />
+        }}/>
     </div>
   );
 }

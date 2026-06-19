@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import { Warehouse, ArrowDownToLine, ArrowUpFromLine, Box, ShieldCheck, Truck, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Label } from '@horizon-sync/ui/components/ui/label';
@@ -9,6 +10,7 @@ import { cn } from '@horizon-sync/ui/lib';
 
 import { useMyWarehouses } from '../../hooks/useMyWarehouses';
 import { StockManagement } from '../stock';
+
 import { DeviceManagementPanel } from './DeviceManagementPanel';
 import { DispatchList } from './DispatchList';
 import { GateVerificationPanel } from './GateVerificationPanel';
@@ -52,6 +54,15 @@ export function WMSManagement() {
   const [outboundSection, setOutboundSection] = React.useState<OutboundSection>('pick');
 
   const { warehouses, loading: warehousesLoading, refetch: refetchWarehouses } = useMyWarehouses();
+  const userPermissions = useUserStore((s) => s.permissions.permissions);
+  const canManage = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
+
+  // Redirect away from manage view if user lacks permission
+  React.useEffect(() => {
+    if (activeView === 'manage' && !canManage) {
+      setActiveView('layout');
+    }
+  }, [activeView, canManage]);
 
   // Auto-select first warehouse
   React.useEffect(() => {
@@ -116,7 +127,9 @@ export function WMSManagement() {
           <NavItem icon={ArrowDownToLine} label="Inbound" isActive={activeView === 'inbound'} onClick={() => setActiveView('inbound')} />
           <NavItem icon={ArrowUpFromLine} label="Outbound" isActive={activeView === 'outbound'} onClick={() => setActiveView('outbound')} />
           <NavItem icon={Boxes} label="Stock" isActive={activeView === 'stock'} onClick={() => setActiveView('stock')} />
-          <NavItem icon={Settings} label="Manage" isActive={activeView === 'manage'} onClick={() => setActiveView('manage')} />
+          {canManage && (
+            <NavItem icon={Settings} label="Manage" isActive={activeView === 'manage'} onClick={() => setActiveView('manage')} />
+          )}
         </nav>
       </div>
 
@@ -130,16 +143,14 @@ export function WMSManagement() {
           <div className="space-y-4">
             <div className="border rounded-lg overflow-hidden">
               <div className="flex border-b">
-                <button
-                  className={cn('px-4 py-2 text-sm font-medium', inboundSection === 'receiving' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+                <button className={cn('px-4 py-2 text-sm font-medium', inboundSection === 'receiving' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
                   onClick={() => setInboundSection('receiving')}>
                   <span className="flex items-center gap-2">
                     <Warehouse className="h-4 w-4" />
                     Receiving Slips
                   </span>
                 </button>
-                <button
-                  className={cn('px-4 py-2 text-sm font-medium', inboundSection === 'putaway' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+                <button className={cn('px-4 py-2 text-sm font-medium', inboundSection === 'putaway' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
                   onClick={() => setInboundSection('putaway')}>
                   <span className="flex items-center gap-2">
                     <PackageCheck className="h-4 w-4" />
@@ -179,24 +190,21 @@ export function WMSManagement() {
           <div className="space-y-4">
             <div className="border rounded-lg overflow-hidden">
               <div className="flex border-b">
-                <button
-                  className={cn('px-4 py-2 text-sm font-medium', outboundSection === 'pick' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+                <button className={cn('px-4 py-2 text-sm font-medium', outboundSection === 'pick' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
                   onClick={() => setOutboundSection('pick')}>
                   <span className="flex items-center gap-2">
                     <ArrowUpFromLine className="h-4 w-4" />
                     Pick Lists
                   </span>
                 </button>
-                <button
-                  className={cn('px-4 py-2 text-sm font-medium', outboundSection === 'gate' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+                <button className={cn('px-4 py-2 text-sm font-medium', outboundSection === 'gate' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
                   onClick={() => setOutboundSection('gate')}>
                   <span className="flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4" />
                     Gate Verification
                   </span>
                 </button>
-                <button
-                  className={cn('px-4 py-2 text-sm font-medium', outboundSection === 'dispatch' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+                <button className={cn('px-4 py-2 text-sm font-medium', outboundSection === 'dispatch' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
                   onClick={() => setOutboundSection('dispatch')}>
                   <span className="flex items-center gap-2">
                     <Truck className="h-4 w-4" />
@@ -260,7 +268,7 @@ export function WMSManagement() {
           <StockManagement />
         )}
 
-        {activeView === 'manage' && (
+        {activeView === 'manage' && canManage && (
           <div className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold">Manage</h2>
@@ -270,16 +278,14 @@ export function WMSManagement() {
             </div>
             <div className="border rounded-lg overflow-hidden">
               <div className="flex border-b">
-                <button
-                  className={cn('px-4 py-2 text-sm font-medium', manageSection === 'workers' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+                <button className={cn('px-4 py-2 text-sm font-medium', manageSection === 'workers' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
                   onClick={() => setManageSection('workers')}>
                   <span className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
                     Workers
                   </span>
                 </button>
-                <button
-                  className={cn('px-4 py-2 text-sm font-medium', manageSection === 'devices' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+                <button className={cn('px-4 py-2 text-sm font-medium', manageSection === 'devices' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
                   onClick={() => setManageSection('devices')}>
                   <span className="flex items-center gap-2">
                     <Monitor className="h-4 w-4" />
@@ -323,24 +329,21 @@ function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | nul
 
       <div className="border rounded-lg overflow-hidden">
         <div className="flex border-b">
-          <button
-            className={cn('px-4 py-2 text-sm font-medium', layoutTab === 'tree' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+          <button className={cn('px-4 py-2 text-sm font-medium', layoutTab === 'tree' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
             onClick={() => setLayoutTab('tree')}>
             <span className="flex items-center gap-2">
               <Layers className="h-4 w-4" />
               Location Tree
             </span>
           </button>
-          <button
-            className={cn('px-4 py-2 text-sm font-medium', layoutTab === 'designer' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+          <button className={cn('px-4 py-2 text-sm font-medium', layoutTab === 'designer' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
             onClick={() => setLayoutTab('designer')}>
             <span className="flex items-center gap-2">
               <MapPin className="h-4 w-4" />
               Layout Designer
             </span>
           </button>
-          <button
-            className={cn('px-4 py-2 text-sm font-medium', layoutTab === '3d' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+          <button className={cn('px-4 py-2 text-sm font-medium', layoutTab === '3d' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
             onClick={() => setLayoutTab('3d')}>
             <span className="flex items-center gap-2">
               <Box className="h-4 w-4" />

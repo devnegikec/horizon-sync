@@ -21,13 +21,13 @@
 
 ## 1. Overview
 
-Admins can create warehouse workers who log in **only via QR code** (no email/password). The flow:
+Admins can create warehouse workers who log in **only via QR code** (no email/password). Workers are created directly — no invitation or email verification needed. The flow:
 
 ```
-Admin creates worker → System assigns QR code → Admin downloads QR PNG → Prints it → Worker scans it
+Admin creates worker + assigns warehouses → System creates user + warehouse links → Admin downloads QR PNG → Prints it → Worker scans → Worker sees assigned warehouses
 ```
 
-The worker scans the QR with the mobile app, which sends the QR code string to `POST /identity/login/qr-code` to get JWT tokens.
+The worker scans the QR with the mobile app, which sends the QR code string to `POST /identity/login/qr-code` to get JWT tokens. `GET /warehouse-users/my-warehouses` returns only the warehouses explicitly assigned during creation.
 
 ---
 
@@ -35,8 +35,9 @@ The worker scans the QR with the mobile app, which sends the QR code string to `
 
 | Method | Path | Auth | Purpose |
 |--------|------|------|---------|
-| `POST` | `/identity/admin/create-worker` | Admin Bearer | Create a warehouse worker user |
+| `POST` | `/identity/admin/create-worker` | Admin Bearer | Create warehouse worker + assign warehouses |
 | `GET` | `/identity/workers/{user_id}/qr-image` | `warehouse.manage` | Download QR code PNG image |
+| `GET` | `/warehouses` | `warehouse.read` | List warehouses (for the warehouse picker) |
 | `POST` | `/wms-workers` | `warehouse.manage` | Create WMS worker (also creates identity User) |
 | `GET` | `/wms-workers` | `warehouse.read` | List WMS workers (includes barcode) |
 
@@ -58,30 +59,37 @@ Content-Type: application/json
 
 ```json
 {
-  "email": "rajesh.kumar@warehouse.com",
   "first_name": "Rajesh",
   "last_name": "Kumar",
-  "phone": "+91-9876543210",
   "qr_code": "WRK-A1B2C3D4E5F6",
-  "organization_id": "660e8400-e29b-41d4-a716-446655440001"
+  "organization_id": "660e8400-e29b-41d4-a716-446655440001",
+  "warehouse_ids": [
+    "880e8400-e29b-41d4-a716-446655440003",
+    "990e8400-e29b-41d4-a716-446655440004"
+  ],
+  "warehouse_role": "operator"
 }
 ```
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| `email` | string | Yes | Worker's email (unique) |
-| `first_name` | string | Yes | |
-| `last_name` | string | Yes | |
+| `first_name` | string | **Yes** | |
+| `last_name` | string | **Yes** | |
+| `qr_code` | string | **Yes** | Unique QR code string. Generate client-side |
+| `organization_id` | UUID | **Yes** | The org the worker belongs to |
+| `warehouse_ids` | UUID[] | **Yes** | Warehouses to assign. Worker will ONLY see these warehouses. |
+| `warehouse_role` | string | No | `operator` (default), `supervisor`, `manager`, `coordinator` |
+| `email` | string | No | Auto-generated as `{qr_code}@warehouse.local` if omitted |
 | `phone` | string | No | |
-| `qr_code` | string | Yes | Unique QR code string. Generate client-side or let backend generate |
-| `organization_id` | UUID | Yes | The org the worker belongs to |
+
+> ⚠️ **Important**: `warehouse_ids` is required. Without it, the worker will have **zero warehouses** and cannot do any work. This is a list — assign all warehouses the worker operates in.
 
 **Response** `201`:
 
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "rajesh.kumar@warehouse.com",
+  "email": "WRK-A1B2C3D4E5F6@warehouse.local",
   "first_name": "Rajesh",
   "last_name": "Kumar",
   "display_name": "Rajesh Kumar",
@@ -91,7 +99,11 @@ Content-Type: application/json
   "is_active": true,
   "qr_code": "WRK-A1B2C3D4E5F6",
   "organization_id": "660e8400-e29b-41d4-a716-446655440001",
-  "created_at": "2026-06-19T10:00:00Z"
+  "created_at": "2026-06-19T10:00:00Z",
+  "warehouse_assignments": [
+    "880e8400-e29b-41d4-a716-446655440003",
+    "990e8400-e29b-41d4-a716-446655440004"
+  ]
 }
 ```
 
@@ -315,43 +327,59 @@ export function WorkerQRCard({ userId, workerName }: WorkerQRProps) {
 ### Worker Creation Flow
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  Create Warehouse Worker                             │
-│                                                      │
-│  Email:    [ rajesh.kumar@warehouse.com ]            │
-│  Name:     [ Rajesh ] [ Kumar ]                      │
-│  Phone:    [ +91-9876543210 ]          (optional)    │
-│  Org:      [ Default Organization ▼ ]                │
-│                                                      │
-│  ┌─────────────────────────────────────────────┐     │
-│  │  Role: Warehouse Work User                   │     │
-│  │  • QR login only (no password needed)        │     │
-│  │  • Can scan, receive, pick (limited access)  │     │
-│  └─────────────────────────────────────────────┘     │
-│                                                      │
-│  [ Cancel ]              [ Create & Generate QR ]    │
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  Create Warehouse Worker                                  │
+│                                                           │
+│  Name:     [ Rajesh       ] [ Kumar         ]             │
+│  QR Code:  [ WRK-A1B2C3D4E5F6 ] [ 🔄 Generate ]          │
+│  Phone:    [ +91-9876543210 ]               (optional)    │
+│  Email:    [                         ]     (optional)     │
+│  Org:      [ Default Organization ▼ ]                     │
+│                                                           │
+│  Warehouses:  ┌──────────────────────────────────┐        │
+│               │ ☑ Main Warehouse (WH-001)        │        │
+│               │ ☑ North Depot (WH-002)           │        │
+│               │ ☐ South Depot (WH-003)           │        │
+│               │ ☐ Returns Center (WH-004)        │        │
+│               └──────────────────────────────────┘        │
+│                                                           │
+│  Warehouse Role:  [ operator ▼ ]                          │
+│                                                           │
+│  ┌──────────────────────────────────────────────────┐    │
+│  │  Role: Warehouse Work User                        │    │
+│  │  • QR login only (no password needed)             │    │
+│  │  • Can scan, receive, pick (limited access)       │    │
+│  │  • Will see only selected warehouses above         │    │
+│  └──────────────────────────────────────────────────┘    │
+│                                                           │
+│  [ Cancel ]              [ Create & Generate QR ]         │
+└──────────────────────────────────────────────────────────┘
 ```
+
+> 💡 **Warehouse picker**: Fetch the warehouse list from `GET /warehouses` (requires `warehouse.read` permission). Use a multi-select checkbox list. At least one warehouse must be selected.
 
 ### After Creation — QR Code Modal
 
 ```
-┌──────────────────────────────────────────┐
-│  ✅ Worker Created                        │
-│                                           │
-│     ┌─────────────────┐                   │
-│     │                 │                   │
-│     │   ██████████    │                   │
-│     │   ██ ██ ████    │  ← QR Code PNG   │
-│     │   ██████████    │                   │
-│     │                 │                   │
-│     └─────────────────┘                   │
-│                                           │
-│  Rajesh Kumar                              │
-│  rajesh.kumar@warehouse.com                │
-│                                           │
-│  [ 🖨 Print ]  [ ⬇ Download ]  [ ✕ Close ]│
-└──────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  ✅ Worker Created                                │
+│                                                   │
+│     ┌─────────────────┐                           │
+│     │                 │                           │
+│     │   ██████████    │                           │
+│     │   ██ ██ ████    │  ← QR Code PNG           │
+│     │   ██████████    │                           │
+│     │                 │                           │
+│     └─────────────────┘                           │
+│                                                   │
+│  Rajesh Kumar                                      │
+│  QR: WRK-A1B2C3D4E5F6                              │
+│  Assigned Warehouses:                              │
+│    🏭 Main Warehouse (operator)                    │
+│    🏭 North Depot (operator)                       │
+│                                                   │
+│  [ 🖨 Print ]  [ ⬇ Download ]  [ ✕ Close ]        │
+└──────────────────────────────────────────────────┘
 ```
 
 ### Worker List — QR Icon
@@ -359,12 +387,12 @@ export function WorkerQRCard({ userId, workerName }: WorkerQRProps) {
 In the users/workers list, show a QR icon next to `warehouse_worker` type users. Clicking it opens the QR modal:
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│  Name          │ Email              │ Role          │ QR │
-│──────────────────────────────────────────────────────────│
-│  Rajesh Kumar  │ rajesh@wh.com      │ Warehouse W.. │ 📱 │
-│  Priya Sharma  │ priya@wh.com       │ Warehouse W.. │ 📱 │
-└──────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│  Name          │ QR Code          │ Warehouses      │ QR          │
+│────────────────────────────────────────────────────────────────────│
+│  Rajesh Kumar  │ WRK-A1B2C3D4E5   │ WH-001, WH-002  │ 📱          │
+│  Priya Sharma  │ WRK-F6G7H8I9J0   │ WH-003          │ 📱          │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Error States
@@ -374,18 +402,22 @@ In the users/workers list, show a QR icon next to `warehouse_worker` type users.
 | QR endpoint fails (404) | "Worker not found. They may not have a QR code yet." |
 | QR endpoint fails (403) | "You don't have permission. Need warehouse.manage." |
 | QR endpoint fails (5xx) | "Server error. Try again later." |
-| Email already exists | "A user with this email already exists." |
+| Email already exists | "A user with this email already exists." (only if email was provided) |
 | QR code already in use | "This QR code is already assigned. Try generating a new one." |
+| No warehouses selected | "Select at least one warehouse. Workers need warehouse access." |
+| Warehouse assignment fails | "Worker created but warehouse assignment failed for: WH-003. Assign manually." |
 
 ---
 
 ## 8. Permission Model
 
-The `warehouse_work_user` role grants these 7 permissions:
+### Role: `warehouse_work_user`
+
+Assigned automatically on worker creation. Grants 7 permissions:
 
 | Permission | Allows |
 |------------|--------|
-| `warehouse.read` | View warehouse info (needed for put-away, bin assignment) |
+| `warehouse.read` | View warehouse info + call `GET /my-warehouses` |
 | `wms.scan` | QR/barcode scanning (inbound + outbound) |
 | `receiving_slip.create` | Create inbound receiving slips |
 | `receiving_slip.read` | View receiving slips |
@@ -393,11 +425,20 @@ The `warehouse_work_user` role grants these 7 permissions:
 | `pick_list.read` | View outbound pick lists |
 | `pick_list.update` | Update pick list status (start/finish picking) |
 
+### Warehouse Access (NEW)
+
+When `warehouse_ids` is provided, a `WarehouseUser` record is created in core-service for each warehouse. This controls **which warehouses the worker sees**:
+
+- `GET /warehouse-users/my-warehouses` returns ONLY warehouses in `warehouse_ids`
+- The `warehouse_role` field sets the operational role: `operator`, `supervisor`, `manager`, `coordinator`
+- Without warehouse assignments, the worker sees an empty list and cannot operate
+
 **Workers CANNOT**:
 - Create pick lists
 - Delete anything
 - Access admin, billing, or reporting
 - Manage other workers or devices
+- See warehouses they are not assigned to
 
 ---
 
