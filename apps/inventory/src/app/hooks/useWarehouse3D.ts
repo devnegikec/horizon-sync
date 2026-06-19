@@ -86,61 +86,10 @@ export function useWarehouse3D(warehouseId: string | null): UseWarehouse3DResult
   const [statusLoading, setStatusLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Real-time WebSocket — merge bin events without waiting for the poll interval
-  const wsUrl = warehouseId && accessToken ? toWsUrl(warehouseId, accessToken) : null;
+  // Real-time WebSocket — DISABLED for now (will re-enable with future requirements)
+  // const wsUrl = warehouseId && accessToken ? toWsUrl(warehouseId, accessToken) : null;
 
-  const handleWsMessage = React.useCallback((event: MessageEvent) => {
-    try {
-      const msg = JSON.parse(event.data as string) as {
-        type: string;
-        bin_id: string;
-        worker_id?: string;
-        expires_in_seconds?: number;
-      };
-      setStatus((prev) => {
-        if (!prev) return prev;
-        const exists = prev.bins.some((b) => b.bin_id === msg.bin_id);
-        const updated = exists
-          ? prev.bins.map((b) => {
-              if (b.bin_id !== msg.bin_id) return b;
-              if (msg.type === 'bin_reserved') {
-                return {
-                  ...b,
-                  is_reserved: true,
-                  reserved_by:
-                    msg.worker_id != null
-                      ? { worker_id: msg.worker_id, expires_in_seconds: msg.expires_in_seconds ?? 0 }
-                      : null,
-                };
-              }
-              if (msg.type === 'bin_released') {
-                return { ...b, is_reserved: false, reserved_by: null };
-              }
-              return b;
-            })
-          : [
-              ...prev.bins,
-              {
-                bin_id: msg.bin_id,
-                fill_percentage: 0,
-                is_reserved: msg.type === 'bin_reserved',
-                reserved_by:
-                  msg.type === 'bin_reserved' && msg.worker_id
-                    ? { worker_id: msg.worker_id, expires_in_seconds: msg.expires_in_seconds ?? 0 }
-                    : null,
-              } satisfies StatusBin,
-            ];
-        return { ...prev, bins: updated };
-      });
-    } catch {
-      /* ignore parse errors */
-    }
-  }, []);
-
-  const { connected: wsConnected } = useWebSocket(wsUrl, {
-    onMessage: handleWsMessage,
-    enabled: !!wsUrl,
-  });
+  const { connected: wsConnected } = { connected: false };
 
   const fetchLayout = React.useCallback(async () => {
     if (!warehouseId || !accessToken) return;

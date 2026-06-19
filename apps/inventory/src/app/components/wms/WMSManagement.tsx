@@ -8,6 +8,7 @@ import { Label } from '@horizon-sync/ui/components/ui/label';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useMyWarehouses } from '../../hooks/useMyWarehouses';
+import { useUserStore } from '@horizon-sync/store';
 import { StockManagement } from '../stock';
 import { DeviceManagementPanel } from './DeviceManagementPanel';
 import { DispatchList } from './DispatchList';
@@ -300,13 +301,14 @@ export function WMSManagement() {
 }
 
 function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | null }) {
-  const [layoutTab, setLayoutTab] = React.useState<LayoutTab>('tree');
+  const userPermissions = useUserStore((s) => s.permissions.permissions);
+  const canDesignLayout = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
+  const [layoutTab, setLayoutTab] = React.useState<LayoutTab>(canDesignLayout ? 'designer' : 'tree');
   const [treeKey, setTreeKey] = React.useState(0);
 
   /** Refresh the location tree after a layout is applied/updated/deleted. */
   const handleLayoutChanged = React.useCallback(() => {
     setTreeKey((k) => k + 1);
-    // Switch to tree tab so the user can see the change
     setLayoutTab('tree');
   }, []);
 
@@ -323,20 +325,22 @@ function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | nul
 
       <div className="border rounded-lg overflow-hidden">
         <div className="flex border-b">
+          {canDesignLayout && (
+            <button
+              className={cn('px-4 py-2 text-sm font-medium', layoutTab === 'designer' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+              onClick={() => setLayoutTab('designer')}>
+              <span className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Layout Designer
+              </span>
+            </button>
+          )}
           <button
             className={cn('px-4 py-2 text-sm font-medium', layoutTab === 'tree' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
             onClick={() => setLayoutTab('tree')}>
             <span className="flex items-center gap-2">
               <Layers className="h-4 w-4" />
               Location Tree
-            </span>
-          </button>
-          <button
-            className={cn('px-4 py-2 text-sm font-medium', layoutTab === 'designer' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
-            onClick={() => setLayoutTab('designer')}>
-            <span className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              Layout Designer
             </span>
           </button>
           <button
@@ -349,15 +353,15 @@ function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | nul
           </button>
         </div>
         <div className="p-4">
+          {layoutTab === 'designer' && canDesignLayout && (
+            selectedWarehouseId
+              ? <WarehouseLayoutDesigner warehouseId={selectedWarehouseId} onApplied={handleLayoutChanged} />
+              : <p className="text-sm text-muted-foreground">Select a warehouse to use the Layout Designer.</p>
+          )}
           {layoutTab === 'tree' && (
             selectedWarehouseId
               ? <LocationTreeView key={treeKey} warehouseId={selectedWarehouseId} />
               : <p className="text-sm text-muted-foreground">Select a warehouse to view its layout.</p>
-          )}
-          {layoutTab === 'designer' && (
-            selectedWarehouseId
-              ? <WarehouseLayoutDesigner warehouseId={selectedWarehouseId} onApplied={handleLayoutChanged} />
-              : <p className="text-sm text-muted-foreground">Select a warehouse to use the Layout Designer.</p>
           )}
           {layoutTab === '3d' && (
             selectedWarehouseId

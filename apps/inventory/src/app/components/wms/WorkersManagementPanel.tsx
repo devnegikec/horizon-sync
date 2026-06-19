@@ -97,7 +97,7 @@ interface WorkersManagementPanelProps {
 export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const userPermissions = useUserStore((s) => s.permissions.permissions);
-  const canCreateWorkers = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
+  const canCreateWorkers = userPermissions.includes('warehouse.manage') || userPermissions.includes('wms_worker.manage') || userPermissions.includes('*.*');
   const canPrintQR = canCreateWorkers || userPermissions.includes('warehouse.read');
   const { toast } = useToast();
   const [workers, setWorkers] = React.useState<WMSWorker[]>([]);
