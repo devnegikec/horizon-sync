@@ -20,6 +20,9 @@ interface WorkerColumnsProps {
   onDelete: (worker: WMSWorker) => void;
   onPrintQR: (worker: WMSWorker) => void;
   onRegenerateQR: (worker: WMSWorker) => void;
+  showEditAction?: boolean;
+  showDeleteAction?: boolean;
+  showRegenerateAction?: boolean;
 }
 
 function getStatusBadge(status: string) {
@@ -53,6 +56,9 @@ export function createWorkerColumns({
   onDelete,
   onPrintQR,
   onRegenerateQR,
+  showEditAction = true,
+  showDeleteAction = true,
+  showRegenerateAction = true,
 }: WorkerColumnsProps): ColumnDef<WMSWorker>[] {
   return [
     {
@@ -144,25 +150,33 @@ export function createWorkerColumns({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(worker)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
+              {showEditAction && (
+                <DropdownMenuItem onClick={() => onEdit(worker)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+              )}
               {worker.barcode && (
                 <DropdownMenuItem onClick={() => onPrintQR(worker)}>
                   <Printer className="mr-2 h-4 w-4" />
                   Print QR Code
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => onRegenerateQR(worker)}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Regenerate QR Code
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive" onClick={() => onDelete(worker)}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Disable
-              </DropdownMenuItem>
+              {showRegenerateAction && (
+                <DropdownMenuItem onClick={() => onRegenerateQR(worker)}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Regenerate QR Code
+                </DropdownMenuItem>
+              )}
+              {showDeleteAction && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive" onClick={() => onDelete(worker)}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Disable
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         );

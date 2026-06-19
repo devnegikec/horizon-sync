@@ -165,6 +165,27 @@ export function UserViewDialog({ user, isOpen, onClose }: UserViewDialogProps) {
             <p className="text-sm text-muted-foreground py-2">No roles assigned</p>
           )}
 
+          {/* Warehouse Assignments (shown for WMS roles) */}
+          {user.extra_data && Array.isArray(user.extra_data.warehouse_ids) && (user.extra_data.warehouse_ids as string[]).length > 0 && (
+            <div className="mt-2 rounded-md border bg-muted/30 p-2.5 space-y-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Assigned Warehouses
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {(user.extra_data.warehouse_ids as string[]).map((id) => (
+                  <Badge key={id} variant="outline" className="text-xs font-mono">
+                    {id.length > 12 ? `${id.slice(0, 8)}…` : id}
+                  </Badge>
+                ))}
+              </div>
+              {typeof user.extra_data?.warehouse_role === 'string' && (
+                <p className="text-[10px] text-muted-foreground">
+                  Warehouse role: <span className="font-medium capitalize">{user.extra_data.warehouse_role}</span>
+                </p>
+              )}
+            </div>
+          )}
+
           <Separator className="my-3" />
 
           {/* Activity */}
