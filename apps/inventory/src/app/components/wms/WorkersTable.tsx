@@ -15,11 +15,11 @@ import { createWorkerColumns } from './WorkerColumns';
 export interface WorkersTableProps {
   workers: WMSWorker[];
   loading: boolean;
-  onEdit: (worker: WMSWorker) => void;
-  onDelete: (worker: WMSWorker) => void;
+  onEdit?: (worker: WMSWorker) => void;
+  onDelete?: (worker: WMSWorker) => void;
   onPrintQR: (worker: WMSWorker) => void;
-  onRegenerateQR: (worker: WMSWorker) => void;
-  onCreateWorker: () => void;
+  onRegenerateQR?: (worker: WMSWorker) => void;
+  onCreateWorker?: () => void;
   hasSearch: boolean;
 }
 
@@ -53,9 +53,9 @@ export function WorkersTable({
     setConfirmLoading(true);
     try {
       if (confirmDialog.action === 'delete') {
-        onDelete(confirmDialog.worker);
+        onDelete?.(confirmDialog.worker);
       } else {
-        onRegenerateQR(confirmDialog.worker);
+        onRegenerateQR?.(confirmDialog.worker);
       }
     } finally {
       setConfirmLoading(false);
@@ -84,12 +84,15 @@ export function WorkersTable({
   const columns = React.useMemo(
     () =>
       createWorkerColumns({
-        onEdit,
-        onDelete: handleDeleteClick,
+        onEdit: onEdit ?? (() => {}),
+        onDelete: onDelete ? handleDeleteClick : () => {},
         onPrintQR,
-        onRegenerateQR: handleRegenerateClick,
+        onRegenerateQR: onRegenerateQR ? handleRegenerateClick : () => {},
+        showEditAction: !!onEdit,
+        showDeleteAction: !!onDelete,
+        showRegenerateAction: !!onRegenerateQR,
       }),
-    [onEdit, handleDeleteClick, onPrintQR, handleRegenerateClick],
+    [onEdit, onDelete, handleDeleteClick, onPrintQR, onRegenerateQR, handleRegenerateClick],
   );
 
   if (loading) {
@@ -112,7 +115,7 @@ export function WorkersTable({
               title="No workers found"
               description={hasSearch ? 'Try adjusting your search' : 'Get started by adding your first warehouse worker'}
               action={
-                !hasSearch ? (
+                !hasSearch && onCreateWorker ? (
                   <Button onClick={onCreateWorker} className="gap-2">
                     <Plus className="h-4 w-4" />
                     Add Worker

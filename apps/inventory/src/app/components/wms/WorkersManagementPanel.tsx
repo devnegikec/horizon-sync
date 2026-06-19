@@ -23,6 +23,7 @@ import {
 import { wmsWorkerApi } from '../../utility/api/wms';
 import type { WMSWorker, WMSWorkerCreate, WMSWorkerUpdate } from '../../types/wms.types';
 import { WorkersTable } from './WorkersTable';
+import { environment } from '../../../environments/environment';
 
 /**
  * Generate a QR code as an SVG string using a simple matrix encoding.
@@ -95,6 +96,9 @@ interface WorkersManagementPanelProps {
 
 export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const userPermissions = useUserStore((s) => s.permissions.permissions);
+  const canCreateWorkers = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
+  const canPrintQR = canCreateWorkers || userPermissions.includes('warehouse.read');
   const { toast } = useToast();
   const [workers, setWorkers] = React.useState<WMSWorker[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -328,9 +332,10 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
 
   const doPrint = () => {
     if (!printTarget) return;
-    const win = window.open('', '_blank', 'width=400,height=300');
+    const win = window.open('', '_blank', 'width=400,height=400');
     if (!win) return;
-    const barcodeSvg = buildQRCodeSVG(printTarget.barcode);
+    const loginUrl = `${environment.apiCoreUrl}/api/v1/wms-workers/login/qr?code=${encodeURIComponent(printTarget.barcode)}`;
+    const barcodeSvg = buildQRCodeSVG(loginUrl);
     const employeeIdLine = printTarget.employee_id
       ? `<div class="emp-id">Emp ID: ${printTarget.employee_id}</div>`
       : '';
@@ -343,8 +348,9 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
         .qrcode { margin:12px 0; }
         .qrcode svg { max-width:100%; height:auto; }
         .text { font-size:12px; color:#666; }
+        .hint { font-size:10px; color:#999; margin-top:4px; }
       </style></head>
-      <body><div class="label"><div class="name">${printTarget.name}</div>${employeeIdLine}<div class="text">Worker QR Code</div><div class="qrcode">${barcodeSvg}</div></div></body></html>
+      <body><div class="label"><div class="name">${printTarget.name}</div>${employeeIdLine}<div class="text">Scan to Login</div><div class="qrcode">${barcodeSvg}</div><div class="hint">ID: ${printTarget.barcode}</div></div></body></html>
     `);
     win.document.close();
     win.focus();
@@ -569,7 +575,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
     const win = window.open('', '_blank');
     if (!win) return;
     const pages = selectedWorkers.map((w, idx) => {
-      const barcodeSvg = buildQRCodeSVG(w.barcode!);
+      const barcodeSvg = buildQRCodeSVG(`${environment.apiCoreUrl}/api/v1/wms-workers/login/qr?code=${encodeURIComponent(w.barcode!)}`);
       const name = w.display_name || `${w.first_name} ${w.last_name}`;
       const employeeIdLine = w.employee_id
         ? `<div style="font-size:12px;color:#444;margin-bottom:2px;">Emp ID: ${w.employee_id}</div>`
@@ -603,28 +609,34 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
         <Input placeholder="Search workers..." value={search} onChange={(e) => setSearch(e.target.value)} className="sm:w-80" />
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={fetchWorkers}><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
-          <Button variant="outline" size="sm" onClick={openPrintAll}><Printer className="h-4 w-4 mr-1" />Print All QR Codes</Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm"><FileDown className="h-4 w-4 mr-1" />Worker Import/Export <ChevronDown className="h-3 w-3 ml-1" /></Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)}><Upload className="h-4 w-4 mr-2" />Import Workers</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}><Download className="h-4 w-4 mr-2" />Export Workers</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Add Worker</Button>
+          {canPrintQR && (
+            <Button variant="outline" size="sm" onClick={openPrintAll}><Printer className="h-4 w-4 mr-1" />Print All QR Codes</Button>
+          )}
+          {canCreateWorkers && (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm"><FileDown className="h-4 w-4 mr-1" />Worker Import/Export <ChevronDown className="h-3 w-3 ml-1" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)}><Upload className="h-4 w-4 mr-2" />Import Workers</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}><Download className="h-4 w-4 mr-2" />Export Workers</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Add Worker</Button>
+            </>
+          )}
         </div>
       </div>
 
       <WorkersTable
         workers={workers}
         loading={loading}
-        onEdit={openEdit}
-        onDelete={handleDelete}
+        onEdit={canCreateWorkers ? openEdit : undefined}
+        onDelete={canCreateWorkers ? handleDelete : undefined}
         onPrintQR={(w) => handlePrintBarcode(w.barcode!, w.display_name || `${w.first_name} ${w.last_name}`, w.employee_id)}
-        onRegenerateQR={handleRegenerateBarcode}
-        onCreateWorker={openCreate}
+        onRegenerateQR={canCreateWorkers ? handleRegenerateBarcode : undefined}
+        onCreateWorker={canCreateWorkers ? openCreate : undefined}
         hasSearch={!!search}
       />
 
@@ -755,7 +767,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 {printTarget.employee_id && (
                   <div className="text-xs text-muted-foreground">Emp ID: {printTarget.employee_id}</div>
                 )}
-                <div className="flex justify-center" dangerouslySetInnerHTML={{ __html: buildQRCodeSVG(printTarget.barcode) }} />
+                <div className="flex justify-center" dangerouslySetInnerHTML={{ __html: buildQRCodeSVG(`${environment.apiCoreUrl}/api/v1/wms-workers/login/qr?code=${encodeURIComponent(printTarget.barcode)}`) }} />
                 <div className="font-mono text-xs text-muted-foreground tracking-widest">{printTarget.barcode}</div>
               </>
             )}

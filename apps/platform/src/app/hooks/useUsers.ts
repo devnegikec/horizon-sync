@@ -11,6 +11,8 @@ interface PendingInvitation {
   email: string;
   first_name?: string | null;
   last_name?: string | null;
+  role_name?: string | null;
+  extra_data?: Record<string, unknown> | null;
   status: string;
   created_at: string;
 }
@@ -137,7 +139,8 @@ export function useUsers(
             invitation.first_name || invitation.last_name
               ? `${invitation.first_name ?? ''} ${invitation.last_name ?? ''}`.trim()
               : invitation.email,
-          user_type: 'regular',
+          user_type: invitation.role_name || 'regular',
+          roles: invitation.role_name ? [invitation.role_name] : [],
           status: invitation.status,
           email_verified: false,
           last_login_at: null,
@@ -145,6 +148,7 @@ export function useUsers(
           avatar_url: null,
           phone: null,
           mfa_enabled: false,
+          extra_data: invitation.extra_data,
         }));
       }
 
