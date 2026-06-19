@@ -117,12 +117,21 @@ export function createWorkerColumns({
       accessorKey: 'barcode',
       header: 'QR Code',
       cell: ({ row }) => {
-        const barcode = row.original.barcode;
-        return barcode ? (
-          <div className="flex items-center gap-1.5 text-sm">
-            <QrCode className="h-3.5 w-3.5 text-muted-foreground" />
-            <code className="text-xs font-mono">{barcode}</code>
-          </div>
+        const code = row.original.barcode || row.original.qr_code;
+        return code ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-xs h-7 px-2"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPrintQR(row.original);
+            }}
+            title="Print QR Code for mobile login"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            <code className="text-xs font-mono">{code}</code>
+          </Button>
         ) : (
           <span className="text-muted-foreground text-sm">{'\u2014'}</span>
         );
@@ -156,7 +165,7 @@ export function createWorkerColumns({
                   Edit
                 </DropdownMenuItem>
               )}
-              {worker.barcode && (
+              {(worker.barcode || worker.qr_code) && (
                 <DropdownMenuItem onClick={() => onPrintQR(worker)}>
                   <Printer className="mr-2 h-4 w-4" />
                   Print QR Code

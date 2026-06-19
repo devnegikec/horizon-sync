@@ -469,6 +469,7 @@ export interface WMSWorker {
   phone: string | null;
   login_username: string | null;
   barcode: string | null;
+  qr_code?: string | null;
   employee_id: string | null;
   role: string;
   status: string;
@@ -495,6 +496,10 @@ export interface WMSWorkerCreate {
   employee_id?: string | null;
   password?: string | null;
   barcode?: string | null;
+  qr_code?: string | null;
+  organization_id?: string;
+  warehouse_ids?: string[];
+  warehouse_role?: string;
   role?: string;
   status?: string;
 }
