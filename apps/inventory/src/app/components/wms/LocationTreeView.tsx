@@ -207,6 +207,27 @@ const columns: ColumnDef<FlatRow>[] = [
 ];
 
 // ============================================
+// HOVER TOOLTIP BUILDER
+// ============================================
+
+function buildRowTooltip(node: FlatRow): string {
+  const lines: string[] = [];
+  lines.push(`${node.location_type.toUpperCase()}: ${node.code}`);
+  if (node.name) lines.push(`Name: ${node.name}`);
+  if (node.full_path) lines.push(`Path: ${node.full_path}`);
+  const cap = Number(node.derived_capacity) || 0;
+  const avail = Number(node.derived_available) || 0;
+  if (cap > 0) {
+    const used = cap - avail;
+    const pct = Math.round((used / cap) * 100);
+    lines.push(`Capacity: ${used.toLocaleString()} / ${cap.toLocaleString()} (${pct}% used)`);
+    lines.push(`Available: ${avail.toLocaleString()}`);
+  }
+  lines.push(`Status: ${node.is_active ? 'Active' : 'Inactive'}`);
+  return lines.join('\n');
+}
+
+// ============================================
 // MAIN COMPONENT
 // ============================================
 
@@ -304,11 +325,15 @@ export function LocationTreeView({ warehouseId, onSelect }: LocationTreeViewProp
               {table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}
                   className={cn(
-                    'cursor-pointer transition-colors',
+                    'cursor-pointer transition-colors group',
                     !row.original.is_active && 'opacity-50',
-                    row.depth === 0 && 'bg-muted/30 font-medium',
-                    row.depth === 1 && 'bg-muted/10',
+                    row.depth === 0 && 'bg-muted/30 font-semibold text-sm',
+                    row.depth === 1 && 'bg-muted/10 text-sm',
+                    row.depth === 2 && 'text-[13px]',
+                    row.depth === 3 && 'text-xs',
+                    row.depth >= 4 && 'text-[11px]',
                   )}
+                  title={buildRowTooltip(row.original)}
                   onClick={() => onSelect?.(row.original)}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
