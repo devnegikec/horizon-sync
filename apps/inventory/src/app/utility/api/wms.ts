@@ -296,7 +296,7 @@ export const wmsWorkerApi = {
     req<void>(`${IDENTITY_BASE}/identity/workers/${id}`, token, { method: 'DELETE' }),
 
   regenerateBarcode: (token: string, id: string) =>
-    req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}/regenerate-barcode`, token, { method: 'POST', body: '{}' }),
+    req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}/regenerate-qr`, token, { method: 'POST', body: '{}' }),
 
   barcodeLogin: (barcode: string) =>
     req<{ access_token: string; token_type: string; expires_in: number; worker: WMSWorker }>(`${BASE}/wms-workers/login/barcode`, '', {

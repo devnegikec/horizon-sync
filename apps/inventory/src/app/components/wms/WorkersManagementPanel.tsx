@@ -46,8 +46,23 @@ interface WorkersManagementPanelProps {
 export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const userPermissions = useUserStore((s) => s.permissions.permissions);
+  const user = useUserStore((s) => s.user);
   const organization = useUserStore((s) => s.organization);
-  const organizationId = organization?.id || '';
+  const organizationId = organization?.id || user?.organization_id || '';
+
+  // DEBUG: Log store state to diagnose missing organization_id
+  React.useEffect(() => {
+    const fullState = useUserStore.getState();
+    console.log('[Workers Debug] Store snapshot:', {
+      hasUser: !!fullState.user,
+      userOrgId: fullState.user?.organization_id,
+      hasOrganization: !!fullState.organization,
+      orgId: fullState.organization?.id,
+      resolvedOrgId: organizationId,
+      isAuthenticated: fullState.isAuthenticated,
+    });
+  }, [organizationId]);
+
   const canCreateWorkers = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
   const canPrintQR = canCreateWorkers || userPermissions.includes('warehouse.read');
   const { toast } = useToast();
