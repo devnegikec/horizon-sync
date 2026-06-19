@@ -120,7 +120,7 @@ const columns: ColumnDef<FlatRow>[] = [
     id: 'type',
     header: 'Type / Code',
     cell: ({ row }) => (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         <ExpandCell row={row} />
         <span className="font-mono text-sm font-medium">{row.original.code}</span>
       </div>
@@ -195,16 +195,37 @@ const columns: ColumnDef<FlatRow>[] = [
     header: 'Status',
     cell: ({ row }) => (
       <span className={cn(
-          'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-          row.original.is_active
-            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
-        )}>
+        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+        row.original.is_active
+          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+          : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
+      )}>
         {row.original.is_active ? 'Active' : 'Inactive'}
       </span>
     ),
   },
 ];
+
+// ============================================
+// HOVER TOOLTIP BUILDER
+// ============================================
+
+function buildRowTooltip(node: FlatRow): string {
+  const lines: string[] = [];
+  lines.push(`${node.location_type.toUpperCase()}: ${node.code}`);
+  if (node.name) lines.push(`Name: ${node.name}`);
+  if (node.full_path) lines.push(`Path: ${node.full_path}`);
+  const cap = Number(node.derived_capacity) || 0;
+  const avail = Number(node.derived_available) || 0;
+  if (cap > 0) {
+    const used = cap - avail;
+    const pct = Math.round((used / cap) * 100);
+    lines.push(`Capacity: ${used.toLocaleString()} / ${cap.toLocaleString()} (${pct}% used)`);
+    lines.push(`Available: ${avail.toLocaleString()}`);
+  }
+  lines.push(`Status: ${node.is_active ? 'Active' : 'Inactive'}`);
+  return lines.join('\n');
+}
 
 // ============================================
 // MAIN COMPONENT
@@ -304,11 +325,15 @@ export function LocationTreeView({ warehouseId, onSelect }: LocationTreeViewProp
               {table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}
                   className={cn(
-                    'cursor-pointer transition-colors',
+                    'cursor-pointer transition-colors group',
                     !row.original.is_active && 'opacity-50',
-                    row.depth === 0 && 'bg-muted/30 font-medium',
-                    row.depth === 1 && 'bg-muted/10',
+                    row.depth === 0 && 'bg-muted/30 font-semibold text-sm',
+                    row.depth === 1 && 'bg-muted/10 text-sm',
+                    row.depth === 2 && 'text-[13px]',
+                    row.depth === 3 && 'text-xs',
+                    row.depth >= 4 && 'text-[11px]',
                   )}
+                  title={buildRowTooltip(row.original)}
                   onClick={() => onSelect?.(row.original)}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

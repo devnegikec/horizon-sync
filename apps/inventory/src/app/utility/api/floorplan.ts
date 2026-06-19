@@ -64,4 +64,12 @@ export const floorPlanApi = {
       token,
       { method: 'DELETE' },
     ),
+
+  /** Reset warehouse layout — delete ALL plans and locations for a fresh start. */
+  reset: (token: string, warehouseId: string) =>
+    req<{ warehouse_id: string; plans_deleted: number; locations_removed: number }>(
+      `${BASE}/reset?warehouse_id=${warehouseId}`,
+      token,
+      { method: 'POST' },
+    ),
 };

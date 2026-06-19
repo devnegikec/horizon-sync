@@ -6,21 +6,25 @@
 export interface AisleSpec {
   code: string;
   name?: string | null;
-  orientation: 'x' | 'y';
-  grid_x: number;
-  grid_y: number;
-  num_bays: number;
-  bay_spacing: number;
+  direction: 'horizontal' | 'vertical';
+  position_along: number;
+  position_start: number;
+  corridor_width: number;
+  rows: 'both' | 'left_only' | 'right_only';
   num_levels: number;
+  level_height: number;
   bins_per_level: number;
   bin_capacity: number;
+  num_bays_per_row: number;
+  bay_depth: number;
 }
 
 export interface ZoneSpec {
   code: string;
   name?: string | null;
-  grid_x: number;
-  grid_y: number;
+  offset_x: number;
+  offset_y: number;
+  aisle_spacing: number;
   aisles: AisleSpec[];
 }
 
@@ -104,25 +108,33 @@ export interface FloorPlanDeleteResponse {
 export function defaultAisleSpec(): AisleSpec {
   return {
     code: '',
-    name: null,
-    orientation: 'x',
-    grid_x: 0,
-    grid_y: 0,
-    num_bays: 4,
-    bay_spacing: 1.5,
-    num_levels: 3,
+    name: 'New Aisle',
+    direction: 'horizontal',
+    position_along: 0,
+    position_start: 0,
+    corridor_width: 3.0,
+    rows: 'both',
+    num_levels: 5,
+    level_height: 1.4,
     bins_per_level: 1,
     bin_capacity: 100,
+    num_bays_per_row: 10,
+    bay_depth: 1.8,
   };
 }
 
 export function defaultZoneSpec(): ZoneSpec {
+  const aisle = defaultAisleSpec();
+  aisle.code = 'A-01';
+  aisle.name = 'Aisle 1';
+  aisle.rows = 'both';
   return {
-    code: '',
+    code: 'Z-01',
     name: null,
-    grid_x: 0,
-    grid_y: 0,
-    aisles: [defaultAisleSpec()],
+    offset_x: 0,
+    offset_y: 0,
+    aisle_spacing: 6.5,
+    aisles: [aisle],
   };
 }
 
@@ -143,297 +155,59 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
   {
     id: 'small-warehouse',
     name: 'Small Warehouse',
-    description: '1 zone, 2 aisles, 24 bins — ideal for small stockrooms',
-    config: {
-      grid_unit: 1.0,
-      zones: [
-        {
-          code: 'A',
-          name: 'Main Storage',
-          grid_x: 0,
-          grid_y: 0,
-          aisles: [
-            {
-              code: 'A01',
-              name: 'Aisle 1',
-              orientation: 'x',
-              grid_x: 0,
-              grid_y: 0,
-              num_bays: 4,
-              bay_spacing: 1.5,
-              num_levels: 3,
-              bins_per_level: 1,
-              bin_capacity: 100,
-            },
-            {
-              code: 'A02',
-              name: 'Aisle 2',
-              orientation: 'x',
-              grid_x: 0,
-              grid_y: 3,
-              num_bays: 4,
-              bay_spacing: 1.5,
-              num_levels: 3,
-              bins_per_level: 1,
-              bin_capacity: 100,
-            },
-          ],
-        },
-      ],
-    },
+    description: '1 zone, 2 aisles (corridor), 5 levels, 100 bins — small stockroom',
+    config: { grid_unit: 1.0, zones: [{ code: 'Z-01', name: 'Main Storage', offset_x: 0, offset_y: 0, aisle_spacing: 6.5, aisles: [
+      { code: 'A-01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'right_only', num_levels: 5, level_height: 1.4, bins_per_level: 1, bin_capacity: 100, num_bays_per_row: 10, bay_depth: 1.8 },
+      { code: 'A-02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'left_only', num_levels: 5, level_height: 1.4, bins_per_level: 1, bin_capacity: 100, num_bays_per_row: 10, bay_depth: 1.8 },
+    ] }] },
   },
   {
     id: 'medium-warehouse',
     name: 'Medium Warehouse',
-    description: '2 zones, 4 aisles, 96 bins — standard distribution center',
-    config: {
-      grid_unit: 1.0,
-      zones: [
-        {
-          code: 'A',
-          name: 'Fast Movers',
-          grid_x: 0,
-          grid_y: 0,
-          aisles: [
-            {
-              code: 'A01',
-              name: 'Aisle 1',
-              orientation: 'x',
-              grid_x: 0,
-              grid_y: 0,
-              num_bays: 6,
-              bay_spacing: 1.5,
-              num_levels: 4,
-              bins_per_level: 1,
-              bin_capacity: 150,
-            },
-            {
-              code: 'A02',
-              name: 'Aisle 2',
-              orientation: 'x',
-              grid_x: 0,
-              grid_y: 3,
-              num_bays: 6,
-              bay_spacing: 1.5,
-              num_levels: 4,
-              bins_per_level: 1,
-              bin_capacity: 150,
-            },
-          ],
-        },
-        {
-          code: 'B',
-          name: 'Bulk Storage',
-          grid_x: 0,
-          grid_y: 10,
-          aisles: [
-            {
-              code: 'B01',
-              name: 'Aisle 3',
-              orientation: 'x',
-              grid_x: 0,
-              grid_y: 0,
-              num_bays: 6,
-              bay_spacing: 1.5,
-              num_levels: 2,
-              bins_per_level: 1,
-              bin_capacity: 500,
-            },
-            {
-              code: 'B02',
-              name: 'Aisle 4',
-              orientation: 'x',
-              grid_x: 0,
-              grid_y: 3,
-              num_bays: 6,
-              bay_spacing: 1.5,
-              num_levels: 2,
-              bins_per_level: 1,
-              bin_capacity: 500,
-            },
-          ],
-        },
-      ],
-    },
+    description: '2 zones, 4 aisles, 5 levels, 400 bins — standard distribution',
+    config: { grid_unit: 1.0, zones: [
+      { code: 'Z-01', name: 'Fast Movers', offset_x: 0, offset_y: 0, aisle_spacing: 6.5, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'right_only', num_levels: 5, level_height: 1.4, bins_per_level: 1, bin_capacity: 150, num_bays_per_row: 15, bay_depth: 1.8 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'both', num_levels: 5, level_height: 1.4, bins_per_level: 1, bin_capacity: 150, num_bays_per_row: 15, bay_depth: 1.8 },
+      ] },
+      { code: 'Z-02', name: 'Bulk Storage', offset_x: 0, offset_y: 50, aisle_spacing: 6.5, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 4.0, rows: 'both', num_levels: 3, level_height: 2.0, bins_per_level: 1, bin_capacity: 500, num_bays_per_row: 10, bay_depth: 2.0 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 4.0, rows: 'left_only', num_levels: 3, level_height: 2.0, bins_per_level: 1, bin_capacity: 500, num_bays_per_row: 10, bay_depth: 2.0 },
+      ] },
+    ] },
   },
   {
     id: 'large-warehouse',
     name: 'Large Warehouse',
-    description: '3 zones, 6 aisles, 216 bins — high-density racking layout',
-    config: {
-      grid_unit: 1.0,
-      zones: [
-        {
-          code: 'A',
-          name: 'Picking Zone',
-          grid_x: 0,
-          grid_y: 0,
-          aisles: [
-            {
-              code: 'A01',
-              name: 'Pick Aisle 1',
-              orientation: 'x',
-              grid_x: 0,
-              grid_y: 0,
-              num_bays: 8,
-              bay_spacing: 1.5,
-              num_levels: 4,
-              bins_per_level: 2,
-              bin_capacity: 100,
-            },
-            {
-              code: 'A02',
-              name: 'Pick Aisle 2',
-              orientation: 'x',
-              grid_x: 0,
-              grid_y: 4,
-              num_bays: 8,
-              bay_spacing: 1.5,
-              num_levels: 4,
-              bins_per_level: 2,
-              bin_capacity: 100,
-            },
-          ],
-        },
-        {
-          code: 'B',
-          name: 'Reserve Storage',
-          grid_x: 0,
-          grid_y: 12,
-          aisles: [
-            {
-              code: 'B01',
-              name: 'Reserve 1',
-              orientation: 'y',
-              grid_x: 0,
-              grid_y: 0,
-              num_bays: 6,
-              bay_spacing: 2.0,
-              num_levels: 5,
-              bins_per_level: 1,
-              bin_capacity: 300,
-            },
-            {
-              code: 'B02',
-              name: 'Reserve 2',
-              orientation: 'y',
-              grid_x: 4,
-              grid_y: 0,
-              num_bays: 6,
-              bay_spacing: 2.0,
-              num_levels: 5,
-              bins_per_level: 1,
-              bin_capacity: 300,
-            },
-          ],
-        },
-        {
-          code: 'C',
-          name: 'Cold Storage',
-          grid_x: 0,
-          grid_y: 26,
-          aisles: [
-            {
-              code: 'C01',
-              name: 'Cold Aisle 1',
-              orientation: 'x',
-              grid_x: 0,
-              grid_y: 0,
-              num_bays: 4,
-              bay_spacing: 2.0,
-              num_levels: 3,
-              bins_per_level: 1,
-              bin_capacity: 200,
-            },
-            {
-              code: 'C02',
-              name: 'Cold Aisle 2',
-              orientation: 'x',
-              grid_x: 0,
-              grid_y: 4,
-              num_bays: 4,
-              bay_spacing: 2.0,
-              num_levels: 3,
-              bins_per_level: 1,
-              bin_capacity: 200,
-            },
-          ],
-        },
-      ],
-    },
+    description: '3 zones, 6 aisles, 5 levels, 900 bins — high-density racking',
+    config: { grid_unit: 1.0, zones: [
+      { code: 'Z-01', name: 'Picking Zone', offset_x: 0, offset_y: 0, aisle_spacing: 6.5, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'right_only', num_levels: 5, level_height: 1.4, bins_per_level: 2, bin_capacity: 100, num_bays_per_row: 20, bay_depth: 1.8 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'left_only', num_levels: 5, level_height: 1.4, bins_per_level: 2, bin_capacity: 100, num_bays_per_row: 20, bay_depth: 1.8 },
+      ] },
+      { code: 'Z-02', name: 'Reserve Storage', offset_x: 0, offset_y: 55, aisle_spacing: 7.0, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 4.0, rows: 'right_only', num_levels: 6, level_height: 1.4, bins_per_level: 1, bin_capacity: 300, num_bays_per_row: 15, bay_depth: 2.0 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 4.0, rows: 'left_only', num_levels: 6, level_height: 1.4, bins_per_level: 1, bin_capacity: 300, num_bays_per_row: 15, bay_depth: 2.0 },
+      ] },
+      { code: 'Z-03', name: 'Cold Storage', offset_x: 0, offset_y: 110, aisle_spacing: 6.5, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'right_only', num_levels: 4, level_height: 1.5, bins_per_level: 1, bin_capacity: 200, num_bays_per_row: 12, bay_depth: 1.8 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'left_only', num_levels: 4, level_height: 1.5, bins_per_level: 1, bin_capacity: 200, num_bays_per_row: 12, bay_depth: 1.8 },
+      ] },
+    ] },
   },
   {
     id: 'cross-dock',
     name: 'Cross-Dock Facility',
-    description: '2 zones (inbound/outbound), 4 aisles, 48 bins — transit hub',
-    config: {
-      grid_unit: 1.0,
-      zones: [
-        {
-          code: 'IN',
-          name: 'Inbound Staging',
-          grid_x: 0,
-          grid_y: 0,
-          aisles: [
-            {
-              code: 'IN1',
-              name: 'Receiving 1',
-              orientation: 'y',
-              grid_x: 0,
-              grid_y: 0,
-              num_bays: 6,
-              bay_spacing: 1.5,
-              num_levels: 2,
-              bins_per_level: 1,
-              bin_capacity: 250,
-            },
-            {
-              code: 'IN2',
-              name: 'Receiving 2',
-              orientation: 'y',
-              grid_x: 3,
-              grid_y: 0,
-              num_bays: 6,
-              bay_spacing: 1.5,
-              num_levels: 2,
-              bins_per_level: 1,
-              bin_capacity: 250,
-            },
-          ],
-        },
-        {
-          code: 'OUT',
-          name: 'Outbound Staging',
-          grid_x: 10,
-          grid_y: 0,
-          aisles: [
-            {
-              code: 'OUT1',
-              name: 'Dispatch 1',
-              orientation: 'y',
-              grid_x: 0,
-              grid_y: 0,
-              num_bays: 6,
-              bay_spacing: 1.5,
-              num_levels: 2,
-              bins_per_level: 1,
-              bin_capacity: 250,
-            },
-            {
-              code: 'OUT2',
-              name: 'Dispatch 2',
-              orientation: 'y',
-              grid_x: 3,
-              grid_y: 0,
-              num_bays: 6,
-              bay_spacing: 1.5,
-              num_levels: 2,
-              bins_per_level: 1,
-              bin_capacity: 250,
-            },
-          ],
-        },
-      ],
-    },
+    description: '2 zones (inbound/outbound), 4 aisles, 3 levels, 240 bins — transit hub',
+    config: { grid_unit: 1.0, zones: [
+      { code: 'Z-01', name: 'Inbound Staging', offset_x: 0, offset_y: 0, aisle_spacing: 6.5, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'vertical', position_along: 0, position_start: 0, corridor_width: 3.5, rows: 'right_only', num_levels: 3, level_height: 1.5, bins_per_level: 1, bin_capacity: 250, num_bays_per_row: 12, bay_depth: 1.8 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'vertical', position_along: 0, position_start: 0, corridor_width: 3.5, rows: 'left_only', num_levels: 3, level_height: 1.5, bins_per_level: 1, bin_capacity: 250, num_bays_per_row: 12, bay_depth: 1.8 },
+      ] },
+      { code: 'Z-02', name: 'Outbound Staging', offset_x: 30, offset_y: 0, aisle_spacing: 6.5, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'vertical', position_along: 0, position_start: 0, corridor_width: 3.5, rows: 'right_only', num_levels: 3, level_height: 1.5, bins_per_level: 1, bin_capacity: 250, num_bays_per_row: 12, bay_depth: 1.8 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'vertical', position_along: 0, position_start: 0, corridor_width: 3.5, rows: 'left_only', num_levels: 3, level_height: 1.5, bins_per_level: 1, bin_capacity: 250, num_bays_per_row: 12, bay_depth: 1.8 },
+      ] },
+    ] },
   },
 ];

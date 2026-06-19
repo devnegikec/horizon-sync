@@ -47,8 +47,10 @@ import {
 function countBins(config: FloorPlanConfig): number {
   let n = 0;
   for (const z of config.zones)
-    for (const a of z.aisles)
-      n += a.num_bays * a.num_levels * a.bins_per_level;
+    for (const a of z.aisles) {
+      const rowCount = a.rows === 'both' ? 2 : 1;
+      n += rowCount * a.num_bays_per_row * a.num_levels * a.bins_per_level;
+    }
   return n;
 }
 
@@ -69,15 +71,35 @@ function NumField({
   step?: number;
   className?: string;
 }) {
+  const [localValue, setLocalValue] = React.useState(String(value));
+
+  // Sync from parent when value changes externally
+  React.useEffect(() => {
+    setLocalValue(String(value));
+  }, [value]);
+
   return (
     <div className={cn('space-y-1', className)}>
       <Label className="text-xs">{label}</Label>
       <Input
         type="number"
-        value={value}
+        value={localValue}
         min={min}
         step={step}
-        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        onChange={(e) => {
+          setLocalValue(e.target.value);
+          const num = parseFloat(e.target.value);
+          if (!isNaN(num)) onChange(num);
+        }}
+        onBlur={() => {
+          // On blur, if empty or invalid, reset to min or 0
+          const num = parseFloat(localValue);
+          if (isNaN(num) || localValue.trim() === '') {
+            const fallback = min ?? 0;
+            setLocalValue(String(fallback));
+            onChange(fallback);
+          }
+        }}
         className="h-8 text-xs"
       />
     </div>
@@ -90,17 +112,25 @@ function AisleRow({
   aisle,
   index,
   zoneIndex,
+  totalAisles,
   onChange,
   onRemove,
 }: {
   aisle: AisleSpec;
   index: number;
   zoneIndex: number;
+  totalAisles: number;
   onChange: (a: AisleSpec) => void;
   onRemove: () => void;
 }) {
   const [open, setOpen] = React.useState(index === 0);
-  const bins = aisle.num_bays * aisle.num_levels * aisle.bins_per_level;
+  // Calculate bins: rows (1 or 2) × bays_per_row × levels × bins_per_level
+  const rowCount = aisle.rows === 'both' ? 2 : 1;
+  const bins = rowCount * aisle.num_bays_per_row * aisle.num_levels * aisle.bins_per_level;
+
+  // Auto-detect edge aisle hint
+  const isEdge = totalAisles > 1 && (index === 0 || index === totalAisles - 1);
+  const edgeHint = isEdge ? (index === 0 ? '(edge — right row only by default)' : '(edge — left row only by default)') : '';
 
   return (
     <div className="rounded-md border bg-background">
@@ -110,6 +140,7 @@ function AisleRow({
         {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
         <span className="text-xs font-medium flex-1 truncate">
           Aisle&nbsp;<span className="font-mono">{aisle.code || `Z${zoneIndex + 1}-A${index + 1}`}</span>
+          {edgeHint && <span className="text-muted-foreground ml-1 text-[10px]">{edgeHint}</span>}
         </span>
         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
           {bins} bins
@@ -124,53 +155,59 @@ function AisleRow({
       </div>
 
       {open && (
-        <div className="px-3 pb-3 pt-1 grid grid-cols-2 gap-x-3 gap-y-2 border-t">
-          <div className="space-y-1">
-            <Label className="text-xs">Code</Label>
-            <Input
-              value={aisle.code}
-              onChange={(e) => onChange({ ...aisle, code: e.target.value })}
-              className="h-8 text-xs font-mono"
-              placeholder="A01"
-            />
+        <div className="px-3 pb-3 pt-1 space-y-3 border-t">
+          {/* Identity */}
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Aisle Code</Label>
+              <Input value={aisle.code} onChange={(e) => onChange({ ...aisle, code: e.target.value })} className="h-8 text-xs font-mono" placeholder="A01" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Aisle Name (optional)</Label>
+              <Input value={aisle.name ?? ''} onChange={(e) => onChange({ ...aisle, name: e.target.value || null })} className="h-8 text-xs" placeholder="Main Aisle" />
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Name (optional)</Label>
-            <Input
-              value={aisle.name ?? ''}
-              onChange={(e) => onChange({ ...aisle, name: e.target.value || null })}
-              className="h-8 text-xs"
-              placeholder="Main Aisle"
-            />
+
+          {/* Direction + Rows */}
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Aisle Direction</Label>
+              <Select value={aisle.direction} onValueChange={(v) => onChange({ ...aisle, direction: v as 'horizontal' | 'vertical' })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="horizontal">Horizontal (runs left to right)</SelectItem>
+                  <SelectItem value="vertical">Vertical (runs front to back)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Rack Rows (sides of corridor)</Label>
+              <Select value={aisle.rows} onValueChange={(v) => onChange({ ...aisle, rows: v as 'both' | 'left_only' | 'right_only' })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="both">Both sides (left + right)</SelectItem>
+                  <SelectItem value="left_only">Left side only</SelectItem>
+                  <SelectItem value="right_only">Right side only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Orientation</Label>
-            <Select
-              value={aisle.orientation}
-              onValueChange={(v) => onChange({ ...aisle, orientation: v as 'x' | 'y' })}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="x">X-axis (horizontal)</SelectItem>
-                <SelectItem value="y">Y-axis (vertical)</SelectItem>
-              </SelectContent>
-            </Select>
+
+          {/* Corridor + Rack config */}
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide pt-1">Corridor & Rack Configuration</p>
+          <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+            <NumField label="Corridor width (m)" value={aisle.corridor_width} min={1} step={0.5} onChange={(v) => onChange({ ...aisle, corridor_width: v })} />
+            <NumField label="Bin slots along depth" value={aisle.num_bays_per_row} min={1} onChange={(v) => onChange({ ...aisle, num_bays_per_row: v })} />
+            <NumField label="Slot spacing (m)" value={aisle.bay_depth} min={0.5} step={0.1} onChange={(v) => onChange({ ...aisle, bay_depth: v })} />
+            <NumField label="Rack height (levels)" value={aisle.num_levels} min={1} onChange={(v) => onChange({ ...aisle, num_levels: v })} />
+            <NumField label="Level height (m)" value={aisle.level_height} min={0.5} step={0.1} onChange={(v) => onChange({ ...aisle, level_height: v })} />
+            <NumField label="Bins per level" value={aisle.bins_per_level} min={1} onChange={(v) => onChange({ ...aisle, bins_per_level: v })} />
           </div>
-          <NumField label="Bays" value={aisle.num_bays} min={1}
-            onChange={(v) => onChange({ ...aisle, num_bays: v })} />
-          <NumField label="Bay spacing" value={aisle.bay_spacing} min={0.1} step={0.5}
-            onChange={(v) => onChange({ ...aisle, bay_spacing: v })} />
-          <NumField label="Levels" value={aisle.num_levels} min={1}
-            onChange={(v) => onChange({ ...aisle, num_levels: v })} />
-          <NumField label="Bins / level" value={aisle.bins_per_level} min={1}
-            onChange={(v) => onChange({ ...aisle, bins_per_level: v })} />
-          <NumField label="Bin capacity" value={aisle.bin_capacity} min={1} step={10}
-            onChange={(v) => onChange({ ...aisle, bin_capacity: v })} />
-          <NumField label="Grid X" value={aisle.grid_x} step={0.5}
-            onChange={(v) => onChange({ ...aisle, grid_x: v })} />
-          <NumField label="Grid Y" value={aisle.grid_y} step={0.5}
-            onChange={(v) => onChange({ ...aisle, grid_y: v })} />
+
+          {/* Capacity */}
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            <NumField label="Bin capacity (units)" value={aisle.bin_capacity} min={1} step={10} onChange={(v) => onChange({ ...aisle, bin_capacity: v })} />
+          </div>
         </div>
       )}
     </div>
@@ -191,7 +228,10 @@ function ZoneCard({
   onRemove: () => void;
 }) {
   const totalBins = zone.aisles.reduce(
-    (s, a) => s + a.num_bays * a.num_levels * a.bins_per_level,
+    (s, a) => {
+      const rowCount = a.rows === 'both' ? 2 : 1;
+      return s + rowCount * a.num_bays_per_row * a.num_levels * a.bins_per_level;
+    },
     0,
   );
 
@@ -202,8 +242,12 @@ function ZoneCard({
   };
 
   const addAisle = () => {
-    const spec = defaultAisleSpec();
-    spec.code = `A${String(zone.aisles.length + 1).padStart(2, '0')}`;
+    const num = zone.aisles.length + 1;
+    // Smart auto-fill: copy config from the last aisle in this zone
+    const prevAisle = zone.aisles.length > 0 ? zone.aisles[zone.aisles.length - 1] : null;
+    const spec: AisleSpec = prevAisle
+      ? { ...prevAisle, code: `A-${String(num).padStart(2, '0')}`, name: `Aisle ${num}`, rows: 'left_only' }
+      : { ...defaultAisleSpec(), code: `A-${String(num).padStart(2, '0')}`, name: `Aisle ${num}`, rows: num > 1 ? 'left_only' : 'both' };
     onChange({ ...zone, aisles: [...zone.aisles, spec] });
   };
 
@@ -247,10 +291,12 @@ function ZoneCard({
             placeholder="Ambient Storage"
           />
         </div>
-        <NumField label="Grid X origin" value={zone.grid_x} step={1}
-          onChange={(v) => onChange({ ...zone, grid_x: v })} />
-        <NumField label="Grid Y origin" value={zone.grid_y} step={1}
-          onChange={(v) => onChange({ ...zone, grid_y: v })} />
+        <NumField label="Distance from left wall (m)" value={zone.offset_x} step={1}
+          onChange={(v) => onChange({ ...zone, offset_x: v })} />
+        <NumField label="Distance from front wall (m)" value={zone.offset_y} step={1}
+          onChange={(v) => onChange({ ...zone, offset_y: v })} />
+        <NumField label="Spacing between aisles (m)" value={zone.aisle_spacing} min={2} step={0.5}
+          onChange={(v) => onChange({ ...zone, aisle_spacing: v })} />
       </div>
 
       <div className="space-y-2">
@@ -261,6 +307,7 @@ function ZoneCard({
             aisle={a}
             index={ai}
             zoneIndex={index}
+            totalAisles={zone.aisles.length}
             onChange={(updated) => updateAisle(ai, updated)}
             onRemove={() => removeAisle(ai)}
           />
@@ -276,7 +323,8 @@ function ZoneCard({
 
 // ─── SummaryBox ───────────────────────────────────────────────────────────────
 
-function SummaryBox({ preview }: { preview: FloorPlanPreviewResponse | FloorPlanApplyResponse }) {
+function SummaryBox({ preview }: { preview: FloorPlanPreviewResponse | FloorPlanApplyResponse | FloorPlanUpdateResponse | null }) {
+  if (!preview) return null;
   const s = preview.summary;
   return (
     <div className="rounded-lg border bg-green-50 dark:bg-green-950/20 p-4 space-y-2">
@@ -332,6 +380,7 @@ export function WarehouseLayoutDesigner({
   const [savedLayouts, setSavedLayouts] = React.useState<FloorPlanResponse[]>([]);
   const [loadingLayouts, setLoadingLayouts] = React.useState(false);
   const [editingPlanId, setEditingPlanId] = React.useState<string | null>(null);
+  const [mode, setMode] = React.useState<'landing' | 'editor'>('landing');
 
   // Designer form state
   const [config, setConfig] = React.useState<FloorPlanConfig>(defaultFloorPlanConfig);
@@ -354,7 +403,9 @@ export function WarehouseLayoutDesigner({
     setLoadingLayouts(true);
     try {
       const data = await floorPlanApi.list(accessToken, warehouseId);
-      setSavedLayouts(data);
+      // Show active plans + inactive templates (never applied).
+      // Hide deleted plans that were previously applied.
+      setSavedLayouts(data.filter((p) => p.is_active || !p.generated_at));
     } catch {
       /* silent — list failure is non-critical */
     } finally {
@@ -374,6 +425,38 @@ export function WarehouseLayoutDesigner({
     setPreview(null);
     setApplyResult(null);
     setError(null);
+    setMode('editor');
+  };
+
+  // Start from a template
+  const startFromTemplate = (tpl: { name: string; config: FloorPlanConfig }) => {
+    setConfig(tpl.config);
+    setPlanName(tpl.name);
+    setEditingPlanId(null);
+    setPreview(null);
+    setApplyResult(null);
+    setError(null);
+    setMode('editor');
+  };
+
+  // Start from scratch
+  const startFromScratch = () => {
+    setConfig(defaultFloorPlanConfig());
+    setPlanName('');
+    setEditingPlanId(null);
+    setPreview(null);
+    setApplyResult(null);
+    setError(null);
+    setMode('editor');
+  };
+
+  // Back to landing
+  const backToLanding = () => {
+    setMode('landing');
+    setEditingPlanId(null);
+    setPreview(null);
+    setApplyResult(null);
+    setError(null);
   };
 
   // Reset to new layout mode
@@ -384,6 +467,7 @@ export function WarehouseLayoutDesigner({
     setPreview(null);
     setApplyResult(null);
     setError(null);
+    setMode('landing');
   };
 
   // Zone CRUD
@@ -396,9 +480,25 @@ export function WarehouseLayoutDesigner({
   };
 
   const addZone = () => {
-    const z = defaultZoneSpec();
-    z.code = String.fromCharCode(65 + config.zones.length); // A, B, C …
-    z.grid_y = config.zones.length * 10;
+    const prevZone = config.zones.length > 0 ? config.zones[config.zones.length - 1] : null;
+    const z = prevZone ? { ...defaultZoneSpec(), aisle_spacing: prevZone.aisle_spacing } : defaultZoneSpec();
+    z.code = `Z-${String(config.zones.length + 1).padStart(2, '0')}`; // Z-01, Z-02, Z-03…
+    z.name = `Zone ${z.code}`;
+
+    // Smart offset: calculate based on previous zone's extent
+    if (prevZone && prevZone.aisles.length > 0) {
+      const prevAisle = prevZone.aisles[0];
+      const prevDepth = prevAisle.num_bays_per_row * prevAisle.bay_depth;
+      z.offset_y = prevZone.offset_y + prevDepth + prevZone.aisle_spacing * prevZone.aisles.length + 10;
+      // Copy aisle config from previous zone for consistency
+      z.aisles = prevZone.aisles.map((a, i) => ({
+        ...a,
+        code: `A-${String(i + 1).padStart(2, '0')}`,
+        name: `Aisle ${i + 1}`,
+      }));
+    } else {
+      z.offset_y = config.zones.length * 50;
+    }
     setConfig({ ...config, zones: [...config.zones, z] });
   };
 
@@ -475,194 +575,147 @@ export function WarehouseLayoutDesigner({
     }
   };
 
+  // Reset everything (delete all plans + locations for a fresh start)
+  const handleReset = async () => {
+    if (!accessToken) return;
+    if (!window.confirm('This will permanently delete ALL layouts and locations for this warehouse. Are you sure?')) return;
+    try {
+      await floorPlanApi.reset(accessToken, warehouseId);
+      resetToNew();
+      fetchLayouts();
+      onApplied?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Reset failed');
+    }
+  };
+
   return (
     <div className="space-y-5">
-      {/* Header row */}
+      {mode === 'landing' ? (
+        <>
+          {/* Landing — choose what to do */}
+          <div>
+            <h3 className="text-sm font-semibold">Layout Designer</h3>
+            <p className="text-xs text-muted-foreground">
+              Design your warehouse layout or modify an existing one.
+            </p>
+          </div>
+
+          {/* Active layout indicator */}
+          {savedLayouts.some((p) => p.is_active) && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30 p-3">
+              <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wide mb-1">Current Active Layout</p>
+              {savedLayouts.filter((p) => p.is_active).map((plan) => (
+                <div key={plan.id} className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">{plan.name}</p>
+                    <p className="text-[10px] text-muted-foreground">Applied {plan.generated_at ? new Date(plan.generated_at).toLocaleDateString() : ''}</p>
+                  </div>
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => loadLayout(plan)}>
+                    <Edit3 className="h-3 w-3 mr-1" /> Edit
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Templates */}
+          <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <LayoutTemplate className="h-3.5 w-3.5" /> Start from a Template
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Choose a pre-built layout to customize for your warehouse.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {LAYOUT_TEMPLATES.map((tpl) => (
+                <button key={tpl.id} onClick={() => startFromTemplate(tpl)}
+                  className="text-left rounded-md border p-3 hover:bg-accent hover:border-primary/30 transition-all space-y-1 group">
+                  <p className="text-xs font-medium group-hover:text-primary">{tpl.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{tpl.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Saved layouts (non-active) */}
+          {savedLayouts.filter((p) => !p.is_active).length > 0 && (
+            <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Saved Layouts</p>
+              <div className="space-y-1.5">
+                {savedLayouts.filter((p) => !p.is_active).map((plan) => (
+                  <div key={plan.id} className="flex items-center gap-2 rounded-md border p-2 text-xs hover:bg-accent transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{plan.name}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {!plan.generated_at && <Badge variant="secondary" className="text-[9px] px-1 py-0 text-violet-700 bg-violet-100 mr-1">Template</Badge>}
+                        {countBins(plan.config)} bins
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" className="h-6 text-[10px] px-2" onClick={() => loadLayout(plan)}>
+                      <Edit3 className="h-3 w-3 mr-1" /> Edit
+                    </Button>
+                    {deleteConfirmId === plan.id ? (
+                      <div className="flex items-center gap-1">
+                        <Button variant="destructive" size="sm" className="h-6 text-[10px] px-2" disabled={deletingId === plan.id} onClick={() => handleDelete(plan.id)}>
+                          {deletingId === plan.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Delete'}
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
+                      </div>
+                    ) : (
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDeleteConfirmId(plan.id)}>
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Start from scratch */}
+          <Button variant="outline" className="w-full gap-2" onClick={startFromScratch}>
+            <FilePlus className="h-4 w-4" /> Start from Scratch
+          </Button>
+
+          {/* Reset (delete everything) */}
+          {savedLayouts.length > 0 && (
+            <Button variant="ghost" className="w-full gap-2 text-destructive hover:text-destructive" onClick={handleReset}>
+              <Trash2 className="h-4 w-4" /> Reset Warehouse Layout
+            </Button>
+          )}
+
+          {loadingLayouts && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+              <Loader2 className="h-3 w-3 animate-spin" /> Loading layouts…
+            </div>
+          )}
+        </>
+      ) : null}
+
+      {mode === 'editor' ? (
+        <>
+      {/* Editor header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h3 className="text-sm font-semibold">Layout Designer</h3>
-          <p className="text-xs text-muted-foreground">
-            {editingPlanId
-              ? 'Editing saved layout — modify and click "Update Layout" to apply changes.'
-              : 'Define zones and aisles — the system generates all bin locations with 3D positions automatically.'}
-          </p>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={backToLanding}>
+            ← Back
+          </Button>
+          <div>
+            <h3 className="text-sm font-semibold">
+              {editingPlanId ? `Editing: ${planName}` : 'New Layout'}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Configure zones and aisles below, then preview and apply.
+            </p>
+          </div>
         </div>
         <Badge variant="secondary" className="text-sm font-mono px-3 py-1 shrink-0">
           {totalBins} bins total
         </Badge>
       </div>
-
-      {/* Saved Layouts Panel */}
-      <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Saved Layouts
-          </p>
-          <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={resetToNew}>
-            <FilePlus className="h-3.5 w-3.5" />
-            New Layout
-          </Button>
-        </div>
-
-        {loadingLayouts && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Loading saved layouts…
-          </div>
-        )}
-
-        {!loadingLayouts && savedLayouts.length === 0 && (
-          <p className="text-xs text-muted-foreground italic py-1">
-            No saved layouts for this warehouse yet. Design one below and apply it.
-          </p>
-        )}
-
-        {!loadingLayouts && savedLayouts.length > 0 && (
-          <div className="space-y-1.5 max-h-40 overflow-y-auto">
-            {savedLayouts.map((plan) => (
-              <div
-                key={plan.id}
-                className={cn(
-                  'flex items-center gap-2 rounded-md border p-2 text-xs transition-colors',
-                  editingPlanId === plan.id
-                    ? 'border-primary bg-primary/5'
-                    : 'hover:bg-accent',
-                )}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="font-medium truncate">{plan.name}</p>
-                    {plan.is_active && (
-                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0 text-emerald-700 bg-emerald-100 shrink-0">
-                        Active
-                      </Badge>
-                    )}
-                    {!plan.is_active && !plan.generated_at && (
-                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0 text-violet-700 bg-violet-100 shrink-0">
-                        Template
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    {plan.config.zones.length} zone{plan.config.zones.length !== 1 ? 's' : ''}
-                    {' · '}
-                    {countBins(plan.config)} bins
-                    {plan.generated_at && (
-                      <> · Applied {new Date(plan.generated_at).toLocaleDateString()}</>
-                    )}
-                  </p>
-                </div>
-                <Button
-                  variant={editingPlanId === plan.id ? 'default' : 'outline'}
-                  size="sm"
-                  className="h-6 text-[10px] px-2 gap-1"
-                  onClick={() => loadLayout(plan)}>
-                  <Edit3 className="h-3 w-3" />
-                  {editingPlanId === plan.id ? 'Editing' : 'Edit'}
-                </Button>
-                {deleteConfirmId === plan.id ? (
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-6 text-[10px] px-2"
-                      disabled={deletingId === plan.id}
-                      onClick={() => handleDelete(plan.id)}>
-                      {deletingId === plan.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Confirm'}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-[10px] px-2"
-                      onClick={() => setDeleteConfirmId(null)}>
-                      Cancel
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => setDeleteConfirmId(plan.id)}>
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Preloaded Templates */}
-      {!editingPlanId && savedLayouts.length === 0 && (
-        <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-            <LayoutTemplate className="h-3.5 w-3.5" />
-            Start from a Template
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Choose a preloaded layout as a starting point — customize it before applying.
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {LAYOUT_TEMPLATES.map((tpl) => (
-              <button
-                key={tpl.id}
-                onClick={() => {
-                  setConfig(tpl.config);
-                  setPlanName(tpl.name);
-                  setEditingPlanId(null);
-                  setPreview(null);
-                  setApplyResult(null);
-                }}
-                className="text-left rounded-md border p-2.5 hover:bg-accent transition-colors space-y-1">
-                <p className="text-xs font-medium">{tpl.name}</p>
-                <p className="text-[10px] text-muted-foreground">{tpl.description}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Templates quick-access when layouts exist */}
-      {!editingPlanId && savedLayouts.length > 0 && (
-        <details className="rounded-lg border bg-muted/20 p-3 group">
-          <summary className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 cursor-pointer select-none">
-            <LayoutTemplate className="h-3.5 w-3.5" />
-            Start from a Template
-            <ChevronRight className="h-3 w-3 ml-auto transition-transform group-open:rotate-90" />
-          </summary>
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            {LAYOUT_TEMPLATES.map((tpl) => (
-              <button
-                key={tpl.id}
-                onClick={() => {
-                  setConfig(tpl.config);
-                  setPlanName(tpl.name);
-                  setEditingPlanId(null);
-                  setPreview(null);
-                  setApplyResult(null);
-                }}
-                className="text-left rounded-md border p-2.5 hover:bg-accent transition-colors space-y-1">
-                <p className="text-xs font-medium">{tpl.name}</p>
-                <p className="text-[10px] text-muted-foreground">{tpl.description}</p>
-              </button>
-            ))}
-          </div>
-        </details>
-      )}
-
-      {/* Editing indicator */}
-      {editingPlanId && (
-        <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
-          <Edit3 className="h-3.5 w-3.5 text-primary shrink-0" />
-          <span>
-            Editing: <span className="font-semibold">{planName}</span>
-            {' — '}changes will replace the existing layout and regenerate all locations.
-          </span>
-          <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 ml-auto" onClick={resetToNew}>
-            Cancel edit
-          </Button>
-        </div>
-      )}
 
       {/* Global setting */}
       <div className="flex items-end gap-4">
@@ -705,8 +758,8 @@ export function WarehouseLayoutDesigner({
       )}
 
       {/* Preview / Apply result */}
-      {preview && <SummaryBox preview={preview} />}
-      {applyResult && <SummaryBox preview={applyResult} />}
+      <SummaryBox preview={preview} />
+      <SummaryBox preview={applyResult} />
 
       {/* Action bar */}
       <div className="flex items-end gap-3 flex-wrap border-t pt-4">
@@ -737,6 +790,8 @@ export function WarehouseLayoutDesigner({
           {editingPlanId ? 'Update Layout' : 'Apply Layout'}
         </Button>
       </div>
+      </>
+      ) : null}
     </div>
   );
 }
