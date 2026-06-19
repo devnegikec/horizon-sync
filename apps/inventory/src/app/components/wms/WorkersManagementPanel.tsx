@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import { Plus, Printer, QrCode, RefreshCw, Trash2, UserCog, Download, Upload, ChevronDown, FileDown, Loader2 } from 'lucide-react';
+import QRCode from 'qrcode';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -23,71 +24,18 @@ import {
 import { wmsWorkerApi } from '../../utility/api/wms';
 import type { WMSWorker, WMSWorkerCreate, WMSWorkerUpdate } from '../../types/wms.types';
 import { WorkersTable } from './WorkersTable';
-import { environment } from '../../../environments/environment';
 
 /**
- * Generate a QR code as an SVG string using a simple matrix encoding.
- * Self-contained: no external library or network required.
- * Uses a basic QR-like grid representation for printing.
+ * Generate a real scannable QR code as a base64 data URL using the qrcode library.
+ * The QR encodes just the barcode string so any QR scanner app or the mobile
+ * app can read it and call POST /wms-workers/login/barcode with { barcode }.
  */
-function buildQRCodeSVG(value: string, size = 120): string {
-  // Simple deterministic hash-based QR grid (visual representation for print)
-  // In production, use a proper QR library — this generates a scannable-looking grid
-  const modules = 21; // QR Version 1 = 21x21
-  const cellSize = size / modules;
-  let rects = '';
-
-  // Generate a deterministic pattern from the value
-  const hash = (s: string, seed: number) => {
-    let h = seed;
-    for (let i = 0; i < s.length; i++) {
-      h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-    }
-    return h;
-  };
-
-  // Fixed patterns (finder patterns at corners)
-  const isFinderPattern = (r: number, c: number) => {
-    // Top-left 7x7
-    if (r < 7 && c < 7) return true;
-    // Top-right 7x7
-    if (r < 7 && c >= modules - 7) return true;
-    // Bottom-left 7x7
-    if (r >= modules - 7 && c < 7) return true;
-    return false;
-  };
-
-  const isFinderBlack = (r: number, c: number) => {
-    const inBlock = (br: number, bc: number) => {
-      const lr = r - br;
-      const lc = c - bc;
-      if (lr === 0 || lr === 6 || lc === 0 || lc === 6) return true;
-      if (lr >= 2 && lr <= 4 && lc >= 2 && lc <= 4) return true;
-      return false;
-    };
-    if (r < 7 && c < 7) return inBlock(0, 0);
-    if (r < 7 && c >= modules - 7) return inBlock(0, modules - 7);
-    if (r >= modules - 7 && c < 7) return inBlock(modules - 7, 0);
-    return false;
-  };
-
-  for (let row = 0; row < modules; row++) {
-    for (let col = 0; col < modules; col++) {
-      let black = false;
-      if (isFinderPattern(row, col)) {
-        black = isFinderBlack(row, col);
-      } else {
-        // Data area: deterministic pattern from input string
-        const h = hash(value, row * modules + col);
-        black = (h & 1) === 1;
-      }
-      if (black) {
-        rects += `<rect x="${col * cellSize}" y="${row * cellSize}" width="${cellSize}" height="${cellSize}" fill="#000"/>`;
-      }
-    }
-  }
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="max-width:100%;height:auto;">${rects}</svg>`;
+async function generateQRDataUrl(barcode: string, size = 200): Promise<string> {
+  return QRCode.toDataURL(barcode, {
+    width: size,
+    margin: 2,
+    color: { dark: '#000000', light: '#ffffff' },
+  });
 }
 
 interface WorkersManagementPanelProps {
@@ -106,6 +54,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingWorker, setEditingWorker] = React.useState<WMSWorker | null>(null);
   const [printTarget, setPrintTarget] = React.useState<{ barcode: string; name: string; employee_id: string | null } | null>(null);
+  const [qrPreviewUrl, setQrPreviewUrl] = React.useState<string | null>(null);
 
   // Import / Export state
   const [isExportDialogOpen, setIsExportDialogOpen] = React.useState(false);
@@ -148,6 +97,15 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
   }, [accessToken, warehouseId, search, toast]);
 
   React.useEffect(() => { fetchWorkers(); }, [fetchWorkers]);
+
+  // Generate QR preview when print target changes
+  React.useEffect(() => {
+    if (printTarget?.barcode) {
+      generateQRDataUrl(printTarget.barcode).then(setQrPreviewUrl);
+    } else {
+      setQrPreviewUrl(null);
+    }
+  }, [printTarget]);
 
   const validateForm = React.useCallback((): boolean => {
     const errors: Record<string, string> = {};
@@ -330,12 +288,11 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
     setPrintTarget({ barcode, name, employee_id });
   };
 
-  const doPrint = () => {
+  const doPrint = async () => {
     if (!printTarget) return;
+    const qrDataUrl = await generateQRDataUrl(printTarget.barcode);
     const win = window.open('', '_blank', 'width=400,height=400');
     if (!win) return;
-    const loginUrl = `${environment.apiCoreUrl}/api/v1/wms-workers/login/qr?code=${encodeURIComponent(printTarget.barcode)}`;
-    const barcodeSvg = buildQRCodeSVG(loginUrl);
     const employeeIdLine = printTarget.employee_id
       ? `<div class="emp-id">Emp ID: ${printTarget.employee_id}</div>`
       : '';
@@ -346,11 +303,11 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
         .name { font-size:14px; font-weight:600; margin-bottom:2px; }
         .emp-id { font-size:12px; color:#444; margin-bottom:2px; }
         .qrcode { margin:12px 0; }
-        .qrcode svg { max-width:100%; height:auto; }
+        .qrcode img { max-width:100%; height:auto; }
         .text { font-size:12px; color:#666; }
         .hint { font-size:10px; color:#999; margin-top:4px; }
       </style></head>
-      <body><div class="label"><div class="name">${printTarget.name}</div>${employeeIdLine}<div class="text">Scan to Login</div><div class="qrcode">${barcodeSvg}</div><div class="hint">ID: ${printTarget.barcode}</div></div></body></html>
+      <body><div class="label"><div class="name">${printTarget.name}</div>${employeeIdLine}<div class="text">Scan to Login</div><div class="qrcode"><img src="${qrDataUrl}" alt="Worker QR Code" width="200" height="200" /></div><div class="hint">ID: ${printTarget.barcode}</div></div></body></html>
     `);
     win.document.close();
     win.focus();
@@ -562,7 +519,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
     setIsPrintAllDialogOpen(true);
   };
 
-  const doPrintAll = () => {
+  const doPrintAll = async () => {
     if (selectedPrintIds.size === 0) {
       toast({ title: 'No workers selected', description: 'Please select at least one worker to print.' });
       return;
@@ -572,10 +529,13 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
       toast({ title: 'No QR codes available', description: 'Selected workers do not have QR codes.' });
       return;
     }
+    // Generate all QR codes first
+    const qrDataUrls = await Promise.all(
+      selectedWorkers.map((w) => generateQRDataUrl(w.barcode!))
+    );
     const win = window.open('', '_blank');
     if (!win) return;
     const pages = selectedWorkers.map((w, idx) => {
-      const barcodeSvg = buildQRCodeSVG(`${environment.apiCoreUrl}/api/v1/wms-workers/login/qr?code=${encodeURIComponent(w.barcode!)}`);
       const name = w.display_name || `${w.first_name} ${w.last_name}`;
       const employeeIdLine = w.employee_id
         ? `<div style="font-size:12px;color:#444;margin-bottom:2px;">Emp ID: ${w.employee_id}</div>`
@@ -586,7 +546,8 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
           <div style="font-size:14px;font-weight:600;margin-bottom:2px;">${name}</div>
           ${employeeIdLine}
           <div style="font-size:12px;color:#666;">Worker QR Code</div>
-          <div style="margin:12px 0;">${barcodeSvg}</div>
+          <div style="margin:12px 0;"><img src="${qrDataUrls[idx]}" alt="QR Code" width="200" height="200" style="max-width:100%;height:auto;" /></div>
+          <div style="font-size:10px;color:#999;margin-top:4px;">ID: ${w.barcode}</div>
         </div>
       </div>`;
     });
@@ -767,7 +728,15 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 {printTarget.employee_id && (
                   <div className="text-xs text-muted-foreground">Emp ID: {printTarget.employee_id}</div>
                 )}
-                <div className="flex justify-center" dangerouslySetInnerHTML={{ __html: buildQRCodeSVG(`${environment.apiCoreUrl}/api/v1/wms-workers/login/qr?code=${encodeURIComponent(printTarget.barcode)}`) }} />
+                <div className="flex justify-center">
+                  {qrPreviewUrl ? (
+                    <img src={qrPreviewUrl} alt="Worker QR Code" width="200" height="200" className="rounded" />
+                  ) : (
+                    <div className="w-[200px] h-[200px] bg-muted animate-pulse rounded flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
                 <div className="font-mono text-xs text-muted-foreground tracking-widest">{printTarget.barcode}</div>
               </>
             )}
