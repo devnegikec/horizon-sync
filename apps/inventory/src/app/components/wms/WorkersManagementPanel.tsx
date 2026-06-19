@@ -3,26 +3,27 @@ import * as React from 'react';
 import { Plus, Printer, QrCode, RefreshCw, Trash2, UserCog, Download, Upload, ChevronDown, FileDown, Loader2 } from 'lucide-react';
 import QRCode from 'qrcode';
 
+import { useUserStore } from '@horizon-sync/store';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
-import { Input } from '@horizon-sync/ui/components/ui/input';
-import { Label } from '@horizon-sync/ui/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
-import { useToast } from '@horizon-sync/ui/hooks';
-import { useUserStore } from '@horizon-sync/store';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
+import { Input } from '@horizon-sync/ui/components/ui/input';
+import { Label } from '@horizon-sync/ui/components/ui/label';
+import { useToast } from '@horizon-sync/ui/hooks';
 
-import { wmsWorkerApi } from '../../utility/api/wms';
 import type { WMSWorker, WMSWorkerCreate, WMSWorkerUpdate } from '../../types/wms.types';
+import { wmsWorkerApi } from '../../utility/api/wms';
+
 import { WorkersTable } from './WorkersTable';
 
 /**
@@ -45,9 +46,15 @@ interface WorkersManagementPanelProps {
 export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const userPermissions = useUserStore((s) => s.permissions.permissions);
+  const organization = useUserStore((s) => s.organization);
+  const organizationId = organization?.id || '';
   const canCreateWorkers = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
   const canPrintQR = canCreateWorkers || userPermissions.includes('warehouse.read');
   const { toast } = useToast();
+
+  /** Resolve barcode from either barcode or qr_code field */
+  const getBarcode = (w: { barcode?: string | null; qr_code?: string | null }) =>
+    w.barcode || w.qr_code || null;
   const [workers, setWorkers] = React.useState<WMSWorker[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -78,7 +85,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
   const [isRegenerating, setIsRegenerating] = React.useState(false);
 
   const [form, setForm] = React.useState<Partial<WMSWorkerCreate>>({
-    first_name: '', last_name: '', email: '', phone: '', login_username: '', employee_id: '', password: '', role: 'warehouse_worker', status: 'active',
+    first_name: '', last_name: '', email: '', phone: '0000000000', login_username: '', employee_id: '', password: '', role: 'warehouse_worker', status: 'active',
   });
 
   const [formErrors, setFormErrors] = React.useState<Record<string, string>>({});
@@ -131,31 +138,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
       errors.email = 'Enter a valid email address';
     }
 
-    if (!f.phone?.trim()) {
-      errors.phone = 'Phone is required';
-    } else if (f.phone.trim().length > 20) {
-      errors.phone = 'Max 20 characters';
-    } else if (!/^[\d\+\-\(\)\s]+$/.test(f.phone.trim())) {
-      errors.phone = 'Enter a valid phone number';
-    }
-
-    if (!f.login_username?.trim()) {
-      // optional — skip if empty
-    } else if (f.login_username.trim().length < 3) {
-      errors.login_username = 'Min 3 characters';
-    } else if (f.login_username.trim().length > 50) {
-      errors.login_username = 'Max 50 characters';
-    } else if (!/^[a-zA-Z0-9_]+$/.test(f.login_username.trim())) {
-      errors.login_username = 'Only letters, numbers, and underscores';
-    }
-
-    if (!f.employee_id?.trim()) {
-      errors.employee_id = 'Employee ID is required';
-    } else if (f.employee_id.trim().length > 50) {
-      errors.employee_id = 'Max 50 characters';
-    } else if (!/^[a-zA-Z0-9_\-]+$/.test(f.employee_id.trim())) {
-      errors.employee_id = 'Only letters, numbers, hyphens, and underscores';
-    }
+    // Phone, login_username, employee_id — auto-filled with dummy data, no UI validation needed
 
     if (!editingWorker) {
       if (f.password && f.password.length > 0 && f.password.length < 6) {
@@ -177,14 +160,14 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
 
   const isFormValid = React.useMemo(() => {
     const f = form;
-    const hasRequired = !!f.first_name?.trim() && !!f.last_name?.trim() && !!f.phone?.trim() && !!f.employee_id?.trim();
+    const hasRequired = !!f.first_name?.trim() && !!f.last_name?.trim();
     if (!hasRequired) return false;
     return Object.keys(formErrors).length === 0;
   }, [form, formErrors, editingWorker]);
 
   const openCreate = () => {
     setEditingWorker(null);
-    setForm({ first_name: '', last_name: '', email: '', phone: '', login_username: '', employee_id: '', password: '', role: 'warehouse_worker', status: 'active' });
+    setForm({ first_name: '', last_name: '', email: '', phone: '0000000000', login_username: '', employee_id: '', password: '', role: 'warehouse_worker', status: 'active' });
     setFormErrors({});
     setDialogOpen(true);
   };
@@ -233,7 +216,30 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
           toast({ title: 'Error', description: 'Please select a warehouse first', variant: 'destructive' });
           return;
         }
-        const create: WMSWorkerCreate = { ...form, warehouse_id: warehouseId } as WMSWorkerCreate;
+        if (!organizationId) {
+          console.warn('[Workers] No organization ID available');
+          toast({ title: 'Error', description: 'Organization not found. Please reload the page.', variant: 'destructive' });
+          return;
+        }
+        // Generate QR code and build Identity Service payload
+        const qrCode = `WRK-${Array.from({ length: 12 }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]).join('')}`;
+        const dummyId = `W-${Date.now().toString(36).toUpperCase()}`;
+        const create: WMSWorkerCreate = {
+          first_name: form.first_name || '',
+          last_name: form.last_name || '',
+          email: form.email || undefined,
+          phone: form.phone || '0000000000',
+          qr_code: qrCode,
+          organization_id: organizationId,
+          warehouse_id: warehouseId,
+          warehouse_ids: [warehouseId],
+          warehouse_role: 'operator',
+          login_username: form.login_username || `${(form.first_name || 'w').toLowerCase()}.${(form.last_name || 'worker').toLowerCase()}`,
+          employee_id: form.employee_id || dummyId,
+          password: form.password || undefined,
+          role: form.role || 'warehouse_worker',
+          status: form.status || 'active',
+        } as WMSWorkerCreate;
         console.log('[Workers] Creating worker', create);
         await wmsWorkerApi.create(accessToken, create);
         toast({ title: 'Success', description: 'Worker created successfully' });
@@ -274,7 +280,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
     setIsRegenerating(true);
     try {
       const worker = await wmsWorkerApi.regenerateBarcode(accessToken, confirmRegenerateWorker.id);
-      toast({ title: 'QR code regenerated', description: `New code: ${worker.barcode}` });
+      toast({ title: 'QR code regenerated', description: `New code: ${worker.qr_code || worker.barcode}` });
       setConfirmRegenerateWorker(null);
       fetchWorkers();
     } catch (err) {
@@ -334,7 +340,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
       employee_id: (w) => w.employee_id || '',
       role: (w) => w.role,
       status: (w) => w.status,
-      barcode: (w) => w.barcode || '',
+      barcode: (w) => getBarcode(w) || '',
     };
     const headers = selectedExportColumns;
     const rows = workers.map((w) => headers.map((h) => columnMap[h](w)));
@@ -515,7 +521,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
   };
 
   const openPrintAll = () => {
-    setSelectedPrintIds(new Set(workers.filter((w) => w.barcode).map((w) => w.id)));
+    setSelectedPrintIds(new Set(workers.filter((w) => getBarcode(w)).map((w) => w.id)));
     setIsPrintAllDialogOpen(true);
   };
 
@@ -524,14 +530,14 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
       toast({ title: 'No workers selected', description: 'Please select at least one worker to print.' });
       return;
     }
-    const selectedWorkers = workers.filter((w) => selectedPrintIds.has(w.id) && w.barcode);
+    const selectedWorkers = workers.filter((w) => selectedPrintIds.has(w.id) && getBarcode(w));
     if (selectedWorkers.length === 0) {
       toast({ title: 'No QR codes available', description: 'Selected workers do not have QR codes.' });
       return;
     }
     // Generate all QR codes first
     const qrDataUrls = await Promise.all(
-      selectedWorkers.map((w) => generateQRDataUrl(w.barcode!))
+      selectedWorkers.map((w) => generateQRDataUrl(getBarcode(w)!))
     );
     const win = window.open('', '_blank');
     if (!win) return;
@@ -547,7 +553,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
           ${employeeIdLine}
           <div style="font-size:12px;color:#666;">Worker QR Code</div>
           <div style="margin:12px 0;"><img src="${qrDataUrls[idx]}" alt="QR Code" width="200" height="200" style="max-width:100%;height:auto;" /></div>
-          <div style="font-size:10px;color:#999;margin-top:4px;">ID: ${w.barcode}</div>
+          <div style="font-size:10px;color:#999;margin-top:4px;">ID: ${getBarcode(w)}</div>
         </div>
       </div>`;
     });
@@ -590,16 +596,14 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
         </div>
       </div>
 
-      <WorkersTable
-        workers={workers}
+      <WorkersTable workers={workers}
         loading={loading}
         onEdit={canCreateWorkers ? openEdit : undefined}
         onDelete={canCreateWorkers ? handleDelete : undefined}
-        onPrintQR={(w) => handlePrintBarcode(w.barcode!, w.display_name || `${w.first_name} ${w.last_name}`, w.employee_id)}
+        onPrintQR={(w) => handlePrintBarcode(getBarcode(w)!, w.display_name || `${w.first_name} ${w.last_name}`, w.employee_id)}
         onRegenerateQR={canCreateWorkers ? handleRegenerateBarcode : undefined}
         onCreateWorker={canCreateWorkers ? openCreate : undefined}
-        hasSearch={!!search}
-      />
+        hasSearch={!!search}/>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
@@ -611,78 +615,38 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>First Name <span className="text-destructive">*</span></Label>
-                <Input
-                  value={form.first_name || ''}
+                <Input value={form.first_name || ''}
                   onChange={(e) => { setForm((p) => ({ ...p, first_name: e.target.value })); if (formErrors.first_name) setFormErrors((prev) => { const n = { ...prev }; delete n.first_name; return n; }); }}
                   className={formErrors.first_name ? 'border-destructive focus-visible:ring-destructive' : ''}
-                  maxLength={50}
-                />
+                  maxLength={50}/>
                 {formErrors.first_name && <p className="text-xs text-destructive">{formErrors.first_name}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Last Name <span className="text-destructive">*</span></Label>
-                <Input
-                  value={form.last_name || ''}
+                <Input value={form.last_name || ''}
                   onChange={(e) => { setForm((p) => ({ ...p, last_name: e.target.value })); if (formErrors.last_name) setFormErrors((prev) => { const n = { ...prev }; delete n.last_name; return n; }); }}
                   className={formErrors.last_name ? 'border-destructive focus-visible:ring-destructive' : ''}
-                  maxLength={50}
-                />
+                  maxLength={50}/>
                 {formErrors.last_name && <p className="text-xs text-destructive">{formErrors.last_name}</p>}
               </div>
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input
-                type="email"
+              <Input type="email"
                 value={form.email || ''}
                 onChange={(e) => { setForm((p) => ({ ...p, email: e.target.value })); if (formErrors.email) setFormErrors((prev) => { const n = { ...prev }; delete n.email; return n; }); }}
                 className={formErrors.email ? 'border-destructive focus-visible:ring-destructive' : ''}
-                maxLength={100}
-              />
+                maxLength={100}/>
               {formErrors.email && <p className="text-xs text-destructive">{formErrors.email}</p>}
             </div>
-            <div className="space-y-2">
-              <Label>Phone <span className="text-destructive">*</span></Label>
-              <Input
-                value={form.phone || ''}
-                onChange={(e) => { setForm((p) => ({ ...p, phone: e.target.value })); if (formErrors.phone) setFormErrors((prev) => { const n = { ...prev }; delete n.phone; return n; }); }}
-                className={formErrors.phone ? 'border-destructive focus-visible:ring-destructive' : ''}
-                maxLength={20}
-              />
-              {formErrors.phone && <p className="text-xs text-destructive">{formErrors.phone}</p>}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Login Username</Label>
-                <Input
-                  value={form.login_username || ''}
-                  onChange={(e) => { setForm((p) => ({ ...p, login_username: e.target.value })); if (formErrors.login_username) setFormErrors((prev) => { const n = { ...prev }; delete n.login_username; return n; }); }}
-                  className={formErrors.login_username ? 'border-destructive focus-visible:ring-destructive' : ''}
-                  maxLength={50}
-                />
-                {formErrors.login_username && <p className="text-xs text-destructive">{formErrors.login_username}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>Employee ID <span className="text-destructive">*</span></Label>
-                <Input
-                  placeholder="e.g. EMP-001"
-                  value={form.employee_id || ''}
-                  onChange={(e) => { setForm((p) => ({ ...p, employee_id: e.target.value })); if (formErrors.employee_id) setFormErrors((prev) => { const n = { ...prev }; delete n.employee_id; return n; }); }}
-                  className={formErrors.employee_id ? 'border-destructive focus-visible:ring-destructive' : ''}
-                  maxLength={50}
-                />
-                {formErrors.employee_id && <p className="text-xs text-destructive">{formErrors.employee_id}</p>}
-              </div>
-            </div>
+            {/* Phone, Login Username, Employee ID — auto-filled with dummy data */}
             <div className="space-y-2">
               <Label>Password {editingWorker ? '(optional)' : '(optional)'}</Label>
-              <Input
-                type="password"
+              <Input type="password"
                 value={form.password || ''}
                 onChange={(e) => { setForm((p) => ({ ...p, password: e.target.value })); if (formErrors.password) setFormErrors((prev) => { const n = { ...prev }; delete n.password; return n; }); }}
                 className={formErrors.password ? 'border-destructive focus-visible:ring-destructive' : ''}
-                maxLength={100}
-              />
+                maxLength={100}/>
               {formErrors.password && <p className="text-xs text-destructive">{formErrors.password}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -713,7 +677,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
           )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button type="button" onClick={handleSave} disabled={!isFormValid}>{editingWorker ? 'Update' : 'Create'}</Button>
+            <Button type="button" onClick={handleSave}>{editingWorker ? 'Update' : 'Create'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -765,14 +729,12 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
           <div className="flex-1 overflow-y-auto space-y-2 pr-1">
             {workers.map((w) => {
               const name = w.display_name || `${w.first_name} ${w.last_name}`;
-              const hasBarcode = !!w.barcode;
+              const hasBarcode = !!getBarcode(w);
               return (
                 <div key={w.id} className={`flex items-center gap-3 p-2 rounded border ${!hasBarcode ? 'opacity-50 bg-muted/40' : 'hover:bg-muted/50'}`}>
-                  <Checkbox
-                    checked={selectedPrintIds.has(w.id)}
+                  <Checkbox checked={selectedPrintIds.has(w.id)}
                     onCheckedChange={() => togglePrintSelection(w.id)}
-                    disabled={!hasBarcode}
-                  />
+                    disabled={!hasBarcode}/>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{name}</div>
                     <div className="text-xs text-muted-foreground">{w.role} · {w.status}</div>
@@ -803,12 +765,10 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
           <div className="grid gap-6 py-4">
             <div className="grid gap-2">
               <Label htmlFor="file-name">File Name</Label>
-              <Input
-                id="file-name"
+              <Input id="file-name"
                 value={exportFileName}
                 onChange={(e) => setExportFileName(e.target.value)}
-                placeholder="workers-export"
-              />
+                placeholder="workers-export"/>
             </div>
             <div className="grid gap-3">
               <Label>Select Columns to Export</Label>
@@ -826,11 +786,9 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                   { id: 'barcode', label: 'QR Code' },
                 ].map((column) => (
                   <div key={column.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={column.id}
+                    <Checkbox id={column.id}
                       checked={selectedExportColumns.includes(column.id)}
-                      onCheckedChange={() => handleExportColumnToggle(column.id)}
-                    />
+                      onCheckedChange={() => handleExportColumnToggle(column.id)}/>
                     <Label htmlFor={column.id} className="text-sm font-normal cursor-pointer">
                       {column.label}
                     </Label>
@@ -851,7 +809,8 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
       </Dialog>
 
       {/* Import Dialog */}
-      <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+      <Dialog open={isImportDialogOpen}
+onOpenChange={(open) => {
         setIsImportDialogOpen(open);
         if (!open) { setSelectedFile(null); }
       }}>
@@ -869,13 +828,11 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 <p className="font-medium">Need a template?</p>
                 <p className="text-muted-foreground">Download the sample file to see the required format.</p>
               </div>
-              <Button
-                type="button"
+              <Button type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleDownloadSample}
-                className="shrink-0 ml-4 gap-1.5"
-              >
+                className="shrink-0 ml-4 gap-1.5">
                 <FileDown className="h-4 w-4" />
                 Sample CSV
               </Button>
@@ -892,10 +849,8 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 Select File
               </Label>
               {!selectedFile ? (
-                <label
-                  htmlFor="file-upload"
-                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
+                <label htmlFor="file-upload"
+                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors">
                   <Upload className="h-8 w-8 text-muted-foreground mb-2" />
                   <span className="text-sm font-medium text-primary">Click to select file</span>
                   <span className="text-xs text-muted-foreground mt-1">CSV (.csv)</span>
@@ -909,25 +864,21 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                       {(selectedFile.size / 1024).toFixed(1)} KB
                     </p>
                   </div>
-                  <Button
-                    type="button"
+                  <Button type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => setSelectedFile(null)}
-                    disabled={isImporting}
-                  >
+                    disabled={isImporting}>
                     Change
                   </Button>
                 </div>
               )}
-              <input
-                id="file-upload"
+              <input id="file-upload"
                 type="file"
                 accept=".csv"
                 onChange={handleFileChange}
                 disabled={isImporting}
-                className="hidden"
-              />
+                className="hidden"/>
             </div>
 
             {isImporting && (
@@ -941,12 +892,10 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
             )}
           </div>
           <DialogFooter>
-            <Button
-              type="button"
+            <Button type="button"
               variant="outline"
               onClick={() => { setIsImportDialogOpen(false); setSelectedFile(null); }}
-              disabled={isImporting}
-            >
+              disabled={isImporting}>
               Cancel
             </Button>
             <Button type="button" onClick={handleImportWorkers} disabled={!selectedFile || isImporting || !warehouseId}>
@@ -964,28 +913,24 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
       </Dialog>
 
       {/* Disable Worker Confirmation */}
-      <ConfirmationDialog
-        open={!!confirmDisableWorker}
+      <ConfirmationDialog open={!!confirmDisableWorker}
         onOpenChange={(open) => { if (!open) setConfirmDisableWorker(null); }}
         title="Disable Worker"
         description={confirmDisableWorker ? `Are you sure you want to disable "${confirmDisableWorker.display_name || `${confirmDisableWorker.first_name} ${confirmDisableWorker.last_name}`}"? They will no longer be able to log in.` : ''}
         confirmLabel="Disable"
         variant="destructive"
         loading={isDisabling}
-        onConfirm={executeDisableWorker}
-      />
+        onConfirm={executeDisableWorker}/>
 
       {/* Regenerate QR Code Confirmation */}
-      <ConfirmationDialog
-        open={!!confirmRegenerateWorker}
+      <ConfirmationDialog open={!!confirmRegenerateWorker}
         onOpenChange={(open) => { if (!open) setConfirmRegenerateWorker(null); }}
         title="Regenerate QR Code"
         description={confirmRegenerateWorker ? `Are you sure you want to regenerate the QR code for "${confirmRegenerateWorker.display_name || `${confirmRegenerateWorker.first_name} ${confirmRegenerateWorker.last_name}`}"? The current QR code will stop working immediately.` : ''}
         confirmLabel="Regenerate"
         variant="destructive"
         loading={isRegenerating}
-        onConfirm={executeRegenerateBarcode}
-      />
+        onConfirm={executeRegenerateBarcode}/>
     </div>
   );
 }
