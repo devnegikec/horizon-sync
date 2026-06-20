@@ -3,7 +3,6 @@ import * as React from 'react';
 import { Warehouse, ArrowDownToLine, ArrowUpFromLine, Box, ShieldCheck, Truck, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { useUserStore } from '@horizon-sync/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Label } from '@horizon-sync/ui/components/ui/label';
@@ -15,6 +14,7 @@ import { StockManagement } from '../stock';
 import { DeviceManagementPanel } from './DeviceManagementPanel';
 import { DispatchList } from './DispatchList';
 import { GateVerificationPanel } from './GateVerificationPanel';
+import { LocationQRPanel } from './LocationQRPanel';
 import { LocationTreeView } from './LocationTreeView';
 import { PickListView } from './PickListView';
 import { PutAwayView } from './PutAwayView';
@@ -50,7 +50,7 @@ export function WMSManagement() {
   const [activeView, setActiveView] = React.useState<WMSView>('layout');
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('');
   const [gatePickListId, setGatePickListId] = React.useState<string>('');
-  const [manageSection, setManageSection] = React.useState<'workers' | 'devices'>('workers');
+  const [manageSection, setManageSection] = React.useState<'workers' | 'devices' | 'location-qr'>('workers');
   const [inboundSection, setInboundSection] = React.useState<InboundSection>('receiving');
   const [outboundSection, setOutboundSection] = React.useState<OutboundSection>('pick');
 
@@ -293,10 +293,18 @@ export function WMSManagement() {
                     Devices
                   </span>
                 </button>
+                <button className={cn('px-4 py-2 text-sm font-medium', manageSection === 'location-qr' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+                  onClick={() => setManageSection('location-qr')}>
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Location QR
+                  </span>
+                </button>
               </div>
               <div className="p-4">
                 {manageSection === 'workers' && <WorkersManagementPanel warehouseId={selectedWarehouseId || undefined} />}
                 {manageSection === 'devices' && <DeviceManagementPanel warehouseId={selectedWarehouseId || undefined} />}
+                {manageSection === 'location-qr' && <LocationQRPanel warehouseId={selectedWarehouseId || undefined} />}
               </div>
             </div>
           </div>
