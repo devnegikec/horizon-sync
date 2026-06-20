@@ -3,7 +3,6 @@ import * as React from 'react';
 import { Warehouse, ArrowDownToLine, ArrowUpFromLine, Box, ShieldCheck, Truck, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { useUserStore } from '@horizon-sync/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Label } from '@horizon-sync/ui/components/ui/label';

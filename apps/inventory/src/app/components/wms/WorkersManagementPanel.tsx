@@ -46,7 +46,6 @@ interface WorkersManagementPanelProps {
 export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const userPermissions = useUserStore((s) => s.permissions.permissions);
-<<<<<<< HEAD
   const user = useUserStore((s) => s.user);
   const organization = useUserStore((s) => s.organization);
   const organizationId = organization?.id || user?.organization_id || '';
@@ -65,9 +64,6 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
   }, [organizationId]);
 
   const canCreateWorkers = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
-=======
-  const canCreateWorkers = userPermissions.includes('warehouse.manage') || userPermissions.includes('wms_worker.manage') || userPermissions.includes('*.*');
->>>>>>> dev
   const canPrintQR = canCreateWorkers || userPermissions.includes('warehouse.read');
   const { toast } = useToast();
 
