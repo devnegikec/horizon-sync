@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Building2,
   Users,
+  HardHat,
   Settings,
   HelpCircle,
   Zap,
@@ -48,6 +49,7 @@ const mainNavItems: NavItem[] = [
   { title: 'Dashboard', href: '/', icon: LayoutDashboard },
   { title: 'Organizations', href: '/organizations', icon: Building2, requiredDomain: 'organizations' },
   { title: 'Users', href: '/users', icon: Users, requiredDomain: 'users' },
+  { title: 'Workers', href: '/workers', icon: HardHat, requiredDomain: 'users' },
   {
     title: 'Payments',
     href: '/payments',

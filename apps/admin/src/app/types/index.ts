@@ -70,6 +70,15 @@ export type {
   AdminUserListResponse,
 } from './user.types';
 
+export type {
+  AdminWorkerCreate,
+  AdminWorkerCreateResponse,
+  AdminWorkerFilters,
+  AdminWorkerListItem,
+  AdminWorkerListResponse,
+  AdminWorkerDetailResponse,
+} from './worker.types';
+
 export type { PaginationMeta } from './common.types';
 
 export type {

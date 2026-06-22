@@ -120,7 +120,7 @@ const columns: ColumnDef<FlatRow>[] = [
     id: 'type',
     header: 'Type / Code',
     cell: ({ row }) => (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         <ExpandCell row={row} />
         <span className="font-mono text-sm font-medium">{row.original.code}</span>
       </div>
@@ -195,11 +195,11 @@ const columns: ColumnDef<FlatRow>[] = [
     header: 'Status',
     cell: ({ row }) => (
       <span className={cn(
-          'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-          row.original.is_active
-            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
-        )}>
+        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+        row.original.is_active
+          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+          : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
+      )}>
         {row.original.is_active ? 'Active' : 'Inactive'}
       </span>
     ),

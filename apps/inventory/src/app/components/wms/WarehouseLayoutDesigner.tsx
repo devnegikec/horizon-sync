@@ -246,8 +246,8 @@ function ZoneCard({
     // Smart auto-fill: copy config from the last aisle in this zone
     const prevAisle = zone.aisles.length > 0 ? zone.aisles[zone.aisles.length - 1] : null;
     const spec: AisleSpec = prevAisle
-      ? { ...prevAisle, code: `A${String(num).padStart(2, '0')}`, name: `Aisle ${num}`, rows: 'left_only' }
-      : { ...defaultAisleSpec(), code: `A${String(num).padStart(2, '0')}`, name: `Aisle ${num}`, rows: num > 1 ? 'left_only' : 'both' };
+      ? { ...prevAisle, code: `A-${String(num).padStart(2, '0')}`, name: `Aisle ${num}`, rows: 'left_only' }
+      : { ...defaultAisleSpec(), code: `A-${String(num).padStart(2, '0')}`, name: `Aisle ${num}`, rows: num > 1 ? 'left_only' : 'both' };
     onChange({ ...zone, aisles: [...zone.aisles, spec] });
   };
 
@@ -482,7 +482,7 @@ export function WarehouseLayoutDesigner({
   const addZone = () => {
     const prevZone = config.zones.length > 0 ? config.zones[config.zones.length - 1] : null;
     const z = prevZone ? { ...defaultZoneSpec(), aisle_spacing: prevZone.aisle_spacing } : defaultZoneSpec();
-    z.code = String.fromCharCode(65 + config.zones.length); // A, B, C …
+    z.code = `Z-${String(config.zones.length + 1).padStart(2, '0')}`; // Z-01, Z-02, Z-03…
     z.name = `Zone ${z.code}`;
 
     // Smart offset: calculate based on previous zone's extent
@@ -493,7 +493,7 @@ export function WarehouseLayoutDesigner({
       // Copy aisle config from previous zone for consistency
       z.aisles = prevZone.aisles.map((a, i) => ({
         ...a,
-        code: `A${String(i + 1).padStart(2, '0')}`,
+        code: `A-${String(i + 1).padStart(2, '0')}`,
         name: `Aisle ${i + 1}`,
       }));
     } else {

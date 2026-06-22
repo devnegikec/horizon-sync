@@ -125,11 +125,11 @@ export function defaultAisleSpec(): AisleSpec {
 
 export function defaultZoneSpec(): ZoneSpec {
   const aisle = defaultAisleSpec();
-  aisle.code = 'A01';
+  aisle.code = 'A-01';
   aisle.name = 'Aisle 1';
   aisle.rows = 'both';
   return {
-    code: '',
+    code: 'Z-01',
     name: null,
     offset_x: 0,
     offset_y: 0,
@@ -156,9 +156,9 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
     id: 'small-warehouse',
     name: 'Small Warehouse',
     description: '1 zone, 2 aisles (corridor), 5 levels, 100 bins — small stockroom',
-    config: { grid_unit: 1.0, zones: [{ code: 'A', name: 'Main Storage', offset_x: 0, offset_y: 0, aisle_spacing: 6.5, aisles: [
-      { code: 'A01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'right_only', num_levels: 5, level_height: 1.4, bins_per_level: 1, bin_capacity: 100, num_bays_per_row: 10, bay_depth: 1.8 },
-      { code: 'A02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'left_only', num_levels: 5, level_height: 1.4, bins_per_level: 1, bin_capacity: 100, num_bays_per_row: 10, bay_depth: 1.8 },
+    config: { grid_unit: 1.0, zones: [{ code: 'Z-01', name: 'Main Storage', offset_x: 0, offset_y: 0, aisle_spacing: 6.5, aisles: [
+      { code: 'A-01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'right_only', num_levels: 5, level_height: 1.4, bins_per_level: 1, bin_capacity: 100, num_bays_per_row: 10, bay_depth: 1.8 },
+      { code: 'A-02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'left_only', num_levels: 5, level_height: 1.4, bins_per_level: 1, bin_capacity: 100, num_bays_per_row: 10, bay_depth: 1.8 },
     ] }] },
   },
   {
@@ -166,13 +166,13 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
     name: 'Medium Warehouse',
     description: '2 zones, 4 aisles, 5 levels, 400 bins — standard distribution',
     config: { grid_unit: 1.0, zones: [
-      { code: 'A', name: 'Fast Movers', offset_x: 0, offset_y: 0, aisle_spacing: 6.5, aisles: [
-        { code: 'A01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'right_only', num_levels: 5, level_height: 1.4, bins_per_level: 1, bin_capacity: 150, num_bays_per_row: 15, bay_depth: 1.8 },
-        { code: 'A02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'both', num_levels: 5, level_height: 1.4, bins_per_level: 1, bin_capacity: 150, num_bays_per_row: 15, bay_depth: 1.8 },
+      { code: 'Z-01', name: 'Fast Movers', offset_x: 0, offset_y: 0, aisle_spacing: 6.5, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'right_only', num_levels: 5, level_height: 1.4, bins_per_level: 1, bin_capacity: 150, num_bays_per_row: 15, bay_depth: 1.8 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'both', num_levels: 5, level_height: 1.4, bins_per_level: 1, bin_capacity: 150, num_bays_per_row: 15, bay_depth: 1.8 },
       ] },
-      { code: 'B', name: 'Bulk Storage', offset_x: 0, offset_y: 50, aisle_spacing: 6.5, aisles: [
-        { code: 'B01', name: 'Aisle 3', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 4.0, rows: 'both', num_levels: 3, level_height: 2.0, bins_per_level: 1, bin_capacity: 500, num_bays_per_row: 10, bay_depth: 2.0 },
-        { code: 'B02', name: 'Aisle 4', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 4.0, rows: 'left_only', num_levels: 3, level_height: 2.0, bins_per_level: 1, bin_capacity: 500, num_bays_per_row: 10, bay_depth: 2.0 },
+      { code: 'Z-02', name: 'Bulk Storage', offset_x: 0, offset_y: 50, aisle_spacing: 6.5, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 4.0, rows: 'both', num_levels: 3, level_height: 2.0, bins_per_level: 1, bin_capacity: 500, num_bays_per_row: 10, bay_depth: 2.0 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 4.0, rows: 'left_only', num_levels: 3, level_height: 2.0, bins_per_level: 1, bin_capacity: 500, num_bays_per_row: 10, bay_depth: 2.0 },
       ] },
     ] },
   },
@@ -181,17 +181,17 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
     name: 'Large Warehouse',
     description: '3 zones, 6 aisles, 5 levels, 900 bins — high-density racking',
     config: { grid_unit: 1.0, zones: [
-      { code: 'A', name: 'Picking Zone', offset_x: 0, offset_y: 0, aisle_spacing: 6.5, aisles: [
-        { code: 'A01', name: 'Pick 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'right_only', num_levels: 5, level_height: 1.4, bins_per_level: 2, bin_capacity: 100, num_bays_per_row: 20, bay_depth: 1.8 },
-        { code: 'A02', name: 'Pick 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'left_only', num_levels: 5, level_height: 1.4, bins_per_level: 2, bin_capacity: 100, num_bays_per_row: 20, bay_depth: 1.8 },
+      { code: 'Z-01', name: 'Picking Zone', offset_x: 0, offset_y: 0, aisle_spacing: 6.5, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'right_only', num_levels: 5, level_height: 1.4, bins_per_level: 2, bin_capacity: 100, num_bays_per_row: 20, bay_depth: 1.8 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'left_only', num_levels: 5, level_height: 1.4, bins_per_level: 2, bin_capacity: 100, num_bays_per_row: 20, bay_depth: 1.8 },
       ] },
-      { code: 'B', name: 'Reserve Storage', offset_x: 0, offset_y: 55, aisle_spacing: 7.0, aisles: [
-        { code: 'B01', name: 'Reserve 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 4.0, rows: 'right_only', num_levels: 6, level_height: 1.4, bins_per_level: 1, bin_capacity: 300, num_bays_per_row: 15, bay_depth: 2.0 },
-        { code: 'B02', name: 'Reserve 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 4.0, rows: 'left_only', num_levels: 6, level_height: 1.4, bins_per_level: 1, bin_capacity: 300, num_bays_per_row: 15, bay_depth: 2.0 },
+      { code: 'Z-02', name: 'Reserve Storage', offset_x: 0, offset_y: 55, aisle_spacing: 7.0, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 4.0, rows: 'right_only', num_levels: 6, level_height: 1.4, bins_per_level: 1, bin_capacity: 300, num_bays_per_row: 15, bay_depth: 2.0 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 4.0, rows: 'left_only', num_levels: 6, level_height: 1.4, bins_per_level: 1, bin_capacity: 300, num_bays_per_row: 15, bay_depth: 2.0 },
       ] },
-      { code: 'C', name: 'Cold Storage', offset_x: 0, offset_y: 110, aisle_spacing: 6.5, aisles: [
-        { code: 'C01', name: 'Cold 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'right_only', num_levels: 4, level_height: 1.5, bins_per_level: 1, bin_capacity: 200, num_bays_per_row: 12, bay_depth: 1.8 },
-        { code: 'C02', name: 'Cold 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'left_only', num_levels: 4, level_height: 1.5, bins_per_level: 1, bin_capacity: 200, num_bays_per_row: 12, bay_depth: 1.8 },
+      { code: 'Z-03', name: 'Cold Storage', offset_x: 0, offset_y: 110, aisle_spacing: 6.5, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'right_only', num_levels: 4, level_height: 1.5, bins_per_level: 1, bin_capacity: 200, num_bays_per_row: 12, bay_depth: 1.8 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'left_only', num_levels: 4, level_height: 1.5, bins_per_level: 1, bin_capacity: 200, num_bays_per_row: 12, bay_depth: 1.8 },
       ] },
     ] },
   },
@@ -200,13 +200,13 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
     name: 'Cross-Dock Facility',
     description: '2 zones (inbound/outbound), 4 aisles, 3 levels, 240 bins — transit hub',
     config: { grid_unit: 1.0, zones: [
-      { code: 'IN', name: 'Inbound Staging', offset_x: 0, offset_y: 0, aisle_spacing: 6.5, aisles: [
-        { code: 'IN1', name: 'Receiving 1', direction: 'vertical', position_along: 0, position_start: 0, corridor_width: 3.5, rows: 'right_only', num_levels: 3, level_height: 1.5, bins_per_level: 1, bin_capacity: 250, num_bays_per_row: 12, bay_depth: 1.8 },
-        { code: 'IN2', name: 'Receiving 2', direction: 'vertical', position_along: 0, position_start: 0, corridor_width: 3.5, rows: 'left_only', num_levels: 3, level_height: 1.5, bins_per_level: 1, bin_capacity: 250, num_bays_per_row: 12, bay_depth: 1.8 },
+      { code: 'Z-01', name: 'Inbound Staging', offset_x: 0, offset_y: 0, aisle_spacing: 6.5, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'vertical', position_along: 0, position_start: 0, corridor_width: 3.5, rows: 'right_only', num_levels: 3, level_height: 1.5, bins_per_level: 1, bin_capacity: 250, num_bays_per_row: 12, bay_depth: 1.8 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'vertical', position_along: 0, position_start: 0, corridor_width: 3.5, rows: 'left_only', num_levels: 3, level_height: 1.5, bins_per_level: 1, bin_capacity: 250, num_bays_per_row: 12, bay_depth: 1.8 },
       ] },
-      { code: 'OUT', name: 'Outbound Staging', offset_x: 30, offset_y: 0, aisle_spacing: 6.5, aisles: [
-        { code: 'OUT1', name: 'Dispatch 1', direction: 'vertical', position_along: 0, position_start: 0, corridor_width: 3.5, rows: 'right_only', num_levels: 3, level_height: 1.5, bins_per_level: 1, bin_capacity: 250, num_bays_per_row: 12, bay_depth: 1.8 },
-        { code: 'OUT2', name: 'Dispatch 2', direction: 'vertical', position_along: 0, position_start: 0, corridor_width: 3.5, rows: 'left_only', num_levels: 3, level_height: 1.5, bins_per_level: 1, bin_capacity: 250, num_bays_per_row: 12, bay_depth: 1.8 },
+      { code: 'Z-02', name: 'Outbound Staging', offset_x: 30, offset_y: 0, aisle_spacing: 6.5, aisles: [
+        { code: 'A-01', name: 'Aisle 1', direction: 'vertical', position_along: 0, position_start: 0, corridor_width: 3.5, rows: 'right_only', num_levels: 3, level_height: 1.5, bins_per_level: 1, bin_capacity: 250, num_bays_per_row: 12, bay_depth: 1.8 },
+        { code: 'A-02', name: 'Aisle 2', direction: 'vertical', position_along: 0, position_start: 0, corridor_width: 3.5, rows: 'left_only', num_levels: 3, level_height: 1.5, bins_per_level: 1, bin_capacity: 250, num_bays_per_row: 12, bay_depth: 1.8 },
       ] },
     ] },
   },

@@ -58,6 +58,7 @@ export interface AdminUserUpdate {
 export interface AdminUserFilters {
   search?: string;
   is_active?: boolean;
+  user_type?: string;
   page?: number;
   page_size?: number;
 }

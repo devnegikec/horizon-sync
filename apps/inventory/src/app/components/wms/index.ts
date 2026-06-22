@@ -8,3 +8,4 @@ export { DispatchList } from './DispatchList';
 export { WMSStatusBadge, LocationTypeBadge } from './WMSStatusBadge';
 export { Warehouse3DView } from './Warehouse3DView';
 export { WarehouseLayoutDesigner } from './WarehouseLayoutDesigner';
+export { LocationQRPanel } from './LocationQRPanel';

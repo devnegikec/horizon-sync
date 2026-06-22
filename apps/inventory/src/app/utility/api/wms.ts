@@ -38,6 +38,7 @@ import type {
 } from '../../types/wms.types';
 
 const BASE = `${environment.apiCoreUrl}/api/v1`;
+const IDENTITY_BASE = `${environment.apiIdentityUrl || environment.apiBaseUrl}/api/v1`;
 
 function headers(token: string) {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -274,27 +275,28 @@ export const outboundApi = {
 
 export const wmsWorkerApi = {
   create: (token: string, data: WMSWorkerCreate) =>
-    req<WMSWorker>(`${BASE}/wms-workers`, token, { method: 'POST', body: JSON.stringify(data) }),
+    req<WMSWorker>(`${IDENTITY_BASE}/identity/workers`, token, { method: 'POST', body: JSON.stringify(data) }),
 
   list: (token: string, params: { warehouse_id?: string; status?: string; search?: string; page?: number; page_size?: number }) => {
     const p = new URLSearchParams();
+    p.append('user_type', 'warehouse_worker');
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
     });
-    return req<WMSWorkerListResponse>(`${BASE}/wms-workers?${p}`, token);
+    return req<WMSWorkerListResponse>(`${IDENTITY_BASE}/identity/workers?${p}`, token);
   },
 
   get: (token: string, id: string) =>
-    req<WMSWorker>(`${BASE}/wms-workers/${id}`, token),
+    req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}`, token),
 
   update: (token: string, id: string, data: WMSWorkerUpdate) =>
-    req<WMSWorker>(`${BASE}/wms-workers/${id}`, token, { method: 'PATCH', body: JSON.stringify(data) }),
+    req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}`, token, { method: 'PATCH', body: JSON.stringify(data) }),
 
   delete: (token: string, id: string) =>
-    req<void>(`${BASE}/wms-workers/${id}`, token, { method: 'DELETE' }),
+    req<void>(`${IDENTITY_BASE}/identity/workers/${id}`, token, { method: 'DELETE' }),
 
   regenerateBarcode: (token: string, id: string) =>
-    req<WMSWorker>(`${BASE}/wms-workers/${id}/regenerate-barcode`, token, { method: 'POST', body: '{}' }),
+    req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}/regenerate-qr`, token, { method: 'POST', body: '{}' }),
 
   barcodeLogin: (barcode: string) =>
     req<{ access_token: string; token_type: string; expires_in: number; worker: WMSWorker }>(`${BASE}/wms-workers/login/barcode`, '', {
