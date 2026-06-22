@@ -165,8 +165,8 @@ function PickListDetail({ pickListId, onBack }: PickListDetailProps) {
             {pickList.items.map((item, idx) => (
               <tr key={item.id} className="hover:bg-muted/20">
                 <td className="px-4 py-2.5 text-muted-foreground">{item.sort_order || idx + 1}</td>
-                <td className="px-4 py-2.5 font-mono text-xs">{item.item_id}</td>
-                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{item.bin_location_id ?? '—'}</td>
+                <td className="px-4 py-2.5 text-xs">{item.item_name || item.sku || item.item_id}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{item.bin_location_path || item.bin_location_id || '—'}</td>
                 <td className="px-4 py-2.5 text-right">{item.qty}</td>
                 <td className="px-4 py-2.5 text-right font-semibold">{item.picked_qty}</td>
                 <td className="px-4 py-2.5">

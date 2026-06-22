@@ -98,6 +98,11 @@ export function ItemsTable({
         cell: ({ row }) => <code className="text-sm bg-muted px-2 py-1 rounded">{row.original.item_code ?? ''}</code>,
       },
       {
+        accessorKey: 'sku',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="SKU" />,
+        cell: ({ row }) => <span className="font-mono text-xs">{row.original.sku ?? '—'}</span>,
+      },
+      {
         accessorKey: 'item_group_name',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Group" />,
         cell: ({ row }) => row.original.item_group_name ?? '',

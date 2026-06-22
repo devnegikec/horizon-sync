@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Warehouse, ArrowDownToLine, ArrowUpFromLine, Box, ShieldCheck, Truck, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers } from 'lucide-react';
+import { Warehouse, ArrowDownToLine, ArrowUpFromLine, Box, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers, ShieldCheck, Truck } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
@@ -16,6 +16,7 @@ import { DispatchList } from './DispatchList';
 import { GateVerificationPanel } from './GateVerificationPanel';
 import { LocationQRPanel } from './LocationQRPanel';
 import { LocationTreeView } from './LocationTreeView';
+import { OutboundManagement } from './OutboundManagement';
 import { PickListView } from './PickListView';
 import { PutAwayView } from './PutAwayView';
 import { ReceivingSlipList } from './ReceivingSlipList';
@@ -51,8 +52,8 @@ export function WMSManagement() {
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('');
   const [gatePickListId, setGatePickListId] = React.useState<string>('');
   const [manageSection, setManageSection] = React.useState<'workers' | 'devices' | 'location-qr'>('workers');
-  const [inboundSection, setInboundSection] = React.useState<InboundSection>('receiving');
   const [outboundSection, setOutboundSection] = React.useState<OutboundSection>('pick');
+  const [inboundSection, setInboundSection] = React.useState<InboundSection>('receiving');
 
   const { warehouses, loading: warehousesLoading, refetch: refetchWarehouses } = useMyWarehouses();
   const userPermissions = useUserStore((s) => s.permissions.permissions);
@@ -126,7 +127,7 @@ export function WMSManagement() {
         <nav className="flex items-center gap-1 pb-0 overflow-x-auto">
           <NavItem icon={MapPin} label="Layout" isActive={activeView === 'layout'} onClick={() => setActiveView('layout')} />
           <NavItem icon={ArrowDownToLine} label="Inbound" isActive={activeView === 'inbound'} onClick={() => setActiveView('inbound')} />
-          <NavItem icon={ArrowUpFromLine} label="Outbound" isActive={activeView === 'outbound'} onClick={() => setActiveView('outbound')} />
+          <NavItem icon={ArrowUpFromLine} label="Outbound Management" isActive={activeView === 'outbound'} onClick={() => setActiveView('outbound')} />
           <NavItem icon={Boxes} label="Stock" isActive={activeView === 'stock'} onClick={() => setActiveView('stock')} />
           {canManage && (
             <NavItem icon={Settings} label="Manage" isActive={activeView === 'manage'} onClick={() => setActiveView('manage')} />
@@ -238,12 +239,12 @@ export function WMSManagement() {
                         <input className="flex-1 border rounded-md px-3 py-2 text-sm bg-background font-mono"
                           placeholder="Enter Pick List ID..."
                           value={gatePickListId}
-                          onChange={(e) => setGatePickListId(e.target.value)}/>
+                          onChange={(e) => setGatePickListId(e.target.value)} />
                       </div>
                       {gatePickListId && (
                         <div className="border rounded-lg p-4 bg-card">
                           <GateVerificationPanel pickListId={gatePickListId}
-                            onDispatchCreated={() => setOutboundSection('dispatch')}/>
+                            onDispatchCreated={() => setOutboundSection('dispatch')} />
                         </div>
                       )}
                     </div>

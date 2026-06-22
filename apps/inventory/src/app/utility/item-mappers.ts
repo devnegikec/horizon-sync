@@ -10,6 +10,7 @@ export function apiItemToItem(api: ApiItem): Item {
     id: api.id,
     itemCode: api.item_code,
     name: api.item_name,
+    sku: api.sku ?? null,
     description: (api as any).description ?? '',
     unitOfMeasure: api.uom ?? '',
     defaultPrice: api.standard_rate != null ? parseFloat(api.standard_rate) : 0,

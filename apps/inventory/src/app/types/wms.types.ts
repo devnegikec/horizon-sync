@@ -277,12 +277,15 @@ export interface PickListProgress {
 export interface PickListItem {
   id: string;
   item_id: string;
+  item_name?: string | null;
+  sku?: string | null;
   warehouse_id: string;
   qty: number;
   picked_qty: number;
   uom: string;
   batch_no: string | null;
   bin_location_id: string | null;
+  bin_location_path?: string | null;
   sort_order: number;
 }
 

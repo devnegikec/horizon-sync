@@ -22,6 +22,7 @@ interface ItemDetailResponse {
   item_code: string;
   item_name: string;
   description: string;
+  sku: string | null;
   item_group_id: string | null;
   item_group: { id: string; code: string; name: string } | null;
   item_type: string;
@@ -127,6 +128,7 @@ function OverviewTab({ detail }: { detail: ItemDetailResponse }) {
         )}
         <div className="grid grid-cols-2 gap-4">
           <InfoRow icon={Hash} label="Item Code" value={detail.item_code} />
+          <InfoRow icon={Tag} label="SKU" value={detail.sku} />
           <InfoRow icon={Ruler} label="Unit of Measure" value={detail.uom} />
           <InfoRow icon={Layers} label="Item Group" value={detail.item_group?.name} />
           <InfoRow icon={Box} label="Item Type" value={detail.item_type ? detail.item_type.charAt(0).toUpperCase() + detail.item_type.slice(1) : ''} />
