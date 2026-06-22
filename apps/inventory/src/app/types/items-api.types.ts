@@ -5,6 +5,7 @@ export interface ApiItem {
   item_name: string;
   item_type: string;
   uom: string | null;
+  sku?: string | null;
   item_group_id: string | null;
   item_group_name: string | null;
   standard_rate: string | null;
