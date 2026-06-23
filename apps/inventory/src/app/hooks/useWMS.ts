@@ -445,7 +445,7 @@ export function useGateVerification() {
       setError(null);
       try {
         const result = await outboundApi.startGateSession(accessToken, {
-          pick_list_id: pickListId,
+          pick_list_no: pickListId,
           vehicle_number: vehicleNumber ?? null,
           driver_name: driverName ?? null,
           driver_contact: driverContact ?? null,

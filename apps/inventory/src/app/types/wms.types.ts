@@ -330,7 +330,8 @@ export interface PickScanResult {
 export type GateSessionStatus = 'open' | 'verified' | 'cancelled';
 
 export interface GateSessionRequest {
-  pick_list_id: string;
+  pick_list_id?: string;
+  pick_list_no?: string;
   vehicle_number?: string | null;
   driver_name?: string | null;
   driver_contact?: string | null;
