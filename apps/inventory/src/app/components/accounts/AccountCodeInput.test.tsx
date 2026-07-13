@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
 import { AccountCodeInput } from './AccountCodeInput';
 
 describe('AccountCodeInput', () => {
@@ -14,11 +15,9 @@ describe('AccountCodeInput', () => {
 
   it('renders with label', () => {
     render(
-      <AccountCodeInput
-        value=""
+      <AccountCodeInput value=""
         onChange={mockOnChange}
-        label="Account Code"
-      />
+        label="Account Code"/>
     );
 
     expect(screen.getByText('Account Code')).toBeInTheDocument();
@@ -26,11 +25,9 @@ describe('AccountCodeInput', () => {
 
   it('shows required indicator when required', () => {
     render(
-      <AccountCodeInput
-        value=""
+      <AccountCodeInput value=""
         onChange={mockOnChange}
-        required
-      />
+        required/>
     );
 
     expect(screen.getByText('*')).toBeInTheDocument();
@@ -38,10 +35,8 @@ describe('AccountCodeInput', () => {
 
   it('calls onChange when value changes', async () => {
     render(
-      <AccountCodeInput
-        value=""
-        onChange={mockOnChange}
-      />
+      <AccountCodeInput value=""
+        onChange={mockOnChange}/>
     );
 
     const input = screen.getByRole('textbox');
@@ -52,11 +47,9 @@ describe('AccountCodeInput', () => {
 
   it('shows error for empty value after blur', async () => {
     render(
-      <AccountCodeInput
-        value=""
+      <AccountCodeInput value=""
         onChange={mockOnChange}
-        onValidationChange={mockOnValidationChange}
-      />
+        onValidationChange={mockOnValidationChange}/>
     );
 
     const input = screen.getByRole('textbox');
@@ -72,11 +65,9 @@ describe('AccountCodeInput', () => {
     const longValue = 'A'.repeat(51);
 
     render(
-      <AccountCodeInput
-        value={longValue}
+      <AccountCodeInput value={longValue}
         onChange={mockOnChange}
-        onValidationChange={mockOnValidationChange}
-      />
+        onValidationChange={mockOnValidationChange}/>
     );
 
     const input = screen.getByRole('textbox');
@@ -90,12 +81,10 @@ describe('AccountCodeInput', () => {
 
   it('validates against format pattern', async () => {
     render(
-      <AccountCodeInput
-        value="INVALID"
+      <AccountCodeInput value="INVALID"
         onChange={mockOnChange}
         formatPattern="^[0-9]{4}-[0-9]{2}$"
-        onValidationChange={mockOnValidationChange}
-      />
+        onValidationChange={mockOnValidationChange}/>
     );
 
     const input = screen.getByRole('textbox');
@@ -109,12 +98,10 @@ describe('AccountCodeInput', () => {
 
   it('accepts valid format pattern', async () => {
     render(
-      <AccountCodeInput
-        value="1000-01"
+      <AccountCodeInput value="1000-01"
         onChange={mockOnChange}
         formatPattern="^[0-9]{4}-[0-9]{2}$"
-        onValidationChange={mockOnValidationChange}
-      />
+        onValidationChange={mockOnValidationChange}/>
     );
 
     const input = screen.getByRole('textbox');
@@ -129,11 +116,9 @@ describe('AccountCodeInput', () => {
 
   it('calls onValidationChange with validation state', async () => {
     const { rerender } = render(
-      <AccountCodeInput
-        value=""
+      <AccountCodeInput value=""
         onChange={mockOnChange}
-        onValidationChange={mockOnValidationChange}
-      />
+        onValidationChange={mockOnValidationChange}/>
     );
 
     const input = screen.getByRole('textbox');
@@ -146,11 +131,9 @@ describe('AccountCodeInput', () => {
 
     // Update with valid value
     rerender(
-      <AccountCodeInput
-        value="1000"
+      <AccountCodeInput value="1000"
         onChange={mockOnChange}
-        onValidationChange={mockOnValidationChange}
-      />
+        onValidationChange={mockOnValidationChange}/>
     );
 
     await waitFor(() => {
@@ -160,11 +143,9 @@ describe('AccountCodeInput', () => {
 
   it('disables input when disabled prop is true', () => {
     render(
-      <AccountCodeInput
-        value=""
+      <AccountCodeInput value=""
         onChange={mockOnChange}
-        disabled
-      />
+        disabled/>
     );
 
     const input = screen.getByRole('textbox');
@@ -175,12 +156,10 @@ describe('AccountCodeInput', () => {
     const value = 'A'.repeat(11);
 
     render(
-      <AccountCodeInput
-        value={value}
+      <AccountCodeInput value={value}
         onChange={mockOnChange}
         maxLength={10}
-        onValidationChange={mockOnValidationChange}
-      />
+        onValidationChange={mockOnValidationChange}/>
     );
 
     const input = screen.getByRole('textbox');
@@ -194,11 +173,9 @@ describe('AccountCodeInput', () => {
 
   it('shows format hint when pattern is provided and valid', async () => {
     render(
-      <AccountCodeInput
-        value="1000-01"
+      <AccountCodeInput value="1000-01"
         onChange={mockOnChange}
-        formatPattern="^[0-9]{4}-[0-9]{2}$"
-      />
+        formatPattern="^[0-9]{4}-[0-9]{2}$"/>
     );
 
     const input = screen.getByRole('textbox');

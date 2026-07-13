@@ -35,38 +35,32 @@ export function Step1BasicInventory({
                         <Label htmlFor="itemCode">
                             Item Code <span className="text-red-500">*</span>
                         </Label>
-                        <Input
-                            id="itemCode"
+                        <Input id="itemCode"
                             value={formData.itemCode}
                             onChange={(e) => setFormData((prev) => ({ ...prev, itemCode: e.target.value }))}
                             placeholder="e.g., ELEC-001"
-                            required
-                        />
+                            required/>
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="itemName">
                             Item Name <span className="text-red-500">*</span>
                         </Label>
-                        <Input
-                            id="itemName"
+                        <Input id="itemName"
                             value={formData.name}
                             onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                             placeholder="Enter item name"
-                            required
-                        />
+                            required/>
                     </div>
                 </div>
 
                 <div className="space-y-2">
                     <Label htmlFor="description">Description</Label>
-                    <Textarea
-                        id="description"
+                    <Textarea id="description"
                         value={formData.description}
                         onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                         placeholder="Enter item description"
-                        rows={3}
-                    />
+                        rows={3}/>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -75,10 +69,8 @@ export function Step1BasicInventory({
                             Item Group <span className="text-red-500">*</span>
                         </Label>
                         {hasItemGroups ? (
-                            <Select
-                                value={formData.itemGroupId}
-                                onValueChange={(value) => setFormData((prev) => ({ ...prev, itemGroupId: value }))}
-                            >
+                            <Select value={formData.itemGroupId}
+                                onValueChange={(value) => setFormData((prev) => ({ ...prev, itemGroupId: value }))}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select group" />
                                 </SelectTrigger>
@@ -101,10 +93,8 @@ export function Step1BasicInventory({
                         <Label>
                             Item Type <span className="text-red-500">*</span>
                         </Label>
-                        <Select
-                            value={formData.itemType}
-                            onValueChange={(value) => setFormData((prev) => ({ ...prev, itemType: value }))}
-                        >
+                        <Select value={formData.itemType}
+                            onValueChange={(value) => setFormData((prev) => ({ ...prev, itemType: value }))}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select type" />
                             </SelectTrigger>
@@ -124,10 +114,8 @@ export function Step1BasicInventory({
                         <Label>
                             Unit of Measure <span className="text-red-500">*</span>
                         </Label>
-                        <Select
-                            value={formData.unitOfMeasure}
-                            onValueChange={(value) => setFormData((prev) => ({ ...prev, unitOfMeasure: value }))}
-                        >
+                        <Select value={formData.unitOfMeasure}
+                            onValueChange={(value) => setFormData((prev) => ({ ...prev, unitOfMeasure: value }))}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select unit" />
                             </SelectTrigger>
@@ -145,10 +133,8 @@ export function Step1BasicInventory({
                         <Label>
                             Status <span className="text-red-500">*</span>
                         </Label>
-                        <Select
-                            value={formData.status}
-                            onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value }))}
-                        >
+                        <Select value={formData.status}
+                            onValueChange={(value) => setFormData((prev) => ({ ...prev, status: value }))}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select status" />
                             </SelectTrigger>
@@ -170,26 +156,22 @@ export function Step1BasicInventory({
                 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="maintainStock"
+                        <Checkbox id="maintainStock"
                             checked={formData.maintainStock}
                             onCheckedChange={(checked) =>
                                 setFormData((prev) => ({ ...prev, maintainStock: checked === true }))
-                            }
-                        />
+                            }/>
                         <Label htmlFor="maintainStock" className="cursor-pointer">
                             Maintain Stock
                         </Label>
                     </div>
 
                     <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="allowNegativeStock"
+                        <Checkbox id="allowNegativeStock"
                             checked={formData.allowNegativeStock}
                             onCheckedChange={(checked) =>
                                 setFormData((prev) => ({ ...prev, allowNegativeStock: checked === true }))
-                            }
-                        />
+                            }/>
                         <Label htmlFor="allowNegativeStock" className="cursor-pointer">
                             Allow Negative Stock
                         </Label>
@@ -198,10 +180,8 @@ export function Step1BasicInventory({
 
                 <div className="space-y-2">
                     <Label>Valuation Method</Label>
-                    <Select
-                        value={formData.valuationMethod}
-                        onValueChange={(value) => setFormData((prev) => ({ ...prev, valuationMethod: value }))}
-                    >
+                    <Select value={formData.valuationMethod}
+                        onValueChange={(value) => setFormData((prev) => ({ ...prev, valuationMethod: value }))}>
                         <SelectTrigger>
                             <SelectValue placeholder="Select method" />
                         </SelectTrigger>
@@ -221,13 +201,11 @@ export function Step1BasicInventory({
                 <h3 className="text-base font-semibold border-b pb-2">Variants</h3>
                 
                 <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="hasVariants"
+                    <Checkbox id="hasVariants"
                         checked={formData.hasVariants}
                         onCheckedChange={(checked) =>
                             setFormData((prev) => ({ ...prev, hasVariants: checked === true }))
-                        }
-                    />
+                        }/>
                     <Label htmlFor="hasVariants" className="cursor-pointer">
                         Has Variants
                     </Label>
@@ -237,18 +215,15 @@ export function Step1BasicInventory({
                     <div className="grid gap-4 pl-6 border-l-2 border-muted">
                         <div className="space-y-2">
                             <Label htmlFor="variantOf">Variant Of (Item ID)</Label>
-                            <Input
-                                id="variantOf"
+                            <Input id="variantOf"
                                 value={formData.variantOf || ''}
                                 onChange={(e) => setFormData((prev) => ({ ...prev, variantOf: e.target.value || null }))}
-                                placeholder="Parent item ID"
-                            />
+                                placeholder="Parent item ID"/>
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="variantAttributes">Variant Attributes (JSON)</Label>
-                            <Textarea
-                                id="variantAttributes"
+                            <Textarea id="variantAttributes"
                                 value={JSON.stringify(formData.variantAttributes, null, 2)}
                                 onChange={(e) => {
                                     try {
@@ -259,8 +234,7 @@ export function Step1BasicInventory({
                                     }
                                 }}
                                 placeholder='{"color": "red", "size": "large"}'
-                                rows={3}
-                            />
+                                rows={3}/>
                         </div>
                     </div>
                 )}
@@ -272,26 +246,22 @@ export function Step1BasicInventory({
                 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="hasBatchNo"
+                        <Checkbox id="hasBatchNo"
                             checked={formData.hasBatchNo}
                             onCheckedChange={(checked) =>
                                 setFormData((prev) => ({ ...prev, hasBatchNo: checked === true }))
-                            }
-                        />
+                            }/>
                         <Label htmlFor="hasBatchNo" className="cursor-pointer">
                             Has Batch Number
                         </Label>
                     </div>
 
                     <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="hasSerialNo"
+                        <Checkbox id="hasSerialNo"
                             checked={formData.hasSerialNo}
                             onCheckedChange={(checked) =>
                                 setFormData((prev) => ({ ...prev, hasSerialNo: checked === true }))
-                            }
-                        />
+                            }/>
                         <Label htmlFor="hasSerialNo" className="cursor-pointer">
                             Has Serial Number
                         </Label>
@@ -303,24 +273,20 @@ export function Step1BasicInventory({
                         {formData.hasBatchNo && (
                             <div className="space-y-2">
                                 <Label htmlFor="batchNumberSeries">Batch Number Series</Label>
-                                <Input
-                                    id="batchNumberSeries"
+                                <Input id="batchNumberSeries"
                                     value={formData.batchNumberSeries}
                                     onChange={(e) => setFormData((prev) => ({ ...prev, batchNumberSeries: e.target.value }))}
-                                    placeholder="e.g., BATCH-"
-                                />
+                                    placeholder="e.g., BATCH-"/>
                             </div>
                         )}
 
                         {formData.hasSerialNo && (
                             <div className="space-y-2">
                                 <Label htmlFor="serialNumberSeries">Serial Number Series</Label>
-                                <Input
-                                    id="serialNumberSeries"
+                                <Input id="serialNumberSeries"
                                     value={formData.serialNumberSeries}
                                     onChange={(e) => setFormData((prev) => ({ ...prev, serialNumberSeries: e.target.value }))}
-                                    placeholder="e.g., SN-"
-                                />
+                                    placeholder="e.g., SN-"/>
                             </div>
                         )}
                     </div>

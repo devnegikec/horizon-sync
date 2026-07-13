@@ -1,7 +1,8 @@
 import { useCallback } from 'react';
-import { useUserStore, type User } from '@horizon-sync/store';
+import { useUserStore, type User, type Organization as StoreOrganization } from '@horizon-sync/store';
 
 import { AuthService } from '../services/auth.service';
+import { OrganizationService } from '../services/organization.service';
 import type { UserType } from '../services/auth.types';
 
 function userFromApi(u: UserType): User {
@@ -32,7 +33,7 @@ function userFromApi(u: UserType): User {
 }
 
 export function useAuth() {
-  const { user, accessToken, refreshToken, setAuth, updateUser, clearAuth } = useUserStore();
+  const { user, accessToken, refreshToken, setAuth, updateUser, clearAuth, setOrganization } = useUserStore();
 
   const login = useCallback((
     token: string,
@@ -82,33 +83,69 @@ export function useAuth() {
 
   /**
    * Restore session using refresh token.
-   * If a refresh token exists in the store, it's used.
-   * Otherwise, the backend will attempt to use HttpOnly cookies.
+   * User and organization data are persisted in localStorage and hydrated by Zustand,
+   * so we only need a fresh accessToken here. If the refresh response includes updated
+   * user data, we'll use it; otherwise we keep the persisted user.
    */
   const restoreSession = useCallback(async (): Promise<boolean> => {
     try {
-      console.log('Attempting to restore session');
+      console.log('[restoreSession] Attempting to restore session');
       
-      // Use the refresh token (if any) to get a new access token
-      // AuthService.refresh will also use cookies via credentials: 'include'
+      // Use the refresh token to get a new access token
       const data = await AuthService.refresh(refreshToken || undefined);
+      console.log('[restoreSession] Refresh succeeded, got new access token');
       
-      const userData = data.user
-        ? userFromApi(data.user)
-        : userFromApi(await AuthService.getUserProfile(data.access_token));
+      // If the refresh response includes user data, use it (freshest).
+      // Otherwise, fall back to the user already in the store (persisted from last session).
+      const currentUser = useUserStore.getState().user;
+      let userData: User;
+
+      if (data.user) {
+        userData = userFromApi(data.user);
+      } else if (currentUser) {
+        // User is already hydrated from localStorage — just reuse it
+        userData = currentUser;
+      } else {
+        // No persisted user and no user in refresh response — fetch profile
+        userData = userFromApi(await AuthService.getUserProfile(data.access_token));
+      }
       
-      // Store the new tokens
-      // If we don't get a new refresh token from API, we keep the current one
+      // Store the new tokens + user
       const newRefreshToken = data.refresh_token || refreshToken || '';
       setAuth(userData, data.access_token, newRefreshToken);
+
+      // Organization is already persisted and hydrated from localStorage.
+      // Only fetch if it's missing from the store.
+      const currentOrg = useUserStore.getState().organization;
+      if (!currentOrg && userData.organization_id) {
+        try {
+          const orgData = await OrganizationService.getOrganization(
+            userData.organization_id,
+            data.access_token
+          );
+          setOrganization({
+            id: orgData.id,
+            name: orgData.name,
+            display_name: orgData.display_name,
+            status: orgData.status as 'active' | 'inactive' | 'suspended',
+            is_active: orgData.status === 'active',
+            settings: orgData.settings || null,
+            extra_data: orgData.extra_data || null,
+            created_at: orgData.created_at,
+            updated_at: orgData.updated_at,
+          });
+        } catch (orgError) {
+          console.warn('[restoreSession] Failed to fetch organization:', orgError);
+        }
+      }
       
-      console.log('Session restored successfully');
+      console.log('[restoreSession] Session restored successfully');
       return true;
     } catch (error) {
-      console.error('Failed to restore session:', error);
+      console.error('[restoreSession] Failed to restore session:', error);
       return false;
     }
-  }, [refreshToken, setAuth]);
+  }, [refreshToken, setAuth, setOrganization]);
 
   const fetchUserProfile = async () => {
     if (!accessToken) {

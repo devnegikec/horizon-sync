@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
-import { apiRequest } from '../utility/api';
+
 import type { ReportFilters } from '../types/account.types';
+import { apiRequest } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 interface ChartOfAccountsReport {
   report_type: string;
@@ -85,7 +88,7 @@ export function useReports(filters: ReportFilters) {
       setTrialBalanceReport(trialBalanceResponse);
     } catch (err) {
       console.error('Error fetching reports:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch reports');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -104,3 +107,4 @@ export function useReports(filters: ReportFilters) {
     refetch: fetchReports,
   };
 }
+

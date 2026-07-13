@@ -1,13 +1,14 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
+
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import {
   Input,
   Label,
 } from '@horizon-sync/ui/components';
 
-import { useUserStore } from '@horizon-sync/store';
 import { accountApi } from '../../utility/api/accounts';
 
 export interface AccountCodeInputProps {
@@ -139,13 +140,11 @@ export function AccountCodeInput({
       )}
       
       <div className="relative">
-        <Input
-          value={value}
+        <Input value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          className={error ? 'border-destructive pr-10' : showSuccess ? 'border-green-500 pr-10' : 'pr-10'}
-        />
+          className={error ? 'border-destructive pr-10' : showSuccess ? 'border-green-500 pr-10' : 'pr-10'}/>
         
         <div className="absolute right-3 top-1/2 -translate-y-1/2">
           {validating && (

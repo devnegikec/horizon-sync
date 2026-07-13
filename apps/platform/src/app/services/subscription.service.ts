@@ -1,5 +1,17 @@
 import { environment } from '../../environments/environment';
 
+function getFriendlyMessage(status: number): string {
+  switch (status) {
+    case 401: return 'Your session has expired. Please log in again.';
+    case 403: return 'You do not have permission to perform this action.';
+    case 404: return 'The requested resource was not found.';
+    case 422: return 'The submitted data is invalid. Please check your input.';
+    case 500: return 'An unexpected server error occurred. Please try again later.';
+    case 502: case 503: case 504: return 'The service is temporarily unavailable. Please try again in a few moments.';
+    default: return 'Something went wrong. Please try again later.';
+  }
+}
+
 export interface SubscriptionPlan {
   id: string;
   name: string;
@@ -49,7 +61,7 @@ const API_BASE_URL = environment.apiBaseUrl;
 export class SubscriptionService {
   static async getCurrentSubscriptions(token: string): Promise<Subscription[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/subscriptions/current`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions/current`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -62,7 +74,7 @@ export class SubscriptionService {
           message: 'Failed to fetch subscriptions',
         }));
         throw new Error(
-          errorData.message || `HTTP error! status: ${response.status}`
+          errorData.message || errorData.detail || getFriendlyMessage(response.status)
         );
       }
 
@@ -81,7 +93,7 @@ export class SubscriptionService {
     token: string
   ): Promise<Subscription> {
     try {
-      const response = await fetch(`${API_BASE_URL}/subscriptions`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -95,7 +107,7 @@ export class SubscriptionService {
           message: 'Failed to create subscription',
         }));
         throw new Error(
-          errorData.message || `HTTP error! status: ${response.status}`
+          errorData.message || errorData.detail || getFriendlyMessage(response.status)
         );
       }
 

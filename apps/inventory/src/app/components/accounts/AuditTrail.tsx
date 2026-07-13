@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Badge, Button, Card, CardContent, Input, Label } from '@horizon-sync/ui/components';
+
 import { useUserStore } from '@horizon-sync/store';
-import { accountApi } from '../../utility/api/accounts';
+import { Badge, Button, Card, CardContent, Input, Label } from '@horizon-sync/ui/components';
+
 import type { AuditLogEntry, AuditAction, AuditTrailResponse } from '../../types/account.types';
+import { accountApi } from '../../utility/api/accounts';
 
 interface AuditTrailProps {
   accountId: string;
@@ -186,15 +188,13 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({ accountId }) => {
         <div className="mb-4 grid gap-3 md:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="audit-action-filter">Action Type</Label>
-            <select
-              id="audit-action-filter"
+            <select id="audit-action-filter"
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               value={actionFilter}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                 setActionFilter(e.target.value);
                 setPage(1);
-              }}
-            >
+              }}>
               <option value="">All Actions</option>
               <option value="CREATE">Created</option>
               <option value="UPDATE">Updated</option>
@@ -205,28 +205,24 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({ accountId }) => {
 
           <div className="space-y-2">
             <Label htmlFor="audit-start-date">Start Date</Label>
-            <Input
-              id="audit-start-date"
+            <Input id="audit-start-date"
               type="date"
               value={startDate}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setStartDate(e.target.value);
                 setPage(1);
-              }}
-            />
+              }}/>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="audit-end-date">End Date</Label>
-            <Input
-              id="audit-end-date"
+            <Input id="audit-end-date"
               type="date"
               value={endDate}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setEndDate(e.target.value);
                 setPage(1);
-              }}
-            />
+              }}/>
           </div>
         </div>
 
@@ -251,25 +247,21 @@ export const AuditTrail: React.FC<AuditTrailProps> = ({ accountId }) => {
             {/* Pagination */}
             {auditData.total_pages > 1 && (
               <div className="mt-4 flex items-center justify-center gap-3">
-                <Button
-                  type="button"
+                <Button type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                  disabled={!auditData.has_prev}
-                >
+                  disabled={!auditData.has_prev}>
                   Previous
                 </Button>
                 <span className="text-sm text-muted-foreground">
                   Page {auditData.page} of {auditData.total_pages}
                 </span>
-                <Button
-                  type="button"
+                <Button type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((prev) => Math.min(auditData.total_pages, prev + 1))}
-                  disabled={!auditData.has_next}
-                >
+                  disabled={!auditData.has_next}>
                   Next
                 </Button>
               </div>

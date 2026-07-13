@@ -148,25 +148,21 @@ export function ItemSupplierDialog({ open, onOpenChange, itemSupplier, items, su
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="supplier_part_no">Supplier Part No.</Label>
-                <Input 
-                  id="supplier_part_no"
+                <Input id="supplier_part_no"
                   value={formData.supplier_part_no}
                   onChange={(e) => setFormData({ ...formData, supplier_part_no: e.target.value })}
                   onKeyDown={(e) => e.stopPropagation()}
-                  placeholder="e.g., SUP-001"
-                />
+                  placeholder="e.g., SUP-001"/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lead_time_days">Lead Time (Days)</Label>
-                <Input 
-                  id="lead_time_days"
+                <Input id="lead_time_days"
                   type="number"
                   min="0"
                   value={formData.lead_time_days}
                   onChange={(e) => setFormData({ ...formData, lead_time_days: e.target.value })}
                   onKeyDown={(e) => e.stopPropagation()}
-                  placeholder="0"
-                />
+                  placeholder="0"/>
               </div>
             </div>
 

@@ -4,8 +4,9 @@ import { useUserStore } from '@horizon-sync/store';
 
 import { environment } from '../../environments/environment';
 import type { ApiItem, ItemsPagination } from '../types/items-api.types';
+import { getFriendlyErrorMessage, getHttpErrorMessage } from '../utility/api/core';
 
-const ITEMS_URL = `${environment.apiCoreUrl}/items`;
+const ITEMS_URL = `${environment.apiCoreUrl}/api/v1/items`;
 
 interface UseItemsResult {
   items: ApiItem[];
@@ -61,7 +62,7 @@ export function useItems(initialPage = 1, initialPageSize = 20, filters?: { sear
         params.append('item_group_id', memoizedFilters.groupId);
       }
       if (memoizedFilters?.status && memoizedFilters.status !== 'all') {
-        params.append('status', memoizedFilters.status);
+        params.append('status', memoizedFilters.status.toUpperCase());
       }
       
       const res = await fetch(`${ITEMS_URL}?${params}`, {
@@ -70,14 +71,14 @@ export function useItems(initialPage = 1, initialPageSize = 20, filters?: { sear
         },
       });
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `HTTP ${res.status}`);
+        // Produce user-friendly error message based on status
+        throw new Error(getHttpErrorMessage(res.status));
       }
       const data = await res.json();
       setItems(data.items ?? []);
       setPagination(data.pagination ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load items');
+      setError(getFriendlyErrorMessage(err));
       setItems([]);
       setPagination(null);
     } finally {

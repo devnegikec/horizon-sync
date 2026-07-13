@@ -1,7 +1,9 @@
 import * as React from 'react';
+
 import { Eye, Edit, Trash2, Plus } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components';
+
 import type { TaxTemplate } from '../../types/tax-template.types';
 
 interface TaxTemplatesTableProps {
@@ -77,8 +79,8 @@ export function TaxTemplatesTable({
                   <td className="px-4 py-3 text-sm">
                     <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                       template.tax_category === 'Output' 
-                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                        : 'bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
+                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                        : 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
                     }`}>
                       {template.tax_category}
                     </span>
@@ -86,7 +88,7 @@ export function TaxTemplatesTable({
                   <td className="px-4 py-3 text-sm text-center">{template.tax_rules?.length}</td>
                   <td className="px-4 py-3 text-center">
                     {template.is_default && (
-                      <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                      <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                         Default
                       </span>
                     )}
@@ -94,8 +96,8 @@ export function TaxTemplatesTable({
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                       template.is_active
-                        ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
-                        : 'bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300'
+                        ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                        : 'bg-gray-50 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300'
                     }`}>
                       {template.is_active ? 'Active' : 'Inactive'}
                     </span>
@@ -127,23 +129,19 @@ export function TaxTemplatesTable({
             {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} templates
           </p>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
+            <Button variant="outline"
               size="sm"
               onClick={() => onPageChange(pagination.page - 1)}
-              disabled={pagination.page === 1}
-            >
+              disabled={pagination.page === 1}>
               Previous
             </Button>
             <span className="text-sm">
               Page {pagination.page} of {pagination.pages}
             </span>
-            <Button
-              variant="outline"
+            <Button variant="outline"
               size="sm"
               onClick={() => onPageChange(pagination.page + 1)}
-              disabled={pagination.page === pagination.pages}
-            >
+              disabled={pagination.page === pagination.pages}>
               Next
             </Button>
           </div>

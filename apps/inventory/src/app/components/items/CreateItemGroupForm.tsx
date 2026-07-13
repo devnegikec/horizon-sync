@@ -17,32 +17,26 @@ export function CreateItemGroupForm({ formData, setFormData }: CreateItemGroupFo
     <div className="grid gap-4 py-4">
       <div className="space-y-2">
         <Label htmlFor="groupName">Group Name *</Label>
-        <Input
-          id="groupName"
+        <Input id="groupName"
           value={formData.name}
           onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
           placeholder="e.g., Electronics"
-          required
-        />
+          required/>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="groupCode">Group Code *</Label>
-        <Input
-          id="groupCode"
+        <Input id="groupCode"
           value={formData.code}
           onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
           placeholder="e.g., ELEC"
-          required
-        />
+          required/>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="defaultUom">Default Unit of Measure *</Label>
-        <Select 
-          value={formData.default_uom} 
-          onValueChange={(value) => setFormData(prev => ({ ...prev, default_uom: value }))}
-        >
+        <Select value={formData.default_uom} 
+          onValueChange={(value) => setFormData(prev => ({ ...prev, default_uom: value }))}>
           <SelectTrigger>
             <SelectValue placeholder="Select default unit" />
           </SelectTrigger>

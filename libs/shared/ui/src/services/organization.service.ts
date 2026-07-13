@@ -9,6 +9,8 @@ export interface CreateOrganizationPayload {
   organization_type: string;
   industry: string;
   status: string;
+  country?: string;
+  base_currency?: string;
   settings?: Record<string, unknown>;
   extra_data?: Record<string, unknown>;
 }
@@ -38,36 +40,37 @@ export interface Organization {
   updated_at: string;
 }
 
+/**
+ * Organization Service
+ *
+ * Note: This service accepts `token` and `apiBaseUrl` as parameters because
+ * it lives in the shared UI library which doesn't have direct access to the
+ * platform app's environment config or Zustand store. Callers in the platform
+ * app should pass `getAccessToken()` and `environment.apiBaseUrl`.
+ */
 export class OrganizationService {
   static async createOrganization(
-    payload: CreateOrganizationPayload, 
+    payload: CreateOrganizationPayload,
     token: string,
     apiBaseUrl: string
   ): Promise<unknown> {
-    try {
-      const response = await fetch(`${apiBaseUrl}/identity/organizations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+    const response = await fetch(`${apiBaseUrl}/api/v1/identity/organizations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'Failed to create organization',
-        }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('An unexpected error occurred while creating organization');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({
+        message: 'Failed to create organization',
+      }));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
+
+    return response.json();
   }
 
   static async updateOrganization(
@@ -76,29 +79,22 @@ export class OrganizationService {
     token: string,
     apiBaseUrl: string
   ): Promise<Organization> {
-    try {
-      const response = await fetch(`${apiBaseUrl}/identity/organizations/${organizationId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+    const response = await fetch(`${apiBaseUrl}/api/v1/identity/organizations/${organizationId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          message: 'Failed to update organization',
-        }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('An unexpected error occurred while updating organization');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({
+        message: 'Failed to update organization',
+      }));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
+
+    return response.json();
   }
 }

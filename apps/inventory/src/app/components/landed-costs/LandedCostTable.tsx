@@ -49,18 +49,14 @@ export function LandedCostTable({
     return (
       <div className="bg-white shadow rounded-lg p-6">
         <div className="text-center py-12">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400"
+          <svg className="mx-auto h-12 w-12 text-gray-400"
             fill="none"
             viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
+            stroke="currentColor">
+            <path strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
           <h3 className="mt-2 text-sm font-medium text-gray-900">No landed cost vouchers</h3>
           <p className="mt-1 text-sm text-gray-500">Get started by creating a new voucher.</p>
@@ -104,11 +100,9 @@ export function LandedCostTable({
                 {formatDate(voucher.posting_date)}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <span
-                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     STATUS_COLORS[voucher.status] || 'bg-gray-100 text-gray-800'
-                  }`}
-                >
+                  }`}>
                   {voucher.status}
                 </span>
               </td>
@@ -116,24 +110,18 @@ export function LandedCostTable({
                 {formatDate(voucher.created_at)}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  onClick={() => onView(voucher)}
-                  className="text-blue-600 hover:text-blue-900 mr-4"
-                >
+                <button onClick={() => onView(voucher)}
+                  className="text-blue-600 hover:text-blue-900 mr-4">
                   View
                 </button>
                 {voucher.status === 'draft' && (
                   <>
-                    <button
-                      onClick={() => onEdit(voucher)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
+                    <button onClick={() => onEdit(voucher)}
+                      className="text-indigo-600 hover:text-indigo-900 mr-4">
                       Edit
                     </button>
-                    <button
-                      onClick={() => onDelete(voucher.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
+                    <button onClick={() => onDelete(voucher.id)}
+                      className="text-red-600 hover:text-red-900">
                       Delete
                     </button>
                   </>
@@ -148,18 +136,14 @@ export function LandedCostTable({
       {totalPages > 1 && (
         <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
           <div className="flex-1 flex justify-between sm:hidden">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
+            <button onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
               Previous
             </button>
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
+            <button onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
               Next
             </button>
           </div>
@@ -175,18 +159,14 @@ export function LandedCostTable({
             </div>
             <div>
               <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
+                <button onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
                   Previous
                 </button>
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
+                <button onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
                   Next
                 </button>
               </nav>

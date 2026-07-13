@@ -1,9 +1,24 @@
+import { execSync } from 'child_process';
+import { resolve } from 'path';
+
 import { ModuleFederationConfig } from '@nx/module-federation';
 import { withModuleFederation } from '@nx/module-federation/webpack.js';
 import { withReact } from '@nx/react';
 import { composePlugins, withNx } from '@nx/webpack';
+import { config as dotenvConfig } from 'dotenv';
 
 import baseConfig from './module-federation.config';
+
+// Load .env from workspace root
+dotenvConfig({ path: resolve(__dirname, '../../.env') });
+
+// Generate build identifiers for deployment verification
+const gitHash = (() => {
+  try { return execSync('git rev-parse --short HEAD').toString().trim(); }
+  catch { return 'unknown'; }
+})();
+const buildTimestamp = new Date().toISOString();
+const buildId = `${gitHash}-${Date.now()}`;
 
 const prodConfig: ModuleFederationConfig = {
   ...baseConfig,
@@ -11,20 +26,12 @@ const prodConfig: ModuleFederationConfig = {
    * Remote overrides for production.
    * Each entry is a pair of a unique name and the URL where it is deployed.
    *
-   * e.g.
-   * remotes: [
-   *   ['app1', 'http://app1.example.com'],
-   *   ['app2', 'http://app2.example.com'],
-   * ]
-   *
-   * You can also use a full path to the remoteEntry.js file if desired.
-   *
-   * remotes: [
-   *   ['app1', 'http://example.com/path/to/app1/remoteEntry.js'],
-   *   ['app2', 'http://example.com/path/to/app2/remoteEntry.js'],
-   * ]
+   * In production, the inventory remote is served from /inventory/ on the same domain
+   * via nginx. We use a relative URL so it works on any domain.
    */
-  remotes: baseConfig.remotes,
+  remotes: [
+    ['inventory', '/inventory/remoteEntry.js'],
+  ],
 };
 
 // Nx plugins for webpack to build config object from Nx options and context.
@@ -57,9 +64,13 @@ export default composePlugins(
     config.plugins = config.plugins || [];
     config.plugins.push(
       new webpack.DefinePlugin({
-        'process.env.NX_API_BASE_URL': JSON.stringify(
-          process.env.NX_API_BASE_URL
-        ),
+        'process.env.NX_API_BASE_URL': JSON.stringify(process.env.NX_API_BASE_URL),
+        'process.env.NX_API_CORE_URL': JSON.stringify(process.env.NX_API_CORE_URL),
+        'process.env.NX_SEARCH_API_BASE_URL': JSON.stringify(process.env.NX_SEARCH_API_BASE_URL),
+        'process.env.NX_NODE_ENV': JSON.stringify(process.env.NX_NODE_ENV),
+        'process.env.NX_BUILD_ID': JSON.stringify(buildId),
+        'process.env.NX_BUILD_TIMESTAMP': JSON.stringify(buildTimestamp),
+        'process.env.NX_GIT_HASH': JSON.stringify(gitHash),
       })
     );
     return config;

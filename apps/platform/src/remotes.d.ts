@@ -24,3 +24,18 @@ declare module 'inventory/TaxChargesPage' {
   const Component: React.ComponentType;
   export default Component;
 }
+
+declare module 'inventory/PaymentsPage' {
+  const Component: React.ComponentType;
+  export default Component;
+}
+
+declare module 'inventory/QSealPage' {
+  const Component: React.ComponentType;
+  export default Component;
+}
+
+declare module 'inventory/WMSPage' {
+  const Component: React.ComponentType;
+  export default Component;
+}

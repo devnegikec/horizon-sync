@@ -1,8 +1,11 @@
 import { useState } from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks';
-import { purchaseReceiptApi } from '../utility/api';
+
 import type { PurchaseReceipt, CreatePurchaseReceiptPayload } from '../types/purchase-receipt.types';
+import { purchaseReceiptApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export function usePurchaseReceiptActions() {
   const accessToken = useUserStore((s) => s.accessToken);
@@ -28,7 +31,7 @@ export function usePurchaseReceiptActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create Purchase Receipt';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -45,3 +48,4 @@ export function usePurchaseReceiptActions() {
     createPurchaseReceipt,
   };
 }
+

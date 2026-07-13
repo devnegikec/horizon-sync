@@ -1,5 +1,6 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import { render, screen } from '@testing-library/react';
+
 import '@testing-library/jest-dom';
 import { PaymentDetailDialog } from '../../../../app/components/payments/PaymentDetailDialog';
 import type { Payment } from '../../../../app/types/payment';
@@ -54,11 +55,9 @@ describe('PaymentDetailDialog', () => {
 
   it('renders payment details correctly', () => {
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={mockPayment}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Payment Details')).toBeInTheDocument();
@@ -69,11 +68,9 @@ describe('PaymentDetailDialog', () => {
 
   it('displays payment amounts correctly', () => {
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={mockPayment}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Total Amount')).toBeInTheDocument();
@@ -86,11 +83,9 @@ describe('PaymentDetailDialog', () => {
 
   it('displays reference number when present', () => {
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={mockPayment}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Reference Number')).toBeInTheDocument();
@@ -100,11 +95,9 @@ describe('PaymentDetailDialog', () => {
   it('hides reference number when not present', () => {
     const paymentWithoutRef = { ...mockPayment, reference_number: null };
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={paymentWithoutRef}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.queryByText('Reference Number')).not.toBeInTheDocument();
@@ -112,11 +105,9 @@ describe('PaymentDetailDialog', () => {
 
   it('displays invoice allocations table', () => {
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={mockPayment}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Invoice Allocations')).toBeInTheDocument();
@@ -126,11 +117,9 @@ describe('PaymentDetailDialog', () => {
 
   it('displays View buttons for each invoice allocation', () => {
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={mockPayment}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     const viewButtons = screen.getAllByText('View');
@@ -140,11 +129,9 @@ describe('PaymentDetailDialog', () => {
   it('shows Edit button only when status is Draft', () => {
     const draftPayment = { ...mockPayment, status: 'Draft' as const };
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={draftPayment}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Edit')).toBeInTheDocument();
@@ -152,11 +139,9 @@ describe('PaymentDetailDialog', () => {
 
   it('hides Edit button when status is not Draft', () => {
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={mockPayment}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.queryByText('Edit')).not.toBeInTheDocument();
@@ -164,11 +149,9 @@ describe('PaymentDetailDialog', () => {
 
   it('displays remarks when present', () => {
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={mockPayment}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Remarks')).toBeInTheDocument();
@@ -178,11 +161,9 @@ describe('PaymentDetailDialog', () => {
   it('hides remarks section when not present', () => {
     const paymentWithoutRemarks = { ...mockPayment, remarks: null };
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={paymentWithoutRemarks}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.queryByText('Remarks')).not.toBeInTheDocument();
@@ -190,11 +171,9 @@ describe('PaymentDetailDialog', () => {
 
   it('displays audit trail timestamps', () => {
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={mockPayment}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText(/Created:/)).toBeInTheDocument();
@@ -203,11 +182,9 @@ describe('PaymentDetailDialog', () => {
 
   it('returns null when payment is null', () => {
     const { container } = render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={null}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(container.firstChild).toBeNull();
@@ -215,11 +192,9 @@ describe('PaymentDetailDialog', () => {
 
   it('displays party type correctly', () => {
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={mockPayment}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Customer')).toBeInTheDocument();
@@ -228,11 +203,9 @@ describe('PaymentDetailDialog', () => {
   it('handles Supplier party type', () => {
     const supplierPayment = { ...mockPayment, party_type: 'Supplier' as const };
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={supplierPayment}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     expect(screen.getByText('Supplier')).toBeInTheDocument();
@@ -240,11 +213,9 @@ describe('PaymentDetailDialog', () => {
 
   it('calls onViewInvoice when View button is clicked for an invoice allocation', () => {
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={mockPayment}
-        {...mockHandlers}
-      />
+        {...mockHandlers}/>
     );
 
     const viewButtons = screen.getAllByText('View');
@@ -256,11 +227,9 @@ describe('PaymentDetailDialog', () => {
   it('does not display View buttons when onViewInvoice is not provided', () => {
     const handlersWithoutInvoice = { ...mockHandlers, onViewInvoice: undefined };
     render(
-      <PaymentDetailDialog
-        open={true}
+      <PaymentDetailDialog open={true}
         payment={mockPayment}
-        {...handlersWithoutInvoice}
-      />
+        {...handlersWithoutInvoice}/>
     );
 
     expect(screen.getByText('Invoice Allocations')).toBeInTheDocument();

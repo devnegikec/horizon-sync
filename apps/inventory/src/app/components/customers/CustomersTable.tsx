@@ -3,12 +3,16 @@ import * as React from 'react';
 import { type Table } from '@tanstack/react-table';
 import { Users, Plus } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { DataTable } from '@horizon-sync/ui/components/data-table/DataTable';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
+import { TableSkeleton } from '@horizon-sync/ui/components/ui/table-skeleton';
 
 import type { Customer } from '../../types/customer.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 
 import { createCustomerColumns } from './CustomerColumns';
 
@@ -35,7 +39,15 @@ export function CustomersTable({
   onCreateCustomer,
   onTableReady,
 }: CustomersTableProps) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const [tableInstance, setTableInstance] = React.useState<Table<Customer> | null>(null);
+  const [confirmDialog, setConfirmDialog] = React.useState<{
+    open: boolean;
+    customer: Customer | null;
+    newStatus: Customer['status'] | null;
+  }>({ open: false, customer: null, newStatus: null });
+  const [confirmLoading, setConfirmLoading] = React.useState(false);
 
   // Call onTableReady when table instance changes
   React.useEffect(() => {
@@ -44,14 +56,48 @@ export function CustomersTable({
     }
   }, [tableInstance, onTableReady]);
 
+  const handleToggleStatus = React.useCallback(
+    (customer: Customer, newStatus: Customer['status']) => {
+      setConfirmDialog({ open: true, customer, newStatus });
+    },
+    [],
+  );
+
+  const handleConfirmToggle = React.useCallback(async () => {
+    if (!confirmDialog.customer || !confirmDialog.newStatus) return;
+    setConfirmLoading(true);
+    try {
+      await onToggleStatus(confirmDialog.customer, confirmDialog.newStatus);
+    } finally {
+      setConfirmLoading(false);
+      setConfirmDialog({ open: false, customer: null, newStatus: null });
+    }
+  }, [confirmDialog, onToggleStatus]);
+
+  const confirmMeta = React.useMemo(() => {
+    const status = confirmDialog.newStatus;
+    const name = confirmDialog.customer?.customer_name;
+    switch (status) {
+      case 'blocked':
+        return { title: 'Block Customer', description: `Are you sure you want to block "${name}"? They will not be available for new transactions.`, confirmLabel: 'Block', variant: 'destructive' as const };
+      case 'inactive':
+        return { title: 'Deactivate Customer', description: `Are you sure you want to deactivate "${name}"?`, confirmLabel: 'Deactivate', variant: 'destructive' as const };
+      case 'active':
+        return { title: 'Activate Customer', description: `Are you sure you want to activate "${name}"?`, confirmLabel: 'Activate', variant: 'default' as const };
+      default:
+        return { title: 'Confirm', description: 'Are you sure?', confirmLabel: 'Confirm', variant: 'default' as const };
+    }
+  }, [confirmDialog]);
+
   const columns = React.useMemo(
     () =>
       createCustomerColumns({
         onViewCustomer: onView,
         onEditCustomer: onEdit,
-        onToggleStatus,
+        onToggleStatus: handleToggleStatus,
+        currencySymbol,
       }),
-    [onView, onEdit, onToggleStatus],
+    [onView, onEdit, handleToggleStatus, currencySymbol],
   );
 
   const renderViewOptions = (table: Table<Customer>) => {
@@ -76,7 +122,7 @@ export function CustomersTable({
     return (
       <Card>
         <CardContent className="p-0">
-          <div className="py-12 text-center text-muted-foreground">Loading…</div>
+          <TableSkeleton columns={8} rows={10} showHeader={true} />
         </CardContent>
       </Card>
     );
@@ -95,24 +141,36 @@ export function CustomersTable({
   }
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <DataTable columns={columns} 
-          data={customers} 
-          config={{ 
-            showSerialNumber: true, 
-            showPagination: true, 
-            enableRowSelection: false, 
-            enableColumnVisibility: true, 
-            enableSorting: true, 
-            enableFiltering: true, 
-            initialPageSize: 20 
-          }} 
-          filterPlaceholder="Search by name, code, email, or phone..." 
-          renderViewOptions={renderViewOptions}
-          fixedHeader 
-          maxHeight="600px"/>
-      </CardContent>
-    </Card>
+    <>
+      <Card>
+        <CardContent className="p-0">
+          <DataTable columns={columns} 
+            data={customers} 
+            config={{ 
+              showSerialNumber: true, 
+              showPagination: true, 
+              enableRowSelection: false, 
+              enableColumnVisibility: true, 
+              enableSorting: true, 
+              enableFiltering: true, 
+              initialPageSize: 20 
+            }} 
+            filterPlaceholder="Search by name, code, email, or phone..." 
+            renderViewOptions={renderViewOptions}
+            fixedHeader 
+            maxHeight="600px"/>
+        </CardContent>
+      </Card>
+      <ConfirmationDialog open={confirmDialog.open}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDialog({ open: false, customer: null, newStatus: null });
+        }}
+        title={confirmMeta.title}
+        description={confirmMeta.description}
+        confirmLabel={confirmMeta.confirmLabel}
+        variant={confirmMeta.variant}
+        loading={confirmLoading}
+        onConfirm={handleConfirmToggle} />
+    </>
   );
 }

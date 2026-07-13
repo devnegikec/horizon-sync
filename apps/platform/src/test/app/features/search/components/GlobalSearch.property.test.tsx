@@ -9,7 +9,7 @@ import * as fc from 'fast-check';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { GlobalSearch } from '../../../../../app/features/search/../../../../app/features/search/components/GlobalSearch';
+import { GlobalSearch } from '../../../../../app/features/search/components/GlobalSearch';
 import { SearchService } from '../../../../../app/features/search/services/search.service';
 import type { SearchResponse, SearchResult } from '../../../../../app/features/search/types/search.types';
 

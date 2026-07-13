@@ -1,15 +1,10 @@
-import { Download, Upload, ChevronDown, Loader2 } from 'lucide-react';
 import { useState } from 'react';
+
+import { Download, Upload, ChevronDown, Loader2 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@horizon-sync/ui/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +13,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@horizon-sync/ui/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import {
@@ -229,23 +230,19 @@ export function ItemQuickActions() {
             {/* File Name */}
             <div className="grid gap-2">
               <Label htmlFor="file-name">File Name</Label>
-              <Input
-                id="file-name"
+              <Input id="file-name"
                 value={exportFileName}
                 onChange={(e) => setExportFileName(e.target.value)}
                 placeholder="items_export_file"
-                disabled={isExporting}
-              />
+                disabled={isExporting}/>
             </div>
 
             {/* File Format */}
             <div className="grid gap-2">
               <Label htmlFor="file-format">File Format</Label>
-              <Select
-                value={exportFileFormat}
+              <Select value={exportFileFormat}
                 onValueChange={(value: 'csv' | 'xlsx' | 'json' | 'pdf') => setExportFileFormat(value)}
-                disabled={isExporting}
-              >
+                disabled={isExporting}>
                 <SelectTrigger id="file-format">
                   <SelectValue />
                 </SelectTrigger>
@@ -303,12 +300,10 @@ export function ItemQuickActions() {
               <div className="grid grid-cols-2 gap-3 border rounded-md p-4">
                 {AVAILABLE_COLUMNS.map((column) => (
                   <div key={column.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={column.id}
+                    <Checkbox id={column.id}
                       checked={selectedColumns.includes(column.id)}
                       onCheckedChange={() => handleColumnToggle(column.id)}
-                      disabled={isExporting}
-                    />
+                      disabled={isExporting}/>
                     <Label htmlFor={column.id} className="text-sm font-normal cursor-pointer">
                       {column.label}
                     </Label>
@@ -350,7 +345,7 @@ export function ItemQuickActions() {
           <DialogHeader>
             <DialogTitle>Import Items</DialogTitle>
             <DialogDescription>
-              Upload a file to import items into your inventory. Supported formats: CSV, Excel.
+              Upload a file to import items into your inventory. Supported formats: CSV, Excel1.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -358,14 +353,12 @@ export function ItemQuickActions() {
               <label htmlFor="file-upload" className="text-sm font-medium">
                 Select File
               </label>
-              <input
-                id="file-upload"
+              <input id="file-upload"
                 type="file"
                 accept=".csv,.xlsx,.xls"
                 onChange={handleFileChange}
                 disabled={isImporting}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"/>
               {selectedFile && <p className="text-sm text-muted-foreground">Selected: {selectedFile.name}</p>}
             </div>
           </div>

@@ -1,15 +1,9 @@
 import { Eye, Edit, Send, XCircle, Trash2, FileText, Lock } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
+
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@horizon-sync/ui/components/ui/table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,9 +12,17 @@ import {
   DropdownMenuSeparator,
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@horizon-sync/ui/components/ui/table';
 import { TableSkeleton } from '@horizon-sync/ui/components/ui/table-skeleton';
+
 import type { PurchaseOrderListItem, PurchaseOrderFilters, PurchaseOrderStatus } from '../../types/purchase-order.types';
-import { MoreHorizontal } from 'lucide-react';
 
 interface PurchaseOrderTableProps {
   purchaseOrders: PurchaseOrderListItem[];
@@ -101,11 +103,9 @@ export function PurchaseOrderTable({
     return (
       <Card>
         <CardContent className="p-6">
-          <EmptyState
-            icon={<FileText className="h-12 w-12" />}
+          <EmptyState icon={<FileText className="h-12 w-12" />}
             title="No purchase orders found"
-            description="Create your first purchase order to start ordering from suppliers."
-          />
+            description="Create your first purchase order to start ordering from suppliers."/>
         </CardContent>
       </Card>
     );
@@ -234,20 +234,16 @@ export function PurchaseOrderTable({
           Showing {purchaseOrders.length} of {totalCount} purchase orders
         </p>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
+          <Button variant="outline"
             size="sm"
             disabled={filters.page === 1}
-            onClick={() => setFilters({ ...filters, page: (filters.page || 1) - 1 })}
-          >
+            onClick={() => setFilters({ ...filters, page: (filters.page || 1) - 1 })}>
             Previous
           </Button>
-          <Button
-            variant="outline"
+          <Button variant="outline"
             size="sm"
             disabled={purchaseOrders.length < (filters.page_size || 10)}
-            onClick={() => setFilters({ ...filters, page: (filters.page || 1) + 1 })}
-          >
+            onClick={() => setFilters({ ...filters, page: (filters.page || 1) + 1 })}>
             Next
           </Button>
         </div>

@@ -1,4 +1,5 @@
 import { Search } from 'lucide-react';
+
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import {
   Select,
@@ -7,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
+
 import type { PurchaseOrderFilters as Filters, PurchaseOrderStatus } from '../../types/purchase-order.types';
 
 interface PurchaseOrderFiltersProps {
@@ -38,12 +40,10 @@ export function PurchaseOrderFilters({ filters, setFilters }: PurchaseOrderFilte
       <div className="flex flex-1 items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search purchase orders..."
+          <Input placeholder="Search purchase orders..."
             value={filters.search || ''}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-9"
-          />
+            className="pl-9"/>
         </div>
 
         <Select value={filters.status || 'all'} onValueChange={handleStatusChange}>

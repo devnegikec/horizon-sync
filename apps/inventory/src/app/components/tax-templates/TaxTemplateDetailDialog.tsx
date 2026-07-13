@@ -1,6 +1,9 @@
 import * as React from 'react';
+
 import { Edit, Receipt } from 'lucide-react';
+
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
+
 import type { TaxTemplate } from '../../types/tax-template.types';
 
 interface TaxTemplateDetailDialogProps {
@@ -74,20 +77,28 @@ export function TaxTemplateDetailDialog({ open, onOpenChange, template, onEdit }
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {template.tax_rules.map((rule) => (
-                    <tr key={rule.id}>
-                      <td className="px-4 py-3 text-sm">{rule.rule_name}</td>
-                      <td className="px-4 py-3 text-sm">{rule.tax_type}</td>
-                      <td className="px-4 py-3 text-sm text-right">{rule.tax_rate.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-center">
-                        {rule.is_compound && (
-                          <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
-                            Yes
-                          </span>
-                        )}
+                  {(template.tax_rules ?? []).length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                        No tax rules defined
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    (template.tax_rules ?? []).map((rule) => (
+                      <tr key={rule.id}>
+                        <td className="px-4 py-3 text-sm">{rule.rule_name}</td>
+                        <td className="px-4 py-3 text-sm">{rule.tax_type}</td>
+                        <td className="px-4 py-3 text-sm text-right">{Number(rule.tax_rate).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-center">
+                          {rule.is_compound && (
+                            <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
+                              Yes
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

@@ -1,4 +1,5 @@
 import fc from 'fast-check';
+
 import type { Quotation } from '../../../../app/types/quotation.types';
 
 /**

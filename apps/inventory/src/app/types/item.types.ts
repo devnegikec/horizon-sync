@@ -2,6 +2,7 @@ export interface Item {
   id: string;
   itemCode: string;
   name: string;
+  sku?: string | null;
   description: string;
   unitOfMeasure: string;
   defaultPrice: number;

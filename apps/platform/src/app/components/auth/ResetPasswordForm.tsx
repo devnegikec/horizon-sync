@@ -23,6 +23,9 @@ export function ResetPasswordForm() {
 
   // Check token once at mount to avoid re-checking on every render
   const [initialToken] = React.useState(() => searchParams.get('token'));
+  // Server-side validity of the token: undefined while checking,
+  // true if still valid, false once the link has been used or expired.
+  const [tokenValid, setTokenValid] = React.useState<boolean | undefined>(undefined);
 
   const {
     register,
@@ -31,6 +34,26 @@ export function ResetPasswordForm() {
   } = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
   });
+
+  // Verify token validity against the backend on mount so a consumed link
+  // immediately shows the "expired" view instead of the form.
+  React.useEffect(() => {
+    if (!initialToken) {
+      setTokenValid(false);
+      return;
+    }
+    let cancelled = false;
+    AuthService.verifyResetToken(initialToken)
+      .then((res) => {
+        if (!cancelled) setTokenValid(res.valid);
+      })
+      .catch(() => {
+        if (!cancelled) setTokenValid(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialToken]);
 
   const onSubmit = async (data: ResetPasswordFormData) => {
     const token = searchParams.get('token');
@@ -63,12 +86,30 @@ export function ResetPasswordForm() {
     }
   };
 
-  if (!initialToken) {
+  if (tokenValid === undefined) {
+    // Checking token validity with the server — show a brief loading card.
     return (
       <Card className="w-full max-w-md border-none shadow-2xl">
         <CardHeader>
-          <CardTitle className="text-destructive">Invalid Link</CardTitle>
-          <CardDescription>The password reset link is invalid or has expired. Please request a new one.</CardDescription>
+          <CardTitle>Verifying link…</CardTitle>
+          <CardDescription>Please wait while we validate your password reset link.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center pb-6">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!initialToken || tokenValid === false) {
+    return (
+      <Card className="w-full max-w-md border-none shadow-2xl">
+        <CardHeader>
+          <CardTitle className="text-destructive">Link expired</CardTitle>
+          <CardDescription>
+            This password reset link has already been used or has expired. Please request a new
+            one.
+          </CardDescription>
         </CardHeader>
         <CardFooter>
           <Button onClick={() => navigate('/forgot-password')} className="w-full">
@@ -104,7 +145,7 @@ export function ResetPasswordForm() {
               type="password"
               placeholder="••••••••"
               {...register('password')}
-              className={errors.password ? 'border-destructive' : ''}/>
+              className={errors.password ? 'border-destructive' : ''} />
             {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
           </div>
 
@@ -116,7 +157,7 @@ export function ResetPasswordForm() {
               type="password"
               placeholder="••••••••"
               {...register('confirm_password')}
-              className={errors.confirm_password ? 'border-destructive' : ''}/>
+              className={errors.confirm_password ? 'border-destructive' : ''} />
             {errors.confirm_password && <p className="text-sm text-destructive">{errors.confirm_password.message}</p>}
           </div>
 

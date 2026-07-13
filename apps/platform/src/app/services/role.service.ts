@@ -107,7 +107,7 @@ export class RoleService {
       params.append('limit', String(filters.pageSize));
       params.append('include_permissions', 'true');
 
-      const response = await fetch(`${API_BASE_URL}/identity/roles?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles?${params}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -118,18 +118,32 @@ export class RoleService {
         throw response;
       }
 
-      return await response.json();
+      // API returns: { data, total, skip, limit }
+      // Frontend expects: { data, pagination: { total_count, page, page_size, ... } }
+      const raw = await response.json();
+      const page = filters.page;
+      const pageSize = filters.pageSize;
+      const total = raw.total ?? 0;
+      const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
+
+      return {
+        data: raw.data ?? [],
+        pagination: {
+          total_count: total,
+          page,
+          page_size: pageSize,
+          total_pages: totalPages,
+          has_next: page < totalPages,
+          has_prev: page > 1,
+        },
+      };
     } catch (error) {
       throw handleAPIError(error);
     }
   }
-
-  /**
-   * Get a single role by ID
-   */
   static async getRole(roleId: string, token: string): Promise<Role> {
     try {
-      const response = await fetch(`${API_BASE_URL}/identity/roles/${roleId}?include_permissions=true`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles/${roleId}?include_permissions=true`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -150,7 +164,7 @@ export class RoleService {
    * Helper method to convert permission codes to IDs
    */
   private static async getPermissionIds(codes: string[], token: string): Promise<string[]> {
-    const allPermissionsResponse = await fetch(`${API_BASE_URL}/identity/permissions/grouped`, {
+    const allPermissionsResponse = await fetch(`${API_BASE_URL}/api/v1/identity/permissions/grouped`, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -205,7 +219,7 @@ export class RoleService {
         payload.organization_id = organizationId;
       }
 
-      const response = await fetch(`${API_BASE_URL}/identity/roles`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -240,12 +254,8 @@ export class RoleService {
         payload.description = data.description;
       }
 
-      // If permissions are being updated, convert codes to IDs
-      if (data.permissions && data.permissions.length > 0) {
-        payload.permission_ids = await this.getPermissionIds(data.permissions, token);
-      }
-
-      const response = await fetch(`${API_BASE_URL}/identity/roles/${roleId}`, {
+      // Step 1: Update role metadata (name, description, etc.)
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles/${roleId}`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -258,7 +268,33 @@ export class RoleService {
         throw response;
       }
 
-      return await response.json();
+      const updatedRole: Role = await response.json();
+
+      // Step 2: Update permissions via bulk assign (replace mode)
+      // The PUT endpoint does not accept permission_ids — use the dedicated bulk endpoint.
+      if (data.permissions !== undefined) {
+        const permissionIds = data.permissions.length > 0
+          ? await this.getPermissionIds(data.permissions, token)
+          : [];
+
+        const permResponse = await fetch(
+          `${API_BASE_URL}/api/v1/identity/roles/${roleId}/permissions/bulk`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ permission_ids: permissionIds, mode: 'replace' }),
+          }
+        );
+
+        if (!permResponse.ok) {
+          throw permResponse;
+        }
+      }
+
+      return updatedRole;
     } catch (error) {
       throw handleAPIError(error);
     }
@@ -269,7 +305,7 @@ export class RoleService {
    */
   static async deleteRole(roleId: string, token: string): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/identity/roles/${roleId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles/${roleId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -286,11 +322,18 @@ export class RoleService {
   }
 
   /**
-   * Get permissions grouped by module
+   * Get permissions grouped by module → resource.
+   *
+   * The API now returns:
+   *   { modules: [...], categories: [...], uncategorized: [...] }
+   *
+   * We build two things from this:
+   *   1. `modules`  — the new module-grouped structure for the module-toggle UI
+   *   2. `data`     — the legacy flat map { resource: Permission[] } for PermissionMatrix
    */
   static async getGroupedPermissions(token: string): Promise<PermissionGroupedResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/identity/permissions/grouped`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/permissions/grouped`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -303,20 +346,55 @@ export class RoleService {
 
       const apiResponse = await response.json();
 
-      // Transform API response to match our expected format
-      // API returns: { categories: [{ name, permissions: [...] }] }
-      // We need: { data: { "Category Name": [...permissions] } }
+      // ── Build legacy flat map from modules (preferred) or categories (fallback) ──
       const grouped: Record<string, Permission[]> = {};
 
-      if (apiResponse.categories && Array.isArray(apiResponse.categories)) {
-        apiResponse.categories.forEach((category: { name: string; permissions: Permission[] }) => {
-          if (category.name && category.permissions) {
-            grouped[category.name] = category.permissions;
-          }
+      if (apiResponse.modules && Array.isArray(apiResponse.modules)) {
+        // New structure: modules → resources → permissions
+        apiResponse.modules.forEach((mod: { resources: Array<{ key: string; permissions: Permission[] }> }) => {
+          mod.resources.forEach((resource) => {
+            const key = resource.key || 'other';
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(...resource.permissions);
+          });
+        });
+      } else if (apiResponse.categories && Array.isArray(apiResponse.categories)) {
+        // Legacy fallback: categories → permissions grouped by resource
+        apiResponse.categories.forEach((category: { permissions: Permission[] }) => {
+          if (!category.permissions) return;
+          category.permissions.forEach((perm: Permission) => {
+            const key = perm.resource || 'other';
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(perm);
+          });
         });
       }
 
-      return { data: grouped };
+      // Also handle uncategorized permissions
+      if (apiResponse.uncategorized && Array.isArray(apiResponse.uncategorized)) {
+        apiResponse.uncategorized.forEach((perm: Permission) => {
+          const key = perm.resource || 'other';
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(perm);
+        });
+      }
+
+      // Sort permissions within each resource group by action
+      const ACTION_ORDER = ['read', 'create', 'update', 'delete', 'manage', 'execute'];
+      for (const perms of Object.values(grouped)) {
+        perms.sort((a, b) => {
+          const aIdx = ACTION_ORDER.indexOf(a.action);
+          const bIdx = ACTION_ORDER.indexOf(b.action);
+          return (aIdx === -1 ? ACTION_ORDER.length : aIdx) - (bIdx === -1 ? ACTION_ORDER.length : bIdx);
+        });
+      }
+
+      return {
+        modules: apiResponse.modules ?? [],
+        categories: apiResponse.categories ?? [],
+        uncategorized: apiResponse.uncategorized ?? [],
+        data: grouped,
+      };
     } catch (error) {
       throw handleAPIError(error);
     }
@@ -331,7 +409,7 @@ export class RoleService {
       if (filters?.search) params.append('search', filters.search);
       if (filters?.module) params.append('module', filters.module);
 
-      const response = await fetch(`${API_BASE_URL}/identity/permissions?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/permissions?${params}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -354,7 +432,7 @@ export class RoleService {
    */
   static async getRoleUsers(roleId: string, token: string): Promise<Array<{ id: string; name: string; email: string }>> {
     try {
-      const response = await fetch(`${API_BASE_URL}/identity/roles/${roleId}/users`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/identity/roles/${roleId}/users`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',

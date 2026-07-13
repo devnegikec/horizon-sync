@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
-import { purchaseReceiptApi } from '../utility/api';
+
 import type { PurchaseReceiptListItem, PurchaseReceiptFilters } from '../types/purchase-receipt.types';
+import { purchaseReceiptApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export function usePurchaseReceipts(initialFilters: Partial<PurchaseReceiptFilters> = {}) {
   const accessToken = useUserStore((s) => s.accessToken);
@@ -33,7 +36,7 @@ export function usePurchaseReceipts(initialFilters: Partial<PurchaseReceiptFilte
       setPurchaseReceipts(response.purchase_receipts || []);
       setTotalCount(response.pagination?.total_count || 0);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch Purchase Receipts';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       console.error('Error fetching Purchase Receipts:', err);
       setPurchaseReceipts([]);
@@ -61,3 +64,4 @@ export function usePurchaseReceipts(initialFilters: Partial<PurchaseReceiptFilte
     refetch,
   };
 }
+

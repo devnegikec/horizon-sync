@@ -1,5 +1,7 @@
 import * as React from 'react';
+
 import { useQuery } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import {
@@ -14,11 +16,10 @@ import {
   TableHeader,
   TableRow,
 } from '@horizon-sync/ui/components';
-import { Loader2 } from 'lucide-react';
 
+import { paymentApi } from '../../api/payments';
 import type { PartyType, PaymentAllocationFormData } from '../../types/payment';
 import type { OutstandingInvoice } from '../../types/payment';
-import { paymentApi } from '../../api/payments';
 
 interface PaymentAllocationTableProps {
   partyId: string | null;
@@ -43,6 +44,9 @@ export function PaymentAllocationTable({
 }: PaymentAllocationTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
 
+  // Keep draft string per invoice so user can type "1." or "0.5" without losing input
+  const [draftAmounts, setDraftAmounts] = React.useState<Record<string, string>>({});
+
   // Fetch outstanding invoices for the selected party
   const { data: outstandingInvoices, isLoading } = useQuery<OutstandingInvoice[]>({
     queryKey: ['outstanding-invoices', partyId, partyType],
@@ -53,9 +57,9 @@ export function PaymentAllocationTable({
   const invoices = outstandingInvoices ?? [];
 
   // Handle allocation amount change
-  const handleAllocationChange = (invoiceId: string, amount: number) => {
+  const handleAllocationChange = React.useCallback((invoiceId: string, amount: number) => {
     const existingIndex = allocations.findIndex((a) => a.invoice_id === invoiceId);
-    
+
     if (existingIndex >= 0) {
       // Update existing allocation
       const newAllocations = [...allocations];
@@ -71,10 +75,10 @@ export function PaymentAllocationTable({
         { invoice_id: invoiceId, allocated_amount: amount },
       ]);
     }
-  };
+  }, [allocations, onAllocationsChange]);
 
   // Handle invoice selection
-  const handleInvoiceSelect = (invoiceId: string, selected: boolean) => {
+  const handleInvoiceSelect = React.useCallback((invoiceId: string, selected: boolean) => {
     if (selected) {
       // Add allocation with 0 amount if not already present
       const existingAllocation = allocations.find((a) => a.invoice_id === invoiceId);
@@ -91,14 +95,14 @@ export function PaymentAllocationTable({
       // Remove allocation
       onAllocationsChange(allocations.filter((a) => a.invoice_id !== invoiceId));
     }
-  };
+  }, [allocations, invoices, onAllocationsChange]);
 
   // Auto-allocate button handler
-  const handleAutoAllocate = () => {
+  const handleAutoAllocate = React.useCallback(() => {
     if (!invoices.length) return;
 
     // Sort invoices by due date (oldest first)
-    const sortedInvoices = [...invoices].sort((a, b) => 
+    const sortedInvoices = [...invoices].sort((a, b) =>
       new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
     );
 
@@ -108,7 +112,7 @@ export function PaymentAllocationTable({
     for (const invoice of sortedInvoices) {
       if (remainingAmount <= 0) break;
 
-      const allocateAmount = Math.min(remainingAmount, invoice.outstanding_amount);
+      const allocateAmount = Math.min(remainingAmount, Number(invoice.outstanding_amount ?? 0));
       newAllocations.push({
         invoice_id: invoice.id,
         allocated_amount: allocateAmount,
@@ -117,21 +121,46 @@ export function PaymentAllocationTable({
     }
 
     onAllocationsChange(newAllocations);
-  };
+  }, [invoices, totalAmount, onAllocationsChange]);
 
-  // Get allocation amount for an invoice
-  const getAllocationAmount = (invoiceId: string): number => {
+  // Get allocation amount for an invoice (coerce to number; API may return string from Decimal)
+  const getAllocationAmount = React.useCallback((invoiceId: string): number => {
     const allocation = allocations.find((a) => a.invoice_id === invoiceId);
-    return allocation?.allocated_amount ?? 0;
-  };
+    return Number(allocation?.allocated_amount ?? 0);
+  }, [allocations]);
 
   // Check if invoice is selected
-  const isInvoiceSelected = (invoiceId: string): boolean => {
+  const isInvoiceSelected = React.useCallback((invoiceId: string): boolean => {
     return allocations.some((a) => a.invoice_id === invoiceId);
-  };
+  }, [allocations]);
 
-  // Calculate total allocated
-  const totalAllocated = allocations.reduce((sum, a) => sum + a.allocated_amount, 0);
+  // Display value: draft string while typing, otherwise number (empty when 0)
+  const getInputValue = React.useCallback((invoiceId: string): string => {
+    if (draftAmounts[invoiceId] !== undefined) return draftAmounts[invoiceId];
+    const amount = getAllocationAmount(invoiceId);
+    return amount === 0 ? '' : String(amount);
+  }, [draftAmounts, getAllocationAmount]);
+
+  const handleAmountChange = React.useCallback((invoiceId: string, raw: string) => {
+    // Allow only digits and at most one decimal point
+    let filtered = raw.replace(/[^\d.]/g, '');
+    const parts = filtered.split('.');
+    if (parts.length > 2) filtered = parts[0] + '.' + parts.slice(1).join('');
+    setDraftAmounts((prev) => ({ ...prev, [invoiceId]: filtered }));
+    const num = parseFloat(filtered);
+    handleAllocationChange(invoiceId, Number.isNaN(num) ? 0 : num);
+  }, [handleAllocationChange]);
+
+  const handleAmountBlur = React.useCallback((invoiceId: string) => {
+    setDraftAmounts((prev) => {
+      const next = { ...prev };
+      delete next[invoiceId];
+      return next;
+    });
+  }, []);
+
+  // Calculate total allocated (coerce amounts to number; API may return string from Decimal)
+  const totalAllocated = allocations.reduce((sum, a) => sum + Number(a.allocated_amount ?? 0), 0);
   const unallocated = totalAmount - totalAllocated;
 
   if (!partyId) {
@@ -177,13 +206,11 @@ export function PaymentAllocationTable({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Invoice Allocations</h3>
-        <Button
-          type="button"
+        <Button type="button"
           variant="outline"
           size="sm"
           onClick={handleAutoAllocate}
-          disabled={disabled || totalAmount <= 0}
-        >
+          disabled={disabled || totalAmount <= 0}>
           Auto Allocate
         </Button>
       </div>
@@ -204,18 +231,16 @@ export function PaymentAllocationTable({
             {invoices.map((invoice) => {
               const allocationAmount = getAllocationAmount(invoice.id);
               const isSelected = isInvoiceSelected(invoice.id);
-              const isOverAllocated = allocationAmount > invoice.outstanding_amount;
-              
+              const isOverAllocated = allocationAmount > Number(invoice.outstanding_amount ?? 0);
+
               return (
                 <TableRow key={invoice.id}>
                   <TableCell>
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={(checked) => 
+                    <Checkbox checked={isSelected}
+                      onCheckedChange={(checked) =>
                         handleInvoiceSelect(invoice.id, checked as boolean)
                       }
-                      disabled={disabled || invoice.id === preSelectedInvoiceId}
-                    />
+                      disabled={disabled || invoice.id === preSelectedInvoiceId}/>
                   </TableCell>
                   <TableCell className="font-medium">
                     {invoice.invoice_number}
@@ -224,24 +249,20 @@ export function PaymentAllocationTable({
                     {new Date(invoice.posting_date).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    {currency} {invoice.grand_total.toFixed(2)}
+                    {currency} {Number(invoice.grand_total ?? 0).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {currency} {invoice.outstanding_amount.toFixed(2)}
+                    {currency} {Number(invoice.outstanding_amount ?? 0).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max={invoice.outstanding_amount}
-                      value={allocationAmount}
-                      onChange={(e) => 
-                        handleAllocationChange(invoice.id, parseFloat(e.target.value) || 0)
-                      }
+                    <Input type="text"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={getInputValue(invoice.id)}
+                      onChange={(e) => handleAmountChange(invoice.id, e.target.value)}
+                      onBlur={() => handleAmountBlur(invoice.id)}
                       disabled={disabled || !isSelected}
-                      className={`w-32 text-right ${isOverAllocated ? 'border-red-500' : ''}`}
-                    />
+                      className={`w-32 text-right ${isOverAllocated ? 'border-red-500' : ''}`}/>
                     {isOverAllocated && (
                       <p className="text-xs text-red-600 mt-1">
                         Exceeds outstanding
@@ -261,11 +282,11 @@ export function PaymentAllocationTable({
         </span>
         <div className="space-x-4">
           <span>
-            Total Allocated: <span className="font-medium">{currency} {totalAllocated.toFixed(2)}</span>
+            Total Allocated: <span className="font-medium">{currency} {Number(totalAllocated).toFixed(2)}</span>
           </span>
           <span>
             Unallocated: <span className={`font-medium ${unallocated < 0 ? 'text-red-600' : ''}`}>
-              {currency} {unallocated.toFixed(2)}
+              {currency} {Number(unallocated).toFixed(2)}
             </span>
           </span>
         </div>

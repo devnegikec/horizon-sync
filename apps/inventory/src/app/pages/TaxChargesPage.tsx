@@ -26,14 +26,23 @@ interface NavItemProps {
 
 function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
   return (
-    <Button
-      variant={isActive ? 'default' : 'ghost'}
+    <Button variant={isActive ? 'default' : 'ghost'}
       className={cn('gap-2 justify-start', isActive && 'bg-primary text-primary-foreground')}
-      onClick={onClick}
-    >
+      onClick={onClick}>
       <Icon className="h-4 w-4" />
       {label}
     </Button>
+  );
+}
+
+function LoadingState({ message }: { message: string }) {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#3058EE] mx-auto mb-4" />
+        <p className="text-muted-foreground">{message}</p>
+      </div>
+    </div>
   );
 }
 
@@ -45,21 +54,17 @@ export function TaxChargesPage() {
       <ThemeProvider>
         <div className="min-h-screen bg-background">
           {/* Top Navigation Bar */}
-          <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <header className="sticky top-0 z-50 w-full border-b bg-background">
             <div className="container flex h-16 items-center px-4">
               <nav className="flex items-center gap-2">
-                <NavItem
-                  icon={Receipt}
+                <NavItem icon={Receipt}
                   label="Tax Templates"
                   isActive={activeView === 'tax_templates'}
-                  onClick={() => setActiveView('tax_templates')}
-                />
-                <NavItem
-                  icon={DollarSign}
+                  onClick={() => setActiveView('tax_templates')} />
+                <NavItem icon={DollarSign}
                   label="Charge Templates"
                   isActive={activeView === 'charge_templates'}
-                  onClick={() => setActiveView('charge_templates')}
-                />
+                  onClick={() => setActiveView('charge_templates')} />
               </nav>
             </div>
           </header>
@@ -67,12 +72,12 @@ export function TaxChargesPage() {
           {/* Main Content */}
           <main className="container px-4 py-8">
             {activeView === 'tax_templates' && (
-              <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading tax templates...</div>}>
+              <React.Suspense fallback={<LoadingState message="Loading tax templates..." />}>
                 <TaxTemplateManagement />
               </React.Suspense>
             )}
             {activeView === 'charge_templates' && (
-              <React.Suspense fallback={<div className="flex items-center justify-center p-8">Loading charge templates...</div>}>
+              <React.Suspense fallback={<LoadingState message="Loading charge templates..." />}>
                 <ChargeTemplateManagement />
               </React.Suspense>
             )}

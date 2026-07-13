@@ -1,31 +1,21 @@
 import * as React from 'react';
 
+import { Lock } from 'lucide-react';
+
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
+import { Card, CardContent, ConfirmationDialog } from '@horizon-sync/ui/components';
+
 import { useInvoiceManagement } from '../../hooks/useInvoiceManagement';
-import type { Invoice } from '../../types/invoice';
-import { DeleteConfirmationDialog } from '../common';
-import { InvoiceDetailDialog } from './InvoiceDetailDialog';
-import { InvoiceDialog } from './InvoiceDialog';
-import { InvoiceManagementFilters } from './InvoiceManagementFilters';
-import { InvoiceManagementHeader } from './InvoiceManagementHeader';
-import { InvoicesTable } from './InvoicesTable';
-import { InvoiceStats } from './InvoiceStats';
-import { SendInvoiceEmailDialog } from './SendInvoiceEmailDialog';
+import { FEATURE_DISABLED_CODE } from '@horizon-sync/ui';
+import type { Invoice } from '../../types/invoice.types';
+import { PaymentType, type CreatePaymentPayload } from '../../types/payment.types';
+import { invoiceApi } from '../../utility/api/invoices';
+import { PaymentDialog } from '../payments/PaymentDialog';
+import { ErrorBanner } from '../common';
 
-interface InvoiceManagementProps {
-  onRecordPayment?: (invoice: Invoice) => void;
-  pendingInvoiceId?: string | null;
-  onClearPendingInvoiceId?: () => void;
-  onNavigateToSalesOrder?: (salesOrderId: string) => void;
-  onNavigateToPayment?: (paymentId: string) => void;
-}
+import { InvoiceDetailDialog, InvoiceManagementFilters, InvoiceManagementHeader, InvoicesTable, InvoiceStats } from '@horizon-sync/ui';
 
-export function InvoiceManagement({ 
-  onRecordPayment,
-  pendingInvoiceId,
-  onClearPendingInvoiceId,
-  onNavigateToSalesOrder,
-  onNavigateToPayment,
-}: InvoiceManagementProps) {
+export function InvoiceManagement() {
   const {
     filters,
     setFilters,
@@ -38,131 +28,182 @@ export function InvoiceManagement({
     setDetailDialogOpen,
     createDialogOpen,
     setCreateDialogOpen,
-    emailDialogOpen,
-    setEmailDialogOpen,
-    deleteDialogOpen,
-    setDeleteDialogOpen,
     selectedInvoice,
-    editInvoice,
-    invoiceToDelete,
     tableInstance,
     handleView,
     handleCreate,
-    handleEdit,
     handleDelete,
-    handleConfirmDelete,
-    handleSendEmail,
-    handleGeneratePDF,
+    handleMarkAsPaid,
     handleTableReady,
-    handleSave,
-    handleEmailSend,
     serverPaginationConfig,
+    confirmMarkAsPaidOpen,
+    setConfirmMarkAsPaidOpen,
+    invoiceToMarkPaid,
+    confirmMarkAsPaid,
+    isMarkingAsPaid,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   } = useInvoiceManagement();
 
-  const hasActiveFilters = filters.search !== '' || filters.status !== 'all' || filters.date_from !== undefined || filters.date_to !== undefined;
+  // Payment dialog state
+  const [paymentDialogOpen, setPaymentDialogOpen] = React.useState(false);
+  const [paymentInitialData, setPaymentInitialData] = React.useState<Partial<CreatePaymentPayload> | null>(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = React.useState<string | null>(null);
 
-  // Handle pending invoice ID from cross-document navigation
-  React.useEffect(() => {
-    if (pendingInvoiceId) {
-      // Find the invoice and open its detail dialog
-      const invoice = invoices.find(inv => inv.id === pendingInvoiceId);
-      if (invoice) {
-        handleView(invoice);
-      }
-      onClearPendingInvoiceId?.();
+  const accessToken = useUserStore((s) => s.accessToken);
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+
+  // Export all invoices to CSV
+  const handleExport = React.useCallback(async () => {
+    if (!accessToken) return;
+    const firstPage = await invoiceApi.list(accessToken, 1, 100);
+    let all = firstPage.invoices ?? [];
+    const totalPages = firstPage.pagination?.total_pages ?? 1;
+    for (let p = 2; p <= totalPages; p++) {
+      const page = await invoiceApi.list(accessToken, p, 100);
+      all = all.concat(page.invoices ?? []);
     }
-  }, [pendingInvoiceId, invoices, handleView, onClearPendingInvoiceId]);
+    const headers = ['Invoice No', 'Party', 'Type', 'Status', 'Currency', 'Grand Total', 'Outstanding', 'Posting Date', 'Due Date', 'Created At'];
+    const rows = all.map((r) => [
+      r.invoice_no ?? '',
+      r.party_name ?? '',
+      r.invoice_type ?? '',
+      r.status ?? '',
+      r.currency ?? '',
+      String(r.grand_total ?? ''),
+      String(r.outstanding_amount ?? ''),
+      r.posting_date ?? '',
+      r.due_date ?? '',
+      r.created_at ?? '',
+    ]);
+    const csv = [headers.join(','), ...rows.map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'invoices.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [accessToken]);
+
+  // Handle create payment from invoice
+  const handleCreatePayment = React.useCallback((invoice: Invoice) => {
+    const payment_type = invoice.invoice_type === 'sales'
+      ? PaymentType.CUSTOMER_PAYMENT
+      : PaymentType.SUPPLIER_PAYMENT;
+
+    // For paid invoices, use the grand total as the payment amount
+    // For unpaid invoices, use the outstanding amount
+    const paymentAmount = invoice.status === 'paid' ? invoice.grand_total : invoice.outstanding_amount;
+
+    setPaymentInitialData({
+      payment_type,
+      party_id: invoice.party_id,
+      amount: paymentAmount,
+      currency_code: invoice.currency,
+      payment_date: new Date().toISOString().split('T')[0],
+    });
+    setSelectedInvoiceId(invoice.id);
+    setPaymentDialogOpen(true);
+  }, []);
+
+  // Error display component
+  const ErrorDisplay = React.useMemo(() => {
+    if (!error || error === FEATURE_DISABLED_CODE) return null;
+    return <ErrorBanner entity="invoices" message={error} />;
+  }, [error]);
+
+  // Feature disabled — show informational banner instead of the full page
+  if (error === FEATURE_DISABLED_CODE) {
+    return (
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+            <Lock className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Invoices Not Available</h2>
+          <p className="text-muted-foreground text-center max-w-md">
+            The invoices feature is currently disabled by your administrator.
+            Contact your admin to enable it from the Feature Controls panel.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <InvoiceManagementHeader
-        isLoading={loading}
-        onRefresh={refetch}
-        onCreateInvoice={handleCreate}
-      />
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header */}
+      <InvoiceManagementHeader onRefresh={refetch} onCreateInvoice={handleCreate} onExport={handleExport} isLoading={loading} />
 
-      <InvoiceStats
-        total={stats.total}
+      {/* Error State */}
+      {ErrorDisplay}
+
+      {/* Stats Cards */}
+      <InvoiceStats total={stats.total}
         draft={stats.draft}
-        submitted={stats.submitted}
+        pending={stats.pending}
         paid={stats.paid}
-        overdue={stats.overdue}
-        totalOutstanding={stats.total_outstanding}
-      />
+        overdue={stats.overdue} />
 
-      <InvoiceManagementFilters
-        filters={filters}
-        setFilters={setFilters}
-        tableInstance={tableInstance}
-      />
+      {/* Filters */}
+      <InvoiceManagementFilters filters={filters} setFilters={setFilters} tableInstance={tableInstance} />
 
-      <InvoicesTable
-        invoices={invoices}
+      {/* Invoices Table */}
+      <InvoicesTable invoices={invoices}
         loading={loading}
         error={error}
-        hasActiveFilters={hasActiveFilters}
+        hasActiveFilters={!!filters.search || filters.status !== 'all' || filters.invoice_type !== 'all'}
+        baseCurrency={baseCurrency || undefined}
         onView={handleView}
-        onEdit={handleEdit}
         onDelete={handleDelete}
-        onSendEmail={handleSendEmail}
+        onMarkAsPaid={handleMarkAsPaid}
+        onCreatePayment={handleCreatePayment}
         onCreateInvoice={handleCreate}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig} />
 
       {/* Detail Dialog */}
-      <InvoiceDetailDialog
-        open={detailDialogOpen}
-        onOpenChange={setDetailDialogOpen}
-        invoice={selectedInvoice}
-        onEdit={handleEdit}
-        onRecordPayment={(invoice) => {
-          setDetailDialogOpen(false);
-          onRecordPayment?.(invoice);
-        }}
-        onGeneratePDF={handleGeneratePDF}
-        onSendEmail={handleSendEmail}
-        onViewSalesOrder={(salesOrderId) => {
-          setDetailDialogOpen(false);
-          onNavigateToSalesOrder?.(salesOrderId);
-        }}
-        onViewPayment={(paymentId) => {
-          setDetailDialogOpen(false);
-          onNavigateToPayment?.(paymentId);
-        }}
-      />
+      <InvoiceDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} invoice={selectedInvoice} baseCurrency={baseCurrency || 'USD'} />
 
-      {/* Create/Edit Dialog */}
-      <InvoiceDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        invoice={editInvoice}
-        onSave={handleSave}
-        saving={false}
-      />
+      {/* Payment Dialog */}
+      <PaymentDialog open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        payment={null}
+        initialData={paymentInitialData}
+        preselectedInvoiceId={selectedInvoiceId}
+        onSuccess={() => {
+          setPaymentDialogOpen(false);
+          setSelectedInvoiceId(null);
+          refetch();
+        }} />
 
-      {/* Send Email Dialog */}
-      <SendInvoiceEmailDialog
-        open={emailDialogOpen}
-        onOpenChange={setEmailDialogOpen}
-        invoice={selectedInvoice}
-        onSend={handleEmailSend}
-        sending={false}
-      />
+      {/* TODO: Create Dialog */}
+      {createDialogOpen && (
+        <div>Create Invoice Dialog - To be implemented</div>
+      )}
+
+      {/* Mark as Paid Confirmation */}
+      <ConfirmationDialog open={confirmMarkAsPaidOpen}
+        onOpenChange={setConfirmMarkAsPaidOpen}
+        title="Mark Invoice as Paid"
+        description={`Are you sure you want to mark invoice ${invoiceToMarkPaid?.invoice_no ?? ''} as paid? This action cannot be undone.`}
+        confirmLabel="Mark as Paid"
+        cancelLabel="Cancel"
+        loading={isMarkingAsPaid}
+        onConfirm={confirmMarkAsPaid} />
 
       {/* Delete Confirmation Dialog */}
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleConfirmDelete}
-        title="Delete Invoice"
-        description={
-          invoiceToDelete
-            ? `Are you sure you want to delete invoice ${invoiceToDelete.invoice_number}? This action cannot be undone.`
-            : 'Are you sure you want to delete this invoice?'
-        }
-      />
+      <ConfirmationDialog open={!!confirmAction}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.message || ''}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={executeConfirmedAction} />
     </div>
   );
 }
-

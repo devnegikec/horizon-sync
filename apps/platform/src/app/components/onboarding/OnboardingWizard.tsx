@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import { User, Building, Users, Check } from 'lucide-react';
+import { User, Building, Users, Check, Building2 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 
@@ -12,6 +12,7 @@ import { InviteTeamStep } from './InviteTeamStep';
 import { OnboardingComplete } from './OnboardingComplete';
 import { OrganizationStep } from './OrganizationStep';
 import { PersonalDetailsStep } from './PersonalDetailsStep';
+import { BankAccountSetupStep } from './BankAccountSetupStep';
 
 import { cn } from '@/lib/utils';
 
@@ -33,6 +34,12 @@ const steps = [
     title: 'Invite Team',
     description: 'Add team members',
     icon: Users,
+  },
+  {
+    id: 4,
+    title: 'Banking Setup',
+    description: 'Configure bank account',
+    icon: Building2,
   },
 ];
 
@@ -110,6 +117,7 @@ export function OnboardingWizard() {
         {currentStep === 1 && <PersonalDetailsStep />}
         {currentStep === 2 && <OrganizationStep />}
         {currentStep === 3 && <InviteTeamStep />}
+        {currentStep === 4 && <BankAccountSetupStep />}
       </CardContent>
     </Card>
   );

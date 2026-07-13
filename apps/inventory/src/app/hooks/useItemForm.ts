@@ -18,6 +18,7 @@ const getInitialFormData = (): ItemFormData & { itemGroupName: string } => ({
   // Basic Information
   itemCode: '',
   name: '',
+  sku: '',
   description: '',
   itemGroupId: '',
   itemGroupName: '',
@@ -79,6 +80,7 @@ export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult
         // Basic Information
         itemCode: item.itemCode,
         name: item.name,
+        sku: item.sku ?? '',
         description: item.description,
         itemGroupId: item.itemGroupId,
         itemGroupName: item.itemGroupName,

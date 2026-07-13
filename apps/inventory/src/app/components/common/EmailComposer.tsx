@@ -42,9 +42,8 @@ export function EmailComposer({
     attachments: Array<{ filename: string; content: string; content_type?: string }>;
   }) => {
     try {
-      // Merge default attachments with user-added attachments
-      const allAttachments = [...(defaultAttachments || []), ...data.attachments];
-      
+      const allAttachments = data.attachments;
+
       const result = await sendEmail({
         to: data.to,
         cc: data.cc.length > 0 ? data.cc : undefined,
@@ -57,44 +56,50 @@ export function EmailComposer({
       });
 
       if (result.status === 'sent') {
-        toast({
+        const toastPayload = {
           title: 'Email Sent',
           description: result.message || 'Email sent successfully',
-        });
+        };
+        toast(toastPayload);
+        window.dispatchEvent(new CustomEvent('app:toast', { detail: toastPayload }));
         onSuccess?.(result.communication_id);
       } else if (result.status === 'disabled') {
-        toast({
+        const toastPayload = {
           title: 'Email Service Disabled',
           description: result.message || 'Email service is not configured',
-          variant: 'destructive',
-        });
+          variant: 'destructive' as const,
+        };
+        toast(toastPayload);
+        window.dispatchEvent(new CustomEvent('app:toast', { detail: toastPayload }));
       } else {
-        toast({
+        const toastPayload = {
           title: 'Failed to Send',
           description: result.message || 'Failed to send email',
-          variant: 'destructive',
-        });
+          variant: 'destructive' as const,
+        };
+        toast(toastPayload);
+        window.dispatchEvent(new CustomEvent('app:toast', { detail: toastPayload }));
       }
     } catch (error) {
-      toast({
+      const toastPayload = {
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to send email',
-        variant: 'destructive',
-      });
+        variant: 'destructive' as const,
+      };
+      toast(toastPayload);
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: toastPayload }));
       throw error;
     }
   };
 
   return (
-    <EmailComposerDialog
-      open={open}
+    <EmailComposerDialog open={open}
       onOpenChange={onOpenChange}
       defaultRecipient={defaultRecipient}
       defaultSubject={defaultSubject}
       defaultMessage={defaultMessage}
       defaultAttachments={defaultAttachments}
       onSend={handleSend}
-      sending={loading}
-    />
+      sending={loading} />
   );
 }

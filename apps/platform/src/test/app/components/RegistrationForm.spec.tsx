@@ -43,9 +43,9 @@ describe('RegistrationForm', () => {
   const renderForm = () => {
     return render(
       <BrowserRouter future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}>
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}>
         <RegistrationForm />
       </BrowserRouter>,
     );
@@ -55,7 +55,10 @@ describe('RegistrationForm', () => {
     await user.type(screen.getByLabelText(/email/i), 'john@example.com');
     await user.type(screen.getByLabelText(/first name/i), 'John');
     await user.type(screen.getByLabelText(/last name/i), 'Doe');
-    await user.type(screen.getByLabelText(/phone/i), '9008750493');
+    // Select country (auto-populates dial code)
+    await user.click(screen.getByTestId('registration-country'));
+    await user.click(await screen.findByText(/India \(\+91\)/i));
+    await user.type(screen.getByLabelText(/contact number/i), '9008750493');
     await user.type(screen.getByLabelText(/^password/i), 'Password123!');
     await user.type(screen.getByLabelText(/confirm password/i), 'Password123!');
   };
@@ -66,7 +69,8 @@ describe('RegistrationForm', () => {
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/first name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/last name/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/phone/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/contact number/i)).toBeInTheDocument();
+    expect(screen.getByTestId('registration-country')).toBeInTheDocument();
     expect(screen.getByLabelText(/^password/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
@@ -118,14 +122,20 @@ describe('RegistrationForm', () => {
     await user.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
-      expect(AuthService.register).toHaveBeenCalled();
-      expect(mockLogin).toHaveBeenCalledWith('fake-access-token', 'fake-refresh-token', {
-        id: 'user-123',
-        email: 'john@example.com',
-        first_name: 'John',
-        last_name: 'Doe',
-        phone: '9008750493',
-      });
+      expect(AuthService.register).toHaveBeenCalledWith(
+        expect.objectContaining({ phone: '+919008750493' })
+      );
+      expect(mockLogin).toHaveBeenCalledWith(
+        'fake-access-token',
+        'fake-refresh-token',
+        expect.objectContaining({
+          id: 'user-123',
+          email: 'john@example.com',
+          first_name: 'John',
+          last_name: 'Doe',
+          phone: '9008750493',
+        })
+      );
       expect(mockToast).toHaveBeenCalledWith({
         title: 'Registration successful!',
         description: 'Your account has been created successfully.',

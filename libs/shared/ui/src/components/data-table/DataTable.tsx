@@ -3,7 +3,7 @@ import * as React from 'react';
 import { type ColumnDef, flexRender, type Table } from '@tanstack/react-table';
 
 import { useDataTable, type DataTableConfig } from '../../hooks/useDataTable';
-import { Table as TableComponent, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Table as TableComponent, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '../ui/table';
 
 import { DataTablePagination } from './DataTablePagination';
 import { DataTableToolbar } from './DataTableToolbar';
@@ -19,6 +19,10 @@ export interface DataTableProps<TData, TValue> {
   renderViewOptions?: (table: Table<TData>) => React.ReactNode;
   fixedHeader?: boolean;
   maxHeight?: string;
+  /** Optional footer (e.g. summary rows). Renders inside the same table for column alignment. */
+  renderFooter?: () => React.ReactNode;
+  /** Optional function to derive a custom className for each row. */
+  getRowClassName?: (row: TData) => string | undefined;
 }
 
 export function DataTable<TData, TValue>({
@@ -31,6 +35,8 @@ export function DataTable<TData, TValue>({
   renderViewOptions,
   fixedHeader = false,
   maxHeight = '600px',
+  renderFooter,
+  getRowClassName,
 }: DataTableProps<TData, TValue>) {
   const { table, globalFilter, setGlobalFilter } = useDataTable({
     data,
@@ -45,7 +51,7 @@ export function DataTable<TData, TValue>({
         {config?.enableColumnVisibility && !renderViewOptions && <DataTableViewOptions table={table} />}
         {renderViewOptions && renderViewOptions(table)}
       </div>
-      <div className={fixedHeader ? `rounded-md border` : 'rounded-md border'}>
+      <div className="rounded-md border overflow-hidden">
         <div className={fixedHeader ? 'overflow-auto' : undefined} style={fixedHeader ? { maxHeight } : undefined}>
           <TableComponent>
             <TableHeader className={fixedHeader ? 'sticky top-0 bg-background z-10' : ''}>
@@ -64,7 +70,7 @@ export function DataTable<TData, TValue>({
             <TableBody>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                  <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className={getRowClassName ? getRowClassName(row.original) : undefined}>
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
@@ -78,6 +84,11 @@ export function DataTable<TData, TValue>({
                 </TableRow>
               )}
             </TableBody>
+            {renderFooter ? (
+              <TableFooter className="border-t bg-muted/30">
+                {renderFooter()}
+              </TableFooter>
+            ) : null}
           </TableComponent>
         </div>
       </div>

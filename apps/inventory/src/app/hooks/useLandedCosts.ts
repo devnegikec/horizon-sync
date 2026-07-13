@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getFriendlyErrorMessage } from '../utility/api/core';
+
 import { useUserStore } from '@horizon-sync/store';
-import { landedCostApi } from '../utility/api/landed-costs';
+
 import type { LandedCostVoucherListItem, LandedCostVoucherFilters } from '../types/landed-cost.types';
+import { landedCostApi } from '../utility/api/landed-costs';
 
 export function useLandedCosts(initialFilters: Partial<LandedCostVoucherFilters> = {}) {
   const accessToken = useUserStore((s) => s.accessToken);
@@ -35,7 +38,7 @@ export function useLandedCosts(initialFilters: Partial<LandedCostVoucherFilters>
       setLandedCosts(response.vouchers || []);
       setTotalCount(response.pagination?.total_count || 0);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch landed cost vouchers';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       console.error('Error fetching landed cost vouchers:', err);
       setLandedCosts([]);
@@ -63,3 +66,5 @@ export function useLandedCosts(initialFilters: Partial<LandedCostVoucherFilters>
     refetch,
   };
 }
+
+

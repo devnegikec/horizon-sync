@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Table } from '@tanstack/react-table';
@@ -7,8 +7,8 @@ import {
   Truck,
   Plus,
   Download,
+  Loader2,
   RefreshCw,
-  AlertTriangle,
   Package,
   FileCheck,
   Ban,
@@ -21,6 +21,8 @@ import { cn } from '@horizon-sync/ui/lib';
 
 import type { DeliveryNote, DeliveryNoteCreate, DeliveryNoteResponse, DeliveryNoteUpdate } from '../../types/delivery-note.types';
 import { deliveryNoteApi } from '../../utility/api';
+import { getFriendlyErrorMessage } from '../../utility/api/core';
+import { ErrorBanner } from '../common';
 import { StatCard } from '../shared';
 
 import { DeliveryNoteDetailDialog } from './DeliveryNoteDetailDialog';
@@ -42,6 +44,44 @@ export function DeliveryNoteManagement() {
     status: 'all',
   });
 
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    if (!accessToken) return;
+    setIsExporting(true);
+    try {
+      const firstPage = await deliveryNoteApi.list(accessToken, 1, 100) as { delivery_notes: Record<string, unknown>[]; pagination: { total_pages: number } };
+      let all: Record<string, unknown>[] = firstPage.delivery_notes ?? [];
+      const totalPages = firstPage.pagination?.total_pages ?? 1;
+      for (let p = 2; p <= totalPages; p++) {
+        const page = await deliveryNoteApi.list(accessToken, p, 100) as { delivery_notes: Record<string, unknown>[] };
+        all = all.concat(page.delivery_notes ?? []);
+      }
+
+      const headers = ['Delivery Note No', 'Customer', 'Delivery Date', 'Status', 'Created At'];
+      const rows = all.map((r) => [
+        String(r['delivery_note_no'] ?? ''),
+        String(r['customer_name'] ?? ''),
+        String(r['delivery_date'] ?? ''),
+        String(r['status'] ?? ''),
+        String(r['created_at'] ?? ''),
+      ]);
+
+      const csv = [headers.join(','), ...rows.map((row) => row.map((c) => `"${c.replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'delivery-notes.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [accessToken]);
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -50,6 +90,7 @@ export function DeliveryNoteManagement() {
   const [editNote, setEditNote] = useState<DeliveryNote | null>(null);
   const [saving, setSaving] = useState(false);
   const [tableInstance, setTableInstance] = useState<Table<DeliveryNote> | null>(null);
+  const [convertingInvoice, setConvertingInvoice] = useState(false);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -82,10 +123,20 @@ export function DeliveryNoteManagement() {
     return { total, draft, shipped, cancelled };
   }, [deliveryNotes, pagination]);
 
-  const handleView = React.useCallback((note: DeliveryNote) => {
-    setSelectedNote(note);
-    setDetailDialogOpen(true);
-  }, []);
+  const handleView = React.useCallback(async (note: DeliveryNote) => {
+    if (!accessToken) return;
+    try {
+      const fullNote = await deliveryNoteApi.get(accessToken, note.id) as DeliveryNote;
+      setSelectedNote(fullNote);
+      setDetailDialogOpen(true);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: getFriendlyErrorMessage(err),
+        variant: 'destructive',
+      });
+    }
+  }, [accessToken, toast]);
 
   const handleCreate = () => {
     setEditNote(null);
@@ -112,13 +163,14 @@ export function DeliveryNoteManagement() {
       } else {
         await deliveryNoteApi.create(accessToken, data);
         toast({ title: 'Success', description: 'Delivery note created successfully' });
+        setPage(1);
       }
       queryClient.invalidateQueries({ queryKey: ['delivery-notes'] });
       setCreateDialogOpen(false);
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save delivery note',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     } finally {
@@ -136,6 +188,50 @@ export function DeliveryNoteManagement() {
     }
   }), [page, pageSize, pagination?.total_items]);
 
+  const handleConvertToInvoice = React.useCallback(async (
+    deliveryNoteId: string,
+    data: { items: { item_id: string; qty_to_bill: number }[]; due_date?: string; remarks?: string },
+  ) => {
+    if (!accessToken) return;
+    setConvertingInvoice(true);
+    try {
+      const result = await deliveryNoteApi.convertToInvoice(accessToken, deliveryNoteId, data) as { invoice_id: string; invoice_no: string; grand_total: number | string; message: string };
+      toast({
+        title: 'Success',
+        description: `Invoice ${result.invoice_no} created with total ${Number(result.grand_total).toFixed(2)}`,
+      });
+      setDetailDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['delivery-notes'] });
+      refetch();
+    } catch (err) {
+      // Extract user-friendly message from API error
+      let errorMessage = 'Failed to convert to invoice';
+      if (err && typeof err === 'object') {
+        const apiErr = err as { details?: { message?: string }; message?: string };
+        if (apiErr.details?.message) {
+          errorMessage = apiErr.details.message;
+        } else if (apiErr.message) {
+          try {
+            const parsed = JSON.parse(apiErr.message);
+            errorMessage = parsed.message || errorMessage;
+          } catch {
+            errorMessage = apiErr.message;
+          }
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      throw err; // Re-throw so caller knows it failed
+    } finally {
+      setConvertingInvoice(false);
+    }
+  }, [accessToken, toast, queryClient, refetch]);
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
@@ -149,11 +245,10 @@ export function DeliveryNoteManagement() {
             <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
             Refresh
           </Button>
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
+          <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
+            {isExporting ? <><Loader2 className="h-4 w-4 animate-spin" />Exporting...</> : <><Download className="h-4 w-4" />Export</>}
           </Button>
-          <Button className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg" onClick={handleCreate}>
+          <Button className="gap-2" onClick={handleCreate}>
             <Plus className="h-4 w-4" />
             New Delivery Note
           </Button>
@@ -161,16 +256,7 @@ export function DeliveryNoteManagement() {
       </div>
 
       {/* Error State */}
-      {error && (
-        <Card className="border-destructive">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm font-medium">Error loading delivery notes: {(error as Error).message}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {error && <ErrorBanner entity="delivery notes" message={getFriendlyErrorMessage(error)} />}
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -208,7 +294,7 @@ export function DeliveryNoteManagement() {
       {/* Delivery Notes Table */}
       <DeliveryNotesTable deliveryNotes={deliveryNotes}
         loading={isLoading}
-        error={error ? (error as Error).message : null}
+        error={error ? getFriendlyErrorMessage(error) : null}
         hasActiveFilters={!!filters.search || filters.status !== 'all'}
         onView={handleView}
         onEdit={handleEdit}
@@ -217,15 +303,14 @@ export function DeliveryNoteManagement() {
         serverPagination={serverPaginationConfig} />
 
       {/* Detail Dialog */}
-      <DeliveryNoteDetailDialog
-        open={detailDialogOpen}
+      <DeliveryNoteDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         deliveryNote={selectedNote}
-        onConvertToInvoice={(id) => console.log('Convert to invoice:', id)}
+        onConvertToInvoice={handleConvertToInvoice}
+        convertingInvoice={convertingInvoice}
         onEdit={handleEdit} />
 
-      <DeliveryNoteDialog
-        open={createDialogOpen}
+      <DeliveryNoteDialog open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         deliveryNote={editNote}
         onSave={handleSave}

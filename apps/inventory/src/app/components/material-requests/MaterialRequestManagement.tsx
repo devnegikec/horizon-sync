@@ -1,9 +1,10 @@
 import * as React from 'react';
-import { AlertTriangle } from 'lucide-react';
 
 import { Card, CardContent } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 
 import { useMaterialRequestManagement } from '../../hooks/useMaterialRequestManagement';
+import { ErrorBanner } from '../common';
 
 import {
   MaterialRequestHeader,
@@ -39,53 +40,40 @@ export function MaterialRequestManagement() {
     handleTableReady,
     handleSave,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   } = useMaterialRequestManagement();
 
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
     if (!error) return null;
-    return (
-      <Card className="border-destructive">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm font-medium">Error loading material requests: {error}</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <ErrorBanner entity="material requests" message={error} />;
   }, [error]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <MaterialRequestHeader
-        onRefresh={refetch}
+      <MaterialRequestHeader onRefresh={refetch}
         onCreateMaterialRequest={handleCreate}
-        isLoading={loading}
-      />
+        isLoading={loading}/>
 
       {/* Error State */}
       {ErrorDisplay}
 
       {/* Stats Cards */}
-      <MaterialRequestStats
-        total={stats.total}
+      <MaterialRequestStats total={stats.total}
         draft={stats.draft}
         submitted={stats.submitted}
-        quoted={stats.quoted}
-      />
+        quoted={stats.quoted}/>
 
       {/* Filters */}
-      <MaterialRequestFilters
-        filters={filters}
+      <MaterialRequestFilters filters={filters}
         setFilters={setFilters}
-        tableInstance={tableInstance}
-      />
+        tableInstance={tableInstance}/>
 
       {/* Material Requests Table */}
-      <MaterialRequestsTable
-        materialRequests={materialRequests}
+      <MaterialRequestsTable materialRequests={materialRequests}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.status !== 'all'}
@@ -96,22 +84,28 @@ export function MaterialRequestManagement() {
         onCancel={handleCancel}
         onCreateMaterialRequest={handleCreate}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
       {/* Detail Dialog */}
-      <MaterialRequestDetailDialog
-        open={detailDialogOpen}
+      <MaterialRequestDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        materialRequest={selectedMaterialRequest}
-      />
+        materialRequest={selectedMaterialRequest}/>
 
       {/* Create/Edit Dialog */}
-      <MaterialRequestDialog
-        open={createDialogOpen}
+      <MaterialRequestDialog open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         materialRequest={editMaterialRequest}
-        onSave={handleSave}
+        onSave={handleSave}/>
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.message || ''}
+        confirmLabel={confirmAction?.type === 'delete' ? 'Delete' : confirmAction?.type === 'cancel' ? 'Cancel' : 'Confirm'}
+        variant={confirmAction?.type === 'submit' ? 'default' : 'destructive'}
+        onConfirm={executeConfirmedAction}
       />
     </div>
   );

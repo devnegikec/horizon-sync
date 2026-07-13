@@ -1,149 +1,276 @@
-import * as React from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 
-import { usePaymentManagement } from '../../hooks/usePaymentManagement';
+import { DollarSign, Plus } from 'lucide-react';
+
+import { Button } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
+import { useToast } from '@horizon-sync/ui/hooks';
+
+import { usePaymentActions } from '../../hooks/usePaymentActions';
+import { usePayments } from '../../hooks/usePayments';
 import type { Invoice } from '../../types/invoice';
-import { DeleteConfirmationDialog } from '../common';
+import type { PaymentEntry, PaymentFilters as Filters } from '../../types/payment.types';
+import { paymentApi } from '../../utility/api';
+import { getStatIconColors } from '../../utils/payment.utils';
+
 import { PaymentDetailDialog } from './PaymentDetailDialog';
 import { PaymentDialog } from './PaymentDialog';
-import { PaymentManagementFilters } from './PaymentManagementFilters';
-import { PaymentManagementHeader } from './PaymentManagementHeader';
-import { PaymentsTable } from './PaymentsTable';
-import { PaymentStats } from './PaymentStats';
+import { PaymentFilters } from './PaymentFilters';
+import { PaymentTable } from './PaymentTable';
+import { StatCard } from './StatCard';
 
-interface PaymentManagementProps {
+export interface PaymentManagementProps {
   preSelectedInvoice?: Invoice | null;
   pendingPaymentId?: string | null;
   onClearPendingPaymentId?: () => void;
   onNavigateToInvoice?: (invoiceId: string) => void;
 }
 
-export function PaymentManagement({ 
-  preSelectedInvoice,
-  pendingPaymentId,
+export function PaymentManagement({
+  preSelectedInvoice = null,
+  pendingPaymentId = null,
   onClearPendingPaymentId,
   onNavigateToInvoice,
 }: PaymentManagementProps) {
-  const {
-    filters,
-    setFilters,
-    payments,
-    loading,
-    error,
-    refetch,
-    stats,
-    detailDialogOpen,
-    setDetailDialogOpen,
-    createDialogOpen,
-    setCreateDialogOpen,
-    deleteDialogOpen,
-    setDeleteDialogOpen,
-    selectedPayment,
-    editPayment,
-    paymentToDelete,
-    tableInstance,
-    handleView,
-    handleCreate,
-    handleEdit,
-    handleDelete,
-    handleConfirmDelete,
-    handleTableReady,
-    handleSave,
-    serverPaginationConfig,
-  } = usePaymentManagement();
+  const [filters, setFilters] = useState<Partial<Filters>>({
+    status: undefined,
+    payment_mode: undefined,
+    payment_type: undefined,
+    search: '',
+    page: 1,
+    page_size: 10,
+  });
 
-  // Auto-open create dialog when pre-selected invoice is provided
-  React.useEffect(() => {
-    if (preSelectedInvoice) {
-      setCreateDialogOpen(true);
-    }
-  }, [preSelectedInvoice, setCreateDialogOpen]);
+  const { payments, loading, error, totalCount, refetch } = usePayments(filters);
+  const { confirmPayment, cancelPayment } = usePaymentActions();
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentEntry | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [paymentForDetail, setPaymentForDetail] = useState<PaymentEntry | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
-  // Handle pending payment ID from cross-document navigation
-  React.useEffect(() => {
-    if (pendingPaymentId) {
-      // Find the payment and open its detail dialog
-      const payment = payments.find(pmt => pmt.id === pendingPaymentId);
-      if (payment) {
-        handleView(payment);
+  const handleViewPayment = useCallback(
+    async (payment: PaymentEntry) => {
+      setPaymentForDetail(payment);
+      setDetailDialogOpen(true);
+      setDetailLoading(true);
+      try {
+        const fullPayment = await paymentApi.fetchPaymentById(payment.id);
+        setPaymentForDetail(fullPayment);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load payment details';
+        toast({ title: 'Error', description: message, variant: 'destructive' });
+        setDetailDialogOpen(false);
+        setPaymentForDetail(null);
+      } finally {
+        setDetailLoading(false);
       }
-      onClearPendingPaymentId?.();
-    }
-  }, [pendingPaymentId, payments, handleView, onClearPendingPaymentId]);
+    },
+    [toast]
+  );
 
-  const hasActiveFilters = 
-    filters.search !== '' || 
-    filters.status !== 'all' || 
-    filters.payment_mode !== 'all' || 
-    filters.date_from !== undefined || 
-    filters.date_to !== undefined;
+  // Handle pre-selected invoice (for recording payment from invoice)
+  useEffect(() => {
+    if (preSelectedInvoice) {
+      setSelectedPayment(null);
+      setDialogOpen(true);
+    }
+  }, [preSelectedInvoice]);
+
+  // Handle pending payment ID (for viewing specific payment)
+  useEffect(() => {
+    if (pendingPaymentId) {
+      const payment = payments.find(p => p.id === pendingPaymentId);
+      if (payment) {
+        handleViewPayment(payment);
+        onClearPendingPaymentId?.();
+      }
+    }
+  }, [pendingPaymentId, payments, onClearPendingPaymentId, handleViewPayment]);
+
+  // Memoize expensive stats calculation
+  const paymentStats = useMemo(() => ({
+    total: totalCount,
+    draft: payments.filter((p) => p.status === 'Draft').length,
+    confirmed: payments.filter((p) => p.status === 'Confirmed').length,
+    cancelled: payments.filter((p) => p.status === 'Cancelled').length,
+  }), [totalCount, payments]);
+
+  const handleCreatePayment = useCallback(() => {
+    setSelectedPayment(null);
+    setDialogOpen(true);
+  }, []);
+
+  const handleEditPayment = useCallback((payment: PaymentEntry) => {
+    setSelectedPayment(payment);
+    setDialogOpen(true);
+  }, []);
+
+  const handleConfirmPayment = useCallback(async (payment: PaymentEntry) => {
+    setConfirmPaymentEntry(payment);
+  }, []);
+
+  const [confirmPaymentEntry, setConfirmPaymentEntry] = useState<PaymentEntry | null>(null);
+
+  const executeConfirmPayment = useCallback(async () => {
+    if (!confirmPaymentEntry) return;
+    const result = await confirmPayment(confirmPaymentEntry.id);
+    if (result) {
+      // If this was triggered from detail dialog, close it
+      if (paymentForDetail && paymentForDetail.id === confirmPaymentEntry.id) {
+        setDetailDialogOpen(false);
+        setPaymentForDetail(null);
+      }
+      refetch();
+    }
+    setConfirmPaymentEntry(null);
+  }, [confirmPaymentEntry, confirmPayment, refetch, paymentForDetail]);
+
+  const handleCancelPayment = useCallback(async (payment: PaymentEntry) => {
+    const cancellationReason = window.prompt('Please enter cancellation reason:');
+    if (cancellationReason) {
+      const result = await cancelPayment(payment.id, cancellationReason);
+      if (result) {
+        refetch();
+      }
+    }
+  }, [cancelPayment, refetch]);
+
+  const handleDialogSuccess = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  const handleDetailEdit = useCallback(() => {
+    if (paymentForDetail) {
+      setDetailDialogOpen(false);
+      setSelectedPayment(paymentForDetail);
+      setDialogOpen(true);
+      setPaymentForDetail(null);
+    }
+  }, [paymentForDetail]);
+
+  const handleDetailConfirm = useCallback(
+    async () => {
+      if (!paymentForDetail) return;
+      setConfirmPaymentEntry(paymentForDetail);
+    },
+    [paymentForDetail]
+  );
+
+  const handleDetailCancel = useCallback(
+    async () => {
+      if (!paymentForDetail) return;
+      const reason = window.prompt('Please enter cancellation reason:');
+      if (reason) {
+        const result = await cancelPayment(paymentForDetail.id, reason);
+        if (result) {
+          setDetailDialogOpen(false);
+          setPaymentForDetail(null);
+          refetch();
+        }
+      }
+    },
+    [paymentForDetail, cancelPayment, refetch]
+  );
+
+  const handleDetailClose = useCallback((open: boolean) => {
+    if (!open) {
+      setPaymentForDetail(null);
+    }
+    setDetailDialogOpen(open);
+  }, []);
+
+  const handleDetailAllocationChange = useCallback(async () => {
+    if (paymentForDetail?.id) {
+      try {
+        const fullPayment = await paymentApi.fetchPaymentById(paymentForDetail.id);
+        setPaymentForDetail(fullPayment);
+        refetch();
+      } catch {
+        refetch();
+      }
+    }
+  }, [paymentForDetail?.id, refetch]);
 
   return (
-    <div className="space-y-6">
-      <PaymentManagementHeader
-        isLoading={loading}
-        onRefresh={refetch}
-        onCreatePayment={handleCreate}
-      />
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Payment Management</h1>
+          <p className="text-muted-foreground mt-1">Manage customer and supplier payments</p>
+        </div>
+        <Button onClick={handleCreatePayment}
+          className="gap-2">
+          <Plus className="h-4 w-4" />
+          Capture Payment
+        </Button>
+      </div>
 
-      <PaymentStats
-        total={stats.total}
-        pending={stats.pending}
-        completed={stats.completed}
-        totalAmount={stats.total_amount}
-      />
+      {/* Stats Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard title="Total Payments"
+          value={paymentStats.total}
+          icon={DollarSign}
+          iconBg={getStatIconColors('total').bg}
+          iconColor={getStatIconColors('total').icon}/>
+        <StatCard title="Draft"
+          value={paymentStats.draft}
+          icon={DollarSign}
+          iconBg={getStatIconColors('draft').bg}
+          iconColor={getStatIconColors('draft').icon}/>
+        <StatCard title="Confirmed"
+          value={paymentStats.confirmed}
+          icon={DollarSign}
+          iconBg={getStatIconColors('confirmed').bg}
+          iconColor={getStatIconColors('confirmed').icon}/>
+        <StatCard title="Cancelled"
+          value={paymentStats.cancelled}
+          icon={DollarSign}
+          iconBg={getStatIconColors('cancelled').bg}
+          iconColor={getStatIconColors('cancelled').icon}/>
+      </div>
 
-      <PaymentManagementFilters
-        filters={filters}
-        setFilters={setFilters}
-        tableInstance={tableInstance}
-      />
+      {/* Filters */}
+      <PaymentFilters filters={filters} setFilters={setFilters} />
 
-      <PaymentsTable
-        payments={payments}
+      {/* Payments Table */}
+      <PaymentTable payments={payments}
         loading={loading}
         error={error}
-        hasActiveFilters={hasActiveFilters}
-        onView={handleView}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onCreatePayment={handleCreate}
-        onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}
-      />
-
-      {/* Detail Dialog */}
-      <PaymentDetailDialog
-        open={detailDialogOpen}
-        onOpenChange={setDetailDialogOpen}
-        payment={selectedPayment}
-        onEdit={handleEdit}
-        onViewInvoice={(invoiceId) => {
-          setDetailDialogOpen(false);
-          onNavigateToInvoice?.(invoiceId);
-        }}
-      />
+        onView={handleViewPayment}
+        onEdit={handleEditPayment}
+        onConfirm={handleConfirmPayment}
+        onCancel={handleCancelPayment}/>
 
       {/* Create/Edit Dialog */}
-      <PaymentDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        payment={editPayment}
-        preSelectedInvoice={preSelectedInvoice}
-        onSave={handleSave}
-        saving={false}
-      />
+      <PaymentDialog open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        payment={selectedPayment}
+        onSuccess={handleDialogSuccess}/>
 
-      {/* Delete Confirmation Dialog */}
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleConfirmDelete}
-        title="Delete Payment"
-        description={
-          paymentToDelete
-            ? `Are you sure you want to delete payment ${paymentToDelete.payment_number}? This action cannot be undone.`
-            : 'Are you sure you want to delete this payment?'
-        }
+      {/* View Details Dialog */}
+      {paymentForDetail && (
+        <PaymentDetailDialog open={detailDialogOpen}
+          onOpenChange={handleDetailClose}
+          payment={paymentForDetail}
+          onEdit={handleDetailEdit}
+          onConfirm={handleDetailConfirm}
+          onCancel={handleDetailCancel}
+          onAllocationChange={handleDetailAllocationChange}
+          loading={detailLoading}/>
+      )}
+
+      {/* Confirm Payment Dialog */}
+      <ConfirmationDialog
+        open={!!confirmPaymentEntry}
+        onOpenChange={(open) => { if (!open) setConfirmPaymentEntry(null); }}
+        title="Confirm Payment"
+        description={`Are you sure you want to confirm payment ${confirmPaymentEntry?.receipt_number || confirmPaymentEntry?.id || ''}?`}
+        confirmLabel="Confirm"
+        variant="default"
+        onConfirm={executeConfirmPayment}
       />
     </div>
   );

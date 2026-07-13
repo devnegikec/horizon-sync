@@ -3,7 +3,7 @@
  */
 
 import { render, screen, fireEvent } from '@testing-library/react';
-import { SearchErrorState } from '../../../../../app/features/search/../../../../app/features/search/components/SearchErrorState';
+import { SearchErrorState } from '../../../../../app/features/search/components/SearchErrorState';
 
 describe('SearchErrorState', () => {
   it('should display network error message', () => {

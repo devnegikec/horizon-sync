@@ -1,9 +1,19 @@
 import { useState } from 'react';
-import { useUserStore } from '@horizon-sync/store';
-import { accountApi } from '../utility/api/accounts';
-import type { CreateAccountPayload, UpdateAccountPayload } from '../types/account.types';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
-export function useAccountActions() {
+import { useUserStore } from '@horizon-sync/store';
+
+import type { CreateAccountPayload, UpdateAccountPayload } from '../types/account.types';
+import { accountApi } from '../utility/api/accounts';
+
+export function useAccountActions(): {
+  createAccount: (data: CreateAccountPayload) => Promise<any>;
+  updateAccount: (id: string, data: UpdateAccountPayload) => Promise<any>;
+  deleteAccount: (id: string, force?: boolean) => Promise<void>;
+  toggleAccountStatus: (id: string, isActive: boolean) => Promise<void>;
+  loading: boolean;
+  error: string | null;
+} {
   const { accessToken } = useUserStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +29,7 @@ export function useAccountActions() {
       const response = await accountApi.create(accessToken, data);
       return response;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create account';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       throw err;
     } finally {
@@ -38,7 +48,7 @@ export function useAccountActions() {
       const response = await accountApi.update(accessToken, id, data);
       return response;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update account';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       throw err;
     } finally {
@@ -46,7 +56,7 @@ export function useAccountActions() {
     }
   };
 
-  const deleteAccount = async (id: string) => {
+  const deleteAccount = async (id: string, force = false) => {
     if (!accessToken) {
       throw new Error('No access token available');
     }
@@ -54,9 +64,9 @@ export function useAccountActions() {
     try {
       setLoading(true);
       setError(null);
-      await accountApi.delete(accessToken, id);
+      await accountApi.delete(accessToken, id, force);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete account';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       throw err;
     } finally {
@@ -78,7 +88,7 @@ export function useAccountActions() {
         await accountApi.activate(accessToken, id);
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to toggle account status';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       throw err;
     } finally {
@@ -95,3 +105,5 @@ export function useAccountActions() {
     error,
   };
 }
+
+

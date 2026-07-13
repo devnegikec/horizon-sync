@@ -102,14 +102,12 @@ export function RFQDialog({ open, onOpenChange, rfq, onSave, saving }: RFQDialog
             
             <div className="space-y-2">
               <Label htmlFor="material_request_id">Material Request ID *</Label>
-              <Input 
-                id="material_request_id"
+              <Input id="material_request_id"
                 value={formData.material_request_id}
                 onChange={(e) => handleChange('material_request_id', e.target.value)}
                 disabled={isEdit}
                 placeholder="Enter material request ID"
-                required
-              />
+                required/>
               <p className="text-xs text-muted-foreground">
                 The material request this RFQ is based on
               </p>
@@ -117,14 +115,12 @@ export function RFQDialog({ open, onOpenChange, rfq, onSave, saving }: RFQDialog
 
             <div className="space-y-2">
               <Label htmlFor="supplier_ids">Supplier IDs *</Label>
-              <Textarea 
-                id="supplier_ids"
+              <Textarea id="supplier_ids"
                 value={formData.supplier_ids}
                 onChange={(e) => handleChange('supplier_ids', e.target.value)}
                 placeholder="supplier-id-1, supplier-id-2, supplier-id-3"
                 rows={3}
-                required
-              />
+                required/>
               <p className="text-xs text-muted-foreground">
                 Enter supplier IDs separated by commas
               </p>
@@ -132,14 +128,12 @@ export function RFQDialog({ open, onOpenChange, rfq, onSave, saving }: RFQDialog
 
             <div className="space-y-2">
               <Label htmlFor="closing_date">Closing Date *</Label>
-              <Input 
-                id="closing_date"
+              <Input id="closing_date"
                 type="date"
                 value={formData.closing_date}
                 onChange={(e) => handleChange('closing_date', e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                required
-              />
+                required/>
               <p className="text-xs text-muted-foreground">
                 Last date for suppliers to submit quotes
               </p>

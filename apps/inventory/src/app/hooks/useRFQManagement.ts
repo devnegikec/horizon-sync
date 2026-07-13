@@ -1,11 +1,12 @@
 import * as React from 'react';
 import { useMemo, useEffect } from 'react';
+
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import type { Table } from '@tanstack/react-table';
 
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
-import { rfqApi } from '../utility/api';
+
 import type {
   RFQ,
   RFQListItem,
@@ -15,6 +16,8 @@ import type {
   RFQFilters,
   RFQManagementFilters,
 } from '../types/rfq.types';
+import { rfqApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 interface UseRFQManagementResult {
   filters: RFQManagementFilters;
@@ -55,6 +58,9 @@ interface UseRFQManagementResult {
     totalItems: number;
     onPaginationChange: (pageIndex: number, newPageSize: number) => void;
   };
+  confirmAction: { type: string; item: RFQListItem; title: string; message: string } | null;
+  setConfirmAction: React.Dispatch<React.SetStateAction<{ type: string; item: RFQListItem; title: string; message: string } | null>>;
+  executeConfirmedAction: () => void;
 }
 
 // Internal hook for fetching RFQs
@@ -101,7 +107,7 @@ function useRFQsInternal(
       setRFQs(data.rfqs ?? []);
       setPagination(data.pagination ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load RFQs');
+      setError(getFriendlyErrorMessage(err));
       setRFQs([]);
       setPagination(null);
     } finally {
@@ -160,7 +166,7 @@ export function useRFQManagement(): UseRFQManagementResult {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete RFQ',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -176,7 +182,7 @@ export function useRFQManagement(): UseRFQManagementResult {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to send RFQ',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -192,7 +198,7 @@ export function useRFQManagement(): UseRFQManagementResult {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to close RFQ',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -208,7 +214,7 @@ export function useRFQManagement(): UseRFQManagementResult {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load RFQ details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -238,11 +244,14 @@ export function useRFQManagement(): UseRFQManagementResult {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load RFQ details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
   }, [accessToken, toast]);
+
+  // Confirmation dialog state
+  const [confirmAction, setConfirmAction] = React.useState<{ type: string; item: RFQListItem; title: string; message: string } | null>(null);
 
   const handleDelete = React.useCallback((rfq: RFQListItem) => {
     if (rfq.status !== 'draft') {
@@ -254,10 +263,13 @@ export function useRFQManagement(): UseRFQManagementResult {
       return;
     }
 
-    if (confirm(`Are you sure you want to delete this RFQ?`)) {
-      deleteMutation.mutate(rfq.id);
-    }
-  }, [deleteMutation, toast]);
+    setConfirmAction({
+      type: 'delete',
+      item: rfq,
+      title: 'Delete RFQ',
+      message: `Are you sure you want to delete this RFQ?`,
+    });
+  }, [toast]);
 
   const handleSend = React.useCallback((rfq: RFQListItem) => {
     if (rfq.status !== 'draft') {
@@ -269,10 +281,13 @@ export function useRFQManagement(): UseRFQManagementResult {
       return;
     }
 
-    if (confirm(`Are you sure you want to send this RFQ to suppliers?`)) {
-      sendMutation.mutate(rfq.id);
-    }
-  }, [sendMutation, toast]);
+    setConfirmAction({
+      type: 'send',
+      item: rfq,
+      title: 'Send RFQ',
+      message: `Are you sure you want to send this RFQ to suppliers?`,
+    });
+  }, [toast]);
 
   const handleClose = React.useCallback((rfq: RFQListItem) => {
     if (rfq.status === 'draft' || rfq.status === 'closed') {
@@ -284,10 +299,25 @@ export function useRFQManagement(): UseRFQManagementResult {
       return;
     }
 
-    if (confirm(`Are you sure you want to close this RFQ?`)) {
-      closeMutation.mutate(rfq.id);
+    setConfirmAction({
+      type: 'close',
+      item: rfq,
+      title: 'Close RFQ',
+      message: `Are you sure you want to close this RFQ?`,
+    });
+  }, [toast]);
+
+  const executeConfirmedAction = React.useCallback(() => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'delete') {
+      deleteMutation.mutate(confirmAction.item.id);
+    } else if (confirmAction.type === 'send') {
+      sendMutation.mutate(confirmAction.item.id);
+    } else if (confirmAction.type === 'close') {
+      closeMutation.mutate(confirmAction.item.id);
     }
-  }, [closeMutation, toast]);
+    setConfirmAction(null);
+  }, [confirmAction, deleteMutation, sendMutation, closeMutation]);
 
   const handleTableReady = React.useCallback((table: Table<RFQListItem>) => {
     setTableInstance(table);
@@ -304,6 +334,7 @@ export function useRFQManagement(): UseRFQManagementResult {
       } else {
         await rfqApi.create(accessToken, data as CreateRFQPayload);
         toast({ title: 'Success', description: 'RFQ created successfully' });
+        setPage(1);
       }
       queryClient.invalidateQueries({ queryKey: ['rfqs'] });
       setCreateDialogOpen(false);
@@ -311,7 +342,7 @@ export function useRFQManagement(): UseRFQManagementResult {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save RFQ',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;
@@ -359,5 +390,8 @@ export function useRFQManagement(): UseRFQManagementResult {
     handleTableReady,
     handleSave,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   };
 }

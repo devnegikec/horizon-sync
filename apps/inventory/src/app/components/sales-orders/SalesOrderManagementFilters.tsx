@@ -21,16 +21,12 @@ export function SalesOrderManagementFilters({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <SearchInput
-          className="sm:w-80"
+        <SearchInput className="sm:w-80"
           placeholder="Search by order #, customer..."
-          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
-        />
+          onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
         <div className="flex gap-3">
-          <Select
-            value={filters.status}
-            onValueChange={(status) => setFilters((prev) => ({ ...prev, status }))}
-          >
+          <Select value={filters.status}
+            onValueChange={(status) => setFilters((prev) => ({ ...prev, status }))}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>

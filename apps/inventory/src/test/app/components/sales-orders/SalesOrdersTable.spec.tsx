@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+
 import { SalesOrdersTable } from '../../../../app/components/sales-orders/SalesOrdersTable';
 import type { SalesOrder } from '../../../../app/types/sales-order.types';
 
@@ -63,16 +64,14 @@ describe('SalesOrdersTable', () => {
   describe('Table rendering', () => {
     it('should render table with correct columns', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // Check that column headers are present
@@ -87,16 +86,14 @@ describe('SalesOrdersTable', () => {
 
     it('should render sales order data in table rows', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // Check that sales order numbers are displayed
@@ -117,16 +114,14 @@ describe('SalesOrdersTable', () => {
 
     it('should display delivery date when available', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // Check that delivery dates are displayed (formatted)
@@ -136,16 +131,14 @@ describe('SalesOrdersTable', () => {
 
     it('should display dash when delivery date is null', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // SO-2026-003 has no delivery date, should show dash
@@ -158,16 +151,14 @@ describe('SalesOrdersTable', () => {
   describe('Reference link display', () => {
     it('should display reference icon for quotation-sourced orders', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // SO-2026-003 has reference_type='Quotation', should show FileText icon
@@ -182,16 +173,14 @@ describe('SalesOrdersTable', () => {
 
     it('should display dash for orders without reference', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // SO-2026-001 and SO-2026-002 have no reference
@@ -207,16 +196,14 @@ describe('SalesOrdersTable', () => {
   describe('Row actions', () => {
     it('should render action menu buttons for each sales order row', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // Check that action buttons are present in the table
@@ -229,16 +216,14 @@ describe('SalesOrdersTable', () => {
 
     it('should enable edit action for non-terminal statuses', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // Draft and confirmed orders should have edit enabled
@@ -251,16 +236,14 @@ describe('SalesOrdersTable', () => {
 
     it('should only enable delete action for draft status', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // Only SO-2026-001 (draft) should have delete option
@@ -272,16 +255,14 @@ describe('SalesOrdersTable', () => {
   describe('Empty state', () => {
     it('should display empty state when no sales orders and no filters', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={[]}
+        <SalesOrdersTable salesOrders={[]}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       expect(screen.getByText('No sales orders found')).toBeTruthy();
@@ -291,16 +272,14 @@ describe('SalesOrdersTable', () => {
 
     it('should display empty state with filter message when filters are active', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={[]}
+        <SalesOrdersTable salesOrders={[]}
           loading={false}
           error={null}
           hasActiveFilters={true}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       expect(screen.getByText('No sales orders found')).toBeTruthy();
@@ -311,16 +290,14 @@ describe('SalesOrdersTable', () => {
 
     it('should call onCreateSalesOrder when New Sales Order button is clicked in empty state', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={[]}
+        <SalesOrdersTable salesOrders={[]}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       const newSalesOrderButton = screen.getByText('New Sales Order');
@@ -333,16 +310,14 @@ describe('SalesOrdersTable', () => {
   describe('Loading state', () => {
     it('should display loading state when loading is true', () => {
       const { container } = render(
-        <SalesOrdersTable
-          salesOrders={[]}
+        <SalesOrdersTable salesOrders={[]}
           loading={true}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // Check that the component renders something (not empty)
@@ -353,16 +328,14 @@ describe('SalesOrdersTable', () => {
 
     it('should not display sales orders when loading', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={true}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // Sales order numbers should not be visible during loading
@@ -375,16 +348,14 @@ describe('SalesOrdersTable', () => {
     it('should display error message when error is present', () => {
       const errorMessage = 'Failed to load sales orders';
       render(
-        <SalesOrdersTable
-          salesOrders={[]}
+        <SalesOrdersTable salesOrders={[]}
           loading={false}
           error={errorMessage}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       expect(screen.getByText(errorMessage)).toBeTruthy();
@@ -392,16 +363,14 @@ describe('SalesOrdersTable', () => {
 
     it('should not display sales orders when error is present', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error="Error occurred"
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // Sales order numbers should not be visible when there's an error
@@ -420,8 +389,7 @@ describe('SalesOrdersTable', () => {
       };
 
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
@@ -429,8 +397,7 @@ describe('SalesOrdersTable', () => {
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
           onCreateSalesOrder={mockOnCreateSalesOrder}
-          serverPagination={serverPagination}
-        />
+          serverPagination={serverPagination}/>
       );
 
       // Table should render with sales orders
@@ -439,8 +406,7 @@ describe('SalesOrdersTable', () => {
 
     it('should call onTableReady when table is ready', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
@@ -448,8 +414,7 @@ describe('SalesOrdersTable', () => {
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
           onCreateSalesOrder={mockOnCreateSalesOrder}
-          onTableReady={mockOnTableReady}
-        />
+          onTableReady={mockOnTableReady}/>
       );
 
       // onTableReady should be called with table instance
@@ -460,16 +425,14 @@ describe('SalesOrdersTable', () => {
   describe('Status badges', () => {
     it('should display status badges for all sales orders', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // Check that status badges are displayed
@@ -482,16 +445,14 @@ describe('SalesOrdersTable', () => {
   describe('Date formatting', () => {
     it('should format order dates correctly', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // Check that dates are formatted (DD-MMM-YY format)
@@ -503,16 +464,14 @@ describe('SalesOrdersTable', () => {
   describe('Customer display', () => {
     it('should display customer names when available', () => {
       render(
-        <SalesOrdersTable
-          salesOrders={mockSalesOrders}
+        <SalesOrdersTable salesOrders={mockSalesOrders}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       expect(screen.getByText('Customer A')).toBeTruthy();
@@ -529,16 +488,14 @@ describe('SalesOrdersTable', () => {
       ];
 
       render(
-        <SalesOrdersTable
-          salesOrders={ordersWithoutCustomerName}
+        <SalesOrdersTable salesOrders={ordersWithoutCustomerName}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateSalesOrder={mockOnCreateSalesOrder}
-        />
+          onCreateSalesOrder={mockOnCreateSalesOrder}/>
       );
 
       // Should display dash for missing customer name

@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { useForm, Controller } from 'react-hook-form';
+
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm, Controller } from 'react-hook-form';
 import * as z from 'zod';
 
 import {
@@ -169,18 +170,14 @@ export function ChargeTemplateDialog({ open, onOpenChange, template, onSave, sav
                 <Label htmlFor="template_code">
                   Template Code <span className="text-destructive">*</span>
                 </Label>
-                <Controller
-                  name="template_code"
+                <Controller name="template_code"
                   control={control}
                   render={({ field }) => (
-                    <Input
-                      {...field}
+                    <Input {...field}
                       id="template_code"
                       placeholder="e.g., SHIP_STANDARD"
-                      disabled={isEdit}
-                    />
-                  )}
-                />
+                      disabled={isEdit}/>
+                  )}/>
                 {errors.template_code && (
                   <p className="text-sm text-destructive">{errors.template_code.message}</p>
                 )}
@@ -190,17 +187,13 @@ export function ChargeTemplateDialog({ open, onOpenChange, template, onSave, sav
                 <Label htmlFor="template_name">
                   Template Name <span className="text-destructive">*</span>
                 </Label>
-                <Controller
-                  name="template_name"
+                <Controller name="template_name"
                   control={control}
                   render={({ field }) => (
-                    <Input
-                      {...field}
+                    <Input {...field}
                       id="template_name"
-                      placeholder="e.g., Standard Shipping"
-                    />
-                  )}
-                />
+                      placeholder="e.g., Standard Shipping"/>
+                  )}/>
                 {errors.template_name && (
                   <p className="text-sm text-destructive">{errors.template_name.message}</p>
                 )}
@@ -209,18 +202,14 @@ export function ChargeTemplateDialog({ open, onOpenChange, template, onSave, sav
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Controller
-                name="description"
+              <Controller name="description"
                 control={control}
                 render={({ field }) => (
-                  <Textarea
-                    {...field}
+                  <Textarea {...field}
                     id="description"
                     placeholder="Optional description..."
-                    rows={2}
-                  />
-                )}
-              />
+                    rows={2}/>
+                )}/>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -228,8 +217,7 @@ export function ChargeTemplateDialog({ open, onOpenChange, template, onSave, sav
                 <Label htmlFor="charge_type">
                   Charge Type <span className="text-destructive">*</span>
                 </Label>
-                <Controller
-                  name="charge_type"
+                <Controller name="charge_type"
                   control={control}
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
@@ -244,8 +232,7 @@ export function ChargeTemplateDialog({ open, onOpenChange, template, onSave, sav
                         <SelectItem value="Custom">Custom</SelectItem>
                       </SelectContent>
                     </Select>
-                  )}
-                />
+                  )}/>
                 {errors.charge_type && (
                   <p className="text-sm text-destructive">{errors.charge_type.message}</p>
                 )}
@@ -255,17 +242,13 @@ export function ChargeTemplateDialog({ open, onOpenChange, template, onSave, sav
                 <Label htmlFor="account_head_id">
                   Account Head <span className="text-destructive">*</span>
                 </Label>
-                <Controller
-                  name="account_head_id"
+                <Controller name="account_head_id"
                   control={control}
                   render={({ field }) => (
-                    <Input
-                      {...field}
+                    <Input {...field}
                       id="account_head_id"
-                      placeholder="Account ID"
-                    />
-                  )}
-                />
+                      placeholder="Account ID"/>
+                  )}/>
                 {errors.account_head_id && (
                   <p className="text-sm text-destructive">{errors.account_head_id.message}</p>
                 )}
@@ -273,17 +256,13 @@ export function ChargeTemplateDialog({ open, onOpenChange, template, onSave, sav
             </div>
 
             <div className="flex items-center space-x-2">
-              <Controller
-                name="is_active"
+              <Controller name="is_active"
                 control={control}
                 render={({ field }) => (
-                  <Checkbox
-                    id="is_active"
+                  <Checkbox id="is_active"
                     checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                )}
-              />
+                    onCheckedChange={field.onChange}/>
+                )}/>
               <Label htmlFor="is_active" className="cursor-pointer">
                 Active
               </Label>
@@ -298,8 +277,7 @@ export function ChargeTemplateDialog({ open, onOpenChange, template, onSave, sav
               <Label htmlFor="calculation_method">
                 Calculation Method <span className="text-destructive">*</span>
               </Label>
-              <Controller
-                name="calculation_method"
+              <Controller name="calculation_method"
                 control={control}
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
@@ -311,8 +289,7 @@ export function ChargeTemplateDialog({ open, onOpenChange, template, onSave, sav
                       <SelectItem value="PERCENTAGE">Percentage</SelectItem>
                     </SelectContent>
                   </Select>
-                )}
-              />
+                )}/>
             </div>
 
             {calculationMethod === 'FIXED' && (
@@ -320,20 +297,16 @@ export function ChargeTemplateDialog({ open, onOpenChange, template, onSave, sav
                 <Label htmlFor="fixed_amount">
                   Fixed Amount <span className="text-destructive">*</span>
                 </Label>
-                <Controller
-                  name="fixed_amount"
+                <Controller name="fixed_amount"
                   control={control}
                   render={({ field }) => (
-                    <Input
-                      {...field}
+                    <Input {...field}
                       id="fixed_amount"
                       type="number"
                       step="0.01"
                       min="0"
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                    />
-                  )}
-                />
+                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}/>
+                  )}/>
                 {errors.fixed_amount && (
                   <p className="text-sm text-destructive">{errors.fixed_amount.message}</p>
                 )}
@@ -346,21 +319,17 @@ export function ChargeTemplateDialog({ open, onOpenChange, template, onSave, sav
                   <Label htmlFor="percentage_rate">
                     Percentage Rate (%) <span className="text-destructive">*</span>
                   </Label>
-                  <Controller
-                    name="percentage_rate"
+                  <Controller name="percentage_rate"
                     control={control}
                     render={({ field }) => (
-                      <Input
-                        {...field}
+                      <Input {...field}
                         id="percentage_rate"
                         type="number"
                         step="0.01"
                         min="0"
                         max="100"
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                      />
-                    )}
-                  />
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}/>
+                    )}/>
                   {errors.percentage_rate && (
                     <p className="text-sm text-destructive">{errors.percentage_rate.message}</p>
                   )}
@@ -370,8 +339,7 @@ export function ChargeTemplateDialog({ open, onOpenChange, template, onSave, sav
                   <Label htmlFor="base_on">
                     Base On <span className="text-destructive">*</span>
                   </Label>
-                  <Controller
-                    name="base_on"
+                  <Controller name="base_on"
                     control={control}
                     render={({ field }) => (
                       <Select value={field.value} onValueChange={field.onChange}>
@@ -383,8 +351,7 @@ export function ChargeTemplateDialog({ open, onOpenChange, template, onSave, sav
                           <SelectItem value="Grand_Total">Grand Total</SelectItem>
                         </SelectContent>
                       </Select>
-                    )}
-                  />
+                    )}/>
                   {errors.base_on && (
                     <p className="text-sm text-destructive">{errors.base_on.message}</p>
                   )}

@@ -6,6 +6,7 @@
  */
 
 import fc from 'fast-check';
+
 import { buildUrl, buildPaginationParams } from '../../../app/utility/api';
 
 describe('Stock Management - Property 4: API endpoint correctness', () => {

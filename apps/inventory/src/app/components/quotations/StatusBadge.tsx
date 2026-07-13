@@ -1,6 +1,7 @@
 import * as React from 'react';
+
 import { Badge } from '@horizon-sync/ui/components';
-import { cn } from '@horizon-sync/ui/lib';
+
 import type { QuotationStatus } from '../../types/quotation.types';
 
 interface StatusBadgeProps {
@@ -8,80 +9,37 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  draft: {
-    label: 'Draft',
-    className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400',
-  },
-  sent: {
-    label: 'Sent',
-    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-  },
-  accepted: {
-    label: 'Accepted',
-    className: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-  },
-  rejected: {
-    label: 'Rejected',
-    className: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-  },
-  expired: {
-    label: 'Expired',
-    className: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400',
-  },
-  confirmed: {
-    label: 'Confirmed',
-    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-  },
-  partially_delivered: {
-    label: 'Partially Delivered',
-    className: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
-  },
-  delivered: {
-    label: 'Delivered',
-    className: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-  },
-  closed: {
-    label: 'Closed',
-    className: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400',
-  },
-  cancelled: {
-    label: 'Cancelled',
-    className: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-  },
+type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning';
+
+const statusConfig: Record<string, { label: string; variant: BadgeVariant }> = {
+  draft: { label: 'Draft', variant: 'warning' },
+  sent: { label: 'Sent', variant: 'default' },
+  accepted: { label: 'Accepted', variant: 'success' },
+  rejected: { label: 'Rejected', variant: 'destructive' },
+  expired: { label: 'Expired', variant: 'secondary' },
+  confirmed: { label: 'Confirmed', variant: 'default' },
+  partially_delivered: { label: 'Partially Delivered', variant: 'warning' },
+  delivered: { label: 'Delivered', variant: 'success' },
+  closed: { label: 'Closed', variant: 'secondary' },
+  cancelled: { label: 'Cancelled', variant: 'destructive' },
   // Invoice statuses
-  submitted: {
-    label: 'Submitted',
-    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-  },
-  paid: {
-    label: 'Paid',
-    className: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-  },
-  partially_paid: {
-    label: 'Partially Paid',
-    className: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
-  },
-  overdue: {
-    label: 'Overdue',
-    className: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-  },
+  submitted: { label: 'Submitted', variant: 'default' },
+  paid: { label: 'Paid', variant: 'success' },
+  partially_paid: { label: 'Partially Paid', variant: 'warning' },
+  overdue: { label: 'Overdue', variant: 'destructive' },
   // Payment statuses
-  reconciled: {
-    label: 'Reconciled',
-    className: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-  },
+  reconciled: { label: 'Reconciled', variant: 'success' },
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   const safeStatus = typeof status === 'string' ? status : '';
   const config = statusConfig[safeStatus?.toLowerCase?.() || ''] || {
     label: safeStatus,
-    className: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400',
+    variant: 'secondary' as BadgeVariant,
   };
 
   return (
-    <Badge variant="secondary" className={cn(config.className, className)}>
+    <Badge variant={config.variant} className={className}>
       {config.label}
     </Badge>
   );

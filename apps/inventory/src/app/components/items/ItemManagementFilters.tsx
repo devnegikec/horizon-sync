@@ -1,7 +1,7 @@
 import type { Table } from '@tanstack/react-table';
 
-import { DataTableViewOptions } from '@horizon-sync/ui/components/data-table/DataTableViewOptions';
 import { LocalSearch, type SearchResult } from '@horizon-sync/search';
+import { DataTableViewOptions } from '@horizon-sync/ui/components/data-table/DataTableViewOptions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 
 import type { ItemFilters } from '../../types/item.types';
@@ -51,12 +51,10 @@ export function ItemManagementFilters({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <LocalSearch
-          entityType="items"
+        <LocalSearch entityType="items"
           onResultsChange={handleSearchResults}
           placeholder="Search items by name, SKU, or description..."
-          className="sm:w-80"
-        />
+          className="sm:w-80"/>
         <div className="flex gap-3">
           <Select value={filters.groupId} 
             onValueChange={(value) => setFilters((prev) => ({ ...prev, groupId: value }))}>

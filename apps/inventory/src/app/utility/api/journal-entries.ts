@@ -1,0 +1,117 @@
+/**
+ * Journal Entries API Utilities
+ * 
+ * API functions for journal entry operations
+ */
+
+import { environment } from "../../../environments/environment";
+
+import { apiRequest, getAccessToken, buildPaginationParams } from './core';
+const API_BASE_URL = environment.apiCoreUrl;
+
+export interface JournalEntryLine {
+  id: string;
+  account_id: string;
+  account_code: string | null;
+  account_name: string | null;
+  debit: number;
+  credit: number;
+  remarks: string | null;
+}
+
+export interface JournalEntry {
+  id: string;
+  entry_no: string;
+  posting_date: string;
+  voucher_type: string | null;
+  reference_type: string;
+  reference_id: string;
+  total_debit: number;
+  total_credit: number;
+  remarks: string | null;
+  status: string;
+  created_at: string;
+  lines: JournalEntryLine[];
+}
+
+export interface JournalEntriesResponse {
+  journal_entries: JournalEntry[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+}
+
+/**
+ * Fetch journal entries with pagination
+ */
+export async function fetchJournalEntries(
+  page = 1,
+  pageSize = 20,
+  status?: string,
+  sortBy = 'posting_date',
+  sortOrder: 'asc' | 'desc' = 'desc'
+): Promise<JournalEntriesResponse> {
+  const accessToken = getAccessToken();
+
+  const params = new URLSearchParams();
+  params.append('page', String(page));
+  params.append('page_size', String(pageSize));
+  params.append('sort_by', sortBy);
+  params.append('sort_order', sortOrder);
+  if (status) params.append('status', status);
+
+  const response = await fetch(
+    `${API_BASE_URL}/journal-entries?${params.toString()}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to fetch journal entries: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetch a single journal entry by ID
+ */
+export async function fetchJournalEntryById(entryId: string): Promise<JournalEntry> {
+  const accessToken = getAccessToken();
+
+  const response = await fetch(
+    `${API_BASE_URL}/journal-entries/${entryId}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to fetch journal entry: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+export const journalEntriesApi = {
+  fetchJournalEntries: (page?: number, pageSize?: number, status?: string, sortBy?: string, sortOrder?: 'asc' | 'desc') =>
+    fetchJournalEntries(page, pageSize, status, sortBy, sortOrder),
+  fetchJournalEntryById: (entryId: string) =>
+    fetchJournalEntryById(entryId),
+};

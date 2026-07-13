@@ -1,10 +1,13 @@
 import * as React from 'react';
+
 import { Edit, FileText } from 'lucide-react';
 
 import { Badge, Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
+import { useCurrencyStore } from '@horizon-sync/store';
 
 import type { RFQ, RFQListItem, RFQStatus } from '../../types/rfq.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 import { formatDate } from '../../utility/formatDate';
 
 interface RFQDetailDialogProps {
@@ -28,6 +31,9 @@ export function RFQDetailDialog({
   rfq,
   onEdit,
 }: RFQDetailDialogProps) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
+
   if (!rfq) return null;
 
   const canEdit = rfq.status === 'draft';
@@ -164,7 +170,7 @@ export function RFQDetailDialog({
                                 )}
                               </div>
                               <div className="text-right">
-                                <p className="font-semibold">${quote.quoted_price.toFixed(2)}</p>
+                                <p className="font-semibold">{currencySymbol}{quote.quoted_price.toFixed(2)}</p>
                                 <p className="text-xs text-muted-foreground">per unit</p>
                               </div>
                             </div>
@@ -184,8 +190,7 @@ export function RFQDetailDialog({
             Close
           </Button>
           {canEdit && (
-            <Button 
-              variant="default" 
+            <Button variant="default" 
               onClick={() => {
                 // Convert RFQ to RFQListItem for onEdit
                 const rfqListItem: RFQListItem = {
@@ -201,8 +206,7 @@ export function RFQDetailDialog({
                 };
                 onEdit(rfqListItem);
               }} 
-              className="gap-2"
-            >
+              className="gap-2">
               <Edit className="h-4 w-4" />
               Edit RFQ
             </Button>

@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 import { useUserStore } from '@horizon-sync/store';
 
 import { environment } from '../../environments/environment';
 import type { CreateItemPayload } from '../types/items-api.types';
 
-const ITEMS_URL = `${environment.apiCoreUrl}/items`;
+const ITEMS_URL = `${environment.apiCoreUrl}/api/v1/items`;
 
 interface UseCreateItemResult {
   createItem: (payload: CreateItemPayload) => Promise<void>;
@@ -41,7 +42,7 @@ export function useCreateItem(): UseCreateItemResult {
         throw new Error(text || `HTTP ${response.status}`);
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create item';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -55,3 +56,5 @@ export function useCreateItem(): UseCreateItemResult {
     error,
   };
 }
+
+

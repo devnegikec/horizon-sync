@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getFriendlyErrorMessage } from '../utility/api/core';
+
 import { useUserStore } from '@horizon-sync/store';
-import { accountApi } from '../utility/api/accounts';
+
 import type { AccountListItem, AccountFilters, AccountPaginationResponse } from '../types/account.types';
+import { accountApi } from '../utility/api/accounts';
 
 const MAX_PAGE_SIZE = 100;
 const MIN_PAGE_SIZE = 1;
@@ -35,6 +38,15 @@ export function useAccounts(
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('Fetching accounts with params:', {
+        page: currentPage,
+        pageSize: currentPageSize,
+        filters,
+        sortBy: currentSortBy,
+        sortOrder: currentSortOrder
+      });
+      
       const response = await accountApi.list(
         accessToken,
         currentPage,
@@ -43,12 +55,16 @@ export function useAccounts(
         currentSortBy,
         currentSortOrder
       ) as AccountPaginationResponse;
+      
+      console.log('Account API response:', response);
+      
       setAccounts(response.chart_of_accounts || []);
       setPagination(response.pagination || null);
     } catch (err) {
       console.error('Error fetching accounts:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch accounts');
+      setError(getFriendlyErrorMessage(err));
       setAccounts([]);
+      setPagination(null);
     } finally {
       setLoading(false);
     }
@@ -92,3 +108,5 @@ export function useAccounts(
     currentSortOrder,
   };
 }
+
+

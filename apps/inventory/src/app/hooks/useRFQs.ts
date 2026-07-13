@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
-import { rfqApi } from '../utility/api';
+
 import type { RFQListItem, RFQFilters } from '../types/rfq.types';
+import { rfqApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export function useRFQs(initialFilters: Partial<RFQFilters> = {}) {
   const accessToken = useUserStore((s) => s.accessToken);
@@ -38,7 +41,7 @@ export function useRFQs(initialFilters: Partial<RFQFilters> = {}) {
       setRFQs(response.rfqs || []);
       setTotalCount(response.pagination?.total_count || 0);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch RFQs';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       console.error('Error fetching RFQs:', err);
       setRFQs([]);
@@ -66,3 +69,4 @@ export function useRFQs(initialFilters: Partial<RFQFilters> = {}) {
     refetch,
   };
 }
+

@@ -1,11 +1,12 @@
 import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 import { environment } from '../../environments/environment';
 import type { UpdateItemPayload } from '../types/items-api.types';
 
-const ITEMS_URL = `${environment.apiCoreUrl}/items`;
+const ITEMS_URL = `${environment.apiCoreUrl}/api/v1/items`;
 
 interface UseUpdateItemResult {
   updateItem: (itemId: string, payload: UpdateItemPayload) => Promise<void>;
@@ -40,7 +41,7 @@ export function useUpdateItem(): UseUpdateItemResult {
           throw new Error(text || `HTTP ${res.status}`);
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to update item';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw err;
       } finally {
@@ -52,3 +53,5 @@ export function useUpdateItem(): UseUpdateItemResult {
 
   return { updateItem, loading, error };
 }
+
+

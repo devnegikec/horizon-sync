@@ -1,10 +1,13 @@
 import * as React from 'react';
 
-import type { GroupedPermissions } from '../../../types/role.types';
+import type { GroupedPermissions, ModuleGroup, PermissionGroupedResponse } from '../../../types/role.types';
 import { RoleService } from '../../../services/role.service';
 
 interface UsePermissionsResult {
+  /** Legacy flat map { resource: Permission[] } — used by PermissionMatrix */
   permissions: GroupedPermissions;
+  /** Module-grouped structure — used by ModulePermissionMatrix */
+  modules: ModuleGroup[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -12,12 +15,14 @@ interface UsePermissionsResult {
 
 export function usePermissions(accessToken?: string | null): UsePermissionsResult {
   const [permissions, setPermissions] = React.useState<GroupedPermissions>({});
+  const [modules, setModules] = React.useState<ModuleGroup[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   const fetchPermissions = React.useCallback(async () => {
     if (!accessToken) {
       setPermissions({});
+      setModules([]);
       setLoading(false);
       setError('Not authenticated');
       return;
@@ -27,12 +32,14 @@ export function usePermissions(accessToken?: string | null): UsePermissionsResul
     setError(null);
 
     try {
-      const data = await RoleService.getGroupedPermissions(accessToken);
+      const data: PermissionGroupedResponse = await RoleService.getGroupedPermissions(accessToken);
       setPermissions(data.data ?? {});
+      setModules(data.modules ?? []);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load permissions';
       setError(message);
       setPermissions({});
+      setModules([]);
     } finally {
       setLoading(false);
     }
@@ -44,6 +51,7 @@ export function usePermissions(accessToken?: string | null): UsePermissionsResul
 
   return {
     permissions,
+    modules,
     loading,
     error,
     refetch: fetchPermissions,

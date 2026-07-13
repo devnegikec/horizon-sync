@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { Search } from 'lucide-react';
 
 import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
@@ -6,7 +7,7 @@ import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectV
 interface TaxTemplateManagementFiltersProps {
   filters: {
     search: string;
-    tax_category: 'all' | 'Input' | 'Output';
+    tax_category: 'all' | 'Input' | 'Output' | 'Both';
     is_active: 'all' | 'true' | 'false';
   };
   onFilterChange: (key: string, value: string) => void;
@@ -22,13 +23,11 @@ export function TaxTemplateManagementFilters({
         <Label htmlFor="search">Search</Label>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            id="search"
+          <Input id="search"
             placeholder="Search by template code or name..."
             value={filters.search}
             onChange={(e) => onFilterChange('search', e.target.value)}
-            className="pl-9"
-          />
+            className="pl-9"/>
         </div>
       </div>
 
@@ -42,6 +41,7 @@ export function TaxTemplateManagementFilters({
             <SelectItem value="all">All Categories</SelectItem>
             <SelectItem value="Input">Input (Purchase)</SelectItem>
             <SelectItem value="Output">Output (Sales)</SelectItem>
+            <SelectItem value="Both">Both (Sales & Purchase)</SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { type Table } from '@tanstack/react-table';
 import { Search } from 'lucide-react';
 
@@ -17,17 +18,13 @@ export function RFQManagementFilters({ filters, setFilters, tableInstance }: RFQ
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search RFQs..."
+        <Input placeholder="Search RFQs..."
           value={filters.search || ''}
           onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value, page: 1 }))}
-          className="pl-9"
-        />
+          className="pl-9"/>
       </div>
-      <Select
-        value={filters.status || 'all'}
-        onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value === 'all' ? undefined : value, page: 1 }))}
-      >
+      <Select value={filters.status || 'all'}
+        onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
         <SelectTrigger className="w-[180px]">
           <SelectValue placeholder="Filter by status" />
         </SelectTrigger>

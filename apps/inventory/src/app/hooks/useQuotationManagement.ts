@@ -1,12 +1,26 @@
 import * as React from 'react';
 import { useMemo, useEffect } from 'react';
-import { useQueryClient, useMutation } from '@tanstack/react-query';
+
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import type { Table } from '@tanstack/react-table';
 
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
-import { quotationApi } from '../utility/api';
+
 import type { Quotation, QuotationCreate, QuotationUpdate, QuotationResponse } from '../types/quotation.types';
+import { quotationApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
+
+export const QUOTATIONS_QUERY_KEY = ['quotations'] as const;
+
+export type QuotationsPagination = {
+  total_items: number;
+  total_pages: number;
+  page: number;
+  page_size: number;
+  has_next: boolean;
+  has_prev: boolean;
+};
 
 export interface QuotationFilters {
   search: string;
@@ -17,7 +31,7 @@ interface UseQuotationManagementResult {
   filters: QuotationFilters;
   setFilters: React.Dispatch<React.SetStateAction<QuotationFilters>>;
   quotations: Quotation[];
-  pagination: ReturnType<typeof useQuotations>['pagination'];
+  pagination: QuotationsPagination | null;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -52,65 +66,54 @@ interface UseQuotationManagementResult {
   };
 }
 
-// Import useQuotations locally to avoid circular dependency
+async function fetchQuotations(
+  accessToken: string,
+  page: number,
+  pageSize: number,
+  filters: { search?: string; status?: string }
+): Promise<QuotationResponse> {
+  const result = await quotationApi.list(accessToken, page, pageSize, {
+    status: filters?.status !== 'all' ? filters?.status : undefined,
+    search: filters?.search || undefined,
+  });
+  return result as QuotationResponse;
+}
+
 function useQuotations(
   initialPage: number,
   initialPageSize: number,
   filters?: { search?: string; status?: string }
 ) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [quotations, setQuotations] = React.useState<Quotation[]>([]);
-  const [pagination, setPagination] = React.useState<{
-    total_items: number;
-    total_pages: number;
-    page: number;
-    page_size: number;
-    has_next: boolean;
-    has_prev: boolean;
-  } | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
   const memoizedFilters = React.useMemo(
     () => filters,
     [filters?.search, filters?.status]
   );
 
-  const fetchQuotations = React.useCallback(async () => {
-    if (!accessToken) {
-      setQuotations([]);
-      setPagination(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await quotationApi.list(
-        accessToken,
-        initialPage,
-        initialPageSize,
-        {
-          status: memoizedFilters?.status !== 'all' ? memoizedFilters?.status : undefined,
-          search: memoizedFilters?.search || undefined,
-        }
-      ) as QuotationResponse;
-      setQuotations(data.quotations ?? []);
-      setPagination(data.pagination ?? null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load quotations');
-      setQuotations([]);
-      setPagination(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken, initialPage, initialPageSize, memoizedFilters]);
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+    refetch: queryRefetch,
+  } = useQuery({
+    queryKey: [...QUOTATIONS_QUERY_KEY, initialPage, initialPageSize, memoizedFilters],
+    queryFn: () =>
+      fetchQuotations(accessToken!, initialPage, initialPageSize, memoizedFilters ?? {}),
+    enabled: !!accessToken,
+    placeholderData: (previousData) => previousData,
+  });
 
-  React.useEffect(() => {
-    fetchQuotations();
-  }, [fetchQuotations]);
+  const quotations: Quotation[] = data?.quotations ?? [];
+  const pagination: QuotationsPagination | null = data?.pagination ?? null;
+  const error: string | null = queryError
+    ? getFriendlyErrorMessage(queryError)
+    : null;
 
-  return { quotations, pagination, loading, error, refetch: fetchQuotations };
+  const refetch = React.useCallback(async () => {
+    await queryRefetch();
+  }, [queryRefetch]);
+
+  return { quotations, pagination, loading, error, refetch };
 }
 
 export function useQuotationManagement() {
@@ -150,14 +153,15 @@ export function useQuotationManagement() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => quotationApi.delete(accessToken || '', id),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({ title: 'Success', description: 'Quotation deleted successfully' });
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: QUOTATIONS_QUERY_KEY });
+      await refetch();
     },
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete quotation',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -173,7 +177,7 @@ export function useQuotationManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load quotation details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -195,11 +199,14 @@ export function useQuotationManagement() {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load quotation details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
   }, [accessToken, toast]);
+
+  // Confirmation dialog state
+  const [confirmAction, setConfirmAction] = React.useState<{ type: string; item: Quotation; title: string; message: string } | null>(null);
 
   const handleDelete = React.useCallback((quotation: Quotation) => {
     if (quotation.status !== 'draft') {
@@ -211,10 +218,21 @@ export function useQuotationManagement() {
       return;
     }
 
-    if (confirm(`Are you sure you want to delete quotation ${quotation.quotation_no}?`)) {
-      deleteMutation.mutate(quotation.id);
+    setConfirmAction({
+      type: 'delete',
+      item: quotation,
+      title: 'Delete Quotation',
+      message: `Are you sure you want to delete quotation ${quotation.quotation_no}?`,
+    });
+  }, [toast]);
+
+  const executeConfirmedAction = React.useCallback(() => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'delete') {
+      deleteMutation.mutate(confirmAction.item.id);
     }
-  }, [deleteMutation, toast]);
+    setConfirmAction(null);
+  }, [confirmAction, deleteMutation]);
 
   const handleConvert = React.useCallback(async (quotation: Quotation) => {
     if (!accessToken) return;
@@ -238,12 +256,13 @@ export function useQuotationManagement() {
         description: result.message || `Quotation converted to sales order ${result.sales_order_no} successfully`,
       });
       setConvertDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: QUOTATIONS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
       await refetch();
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to convert quotation to sales order',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;
@@ -266,18 +285,20 @@ export function useQuotationManagement() {
       } else {
         await quotationApi.create(accessToken, data);
         toast({ title: 'Success', description: 'Quotation created successfully' });
+        setPage(1);
       }
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: QUOTATIONS_QUERY_KEY });
       setCreateDialogOpen(false);
+      await refetch();
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save quotation',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;
     }
-  }, [accessToken, toast, queryClient]);
+  }, [accessToken, toast, queryClient, refetch]);
 
   const serverPaginationConfig = useMemo(() => ({
     pageIndex: page - 1,
@@ -320,6 +341,9 @@ export function useQuotationManagement() {
     handleTableReady,
     handleSave,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   };
 }
 

@@ -16,26 +16,22 @@ export function QualityInspectionStep({ formData, setFormData }: QualityInspecti
         <div className="grid gap-4 py-4">
             <div className="space-y-4">
                 <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="inspectionRequiredBeforePurchase"
+                    <Checkbox id="inspectionRequiredBeforePurchase"
                         checked={formData.inspectionRequiredBeforePurchase}
                         onCheckedChange={(checked) =>
                             setFormData((prev) => ({ ...prev, inspectionRequiredBeforePurchase: checked === true }))
-                        }
-                    />
+                        }/>
                     <Label htmlFor="inspectionRequiredBeforePurchase" className="cursor-pointer">
                         Inspection Required Before Purchase
                     </Label>
                 </div>
 
                 <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="inspectionRequiredBeforeDelivery"
+                    <Checkbox id="inspectionRequiredBeforeDelivery"
                         checked={formData.inspectionRequiredBeforeDelivery}
                         onCheckedChange={(checked) =>
                             setFormData((prev) => ({ ...prev, inspectionRequiredBeforeDelivery: checked === true }))
-                        }
-                    />
+                        }/>
                     <Label htmlFor="inspectionRequiredBeforeDelivery" className="cursor-pointer">
                         Inspection Required Before Delivery
                     </Label>
@@ -45,14 +41,12 @@ export function QualityInspectionStep({ formData, setFormData }: QualityInspecti
             {(formData.inspectionRequiredBeforePurchase || formData.inspectionRequiredBeforeDelivery) && (
                 <div className="space-y-2 border-t pt-4">
                     <Label htmlFor="qualityInspectionTemplate">Quality Inspection Template ID</Label>
-                    <Input
-                        id="qualityInspectionTemplate"
+                    <Input id="qualityInspectionTemplate"
                         value={formData.qualityInspectionTemplate || ''}
                         onChange={(e) =>
                             setFormData((prev) => ({ ...prev, qualityInspectionTemplate: e.target.value || null }))
                         }
-                        placeholder="Enter template ID"
-                    />
+                        placeholder="Enter template ID"/>
                     <p className="text-xs text-muted-foreground">
                         Optional: Specify a quality inspection template to use for this item
                     </p>

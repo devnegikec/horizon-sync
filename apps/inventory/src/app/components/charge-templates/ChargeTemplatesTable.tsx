@@ -1,7 +1,9 @@
 import * as React from 'react';
+
 import { Eye, Edit, Trash2, Plus } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components';
+
 import type { ChargeTemplate } from '../../types/charge-template.types';
 
 interface ChargeTemplatesTableProps {
@@ -74,7 +76,7 @@ export function ChargeTemplatesTable({
                   <td className="px-4 py-3 text-sm font-medium">{template.template_code}</td>
                   <td className="px-4 py-3 text-sm">{template.template_name}</td>
                   <td className="px-4 py-3 text-sm">
-                    <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                    <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                       {template.charge_type}
                     </span>
                   </td>
@@ -88,8 +90,8 @@ export function ChargeTemplatesTable({
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                       template.is_active
-                        ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
-                        : 'bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300'
+                        ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                        : 'bg-gray-50 text-gray-700 dark:bg-gray-800/50 dark:text-gray-300'
                     }`}>
                       {template.is_active ? 'Active' : 'Inactive'}
                     </span>
@@ -121,23 +123,19 @@ export function ChargeTemplatesTable({
             {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} templates
           </p>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
+            <Button variant="outline"
               size="sm"
               onClick={() => onPageChange(pagination.page - 1)}
-              disabled={pagination.page === 1}
-            >
+              disabled={pagination.page === 1}>
               Previous
             </Button>
             <span className="text-sm">
               Page {pagination.page} of {pagination.pages}
             </span>
-            <Button
-              variant="outline"
+            <Button variant="outline"
               size="sm"
               onClick={() => onPageChange(pagination.page + 1)}
-              disabled={pagination.page === pagination.pages}
-            >
+              disabled={pagination.page === pagination.pages}>
               Next
             </Button>
           </div>

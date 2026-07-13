@@ -1,5 +1,6 @@
-import { Search } from 'lucide-react';
 import type { Table } from '@tanstack/react-table';
+import { Search } from 'lucide-react';
+
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import {
   Select,
@@ -8,8 +9,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
-import type { MaterialRequestListItem } from '../../types/material-request.types';
+
 import type { MaterialRequestFilters as Filters } from '../../hooks/useMaterialRequestManagement';
+import type { MaterialRequestListItem } from '../../types/material-request.types';
 
 interface MaterialRequestManagementFiltersProps {
   filters: Filters;
@@ -44,12 +46,10 @@ export function MaterialRequestFilters({
       <div className="flex flex-1 items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search material requests..."
+          <Input placeholder="Search material requests..."
             value={filters.search || ''}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-9"
-          />
+            className="pl-9"/>
         </div>
 
         <Select value={filters.status || 'all'} onValueChange={handleStatusChange}>

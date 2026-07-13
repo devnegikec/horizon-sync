@@ -1,7 +1,16 @@
 export { InvoiceManagement } from './InvoiceManagement';
-export { InvoicesTable } from './InvoicesTable';
-export { InvoiceManagementFilters } from './InvoiceManagementFilters';
-export type { InvoiceFilters } from './InvoiceManagementFilters';
-export { InvoiceDialog } from './InvoiceDialog';
-export { InvoiceLineItemTable } from './InvoiceLineItemTable';
-export { SendInvoiceEmailDialog } from './SendInvoiceEmailDialog';
+
+// Re-export shared components for backward compatibility
+export {
+  InvoiceManagementHeader,
+  InvoiceManagementFilters,
+  InvoiceStats,
+  InvoicesTable,
+  InvoiceStatusBadge,
+  InvoiceDetailDialog,
+  InvoiceContent,
+  InvoiceHeader,
+  InvoiceDates,
+  InvoicePartyInfo,
+  InvoiceAmountsSummary,
+} from '@horizon-sync/ui';

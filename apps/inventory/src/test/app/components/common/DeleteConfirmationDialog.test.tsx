@@ -10,12 +10,10 @@ describe('DeleteConfirmationDialog', () => {
     const onConfirm = jest.fn();
 
     render(
-      <DeleteConfirmationDialog
-        open={true}
+      <DeleteConfirmationDialog open={true}
         onOpenChange={onOpenChange}
         onConfirm={onConfirm}
-        description="Are you sure you want to delete this item?"
-      />
+        description="Are you sure you want to delete this item?"/>
     );
 
     expect(screen.getByText('Are you sure?')).toBeInTheDocument();
@@ -29,15 +27,13 @@ describe('DeleteConfirmationDialog', () => {
     const onConfirm = jest.fn();
 
     render(
-      <DeleteConfirmationDialog
-        open={true}
+      <DeleteConfirmationDialog open={true}
         onOpenChange={onOpenChange}
         onConfirm={onConfirm}
         title="Delete Invoice"
         description="Are you sure you want to delete invoice INV-001?"
         confirmText="Yes, Delete"
-        cancelText="No, Keep It"
-      />
+        cancelText="No, Keep It"/>
     );
 
     expect(screen.getByText('Delete Invoice')).toBeInTheDocument();
@@ -51,12 +47,10 @@ describe('DeleteConfirmationDialog', () => {
     const onConfirm = jest.fn();
 
     render(
-      <DeleteConfirmationDialog
-        open={true}
+      <DeleteConfirmationDialog open={true}
         onOpenChange={onOpenChange}
         onConfirm={onConfirm}
-        description="Are you sure?"
-      />
+        description="Are you sure?"/>
     );
 
     const confirmButton = screen.getByText('Delete');
@@ -71,12 +65,10 @@ describe('DeleteConfirmationDialog', () => {
     const onConfirm = jest.fn();
 
     render(
-      <DeleteConfirmationDialog
-        open={true}
+      <DeleteConfirmationDialog open={true}
         onOpenChange={onOpenChange}
         onConfirm={onConfirm}
-        description="Are you sure?"
-      />
+        description="Are you sure?"/>
     );
 
     const cancelButton = screen.getByText('Cancel');
@@ -91,12 +83,10 @@ describe('DeleteConfirmationDialog', () => {
     const onConfirm = jest.fn();
 
     const { container } = render(
-      <DeleteConfirmationDialog
-        open={false}
+      <DeleteConfirmationDialog open={false}
         onOpenChange={onOpenChange}
         onConfirm={onConfirm}
-        description="Are you sure?"
-      />
+        description="Are you sure?"/>
     );
 
     expect(container.querySelector('[role="alertdialog"]')).not.toBeInTheDocument();

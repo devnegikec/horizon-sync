@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
-import { purchaseOrderApi } from '../utility/api';
+
 import type { PurchaseOrderListItem, PurchaseOrderFilters } from '../types/purchase-order.types';
+import { purchaseOrderApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export function usePurchaseOrders(initialFilters: Partial<PurchaseOrderFilters> = {}) {
   const accessToken = useUserStore((s) => s.accessToken);
@@ -35,7 +38,7 @@ export function usePurchaseOrders(initialFilters: Partial<PurchaseOrderFilters> 
       setPurchaseOrders(response.purchase_orders || []);
       setTotalCount(response.pagination?.total_count || 0);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch Purchase Orders';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       console.error('Error fetching Purchase Orders:', err);
       setPurchaseOrders([]);
@@ -63,3 +66,4 @@ export function usePurchaseOrders(initialFilters: Partial<PurchaseOrderFilters> 
     refetch,
   };
 }
+

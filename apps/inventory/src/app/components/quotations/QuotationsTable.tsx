@@ -1,14 +1,18 @@
 import * as React from 'react';
-import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { FileText, Plus, MoreHorizontal, Eye, Edit, Trash2, User, Lock } from 'lucide-react';
 
+import { type ColumnDef, type Table } from '@tanstack/react-table';
+import { Download, Eye, Edit, FileText, Mail, MoreHorizontal, Plus, Trash2, User, Lock } from 'lucide-react';
+
+import { useCurrencyStore } from '@horizon-sync/store';
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
 import type { Quotation } from '../../types/quotation.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 import { formatDate } from '../../utility/formatDate';
+
 import { StatusBadge } from './StatusBadge';
 
 export interface QuotationsTableProps {
@@ -20,6 +24,9 @@ export interface QuotationsTableProps {
   onEdit: (quotation: Quotation) => void;
   onDelete: (quotation: Quotation) => void;
   onConvert?: (quotation: Quotation) => void;
+  onPreviewPDF?: (quotation: Quotation) => void;
+  onDownloadPDF?: (quotation: Quotation) => void;
+  onSendEmail?: (quotation: Quotation) => void;
   onCreateQuotation: () => void;
   onTableReady?: (table: Table<Quotation>) => void;
   serverPagination?: {
@@ -39,11 +46,15 @@ export function QuotationsTable({
   onEdit,
   onDelete,
   onConvert,
+  onPreviewPDF,
+  onDownloadPDF,
+  onSendEmail,
   onCreateQuotation,
   onTableReady,
   serverPagination
 }: QuotationsTableProps) {
   const [tableInstance, setTableInstance] = React.useState<Table<Quotation> | null>(null);
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency) || 'USD';
 
   // Call onTableReady when table instance changes
   React.useEffect(() => {
@@ -109,14 +120,14 @@ export function QuotationsTable({
         header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
         cell: ({ row }) => {
           const customer = row.original.customer;
-          const customerName = row.original.customer_name || customer?.customer_name;
+          const customerName = row.original.customer_name || customer?.name;
           return customerName ? (
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="font-medium text-sm">{customerName}</p>
-                {customer?.customer_code && (
-                  <p className="text-xs text-muted-foreground">{customer.customer_code}</p>
+                {customer?.code && (
+                  <p className="text-xs text-muted-foreground">{customer.code}</p>
                 )}
               </div>
             </div>
@@ -144,9 +155,10 @@ export function QuotationsTable({
         header: ({ column }) => <DataTableColumnHeader column={column} title="Grand Total" />,
         cell: ({ row }) => {
           const quotation = row.original;
+          const currency = quotation.currency || baseCurrency;
           return (
             <div className="text-right">
-              <p className="font-semibold">{quotation.currency} {Number(quotation.grand_total).toFixed(2)}</p>
+              <p className="font-semibold">{getCurrencySymbol(currency)} {Number(quotation.grand_total).toFixed(2)}</p>
             </div>
           );
         },
@@ -176,18 +188,36 @@ export function QuotationsTable({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onView(quotation)}>
+                  <DropdownMenuItem onSelect={() => onView(quotation)}>
                     <Eye className="mr-2 h-4 w-4" />
                     View Details
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onEdit(quotation)} disabled={!canEdit}>
+                  <DropdownMenuItem onSelect={() => onEdit(quotation)} disabled={!canEdit}>
                     <Edit className="mr-2 h-4 w-4" />
                     Edit Quotation
                   </DropdownMenuItem>
+                  {onPreviewPDF && (
+                    <DropdownMenuItem onSelect={() => onPreviewPDF(quotation)}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Preview PDF
+                    </DropdownMenuItem>
+                  )}
+                  {onDownloadPDF && (
+                    <DropdownMenuItem onSelect={() => onDownloadPDF(quotation)}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download PDF
+                    </DropdownMenuItem>
+                  )}
+                  {onSendEmail && (
+                    <DropdownMenuItem onSelect={() => onSendEmail(quotation)}>
+                      <Mail className="mr-2 h-4 w-4" />
+                      Send Email
+                    </DropdownMenuItem>
+                  )}
                   {canConvert && onConvert && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onConvert(quotation)}>
+                      <DropdownMenuItem onSelect={() => onConvert(quotation)}>
                         <FileText className="mr-2 h-4 w-4" />
                         Convert to Sales Order
                       </DropdownMenuItem>
@@ -196,10 +226,8 @@ export function QuotationsTable({
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={() => onDelete(quotation)}
-                        className="text-destructive focus:text-destructive"
-                      >
+                      <DropdownMenuItem onSelect={() => onDelete(quotation)}
+                        className="text-destructive focus:text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Quotation
                       </DropdownMenuItem>
@@ -213,7 +241,7 @@ export function QuotationsTable({
         enableSorting: false,
       },
     ],
-    [onView, onEdit, onDelete, onConvert],
+    [onView, onEdit, onDelete, onConvert, onPreviewPDF, onDownloadPDF, onSendEmail],
   );
 
 
@@ -243,8 +271,7 @@ export function QuotationsTable({
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState 
-              icon={<FileText className="h-12 w-12" />}
+            <EmptyState icon={<FileText className="h-12 w-12" />}
               title="No quotations found"
               description={
                 hasActiveFilters
@@ -258,8 +285,7 @@ export function QuotationsTable({
                     New Quotation
                   </Button>
                 ) : undefined
-              }
-            />
+              }/>
           </div>
         </CardContent>
       </Card>
@@ -269,8 +295,7 @@ export function QuotationsTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable 
-          columns={columns}
+        <DataTable columns={columns}
           data={quotations}
           config={{
             showSerialNumber: true,
@@ -285,8 +310,7 @@ export function QuotationsTable({
           filterPlaceholder="Search by quotation #, customer..."
           renderViewOptions={renderViewOptions}
           fixedHeader
-          maxHeight="auto"
-        />
+          maxHeight="auto"/>
       </CardContent>
     </Card>
   );

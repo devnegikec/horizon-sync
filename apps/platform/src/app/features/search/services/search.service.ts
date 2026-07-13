@@ -3,26 +3,14 @@
  * Handles API communication with the search-service backend
  */
 
+import { ApiClient } from '@horizon-sync/utils';
 import { environment } from '../../../../environments/environment';
 import type { SearchRequest, SearchResponse } from '../types/search.types';
 
-// Use search-specific API base URL (port 8002) instead of general API base URL (port 8000)
-const API_BASE_URL = environment.searchApiBaseUrl || environment.apiBaseUrl;
-
-// Log the API base URL on module load for debugging
-console.log('[SearchService] Initialized with API_BASE_URL:', API_BASE_URL);
-console.log('[SearchService] Environment:', environment);
-
-/**
- * Get authentication token from the auth store
- * This function should be called with the token from useAuth hook
- */
-function validateAuthToken(token: string | null | undefined): string {
-  if (!token) {
-    throw new Error('Authentication required');
-  }
-  return token;
-}
+// Search service runs on a separate port (8002)
+const searchApiClient = new ApiClient({
+  baseUrl: environment.searchApiBaseUrl || environment.apiBaseUrl || 'http://localhost:8002',
+});
 
 /**
  * Search Service class
@@ -32,47 +20,22 @@ export class SearchService {
   /**
    * Perform global search across all entity types
    * @param request - Search request parameters
-   * @param token - Authentication token from useAuth hook
+   * @param token - Authentication token (optional, falls back to store/localStorage)
    * @returns Search response with results
    */
   static async globalSearch(request: SearchRequest, token?: string): Promise<SearchResponse> {
-    // Try to get token from parameter, or fall back to localStorage for backward compatibility
-    const authToken = token || localStorage.getItem('access_token');
-    const validToken = validateAuthToken(authToken);
-    const url = `${API_BASE_URL}/search/global`;
-
-    console.log('[SearchService] Global search request:', { url, request });
-
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${validToken}`,
-        },
-        body: JSON.stringify(request),
-      });
-
-      console.log('[SearchService] Response status:', response.status);
-
-      if (!response.ok) {
-        await this.handleError(response);
-      }
-
-      const data = await response.json();
-      console.log('[SearchService] Global search response:', data);
-      return data;
-    } catch (error) {
-      console.error('[SearchService] Global search error:', error);
-      throw error;
+    // If a token is explicitly passed, use it; otherwise rely on the shared resolver
+    if (token) {
+      return SearchService.postWithToken<SearchResponse>('/search/global', request, token);
     }
+    return searchApiClient.post<SearchResponse>('/search/global', request);
   }
 
   /**
    * Perform local search within a specific entity type
    * @param entityType - Entity type to search within
    * @param request - Search request parameters
-   * @param token - Authentication token from useAuth hook
+   * @param token - Authentication token (optional, falls back to store/localStorage)
    * @returns Search response with results
    */
   static async localSearch(
@@ -80,88 +43,66 @@ export class SearchService {
     request: SearchRequest,
     token?: string
   ): Promise<SearchResponse> {
-    // Try to get token from parameter, or fall back to localStorage for backward compatibility
-    const authToken = token || localStorage.getItem('access_token');
-    const validToken = validateAuthToken(authToken);
-    const url = `${API_BASE_URL}/search/${entityType}`;
+    if (token) {
+      return SearchService.postWithToken<SearchResponse>(`/search/${entityType}`, request, token);
+    }
+    return searchApiClient.post<SearchResponse>(`/search/${entityType}`, request);
+  }
 
-    console.log('[SearchService] Local search request:', {
-      url,
-      entityType,
-      request,
+  /**
+   * POST with an explicitly provided token (overrides the shared resolver).
+   * Used when callers pass a token directly instead of relying on the store.
+   */
+  private static async postWithToken<T>(endpoint: string, body: unknown, token: string): Promise<T> {
+    const baseUrl = (environment.searchApiBaseUrl || environment.apiBaseUrl || 'http://localhost:8002').replace(/\/+$/, '');
+    const url = `${baseUrl}/api/v1${endpoint}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
     });
 
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${validToken}`,
-        },
-        body: JSON.stringify(request),
-      });
-
-      console.log('[SearchService] Response status:', response.status);
-
-      if (!response.ok) {
-        await this.handleError(response, entityType);
-      }
-
-      const data = await response.json();
-      console.log('[SearchService] Local search response:', data);
-      return data;
-    } catch (error) {
-      console.error('[SearchService] Local search error:', error);
-      throw error;
+    if (!response.ok) {
+      await SearchService.handleError(response, endpoint);
     }
+
+    return response.json();
   }
 
   /**
    * Handle API errors and throw appropriate error messages
-   * @param response - Fetch response object
-   * @param entityType - Optional entity type for context
    */
   private static async handleError(
     response: Response,
-    entityType?: string
+    context?: string
   ): Promise<never> {
     let message: string;
 
-    // Handle specific status codes with user-friendly messages
     switch (response.status) {
       case 401:
         message = 'Session expired. Please log in again.';
-        console.error('[SearchService] Authentication error');
         break;
-
       case 400:
-        if (entityType) {
-          message = `Invalid entity type: ${entityType}`;
-        } else {
-          message = 'Invalid request. Please check your search parameters.';
-        }
-        console.error('[SearchService] Bad request:', message);
+        message = context?.startsWith('/search/')
+          ? `Invalid entity type: ${context.replace('/search/', '')}`
+          : 'Invalid request. Please check your search parameters.';
         break;
-
       case 500:
         message = 'Search service unavailable. Please try again later.';
-        console.error('[SearchService] Server error');
         break;
-
       default:
         message = 'Unable to connect. Please check your connection and try again.';
-        console.error('[SearchService] Network error:', response.status);
     }
 
     // Try to get additional error details from response body
     try {
       const errorData = await response.json();
-      if (errorData?.detail) {
-        console.error('[SearchService] Error details:', errorData.detail);
-        // Optionally append backend error details
-        if (typeof errorData.detail === 'string') {
-          message = `${message} (${errorData.detail})`;
-        }
+      if (typeof errorData?.detail === 'string') {
+        message = `${message} (${errorData.detail})`;
       }
     } catch {
       // Ignore JSON parsing errors

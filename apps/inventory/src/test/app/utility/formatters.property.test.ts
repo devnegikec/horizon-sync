@@ -8,8 +8,9 @@
  */
 
 import fc from 'fast-check';
-import { formatCurrency, formatNumber, formatDecimal, formatQuantity, formatPercentage } from '../../../app/utility/formatters';
+
 import { formatDate } from '../../../app/utility/formatDate';
+import { formatCurrency, formatNumber, formatDecimal, formatQuantity, formatPercentage } from '../../../app/utility/formatters';
 
 describe('Stock Management - Property 10: Currency formatting consistency', () => {
   it('should format any number as currency with exactly 2 decimal places', () => {

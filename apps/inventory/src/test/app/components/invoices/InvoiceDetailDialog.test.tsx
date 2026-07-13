@@ -1,280 +1,87 @@
 import { describe, it, expect, jest } from '@jest/globals';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+
 import '@testing-library/jest-dom';
-import { InvoiceDetailDialog } from '../../../../app/components/invoices/InvoiceDetailDialog';
-import type { Invoice } from '../../../../app/types/invoice';
+import { InvoiceDetailDialog } from '@horizon-sync/ui';
+import type { Invoice } from '@horizon-sync/ui';
 
 describe('InvoiceDetailDialog', () => {
   const mockInvoice: Invoice = {
     id: 'inv-1',
-    invoice_number: 'INV-2024-001',
+    organization_id: 'org-1',
+    invoice_no: 'INV-2024-001',
+    invoice_type: 'sales',
     party_id: 'cust-1',
     party_type: 'Customer',
     party_name: 'Acme Corp',
     posting_date: '2024-01-15',
     due_date: '2024-02-15',
-    currency: 'USD',
-    invoice_type: 'Sales',
-    status: 'Submitted',
-    subtotal: 1000,
-    total_tax: 100,
+    status: 'pending',
     grand_total: 1100,
-    paid_amount: 500,
     outstanding_amount: 600,
+    currency: 'USD',
     remarks: 'Test invoice',
     reference_type: 'Sales Order',
     reference_id: 'so-123',
+    created_at: '2024-01-15T10:00:00Z',
+    updated_at: '2024-01-20T10:00:00Z',
     line_items: [
       {
         id: 'li-1',
+        invoice_id: 'inv-1',
         item_id: 'item-1',
         item_name: 'Widget A',
-        description: 'High quality widget',
         quantity: 10,
-        uom: 'pcs',
-        rate: 100,
-        tax_template_id: 'tax-1',
-        tax_rate: 10,
-        tax_amount: 100,
+        unit_price: 100,
         amount: 1000,
+        total_amount: 1100,
+        tax_amount: 100,
       },
     ],
-    payments: [
-      {
-        id: 'pay-1',
-        invoice_id: 'inv-1',
-        invoice_number: 'PAY-2024-001',
-        invoice_date: '2024-01-20',
-        invoice_amount: 1100,
-        outstanding_before: 1100,
-        allocated_amount: 500,
-      },
-    ],
-    created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-20T10:00:00Z',
-    created_by: 'user-1',
-    updated_by: 'user-1',
   };
 
-  const mockHandlers = {
+  const defaultProps = {
+    open: true,
     onOpenChange: jest.fn(),
-    onEdit: jest.fn(),
-    onRecordPayment: jest.fn(),
-    onGeneratePDF: jest.fn(),
-    onSendEmail: jest.fn(),
-    onViewSalesOrder: jest.fn(),
-    onViewPayment: jest.fn(),
+    invoice: mockInvoice,
   };
-
-  it('renders invoice details correctly', () => {
-    render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={mockInvoice}
-        {...mockHandlers}
-      />
-    );
-
-    expect(screen.getByText('Invoice Details')).toBeInTheDocument();
-    expect(screen.getByText('INV-2024-001')).toBeInTheDocument();
-    expect(screen.getByText('Acme Corp')).toBeInTheDocument();
-    expect(screen.getByText('Grand Total')).toBeInTheDocument();
-  });
-
-  it('shows Record Payment button when status is Submitted and outstanding > 0', () => {
-    render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={mockInvoice}
-        {...mockHandlers}
-      />
-    );
-
-    expect(screen.getByText('Record Payment')).toBeInTheDocument();
-  });
-
-  it('hides Record Payment button when status is Paid', () => {
-    const paidInvoice = { ...mockInvoice, status: 'Paid' as const, outstanding_amount: 0 };
-    render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={paidInvoice}
-        {...mockHandlers}
-      />
-    );
-
-    expect(screen.queryByText('Record Payment')).not.toBeInTheDocument();
-  });
-
-  it('shows Edit button only when status is Draft', () => {
-    const draftInvoice = { ...mockInvoice, status: 'Draft' as const };
-    render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={draftInvoice}
-        {...mockHandlers}
-      />
-    );
-
-    expect(screen.getByText('Edit')).toBeInTheDocument();
-  });
-
-  it('hides Edit button when status is not Draft', () => {
-    render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={mockInvoice}
-        {...mockHandlers}
-      />
-    );
-
-    expect(screen.queryByText('Edit')).not.toBeInTheDocument();
-  });
-
-  it('displays line items table', () => {
-    render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={mockInvoice}
-        {...mockHandlers}
-      />
-    );
-
-    expect(screen.getByText('Line Items')).toBeInTheDocument();
-    expect(screen.getByText('Widget A')).toBeInTheDocument();
-    expect(screen.getByText('High quality widget')).toBeInTheDocument();
-  });
-
-  it('displays payment history when payments exist', () => {
-    render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={mockInvoice}
-        {...mockHandlers}
-      />
-    );
-
-    expect(screen.getByText('Payment History')).toBeInTheDocument();
-    expect(screen.getByText('PAY-2024-001')).toBeInTheDocument();
-  });
-
-  it('displays sales order reference link when reference exists', () => {
-    render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={mockInvoice}
-        {...mockHandlers}
-      />
-    );
-
-    expect(screen.getByText(/Created from Sales Order/)).toBeInTheDocument();
-    expect(screen.getByText('View Order')).toBeInTheDocument();
-  });
-
-  it('displays totals correctly', () => {
-    render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={mockInvoice}
-        {...mockHandlers}
-      />
-    );
-
-    expect(screen.getByText('Subtotal')).toBeInTheDocument();
-    expect(screen.getByText('Total Tax')).toBeInTheDocument();
-    expect(screen.getByText('Grand Total')).toBeInTheDocument();
-    expect(screen.getByText('Paid Amount')).toBeInTheDocument();
-    expect(screen.getByText('Outstanding Amount')).toBeInTheDocument();
-  });
 
   it('returns null when invoice is null', () => {
     const { container } = render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={null}
-        {...mockHandlers}
-      />
+      <InvoiceDetailDialog {...defaultProps} invoice={null} />
     );
-
-    expect(container.firstChild).toBeNull();
+    // Dialog renders nothing when invoice is null
+    expect(container.innerHTML).toBe('');
   });
 
-  it('displays View button for each payment in payment history', () => {
-    render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={mockInvoice}
-        {...mockHandlers}
-      />
-    );
-
-    expect(screen.getByText('Payment History')).toBeInTheDocument();
-    const viewButtons = screen.getAllByRole('button', { name: /View/i });
-    // Should have at least one View button for the payment
-    expect(viewButtons.length).toBeGreaterThan(0);
+  it('renders invoice number in the dialog', () => {
+    render(<InvoiceDetailDialog {...defaultProps} />);
+    expect(screen.getByText('INV-2024-001')).toBeTruthy();
   });
 
-  it('calls onViewPayment when View button is clicked in payment history', () => {
+  it('renders PDF action buttons when callbacks provided', () => {
     render(
       <InvoiceDetailDialog
-        open={true}
-        invoice={mockInvoice}
-        {...mockHandlers}
+        {...defaultProps}
+        onDownloadPDF={jest.fn()}
+        onPreviewPDF={jest.fn()}
+        onSendEmail={jest.fn()}
       />
     );
-
-    // Find all buttons with "View" text
-    const allButtons = screen.getAllByRole('button');
-    const viewButtons = allButtons.filter(btn => btn.textContent?.includes('View') && !btn.textContent?.includes('Order'));
-    
-    expect(viewButtons.length).toBeGreaterThan(0);
-    fireEvent.click(viewButtons[0]);
-    
-    expect(mockHandlers.onViewPayment).toHaveBeenCalledWith('pay-1');
+    expect(screen.getByText('Download PDF')).toBeTruthy();
+    expect(screen.getByText('Preview PDF')).toBeTruthy();
+    expect(screen.getByText('Send Email')).toBeTruthy();
   });
 
-  it('calls onViewSalesOrder when View Order button is clicked', () => {
-    render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={mockInvoice}
-        {...mockHandlers}
-      />
-    );
-
-    const viewOrderButton = screen.getByText('View Order');
-    fireEvent.click(viewOrderButton);
-    
-    expect(mockHandlers.onViewSalesOrder).toHaveBeenCalledWith('so-123');
+  it('does not render PDF buttons when no callbacks provided', () => {
+    render(<InvoiceDetailDialog {...defaultProps} />);
+    expect(screen.queryByText('Download PDF')).toBeNull();
+    expect(screen.queryByText('Preview PDF')).toBeNull();
+    expect(screen.queryByText('Send Email')).toBeNull();
   });
 
-  it('does not display View Order button when onViewSalesOrder is not provided', () => {
-    const handlersWithoutSalesOrder = { ...mockHandlers, onViewSalesOrder: undefined };
-    render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={mockInvoice}
-        {...handlersWithoutSalesOrder}
-      />
-    );
-
-    expect(screen.queryByText('View Order')).not.toBeInTheDocument();
-  });
-
-  it('does not display View buttons in payment history when onViewPayment is not provided', () => {
-    const handlersWithoutPayment = { ...mockHandlers, onViewPayment: undefined };
-    render(
-      <InvoiceDetailDialog
-        open={true}
-        invoice={mockInvoice}
-        {...handlersWithoutPayment}
-      />
-    );
-
-    expect(screen.getByText('Payment History')).toBeInTheDocument();
-    // Should not have View buttons in the payment history table
-    const allButtons = screen.getAllByRole('button');
-    const viewButtonsInTable = allButtons.filter(btn => btn.textContent?.includes('View') && btn.closest('table'));
-    expect(viewButtonsInTable.length).toBe(0);
+  it('renders Close button', () => {
+    render(<InvoiceDetailDialog {...defaultProps} />);
+    expect(screen.getByText('Close')).toBeTruthy();
   });
 });

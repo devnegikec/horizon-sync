@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 import { PaymentDialog } from '../../../../app/components/payments/PaymentDialog';
 import type { Payment, PaymentFormData } from '../../../../app/types/payment';
 
@@ -77,11 +78,9 @@ describe('PaymentDialog', () => {
 
   it('renders create payment dialog', () => {
     renderWithProviders(
-      <PaymentDialog
-        open={true}
+      <PaymentDialog open={true}
         {...mockHandlers}
-        saving={false}
-      />
+        saving={false}/>
     );
 
     expect(screen.getByRole('heading', { name: 'Create Payment' })).toBeInTheDocument();
@@ -111,12 +110,10 @@ describe('PaymentDialog', () => {
     };
 
     renderWithProviders(
-      <PaymentDialog
-        open={true}
+      <PaymentDialog open={true}
         payment={mockPayment}
         {...mockHandlers}
-        saving={false}
-      />
+        saving={false}/>
     );
 
     expect(screen.getByText('Edit Payment')).toBeInTheDocument();
@@ -125,11 +122,9 @@ describe('PaymentDialog', () => {
 
   it('displays all required form fields', () => {
     renderWithProviders(
-      <PaymentDialog
-        open={true}
+      <PaymentDialog open={true}
         {...mockHandlers}
-        saving={false}
-      />
+        saving={false}/>
     );
 
     expect(screen.getByText(/Party Type/)).toBeInTheDocument();
@@ -141,11 +136,9 @@ describe('PaymentDialog', () => {
 
   it('displays payment allocation table', async () => {
     renderWithProviders(
-      <PaymentDialog
-        open={true}
+      <PaymentDialog open={true}
         {...mockHandlers}
-        saving={false}
-      />
+        saving={false}/>
     );
 
     await waitFor(() => {
@@ -155,11 +148,9 @@ describe('PaymentDialog', () => {
 
   it('shows allocated and unallocated amounts', () => {
     renderWithProviders(
-      <PaymentDialog
-        open={true}
+      <PaymentDialog open={true}
         {...mockHandlers}
-        saving={false}
-      />
+        saving={false}/>
     );
 
     expect(screen.getByText('Total Amount:')).toBeInTheDocument();
@@ -169,11 +160,9 @@ describe('PaymentDialog', () => {
 
   it('disables submit button when saving', () => {
     renderWithProviders(
-      <PaymentDialog
-        open={true}
+      <PaymentDialog open={true}
         {...mockHandlers}
-        saving={true}
-      />
+        saving={true}/>
     );
 
     const submitButton = screen.getByText('Saving...');
@@ -182,11 +171,9 @@ describe('PaymentDialog', () => {
 
   it('displays cancel and submit buttons', () => {
     renderWithProviders(
-      <PaymentDialog
-        open={true}
+      <PaymentDialog open={true}
         {...mockHandlers}
-        saving={false}
-      />
+        saving={false}/>
     );
 
     expect(screen.getByText('Cancel')).toBeInTheDocument();
@@ -222,12 +209,10 @@ describe('PaymentDialog', () => {
     };
 
     renderWithProviders(
-      <PaymentDialog
-        open={true}
+      <PaymentDialog open={true}
         preSelectedInvoice={mockInvoice}
         {...mockHandlers}
-        saving={false}
-      />
+        saving={false}/>
     );
 
     // Check that total amount is pre-filled with outstanding amount
@@ -239,11 +224,9 @@ describe('PaymentDialog', () => {
     const user = userEvent.setup();
     
     renderWithProviders(
-      <PaymentDialog
-        open={true}
+      <PaymentDialog open={true}
         {...mockHandlers}
-        saving={false}
-      />
+        saving={false}/>
     );
 
     const submitButton = screen.getByRole('button', { name: 'Create Payment' });

@@ -4,6 +4,7 @@ export { AccountDialog } from './AccountDialog';
 export { AccountTreeView } from './AccountTreeView';
 export { Reports } from './Reports';
 export { SystemConfiguration } from './SystemConfiguration';
+export { JournalEntries } from './JournalEntries';
 
 // Reusable components for integration with other modules
 export { AccountSelector } from './AccountSelector';

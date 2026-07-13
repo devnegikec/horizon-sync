@@ -19,26 +19,22 @@ export function StockInventoryStep({ formData, setFormData }: StockInventoryStep
         <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="maintainStock"
+                    <Checkbox id="maintainStock"
                         checked={formData.maintainStock}
                         onCheckedChange={(checked) =>
                             setFormData((prev) => ({ ...prev, maintainStock: checked === true }))
-                        }
-                    />
+                        }/>
                     <Label htmlFor="maintainStock" className="cursor-pointer">
                         Maintain Stock
                     </Label>
                 </div>
 
                 <div className="flex items-center space-x-2">
-                    <Checkbox
-                        id="allowNegativeStock"
+                    <Checkbox id="allowNegativeStock"
                         checked={formData.allowNegativeStock}
                         onCheckedChange={(checked) =>
                             setFormData((prev) => ({ ...prev, allowNegativeStock: checked === true }))
-                        }
-                    />
+                        }/>
                     <Label htmlFor="allowNegativeStock" className="cursor-pointer">
                         Allow Negative Stock
                     </Label>
@@ -47,10 +43,8 @@ export function StockInventoryStep({ formData, setFormData }: StockInventoryStep
 
             <div className="space-y-2">
                 <Label htmlFor="valuationMethod">Valuation Method</Label>
-                <Select
-                    value={formData.valuationMethod}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, valuationMethod: value }))}
-                >
+                <Select value={formData.valuationMethod}
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, valuationMethod: value }))}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select method" />
                     </SelectTrigger>
@@ -68,13 +62,11 @@ export function StockInventoryStep({ formData, setFormData }: StockInventoryStep
                 <h4 className="text-sm font-medium mb-3">Variants</h4>
                 <div className="grid gap-4">
                     <div className="flex items-center space-x-2">
-                        <Checkbox
-                            id="hasVariants"
+                        <Checkbox id="hasVariants"
                             checked={formData.hasVariants}
                             onCheckedChange={(checked) =>
                                 setFormData((prev) => ({ ...prev, hasVariants: checked === true }))
-                            }
-                        />
+                            }/>
                         <Label htmlFor="hasVariants" className="cursor-pointer">
                             Has Variants
                         </Label>
@@ -84,18 +76,15 @@ export function StockInventoryStep({ formData, setFormData }: StockInventoryStep
                         <>
                             <div className="space-y-2">
                                 <Label htmlFor="variantOf">Variant Of (Item ID)</Label>
-                                <Input
-                                    id="variantOf"
+                                <Input id="variantOf"
                                     value={formData.variantOf || ''}
                                     onChange={(e) => setFormData((prev) => ({ ...prev, variantOf: e.target.value || null }))}
-                                    placeholder="Parent item ID"
-                                />
+                                    placeholder="Parent item ID"/>
                             </div>
 
                             <div className="space-y-2">
                                 <Label htmlFor="variantAttributes">Variant Attributes (JSON)</Label>
-                                <Textarea
-                                    id="variantAttributes"
+                                <Textarea id="variantAttributes"
                                     value={JSON.stringify(formData.variantAttributes, null, 2)}
                                     onChange={(e) => {
                                         try {
@@ -106,8 +95,7 @@ export function StockInventoryStep({ formData, setFormData }: StockInventoryStep
                                         }
                                     }}
                                     placeholder='{"color": "red", "size": "large"}'
-                                    rows={3}
-                                />
+                                    rows={3}/>
                             </div>
                         </>
                     )}
@@ -119,26 +107,22 @@ export function StockInventoryStep({ formData, setFormData }: StockInventoryStep
                 <div className="grid gap-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="flex items-center space-x-2">
-                            <Checkbox
-                                id="hasBatchNo"
+                            <Checkbox id="hasBatchNo"
                                 checked={formData.hasBatchNo}
                                 onCheckedChange={(checked) =>
                                     setFormData((prev) => ({ ...prev, hasBatchNo: checked === true }))
-                                }
-                            />
+                                }/>
                             <Label htmlFor="hasBatchNo" className="cursor-pointer">
                                 Has Batch Number
                             </Label>
                         </div>
 
                         <div className="flex items-center space-x-2">
-                            <Checkbox
-                                id="hasSerialNo"
+                            <Checkbox id="hasSerialNo"
                                 checked={formData.hasSerialNo}
                                 onCheckedChange={(checked) =>
                                     setFormData((prev) => ({ ...prev, hasSerialNo: checked === true }))
-                                }
-                            />
+                                }/>
                             <Label htmlFor="hasSerialNo" className="cursor-pointer">
                                 Has Serial Number
                             </Label>
@@ -148,24 +132,20 @@ export function StockInventoryStep({ formData, setFormData }: StockInventoryStep
                     {formData.hasBatchNo && (
                         <div className="space-y-2">
                             <Label htmlFor="batchNumberSeries">Batch Number Series</Label>
-                            <Input
-                                id="batchNumberSeries"
+                            <Input id="batchNumberSeries"
                                 value={formData.batchNumberSeries}
                                 onChange={(e) => setFormData((prev) => ({ ...prev, batchNumberSeries: e.target.value }))}
-                                placeholder="e.g., BATCH-"
-                            />
+                                placeholder="e.g., BATCH-"/>
                         </div>
                     )}
 
                     {formData.hasSerialNo && (
                         <div className="space-y-2">
                             <Label htmlFor="serialNumberSeries">Serial Number Series</Label>
-                            <Input
-                                id="serialNumberSeries"
+                            <Input id="serialNumberSeries"
                                 value={formData.serialNumberSeries}
                                 onChange={(e) => setFormData((prev) => ({ ...prev, serialNumberSeries: e.target.value }))}
-                                placeholder="e.g., SN-"
-                            />
+                                placeholder="e.g., SN-"/>
                         </div>
                     )}
                 </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 import { generatePDFBase64, generatePDFBlob, downloadPDF, previewPDF } from '../utils/pdf/generatePDF';
 import type { PDFDocumentData } from '../utils/pdf/types';
@@ -14,7 +15,7 @@ export const usePDFGeneration = () => {
       const base64 = await generatePDFBase64(data);
       return base64;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate PDF';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       return null;
     } finally {
@@ -29,7 +30,7 @@ export const usePDFGeneration = () => {
       const blob = await generatePDFBlob(data);
       return blob;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate PDF';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       return null;
     } finally {
@@ -43,7 +44,7 @@ export const usePDFGeneration = () => {
     try {
       await downloadPDF(data, filename);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to download PDF';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       throw err;
     } finally {
@@ -57,7 +58,7 @@ export const usePDFGeneration = () => {
     try {
       await previewPDF(data);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to preview PDF';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       throw err;
     } finally {
@@ -74,3 +75,5 @@ export const usePDFGeneration = () => {
     preview,
   };
 };
+
+

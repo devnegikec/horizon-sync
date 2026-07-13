@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
 import { QuotationsTable } from '../../../../app/components/quotations/QuotationsTable';
 import type { Quotation } from '../../../../app/types/quotation.types';
 
@@ -82,16 +83,14 @@ describe('QuotationsTable', () => {
   describe('Table rendering', () => {
     it('should render table with correct columns', () => {
       render(
-        <QuotationsTable
-          quotations={mockQuotations}
+        <QuotationsTable quotations={mockQuotations}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateQuotation={mockOnCreateQuotation}
-        />
+          onCreateQuotation={mockOnCreateQuotation}/>
       );
 
       // Check that column headers are present
@@ -105,16 +104,14 @@ describe('QuotationsTable', () => {
 
     it('should render quotation data in table rows', () => {
       render(
-        <QuotationsTable
-          quotations={mockQuotations}
+        <QuotationsTable quotations={mockQuotations}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateQuotation={mockOnCreateQuotation}
-        />
+          onCreateQuotation={mockOnCreateQuotation}/>
       );
 
       // Check that quotation numbers are displayed
@@ -135,16 +132,14 @@ describe('QuotationsTable', () => {
 
     it('should display customer codes when available', () => {
       render(
-        <QuotationsTable
-          quotations={mockQuotations}
+        <QuotationsTable quotations={mockQuotations}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateQuotation={mockOnCreateQuotation}
-        />
+          onCreateQuotation={mockOnCreateQuotation}/>
       );
 
       // Check that customer codes are displayed
@@ -157,16 +152,14 @@ describe('QuotationsTable', () => {
   describe('Row actions', () => {
     it('should render action menu buttons for each quotation row', () => {
       render(
-        <QuotationsTable
-          quotations={mockQuotations}
+        <QuotationsTable quotations={mockQuotations}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateQuotation={mockOnCreateQuotation}
-        />
+          onCreateQuotation={mockOnCreateQuotation}/>
       );
 
       // Check that action buttons are present in the table
@@ -182,16 +175,14 @@ describe('QuotationsTable', () => {
   describe('Empty state', () => {
     it('should display empty state when no quotations and no filters', () => {
       render(
-        <QuotationsTable
-          quotations={[]}
+        <QuotationsTable quotations={[]}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateQuotation={mockOnCreateQuotation}
-        />
+          onCreateQuotation={mockOnCreateQuotation}/>
       );
 
       expect(screen.getByText('No quotations found')).toBeTruthy();
@@ -201,16 +192,14 @@ describe('QuotationsTable', () => {
 
     it('should display empty state with filter message when filters are active', () => {
       render(
-        <QuotationsTable
-          quotations={[]}
+        <QuotationsTable quotations={[]}
           loading={false}
           error={null}
           hasActiveFilters={true}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateQuotation={mockOnCreateQuotation}
-        />
+          onCreateQuotation={mockOnCreateQuotation}/>
       );
 
       expect(screen.getByText('No quotations found')).toBeTruthy();
@@ -221,16 +210,14 @@ describe('QuotationsTable', () => {
 
     it('should call onCreateQuotation when New Quotation button is clicked in empty state', () => {
       render(
-        <QuotationsTable
-          quotations={[]}
+        <QuotationsTable quotations={[]}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateQuotation={mockOnCreateQuotation}
-        />
+          onCreateQuotation={mockOnCreateQuotation}/>
       );
 
       const newQuotationButton = screen.getByText('New Quotation');
@@ -243,16 +230,14 @@ describe('QuotationsTable', () => {
   describe('Loading state', () => {
     it('should display loading state when loading is true', () => {
       const { container } = render(
-        <QuotationsTable
-          quotations={[]}
+        <QuotationsTable quotations={[]}
           loading={true}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateQuotation={mockOnCreateQuotation}
-        />
+          onCreateQuotation={mockOnCreateQuotation}/>
       );
 
       // Check that the component renders something (not empty)
@@ -263,16 +248,14 @@ describe('QuotationsTable', () => {
 
     it('should not display quotations when loading', () => {
       render(
-        <QuotationsTable
-          quotations={mockQuotations}
+        <QuotationsTable quotations={mockQuotations}
           loading={true}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateQuotation={mockOnCreateQuotation}
-        />
+          onCreateQuotation={mockOnCreateQuotation}/>
       );
 
       // Quotation numbers should not be visible during loading
@@ -285,16 +268,14 @@ describe('QuotationsTable', () => {
     it('should display error message when error is present', () => {
       const errorMessage = 'Failed to load quotations';
       render(
-        <QuotationsTable
-          quotations={[]}
+        <QuotationsTable quotations={[]}
           loading={false}
           error={errorMessage}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateQuotation={mockOnCreateQuotation}
-        />
+          onCreateQuotation={mockOnCreateQuotation}/>
       );
 
       expect(screen.getByText(errorMessage)).toBeTruthy();
@@ -302,16 +283,14 @@ describe('QuotationsTable', () => {
 
     it('should not display quotations when error is present', () => {
       render(
-        <QuotationsTable
-          quotations={mockQuotations}
+        <QuotationsTable quotations={mockQuotations}
           loading={false}
           error="Error occurred"
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateQuotation={mockOnCreateQuotation}
-        />
+          onCreateQuotation={mockOnCreateQuotation}/>
       );
 
       // Quotation numbers should not be visible when there's an error
@@ -330,8 +309,7 @@ describe('QuotationsTable', () => {
       };
 
       render(
-        <QuotationsTable
-          quotations={mockQuotations}
+        <QuotationsTable quotations={mockQuotations}
           loading={false}
           error={null}
           hasActiveFilters={false}
@@ -339,8 +317,7 @@ describe('QuotationsTable', () => {
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
           onCreateQuotation={mockOnCreateQuotation}
-          serverPagination={serverPagination}
-        />
+          serverPagination={serverPagination}/>
       );
 
       // Table should render with quotations
@@ -349,8 +326,7 @@ describe('QuotationsTable', () => {
 
     it('should call onTableReady when table is ready', () => {
       render(
-        <QuotationsTable
-          quotations={mockQuotations}
+        <QuotationsTable quotations={mockQuotations}
           loading={false}
           error={null}
           hasActiveFilters={false}
@@ -358,8 +334,7 @@ describe('QuotationsTable', () => {
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
           onCreateQuotation={mockOnCreateQuotation}
-          onTableReady={mockOnTableReady}
-        />
+          onTableReady={mockOnTableReady}/>
       );
 
       // onTableReady should be called with table instance
@@ -370,16 +345,14 @@ describe('QuotationsTable', () => {
   describe('Status badges', () => {
     it('should display status badges for all quotations', () => {
       render(
-        <QuotationsTable
-          quotations={mockQuotations}
+        <QuotationsTable quotations={mockQuotations}
           loading={false}
           error={null}
           hasActiveFilters={false}
           onView={mockOnView}
           onEdit={mockOnEdit}
           onDelete={mockOnDelete}
-          onCreateQuotation={mockOnCreateQuotation}
-        />
+          onCreateQuotation={mockOnCreateQuotation}/>
       );
 
       // Check that status badges are displayed

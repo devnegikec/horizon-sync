@@ -8,6 +8,9 @@ const config: ModuleFederationConfig = {
     './SourcingPage': './src/app/pages/SourcingPage.tsx',
     './BooksPage': './src/app/pages/BooksPage.tsx',
     './TaxChargesPage': './src/app/pages/TaxChargesPage.tsx',
+    './PaymentsPage': './src/app/pages/PaymentsPage.tsx',
+    './QSealPage': './src/app/pages/QSealPage.tsx',
+    './WMSPage': './src/app/pages/WMSPage.tsx',
   },
   shared: (libraryName, defaultConfig) => {
     // Share React and React-DOM as singletons
@@ -40,6 +43,19 @@ const config: ModuleFederationConfig = {
 
     // Share React Query if used
     if (libraryName === '@tanstack/react-query') {
+      return {
+        ...defaultConfig,
+        singleton: true,
+        strictVersion: false,
+      };
+    }
+
+    // Share form libraries as singletons
+    if (
+      libraryName === 'react-hook-form' ||
+      libraryName.startsWith('@hookform/') ||
+      libraryName === 'zod'
+    ) {
       return {
         ...defaultConfig,
         singleton: true,

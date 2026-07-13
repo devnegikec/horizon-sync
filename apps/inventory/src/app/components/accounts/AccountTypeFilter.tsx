@@ -59,21 +59,17 @@ export function AccountTypeFilter({
         {label && <Label>{label}</Label>}
         <div className="flex flex-wrap gap-2">
           {showAllOption && (
-            <Badge
-              variant={value === 'all' ? 'default' : 'outline'}
+            <Badge variant={value === 'all' ? 'default' : 'outline'}
               className="cursor-pointer"
-              onClick={() => !disabled && onValueChange('all')}
-            >
+              onClick={() => !disabled && onValueChange('all')}>
               All Types
             </Badge>
           )}
           {ACCOUNT_TYPES.map((type) => (
-            <Badge
-              key={type.value}
+            <Badge key={type.value}
               variant={value === type.value ? 'default' : 'outline'}
               className={`cursor-pointer ${value === type.value ? '' : 'hover:bg-accent'}`}
-              onClick={() => !disabled && onValueChange(type.value)}
-            >
+              onClick={() => !disabled && onValueChange(type.value)}>
               {type.label}
             </Badge>
           ))}
@@ -86,11 +82,9 @@ export function AccountTypeFilter({
     <div className="space-y-2">
       {label && <Label>{label}</Label>}
       
-      <Select
-        value={value}
+      <Select value={value}
         onValueChange={onValueChange}
-        disabled={disabled}
-      >
+        disabled={disabled}>
         <SelectTrigger>
           <SelectValue placeholder={placeholder}>
             {value === 'all' ? 'All Types' : selectedType?.label}

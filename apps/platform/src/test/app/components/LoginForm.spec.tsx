@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 import { LoginForm } from '../../../app/components/auth/LoginForm';
-import { useAuth } from '../../../app/hooks';
+import { useAuth, usePermissions } from '../../../app/hooks';
 import { AuthService } from '../../../app/services/auth.service';
 
 jest.mock('../../../app/services/auth.service');
@@ -39,6 +39,30 @@ describe('LoginForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useAuth as jest.Mock).mockReturnValue({ login: mockLogin });
+    (usePermissions as jest.Mock).mockReturnValue({
+      fetchPermissions: jest.fn().mockResolvedValue(undefined),
+      permissions: [],
+      roles: [],
+      hasAccess: true,
+      lastFetched: null,
+      loading: false,
+      error: null,
+      clearPermissions: jest.fn(),
+      hasPermission: jest.fn().mockReturnValue(false),
+      hasAnyPermission: jest.fn().mockReturnValue(false),
+      hasAllPermissions: jest.fn().mockReturnValue(false),
+      canViewUsers: jest.fn().mockReturnValue(false),
+      canViewRoles: jest.fn().mockReturnValue(false),
+      canViewReports: jest.fn().mockReturnValue(false),
+      canViewAnalytics: jest.fn().mockReturnValue(false),
+      canViewSettings: jest.fn().mockReturnValue(false),
+      canViewInventory: jest.fn().mockReturnValue(false),
+      canViewRevenue: jest.fn().mockReturnValue(false),
+      canViewSubscriptions: jest.fn().mockReturnValue(false),
+      canViewBanking: jest.fn().mockReturnValue(false),
+      filterNavigation: jest.fn((items: unknown[]) => items),
+      NavigationPermissions: {},
+    });
   });
 
   const renderLoginForm = () => {
@@ -71,7 +95,7 @@ describe('LoginForm', () => {
 
     it('should render password input field', () => {
       renderLoginForm();
-      const passwordInput = screen.getByPlaceholderText('••••••••') as HTMLInputElement;
+      const passwordInput = screen.getByPlaceholderText('Enter your password') as HTMLInputElement;
       expect(passwordInput).toBeInTheDocument();
       expect(passwordInput.type).toBe('password');
     });
@@ -110,7 +134,7 @@ describe('LoginForm', () => {
       renderLoginForm();
 
       const emailInput = screen.getByPlaceholderText('john.doe@company.com');
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0];
 
       await user.type(emailInput, 'invalid-email');
       await user.type(passwordInput, 'Password123');
@@ -152,7 +176,7 @@ describe('LoginForm', () => {
       renderLoginForm();
 
       const emailInput = screen.getByPlaceholderText('john.doe@company.com');
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0];
 
       await user.type(emailInput, 'test@example.com');
       await user.type(passwordInput, 'MyPassword123');
@@ -181,7 +205,7 @@ describe('LoginForm', () => {
       renderLoginForm();
 
       const emailInput = screen.getByPlaceholderText('john.doe@company.com');
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0];
 
       await user.type(emailInput, 'test@example.com');
       await user.type(passwordInput, 'Test@1234');
@@ -193,6 +217,7 @@ describe('LoginForm', () => {
         expect(AuthService.login).toHaveBeenCalledWith({
           email: 'test@example.com',
           password: 'Test@1234',
+          remember_me: false,
         });
       });
     });
@@ -211,7 +236,7 @@ describe('LoginForm', () => {
       renderLoginForm();
 
       const emailInput = screen.getByPlaceholderText('john.doe@company.com');
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0];
 
       await user.type(emailInput, 'test@example.com');
       await user.type(passwordInput, 'Test@1234');
@@ -242,7 +267,7 @@ describe('LoginForm', () => {
       renderLoginForm();
 
       const emailInput = screen.getByPlaceholderText('john.doe@company.com');
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0];
 
       await user.type(emailInput, 'test@example.com');
       await user.type(passwordInput, 'Test@1234');
@@ -265,7 +290,7 @@ describe('LoginForm', () => {
       renderLoginForm();
 
       const emailInput = screen.getByPlaceholderText('john.doe@company.com');
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0];
 
       await user.type(emailInput, 'test@example.com');
       await user.type(passwordInput, 'WrongPassword');
@@ -286,7 +311,7 @@ describe('LoginForm', () => {
       renderLoginForm();
 
       const emailInput = screen.getByPlaceholderText('john.doe@company.com');
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0];
 
       await user.type(emailInput, 'locked@example.com');
       await user.type(passwordInput, 'Password123');
@@ -306,7 +331,7 @@ describe('LoginForm', () => {
       renderLoginForm();
 
       const emailInput = screen.getByPlaceholderText('john.doe@company.com');
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0];
 
       await user.type(emailInput, 'test@example.com');
       await user.type(passwordInput, 'Test@1234');
@@ -333,7 +358,7 @@ describe('LoginForm', () => {
       renderLoginForm();
 
       const emailInput = screen.getByPlaceholderText('john.doe@company.com');
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0];
 
       await user.type(emailInput, 'test@example.com');
       await user.type(passwordInput, 'Test@1234');
@@ -368,7 +393,7 @@ describe('LoginForm', () => {
       renderLoginForm();
 
       const emailInput = screen.getByPlaceholderText('john.doe@company.com');
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0];
 
       await user.type(emailInput, 'test@example.com');
       await user.type(passwordInput, 'Test@1234');
@@ -386,7 +411,7 @@ describe('LoginForm', () => {
       renderLoginForm();
 
       const emailInput = screen.getByPlaceholderText('john.doe@company.com');
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0];
 
       await user.type(emailInput, 'test@example.com');
       await user.type(passwordInput, 'Test@1234');
@@ -411,7 +436,7 @@ describe('LoginForm', () => {
       renderLoginForm();
 
       const emailInput = screen.getByPlaceholderText('john.doe@company.com');
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0];
 
       await user.type(emailInput, 'test@example.com');
       await user.type(passwordInput, 'Test@1234');
@@ -440,7 +465,7 @@ describe('LoginForm', () => {
       const user = userEvent.setup();
       renderLoginForm();
 
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0] as HTMLInputElement;
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0] as HTMLInputElement;
       await user.type(passwordInput, 'MySecurePassword123');
 
       expect(passwordInput.value).toBe('MySecurePassword123');
@@ -459,7 +484,7 @@ describe('LoginForm', () => {
       renderLoginForm();
 
       const emailInput = screen.getByPlaceholderText('john.doe@company.com');
-      const passwordInput = screen.getAllByPlaceholderText('••••••••')[0];
+      const passwordInput = screen.getAllByPlaceholderText('Enter your password')[0];
 
       await user.type(emailInput, 'user.name+tag@example.co.uk');
       await user.type(passwordInput, 'Test@1234');
@@ -471,6 +496,7 @@ describe('LoginForm', () => {
         expect(AuthService.login).toHaveBeenCalledWith({
           email: 'user.name+tag@example.co.uk',
           password: 'Test@1234',
+          remember_me: false,
         });
       });
     });

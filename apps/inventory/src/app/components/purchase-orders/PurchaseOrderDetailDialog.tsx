@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
+
 import { Loader2 } from 'lucide-react';
+
+import { useUserStore } from '@horizon-sync/store';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import {
   Dialog,
@@ -16,9 +19,9 @@ import {
   TableHeader,
   TableRow,
 } from '@horizon-sync/ui/components/ui/table';
-import { useUserStore } from '@horizon-sync/store';
-import { purchaseOrderApi } from '../../utility/api';
+
 import type { PurchaseOrder, PurchaseOrderStatus } from '../../types/purchase-order.types';
+import { purchaseOrderApi } from '../../utility/api';
 
 interface PurchaseOrderDetailDialogProps {
   open: boolean;

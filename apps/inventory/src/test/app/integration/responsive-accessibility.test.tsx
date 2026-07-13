@@ -4,17 +4,18 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { axe, toHaveNoViolations } from 'jest-axe';
+
+import * as invoicesApi from '../../../app/api/invoices';
+import * as paymentsApi from '../../../app/api/payments';
 import InvoiceManagement from '../../../app/components/invoices/InvoiceManagement';
 import { RevenuePage } from '../../../app/pages/RevenuePage';
+
 
 expect.extend(toHaveNoViolations);
 
 // Mock API modules
 jest.mock('../../../app/api/invoices');
 jest.mock('../../../app/api/payments');
-
-import * as invoicesApi from '../../../app/api/invoices';
-import * as paymentsApi from '../../../app/api/payments';
 
 describe('Responsive Design and Accessibility Tests', () => {
   let queryClient: QueryClient;

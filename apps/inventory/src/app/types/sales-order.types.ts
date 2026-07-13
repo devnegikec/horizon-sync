@@ -20,6 +20,9 @@ export interface SalesOrderLineItem {
   rate: number | string;
   amount: number | string;
   sort_order: number;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number | string;
+  discount_amount?: number | string;
   billed_qty: number | string;
   delivered_qty: number | string;
   pending_billing_qty: number | string;
@@ -27,6 +30,38 @@ export interface SalesOrderLineItem {
   created_at: string;
   updated_at: string;
   extra_data?: Record<string, unknown>;
+  tax_info?: {
+    id: string;
+    template_name: string;
+    template_code: string;
+    is_compound: boolean;
+    breakup: Array<{
+      rule_name: string;
+      tax_type: string;
+      rate: number;
+      is_compound: boolean;
+    }>;
+  };
+  tax_amount?: number;
+  total_amount?: number;
+}
+
+export interface CustomerDetails {
+  id?: string;
+  name?: string;
+  code?: string;
+  customer_name?: string;
+  customer_code?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  tax_number?: string;
 }
 
 export interface SalesOrder {
@@ -38,10 +73,14 @@ export interface SalesOrder {
   order_date: string;
   delivery_date?: string | null;
   grand_total: string | number;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number | string;
+  discount_amount?: number | string;
   currency: string;
   status: SalesOrderStatus;
   reference_type?: string | null;
   reference_id?: string | null;
+  reference_no?: string | null;
   remarks?: string | null;
   items: SalesOrderLineItem[];
   submitted_at?: string | null;
@@ -50,6 +89,7 @@ export interface SalesOrder {
   created_at: string;
   updated_at: string;
   extra_data?: Record<string, unknown>;
+  customer?: CustomerDetails;
 }
 
 export interface SalesOrderListItem {
@@ -76,6 +116,13 @@ export interface SalesOrderItemCreate {
   rate: number;
   amount: number;
   sort_order: number;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
+  discount_amount?: number;
+  tax_template_id?: string | null;
+  tax_rate?: number;
+  tax_amount?: number;
+  total_amount?: number;
 }
 
 export interface SalesOrderCreate {
@@ -86,6 +133,9 @@ export interface SalesOrderCreate {
   status?: SalesOrderStatus;
   grand_total?: number;
   currency?: string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
+  discount_amount?: number;
   reference_type?: string | null;
   reference_id?: string | null;
   remarks?: string | null;
@@ -97,6 +147,9 @@ export interface SalesOrderUpdate {
   delivery_date?: string | null;
   status?: SalesOrderStatus | null;
   remarks?: string | null;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
+  discount_amount?: number;
   items?: SalesOrderItemCreate[] | null;
 }
 
@@ -104,7 +157,7 @@ export interface SalesOrderStatusUpdate {
   status: SalesOrderStatus;
 }
 
-export interface SalesOrderResponse extends SalesOrder {}
+export type SalesOrderResponse = SalesOrder
 
 // Convert to Invoice types
 export interface ConvertToInvoiceItemRequest {

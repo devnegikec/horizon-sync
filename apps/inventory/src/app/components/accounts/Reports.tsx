@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+
 import { FileText, Download, Filter, Printer, ChevronRight, ChevronDown } from 'lucide-react';
 
 import {
@@ -52,17 +53,13 @@ function HierarchicalNode({ account, level }: HierarchicalNodeProps) {
 
   return (
     <div className="border-l-2 border-border">
-      <div
-        className={cn(
+      <div className={cn(
           'flex items-center gap-2 py-2 px-3 hover:bg-muted/50 transition-colors',
           level > 0 && 'ml-6'
-        )}
-      >
+        )}>
         {hasChildren ? (
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="p-0.5 hover:bg-muted rounded"
-          >
+          <button onClick={() => setExpanded(!expanded)}
+            className="p-0.5 hover:bg-muted rounded">
             {expanded ? (
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             ) : (
@@ -175,10 +172,8 @@ export function Reports() {
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-2 block">Account Type</label>
-              <Select
-                value={filters.account_type}
-                onValueChange={(value) => setFilters((prev) => ({ ...prev, account_type: value }))}
-              >
+              <Select value={filters.account_type}
+                onValueChange={(value) => setFilters((prev) => ({ ...prev, account_type: value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
@@ -195,10 +190,8 @@ export function Reports() {
 
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-2 block">Status</label>
-              <Select
-                value={filters.status}
-                onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
-              >
+              <Select value={filters.status}
+                onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
@@ -213,12 +206,10 @@ export function Reports() {
 
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-2 block">As of Date</label>
-              <input
-                type="date"
+              <input type="date"
                 value={filters.as_of_date}
                 onChange={(e) => setFilters((prev) => ({ ...prev, as_of_date: e.target.value }))}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"/>
             </div>
 
             <div className="flex items-end">

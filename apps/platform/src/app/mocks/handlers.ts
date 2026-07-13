@@ -5,13 +5,13 @@ import { UsersResponse, InviteUserResponse } from '../services/user.service';
 import { mockSubscriptions } from './data/subscriptions';
 import { mockUsers } from './data/users';
 
-const API_BASE_URL = process.env['NX_API_BASE_URL'] || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.NX_API_BASE_URL || 'http://localhost:8000';
 
-console.log('🔵 MSW: Using API_BASE_URL =', process.env['NX_NODE_ENV']);
+console.log('🔵 MSW: Using API_BASE_URL =', process.env.NX_NODE_ENV);
 
 export const handlers = [
   // GET /api/v1/users - Get paginated users
-  http.get(`${API_BASE_URL}/users`, ({ request }) => {
+  http.get(`${API_BASE_URL}/api/v1/users`, ({ request }) => {
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const pageSize = parseInt(url.searchParams.get('page_size') || '20');
@@ -43,7 +43,7 @@ export const handlers = [
   }),
 
   // POST /api/v1/users/invite - Invite a new user
-  http.post(`${API_BASE_URL}/users/invite`, async ({ request }) => {
+  http.post(`${API_BASE_URL}/api/v1/identity/invitations`, async ({ request }) => {
     const body = (await request.json()) as { email: string };
     console.log('🔵 MSW: POST /users/invite', body);
 
@@ -62,13 +62,13 @@ export const handlers = [
   }),
 
   // GET /api/v1/subscriptions/current - Get current subscriptions
-  http.get(`${API_BASE_URL}/subscriptions/current`, () => {
+  http.get(`${API_BASE_URL}/api/v1/identity/subscriptions/current`, () => {
     console.log('🔵 MSW: GET /subscriptions/current');
     return HttpResponse.json(mockSubscriptions, { status: 200 });
   }),
 
   // POST /api/v1/subscriptions - Create new subscription
-  http.post(`${API_BASE_URL}/subscriptions`, async ({ request }) => {
+  http.post(`${API_BASE_URL}/api/v1/identity/subscriptions`, async ({ request }) => {
     const body = (await request.json()) as { plan_code: string; billing_cycle: string };
     console.log('🔵 MSW: POST /subscriptions', body);
 
@@ -92,7 +92,7 @@ export const handlers = [
   }),
 
   // POST /api/v1/identity/login - Login endpoint (supports remember_me for cookie behaviour)
-  http.post(`${API_BASE_URL}/identity/login`, async ({ request }) => {
+  http.post(`${API_BASE_URL}/api/v1/identity/login`, async ({ request }) => {
     const body = (await request.json()) as { email: string; password?: string; remember_me?: boolean };
     console.log('🔵 MSW: POST /identity/login', body);
 
@@ -116,7 +116,7 @@ export const handlers = [
   }),
 
   // POST /api/v1/identity/refresh - Refresh access token (cookie-based refresh in production)
-  http.post(`${API_BASE_URL}/identity/refresh`, async () => {
+  http.post(`${API_BASE_URL}/api/v1/identity/refresh`, async () => {
     console.log('🔵 MSW: POST /identity/refresh');
     const response = {
       access_token: 'mock_access_token_' + Date.now(),
@@ -127,7 +127,7 @@ export const handlers = [
   }),
 
   // POST /api/v1/auth/register - Register endpoint
-  http.post(`${API_BASE_URL}/identity/register`, async ({ request }) => {
+  http.post(`${API_BASE_URL}/api/v1/identity/register`, async ({ request }) => {
     const body = (await request.json()) as { email: string; first_name: string; last_name: string };
     console.log('🔵 MSW: POST /auth/register', body);
 

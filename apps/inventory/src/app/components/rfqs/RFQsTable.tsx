@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { FileText, Plus, MoreHorizontal, Eye, Edit, Trash2, Send, XCircle } from 'lucide-react';
 
@@ -207,10 +208,8 @@ export function RFQsTable({
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={() => onDelete(rfq)}
-                        className="text-destructive focus:text-destructive"
-                      >
+                      <DropdownMenuItem onClick={() => onDelete(rfq)}
+                        className="text-destructive focus:text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete RFQ
                       </DropdownMenuItem>
@@ -252,8 +251,7 @@ export function RFQsTable({
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState 
-              icon={<FileText className="h-12 w-12" />}
+            <EmptyState icon={<FileText className="h-12 w-12" />}
               title="No RFQs found"
               description={
                 hasActiveFilters
@@ -267,8 +265,7 @@ export function RFQsTable({
                     New RFQ
                   </Button>
                 ) : undefined
-              }
-            />
+              }/>
           </div>
         </CardContent>
       </Card>
@@ -278,8 +275,7 @@ export function RFQsTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable 
-          columns={columns}
+        <DataTable columns={columns}
           data={rfqs}
           config={{
             showSerialNumber: true,
@@ -294,8 +290,7 @@ export function RFQsTable({
           filterPlaceholder="Search by RFQ #, material request..."
           renderViewOptions={renderViewOptions}
           fixedHeader
-          maxHeight="auto"
-        />
+          maxHeight="auto"/>
       </CardContent>
     </Card>
   );

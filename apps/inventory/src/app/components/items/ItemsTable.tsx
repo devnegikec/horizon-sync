@@ -16,6 +16,8 @@ import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
 import type { ApiItem } from '../../types/items-api.types';
 import { formatDate } from '../../utility/formatDate';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '../../types/currency.types';
 
 export interface ItemsTableProps {
   items: ApiItem[];
@@ -37,19 +39,19 @@ export interface ItemsTableProps {
   };
 }
 
-export function ItemsTable({ 
-  items, 
-  loading, 
-  error, 
-  hasActiveFilters, 
-  onView, 
-  onEdit, 
-  onToggleStatus, 
-  onCreateItem, 
+export function ItemsTable({
+  items,
+  loading,
+  error,
+  hasActiveFilters,
+  onView,
+  onEdit,
+  onToggleStatus,
+  onCreateItem,
   onBulkUpload,
   onCreateOrganization,
-  onTableReady, 
-  serverPagination 
+  onTableReady,
+  serverPagination
 }: ItemsTableProps) {
   const [tableInstance, setTableInstance] = React.useState<Table<ApiItem> | null>(null);
 
@@ -74,6 +76,8 @@ export function ItemsTable({
     };
   }, [serverPagination]);
 
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const columns: ColumnDef<ApiItem, unknown>[] = React.useMemo(
     () => [
       {
@@ -94,6 +98,11 @@ export function ItemsTable({
         cell: ({ row }) => <code className="text-sm bg-muted px-2 py-1 rounded">{row.original.item_code ?? ''}</code>,
       },
       {
+        accessorKey: 'sku',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="SKU" />,
+        cell: ({ row }) => <span className="font-mono text-xs">{row.original.sku ?? '—'}</span>,
+      },
+      {
         accessorKey: 'item_group_name',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Group" />,
         cell: ({ row }) => row.original.item_group_name ?? '',
@@ -106,7 +115,7 @@ export function ItemsTable({
       {
         accessorKey: 'standard_rate',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Standard Rate" />,
-        cell: ({ row }) => row.original.standard_rate ?? '',
+        cell: ({ row }) => row.original.standard_rate != null ? `${currencySymbol}${row.original.standard_rate}` : '',
       },
       {
         accessorKey: 'status',
@@ -154,7 +163,10 @@ export function ItemsTable({
                     Edit Item
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => onToggleStatus(item)}>
+                  <DropdownMenuItem
+                    onClick={() => onToggleStatus(item)}
+                    className={isActive ? 'text-destructive focus:text-destructive' : undefined}
+                  >
                     {isActive ? (
                       <>
                         <PowerOff className="mr-2 h-4 w-4" />
@@ -179,10 +191,12 @@ export function ItemsTable({
   );
 
   // Callback to capture table instance from DataTable
-  const handleTableReady = React.useCallback((table: Table<ApiItem>) => {
-    setTableInstance(table);
-    return <DataTableViewOptions table={table} />;
-  }, []);
+  const handleTableReady = (table: Table<ApiItem>) => {
+    if (table !== tableInstance) {
+      setTableInstance(table);
+    }
+    return null;
+  };
 
   // Check if error is related to organization
   const isOrganizationError = error && (
@@ -214,21 +228,20 @@ export function ItemsTable({
   // Show organization error or empty state
   if (isOrganizationError || items.length === 0) {
     const isOrgError = isOrganizationError;
-    
+
     return (
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState 
-              icon={<Package className="h-12 w-12" />} 
-              title={isOrgError ? "Organization Required" : "No items found"} 
+            <EmptyState icon={<Package className="h-12 w-12" />}
+              title={isOrgError ? "Organization Required" : "No items found"}
               description={
-                isOrgError 
+                isOrgError
                   ? "You need to create an organization before you can manage inventory items."
-                  : hasActiveFilters 
-                    ? 'Try adjusting your search or filters' 
+                  : hasActiveFilters
+                    ? 'Try adjusting your search or filters'
                     : 'Get started by adding your first item'
-              } 
+              }
               action={
                 isOrgError ? (
                   <div className="flex flex-col gap-3 items-center">
@@ -257,8 +270,7 @@ export function ItemsTable({
                     Add Item
                   </Button>
                 ) : undefined
-              } 
-            />
+              } />
           </div>
         </CardContent>
       </Card>
@@ -282,7 +294,7 @@ export function ItemsTable({
           }}
           renderViewOptions={handleTableReady}
           fixedHeader
-          maxHeight="600px"/>
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );

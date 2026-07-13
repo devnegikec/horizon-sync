@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+
 import { type Table } from '@tanstack/react-table';
 import { Wallet, Plus, Download } from 'lucide-react';
 
@@ -14,14 +15,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { cn } from '@horizon-sync/ui/lib';
+import { useUserStore } from '@horizon-sync/store';
+import { useToast } from '@horizon-sync/ui/hooks';
 
-import { useAccounts } from '../../hooks/useAccounts';
 import { useAccountActions } from '../../hooks/useAccountActions';
+import { useAccounts } from '../../hooks/useAccounts';
+import { useDefaultAccounts } from '../../hooks/useDefaultAccounts';
 import type { AccountListItem, AccountFilters } from '../../types/account.types';
+import { ACCOUNT_TYPE_COLORS } from '../../utils/accountColors';
+import { isSystemAdmin } from '../../utils/permissions';
+import { DeleteConfirmationDialog } from '../common/DeleteConfirmationDialog';
 
 import { AccountDialog } from './AccountDialog';
 import { AccountsTable } from './AccountsTable';
+import { DefaultAccountDeleteDialog } from './DefaultAccountDeleteDialog';
 
 interface StatCardProps {
   title: string;
@@ -50,6 +59,8 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 }
 
 export function AccountManagement() {
+  const { permissions } = useUserStore();
+  const { toast } = useToast();
   const [filters, setFilters] = useState<AccountFilters>({
     search: '',
     account_type: 'all',
@@ -69,10 +80,26 @@ export function AccountManagement() {
     currentPageSize,
   } = useAccounts(1, 20, filters);
 
-  const { toggleAccountStatus } = useAccountActions();
+  const { toggleAccountStatus, deleteAccount } = useAccountActions();
+  const { 
+    isDefaultAccount, 
+    getDefaultAccountUsage, 
+    loading: defaultAccountsLoading,
+    defaultAccounts 
+  } = useDefaultAccounts();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<AccountListItem | null>(null);
   const [tableInstance, setTableInstance] = useState<Table<AccountListItem> | null>(null);
+  
+  // Delete confirmation dialogs
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [defaultDeleteDialogOpen, setDefaultDeleteDialogOpen] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<AccountListItem | null>(null);
+  const [confirmToggleAccount, setConfirmToggleAccount] = useState<AccountListItem | null>(null);
+  
+  const userIsSystemAdmin = useMemo(() => {
+    return isSystemAdmin(permissions?.permissions || []);
+  }, [permissions]);
 
   const stats = useMemo(() => {
     const total = pagination?.total_items ?? 0;
@@ -95,16 +122,19 @@ export function AccountManagement() {
     setDialogOpen(true);
   };
 
-  const handleToggleStatus = async (account: AccountListItem) => {
-    const action = account.is_active ? 'deactivate' : 'activate';
-    if (window.confirm(`Are you sure you want to ${action} account "${account.account_name}"?`)) {
-      try {
-        await toggleAccountStatus(account.id, account.is_active);
-        refetch();
-      } catch {
-        // Error handled in hook
-      }
+  const handleToggleStatus = (account: AccountListItem) => {
+    setConfirmToggleAccount(account);
+  };
+
+  const executeToggleStatus = async () => {
+    if (!confirmToggleAccount) return;
+    try {
+      await toggleAccountStatus(confirmToggleAccount.id, confirmToggleAccount.is_active);
+      refetch();
+    } catch {
+      // Error handled in hook
     }
+    setConfirmToggleAccount(null);
   };
 
   const handleTableReady = useCallback((table: Table<AccountListItem>) => {
@@ -117,12 +147,64 @@ export function AccountManagement() {
       pageSize: currentPageSize,
       totalItems: pagination?.total_items ?? 0,
       onPaginationChange: (pageIndex: number, newPageSize: number) => {
-        setPage(pageIndex + 1);
-        setPageSize(newPageSize);
+        if (newPageSize !== currentPageSize) {
+          setPageSize(newPageSize); // This resets page to 1 internally
+        } else {
+          setPage(pageIndex + 1);
+        }
       },
     }),
     [currentPage, currentPageSize, pagination?.total_items, setPage, setPageSize]
   );
+
+  const handleDeleteAccount = (account: AccountListItem) => {
+    setAccountToDelete(account);
+    
+    // Check if this is a default account
+    const accountIsDefault = isDefaultAccount(account.id);
+    const accountUsage = getDefaultAccountUsage(account.id);
+    
+    console.log('Delete account attempt:', {
+      accountId: account.id,
+      accountName: account.account_name,
+      isDefault: accountIsDefault,
+      usage: accountUsage,
+      isSystemAdmin: userIsSystemAdmin,
+      defaultAccountsLoading,
+      totalDefaultAccounts: defaultAccounts.length
+    });
+    
+    if (accountIsDefault) {
+      // For default accounts, show the special dialog
+      setDefaultDeleteDialogOpen(true);
+    } else {
+      // For regular accounts, show normal delete confirmation
+      setDeleteDialogOpen(true);
+    }
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (!accountToDelete) return;
+    
+    try {
+      await deleteAccount(accountToDelete.id);
+      toast({
+        title: 'Success',
+        description: `Account "${accountToDelete.account_name}" has been deleted.`,
+      });
+      refetch();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to delete account',
+        variant: 'destructive',
+      });
+    } finally {
+      setAccountToDelete(null);
+      setDeleteDialogOpen(false);
+      setDefaultDeleteDialogOpen(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -137,10 +219,8 @@ export function AccountManagement() {
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button
-            onClick={handleCreateAccount}
-            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shadow-lg"
-          >
+          <Button onClick={handleCreateAccount}
+            className="gap-2">
             <Plus className="h-4 w-4" />
             Create Account
           </Button>
@@ -149,49 +229,37 @@ export function AccountManagement() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Accounts"
+        <StatCard title="Total Accounts"
           value={stats.total}
           icon={Wallet}
           iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"
-        />
-        <StatCard
-          title="Active Accounts"
+          iconColor="text-slate-600 dark:text-slate-400"/>
+        <StatCard title="Active Accounts"
           value={stats.active}
           icon={Wallet}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"
-        />
-        <StatCard
-          title="Assets"
+          iconColor="text-emerald-600 dark:text-emerald-400"/>
+        <StatCard title="Assets"
           value={stats.byType.ASSET || 0}
           icon={Wallet}
           iconBg="bg-blue-100 dark:bg-blue-900/20"
-          iconColor="text-blue-600 dark:text-blue-400"
-        />
-        <StatCard
-          title="Liabilities"
+          iconColor="text-blue-600 dark:text-blue-400"/>
+        <StatCard title="Liabilities"
           value={stats.byType.LIABILITY || 0}
           icon={Wallet}
-          iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"
-        />
+          iconBg="bg-red-100 dark:bg-red-900/20"
+          iconColor="text-red-600 dark:text-red-400"/>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <SearchInput
-            className="sm:w-80"
+          <SearchInput className="sm:w-80"
             placeholder="Search by code or name..."
-            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
-          />
+            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
           <div className="flex gap-3">
-            <Select
-              value={filters.account_type}
-              onValueChange={(value) => setFilters((prev) => ({ ...prev, account_type: value }))}
-            >
+            <Select value={filters.account_type}
+              onValueChange={(value) => setFilters((prev) => ({ ...prev, account_type: value }))}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
@@ -204,10 +272,8 @@ export function AccountManagement() {
                 <SelectItem value="EXPENSE">Expense</SelectItem>
               </SelectContent>
             </Select>
-            <Select
-              value={filters.status}
-              onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
-            >
+            <Select value={filters.status}
+              onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
@@ -223,25 +289,52 @@ export function AccountManagement() {
       </div>
 
       {/* Accounts Table */}
-      <AccountsTable
-        accounts={accounts}
+      <AccountsTable accounts={accounts}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.account_type !== 'all' || filters.status !== 'all'}
         onEdit={handleEditAccount}
         onToggleStatus={handleToggleStatus}
+        onDelete={handleDeleteAccount}
         onCreateAccount={handleCreateAccount}
         onTableReady={handleTableReady}
         serverPagination={serverPaginationConfig}
-      />
+        isDefaultAccount={isDefaultAccount}
+        isSystemAdmin={userIsSystemAdmin}/>
 
       {/* Dialog */}
-      <AccountDialog
-        open={dialogOpen}
+      <AccountDialog open={dialogOpen}
         onOpenChange={setDialogOpen}
         account={selectedAccount}
         onCreated={refetch}
-        onUpdated={refetch}
+        onUpdated={refetch}/>
+
+      {/* Delete Confirmation Dialogs */}
+      <DeleteConfirmationDialog 
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDeleteAccount}
+        description={accountToDelete ? `Are you sure you want to delete account "${accountToDelete.account_name}" (${accountToDelete.account_code})? This action cannot be undone.` : ''}
+      />
+
+      <DefaultAccountDeleteDialog 
+        open={defaultDeleteDialogOpen}
+        onOpenChange={setDefaultDeleteDialogOpen}
+        onConfirm={confirmDeleteAccount}
+        account={accountToDelete}
+        defaultAccountUsage={accountToDelete ? getDefaultAccountUsage(accountToDelete.id) : []}
+        isSystemAdmin={userIsSystemAdmin}
+      />
+
+      {/* Toggle Status Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmToggleAccount}
+        onOpenChange={(open) => { if (!open) setConfirmToggleAccount(null); }}
+        title={confirmToggleAccount?.is_active ? 'Deactivate Account' : 'Activate Account'}
+        description={confirmToggleAccount ? `Are you sure you want to ${confirmToggleAccount.is_active ? 'deactivate' : 'activate'} account "${confirmToggleAccount.account_name}"?` : ''}
+        confirmLabel={confirmToggleAccount?.is_active ? 'Deactivate' : 'Activate'}
+        variant={confirmToggleAccount?.is_active ? 'destructive' : 'default'}
+        onConfirm={executeToggleStatus}
       />
     </div>
   );

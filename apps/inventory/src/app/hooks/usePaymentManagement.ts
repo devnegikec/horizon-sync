@@ -1,10 +1,12 @@
 import * as React from 'react';
 import { useMemo, useEffect } from 'react';
+
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import type { Table } from '@tanstack/react-table';
 
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
+
 import { paymentApi } from '../api/payments';
 import type { 
   Payment, 
@@ -13,6 +15,7 @@ import type {
   PaymentStats 
 } from '../types/payment';
 import { formatErrorForToast } from '../utils/errorHandling';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface PaymentFilters {
   search: string;
@@ -108,7 +111,7 @@ function usePayments(
     payments: data?.payments ?? [],
     pagination: data?.pagination ?? null,
     loading: isLoading,
-    error: error instanceof Error ? error.message : error ? 'Failed to load payments' : null,
+    error: error ? getFriendlyErrorMessage(error) : null,
     refetch: async () => {
       await refetch();
     },
@@ -280,6 +283,7 @@ export function usePaymentManagement(): UsePaymentManagementResult {
       } else {
         await paymentApi.create(accessToken, data);
         toast({ title: 'Success', description: 'Payment created successfully' });
+        setPage(1);
       }
       
       // Invalidate payment queries

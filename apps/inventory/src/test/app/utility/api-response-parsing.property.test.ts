@@ -6,6 +6,7 @@
  */
 
 import fc from 'fast-check';
+
 import type { StockLevel, StockMovement, StockEntry, StockReconciliation } from '../../../app/types/stock.types';
 
 // Helper to generate valid date strings

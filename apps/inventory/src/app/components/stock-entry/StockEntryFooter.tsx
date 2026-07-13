@@ -1,0 +1,63 @@
+import * as React from 'react';
+
+import { Loader2 } from 'lucide-react';
+
+import { useCurrencyStore } from '@horizon-sync/store';
+import { Button } from '@horizon-sync/ui/components/ui/button';
+import { DialogFooter } from '@horizon-sync/ui/components/ui/dialog';
+
+import { getCurrencySymbol } from '../../types/currency.types';
+
+interface StockEntryFooterProps {
+  onCancel: () => void;
+  loading: boolean;
+  isEditing: boolean;
+  submitError?: string | null;
+  grandTotal: number;
+  disableSubmit?: boolean;
+}
+
+export function StockEntryFooter({
+  onCancel,
+  loading,
+  isEditing,
+  submitError,
+  grandTotal,
+  disableSubmit = false,
+}: StockEntryFooterProps) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <div className="text-sm text-muted-foreground">
+          Total: <span className="font-semibold text-foreground">{currencySymbol}{grandTotal.toFixed(2)}</span>
+        </div>
+      </div>
+
+      {submitError && <p className="text-sm text-destructive">{submitError}</p>}
+
+      <DialogFooter>
+        <Button type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={loading}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={loading || disableSubmit}>
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {isEditing ? 'Saving...' : 'Creating...'}
+            </>
+          ) : isEditing ? (
+            'Save Changes'
+          ) : (
+            'Create Entry'
+          )}
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}

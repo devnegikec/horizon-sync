@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { usePurchaseReceipts } from '../../hooks/usePurchaseReceipts';
+
 import { usePurchaseReceiptActions } from '../../hooks/usePurchaseReceiptActions';
+import { usePurchaseReceipts } from '../../hooks/usePurchaseReceipts';
 import type { PurchaseReceipt, PurchaseReceiptListItem } from '../../types/purchase-receipt.types';
 
 import {
@@ -51,27 +52,21 @@ export function PurchaseReceiptManagement() {
 
       <PurchaseReceiptFilters filters={filters} setFilters={setFilters} />
 
-      <PurchaseReceiptTable
-        purchaseReceipts={purchaseReceipts}
+      <PurchaseReceiptTable purchaseReceipts={purchaseReceipts}
         loading={loading || actionLoading}
         error={error}
         totalCount={totalCount}
         filters={filters}
         setFilters={setFilters}
-        onView={handleView}
-      />
+        onView={handleView}/>
 
-      <PurchaseReceiptDialog
-        open={dialogOpen}
+      <PurchaseReceiptDialog open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onSave={handleSave}
-      />
+        onSave={handleSave}/>
 
-      <PurchaseReceiptDetailDialog
-        open={detailDialogOpen}
+      <PurchaseReceiptDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        purchaseReceipt={selectedReceipt}
-      />
+        purchaseReceipt={selectedReceipt}/>
     </div>
   );
 }

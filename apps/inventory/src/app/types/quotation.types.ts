@@ -10,6 +10,9 @@ export interface QuotationLineItem {
   uom: string;
   rate: number | string;
   amount: number | string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number | string;
+  discount_amount?: number | string;
   tax_template_id?: string | null;
   tax_rate?: number | string;
   tax_amount?: number | string;
@@ -45,11 +48,86 @@ export interface QuotationLineItem {
   extra_data?: Record<string, unknown>;
 }
 
+export interface TableMeta {
+  updateData?: (rowIndex: number, columnId: string, value: unknown) => void;
+  deleteRow?: (rowIndex: number) => void;
+  getItemData?: (itemId: string) => QuotationLineItem | undefined;
+  searchItems?: (query: string) => Promise<QuotationLineItem[]>;
+  itemLabelFormatter?: (item: QuotationLineItem) => string;
+  disabled?: boolean;
+  currency?: string;
+}
+
+export interface PickerResponse {
+  items: QuotationLineItem[];
+}
+
+export interface DocumentDiscountControls {
+  type: 'flat' | 'percentage';
+  value: string;
+  onTypeChange: (value: string) => void;
+  onValueChange: (value: string) => void;
+  disabled?: boolean;
+}
+
+export interface QuotationSummary {
+  /** Sum of line amounts (qty × rate) */
+  subtotalAmount: number;
+  /** Sum of line tax amounts */
+  subtotalTax: number;
+  /** Sum of line totals (before document-level discount) */
+  subtotalTotal: number;
+  /** Sum of line-level discount amounts */
+  subtotalLineDiscount: number;
+  /** Document-level discount amount (computed) */
+  discountAmount: number;
+  /** After document discount */
+  grandTotal: number;
+  /** When provided, discount-on-total dropdown + input are rendered in the footer Discount column */
+  documentDiscount?: DocumentDiscountControls;
+}
+
+export interface QuotationLineItemsTableProps {
+  items: QuotationLineItemCreate[];
+  onItemsChange: (items: QuotationLineItemCreate[]) => void;
+  disabled?: boolean;
+  currency?: string;
+  /** When provided, footer rows (Subtotal, Discount, Grand Total) are shown aligned with table columns */
+  summary?: QuotationSummary;
+}
+
+export interface QuotationDetailDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  quotation: Quotation | null;
+  onEdit: (quotation: Quotation) => void;
+  onConvert: (quotation: Quotation) => void;
+}
+
+export interface QuotationDetailFooterProps {
+  quotation: Quotation;
+  pdfLoading: boolean;
+  onClose: () => void;
+  onPreview: () => void;
+  onDownload: () => void;
+  onSendEmail: () => void;
+  onEdit: (q: Quotation) => void;
+  onConvert: (q: Quotation) => void;
+}
+
 export interface CustomerInfo {
-  customer_code: string;
-  customer_name: string;
+  code: string;
+  name: string;
   email?: string;
   phone?: string;
+  address?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  tax_number?: string;
 }
 
 export interface Quotation {
@@ -65,6 +143,9 @@ export interface Quotation {
   currency: string;
   status: QuotationStatus;
   remarks?: string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number | string;
+  discount_amount?: number | string;
   line_items?: QuotationLineItem[];
   items?: QuotationLineItem[]; // API returns 'items' instead of 'line_items'
   converted_to_sales_order?: boolean;
@@ -96,6 +177,9 @@ export interface QuotationLineItemCreate {
   uom: string;
   rate: number | string;
   amount: number | string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number | string;
+  discount_amount?: number | string;
   tax_template_id?: string | null;
   tax_rate?: number | string;
   tax_amount?: number | string;
@@ -112,6 +196,9 @@ export interface QuotationCreate {
   grand_total?: number;
   currency: string;
   remarks?: string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
+  discount_amount?: number;
   items: QuotationLineItemCreate[];
 }
 
@@ -120,6 +207,9 @@ export interface QuotationUpdate {
   valid_until?: string;
   status?: QuotationStatus;
   remarks?: string;
+  discount_type?: 'flat' | 'percentage';
+  discount_value?: number;
+  discount_amount?: number;
   items?: QuotationLineItemCreate[];
 }
 
@@ -130,6 +220,26 @@ export interface PaginationInfo {
   total_pages: number;
   has_next: boolean;
   has_prev: boolean;
+}
+
+export interface QuotationFormState {
+  quotation_no: string;
+  customer_id: string;
+  quotation_date: string;
+  valid_until: string;
+  currency: string;
+  status: QuotationStatus;
+  remarks: string;
+  discount_type: 'flat' | 'percentage';
+  discount_value: string;
+}
+
+export interface QuotationDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  quotation: Quotation | null;
+  onSave: (data: QuotationCreate | QuotationUpdate, id?: string) => Promise<void>;
+  saving: boolean;
 }
 
 export interface ServerPaginationConfig {

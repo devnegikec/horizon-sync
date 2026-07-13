@@ -1,7 +1,9 @@
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
+
 import { Search, Loader2 } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import {
   Select,
   SelectContent,
@@ -12,9 +14,8 @@ import {
   Label,
 } from '@horizon-sync/ui/components';
 
-import { useUserStore } from '@horizon-sync/store';
-import { accountApi } from '../../utility/api/accounts';
 import type { AccountListItem, AccountType } from '../../types/account.types';
+import { accountApi } from '../../utility/api/accounts';
 
 export interface AccountSelectorProps {
   value?: string;
@@ -24,6 +25,7 @@ export interface AccountSelectorProps {
   filterByType?: AccountType | AccountType[];
   filterByStatus?: 'active' | 'inactive' | 'all';
   excludeParentAccounts?: boolean;
+  postingAccountsOnly?: boolean;
   disabled?: boolean;
   required?: boolean;
   error?: string;
@@ -40,6 +42,7 @@ export interface AccountSelectorProps {
  *   label="Select Account"
  *   filterByType="ASSET"
  *   excludeParentAccounts={true}
+ *   postingAccountsOnly={true}
  * />
  * ```
  */
@@ -51,6 +54,7 @@ export function AccountSelector({
   filterByType,
   filterByStatus = 'active',
   excludeParentAccounts = false,
+  postingAccountsOnly = false,
   disabled = false,
   required = false,
   error,
@@ -98,6 +102,13 @@ export function AccountSelector({
         accountsList = accountsList.filter(acc => acc.is_group === false);
       }
 
+      // Filter to only posting accounts if requested
+      // Posting accounts are accounts that can have transactions posted to them
+      // Non-posting accounts are typically parent/group accounts used for organization only
+      if (postingAccountsOnly) {
+        accountsList = accountsList.filter(acc => acc.is_posting_account === true);
+      }
+
       setAccounts(accountsList);
     } catch (err) {
       console.error('Failed to load accounts:', err);
@@ -128,11 +139,9 @@ export function AccountSelector({
         </Label>
       )}
 
-      <Select
-        value={value}
+      <Select value={value}
         onValueChange={onValueChange}
-        disabled={disabled || loading}
-      >
+        disabled={disabled || loading}>
         <SelectTrigger className={error ? 'border-destructive' : ''}>
           <SelectValue placeholder={loading ? 'Loading...' : placeholder}>
             {selectedAccount && (
@@ -146,12 +155,10 @@ export function AccountSelector({
           <div className="p-2 border-b">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search accounts..."
+              <Input placeholder="Search accounts..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
+                className="pl-8"/>
             </div>
           </div>
 

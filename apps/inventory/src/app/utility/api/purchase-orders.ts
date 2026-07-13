@@ -10,8 +10,7 @@ import type {
   PurchaseOrdersResponse,
   PurchaseOrderFilters,
 } from '../../types/purchase-order.types';
-
-const API_BASE_URL = process.env['NX_API_BASE_URL'] || 'http://localhost:8001';
+import { apiRequest } from './core';
 
 export const purchaseOrderApi = {
   /**
@@ -19,27 +18,17 @@ export const purchaseOrderApi = {
    * GET /api/v1/purchase-orders
    */
   list: async (accessToken: string, filters: Partial<PurchaseOrderFilters> = {}): Promise<PurchaseOrdersResponse> => {
-    const params = new URLSearchParams();
-    if (filters.page) params.append('page', filters.page.toString());
-    if (filters.page_size) params.append('page_size', filters.page_size.toString());
-    // Only include status if it's not 'all' - backend doesn't accept 'all' as a value
-    if (filters.status && filters.status !== 'all') params.append('status', filters.status);
-    if (filters.sort_by) params.append('sort_by', filters.sort_by);
-    if (filters.sort_order) params.append('sort_order', filters.sort_order);
-    if (filters.search) params.append('search', filters.search);
-
-    const response = await fetch(`${API_BASE_URL}/api/v1/purchase-orders?${params}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+    return apiRequest<PurchaseOrdersResponse>('/purchase-orders', accessToken, {
+      params: {
+        ...(filters.page && { page: filters.page }),
+        ...(filters.page_size && { page_size: filters.page_size }),
+        // Only include status if it's not 'all' - backend doesn't accept 'all' as a value
+        ...(filters.status && filters.status !== 'all' && { status: filters.status }),
+        ...(filters.sort_by && { sort_by: filters.sort_by }),
+        ...(filters.sort_order && { sort_order: filters.sort_order }),
+        ...(filters.search && { search: filters.search }),
       },
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Purchase Orders: ${response.statusText}`);
-    }
-
-    return response.json();
   },
 
   /**
@@ -47,18 +36,7 @@ export const purchaseOrderApi = {
    * GET /api/v1/purchase-orders/{po_id}
    */
   getById: async (accessToken: string, id: string): Promise<PurchaseOrder> => {
-    const response = await fetch(`${API_BASE_URL}/api/v1/purchase-orders/${id}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Purchase Order: ${response.statusText}`);
-    }
-
-    return response.json();
+    return apiRequest<PurchaseOrder>(`/purchase-orders/${id}`, accessToken);
   },
 
   /**
@@ -66,20 +44,10 @@ export const purchaseOrderApi = {
    * POST /api/v1/purchase-orders
    */
   create: async (accessToken: string, payload: CreatePurchaseOrderPayload): Promise<PurchaseOrder> => {
-    const response = await fetch(`${API_BASE_URL}/api/v1/purchase-orders`, {
+    return apiRequest<PurchaseOrder>('/purchase-orders', accessToken, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
+      body: payload,
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to create Purchase Order: ${response.statusText}`);
-    }
-
-    return response.json();
   },
 
   /**
@@ -87,20 +55,10 @@ export const purchaseOrderApi = {
    * PUT /api/v1/purchase-orders/{po_id}
    */
   update: async (accessToken: string, id: string, payload: UpdatePurchaseOrderPayload): Promise<PurchaseOrder> => {
-    const response = await fetch(`${API_BASE_URL}/api/v1/purchase-orders/${id}`, {
+    return apiRequest<PurchaseOrder>(`/purchase-orders/${id}`, accessToken, {
       method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
+      body: payload,
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to update Purchase Order: ${response.statusText}`);
-    }
-
-    return response.json();
   },
 
   /**
@@ -108,17 +66,9 @@ export const purchaseOrderApi = {
    * DELETE /api/v1/purchase-orders/{po_id}
    */
   delete: async (accessToken: string, id: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/api/v1/purchase-orders/${id}`, {
+    return apiRequest<void>(`/purchase-orders/${id}`, accessToken, {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to delete Purchase Order: ${response.statusText}`);
-    }
   },
 
   /**
@@ -126,19 +76,9 @@ export const purchaseOrderApi = {
    * POST /api/v1/purchase-orders/{po_id}/submit
    */
   submit: async (accessToken: string, id: string): Promise<PurchaseOrder> => {
-    const response = await fetch(`${API_BASE_URL}/api/v1/purchase-orders/${id}/submit`, {
+    return apiRequest<PurchaseOrder>(`/purchase-orders/${id}/submit`, accessToken, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to submit Purchase Order: ${response.statusText}`);
-    }
-
-    return response.json();
   },
 
   /**
@@ -146,19 +86,9 @@ export const purchaseOrderApi = {
    * POST /api/v1/purchase-orders/{po_id}/cancel
    */
   cancel: async (accessToken: string, id: string): Promise<PurchaseOrder> => {
-    const response = await fetch(`${API_BASE_URL}/api/v1/purchase-orders/${id}/cancel`, {
+    return apiRequest<PurchaseOrder>(`/purchase-orders/${id}/cancel`, accessToken, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to cancel Purchase Order: ${response.statusText}`);
-    }
-
-    return response.json();
   },
 
   /**
@@ -166,18 +96,8 @@ export const purchaseOrderApi = {
    * POST /api/v1/purchase-orders/{po_id}/close
    */
   close: async (accessToken: string, id: string): Promise<PurchaseOrder> => {
-    const response = await fetch(`${API_BASE_URL}/api/v1/purchase-orders/${id}/close`, {
+    return apiRequest<PurchaseOrder>(`/purchase-orders/${id}/close`, accessToken, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to close Purchase Order: ${response.statusText}`);
-    }
-
-    return response.json();
   },
 };

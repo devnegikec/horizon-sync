@@ -1,12 +1,17 @@
 import { useState } from 'react';
-import { useLandedCosts } from '../../hooks/useLandedCosts';
+
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
+
 import { useLandedCostActions } from '../../hooks/useLandedCostActions';
-import { LandedCostHeader } from './LandedCostHeader';
-import { LandedCostFilters } from './LandedCostFilters';
-import { LandedCostTable } from './LandedCostTable';
-import { LandedCostDialog } from './LandedCostDialog';
-import { LandedCostDetailDialog } from './LandedCostDetailDialog';
+import { useLandedCosts } from '../../hooks/useLandedCosts';
 import type { LandedCostVoucherListItem } from '../../types/landed-cost.types';
+
+import { LandedCostDetailDialog } from './LandedCostDetailDialog';
+import { LandedCostDialog } from './LandedCostDialog';
+import { LandedCostFilters } from './LandedCostFilters';
+import { LandedCostHeader } from './LandedCostHeader';
+import { LandedCostTable } from './LandedCostTable';
+
 
 export function LandedCostManagement() {
   const { landedCosts, loading, error, totalCount, filters, setFilters, refetch } = useLandedCosts();
@@ -16,6 +21,7 @@ export function LandedCostManagement() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState<LandedCostVoucherListItem | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const handleCreate = () => {
     setSelectedVoucher(null);
@@ -34,13 +40,17 @@ export function LandedCostManagement() {
     setDetailDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this landed cost voucher?')) {
-      const success = await deleteLandedCost(id);
-      if (success) {
-        refetch();
-      }
+  const handleDelete = (id: string) => {
+    setConfirmDeleteId(id);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDeleteId) return;
+    const success = await deleteLandedCost(confirmDeleteId);
+    if (success) {
+      refetch();
     }
+    setConfirmDeleteId(null);
   };
 
   const handleDialogClose = (shouldRefetch?: boolean) => {
@@ -69,31 +79,36 @@ export function LandedCostManagement() {
         </div>
       )}
 
-      <LandedCostTable
-        landedCosts={landedCosts}
+      <LandedCostTable landedCosts={landedCosts}
         loading={loading}
         totalCount={totalCount}
         filters={filters}
         setFilters={setFilters}
         onView={handleView}
         onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+        onDelete={handleDelete}/>
 
-      <LandedCostDialog
-        open={dialogOpen}
+      <LandedCostDialog open={dialogOpen}
         onClose={handleDialogClose}
         voucher={selectedVoucher}
         editMode={editMode}
         createLandedCost={createLandedCost}
         updateLandedCost={updateLandedCost}
-        loading={actionLoading}
-      />
+        loading={actionLoading}/>
 
-      <LandedCostDetailDialog
-        open={detailDialogOpen}
+      <LandedCostDetailDialog open={detailDialogOpen}
         onClose={handleDetailDialogClose}
-        voucherId={selectedVoucher?.id}
+        voucherId={selectedVoucher?.id}/>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmDeleteId}
+        onOpenChange={(open) => { if (!open) setConfirmDeleteId(null); }}
+        title="Delete Landed Cost Voucher"
+        description="Are you sure you want to delete this landed cost voucher?"
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={executeDelete}
       />
     </div>
   );

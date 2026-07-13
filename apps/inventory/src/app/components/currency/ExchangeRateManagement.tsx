@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
+
 import {
   Button,
   Input,
@@ -11,6 +12,7 @@ import {
   SelectValue,
   Card,
 } from '@horizon-sync/ui/components';
+
 import { SUPPORTED_CURRENCIES, getCurrencySymbol } from '../../types/currency.types';
 import type { ExchangeRate, CreateExchangeRatePayload } from '../../types/currency.types';
 
@@ -157,10 +159,8 @@ export function ExchangeRateManagement({ baseCurrency = 'USD' }: ExchangeRateMan
               <Label htmlFor="from_currency">
                 From Currency <span className="text-destructive">*</span>
               </Label>
-              <Select
-                value={formData.from_currency}
-                onValueChange={(value) => setFormData({ ...formData, from_currency: value })}
-              >
+              <Select value={formData.from_currency}
+                onValueChange={(value) => setFormData({ ...formData, from_currency: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select currency" />
                 </SelectTrigger>
@@ -179,10 +179,8 @@ export function ExchangeRateManagement({ baseCurrency = 'USD' }: ExchangeRateMan
               <Label htmlFor="to_currency">
                 To Currency <span className="text-destructive">*</span>
               </Label>
-              <Select
-                value={formData.to_currency}
-                onValueChange={(value) => setFormData({ ...formData, to_currency: value })}
-              >
+              <Select value={formData.to_currency}
+                onValueChange={(value) => setFormData({ ...formData, to_currency: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select currency" />
                 </SelectTrigger>
@@ -203,16 +201,14 @@ export function ExchangeRateManagement({ baseCurrency = 'USD' }: ExchangeRateMan
               <Label htmlFor="rate">
                 Exchange Rate <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="rate"
+              <Input id="rate"
                 type="number"
                 step="0.000001"
                 min="0"
                 value={formData.rate}
                 onChange={(e) => setFormData({ ...formData, rate: parseFloat(e.target.value) || 0 })}
                 placeholder="1.0"
-                required
-              />
+                required/>
               {formData.from_currency && formData.to_currency && (
                 <p className="text-xs text-muted-foreground">
                   1 {formData.from_currency} = {formData.rate} {formData.to_currency}
@@ -225,13 +221,11 @@ export function ExchangeRateManagement({ baseCurrency = 'USD' }: ExchangeRateMan
               <Label htmlFor="effective_date">
                 Effective Date <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="effective_date"
+              <Input id="effective_date"
                 type="date"
                 value={formData.effective_date}
                 onChange={(e) => setFormData({ ...formData, effective_date: e.target.value })}
-                required
-              />
+                required/>
             </div>
           </div>
 
@@ -296,11 +290,9 @@ export function ExchangeRateManagement({ baseCurrency = 'USD' }: ExchangeRateMan
                       {new Date(rate.effective_date).toLocaleDateString()}
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <Button
-                        variant="ghost"
+                      <Button variant="ghost"
                         size="sm"
-                        onClick={() => handleEdit(rate)}
-                      >
+                        onClick={() => handleEdit(rate)}>
                         Edit
                       </Button>
                     </td>

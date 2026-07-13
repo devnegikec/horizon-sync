@@ -94,15 +94,13 @@ describe('Property 9: Status-based action button rendering', () => {
           const mockOnDelete = jest.fn();
 
           const { container } = render(
-            <StockEntriesTable
-              stockEntries={entries as StockEntry[]}
+            <StockEntriesTable stockEntries={entries as StockEntry[]}
               loading={false}
               error={null}
               hasActiveFilters={false}
               onView={mockOnView}
               onEdit={mockOnEdit}
-              onDelete={mockOnDelete}
-            />
+              onDelete={mockOnDelete}/>
           );
 
           // Property: For each entry, check action button availability based on status
@@ -164,15 +162,13 @@ describe('Property 9: Status-based action button rendering', () => {
           const mockOnDelete = jest.fn();
 
           const { container } = render(
-            <StockEntriesTable
-              stockEntries={[entry]}
+            <StockEntriesTable stockEntries={[entry]}
               loading={false}
               error={null}
               hasActiveFilters={false}
               onView={mockOnView}
               onEdit={mockOnEdit}
-              onDelete={mockOnDelete}
-            />
+              onDelete={mockOnDelete}/>
           );
 
           // Property: Non-draft entries should have exactly 1 menu item (View only)
@@ -208,15 +204,13 @@ describe('Property 9: Status-based action button rendering', () => {
           const mockOnDelete = jest.fn();
 
           const { container } = render(
-            <StockEntriesTable
-              stockEntries={[entry]}
+            <StockEntriesTable stockEntries={[entry]}
               loading={false}
               error={null}
               hasActiveFilters={false}
               onView={mockOnView}
               onEdit={mockOnEdit}
-              onDelete={mockOnDelete}
-            />
+              onDelete={mockOnDelete}/>
           );
 
           // Property: Draft entries should have 3 menu items (View, Edit, Delete)

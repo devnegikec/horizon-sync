@@ -70,10 +70,14 @@ export const useUserStore = create<UserState>()(
       }),
       {
         name: 'horizon-auth',
-        // Only persist refreshToken for session restoration
-        // accessToken and user data are kept in memory only for security
+        // Persist refreshToken, user, and organization for session restoration.
+        // accessToken stays in memory only (short-lived, security-sensitive).
+        // On refresh: user/org load instantly from localStorage, then restoreSession
+        // gets a fresh accessToken via the persisted refreshToken.
         partialize: (state) => ({ 
           refreshToken: state.refreshToken,
+          user: state.user,
+          organization: state.organization,
         }),
       }
     ),

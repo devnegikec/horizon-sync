@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
+
 import { X } from 'lucide-react';
+
+import { useUserStore } from '@horizon-sync/store';
 import { Badge, Dialog, DialogContent, DialogHeader, DialogTitle, Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
-import { useUserStore } from '@horizon-sync/store';
-import { accountApi } from '../../utility/api/accounts';
+
 import type { Account, AccountListItem } from '../../types/account.types';
+import { accountApi } from '../../utility/api/accounts';
+import { ACCOUNT_TYPE_COLORS } from '../../utils/accountColors';
+
 import { AuditTrail } from './AuditTrail';
 import { BalanceHistory } from './BalanceHistory';
-import { ACCOUNT_TYPE_COLORS } from '../../utils/accountColors';
 
 interface AccountDetailDialogProps {
   open: boolean;
@@ -126,12 +130,10 @@ export const AccountDetailDialog: React.FC<AccountDetailDialogProps> = ({
               </TabsList>
 
               <TabsContent value="balance-history" className="mt-4">
-                <BalanceHistory
-                  accountId={account.id}
+                <BalanceHistory accountId={account.id}
                   accountCode={account.account_code}
                   accountName={account.account_name}
-                  currency={account.currency}
-                />
+                  currency={account.currency}/>
               </TabsContent>
 
               <TabsContent value="audit-trail" className="mt-4">

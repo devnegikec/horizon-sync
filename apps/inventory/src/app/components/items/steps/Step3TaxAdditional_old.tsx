@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { X } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -96,11 +97,9 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label>Sales Tax Template</Label>
-                        <Select
-                            value={formData.salesTaxTemplateId || ''}
+                        <Select value={formData.salesTaxTemplateId || ''}
                             onValueChange={handleSalesTaxChange}
-                            disabled={isLoadingTaxTemplates}
-                        >
+                            disabled={isLoadingTaxTemplates}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select sales tax template" />
                             </SelectTrigger>
@@ -116,11 +115,9 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
 
                     <div className="space-y-2">
                         <Label>Purchase Tax Template</Label>
-                        <Select
-                            value={formData.purchaseTaxTemplateId || ''}
+                        <Select value={formData.purchaseTaxTemplateId || ''}
                             onValueChange={handlePurchaseTaxChange}
-                            disabled={isLoadingTaxTemplates}
-                        >
+                            disabled={isLoadingTaxTemplates}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select purchase tax template" />
                             </SelectTrigger>
@@ -143,22 +140,18 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="barcode">Barcode</Label>
-                        <Input
-                            id="barcode"
+                        <Input id="barcode"
                             value={formData.barcode}
                             onChange={handleBarcodeChange}
-                            placeholder="Enter barcode"
-                        />
+                            placeholder="Enter barcode"/>
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="imageUrl">Primary Image URL</Label>
-                        <Input
-                            id="imageUrl"
+                        <Input id="imageUrl"
                             value={formData.imageUrl}
                             onChange={handleImageUrlChange}
-                            placeholder="https://example.com/image.jpg"
-                        />
+                            placeholder="https://example.com/image.jpg"/>
                     </div>
                 </div>
             </div>
@@ -169,12 +162,10 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
                 
                 <div className="space-y-2">
                     <div className="flex gap-2">
-                        <Input
-                            value={imageInput}
+                        <Input value={imageInput}
                             onChange={(e) => setImageInput(e.target.value)}
                             placeholder="Enter image URL"
-                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddImage())}
-                        />
+                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddImage())}/>
                         <Button type="button" onClick={handleAddImage} variant="outline" size="sm">
                             Add
                         </Button>
@@ -182,16 +173,12 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
                     {formData.images.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2">
                             {formData.images.map((image, index) => (
-                                <div
-                                    key={index}
-                                    className="flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-sm"
-                                >
+                                <div key={index}
+                                    className="flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-sm">
                                     <span className="truncate max-w-[200px]">{image}</span>
-                                    <button
-                                        type="button"
+                                    <button type="button"
                                         onClick={() => handleRemoveImage(index)}
-                                        className="text-muted-foreground hover:text-foreground"
-                                    >
+                                        className="text-muted-foreground hover:text-foreground">
                                         <X className="w-3 h-3" />
                                     </button>
                                 </div>
@@ -207,12 +194,10 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
                 
                 <div className="space-y-2">
                     <div className="flex gap-2">
-                        <Input
-                            value={tagInput}
+                        <Input value={tagInput}
                             onChange={(e) => setTagInput(e.target.value)}
                             placeholder="Enter tag"
-                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                        />
+                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}/>
                         <Button type="button" onClick={handleAddTag} variant="outline" size="sm">
                             Add
                         </Button>
@@ -220,16 +205,12 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
                     {formData.tags.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2">
                             {formData.tags.map((tag, index) => (
-                                <div
-                                    key={index}
-                                    className="flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-sm"
-                                >
+                                <div key={index}
+                                    className="flex items-center gap-1 px-2 py-1 bg-secondary rounded-md text-sm">
                                     <span>{tag}</span>
-                                    <button
-                                        type="button"
+                                    <button type="button"
                                         onClick={() => handleRemoveTag(index)}
-                                        className="text-muted-foreground hover:text-foreground"
-                                    >
+                                        className="text-muted-foreground hover:text-foreground">
                                         <X className="w-3 h-3" />
                                     </button>
                                 </div>
@@ -243,12 +224,10 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
             <div className="space-y-4">
                 <h3 className="text-base font-semibold border-b pb-2">Custom Fields (JSON)</h3>
                 
-                <Textarea
-                    value={JSON.stringify(formData.customFields, null, 2)}
+                <Textarea value={JSON.stringify(formData.customFields, null, 2)}
                     onChange={handleCustomFieldsChange}
                     placeholder='{"key": "value"}'
-                    rows={4}
-                />
+                    rows={4}/>
             </div>
         </div>
     );

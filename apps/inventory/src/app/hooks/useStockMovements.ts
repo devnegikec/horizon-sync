@@ -9,6 +9,7 @@ import type {
   StockMovementFilters,
 } from '../types/stock.types';
 import { buildUrl, buildPaginationParams } from '../utility';
+import { getHttpErrorMessage, getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface UseStockMovementsResult {
   data: StockMovement[];
@@ -87,8 +88,7 @@ export function useStockMovements(options: {
       });
 
       if (!res.ok) {
-        const message = `Error ${res.status}: ${res.statusText}`;
-        throw new Error(message);
+        throw new Error(getHttpErrorMessage(res.status));
       }
 
       const data = (await res.json()) as StockMovementsResponse;
@@ -104,8 +104,7 @@ export function useStockMovements(options: {
         setStats(calculatedStats);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load stock movements';
-      setError(message);
+      setError(getFriendlyErrorMessage(err));
       setStockMovements([]);
       setPagination(null);
       setStats(null);

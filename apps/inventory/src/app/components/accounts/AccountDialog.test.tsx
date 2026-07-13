@@ -1,7 +1,9 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+
 import '@testing-library/jest-dom';
-import { AccountDialog } from './AccountDialog';
 import type { AccountListItem } from '../../types/account.types';
+
+import { AccountDialog } from './AccountDialog';
 
 // Mock the hooks
 jest.mock('../../hooks/useAccountActions', () => ({
@@ -66,11 +68,9 @@ describe('AccountDialog - Parent Account Selection', () => {
 
   it('renders parent account dropdown', async () => {
     render(
-      <AccountDialog
-        open={true}
+      <AccountDialog open={true}
         onOpenChange={mockOnOpenChange}
-        onCreated={mockOnCreated}
-      />
+        onCreated={mockOnCreated}/>
     );
 
     await waitFor(() => {
@@ -80,11 +80,9 @@ describe('AccountDialog - Parent Account Selection', () => {
 
   it('shows search input for filtering parent accounts', async () => {
     render(
-      <AccountDialog
-        open={true}
+      <AccountDialog open={true}
         onOpenChange={mockOnOpenChange}
-        onCreated={mockOnCreated}
-      />
+        onCreated={mockOnCreated}/>
     );
 
     await waitFor(() => {
@@ -95,11 +93,9 @@ describe('AccountDialog - Parent Account Selection', () => {
 
   it('filters parent accounts by same account type', async () => {
     render(
-      <AccountDialog
-        open={true}
+      <AccountDialog open={true}
         onOpenChange={mockOnOpenChange}
-        onCreated={mockOnCreated}
-      />
+        onCreated={mockOnCreated}/>
     );
 
     await waitFor(() => {
@@ -125,12 +121,10 @@ describe('AccountDialog - Parent Account Selection', () => {
     };
 
     render(
-      <AccountDialog
-        open={true}
+      <AccountDialog open={true}
         onOpenChange={mockOnOpenChange}
         account={account}
-        onUpdated={mockOnUpdated}
-      />
+        onUpdated={mockOnUpdated}/>
     );
 
     await waitFor(() => {
@@ -143,11 +137,9 @@ describe('AccountDialog - Parent Account Selection', () => {
 
   it('displays warning when parent account is selected', async () => {
     render(
-      <AccountDialog
-        open={true}
+      <AccountDialog open={true}
         onOpenChange={mockOnOpenChange}
-        onCreated={mockOnCreated}
-      />
+        onCreated={mockOnCreated}/>
     );
 
     await waitFor(() => {
@@ -165,11 +157,9 @@ describe('AccountDialog - Parent Account Selection', () => {
 
   it('shows account hierarchy path in dropdown options', async () => {
     render(
-      <AccountDialog
-        open={true}
+      <AccountDialog open={true}
         onOpenChange={mockOnOpenChange}
-        onCreated={mockOnCreated}
-      />
+        onCreated={mockOnCreated}/>
     );
 
     await waitFor(() => {
@@ -182,11 +172,9 @@ describe('AccountDialog - Parent Account Selection', () => {
 
   it('allows searching parent accounts by code or name', async () => {
     render(
-      <AccountDialog
-        open={true}
+      <AccountDialog open={true}
         onOpenChange={mockOnOpenChange}
-        onCreated={mockOnCreated}
-      />
+        onCreated={mockOnCreated}/>
     );
 
     await waitFor(() => {
@@ -211,12 +199,10 @@ describe('AccountDialog - Parent Account Selection', () => {
     };
 
     render(
-      <AccountDialog
-        open={true}
+      <AccountDialog open={true}
         onOpenChange={mockOnOpenChange}
         account={parentAccount}
-        onUpdated={mockOnUpdated}
-      />
+        onUpdated={mockOnUpdated}/>
     );
 
     await waitFor(() => {
@@ -230,11 +216,9 @@ describe('AccountDialog - Parent Account Selection', () => {
 
   it('includes parent_account_id in form submission', async () => {
     render(
-      <AccountDialog
-        open={true}
+      <AccountDialog open={true}
         onOpenChange={mockOnOpenChange}
-        onCreated={mockOnCreated}
-      />
+        onCreated={mockOnCreated}/>
     );
 
     await waitFor(() => {
@@ -252,11 +236,9 @@ describe('AccountDialog - Parent Account Selection', () => {
 
   it('clears parent selection when "No parent account" is selected', async () => {
     render(
-      <AccountDialog
-        open={true}
+      <AccountDialog open={true}
         onOpenChange={mockOnOpenChange}
-        onCreated={mockOnCreated}
-      />
+        onCreated={mockOnCreated}/>
     );
 
     await waitFor(() => {
@@ -269,11 +251,9 @@ describe('AccountDialog - Parent Account Selection', () => {
 
   it('only shows active accounts as eligible parents', async () => {
     render(
-      <AccountDialog
-        open={true}
+      <AccountDialog open={true}
         onOpenChange={mockOnOpenChange}
-        onCreated={mockOnCreated}
-      />
+        onCreated={mockOnCreated}/>
     );
 
     await waitFor(() => {

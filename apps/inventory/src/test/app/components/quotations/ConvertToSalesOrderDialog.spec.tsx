@@ -1,5 +1,6 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
 import { ConvertToSalesOrderDialog } from '../../../../app/components/quotations/ConvertToSalesOrderDialog';
 import type { Quotation } from '../../../../app/types/quotation.types';
 
@@ -80,13 +81,11 @@ describe('ConvertToSalesOrderDialog', () => {
   describe('Dialog rendering', () => {
     it('should not render when quotation is null', () => {
       const { container } = renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={null}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       expect(container.firstChild).toBeNull();
@@ -95,13 +94,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should render when open is true and quotation is provided', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       expect(screen.getByRole('dialog')).toBeTruthy();
@@ -113,13 +110,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should display quotation number', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       expect(screen.getByText('Quotation Number')).toBeTruthy();
@@ -129,13 +124,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should display customer name from customer_name field', () => {
       const quotation = createMockQuotation({ customer_name: 'Direct Customer Name' });
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       expect(screen.getByText('Customer')).toBeTruthy();
@@ -145,13 +138,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should display customer name from customer object when customer_name is not available', () => {
       const quotation = createMockQuotation({ customer_name: undefined });
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       expect(screen.getByText('Customer')).toBeTruthy();
@@ -161,13 +152,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should display N/A when no customer information is available', () => {
       const quotation = createMockQuotation({ customer_name: undefined, customer: undefined });
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       expect(screen.getByText('N/A')).toBeTruthy();
@@ -176,13 +165,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should display formatted quotation date', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       expect(screen.getByText('Quotation Date')).toBeTruthy();
@@ -192,13 +179,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should display grand total with currency', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       expect(screen.getByText('Grand Total')).toBeTruthy();
@@ -208,13 +193,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should display line items count', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       expect(screen.getByText('Line Items')).toBeTruthy();
@@ -224,13 +207,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should display 0 items when line_items is undefined', () => {
       const quotation = createMockQuotation({ line_items: undefined });
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       expect(screen.getByText('0 items')).toBeTruthy();
@@ -241,13 +222,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should display order date field with default value of today', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       const orderDateInput = screen.getByLabelText('Order Date *') as HTMLInputElement;
@@ -262,13 +241,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should display delivery date field as optional', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       const deliveryDateInput = screen.getByLabelText('Delivery Date (Optional)') as HTMLInputElement;
@@ -280,13 +257,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should allow changing order date', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       const orderDateInput = screen.getByLabelText('Order Date *') as HTMLInputElement;
@@ -298,13 +273,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should allow changing delivery date', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       const deliveryDateInput = screen.getByLabelText('Delivery Date (Optional)') as HTMLInputElement;
@@ -316,25 +289,21 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should reset form when dialog opens', () => {
       const quotation = createMockQuotation();
       const { rerender } = renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={false}
+        <ConvertToSalesOrderDialog open={false}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       // Reopen the dialog
       rerender(
         <QueryClientProvider client={createQueryClient()}>
-          <ConvertToSalesOrderDialog
-            open={true}
+          <ConvertToSalesOrderDialog open={true}
             onOpenChange={mockOnOpenChange}
             quotation={quotation}
             onConvert={mockOnConvert}
-            converting={false}
-          />
+            converting={false}/>
         </QueryClientProvider>
       );
 
@@ -353,13 +322,11 @@ describe('ConvertToSalesOrderDialog', () => {
       mockOnConvert.mockResolvedValue(undefined);
       
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       const orderDateInput = screen.getByLabelText('Order Date *') as HTMLInputElement;
@@ -381,13 +348,11 @@ describe('ConvertToSalesOrderDialog', () => {
       mockOnConvert.mockResolvedValue(undefined);
       
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       const orderDateInput = screen.getByLabelText('Order Date *') as HTMLInputElement;
@@ -411,13 +376,11 @@ describe('ConvertToSalesOrderDialog', () => {
       const quotation = createMockQuotation();
       
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       const orderDateInput = screen.getByLabelText('Order Date *') as HTMLInputElement;
@@ -440,13 +403,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should display Cancel button', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       expect(screen.getByText('Cancel')).toBeTruthy();
@@ -455,13 +416,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should call onOpenChange with false when Cancel button is clicked', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       const cancelButton = screen.getByText('Cancel');
@@ -473,13 +432,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should disable buttons when converting is true', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={true}
-        />
+          converting={true}/>
       );
 
       const cancelButton = screen.getByText('Cancel') as HTMLButtonElement;
@@ -492,13 +449,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should show "Converting..." text when converting is true', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={true}
-        />
+          converting={true}/>
       );
 
       expect(screen.getByText('Converting...')).toBeTruthy();
@@ -507,13 +462,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should show "Convert to Sales Order" text when converting is false', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       const submitButton = screen.getByRole('button', { name: /Convert to Sales Order/i });
@@ -525,13 +478,11 @@ describe('ConvertToSalesOrderDialog', () => {
     it('should display information about what will be copied', () => {
       const quotation = createMockQuotation();
       renderWithQueryClient(
-        <ConvertToSalesOrderDialog
-          open={true}
+        <ConvertToSalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           quotation={quotation}
           onConvert={mockOnConvert}
-          converting={false}
-        />
+          converting={false}/>
       );
 
       expect(screen.getByText(/The sales order will be created with all line items/)).toBeTruthy();

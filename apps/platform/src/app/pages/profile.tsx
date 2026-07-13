@@ -47,10 +47,10 @@ export function ProfilePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-0">
-            <InfoRow icon={User} label="First Name" value={user.first_name} />
-            <InfoRow icon={User} label="Last Name" value={user.last_name} />
-            <InfoRow icon={Mail} label="Email Address" value={user.email} />
-            <InfoRow icon={Phone} label="Phone Number" value={user.phone} />
+            <InfoRow icon={User} label="First Name" value={user.first_name} testId="profile-first-name" />
+            <InfoRow icon={User} label="Last Name" value={user.last_name} testId="profile-last-name" />
+            <InfoRow icon={Mail} label="Email Address" value={user.email} testId="profile-email" />
+            <InfoRow icon={Phone} label="Phone Number" value={user.phone} testId="profile-phone" />
           </CardContent>
         </Card>
 

@@ -1,14 +1,27 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
 import { SalesOrderDialog } from '../../../../app/components/sales-orders/SalesOrderDialog';
 import type { SalesOrder } from '../../../../app/types/sales-order.types';
 import { customerApi } from '../../../../app/utility/api/customers';
 
-// Mock the user store
+// Mock the user and currency stores
+const mockFetchCurrencies = jest.fn();
 jest.mock('@horizon-sync/store', () => ({
   useUserStore: jest.fn(() => ({
     accessToken: 'mock-token',
   })),
+  useCurrencyStore: jest.fn((selector) => {
+    const state = {
+      currencies: [],
+      baseCurrency: 'USD',
+      loading: false,
+      error: null,
+      lastFetched: null,
+      fetchCurrencies: mockFetchCurrencies,
+    };
+    return typeof selector === 'function' ? selector(state) : state;
+  }),
 }));
 
 // Mock the customer API
@@ -138,13 +151,11 @@ describe('SalesOrderDialog', () => {
   describe('Dialog rendering', () => {
     it('should render in create mode when salesOrder is null', () => {
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       expect(screen.getByRole('heading', { name: /Create Sales Order/i })).toBeTruthy();
@@ -153,13 +164,11 @@ describe('SalesOrderDialog', () => {
     it('should render in edit mode when salesOrder is provided', () => {
       const salesOrder = createMockSalesOrder();
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       expect(screen.getByRole('heading', { name: /Edit Sales Order/i })).toBeTruthy();
@@ -169,13 +178,11 @@ describe('SalesOrderDialog', () => {
   describe('Form fields in create mode', () => {
     it('should display all required form fields', async () => {
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       // Wait for the form to render
@@ -192,13 +199,11 @@ describe('SalesOrderDialog', () => {
 
     it('should have default values in create mode', async () => {
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -208,18 +213,16 @@ describe('SalesOrderDialog', () => {
       });
 
       const currencySelect = screen.getByLabelText('Currency *');
-      expect(currencySelect).toHaveTextContent('INR');
+      expect(currencySelect).toHaveTextContent('USD');
     });
 
     it('should show placeholder for auto-generated sales order number', () => {
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       const soNumberInput = screen.getByLabelText('Sales Order #') as HTMLInputElement;
@@ -228,13 +231,11 @@ describe('SalesOrderDialog', () => {
 
     it('should not display status field in create mode', () => {
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       expect(screen.queryByLabelText('Status')).toBeNull();
@@ -245,13 +246,11 @@ describe('SalesOrderDialog', () => {
     it('should pre-fill form with sales order data', async () => {
       const salesOrder = createMockSalesOrder();
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -272,13 +271,11 @@ describe('SalesOrderDialog', () => {
     it('should disable sales order number field in edit mode', () => {
       const salesOrder = createMockSalesOrder();
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       const soNumberInput = screen.getByLabelText('Sales Order #') as HTMLInputElement;
@@ -288,13 +285,11 @@ describe('SalesOrderDialog', () => {
     it('should disable customer field in edit mode', async () => {
       const salesOrder = createMockSalesOrder();
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -309,13 +304,11 @@ describe('SalesOrderDialog', () => {
     it('should disable currency field in edit mode', () => {
       const salesOrder = createMockSalesOrder();
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       const currencySelect = screen.getByLabelText('Currency *').closest('button') as HTMLButtonElement;
@@ -325,13 +318,11 @@ describe('SalesOrderDialog', () => {
     it('should display status field in edit mode', () => {
       const salesOrder = createMockSalesOrder();
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       expect(screen.getByLabelText('Status')).toBeTruthy();
@@ -342,13 +333,11 @@ describe('SalesOrderDialog', () => {
     it('should disable line item editing when status is not draft', () => {
       const salesOrder = createMockSalesOrder({ status: 'confirmed' });
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       // Check that add item button is disabled
@@ -361,13 +350,11 @@ describe('SalesOrderDialog', () => {
     it('should allow line item editing when status is draft', () => {
       const salesOrder = createMockSalesOrder({ status: 'draft' });
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       // Check that add item button is not disabled
@@ -404,13 +391,11 @@ describe('SalesOrderDialog', () => {
       });
 
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       expect(screen.getByText('Fulfillment Status')).toBeTruthy();
@@ -422,13 +407,11 @@ describe('SalesOrderDialog', () => {
     it('should not display fulfillment status table when no items have fulfillment data', () => {
       const salesOrder = createMockSalesOrder();
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       expect(screen.queryByText('Fulfillment Status')).toBeNull();
@@ -459,13 +442,11 @@ describe('SalesOrderDialog', () => {
       });
 
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       // Check the table contains the correct values
@@ -479,13 +460,11 @@ describe('SalesOrderDialog', () => {
   describe('Form validation', () => {
     it('should show alert when customer is not selected', async () => {
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       const submitButton = screen.getByRole('button', { name: /Create Sales Order/i });
@@ -499,13 +478,11 @@ describe('SalesOrderDialog', () => {
 
     it('should show alert when delivery date is before order date', async () => {
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -539,13 +516,11 @@ describe('SalesOrderDialog', () => {
       mockOnSave.mockResolvedValue(undefined);
 
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       await waitFor(() => {
@@ -577,13 +552,11 @@ describe('SalesOrderDialog', () => {
       mockOnSave.mockResolvedValue(undefined);
 
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       const remarksInput = screen.getByLabelText('Remarks') as HTMLTextAreaElement;
@@ -606,13 +579,11 @@ describe('SalesOrderDialog', () => {
   describe('Button states', () => {
     it('should disable buttons when saving is true', () => {
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={null}
           onSave={mockOnSave}
-          saving={true}
-        />
+          saving={true}/>
       );
 
       const cancelButton = screen.getByText('Cancel') as HTMLButtonElement;
@@ -624,13 +595,11 @@ describe('SalesOrderDialog', () => {
 
     it('should show correct button text in create mode', () => {
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       expect(screen.getByRole('button', { name: /Create Sales Order/i })).toBeTruthy();
@@ -639,13 +608,11 @@ describe('SalesOrderDialog', () => {
     it('should show correct button text in edit mode', () => {
       const salesOrder = createMockSalesOrder();
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       expect(screen.getByRole('button', { name: /Update Sales Order/i })).toBeTruthy();
@@ -653,13 +620,11 @@ describe('SalesOrderDialog', () => {
 
     it('should call onOpenChange when Cancel button is clicked', () => {
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={null}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       const cancelButton = screen.getByText('Cancel');
@@ -673,13 +638,11 @@ describe('SalesOrderDialog', () => {
     it('should display calculated grand total', () => {
       const salesOrder = createMockSalesOrder();
       renderWithQueryClient(
-        <SalesOrderDialog
-          open={true}
+        <SalesOrderDialog open={true}
           onOpenChange={mockOnOpenChange}
           salesOrder={salesOrder}
           onSave={mockOnSave}
-          saving={false}
-        />
+          saving={false}/>
       );
 
       expect(screen.getByText('Grand Total:')).toBeTruthy();

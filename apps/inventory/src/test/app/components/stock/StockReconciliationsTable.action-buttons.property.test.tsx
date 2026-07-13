@@ -96,15 +96,13 @@ describe('Property 9: Status-based action button rendering', () => {
           const mockOnDelete = jest.fn();
 
           const { container } = render(
-            <StockReconciliationsTable
-              stockReconciliations={reconciliations as StockReconciliation[]}
+            <StockReconciliationsTable stockReconciliations={reconciliations as StockReconciliation[]}
               loading={false}
               error={null}
               hasActiveFilters={false}
               onView={mockOnView}
               onEdit={mockOnEdit}
-              onDelete={mockOnDelete}
-            />
+              onDelete={mockOnDelete}/>
           );
 
           // Property: For each reconciliation, check action button availability based on status
@@ -168,15 +166,13 @@ describe('Property 9: Status-based action button rendering', () => {
           const mockOnDelete = jest.fn();
 
           const { container } = render(
-            <StockReconciliationsTable
-              stockReconciliations={[reconciliation]}
+            <StockReconciliationsTable stockReconciliations={[reconciliation]}
               loading={false}
               error={null}
               hasActiveFilters={false}
               onView={mockOnView}
               onEdit={mockOnEdit}
-              onDelete={mockOnDelete}
-            />
+              onDelete={mockOnDelete}/>
           );
 
           // Property: Submitted reconciliations should have exactly 1 menu item (View only)
@@ -215,15 +211,13 @@ describe('Property 9: Status-based action button rendering', () => {
           const mockOnDelete = jest.fn();
 
           const { container } = render(
-            <StockReconciliationsTable
-              stockReconciliations={[reconciliation]}
+            <StockReconciliationsTable stockReconciliations={[reconciliation]}
               loading={false}
               error={null}
               hasActiveFilters={false}
               onView={mockOnView}
               onEdit={mockOnEdit}
-              onDelete={mockOnDelete}
-            />
+              onDelete={mockOnDelete}/>
           );
 
           // Property: Draft reconciliations should have 3 menu items (View, Edit, Delete)

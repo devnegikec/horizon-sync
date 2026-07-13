@@ -1,9 +1,14 @@
+import { config as dotenvConfig } from 'dotenv';
+import { resolve } from 'path';
 import { ModuleFederationConfig } from '@nx/module-federation';
 import { withModuleFederation } from '@nx/module-federation/webpack.js';
 import { withReact } from '@nx/react';
 import { composePlugins, withNx } from '@nx/webpack';
 
 import baseConfig from './module-federation.config';
+
+// Load .env from workspace root
+dotenvConfig({ path: resolve(__dirname, '../../.env') });
 
 const config: ModuleFederationConfig = {
   ...baseConfig,
@@ -48,9 +53,10 @@ export default composePlugins(
     config.plugins = config.plugins || [];
     config.plugins.push(
       new webpack.DefinePlugin({
-        'process.env.NX_API_BASE_URL': JSON.stringify(
-          process.env.NX_API_BASE_URL
-        ),
+        'process.env.NX_API_BASE_URL': JSON.stringify(process.env.NX_API_BASE_URL),
+        'process.env.NX_API_CORE_URL': JSON.stringify(process.env.NX_API_CORE_URL),
+        'process.env.NX_SEARCH_API_BASE_URL': JSON.stringify(process.env.NX_SEARCH_API_BASE_URL),
+        'process.env.NX_NODE_ENV': JSON.stringify(process.env.NX_NODE_ENV),
       })
     );
     return config;

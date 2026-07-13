@@ -23,6 +23,23 @@ export const stockLevelApi = {
       method: 'PUT',
       body: data,
     }),
+
+  getByLocation: (accessToken: string, itemId: string, warehouseId: string) =>
+    apiRequest('/stock-levels', accessToken, {
+      params: { item_id: itemId, warehouse_id: warehouseId, page: 1, page_size: 1 },
+    }),
+
+  updateByLocation: (accessToken: string, itemId: string, warehouseId: string, data: {
+    quantity_on_hand: number;
+    quantity_reserved: number;
+    quantity_available: number;
+    last_counted_at?: string;
+  }) =>
+    apiRequest(`/stock-levels/by-location`, accessToken, {
+      method: 'PUT',
+      params: { item_id: itemId, warehouse_id: warehouseId },
+      body: data,
+    }),
 };
 
 // Stock Movements API helpers
@@ -82,6 +99,20 @@ export const stockEntryApi = {
     apiRequest(`/stock-entries/${id}`, accessToken, {
       method: 'DELETE',
     }),
+
+  submit: (accessToken: string, id: string) =>
+    apiRequest(`/stock-entries/${id}/submit`, accessToken, {
+      method: 'POST',
+    }),
+
+  bulkUpload: async (accessToken: string, file: File): Promise<unknown> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiRequest('/stock-entries/bulk/upload', accessToken, {
+      method: 'POST',
+      body: formData,
+    });
+  },
 };
 
 // Stock Reconciliations API helpers
@@ -111,5 +142,33 @@ export const stockReconciliationApi = {
   delete: (accessToken: string, id: string) =>
     apiRequest(`/stock-reconciliations/${id}`, accessToken, {
       method: 'DELETE',
+    }),
+
+  /** GET /stock-reconciliations/template?warehouse_id={uuid} — download CSV */
+  downloadTemplate: async (accessToken: string, warehouseId: string): Promise<Blob> => {
+    return apiRequest('/stock-reconciliations/template', accessToken, {
+      params: { warehouse_id: warehouseId },
+      responseType: 'blob',
+    });
+  },
+
+  /** POST /stock-reconciliations/upload — multipart form (warehouse_id + CSV + optional reconciliation_id) */
+  upload: async (accessToken: string, warehouseId: string, file: File, reconciliationId?: string): Promise<unknown> => {
+    const formData = new FormData();
+    formData.append('warehouse_id', warehouseId);
+    formData.append('file', file);
+    if (reconciliationId) {
+      formData.append('reconciliation_id', reconciliationId);
+    }
+    return apiRequest('/stock-reconciliations/upload', accessToken, {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  /** POST /stock-reconciliations/{id}/confirm — commit adjustments */
+  confirm: (accessToken: string, id: string) =>
+    apiRequest(`/stock-reconciliations/${id}/confirm`, accessToken, {
+      method: 'POST',
     }),
 };

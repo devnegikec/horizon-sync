@@ -1,15 +1,15 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 
 import { StockManagement } from '../../../../app/components/stock/StockManagement';
+import { useStockEntries } from '../../../../app/components/StockEntry';
 import { useStockLevels } from '../../../../app/hooks/useStockLevels';
 import { useStockMovements } from '../../../../app/hooks/useStockMovements';
-import { useStockEntries } from '../../../../app/hooks/useStockEntries';
 import { useStockReconciliations } from '../../../../app/hooks/useStockReconciliations';
 
 // Mock the hooks
 jest.mock('../../../../app/hooks/useStockLevels');
 jest.mock('../../../../app/hooks/useStockMovements');
-jest.mock('../../../../app/hooks/useStockEntries');
+jest.mock('../../../../app/components/StockEntry');
 jest.mock('../../../../app/hooks/useStockReconciliations');
 
 // Mock the table components

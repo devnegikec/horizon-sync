@@ -1,5 +1,5 @@
-import { apiRequest, buildPaginationParams } from '../utility/api/core';
 import type { Invoice, InvoiceListResponse, InvoiceFormData } from '../types/invoice';
+import { apiRequest, buildPaginationParams } from '../utility/api/core';
 
 /**
  * Invoice API Client
@@ -91,6 +91,15 @@ export const invoiceApi = {
     }),
 
   /**
+   * Confirm an invoice (change status from draft to pending)
+   */
+  confirm: (accessToken: string, id: string): Promise<Invoice> =>
+    apiRequest(`/invoices/${id}`, accessToken, {
+      method: 'PUT',
+      body: { status: 'pending' },
+    }),
+
+  /**
    * Create an invoice from a sales order
    */
   createInvoiceFromSalesOrder: (
@@ -106,24 +115,10 @@ export const invoiceApi = {
   /**
    * Generate and download invoice PDF
    */
-  generateInvoicePDF: async (accessToken: string, invoiceId: string): Promise<Blob> => {
-    const response = await fetch(
-      `${process.env['NX_API_CORE_URL'] || 'http://localhost:8000/api/v1'}/invoices/${invoiceId}/pdf`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || `Failed to generate PDF: HTTP ${response.status}`);
-    }
-
-    return response.blob();
-  },
+  generateInvoicePDF: (accessToken: string, invoiceId: string): Promise<Blob> =>
+    apiRequest(`/invoices/${invoiceId}/pdf`, accessToken, {
+      responseType: 'blob',
+    }),
 
   /**
    * Send invoice via email

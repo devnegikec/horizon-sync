@@ -1,7 +1,7 @@
 // Common types for PDF generation
 
 export interface PDFDocumentData {
-  type: 'quotation' | 'sales_order' | 'purchase_order' | 'invoice';
+  type: 'quotation' | 'sales_order' | 'purchase_order' | 'invoice' | 'asn';
   documentNo: string;
   date: string;
   validUntil?: string;
@@ -9,29 +9,33 @@ export interface PDFDocumentData {
   currency: string;
   currencySymbol: string;
   status?: string;
-  
+
   // Company/Organization info
   companyName?: string;
   companyAddress?: string;
   companyPhone?: string;
   companyEmail?: string;
   companyLogo?: string;
-  
+  companyTaxId?: string;
+
   // Customer/Supplier info
   customerName: string;
   customerCode?: string;
   customerAddress?: string;
   customerPhone?: string;
   customerEmail?: string;
-  
+  customerTaxNumber?: string;
+
   // Line items
   lineItems: PDFLineItem[];
-  
+
   // Totals
   subtotal: number;
+  /** Document-level / organization discount amount (always set for consistent PDF layout) */
+  discountAmount: number;
   totalTax: number;
   grandTotal: number;
-  
+
   // Tax breakdown
   taxSummary?: Array<{
     name: string;
@@ -42,7 +46,7 @@ export interface PDFDocumentData {
       amount: number;
     }>;
   }>;
-  
+
   // Additional info
   remarks?: string;
   termsAndConditions?: string;
@@ -56,6 +60,7 @@ export interface PDFLineItem {
   uom: string;
   rate: number;
   amount: number;
+  discountAmount?: number;
   taxAmount?: number;
   totalAmount: number;
   taxInfo?: {
