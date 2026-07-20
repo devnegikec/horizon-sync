@@ -134,3 +134,78 @@ export interface ScanAnalyticsResponse {
   by_date: { date: string; count: number }[];
   by_country: { country: string; count: number }[];
 }
+
+// ── Analytics Types ──────────────────────────────────────────
+
+export interface AnalyticsFilters {
+  date_from?: string;
+  date_to?: string;
+}
+
+export interface AnalyticsSummary {
+  total_scans: number;
+  unique_serials: number;
+  by_date: { date: string; count: number }[];
+  by_country: { country: string; count: number }[];
+  by_device: { device_type: string; count: number }[];
+}
+
+export interface AnalyticsCTABreakdown {
+  breakdown: { cta_action: string; count: number }[];
+  total_scans_with_cta: number;
+}
+
+export interface AnalyticsInteractionFunnel {
+  total_scans: number;
+  scans_with_cta: number;
+  scans_with_interactions: number;
+  total_interactions: number;
+  conversion_rate: number;
+  top_interaction_types: { interaction_type: string; count: number }[];
+}
+
+export interface AnalyticsGeoPoint {
+  city: string;
+  state: string | null;
+  country: string;
+  latitude: number;
+  longitude: number;
+  count: number;
+}
+
+export interface AnalyticsDeviceTimeline {
+  date: string;
+  mobile: number;
+  desktop: number;
+  tablet: number;
+  unknown: number;
+}
+
+export interface AnalyticsScanEvent {
+  id: string;
+  serial_number: string;
+  scan_timestamp: string;
+  cta_action: string | null;
+  qr_type: string | null;
+  device_type: string | null;
+  os: string | null;
+  browser: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  ip_address: string | null;
+  referrer_url: string | null;
+  language: string | null;
+}
+
+export interface AnalyticsScanListResponse {
+  events: AnalyticsScanEvent[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total_items: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+}
