@@ -15,6 +15,12 @@ import {
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@horizon-sync/ui/components/ui/tooltip';
 
 import { useBrands } from '../../features/qr-management/hooks/useBrands';
 import type { CreateQSealProductPayload, QSealProduct } from '../../types/qseal.types';
@@ -77,8 +83,25 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ clas
   );
 }
 
-function FieldHint({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs text-muted-foreground mt-1">{children}</p>;
+function LabelWithTooltip({ htmlFor, label, required, hint }: { htmlFor?: string; label: string; required?: boolean; hint: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <Label htmlFor={htmlFor}>
+        {label}
+        {required && <span className="text-destructive ml-0.5">*</span>}
+      </Label>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help hover:text-primary transition-colors" />
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p className="max-w-[250px] text-xs">{hint}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
 }
 
 // ─── Brand Select Section ────────────────────────────────────────────────────
@@ -96,7 +119,7 @@ function BrandSelectSection({ brandId, onBrandChange }: BrandSelectSectionProps)
     <div className="space-y-3">
       <SectionHeader icon={Info} title="Brand" />
       <div className="space-y-1">
-        <Label>Brand <span className="text-destructive">*</span></Label>
+        <LabelWithTooltip label="Brand" required hint="Select the brand this product belongs to. The brand's ECDSA key pair will be used to sign QR codes." />
         <Select value={brandId} onValueChange={onBrandChange} disabled={loading}>
           <SelectTrigger>
             <SelectValue placeholder={loading ? 'Loading brands…' : 'Select a brand'} />
@@ -110,7 +133,6 @@ function BrandSelectSection({ brandId, onBrandChange }: BrandSelectSectionProps)
             ))}
           </SelectContent>
         </Select>
-        <FieldHint>Select the brand this product belongs to. The brand&apos;s ECDSA key pair will be used to sign QR codes.</FieldHint>
       </div>
     </div>
   );
@@ -146,10 +168,22 @@ function ImageDropZone({ label, required, hint, sizeHint, value, onChange }: Ima
 
   return (
     <div className="space-y-2">
-      <Label>
-        {label}
-        {required && <span className="text-destructive ml-0.5">*</span>}
-      </Label>
+      <div className="flex items-center gap-1.5">
+        <Label>
+          {label}
+          {required && <span className="text-destructive ml-0.5">*</span>}
+        </Label>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help hover:text-primary transition-colors" />
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p className="max-w-[250px] text-xs">{hint}{sizeHint ? ` ${sizeHint}` : ''}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
       {value ? (
         <div className="relative rounded-lg border overflow-hidden bg-muted/30">
           <img src={value} alt={label} className="w-full h-32 object-contain" />
@@ -166,7 +200,6 @@ function ImageDropZone({ label, required, hint, sizeHint, value, onChange }: Ima
         </div>
       )}
       <input ref={inputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-      <FieldHint>{hint}</FieldHint>
     </div>
   );
 }
@@ -205,33 +238,28 @@ function ProductInfoSection({ register, errors }: ProductInfoSectionProps) {
       <SectionHeader icon={Info} title="Product Information" />
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="name">Product Name <span className="text-destructive">*</span></Label>
+          <LabelWithTooltip htmlFor="name" label="Product Name" required hint="The official name of your product as it should appear to customers" />
           <Input id="name" placeholder="Product name" {...register('name', { required: 'Product name is required' })} />
-          <FieldHint>The official name of your product as it should appear to customers</FieldHint>
           {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
         </div>
         <div className="space-y-1">
-          <Label htmlFor="generic_name">Generic Name</Label>
+          <LabelWithTooltip htmlFor="generic_name" label="Generic Name" hint="Optional generic name or category for this product" />
           <Input id="generic_name" placeholder="Generic name" {...register('generic_name')} />
-          <FieldHint>Optional generic name or category for this product</FieldHint>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="gtin">GTIN <span className="text-destructive">*</span></Label>
+          <LabelWithTooltip htmlFor="gtin" label="GTIN" required hint="Global Trade Item Number (UPC, EAN, ISBN, etc.) - 12-14 digits" />
           <Input id="gtin" placeholder="e.g. 012345678901" {...register('gtin', { required: 'GTIN is required' })} />
-          <FieldHint>Global Trade Item Number (UPC, EAN, ISBN, etc.) - 12-14 digits</FieldHint>
           {errors.gtin && <p className="text-xs text-destructive">{errors.gtin.message}</p>}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="industry">Industry</Label>
+          <LabelWithTooltip htmlFor="industry" label="Industry" hint="Industry or sector this product belongs to" />
           <Input id="industry" placeholder="e.g. Pharmaceuticals" {...register('industry')} />
-          <FieldHint>Industry or sector this product belongs to</FieldHint>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="warranty_period_months">Shelf Life <span className="text-destructive">*</span></Label>
+          <LabelWithTooltip htmlFor="warranty_period_months" label="Shelf Life" required hint="Expected lifespan or warranty period for this product (months)" />
           <Input id="warranty_period_months" type="number" min="0" placeholder="e.g. 10" {...register('warranty_period_months', { required: 'Shelf life is required' })} />
-          <FieldHint>Expected lifespan or warranty period for this product (months)</FieldHint>
           {errors.warranty_period_months && <p className="text-xs text-destructive">{errors.warranty_period_months.message}</p>}
         </div>
       </div>
@@ -252,15 +280,13 @@ function ProductUrlsSection({ register, errors }: ProductUrlsSectionProps) {
       <SectionHeader icon={Link} title="Product URLs" />
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="landing_page">Landing Page <span className="text-destructive">*</span></Label>
+          <LabelWithTooltip htmlFor="landing_page" label="Landing Page" required hint="Main product page URL where customers can learn about this product" />
           <Input id="landing_page" type="url" placeholder="https://..." {...register('landing_page', { required: 'Landing page is required' })} />
-          <FieldHint>Main product page URL where customers can learn about this product</FieldHint>
           {errors.landing_page && <p className="text-xs text-destructive">{errors.landing_page.message}</p>}
         </div>
         <div className="space-y-1">
-          <Label htmlFor="client_product_auth_url">Product Auth URL <span className="text-destructive">*</span></Label>
+          <LabelWithTooltip htmlFor="client_product_auth_url" label="Product Auth URL" required hint="URL where customers will be sent after QR scan" />
           <Input id="client_product_auth_url" type="url" placeholder="https://..." {...register('client_product_auth_url', { required: 'Product auth URL is required' })} />
-          <FieldHint>URL where customers will be sent after QR scan</FieldHint>
           {errors.client_product_auth_url && <p className="text-xs text-destructive">{errors.client_product_auth_url.message}</p>}
         </div>
       </div>
@@ -283,7 +309,7 @@ function ActivationDetailsSection({ activationMethod, srNumberType, onActivation
       <SectionHeader icon={Clock} title="Activation Details" />
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label>Activation Method <span className="text-destructive">*</span></Label>
+          <LabelWithTooltip label="Activation Method" required hint="Choose how customers will activate this product (pre-activated or post-activation)" />
           <Select value={activationMethod} onValueChange={onActivationChange}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -292,10 +318,9 @@ function ActivationDetailsSection({ activationMethod, srNumberType, onActivation
               ))}
             </SelectContent>
           </Select>
-          <FieldHint>Choose how customers will activate this product (pre-activated or post-activation)</FieldHint>
         </div>
         <div className="space-y-1">
-          <Label>Serial Number Type <span className="text-destructive">*</span></Label>
+          <LabelWithTooltip label="Serial Number Type" required hint="Select the format of serial numbers for this product" />
           <Select value={srNumberType} onValueChange={onSrNumberChange}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -304,7 +329,6 @@ function ActivationDetailsSection({ activationMethod, srNumberType, onActivation
               ))}
             </SelectContent>
           </Select>
-          <FieldHint>Select the format of serial numbers for this product</FieldHint>
         </div>
       </div>
     </div>
@@ -325,14 +349,12 @@ function AdditionalDetailsSection({ register, redirectToClient, onRedirectChange
       <SectionHeader icon={MoreHorizontal} title="Additional Details" />
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="email">Contact Email</Label>
+          <LabelWithTooltip htmlFor="email" label="Contact Email" hint="Customer support email for this product" />
           <Input id="email" type="email" placeholder="support@example.com" {...register('email')} />
-          <FieldHint>Customer support email for this product</FieldHint>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="phone_number">Contact Phone</Label>
+          <LabelWithTooltip htmlFor="phone_number" label="Contact Phone" hint="Customer support phone number for this product" />
           <Input id="phone_number" type="tel" placeholder="+1 234 567 8900" {...register('phone_number')} />
-          <FieldHint>Customer support phone number for this product</FieldHint>
         </div>
       </div>
       <div className="flex items-center space-x-2 pt-1">
