@@ -1,8 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd ../.. && npx nx build admin --configuration=production",
-  "outputDirectory": "../../dist/apps/admin",
-  "installCommand": "cd ../.. && npm ci",
+  "buildCommand": "npx nx build admin --configuration=production",
+  "outputDirectory": "dist/apps/admin",
+  "installCommand": "npm ci",
+  "rootDirectory": "../..",
   "framework": null,
   "rewrites": [
     {
