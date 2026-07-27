@@ -1,8 +1,9 @@
 # Landing Page API Contract
 
-> **Status:** Backend not yet implemented
+> **Status:** ✅ Implemented — deployed to production
 > **Base URL:** `/api/v1/products/:productId/landing-page`
-> **Auth:** Bearer token required on all endpoints
+> **Public Base URL:** `/api/v1/public/products/:productId/landing-page`
+> **Auth:** Bearer token required on admin endpoints; public GET is no-auth
 > **Content-Type:** `application/json` (except image upload: `multipart/form-data`)
 
 ---
@@ -20,13 +21,14 @@
 
 ## Endpoints Overview
 
-| Method   | Endpoint                                              | Description              |
-| -------- | ----------------------------------------------------- | ------------------------ |
-| `GET`    | `/api/v1/products/:productId/landing-page`            | Fetch landing page config |
-| `POST`   | `/api/v1/products/:productId/landing-page`            | Create landing page config |
-| `PATCH`  | `/api/v1/products/:productId/landing-page`            | Update landing page config |
-| `DELETE` | `/api/v1/products/:productId/landing-page`            | Delete landing page config |
-| `POST`   | `/api/v1/products/:productId/landing-page/upload-image` | Upload logo or banner image |
+| Method   | Endpoint                                              | Auth     | Description              |
+| -------- | ----------------------------------------------------- | -------- | ------------------------ |
+| `GET`    | `/api/v1/public/products/:productId/landing-page`     | None     | Fetch config (consumer QR page) |
+| `GET`    | `/api/v1/products/:productId/landing-page`            | Bearer   | Fetch landing page config |
+| `POST`   | `/api/v1/products/:productId/landing-page`            | Bearer   | Create landing page config |
+| `PATCH`  | `/api/v1/products/:productId/landing-page`            | Bearer   | Update landing page config |
+| `DELETE` | `/api/v1/products/:productId/landing-page`            | Bearer   | Delete landing page config |
+| `POST`   | `/api/v1/products/:productId/landing-page/upload-image` | Bearer | Upload logo or banner image |
 
 ---
 
