@@ -1,0 +1,12 @@
+export { SocialIcon } from './SocialIcon';
+export { CollapsibleSection } from './CollapsibleSection';
+export { ImageUploadField } from './ImageUploadField';
+export { VisualsSection } from './VisualsSection';
+export { ProductDetailsSection } from './ProductDetailsSection';
+export { SocialLinksSection } from './SocialLinksSection';
+export { FeedbackSection } from './FeedbackSection';
+export { WarrantySection } from './WarrantySection';
+export { CustomCTASection } from './CustomCTASection';
+export { FooterSection } from './FooterSection';
+export { MobilePreview } from './MobilePreview';
+export type { SectionProps, VisualsSectionProps } from './types';

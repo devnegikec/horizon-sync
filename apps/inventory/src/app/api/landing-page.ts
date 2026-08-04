@@ -89,17 +89,17 @@ export const landingPageApi = {
   /**
    * Upload an image (logo or banner) for the landing page.
    * POST /api/v1/products/:productId/landing-page/upload-image
-   * Body: FormData with { file: File, type: 'logo' | 'banner' }
+   * Body: FormData with { file: File, image_type: 'logo' | 'banner' }
    */
   async uploadImage(
     accessToken: string,
     productId: string,
     file: File,
-    type: 'logo' | 'banner',
+    imageType: 'logo' | 'banner',
   ): Promise<{ url: string }> {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('type', type);
+    formData.append('image_type', imageType);
     return apiRequest<{ url: string }>(
       `/products/${productId}/landing-page/upload-image`,
       accessToken,

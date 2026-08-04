@@ -17,6 +17,7 @@ interface VerificationResult {
   gtin: string | null;
   serial_number: string | null;
   product_id?: string | null;
+  organization_id?: string | null;
 }
 
 interface LandingPageData {
@@ -232,12 +233,11 @@ function LandingFeedback({
 }) {
   const isSurvey = fb.type === 'survey';
   return (
-    <div className="mb-3 rounded-2xl p-5 text-center text-white shadow-sm"
-      style={{ background: primary }}>
+    <div className="rounded-xl p-4 text-center text-white" style={{ background: primary }}>
       <p className="text-sm font-semibold">{fb.title || 'Share Your Feedback'}</p>
       {fb.description && <p className="mt-1 text-xs opacity-90">{fb.description}</p>}
       <button type="button"
-        className="mt-3 inline-flex items-center rounded-full bg-white px-5 py-1.5 text-xs font-semibold shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+        className="mt-2 rounded-full bg-white px-4 py-1.5 text-sm font-medium transition-colors hover:bg-white/90"
         style={{ color: primary }}>
         {isSurvey ? 'Take Survey' : 'Give Feedback'}
       </button>
@@ -253,13 +253,13 @@ function LandingWarranty({
   primary: string;
 }) {
   return (
-    <div className="mb-3 rounded-2xl border border-gray-200 bg-white p-5 text-center shadow-sm">
+    <div className="rounded-xl border p-4 text-center">
       <span role="img" aria-label="shield" className="mb-1 block text-xl">🛡️</span>
-      <p className="text-sm font-semibold text-gray-900">{w.title || 'Product Warranty'}</p>
+      <p className="mt-1 text-sm font-semibold">{w.title || 'Product Warranty'}</p>
       {w.description && <p className="mt-1 text-xs text-gray-500">{w.description}</p>}
       {w.cta_text && (
         <button type="button"
-          className="mt-3 inline-flex items-center rounded-full px-5 py-1.5 text-xs font-semibold text-white shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+          className="mt-2 rounded-full px-4 py-1.5 text-sm font-medium text-white transition-colors hover:opacity-90"
           style={{ background: primary }}>
           {w.cta_text}
         </button>
@@ -276,15 +276,13 @@ function LandingCTA({
   primary: string;
 }) {
   const style = cta.button_style || 'primary';
-  const base =
-    'inline-flex items-center rounded-full px-6 py-2 text-sm font-semibold shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95';
 
   if (style === 'secondary') {
     return (
-      <div className="mt-3 text-center">
+      <div className="text-center">
         <button type="button"
-          className={base}
-          style={{ background: '#fff', color: primary, border: `1px solid ${primary}` }}>
+          className="rounded-full border bg-white px-6 py-2 text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-50"
+          style={{ borderColor: primary, color: primary }}>
           {cta.button_text}
         </button>
       </div>
@@ -293,10 +291,10 @@ function LandingCTA({
 
   if (style === 'outline') {
     return (
-      <div className="mt-3 text-center">
+      <div className="text-center">
         <button type="button"
-          className={base}
-          style={{ background: 'transparent', color: '#fff', border: '2px solid #fff' }}>
+          className="rounded-full border-2 bg-transparent px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+          style={{ borderColor: '#fff' }}>
           {cta.button_text}
         </button>
       </div>
@@ -304,10 +302,10 @@ function LandingCTA({
   }
 
   return (
-    <div className="mt-3 text-center">
+    <div className="text-center">
       <button type="button"
-        className={base}
-        style={{ background: primary, color: '#fff' }}>
+        className="rounded-full px-6 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90"
+        style={{ background: primary }}>
         {cta.button_text}
       </button>
     </div>
@@ -324,13 +322,13 @@ function LandingSocials({
   const visible = links.filter((l) => l.enabled && l.url);
   if (visible.length === 0) return null;
   return (
-    <div className="pt-3 text-center">
-      <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-gray-400">Follow Us</p>
-      <div className="flex items-center justify-center gap-2.5">
+    <div className="pt-2 text-center">
+      <p className="mb-2 text-xs text-gray-400">Follow Us</p>
+      <div className="flex justify-center gap-3">
         {visible.map((link, i) => (
           <a key={i}
             href={link.url || '#'}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm transition-all duration-200 hover:scale-110 hover:shadow-md active:scale-95"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors hover:opacity-80"
             style={{ background: primary }}
             title={link.platform}>
             <SocialIconHtml platform={link.platform} />
@@ -343,36 +341,36 @@ function LandingSocials({
 
 function LandingFooter({ footer }: { footer: NonNullable<LandingPageData['footer']> }) {
   return (
-    <div className="mt-4 border-t border-gray-100 bg-gray-50/80 px-5 py-4 text-center">
-      {footer.text && <p className="text-[10px] text-gray-400">{footer.text}</p>}
-      {footer.custom_links && footer.custom_links.length > 0 && (
-        <div className="mt-1 flex items-center justify-center gap-3">
-          {footer.custom_links.map(
-            (link, i) =>
-              link.label && (
-                <a key={i}
-                  href={link.url || '#'}
-                  className="text-[10px] font-medium text-gray-400 transition-colors hover:text-gray-600">
-                  {link.label}
-                </a>
-              ),
-          )}
-        </div>
-      )}
-      {footer.show_powered_by !== false && (
-        <p className="mt-1 text-[10px] text-gray-300">Powered by QSeal</p>
-      )}
+    <div className="mt-4 border-t bg-gray-50 px-5 py-4 text-center">
+      <div className="space-y-1">
+        {footer.text && <p className="text-[10px] text-gray-400">{footer.text}</p>}
+        {footer.custom_links && footer.custom_links.length > 0 && (
+          <div className="flex items-center justify-center gap-3">
+            {footer.custom_links.map(
+              (link, i) =>
+                link.label && (
+                  <a key={i}
+                    href={link.url || '#'}
+                    className="text-[10px] text-gray-500 hover:underline">
+                    {link.label}
+                  </a>
+                ),
+            )}
+          </div>
+        )}
+        {footer.show_powered_by !== false && (
+          <p className="text-[10px] text-gray-300">Powered by QSeal</p>
+        )}
+      </div>
     </div>
   );
 }
 
 function DetailRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-center justify-between py-1">
-      <span className="text-[11px] font-medium text-gray-400">{label}</span>
-      <span className={`text-[11px] font-semibold text-gray-700 ${mono ? 'font-mono' : ''}`}>
-        {value}
-      </span>
+    <div className="flex justify-between text-xs">
+      <span className="text-gray-500">{label}</span>
+      <span className={`font-medium ${mono ? 'font-mono' : ''}`}>{value}</span>
     </div>
   );
 }
@@ -400,7 +398,7 @@ function LandingDetailCard({
   if (rows.length === 0) return null;
 
   return (
-    <div className="mb-3 rounded-xl border border-gray-200/80 bg-gray-50/70 p-4">
+    <div className="space-y-2 rounded-xl border bg-gray-50/50 p-4">
       {rows.map((r, i) => (
         <DetailRow key={i} label={r.label} value={r.value} mono={r.mono} />
       ))}
@@ -412,18 +410,15 @@ function LandingVisuals({ lp }: { lp: LandingPageData }) {
   return (
     <>
       {lp.banner_image_url && (
-        <div className="relative h-36 w-full overflow-hidden bg-gray-100">
+        <div className="h-36 w-full overflow-hidden">
           <img src={lp.banner_image_url}
             alt="Banner"
             className="h-full w-full object-cover"/>
-          {/* Gradient overlay at bottom of banner */}
-          <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white/80 to-transparent" />
         </div>
       )}
       {lp.logo_url && (
-        <div className="relative z-10 mx-auto flex justify-center"
-          style={{ marginTop: lp.banner_image_url ? -32 : 12 }}>
-          <div className="h-[72px] w-[72px] overflow-hidden rounded-xl border-[3px] border-white bg-white shadow-lg shadow-black/10">
+        <div className="relative z-10 flex justify-center" style={{ marginTop: '-2.5rem' }}>
+          <div className="h-20 w-20 overflow-hidden rounded-xl border-4 border-white bg-white shadow-md">
             <img src={lp.logo_url}
               alt="Logo"
               className="h-full w-full object-contain p-1"/>
@@ -444,7 +439,7 @@ function LandingSections({
   primary: string;
 }) {
   return (
-    <>
+    <div className="space-y-3">
       <LandingDetailCard lp={lp} result={result} />
       {lp.feedback?.enabled && lp.feedback.type !== 'none' && (
         <LandingFeedback fb={lp.feedback} primary={primary} />
@@ -454,7 +449,7 @@ function LandingSections({
         <LandingCTA cta={lp.custom_cta} primary={primary} />
       )}
       {lp.social_links && <LandingSocials links={lp.social_links} primary={primary} />}
-    </>
+    </div>
   );
 }
 
@@ -466,22 +461,21 @@ function LandingPageView({ lp, result }: { lp: LandingPageData; result: Verifica
   return (
     <>
       <style>{ANIMATION_STYLES}</style>
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-100 via-[#f3f4f6] to-gray-200 p-4 font-sans">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4 font-sans">
         {/* Phone frame */}
-        <div className="relative w-[375px] animate-[qr-fade-in_0.5s_ease-out] overflow-hidden rounded-[36px] border-[6px] border-gray-800 bg-white shadow-2xl shadow-black/20"
-          style={{ minHeight: 680 }}>
+        <div className="relative w-[375px] min-h-[700px] animate-[qr-fade-in_0.5s_ease-out] overflow-hidden rounded-[3rem] border-[6px] border-gray-800 bg-white shadow-2xl">
           {/* Notch */}
-          <div className="absolute left-1/2 top-0 z-20 h-6 w-36 -translate-x-1/2 rounded-b-2xl bg-gray-800" />
+          <div className="absolute left-1/2 top-0 z-10 h-6 w-28 -translate-x-1/2 rounded-b-2xl bg-gray-800" />
 
           {/* Scrollable content */}
-          <div className="scrollbar-thin h-full overflow-y-auto">
+          <div className="h-full overflow-y-auto pb-4 pt-8">
             <LandingVisuals lp={lp} />
 
-            <div className="px-5 pb-6">
+            <div className="mt-3 space-y-3 px-5">
               {/* Title */}
-              <div className="mb-3 text-center">
-                <h3 className="text-lg font-bold tracking-tight text-gray-900">Authentic Product</h3>
-                <p className="mt-0.5 text-[11px] font-medium text-gray-400">Verified by QSeal</p>
+              <div className="text-center">
+                <h3 className="text-lg font-bold text-gray-900">Authentic Product</h3>
+                <p className="text-xs text-gray-500">Verified by QSeal</p>
               </div>
 
               <LandingSections lp={lp} result={result} primary={primary} />
@@ -536,13 +530,15 @@ export function PublicQRValidation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serial, timestamp, cipher]);
 
-  const fetchLandingPage = async (productId: string) => {
+  const fetchLandingPage = async (productId: string, organizationId: string) => {
     try {
-      const lpRes = await axios.get(
-        `${API_BASE_URL}/api/v1/public/products/${productId}/landing-page`,
-      );
+      const url = `${API_BASE_URL}/api/v1/public/products/${productId}/landing-page?organization_id=${encodeURIComponent(organizationId)}`;
+      console.log('[QR] Fetching landing page:', url);
+      const lpRes = await axios.get(url);
+      console.log('[QR] Landing page response:', lpRes.data);
       setLandingPage(lpRes.data?.config || null);
-    } catch {
+    } catch (err) {
+      console.error('[QR] Landing page fetch failed:', err);
       setLandingPage(null);
     }
   };
@@ -556,11 +552,14 @@ export function PublicQRValidation() {
         nonce,
         cipher: sig,
       });
+      console.log('[QR] Authenticate response:', res.data);
       setResult(res.data);
 
       const productId = res.data?.product_id;
-      if (productId && res.data?.authentic) {
-        await fetchLandingPage(productId);
+      const organizationId = res.data?.organization_id;
+      console.log('[QR] product_id:', productId, 'organization_id:', organizationId, 'authentic:', res.data?.authentic);
+      if (productId && organizationId && res.data?.authentic) {
+        await fetchLandingPage(productId, organizationId);
       }
     } catch (err: unknown) {
       const detail = parseApiError(err);
