@@ -500,10 +500,10 @@ export function PublicQRValidation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serial, timestamp, cipher]);
 
-  const fetchLandingPage = async (productId: string) => {
-    if (!productId) return;
+  const fetchLandingPage = async (sku: string) => {
+    if (!sku) return;
     try {
-      const url = `${API_BASE_URL}/api/v1/public/products/${productId}/landing-page`;
+      const url = `${API_BASE_URL}/api/v1/public/products/sku/${encodeURIComponent(sku)}/landing-page`;
       console.log('[QR] Fetching landing page:', url);
       const lpRes = await axios.get(url);
       console.log('[QR] Landing page response:', lpRes.data);
@@ -527,11 +527,13 @@ export function PublicQRValidation() {
       console.log('[QR] Authenticate response:', res.data);
       setResult(res.data);
 
-      // Always fetch landing page if productId is available — design is independent of auth result
-      const productId = res.data?.product_id;
-      console.log('[QR] product_id:', productId, 'authentic:', res.data?.authentic);
-      if (productId) {
-        await fetchLandingPage(productId);
+      // Fetch landing page by SKU (GTIN) from authenticate response
+      const sku = res.data?.gtin;
+      console.log('[QR] sku (gtin):', sku, 'authentic:', res.data?.authentic);
+      if (sku) {
+        await fetchLandingPage(sku);
+      } else {
+        console.warn('[QR] No gtin/sku in authenticate response — cannot fetch landing page.');
       }
     } catch (err: unknown) {
       const detail = parseApiError(err);
