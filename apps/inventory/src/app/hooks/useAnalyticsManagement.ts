@@ -91,7 +91,7 @@ export function useAnalyticsManagement(): UseAnalyticsManagementResult {
       setCTABreakdown(ctaData);
       setInteractionFunnel(funnelData);
       setGeoPoints(geoData);
-      setDeviceTimeline(deviceData);
+      setDeviceTimeline(Array.isArray(deviceData) ? deviceData : []);
     } catch (err) {
       setError(getFriendlyErrorMessage(err));
     } finally {
