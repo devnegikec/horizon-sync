@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Settings, Plus, RefreshCw, Pencil, Trash2, X, Check, KeyRound } from 'lucide-react';
+import { Settings, Plus, RefreshCw, Pencil, Trash2, X, Check, KeyRound, Globe } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -12,7 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/compo
 
 import { useQRProductSettings } from '../../hooks/useQRProductSettings';
 import type { SettingType, QRProductSetting } from '../../types/qr-product-settings.types';
+
 import { BrandManagement } from './BrandManagement';
+import { LandingPageTab } from './LandingPageTab';
 
 /* ------------------------------------------------------------------ */
 /*  Tab metadata                                                       */
@@ -248,15 +250,13 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
         </div>
 
         {/* Delete Confirmation Dialog */}
-        <ConfirmationDialog
-          open={!!confirmDeleteSetting}
+        <ConfirmationDialog open={!!confirmDeleteSetting}
           onOpenChange={(open) => { if (!open) setConfirmDeleteSetting(null); }}
           title="Delete Setting"
           description={confirmDeleteSetting ? `Delete "${confirmDeleteSetting.label}"? This cannot be undone.` : ''}
           confirmLabel="Delete"
           variant="destructive"
-          onConfirm={executeDelete}
-        />
+          onConfirm={executeDelete}/>
       </CardContent>
     </Card>
   );
@@ -288,6 +288,10 @@ export function ProductSettingsManagement() {
             <KeyRound className="h-3.5 w-3.5 mr-1.5" />
             Brands & Keys
           </TabsTrigger>
+          <TabsTrigger value="landing-page">
+            <Globe className="h-3.5 w-3.5 mr-1.5" />
+            Landing Page
+          </TabsTrigger>
         </TabsList>
         {SETTING_TABS.map((tab) => (
           <TabsContent key={tab.key} value={tab.key}>
@@ -296,6 +300,9 @@ export function ProductSettingsManagement() {
         ))}
         <TabsContent value="brands">
           <BrandManagement />
+        </TabsContent>
+        <TabsContent value="landing-page">
+          <LandingPageTab />
         </TabsContent>
       </Tabs>
     </div>

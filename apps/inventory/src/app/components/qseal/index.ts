@@ -11,3 +11,4 @@ export { AnalyticsManagement } from './AnalyticsManagement';
 export { ActivationManagement } from './ActivationManagement';
 export { ProductSettingsManagement } from './ProductSettingsManagement';
 export { BrandManagement } from './BrandManagement';
+export { LandingPageTab } from './LandingPageTab';
