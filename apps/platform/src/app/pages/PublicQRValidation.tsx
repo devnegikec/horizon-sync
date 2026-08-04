@@ -284,19 +284,21 @@ function buildDetailRows(lp: LandingPageData, result: VerificationResult): Array
 }
 
 /** Feedback / Survey block — matches MobilePreview exactly. */
-function LandingFeedbackBlock({ fb, primary }: { fb: NonNullable<LandingPageData['feedback']>; primary: string }) {
+function LandingFeedbackBlock({ fb, primary, onInteraction }: { fb: NonNullable<LandingPageData['feedback']>; primary: string; onInteraction: (type: string, label: string) => void }) {
+  const label = fb.type === 'survey' ? 'Take Survey' : 'Give Feedback';
   return (
     <div className="rounded-xl p-4 text-white text-center" style={{ background: primary }}>
       <p className="font-semibold text-sm">{fb.title || 'Share Your Feedback'}</p>
       {fb.description && <p className="text-xs mt-1 opacity-90">{fb.description}</p>}
       {fb.type === 'survey' && fb.survey_url ? (
-        <a href={fb.survey_url} target="_blank" rel="noopener noreferrer">
+        <a href={fb.survey_url} target="_blank" rel="noopener noreferrer" onClick={() => onInteraction('survey_click', label)}>
           <button type="button"
             className="mt-2 px-4 py-1.5 rounded-full bg-white text-sm font-medium hover:bg-white/90 transition-colors"
             style={{ color: primary }}>Take Survey</button>
         </a>
       ) : (
         <button type="button"
+          onClick={() => onInteraction('feedback_click', label)}
           className="mt-2 px-4 py-1.5 rounded-full bg-white text-sm font-medium hover:bg-white/90 transition-colors"
           style={{ color: primary }}>Give Feedback</button>
       )}
@@ -305,9 +307,11 @@ function LandingFeedbackBlock({ fb, primary }: { fb: NonNullable<LandingPageData
 }
 
 /** Warranty block — matches MobilePreview exactly. */
-function LandingWarrantyBlock({ w, primary }: { w: NonNullable<LandingPageData['warranty']>; primary: string }) {
+function LandingWarrantyBlock({ w, primary, onInteraction }: { w: NonNullable<LandingPageData['warranty']>; primary: string; onInteraction: (type: string, label: string) => void }) {
+  const label = w.cta_text || 'Warranty CTA';
   const button = w.cta_text && (
     <button type="button"
+      onClick={() => onInteraction('warranty_click', label)}
       className="mt-2 px-4 py-1.5 rounded-full text-sm font-medium text-white transition-colors hover:opacity-90"
       style={{ background: primary }}>{w.cta_text}</button>
   );
@@ -324,11 +328,13 @@ function LandingWarrantyBlock({ w, primary }: { w: NonNullable<LandingPageData['
 }
 
 /** Custom CTA block — matches MobilePreview exactly. */
-function LandingCTABlock({ cta, primary }: { cta: NonNullable<LandingPageData['custom_cta']>; primary: string }) {
+function LandingCTABlock({ cta, primary, onInteraction }: { cta: NonNullable<LandingPageData['custom_cta']>; primary: string; onInteraction: (type: string, label: string) => void }) {
   const cls = CTA_STYLE_CLASSES[cta.button_style] || CTA_STYLE_CLASSES.primary;
   const style = cta.button_style !== 'secondary' ? { background: primary } : { borderColor: primary, color: primary };
+  const label = cta.button_text;
   const btn = (
     <button type="button"
+      onClick={() => onInteraction('cta_click', label)}
       className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors ${cls}`}
       style={style}>{cta.button_text}</button>
   );
@@ -342,7 +348,7 @@ function LandingCTABlock({ cta, primary }: { cta: NonNullable<LandingPageData['c
 }
 
 /** Social links block — matches MobilePreview exactly. */
-function LandingSocialsBlock({ links, primary }: { links: NonNullable<LandingPageData['social_links']>; primary: string }) {
+function LandingSocialsBlock({ links, primary, onInteraction }: { links: NonNullable<LandingPageData['social_links']>; primary: string; onInteraction: (type: string, label: string) => void }) {
   const visible = links.filter((l) => l.enabled && l.url);
   if (!visible.length) return null;
   return (
@@ -354,6 +360,7 @@ function LandingSocialsBlock({ links, primary }: { links: NonNullable<LandingPag
             href={link.url || '#'}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => onInteraction('social_click', link.label || link.platform)}
             className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:opacity-80"
             style={{ background: primary, color: '#fff' }}
             title={link.label || link.platform}>
@@ -405,7 +412,7 @@ function LandingHeader({ lp, result }: { lp: LandingPageData; result: Verificati
   );
 }
 
-function LandingPageView({ lp, result }: { lp: LandingPageData; result: VerificationResult }) {
+function LandingPageView({ lp, result, onInteraction }: { lp: LandingPageData; result: VerificationResult; onInteraction: (type: string, label: string) => void }) {
   const primary = lp.primary_color || '#1a56db';
   const rows = buildDetailRows(lp, result);
 
@@ -417,7 +424,7 @@ function LandingPageView({ lp, result }: { lp: LandingPageData; result: Verifica
           <div className="absolute left-1/2 top-0 z-10 h-6 w-28 -translate-x-1/2 rounded-b-2xl bg-gray-800" />
           <div className="h-full overflow-y-auto pb-4 pt-8">
             <LandingHeader lp={lp} result={result} />
-            <LandingSectionsView rows={rows} lp={lp} primary={primary} />
+            <LandingSectionsView rows={rows} lp={lp} primary={primary} onInteraction={onInteraction} />
             <LandingFooterBlock lp={lp} />
           </div>
         </div>
@@ -427,13 +434,18 @@ function LandingPageView({ lp, result }: { lp: LandingPageData; result: Verifica
 }
 
 /** Sections below the header — isolated to satisfy complexity limit. */
-function LandingSectionsView({ rows, lp, primary }: { rows: Array<{ label: string; value: string; mono?: boolean }>; lp: LandingPageData; primary: string }) {
+function LandingSectionsView({ rows, lp, primary, onInteraction }: {
+  rows: Array<{ label: string; value: string; mono?: boolean }>;
+  lp: LandingPageData;
+  primary: string;
+  onInteraction: (type: string, label: string) => void;
+}) {
   const sections: React.ReactNode[] = [];
   sections.push(<LandingDetailCard key="d" rows={rows} />);
-  const fb = lp.feedback; if (fb && fb.enabled && fb.type !== 'none') sections.push(<LandingFeedbackBlock key="f" fb={fb} primary={primary} />);
-  const w = lp.warranty; if (w && w.enabled) sections.push(<LandingWarrantyBlock key="w" w={w} primary={primary} />);
-  const cta = lp.custom_cta; if (cta && cta.enabled && cta.button_text) sections.push(<LandingCTABlock key="c" cta={cta} primary={primary} />);
-  const sx = lp.social_links; if (sx) sections.push(<LandingSocialsBlock key="s" links={sx} primary={primary} />);
+  const fb = lp.feedback; if (fb && fb.enabled && fb.type !== 'none') sections.push(<LandingFeedbackBlock key="f" fb={fb} primary={primary} onInteraction={onInteraction} />);
+  const w = lp.warranty; if (w && w.enabled) sections.push(<LandingWarrantyBlock key="w" w={w} primary={primary} onInteraction={onInteraction} />);
+  const cta = lp.custom_cta; if (cta && cta.enabled && cta.button_text) sections.push(<LandingCTABlock key="c" cta={cta} primary={primary} onInteraction={onInteraction} />);
+  const sx = lp.social_links; if (sx) sections.push(<LandingSocialsBlock key="s" links={sx} primary={primary} onInteraction={onInteraction} />);
   return <div className="px-5 mt-3 space-y-3">{sections}</div>;
 }
 
@@ -475,6 +487,80 @@ function parseApiError(err: unknown): string {
   return 'Verification failed';
 }
 
+// ─── Analytics Helpers ────────────────────────────────────────────────────────
+
+/** Detect device type from user-agent. */
+function deviceType(): string {
+  const ua = navigator.userAgent;
+  if (/Mobi|Android/i.test(ua)) return 'mobile';
+  if (/iPad|Tablet/i.test(ua)) return 'tablet';
+  return 'desktop';
+}
+
+/** Detect OS from user-agent. */
+function detectOS(): string {
+  const ua = navigator.userAgent;
+  if (/Windows/i.test(ua)) return 'Windows';
+  if (/Mac/i.test(ua)) return 'macOS';
+  if (/Android/i.test(ua)) return 'Android';
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'iOS';
+  if (/Linux/i.test(ua)) return 'Linux';
+  return 'Unknown';
+}
+
+/** Detect browser from user-agent. */
+function detectBrowser(): string {
+  const ua = navigator.userAgent;
+  if (/Edg\//i.test(ua)) return 'Edge';
+  if (/Chrome/i.test(ua)) return 'Chrome';
+  if (/Safari/i.test(ua)) return 'Safari';
+  if (/Firefox/i.test(ua)) return 'Firefox';
+  return 'Unknown';
+}
+
+/**
+ * Send scan ingest event to analytics backend. Fire-and-forget — never throws.
+ * Returns the scan ID for subsequent interaction tracking.
+ */
+async function sendScanIngest(serialNumber: string, gtin: string, organizationId: string): Promise<string | null> {
+  try {
+    const body = {
+      serial_number: serialNumber,
+      gtin,
+      device_type: deviceType(),
+      os: detectOS(),
+      browser: detectBrowser(),
+      ip_address: null,
+      latitude: null,
+      longitude: null,
+      city: null,
+      state: null,
+      country: null,
+      extra_data: {},
+    };
+    const url = `${API_BASE_URL}/api/v1/analytics/scans/ingest?organization_id=${encodeURIComponent(organizationId)}`;
+    const res = await axios.post(url, body);
+    console.log('[QR] Scan ingest recorded:', res.data?.id);
+    return res.data?.id || null;
+  } catch (err) {
+    console.warn('[QR] Scan ingest failed (non-blocking):', (err as AxiosError)?.message);
+    return null;
+  }
+}
+
+/**
+ * Record a CTA interaction on the landing page.
+ */
+async function sendCTAInteraction(scanId: string, interactionType: string, ctaLabel: string) {
+  try {
+    const url = `${API_BASE_URL}/api/v1/analytics/scans/${scanId}/interactions`;
+    await axios.post(url, { interaction_type: interactionType, cta_label: ctaLabel });
+    console.log('[QR] CTA interaction recorded:', interactionType, ctaLabel);
+  } catch (err) {
+    console.warn('[QR] CTA interaction failed (non-blocking):', (err as AxiosError)?.message);
+  }
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export function PublicQRValidation() {
@@ -490,6 +576,15 @@ export function PublicQRValidation() {
   const [landingPage, setLandingPage] = React.useState<LandingPageData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const scanIdRef = React.useRef<string | null>(null);
+
+  // Fire analytics scan ingest after landing page loads (gives us organization_id)
+  const trackScan = React.useCallback(async (gtin: string, lp: LandingPageData) => {
+    const orgId = (lp as Record<string, unknown>).organization_id as string | undefined;
+    if (orgId && serial) {
+      scanIdRef.current = await sendScanIngest(serial, gtin, orgId);
+    }
+  }, [serial]);
 
   React.useEffect(() => {
     if (serial && timestamp && cipher) {
@@ -508,7 +603,12 @@ export function PublicQRValidation() {
       console.log('[QR] Fetching landing page:', url);
       const lpRes = await axios.get(url);
       console.log('[QR] Landing page response:', lpRes.data);
-      setLandingPage(lpRes.data?.config || null);
+      const lpConfig = lpRes.data?.config || null;
+      setLandingPage(lpConfig);
+      // Track scan after we have organization_id from landing page config
+      if (lpConfig) {
+        trackScan(sku, lpConfig);
+      }
     } catch (err) {
       const axiosErr = err as AxiosError;
       console.error('[QR] Landing page fetch failed:', axiosErr.response?.status, axiosErr.message);
@@ -558,7 +658,13 @@ export function PublicQRValidation() {
 
   // Show designed landing page whenever config exists (regardless of auth result)
   if (landingPage) {
-    return <LandingPageView lp={landingPage} result={result} />;
+    return (
+      <LandingPageView lp={landingPage}
+        result={result}
+        onInteraction={(type, label) => {
+          if (scanIdRef.current) sendCTAInteraction(scanIdRef.current, type, label);
+        }} />
+    );
   }
 
   // Authentic but no landing page → simple verified view
