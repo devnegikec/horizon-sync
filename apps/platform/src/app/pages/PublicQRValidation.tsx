@@ -1,11 +1,23 @@
 import * as React from 'react';
 
 import axios, { AxiosError } from 'axios';
+import { Shield } from 'lucide-react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
 import { environment } from '../../environments/environment';
 
 const API_BASE_URL = environment.apiCoreUrl;
+
+/**
+ * Resolve a landing page image URL for display.
+ * Backend stores relative paths like `/static/landing-pages/...`.
+ * Prepend core service base URL so images render correctly.
+ */
+function resolveImageUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${API_BASE_URL}${url}`;
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -213,7 +225,7 @@ function SimpleVerifiedView({ result }: { result: VerificationResult }) {
               ✓
             </div>
             <h2 className="mb-2 text-xl font-semibold tracking-tight text-gray-900">Authentic Product</h2>
-            <p className="mb-1 text-sm leading-relaxed text-gray-500">This QR code is genuine and verified.</p>
+            <p className="mb-1 text-sm leading-relaxed text-gray-500">This QR code is genuine and verified. test</p>
             <ProductDetails result={result} />
           </div>
         </div>
@@ -222,115 +234,129 @@ function SimpleVerifiedView({ result }: { result: VerificationResult }) {
   );
 }
 
-// ─── Landing Page Sub-Components ─────────────────────────────────────────────
+// ─── Landing Page Sub-Components (matches MobilePreview.tsx exactly) ──────────
 
-function LandingFeedback({
-  fb,
-  primary,
-}: {
-  fb: NonNullable<LandingPageData['feedback']>;
-  primary: string;
-}) {
-  const isSurvey = fb.type === 'survey';
+const CTA_STYLE_CLASSES: Record<string, string> = {
+  primary: 'text-white hover:opacity-90',
+  secondary: 'bg-white border text-gray-800 hover:bg-gray-50',
+  outline: 'bg-transparent border-2 text-white border-white hover:bg-white/10',
+};
+
+function DetailRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="rounded-xl p-4 text-center text-white" style={{ background: primary }}>
-      <p className="text-sm font-semibold">{fb.title || 'Share Your Feedback'}</p>
-      {fb.description && <p className="mt-1 text-xs opacity-90">{fb.description}</p>}
-      <button type="button"
-        className="mt-2 rounded-full bg-white px-4 py-1.5 text-sm font-medium transition-colors hover:bg-white/90"
-        style={{ color: primary }}>
-        {isSurvey ? 'Take Survey' : 'Give Feedback'}
-      </button>
+    <div className="flex justify-between text-xs">
+      <span className="text-gray-500">{label}</span>
+      <span className={mono ? 'font-mono font-medium' : 'font-medium'}>{value}</span>
     </div>
   );
 }
 
-function LandingWarranty({
-  w,
-  primary,
-}: {
-  w: NonNullable<LandingPageData['warranty']>;
-  primary: string;
-}) {
+/** Product detail rows card — matches MobilePreview details section exactly. */
+function LandingDetailCard({ rows }: { rows: Array<{ label: string; value: string; mono?: boolean }> }) {
+  if (!rows.length) return null;
   return (
-    <div className="rounded-xl border p-4 text-center">
-      <span role="img" aria-label="shield" className="mb-1 block text-xl">🛡️</span>
-      <p className="mt-1 text-sm font-semibold">{w.title || 'Product Warranty'}</p>
-      {w.description && <p className="mt-1 text-xs text-gray-500">{w.description}</p>}
-      {w.cta_text && (
+    <div className="rounded-xl border bg-gray-50/50 p-4 space-y-2">
+      {rows.map((r, i) => <DetailRow key={i} {...r} />)}
+    </div>
+  );
+}
+
+/** Build detail rows from landing page config + verification result. */
+function buildDetailRows(lp: LandingPageData, result: VerificationResult): Array<{ label: string; value: string; mono?: boolean }> {
+  const pd = lp.product_details;
+  const rows: Array<{ label: string; value: string; mono?: boolean }> = [];
+  // Use a flat array of [condition, label, value, mono] tuples
+  ([
+    [pd?.show_gtin, 'GTIN', result.gtin, true],
+    [pd?.show_batch, 'Batch No.', result.product_name, false],
+    [pd?.show_mfg_date, 'Mfg. Date', null, false],
+    [pd?.show_expiry_date, 'Expiry Date', null, false],
+    [pd?.show_serial_number, 'Serial No.', result.serial_number, true],
+  ] as Array<[boolean | undefined, string, string | null | undefined, boolean]>).forEach(
+    ([show, label, val, mono]) => {
+      if (show) rows.push({ label, value: val || '—', mono });
+    },
+  );
+  (pd?.custom_fields || []).forEach((f) => {
+    if (f.label) rows.push({ label: f.label, value: f.value || '—' });
+  });
+  return rows;
+}
+
+/** Feedback / Survey block — matches MobilePreview exactly. */
+function LandingFeedbackBlock({ fb, primary }: { fb: NonNullable<LandingPageData['feedback']>; primary: string }) {
+  return (
+    <div className="rounded-xl p-4 text-white text-center" style={{ background: primary }}>
+      <p className="font-semibold text-sm">{fb.title || 'Share Your Feedback'}</p>
+      {fb.description && <p className="text-xs mt-1 opacity-90">{fb.description}</p>}
+      {fb.type === 'survey' && fb.survey_url ? (
+        <a href={fb.survey_url} target="_blank" rel="noopener noreferrer">
+          <button type="button"
+            className="mt-2 px-4 py-1.5 rounded-full bg-white text-sm font-medium hover:bg-white/90 transition-colors"
+            style={{ color: primary }}>Take Survey</button>
+        </a>
+      ) : (
         <button type="button"
-          className="mt-2 rounded-full px-4 py-1.5 text-sm font-medium text-white transition-colors hover:opacity-90"
-          style={{ background: primary }}>
-          {w.cta_text}
-        </button>
+          className="mt-2 px-4 py-1.5 rounded-full bg-white text-sm font-medium hover:bg-white/90 transition-colors"
+          style={{ color: primary }}>Give Feedback</button>
       )}
     </div>
   );
 }
 
-function LandingCTA({
-  cta,
-  primary,
-}: {
-  cta: NonNullable<LandingPageData['custom_cta']>;
-  primary: string;
-}) {
-  const style = cta.button_style || 'primary';
-
-  if (style === 'secondary') {
-    return (
-      <div className="text-center">
-        <button type="button"
-          className="rounded-full border bg-white px-6 py-2 text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-50"
-          style={{ borderColor: primary, color: primary }}>
-          {cta.button_text}
-        </button>
-      </div>
-    );
-  }
-
-  if (style === 'outline') {
-    return (
-      <div className="text-center">
-        <button type="button"
-          className="rounded-full border-2 bg-transparent px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-          style={{ borderColor: '#fff' }}>
-          {cta.button_text}
-        </button>
-      </div>
-    );
-  }
-
+/** Warranty block — matches MobilePreview exactly. */
+function LandingWarrantyBlock({ w, primary }: { w: NonNullable<LandingPageData['warranty']>; primary: string }) {
+  const button = w.cta_text && (
+    <button type="button"
+      className="mt-2 px-4 py-1.5 rounded-full text-sm font-medium text-white transition-colors hover:opacity-90"
+      style={{ background: primary }}>{w.cta_text}</button>
+  );
   return (
-    <div className="text-center">
-      <button type="button"
-        className="rounded-full px-6 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90"
-        style={{ background: primary }}>
-        {cta.button_text}
-      </button>
+    <div className="rounded-xl border p-4 text-center">
+      <Shield className="h-5 w-5 mx-auto" style={{ color: primary }} />
+      <p className="font-semibold text-sm mt-1">{w.title || 'Product Warranty'}</p>
+      {w.description && <p className="text-xs text-gray-500 mt-1">{w.description}</p>}
+      {button && w.cta_url ? (
+        <a href={w.cta_url} target="_blank" rel="noopener noreferrer">{button}</a>
+      ) : button}
     </div>
   );
 }
 
-function LandingSocials({
-  links,
-  primary,
-}: {
-  links: NonNullable<LandingPageData['social_links']>;
-  primary: string;
-}) {
-  const visible = links.filter((l) => l.enabled && l.url);
-  if (visible.length === 0) return null;
+/** Custom CTA block — matches MobilePreview exactly. */
+function LandingCTABlock({ cta, primary }: { cta: NonNullable<LandingPageData['custom_cta']>; primary: string }) {
+  const cls = CTA_STYLE_CLASSES[cta.button_style] || CTA_STYLE_CLASSES.primary;
+  const style = cta.button_style !== 'secondary' ? { background: primary } : { borderColor: primary, color: primary };
+  const btn = (
+    <button type="button"
+      className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors ${cls}`}
+      style={style}>{cta.button_text}</button>
+  );
   return (
-    <div className="pt-2 text-center">
-      <p className="mb-2 text-xs text-gray-400">Follow Us</p>
+    <div className="text-center">
+      {cta.button_url ? (
+        <a href={cta.button_url} target="_blank" rel="noopener noreferrer">{btn}</a>
+      ) : btn}
+    </div>
+  );
+}
+
+/** Social links block — matches MobilePreview exactly. */
+function LandingSocialsBlock({ links, primary }: { links: NonNullable<LandingPageData['social_links']>; primary: string }) {
+  const visible = links.filter((l) => l.enabled && l.url);
+  if (!visible.length) return null;
+  return (
+    <div className="text-center pt-2">
+      <p className="text-xs text-gray-400 mb-2">Follow Us</p>
       <div className="flex justify-center gap-3">
         {visible.map((link, i) => (
           <a key={i}
             href={link.url || '#'}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors hover:opacity-80"
-            style={{ background: primary }}
-            title={link.platform}>
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:opacity-80"
+            style={{ background: primary, color: '#fff' }}
+            title={link.label || link.platform}>
             <SocialIconHtml platform={link.platform} />
           </a>
         ))}
@@ -339,153 +365,97 @@ function LandingSocials({
   );
 }
 
-function LandingFooter({ footer }: { footer: NonNullable<LandingPageData['footer']> }) {
-  return (
-    <div className="mt-4 border-t bg-gray-50 px-5 py-4 text-center">
-      <div className="space-y-1">
-        {footer.text && <p className="text-[10px] text-gray-400">{footer.text}</p>}
-        {footer.custom_links && footer.custom_links.length > 0 && (
-          <div className="flex items-center justify-center gap-3">
-            {footer.custom_links.map(
-              (link, i) =>
-                link.label && (
-                  <a key={i}
-                    href={link.url || '#'}
-                    className="text-[10px] text-gray-500 hover:underline">
-                    {link.label}
-                  </a>
-                ),
-            )}
-          </div>
-        )}
-        {footer.show_powered_by !== false && (
-          <p className="text-[10px] text-gray-300">Powered by QSeal</p>
-        )}
-      </div>
-    </div>
-  );
-}
+// ─── Landing Page View (phone mockup — matches MobilePreview.tsx) ─────────────
 
-function DetailRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="flex justify-between text-xs">
-      <span className="text-gray-500">{label}</span>
-      <span className={`font-medium ${mono ? 'font-mono' : ''}`}>{value}</span>
-    </div>
-  );
-}
-
-function LandingDetailCard({
-  lp,
-  result,
-}: {
-  lp: LandingPageData;
-  result: VerificationResult;
-}) {
-  const pd = lp.product_details;
-  const customFields = (pd?.custom_fields || []).filter((f) => f.label);
-
-  const rows: Array<{ label: string; value: string; mono?: boolean }> = [
-    ...(pd?.show_gtin && result.gtin
-      ? [{ label: 'GTIN', value: result.gtin }]
-      : []),
-    ...(pd?.show_serial_number && result.serial_number
-      ? [{ label: 'Serial No.', value: result.serial_number, mono: true as const }]
-      : []),
-    ...customFields.map((f) => ({ label: f.label, value: f.value || '—' })),
-  ];
-
-  if (rows.length === 0) return null;
-
-  return (
-    <div className="space-y-2 rounded-xl border bg-gray-50/50 p-4">
-      {rows.map((r, i) => (
-        <DetailRow key={i} label={r.label} value={r.value} mono={r.mono} />
-      ))}
-    </div>
-  );
-}
-
-function LandingVisuals({ lp }: { lp: LandingPageData }) {
+/** Banner + Logo header section extracted to reduce component complexity. */
+function LandingHeader({ lp, result }: { lp: LandingPageData; result: VerificationResult }) {
+  const bannerUrl = resolveImageUrl(lp.banner_image_url);
+  const logoUrl = resolveImageUrl(lp.logo_url);
+  const isAuthentic = result.authentic;
   return (
     <>
-      {lp.banner_image_url && (
-        <div className="h-36 w-full overflow-hidden">
-          <img src={lp.banner_image_url}
-            alt="Banner"
-            className="h-full w-full object-cover"/>
+      {bannerUrl && (
+        <div className="w-full h-36 overflow-hidden">
+          <img src={bannerUrl} alt="Banner" className="w-full h-full object-cover" />
         </div>
       )}
-      {lp.logo_url && (
-        <div className="relative z-10 flex justify-center" style={{ marginTop: '-2.5rem' }}>
-          <div className="h-20 w-20 overflow-hidden rounded-xl border-4 border-white bg-white shadow-md">
-            <img src={lp.logo_url}
-              alt="Logo"
-              className="h-full w-full object-contain p-1"/>
+      {logoUrl && (
+        <div className="flex justify-center -mt-10 relative z-10">
+          <div className="w-20 h-20 rounded-xl border-4 border-white bg-white shadow-md overflow-hidden">
+            <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
           </div>
         </div>
       )}
+      <div className="px-5 mt-3 text-center">
+        {isAuthentic ? (
+          <>
+            <h3 className="text-lg font-bold text-gray-900">Authentic Product</h3>
+            <p className="text-xs text-gray-500">Verified by QSeal</p>
+          </>
+        ) : (
+          <>
+            <div className="mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-red-50 text-sm font-bold text-red-500">✕</div>
+            <h3 className="text-lg font-bold text-gray-900">Verification Failed</h3>
+            <p className="text-xs text-gray-500">{result.message || 'This product could not be verified.'}</p>
+          </>
+        )}
+      </div>
     </>
   );
 }
 
-function LandingSections({
-  lp,
-  result,
-  primary,
-}: {
-  lp: LandingPageData;
-  result: VerificationResult;
-  primary: string;
-}) {
-  return (
-    <div className="space-y-3">
-      <LandingDetailCard lp={lp} result={result} />
-      {lp.feedback?.enabled && lp.feedback.type !== 'none' && (
-        <LandingFeedback fb={lp.feedback} primary={primary} />
-      )}
-      {lp.warranty?.enabled && <LandingWarranty w={lp.warranty} primary={primary} />}
-      {lp.custom_cta?.enabled && lp.custom_cta.button_text && (
-        <LandingCTA cta={lp.custom_cta} primary={primary} />
-      )}
-      {lp.social_links && <LandingSocials links={lp.social_links} primary={primary} />}
-    </div>
-  );
-}
-
-// ─── Landing Page View (phone mockup) ────────────────────────────────────────
-
 function LandingPageView({ lp, result }: { lp: LandingPageData; result: VerificationResult }) {
-  const primary = lp.primary_color || '#3b82f6';
+  const primary = lp.primary_color || '#1a56db';
+  const rows = buildDetailRows(lp, result);
 
   return (
     <>
       <style>{ANIMATION_STYLES}</style>
       <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4 font-sans">
-        {/* Phone frame */}
         <div className="relative w-[375px] min-h-[700px] animate-[qr-fade-in_0.5s_ease-out] overflow-hidden rounded-[3rem] border-[6px] border-gray-800 bg-white shadow-2xl">
-          {/* Notch */}
           <div className="absolute left-1/2 top-0 z-10 h-6 w-28 -translate-x-1/2 rounded-b-2xl bg-gray-800" />
-
-          {/* Scrollable content */}
           <div className="h-full overflow-y-auto pb-4 pt-8">
-            <LandingVisuals lp={lp} />
-
-            <div className="mt-3 space-y-3 px-5">
-              {/* Title */}
-              <div className="text-center">
-                <h3 className="text-lg font-bold text-gray-900">Authentic Product</h3>
-                <p className="text-xs text-gray-500">Verified by QSeal</p>
-              </div>
-
-              <LandingSections lp={lp} result={result} primary={primary} />
-            </div>
-
-            {lp.footer && <LandingFooter footer={lp.footer} />}
+            <LandingHeader lp={lp} result={result} />
+            <LandingSectionsView rows={rows} lp={lp} primary={primary} />
+            <LandingFooterBlock lp={lp} />
           </div>
         </div>
       </div>
     </>
+  );
+}
+
+/** Sections below the header — isolated to satisfy complexity limit. */
+function LandingSectionsView({ rows, lp, primary }: { rows: Array<{ label: string; value: string; mono?: boolean }>; lp: LandingPageData; primary: string }) {
+  const sections: React.ReactNode[] = [];
+  sections.push(<LandingDetailCard key="d" rows={rows} />);
+  const fb = lp.feedback; if (fb && fb.enabled && fb.type !== 'none') sections.push(<LandingFeedbackBlock key="f" fb={fb} primary={primary} />);
+  const w = lp.warranty; if (w && w.enabled) sections.push(<LandingWarrantyBlock key="w" w={w} primary={primary} />);
+  const cta = lp.custom_cta; if (cta && cta.enabled && cta.button_text) sections.push(<LandingCTABlock key="c" cta={cta} primary={primary} />);
+  const sx = lp.social_links; if (sx) sections.push(<LandingSocialsBlock key="s" links={sx} primary={primary} />);
+  return <div className="px-5 mt-3 space-y-3">{sections}</div>;
+}
+
+/** Footer block — matches MobilePreview exactly. */
+function LandingFooterBlock({ lp }: { lp: LandingPageData }) {
+  return (
+    <div className="mt-4 px-5 py-4 border-t bg-gray-50 text-center space-y-1">
+      {lp.footer?.text && <p className="text-[10px] text-gray-400">{lp.footer.text}</p>}
+      {(lp.footer?.custom_links || []).length > 0 && (
+        <div className="flex justify-center gap-3">
+          {(lp.footer?.custom_links || []).map((link, i) =>
+            link.label && (
+              <a key={i}
+                href={link.url || '#'}
+                className="text-[10px] text-gray-500 hover:underline">{link.label}</a>
+            ),
+          )}
+        </div>
+      )}
+      {lp.footer?.show_powered_by !== false && (
+        <p className="text-[10px] text-gray-300">Powered by QSeal</p>
+      )}
+    </div>
   );
 }
 
@@ -530,15 +500,17 @@ export function PublicQRValidation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serial, timestamp, cipher]);
 
-  const fetchLandingPage = async (productId: string, organizationId: string) => {
+  const fetchLandingPage = async (productId: string) => {
+    if (!productId) return;
     try {
-      const url = `${API_BASE_URL}/api/v1/public/products/${productId}/landing-page?organization_id=${encodeURIComponent(organizationId)}`;
+      const url = `${API_BASE_URL}/api/v1/public/products/${productId}/landing-page`;
       console.log('[QR] Fetching landing page:', url);
       const lpRes = await axios.get(url);
       console.log('[QR] Landing page response:', lpRes.data);
       setLandingPage(lpRes.data?.config || null);
     } catch (err) {
-      console.error('[QR] Landing page fetch failed:', err);
+      const axiosErr = err as AxiosError;
+      console.error('[QR] Landing page fetch failed:', axiosErr.response?.status, axiosErr.message);
       setLandingPage(null);
     }
   };
@@ -555,11 +527,11 @@ export function PublicQRValidation() {
       console.log('[QR] Authenticate response:', res.data);
       setResult(res.data);
 
+      // Always fetch landing page if productId is available — design is independent of auth result
       const productId = res.data?.product_id;
-      const organizationId = res.data?.organization_id;
-      console.log('[QR] product_id:', productId, 'organization_id:', organizationId, 'authentic:', res.data?.authentic);
-      if (productId && organizationId && res.data?.authentic) {
-        await fetchLandingPage(productId, organizationId);
+      console.log('[QR] product_id:', productId, 'authentic:', res.data?.authentic);
+      if (productId) {
+        await fetchLandingPage(productId);
       }
     } catch (err: unknown) {
       const detail = parseApiError(err);
@@ -581,12 +553,12 @@ export function PublicQRValidation() {
   if (error && !result) return <ErrorView message={error} />;
   if (!result) return null;
 
-  // Authentic + landing page configured → show designed landing page
-  if (result.authentic && landingPage) {
+  // Show designed landing page whenever config exists (regardless of auth result)
+  if (landingPage) {
     return <LandingPageView lp={landingPage} result={result} />;
   }
 
-  // Authentic but no landing page → show simple verified view
+  // Authentic but no landing page → simple verified view
   if (result.authentic) {
     return <SimpleVerifiedView result={result} />;
   }

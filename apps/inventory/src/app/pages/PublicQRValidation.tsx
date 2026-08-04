@@ -78,7 +78,7 @@ function ResultView({ result }: { result: VerificationResult }) {
           <>
             <div style={styles.iconSuccess}>✓</div>
             <h2 style={styles.titleSuccess}>Authentic Product1</h2>
-            <p style={styles.message}>This QR code is genuine and verified.</p>
+            <p style={styles.message}>This QR code is genuine and verified 22.</p>
             <ProductDetails result={result} />
           </>
         ) : (
