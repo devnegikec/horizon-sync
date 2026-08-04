@@ -518,12 +518,26 @@ function detectBrowser(): string {
   return 'Unknown';
 }
 
+/** Try to get browser geolocation with a short timeout. Returns null on denial/error. */
+function getGeolocation(): Promise<{ latitude: number; longitude: number } | null> {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) { resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      () => resolve(null),
+      { timeout: 3000, maximumAge: 60000 },
+    );
+  });
+}
+
 /**
  * Send scan ingest event to analytics backend. Fire-and-forget — never throws.
+ * Attempts browser geolocation first; backend falls back to IP geolocation if unavailable.
  * Returns the scan ID for subsequent interaction tracking.
  */
 async function sendScanIngest(serialNumber: string, gtin: string, organizationId: string): Promise<string | null> {
   try {
+    const geo = await getGeolocation();
     const body = {
       serial_number: serialNumber,
       gtin,
@@ -531,8 +545,8 @@ async function sendScanIngest(serialNumber: string, gtin: string, organizationId
       os: detectOS(),
       browser: detectBrowser(),
       ip_address: null,
-      latitude: null,
-      longitude: null,
+      latitude: geo?.latitude ?? null,
+      longitude: geo?.longitude ?? null,
       city: null,
       state: null,
       country: null,
