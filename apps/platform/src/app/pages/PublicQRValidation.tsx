@@ -389,14 +389,15 @@ function LandingHeader({ lp, result }: { lp: LandingPageData; result: Verificati
       <div className="px-5 mt-3 text-center">
         {isAuthentic ? (
           <>
-            <h3 className="text-lg font-bold text-gray-900">Authentic Product</h3>
-            <p className="text-xs text-gray-500">Verified by QSeal</p>
+            <Shield className="h-10 w-10 mx-auto text-emerald-500" />
+            <h3 className="text-lg font-bold text-emerald-600">Authentic Product</h3>
+            <p className="text-xs font-medium text-emerald-500">Verified by QSeal</p>
           </>
         ) : (
           <>
-            <div className="mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-red-50 text-sm font-bold text-red-500">✕</div>
-            <h3 className="text-lg font-bold text-gray-900">Verification Failed</h3>
-            <p className="text-xs text-gray-500">{result.message || 'This product could not be verified.'}</p>
+            <div className="mx-auto mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-lg font-bold text-red-500">✕</div>
+            <h3 className="text-lg font-bold text-red-600">Verification Failed</h3>
+            <p className="text-xs text-red-500">{result.message || 'This product could not be verified.'}</p>
           </>
         )}
       </div>
