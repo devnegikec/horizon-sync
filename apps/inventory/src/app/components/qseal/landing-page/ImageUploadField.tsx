@@ -3,7 +3,7 @@ import { Upload, X, Loader2 } from 'lucide-react';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 
 import { landingPageApi } from '../../../api/landing-page';
-import { environment } from '../../../../environments/environment';
+import { resolveImageUrl } from './image-url';
 
 interface ImageUploadFieldProps {
   label: string;
@@ -44,9 +44,8 @@ export function ImageUploadField({
     setUploadError(null);
     try {
       const response = await landingPageApi.uploadImage(accessToken, productId, file, imageType);
-      // Backend returns relative URL like /static/landing-pages/{orgId}/{productId}/logo_xxx.png
-      const fullUrl = `${environment.apiCoreUrl}${response.url}`;
-      onChange(fullUrl);
+      // Store the relative URL (backend format). Display uses resolveImageUrl().
+      onChange(response.url);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Upload failed';
       setUploadError(message);
@@ -60,7 +59,7 @@ export function ImageUploadField({
       <Label className="text-xs">{label}</Label>
       {value ? (
         <div className="relative rounded-md border overflow-hidden bg-muted/30 h-20">
-          <img src={value} alt={label} className="w-full h-full object-contain" />
+          <img src={resolveImageUrl(value) ?? undefined} alt={label} className="w-full h-full object-contain" />
           <button
             type="button"
             className="absolute top-1 right-1 h-6 w-6 bg-background/80 rounded-md flex items-center justify-center"

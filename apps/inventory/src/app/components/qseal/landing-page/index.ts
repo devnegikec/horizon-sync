@@ -9,4 +9,5 @@ export { WarrantySection } from './WarrantySection';
 export { CustomCTASection } from './CustomCTASection';
 export { FooterSection } from './FooterSection';
 export { MobilePreview } from './MobilePreview';
+export { resolveImageUrl } from './image-url';
 export type { SectionProps, VisualsSectionProps } from './types';

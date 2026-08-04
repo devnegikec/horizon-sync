@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Shield, Smartphone } from 'lucide-react';
 
 import { SocialIcon } from './SocialIcon';
+import { resolveImageUrl } from './image-url';
 import type { LandingPageConfig, CustomField, FooterLink } from '../../../types/landing-page.types';
 import { SOCIAL_PLATFORM_INFO } from '../../../types/landing-page.types';
 
@@ -35,7 +36,7 @@ export function MobilePreview({ config }: MobilePreviewProps) {
           {config.banner_image_url && (
             <div className="w-full h-36 overflow-hidden">
               <img
-                src={config.banner_image_url}
+                src={resolveImageUrl(config.banner_image_url) ?? undefined}
                 alt="Banner"
                 className="w-full h-full object-cover"
               />
@@ -47,7 +48,7 @@ export function MobilePreview({ config }: MobilePreviewProps) {
             <div className="flex justify-center -mt-10 relative z-10">
               <div className="w-20 h-20 rounded-xl border-4 border-white bg-white shadow-md overflow-hidden">
                 <img
-                  src={config.logo_url}
+                  src={resolveImageUrl(config.logo_url) ?? undefined}
                   alt="Logo"
                   className="w-full h-full object-contain p-1"
                 />
