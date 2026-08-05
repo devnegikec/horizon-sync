@@ -38,13 +38,14 @@ function ScansOverTimeChart({ summary }: { summary: AnalyticsSummary }) {
 }
 
 function DeviceTimelineChart({ timeline }: { timeline: AnalyticsDeviceTimeline[] }) {
-  if (timeline.length === 0) {
+  const data = Array.isArray(timeline) ? timeline : [];
+  if (data.length === 0) {
     return <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">No device timeline data available</div>;
   }
   return (
     <>
       <div className="flex items-end gap-1 h-32">
-        {timeline.slice(-30).map((d) => {
+        {data.slice(-30).map((d) => {
           const total = d.mobile + d.desktop + d.tablet + d.unknown || 1;
           return (
             <div key={d.date} className="flex-1 flex flex-col justify-end h-full" title={`${d.date}: M:${d.mobile} D:${d.desktop} T:${d.tablet}`}>

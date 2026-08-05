@@ -196,6 +196,8 @@ export interface AnalyticsScanEvent {
   ip_address: string | null;
   referrer_url: string | null;
   language: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface AnalyticsScanListResponse {

@@ -34,10 +34,11 @@ export const analyticsApi = {
   },
 
   // ── Geo ───────────────────────────────────────────────────
-  getGeoHeatmap(accessToken: string, params?: DateRange & { limit?: number }): Promise<AnalyticsGeoPoint[]> {
-    return apiRequest<AnalyticsGeoPoint[]>('/analytics/scans/geo-heatmap', accessToken, {
+  async getGeoHeatmap(accessToken: string, params?: DateRange & { limit?: number }): Promise<AnalyticsGeoPoint[]> {
+    const res = await apiRequest<{ points: AnalyticsGeoPoint[] }>('/analytics/scans/geo-heatmap', accessToken, {
       params: { ...params, limit: params?.limit ?? 500 } as Record<string, string | number | undefined>,
     });
+    return res.points || [];
   },
 
   // ── Device Timeline ───────────────────────────────────────
