@@ -15,8 +15,8 @@ interface AnalyticsMapProps {
   loading: boolean;
 }
 
-const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+const LEAFLET_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+const LEAFLET_JS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
 
 /** Access Leaflet global — set by CDN script. */
 function getL() {
@@ -29,30 +29,37 @@ function useLeafletScript(): boolean {
   const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
-    const L = getL();
-    if (L) { setLoaded(true); return; }
+    // Check if already available from a previous load
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const existing = (window as any).L;
+    if (existing) { setLoaded(true); return; }
 
     // Load CSS
     if (!document.querySelector(`link[href="${LEAFLET_CSS}"]`)) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = LEAFLET_CSS;
+      link.onerror = () => console.error('Leaflet CSS failed to load');
       document.head.appendChild(link);
     }
 
     // Load JS (avoid duplicates)
-    const existing = document.querySelector(`script[src="${LEAFLET_JS}"]`);
-    if (existing) {
-      if (getL()) { setLoaded(true); return; }
-      existing.addEventListener('load', () => setLoaded(true));
-      return;
+    if (document.querySelector(`script[src="${LEAFLET_JS}"]`)) {
+      // Script already in DOM — check periodically if L is available
+      let attempts = 0;
+      const interval = setInterval(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((window as any).L) { setLoaded(true); clearInterval(interval); }
+        if (++attempts > 50) clearInterval(interval); // timeout after 5s
+      }, 100);
+      return () => clearInterval(interval);
     }
 
     const script = document.createElement('script');
     script.src = LEAFLET_JS;
     script.async = true;
     script.onload = () => setLoaded(true);
-    script.onerror = () => console.error('Leaflet CDN failed to load');
+    script.onerror = () => console.error('Leaflet CDN failed to load — check network');
     document.head.appendChild(script);
   }, []);
 
@@ -60,9 +67,16 @@ function useLeafletScript(): boolean {
 }
 
 export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
-  console.log('AnalyticsMap render', { points, loading });
   const leafletLoaded = useLeafletScript();
+  const [cdsFailed, setCdsFailed] = React.useState(false);
   const mapRef = React.useRef<HTMLDivElement>(null);
+
+  // Timeout: if Leaflet doesn't load within 10s, show fallback
+  React.useEffect(() => {
+    if (leafletLoaded) return;
+    const timer = setTimeout(() => setCdsFailed(true), 10000);
+    return () => clearTimeout(timer);
+  }, [leafletLoaded]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef = React.useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -189,7 +203,23 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
         <span className="text-xs text-muted-foreground ml-auto">{points.length} locations</span>
       </CardHeader>
       <CardContent className="p-0">
-        <div ref={mapRef} className="h-[400px] w-full rounded-b-lg bg-muted/20" />
+        {cdsFailed ? (
+          <div className="flex flex-col items-center justify-center h-[400px] bg-muted/20 rounded-b-lg gap-2 text-muted-foreground text-sm p-4">
+            <MapPin className="h-8 w-8 opacity-30" />
+            <p>Map library failed to load. Check your network.</p>
+            <div className="mt-2 text-xs max-h-[300px] overflow-auto w-full">
+              {points.map((p, i) => (
+                <div key={i} className="flex justify-between py-1 px-2 border-b border-muted">
+                  <span>{p.city || p.country || 'Unknown'}</span>
+                  <span className="font-mono">{p.latitude?.toFixed(4)}, {p.longitude?.toFixed(4)}</span>
+                  <span className="font-medium">{p.count} scans</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div ref={mapRef} className="h-[400px] w-full rounded-b-lg bg-muted/20" />
+        )}
       </CardContent>
     </Card>
   );
