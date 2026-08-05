@@ -7,18 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/compo
 import type { AnalyticsGeoPoint } from '../../types/qseal.types';
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Leaflet CDN loader (free, no API key — OpenStreetMap tiles)
+// Leaflet via CDN — free, no API key, OpenStreetMap tiles
 // ══════════════════════════════════════════════════════════════════════════════
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type LeafletMap = any;
-
-declare const L: {
-  map: (el: HTMLElement, opts?: Record<string, unknown>) => LeafletMap;
-  tileLayer: (url: string, opts?: Record<string, unknown>) => { addTo: (m: LeafletMap) => void };
-  circleMarker: (latlng: [number, number], opts?: Record<string, unknown>) => { bindPopup: (html: string) => void };
-  featureGroup: () => { getBounds: () => { isValid: () => boolean }; addTo: (m: LeafletMap) => void; addLayer: (layer: unknown) => void; clearLayers: () => void };
-} | undefined;
 
 interface AnalyticsMapProps {
   points: AnalyticsGeoPoint[];
@@ -28,15 +18,19 @@ interface AnalyticsMapProps {
 const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
 const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 
-/** Dynamically load Leaflet CSS + JS from CDN. No API key needed. */
+/** Access Leaflet global — set by CDN script. */
+function getL() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (window as any).L as Record<string, any> | undefined;
+}
+
+/** Dynamically load Leaflet CSS + JS from CDN. */
 function useLeafletScript(): boolean {
   const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
-    if (typeof L !== 'undefined') {
-      setLoaded(true);
-      return;
-    }
+    const L = getL();
+    if (L) { setLoaded(true); return; }
 
     // Load CSS
     if (!document.querySelector(`link[href="${LEAFLET_CSS}"]`)) {
@@ -46,9 +40,10 @@ function useLeafletScript(): boolean {
       document.head.appendChild(link);
     }
 
-    // Load JS
+    // Load JS (avoid duplicates)
     const existing = document.querySelector(`script[src="${LEAFLET_JS}"]`);
     if (existing) {
+      if (getL()) { setLoaded(true); return; }
       existing.addEventListener('load', () => setLoaded(true));
       return;
     }
@@ -57,7 +52,7 @@ function useLeafletScript(): boolean {
     script.src = LEAFLET_JS;
     script.async = true;
     script.onload = () => setLoaded(true);
-    script.onerror = () => console.error('Failed to load Leaflet');
+    script.onerror = () => console.error('Leaflet CDN failed to load');
     document.head.appendChild(script);
   }, []);
 
@@ -65,15 +60,20 @@ function useLeafletScript(): boolean {
 }
 
 export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
+  console.log('AnalyticsMap render', { points, loading });
   const leafletLoaded = useLeafletScript();
   const mapRef = React.useRef<HTMLDivElement>(null);
-  const mapInstanceRef = React.useRef<LeafletMap | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapInstanceRef = React.useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersLayerRef = React.useRef<any>(null);
+  const initRef = React.useRef(false);
 
   // Initialize map once
   React.useEffect(() => {
-    if (!leafletLoaded || !mapRef.current || mapInstanceRef.current || typeof L === 'undefined') return;
+    const L = getL();
+    if (!leafletLoaded || !mapRef.current || initRef.current || !L) return;
+    initRef.current = true;
 
     const map = L.map(mapRef.current, {
       zoomControl: true,
@@ -88,34 +88,35 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
     mapInstanceRef.current = map;
     markersLayerRef.current = L.featureGroup().addTo(map);
 
-    // Fix leaflet tiles on resize
+    // Force size recalculation after init
+    setTimeout(() => map.invalidateSize(), 100);
+
     const onResize = () => map.invalidateSize();
     window.addEventListener('resize', onResize);
     return () => {
       window.removeEventListener('resize', onResize);
       map.remove();
       mapInstanceRef.current = null;
+      initRef.current = false;
     };
   }, [leafletLoaded]);
 
   // Update markers when points change
   React.useEffect(() => {
+    const L = getL();
     const map = mapInstanceRef.current;
     const layer = markersLayerRef.current;
-    if (!map || !layer || !points.length || typeof L === 'undefined') return;
+    if (!map || !layer || !points.length || !L) return;
 
     layer.clearLayers();
     const maxCount = Math.max(...points.map((p) => p.count), 1);
 
     points.forEach((p) => {
-      const lat = p.latitude;
-      const lng = p.longitude;
-      if (lat == null || lng == null) return;
-
+      if (p.latitude == null || p.longitude == null) return;
       const radius = Math.max(6, Math.min((p.count / maxCount) * 28, 24));
       const locationLabel = [p.city, p.state, p.country].filter(Boolean).join(', ') || 'Unknown';
 
-      const marker = L.circleMarker([lat, lng], {
+      const marker = L.circleMarker([p.latitude, p.longitude], {
         radius,
         fillColor: '#3058EE',
         fillOpacity: 0.55,
@@ -133,17 +134,15 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
       layer.addLayer(marker);
     });
 
-    // Auto-fit bounds
     try {
       const bounds = layer.getBounds();
-      if (bounds.isValid()) {
-        map.fitBounds(bounds);
-      }
-    } catch { /* ignore bounds errors */ }
-  }, [points]);
+      if (bounds.isValid()) map.fitBounds(bounds);
+      map.invalidateSize();
+    } catch { /* ignore */ }
+  }, [points, leafletLoaded]);
 
   // ── Loading state ──────────────────────────────────────────────────
-  if (loading || !leafletLoaded) {
+  if (loading) {
     return (
       <Card>
         <CardHeader className="flex flex-row items-center gap-2 pb-2">
@@ -181,7 +180,7 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
     );
   }
 
-  // ── Map with data ───────────────────────────────────────────────────
+  // ── Map with data (always render div, Leaflet init handles timing) ──
   return (
     <Card>
       <CardHeader className="flex flex-row items-center gap-2 pb-2">
@@ -190,7 +189,7 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
         <span className="text-xs text-muted-foreground ml-auto">{points.length} locations</span>
       </CardHeader>
       <CardContent className="p-0">
-        <div ref={mapRef} className="h-[400px] w-full rounded-b-lg" />
+        <div ref={mapRef} className="h-[400px] w-full rounded-b-lg bg-muted/20" />
       </CardContent>
     </Card>
   );
