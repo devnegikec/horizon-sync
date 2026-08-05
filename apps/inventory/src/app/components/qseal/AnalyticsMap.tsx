@@ -1,13 +1,45 @@
 import * as React from 'react';
 
 import { MapPin } from 'lucide-react';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 
+// ⚠️ Must be imported at module level so Leaflet CSS is available before the map initialises
 import 'leaflet/dist/leaflet.css';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 
 import type { AnalyticsGeoPoint } from '../../types/qseal.types';
+
+// ── Helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Observes the map container for size changes (CSS transitions, flex layouts,
+ * parent resizes) and tells Leaflet to reflow tiles accordingly.
+ *
+ * Using ResizeObserver is more reliable than setTimeout because it fires only
+ * when the container actually gets its final dimensions — no guessing delay.
+ */
+function MapResizeHandler() {
+  const map = useMap();
+
+  React.useEffect(() => {
+    const container = map.getContainer();
+    if (!container) return;
+
+    // Immediate first pass (container may already have dimensions)
+    map.invalidateSize();
+
+    // Watch for any subsequent size changes
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, [map]);
+
+  return null;
+}
 
 interface AnalyticsMapProps {
   points: AnalyticsGeoPoint[];
@@ -71,6 +103,7 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
           zoom={2}
           scrollWheelZoom={true}
           className="h-[400px] w-full rounded-b-lg" >
+          <MapResizeHandler />
           <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
