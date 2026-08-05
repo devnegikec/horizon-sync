@@ -109,6 +109,31 @@ export function useAnalyticsManagement(): UseAnalyticsManagementResult {
       const data = await analyticsApi.getScans(accessToken, scanPage, 20, { date_from, date_to });
       setScanEvents(data.events);
       setScanPagination(data.pagination);
+
+      // If geo-heatmap returned no data, build geo points from scan events that have lat/lng
+      setGeoPoints((prev) => {
+        if (prev.length > 0) return prev; // Already have heatmap data — keep it
+        // Build aggregated geo points from individual scan events
+        const geoMap = new Map<string, AnalyticsGeoPoint>();
+        for (const e of data.events) {
+          if (e.latitude == null || e.longitude == null) continue;
+          const key = `${e.latitude.toFixed(4)},${e.longitude.toFixed(4)}`;
+          const existing = geoMap.get(key);
+          if (existing) {
+            existing.count += 1;
+          } else {
+            geoMap.set(key, {
+              city: e.city || 'Unknown',
+              state: e.state,
+              country: e.country || 'Unknown',
+              latitude: e.latitude,
+              longitude: e.longitude,
+              count: 1,
+            });
+          }
+        }
+        return Array.from(geoMap.values());
+      });
     } catch (err) {
       console.error('Failed to fetch scan events:', err);
     }
