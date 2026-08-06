@@ -63,12 +63,6 @@ const config: ModuleFederationConfig = {
       };
     }
 
-    // Don't share leaflet/react-leaflet — they are only used by the inventory remote
-    // and the host doesn't provide them, causing "fallback for shared module" errors.
-    if (libraryName === 'leaflet' || libraryName === 'react-leaflet' || libraryName.startsWith('@types/leaflet')) {
-      return false;
-    }
-
     return defaultConfig;
   },
 };

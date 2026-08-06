@@ -618,7 +618,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
         onPrintQR={(w) => handlePrintBarcode(getBarcode(w)!, w.display_name || `${w.first_name} ${w.last_name}`, w.employee_id)}
         onRegenerateQR={canCreateWorkers ? handleRegenerateBarcode : undefined}
         onCreateWorker={canCreateWorkers ? openCreate : undefined}
-        hasSearch={!!search} />
+        hasSearch={!!search}/>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
@@ -633,7 +633,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 <Input value={form.first_name || ''}
                   onChange={(e) => { setForm((p) => ({ ...p, first_name: e.target.value })); if (formErrors.first_name) setFormErrors((prev) => { const n = { ...prev }; delete n.first_name; return n; }); }}
                   className={formErrors.first_name ? 'border-destructive focus-visible:ring-destructive' : ''}
-                  maxLength={50} />
+                  maxLength={50}/>
                 {formErrors.first_name && <p className="text-xs text-destructive">{formErrors.first_name}</p>}
               </div>
               <div className="space-y-2">
@@ -641,7 +641,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 <Input value={form.last_name || ''}
                   onChange={(e) => { setForm((p) => ({ ...p, last_name: e.target.value })); if (formErrors.last_name) setFormErrors((prev) => { const n = { ...prev }; delete n.last_name; return n; }); }}
                   className={formErrors.last_name ? 'border-destructive focus-visible:ring-destructive' : ''}
-                  maxLength={50} />
+                  maxLength={50}/>
                 {formErrors.last_name && <p className="text-xs text-destructive">{formErrors.last_name}</p>}
               </div>
             </div>
@@ -651,7 +651,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 value={form.email || ''}
                 onChange={(e) => { setForm((p) => ({ ...p, email: e.target.value })); if (formErrors.email) setFormErrors((prev) => { const n = { ...prev }; delete n.email; return n; }); }}
                 className={formErrors.email ? 'border-destructive focus-visible:ring-destructive' : ''}
-                maxLength={100} />
+                maxLength={100}/>
               {formErrors.email && <p className="text-xs text-destructive">{formErrors.email}</p>}
             </div>
             {/* Phone, Login Username, Employee ID — auto-filled with dummy data */}
@@ -661,17 +661,15 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 value={form.password || ''}
                 onChange={(e) => { setForm((p) => ({ ...p, password: e.target.value })); if (formErrors.password) setFormErrors((prev) => { const n = { ...prev }; delete n.password; return n; }); }}
                 className={formErrors.password ? 'border-destructive focus-visible:ring-destructive' : ''}
-                maxLength={100} />
+                maxLength={100}/>
               {formErrors.password && <p className="text-xs text-destructive">{formErrors.password}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2"><Label>Role</Label>
-                <Select value={form.role || 'warehouse_worker'} onValueChange={(v) => setForm((p) => ({ ...p, role: v }))}>
+                <Select value={form.role} onValueChange={(v) => setForm((p) => ({ ...p, role: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="warehouse_worker">Warehouse Worker</SelectItem>
-                    <SelectItem value="warehouse_supervisor">Warehouse Supervisor</SelectItem>
-                    <SelectItem value="warehouse_manager">Warehouse Manager</SelectItem>
                     <SelectItem value="receiver">Receiver (Inbound)</SelectItem>
                     <SelectItem value="picker">Picker (Outbound)</SelectItem>
                   </SelectContent>
@@ -751,7 +749,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 <div key={w.id} className={`flex items-center gap-3 p-2 rounded border ${!hasBarcode ? 'opacity-50 bg-muted/40' : 'hover:bg-muted/50'}`}>
                   <Checkbox checked={selectedPrintIds.has(w.id)}
                     onCheckedChange={() => togglePrintSelection(w.id)}
-                    disabled={!hasBarcode} />
+                    disabled={!hasBarcode}/>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{name}</div>
                     <div className="text-xs text-muted-foreground">{w.role} · {w.status}</div>
@@ -785,7 +783,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
               <Input id="file-name"
                 value={exportFileName}
                 onChange={(e) => setExportFileName(e.target.value)}
-                placeholder="workers-export" />
+                placeholder="workers-export"/>
             </div>
             <div className="grid gap-3">
               <Label>Select Columns to Export</Label>
@@ -805,7 +803,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                   <div key={column.id} className="flex items-center space-x-2">
                     <Checkbox id={column.id}
                       checked={selectedExportColumns.includes(column.id)}
-                      onCheckedChange={() => handleExportColumnToggle(column.id)} />
+                      onCheckedChange={() => handleExportColumnToggle(column.id)}/>
                     <Label htmlFor={column.id} className="text-sm font-normal cursor-pointer">
                       {column.label}
                     </Label>
@@ -827,10 +825,10 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
 
       {/* Import Dialog */}
       <Dialog open={isImportDialogOpen}
-        onOpenChange={(open) => {
-          setIsImportDialogOpen(open);
-          if (!open) { setSelectedFile(null); }
-        }}>
+onOpenChange={(open) => {
+        setIsImportDialogOpen(open);
+        if (!open) { setSelectedFile(null); }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Import Workers</DialogTitle>
@@ -895,7 +893,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 accept=".csv"
                 onChange={handleFileChange}
                 disabled={isImporting}
-                className="hidden" />
+                className="hidden"/>
             </div>
 
             {isImporting && (
@@ -937,7 +935,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
         confirmLabel="Disable"
         variant="destructive"
         loading={isDisabling}
-        onConfirm={executeDisableWorker} />
+        onConfirm={executeDisableWorker}/>
 
       {/* Regenerate QR Code Confirmation */}
       <ConfirmationDialog open={!!confirmRegenerateWorker}
@@ -947,7 +945,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
         confirmLabel="Regenerate"
         variant="destructive"
         loading={isRegenerating}
-        onConfirm={executeRegenerateBarcode} />
+        onConfirm={executeRegenerateBarcode}/>
     </div>
   );
 }

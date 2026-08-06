@@ -125,7 +125,7 @@ export class SystemAdminPermissionsService {
       });
     }
 
-    const endpoint = queryParams.size > 0
+    const endpoint = queryParams.size > 0 
       ? `/api/v1/organization-management/system-admin-users?${queryParams.toString()}`
       : '/api/v1/organization-management/system-admin-users';
 
@@ -268,7 +268,7 @@ export class SystemAdminPermissionsService {
       });
     }
 
-    const endpoint = queryParams.size > 0
+    const endpoint = queryParams.size > 0 
       ? `/api/v1/organization-management/system-admin-audit-log?${queryParams.toString()}`
       : '/api/v1/organization-management/system-admin-audit-log';
 

@@ -52,3 +52,4 @@ vitest.config.*.timestamp*
 *.prompt.md
 .vercel
 .env*
+env/
