@@ -1,23 +1,29 @@
 import * as React from 'react';
 
-import { Plus, Loader2, Truck } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
+import { useToast } from '@horizon-sync/ui/hooks';
 
-import type { AsnOrder } from '../../types/asn-order.types';
 import { useAsnOrderManagement } from '../../hooks/useAsnOrderManagement';
-import { AsnOrdersTable } from '../advance stock notice/AsnOrdersTable';
+import type { AsnOrder } from '../../types/asn-order.types';
+import { asnOrderApi } from '../../utility/api/asn-orders';
 import { AsnOrderDialog } from '../advance stock notice/AsnOrderDialog';
+import { AsnOrdersTable } from '../advance stock notice/AsnOrdersTable';
 
 interface AsnManagementProps {
   warehouseId?: string;
 }
 
 export function AsnManagement({ warehouseId }: AsnManagementProps) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [viewMode, setViewMode] = React.useState(false);
   const [selectedOrder, setSelectedOrder] = React.useState<AsnOrder | null>(null);
   const [confirmDeleteOrder, setConfirmDeleteOrder] = React.useState<AsnOrder | null>(null);
+  const [fetchingDetail, setFetchingDetail] = React.useState(false);
 
   const management = useAsnOrderManagement();
 
@@ -34,17 +40,32 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
     setDialogOpen(true);
   };
 
-  const handleView = (order: AsnOrder) => {
-    setSelectedOrder(order);
-    setViewMode(true);
+  /**
+   * Fetch full ASN order details from API before opening view/edit dialog.
+   * The table list only contains summary data — the dialog needs items, warehouse info, etc.
+   */
+  const openDetailDialog = async (order: AsnOrder, mode: 'view' | 'edit') => {
+    if (!accessToken) return;
+    setFetchingDetail(true);
     setDialogOpen(true);
+    setViewMode(mode === 'view');
+    try {
+      const fullOrder = await asnOrderApi.get(accessToken, order.id) as AsnOrder;
+      setSelectedOrder(fullOrder);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load ASN order details',
+        variant: 'destructive',
+      });
+      setDialogOpen(false);
+    } finally {
+      setFetchingDetail(false);
+    }
   };
 
-  const handleEdit = (order: AsnOrder) => {
-    setSelectedOrder(order);
-    setViewMode(false);
-    setDialogOpen(true);
-  };
+  const handleView = (order: AsnOrder) => openDetailDialog(order, 'view');
+  const handleEdit = (order: AsnOrder) => openDetailDialog(order, 'edit');
 
   const handleDelete = (order: AsnOrder) => {
     setConfirmDeleteOrder(order);
@@ -71,8 +92,7 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
         </Button>
       </div>
 
-      <AsnOrdersTable
-        asnOrders={management.asnOrders}
+      <AsnOrdersTable asnOrders={management.asnOrders}
         loading={management.loading}
         error={management.error}
         hasActiveFilters={!!management.filters.search || management.filters.status !== 'all'}
@@ -81,11 +101,9 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
         onDelete={handleDelete}
         onCreateOrder={handleCreate}
         serverPagination={management.serverPaginationConfig}
-        recentlyCreatedId={management.recentlyCreatedId}
-      />
+        recentlyCreatedId={management.recentlyCreatedId}/>
 
-      <AsnOrderDialog
-        open={dialogOpen}
+      <AsnOrderDialog open={dialogOpen}
         onOpenChange={(open) => {
           if (!open) handleDialogClose();
           else setDialogOpen(true);
@@ -93,13 +111,18 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
         viewMode={viewMode}
         onSave={management.handleSave}
         saving={management.saving}
-        asnOrder={selectedOrder}
-      />
+        asnOrder={selectedOrder}/>
+
+      {/* Loading overlay while fetching detail */}
+      {fetchingDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <Loader2 className="h-8 w-8 animate-spin text-white" />
+        </div>
+      )}
 
       {/* Delete confirmation */}
       {confirmDeleteOrder && (
-        <DeleteConfirmDialog
-          order={confirmDeleteOrder}
+        <DeleteConfirmDialog order={confirmDeleteOrder}
           onClose={() => setConfirmDeleteOrder(null)}
           onConfirm={async () => {
             if (confirmDeleteOrder?.id) {
@@ -107,8 +130,7 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
               management.refetch();
             }
             setConfirmDeleteOrder(null);
-          }}
-        />
+          }}/>
       )}
     </div>
   );
