@@ -215,9 +215,86 @@ function AsnOrderEmailComposer({ asnOrder, targetWarehouse, emailDialogOpen, pdf
   );
 }
 
+// ---------- Skeleton loader ----------
+
+function AsnDialogSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse flex-1">
+      {/* Basic Information section */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium text-transparent bg-muted rounded w-40">&nbsp;</h3>
+        {/* Row 1: ASN#, By, For */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <div className="h-4 bg-muted rounded w-20" />
+            <div className="h-10 bg-muted rounded" />
+          </div>
+          <div className="space-y-2">
+            <div className="h-4 bg-muted rounded w-8" />
+            <div className="h-10 bg-muted rounded" />
+          </div>
+          <div className="space-y-2">
+            <div className="h-4 bg-muted rounded w-8" />
+            <div className="h-10 bg-muted rounded" />
+          </div>
+        </div>
+        {/* Row 2: Order Date, Delivery Date, Status */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <div className="h-4 bg-muted rounded w-24" />
+            <div className="h-10 bg-muted rounded" />
+          </div>
+          <div className="space-y-2">
+            <div className="h-4 bg-muted rounded w-24" />
+            <div className="h-10 bg-muted rounded" />
+          </div>
+          <div className="space-y-2">
+            <div className="h-4 bg-muted rounded w-12" />
+            <div className="h-10 bg-muted rounded" />
+          </div>
+        </div>
+        {/* Row 3: Remarks */}
+        <div className="space-y-2">
+          <div className="h-4 bg-muted rounded w-16" />
+          <div className="h-20 bg-muted rounded" />
+        </div>
+      </div>
+
+      <div className="h-px bg-border" />
+
+      {/* Line Items section */}
+      <div className="space-y-4">
+        <div className="h-4 bg-muted rounded w-24" />
+        {/* Toolbar placeholders */}
+        <div className="flex gap-2">
+          <div className="h-9 bg-muted rounded w-28" />
+          <div className="h-9 bg-muted rounded w-20" />
+        </div>
+        {/* Table skeleton */}
+        <div className="border rounded-lg overflow-hidden">
+          <div className="bg-muted/50 px-4 py-2 flex gap-8">
+            <div className="h-3 bg-muted rounded w-16" />
+            <div className="h-3 bg-muted rounded w-16" />
+            <div className="h-3 bg-muted rounded w-12" />
+            <div className="h-3 bg-muted rounded w-12" />
+          </div>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="px-4 py-3 border-t flex gap-8">
+              <div className="h-4 bg-muted rounded w-32" />
+              <div className="h-4 bg-muted rounded w-40" />
+              <div className="h-4 bg-muted rounded w-12" />
+              <div className="h-4 bg-muted rounded w-16" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------- component ----------
 
-export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpenChange }: AsnOrderDialogProps) {
+export function AsnOrderDialog({ open, viewMode, asnOrder, saving, detailLoading, onSave, onOpenChange }: AsnOrderDialogProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [csvPreviewActive, setCsvPreviewActive] = React.useState(false);
   const [lineItems, setLineItems] = React.useState<AsnEntryLineRow[]>([{ ...EMPTY_LINE }]);
@@ -245,11 +322,29 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   const allWarehouses = allWarehousesData?.warehouses ?? [];
   const assignedWarehouses = assignedWarehousesData?.warehouses ?? [];
 
-  const warehousesFrom = assignedWarehouses;
-  const warehousesTo = React.useMemo(
-    () => allWarehouses.filter((w) => w.id !== formData.warehouse_id_from),
-    [allWarehouses, formData.warehouse_id_from]
-  );
+  /** "From" warehouses: user's assigned warehouses, always including the
+   *  currently-selected "From" warehouse so the Select shows correctly. */
+  const warehousesFrom = React.useMemo(() => {
+    const list = [...assignedWarehouses];
+    if (formData.warehouse_id_from && !list.some((w) => w.id === formData.warehouse_id_from)) {
+      const selected = allWarehouses.find((w) => w.id === formData.warehouse_id_from);
+      if (selected) list.push(selected);
+    }
+    return list;
+  }, [assignedWarehouses, allWarehouses, formData.warehouse_id_from]);
+  /** "To" warehouses: all warehouses except the selected "From" warehouse.
+   *  Always includes the currently-selected "To" warehouse so the Select
+   *  shows the correct value even while data is loading. */
+  const warehousesTo = React.useMemo(() => {
+    const filtered = allWarehouses.filter((w) => w.id !== formData.warehouse_id_from);
+    // Ensure the currently-selected "To" warehouse is always an option
+    if (formData.warehouse_id_to && !filtered.some((w) => w.id === formData.warehouse_id_to)) {
+      const selected = allWarehouses.find((w) => w.id === formData.warehouse_id_to)
+        ?? assignedWarehouses.find((w) => w.id === formData.warehouse_id_to);
+      if (selected) filtered.push(selected);
+    }
+    return filtered;
+  }, [allWarehouses, assignedWarehouses, formData.warehouse_id_from, formData.warehouse_id_to]);
 
   const targetWarehouse = React.useMemo(() => {
     if (!asnOrder?.warehouse_id_to) return null;
@@ -448,6 +543,12 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
     },
   }), [isLineItemEditingDisabled]);
 
+  // Show skeleton while detail API is loading AND order hasn't arrived yet
+  const showSkeleton = detailLoading && !asnOrder;
+  // Show form when: (a) not in detail-loading, AND (b) warehouse lists are available or this is create mode
+  const warehousesReady = allWarehouses.length > 0 || assignedWarehouses.length > 0;
+  const showForm = !showSkeleton && (warehousesReady || !isEdit);
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -456,10 +557,15 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
             <DialogTitle className="flex items-center gap-3">
               <Truck className="h-5 w-5" />
               {getDialogTitle(isEdit, viewMode)}
-              <StatusBadge status={formData.status} />
+              {asnOrder && <StatusBadge status={formData.status} />}
             </DialogTitle>
           </DialogHeader>
 
+          {/* Skeleton loader while fetching full order details */}
+          {showSkeleton && <AsnDialogSkeleton />}
+
+          {/* Form */}
+          {showForm && (
           <form onSubmit={handleSubmit} className="space-y-6">
             <AsnOrderFormFields formData={formData} warehousesFrom={warehousesFrom} warehousesTo={warehousesTo} isEdit={isEdit} readOnly={isReadOnly}
               availableStatuses={availableStatuses} statusLabels={STATUS_LABELS} onFieldChange={handleChange}
@@ -555,6 +661,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
             </DialogFooter>
 
           </form>
+          )}
         </DialogContent>
       </Dialog>
 

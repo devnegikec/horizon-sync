@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -41,14 +41,15 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
   };
 
   /**
-   * Fetch full ASN order details from API before opening view/edit dialog.
-   * The table list only contains summary data — the dialog needs items, warehouse info, etc.
+   * Fetch full ASN order details from API. Dialog opens immediately
+   * with a loader inside while the data is being fetched.
    */
   const openDetailDialog = async (order: AsnOrder, mode: 'view' | 'edit') => {
     if (!accessToken) return;
-    setFetchingDetail(true);
     setDialogOpen(true);
     setViewMode(mode === 'view');
+    setSelectedOrder(null);
+    setFetchingDetail(true);
     try {
       const fullOrder = await asnOrderApi.get(accessToken, order.id) as AsnOrder;
       setSelectedOrder(fullOrder);
@@ -109,16 +110,10 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
           else setDialogOpen(true);
         }}
         viewMode={viewMode}
+        detailLoading={fetchingDetail}
         onSave={management.handleSave}
         saving={management.saving}
         asnOrder={selectedOrder}/>
-
-      {/* Loading overlay while fetching detail */}
-      {fetchingDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <Loader2 className="h-8 w-8 animate-spin text-white" />
-        </div>
-      )}
 
       {/* Delete confirmation */}
       {confirmDeleteOrder && (

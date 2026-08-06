@@ -144,6 +144,8 @@ export interface AsnOrderDialogProps {
     viewMode?: boolean;
     asnOrder: AsnOrder | null;
     saving: boolean;
+    /** When true, the dialog is fetching full order details — show a loader */
+    detailLoading?: boolean;
     onSave: (data: AsnOrderCreate | AsnOrderUpdate, id?: string) => Promise<void>;
     onCreated?: () => void;
     onUpdated?: () => void;
