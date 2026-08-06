@@ -164,6 +164,9 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
 
   const availableParentWarehouses = warehouses.filter((w) => w.id !== warehouse?.id && w.warehouse_type === 'warehouse');
 
+  // Force Select to re-render when warehouse list loads/updates
+  const parentSelectKey = `parent-sel-${availableParentWarehouses.length}-${warehouses.length}`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -188,7 +191,7 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
                   value={isEditing ? formData.code : ''}
                   placeholder="Auto-generated"
                   disabled
-                  className="bg-muted/50 cursor-not-allowed"/>
+                  className="bg-muted/50 cursor-not-allowed" />
                 <p className="text-xs text-muted-foreground">{isEditing ? 'Code cannot be changed' : 'Will be auto-generated on save'}</p>
               </div>
               <div className="space-y-2">
@@ -216,7 +219,7 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Enter warehouse name"
                 className={cn((fieldErrors['name'] || formData.name.length > 255) && 'border-red-500')}
-                required/>
+                required />
               {fieldErrors['name'] && <p className="text-xs text-red-500">{fieldErrors['name']}</p>}
               {formData.name.length > 255 && <p className="text-xs text-red-500">Cannot exceed 255 characters</p>}
               <p className={cn('text-xs text-right', isAtMaxLength(formData.name, 255) ? 'text-red-500 font-medium' : 'text-muted-foreground')}>{formData.name.length}/255</p>
@@ -229,7 +232,7 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Enter warehouse description"
                 className={cn((fieldErrors['description'] || formData.description.length > 1000) && 'border-red-500')}
-                rows={2}/>
+                rows={2} />
               {fieldErrors['description'] && <p className="text-xs text-red-500">{fieldErrors['description']}</p>}
               {formData.description.length > 1000 && <p className="text-xs text-red-500">Cannot exceed 1000 characters</p>}
               <p className={cn('text-xs text-right', isAtMaxLength(formData.description, 1000) ? 'text-red-500 font-medium' : 'text-muted-foreground')}>{formData.description.length}/1000</p>
@@ -237,7 +240,7 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
 
             <div className="space-y-2">
               <Label htmlFor="parent_warehouse_id">Parent Warehouse</Label>
-              <Select value={formData.parent_warehouse_id || 'none'}
+              <Select key={parentSelectKey} value={formData.parent_warehouse_id || 'none'}
                 onValueChange={(value) => setFormData({ ...formData, parent_warehouse_id: value === 'none' ? '' : value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select parent warehouse" />
@@ -262,14 +265,14 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
                   <Input id="address_line1"
                     value={formData.address_line1}
                     onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
-                    placeholder="Street address"/>
+                    placeholder="Street address" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="address_line2">Address Line 2</Label>
                   <Input id="address_line2"
                     value={formData.address_line2}
                     onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
-                    placeholder="Apt, suite, unit, etc."/>
+                    placeholder="Apt, suite, unit, etc." />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -281,7 +284,7 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
                     <Input id="state"
                       value={formData.state}
                       onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                      placeholder="State"/>
+                      placeholder="State" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -290,14 +293,14 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
                     <Input id="postal_code"
                       value={formData.postal_code}
                       onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-                      placeholder="Postal code"/>
+                      placeholder="Postal code" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="country">Country</Label>
                     <Input id="country"
                       value={formData.country}
                       onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                      placeholder="Country"/>
+                      placeholder="Country" />
                   </div>
                 </div>
               </div>
@@ -312,7 +315,7 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
                   <Input id="contact_name"
                     value={formData.contact_name}
                     onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
-                    placeholder="Contact person name"/>
+                    placeholder="Contact person name" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -320,7 +323,7 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
                     <Input id="contact_phone"
                       value={formData.contact_phone}
                       onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                      placeholder="Phone number"/>
+                      placeholder="Phone number" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="contact_email">Email</Label>
@@ -328,7 +331,7 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
                       type="email"
                       value={formData.contact_email}
                       onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                      placeholder="Email address"/>
+                      placeholder="Email address" />
                   </div>
                 </div>
               </div>
@@ -344,14 +347,14 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
                     type="number"
                     value={formData.total_capacity}
                     onChange={(e) => setFormData({ ...formData, total_capacity: e.target.value })}
-                    placeholder="0"/>
+                    placeholder="0" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="capacity_uom">Unit of Measure</Label>
                   <Input id="capacity_uom"
                     value={formData.capacity_uom}
                     onChange={(e) => setFormData({ ...formData, capacity_uom: e.target.value })}
-                    placeholder="e.g., sqft, pallets"/>
+                    placeholder="e.g., sqft, pallets" />
                 </div>
               </div>
             </div>

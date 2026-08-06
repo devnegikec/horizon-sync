@@ -42,10 +42,14 @@ function getRoleBadge(role: string) {
   switch (role) {
     case 'warehouse_manager':
       return { variant: 'default' as const, label: 'Manager' };
+    case 'warehouse_supervisor':
+      return { variant: 'secondary' as const, label: 'Supervisor' };
     case 'warehouse_worker':
       return { variant: 'outline' as const, label: 'Worker' };
-    case 'supervisor':
-      return { variant: 'secondary' as const, label: 'Supervisor' };
+    case 'receiver':
+      return { variant: 'default' as const, label: 'Receiver' };
+    case 'picker':
+      return { variant: 'default' as const, label: 'Picker' };
     default:
       return { variant: 'outline' as const, label: role };
   }
