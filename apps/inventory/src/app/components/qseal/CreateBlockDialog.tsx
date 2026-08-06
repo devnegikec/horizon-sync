@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Check, ChevronsUpDown, Loader2, Search } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Layers, Search } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Badge, Button } from '@horizon-sync/ui/components';
@@ -122,8 +122,7 @@ function ProductSelect({ value, onChange }: ProductSelectProps) {
             <p className="py-4 text-center text-sm text-muted-foreground">No products found.</p>
           )}
           {!loading && products.map((p) => (
-            <button
-              key={p.id}
+            <button key={p.id}
               type="button"
               className={cn(
                 'relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
@@ -162,6 +161,8 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
   const [qrType, setQrType] = React.useState<QRType>('D');
   const [srType, setSrType] = React.useState<SerialNumberType>('R6DAN');
   const [includeQrImage, setIncludeQrImage] = React.useState(true);
+  const [masterPackEnabled, setMasterPackEnabled] = React.useState(false);
+  const [masterPackSize, setMasterPackSize] = React.useState(10);
 
   const reset = () => {
     setProductId('');
@@ -170,11 +171,13 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
     setQrType('D');
     setSrType('R6DAN');
     setIncludeQrImage(true);
+    setMasterPackEnabled(false);
+    setMasterPackSize(10);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Check credits before submission
     if (credits !== null && credits < quantity) {
       notificationService.insufficientCredits(credits, quantity);
@@ -183,14 +186,18 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
 
     try {
       notificationService.blockGenerating();
-      const block = await createBlock(productId, { 
-        batch, 
-        quantity, 
-        qr_type: qrType, 
+      const block = await createBlock(productId, {
+        batch,
+        quantity,
+        qr_type: qrType,
         sr_number_type: srType,
-        qr_image: includeQrImage
+        qr_image: includeQrImage,
+        ...(masterPackEnabled && masterPackSize > 0 ? {
+          master_pack_enabled: true,
+          master_pack_size: masterPackSize,
+        } : {}),
       } satisfies QRBlockCreate);
-      
+
       notificationService.blockCompleted(block.batch);
       reset();
       onOpenChange(false);
@@ -217,6 +224,11 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
     }
   };
 
+  // Master pack calculations
+  const masterPackParentCount = masterPackEnabled && masterPackSize > 0
+    ? Math.ceil(quantity / masterPackSize)
+    : 0;
+
   // Determine if user has enough credits
   const hasEnoughCredits = credits === null || credits >= quantity;
   const showCreditWarning = credits !== null && credits < 500;
@@ -228,10 +240,8 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
           <DialogTitle className="flex items-center justify-between">
             <span>Generate QR Block</span>
             {!creditsLoading && credits !== null && (
-              <Badge 
-                variant={showCreditWarning ? 'destructive' : 'secondary'}
-                className="ml-2"
-              >
+              <Badge variant={showCreditWarning ? 'destructive' : 'secondary'}
+                className="ml-2">
                 {credits.toLocaleString()} credits
               </Badge>
             )}
@@ -282,13 +292,11 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
             </Select>
           </div>
           <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
+            <input type="checkbox"
               id="includeQrImage"
               checked={includeQrImage}
               onChange={(e) => setIncludeQrImage(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-            />
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
             <Label htmlFor="includeQrImage" className="text-sm font-normal cursor-pointer">
               Include QR code images in Excel
             </Label>
@@ -298,6 +306,49 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
               ⚠️ Including QR images will increase generation time and file size
             </p>
           )}
+
+          {/* Master Pack (Cascade) */}
+          <div className="border rounded-lg p-3 space-y-3">
+            <div className="flex items-center space-x-2">
+              <input type="checkbox"
+                id="masterPackEnabled"
+                checked={masterPackEnabled}
+                onChange={(e) => setMasterPackEnabled(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
+              <Label htmlFor="masterPackEnabled" className="text-sm font-medium cursor-pointer flex items-center gap-1.5">
+                <Layers className="h-4 w-4" />
+                Enable Master Pack (Cascade)
+              </Label>
+            </div>
+            {masterPackEnabled && (
+              <div className="pl-6 space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="masterPackSize">Items per Master Pack</Label>
+                  <Input id="masterPackSize"
+                    type="number"
+                    value={masterPackSize}
+                    onChange={(e) => setMasterPackSize(Math.max(1, Number(e.target.value)))}
+                    min={1}
+                    max={quantity}
+                    required/>
+                  <p className="text-xs text-muted-foreground">
+                    Number of child QR codes grouped under each parent master pack
+                  </p>
+                </div>
+                {masterPackSize > 0 && masterPackParentCount > 0 && (
+                  <div className="bg-muted/50 rounded-md p-3 text-sm">
+                    <p className="font-medium">Master Pack Summary</p>
+                    <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                      <li>• {quantity.toLocaleString()} child QR codes</li>
+                      <li>• {masterPackParentCount.toLocaleString()} parent master pack QR codes ({quantity} ÷ {masterPackSize})</li>
+                      <li>• Parents will be cascaded (linked) to their children</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>

@@ -11,6 +11,10 @@ export interface QRBlockCreate {
   qr_image?: boolean;
   manufacture_date?: string;
   expiry_date?: string;
+  /** Enable master pack (cascade) — creates parent QSeal nodes grouping child codes */
+  master_pack_enabled?: boolean;
+  /** Number of child QR codes per master pack parent */
+  master_pack_size?: number;
 }
 
 export interface QRBlock {
@@ -27,6 +31,12 @@ export interface QRBlock {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Whether master pack (cascade) was enabled when creating this block */
+  master_pack_enabled?: boolean;
+  /** Number of child QR codes per master pack parent */
+  master_pack_size?: number;
+  /** Number of parent QSeal nodes created */
+  qseal_parent_count?: number;
 }
 
 export interface QRBlockListResponse {

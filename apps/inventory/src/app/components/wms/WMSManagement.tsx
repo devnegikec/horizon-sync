@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Warehouse, ArrowDownToLine, ArrowUpFromLine, Box, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers } from 'lucide-react';
+import { Warehouse, ArrowDownToLine, ArrowUpFromLine, Box, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers, QrCode, Truck } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
@@ -11,6 +11,7 @@ import { cn } from '@horizon-sync/ui/lib';
 import { useMyWarehouses } from '../../hooks/useMyWarehouses';
 import { StockManagement } from '../stock';
 
+import { AsnManagement } from './AsnManagement';
 import { DeviceManagementPanel } from './DeviceManagementPanel';
 import { LocationQRPanel } from './LocationQRPanel';
 import { LocationTreeView } from './LocationTreeView';
@@ -21,7 +22,7 @@ import { Warehouse3DView } from './Warehouse3DView';
 import { WarehouseLayoutDesigner } from './WarehouseLayoutDesigner';
 import { WorkersManagementPanel } from './WorkersManagementPanel';
 
-type WMSView = 'layout' | 'inbound' | 'outbound' | 'stock' | 'manage';
+type WMSView = 'asn' | 'inbound' | 'outbound' | 'stock' | 'manage';
 type LayoutTab = 'tree' | 'designer' | '3d';
 type InboundSection = 'receiving' | 'putaway';
 
@@ -44,9 +45,9 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 }
 
 export function WMSManagement() {
-  const [activeView, setActiveView] = React.useState<WMSView>('layout');
+  const [activeView, setActiveView] = React.useState<WMSView>('asn');
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('');
-  const [manageSection, setManageSection] = React.useState<'workers' | 'devices' | 'location-qr'>('workers');
+  const [manageSection, setManageSection] = React.useState<'workers' | 'devices' | 'layout' | 'location-qr'>('workers');
   const [inboundSection, setInboundSection] = React.useState<InboundSection>('receiving');
 
   const { warehouses, loading: warehousesLoading, refetch: refetchWarehouses } = useMyWarehouses();
@@ -56,7 +57,7 @@ export function WMSManagement() {
   // Redirect away from manage view if user lacks permission
   React.useEffect(() => {
     if (activeView === 'manage' && !canManage) {
-      setActiveView('layout');
+      setActiveView('asn');
     }
   }, [activeView, canManage]);
 
@@ -119,7 +120,7 @@ export function WMSManagement() {
       {/* Sub-navigation */}
       <div className="border-b">
         <nav className="flex items-center gap-1 pb-0 overflow-x-auto">
-          <NavItem icon={MapPin} label="Layout" isActive={activeView === 'layout'} onClick={() => setActiveView('layout')} />
+          <NavItem icon={Truck} label="Advance Stock Notice" isActive={activeView === 'asn'} onClick={() => setActiveView('asn')} />
           <NavItem icon={ArrowDownToLine} label="Inbound" isActive={activeView === 'inbound'} onClick={() => setActiveView('inbound')} />
           <NavItem icon={ArrowUpFromLine} label="Outbound" isActive={activeView === 'outbound'} onClick={() => setActiveView('outbound')} />
           <NavItem icon={Boxes} label="Stock" isActive={activeView === 'stock'} onClick={() => setActiveView('stock')} />
@@ -131,8 +132,8 @@ export function WMSManagement() {
 
       {/* Content */}
       <div>
-        {activeView === 'layout' && (
-          <LayoutView selectedWarehouseId={selectedWarehouseId} />
+        {activeView === 'asn' && (
+          <AsnManagement warehouseId={selectedWarehouseId || undefined} />
         )}
 
         {activeView === 'inbound' && (
@@ -195,7 +196,7 @@ export function WMSManagement() {
             <div>
               <h2 className="text-lg font-semibold">Manage</h2>
               <p className="text-sm text-muted-foreground">
-                Manage warehouse workers and devices.
+                Manage warehouse layout, workers, devices, and location QR codes.
               </p>
             </div>
             <div className="border rounded-lg overflow-hidden">
@@ -214,10 +215,17 @@ export function WMSManagement() {
                     Devices
                   </span>
                 </button>
+                <button className={cn('px-4 py-2 text-sm font-medium', manageSection === 'layout' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+                  onClick={() => setManageSection('layout')}>
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Layout
+                  </span>
+                </button>
                 <button className={cn('px-4 py-2 text-sm font-medium', manageSection === 'location-qr' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
                   onClick={() => setManageSection('location-qr')}>
                   <span className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
+                    <QrCode className="h-4 w-4" />
                     Location QR
                   </span>
                 </button>
@@ -225,6 +233,7 @@ export function WMSManagement() {
               <div className="p-4">
                 {manageSection === 'workers' && <WorkersManagementPanel warehouseId={selectedWarehouseId || undefined} />}
                 {manageSection === 'devices' && <DeviceManagementPanel warehouseId={selectedWarehouseId || undefined} />}
+                {manageSection === 'layout' && <LayoutView selectedWarehouseId={selectedWarehouseId} />}
                 {manageSection === 'location-qr' && <LocationQRPanel warehouseId={selectedWarehouseId || undefined} />}
               </div>
             </div>

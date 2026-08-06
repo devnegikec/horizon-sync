@@ -1,13 +1,15 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { QrCode, Download, Plus, RefreshCw, X, CheckCircle2, AlertCircle, Loader2, MoreHorizontal, Eye } from 'lucide-react';
+import { QrCode, Download, Plus, RefreshCw, X, CheckCircle2, AlertCircle, Loader2, MoreHorizontal, Eye, Layers } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
+import { environment } from '../../../environments/environment';
 import { useAllQRBlocks } from '../../features/qr-management/hooks/useAllQRBlocks';
 import { useBlockStatus } from '../../features/qr-management/hooks/useBlockStatus';
 import type { BlockStatus, QRBlock, QRType } from '../../features/qr-management/types/qrBlock.types';
@@ -34,6 +36,54 @@ const STATUS_BADGE: Record<BlockStatus, { label: string; className: string }> = 
   completed: { label: 'Completed', className: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' },
   failed: { label: 'Failed', className: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' },
 };
+
+/* ------------------------------------------------------------------ */
+/*  Parent (Master Pack) download helper                              */
+/* ------------------------------------------------------------------ */
+
+function ParentBlockDownloadLink({ block }: { block: QRBlock }) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [loading, setLoading] = React.useState(false);
+
+  const handleDownload = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `${environment.apiCoreUrl}/api/v1/qseal/blocks/${block.id}/parents/download`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      if (!res.ok) throw new Error('Failed to fetch parent labels');
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `parent_${block.batch}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      // Silently fail — the main download is the child block
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1 pt-1 border-t">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Layers className="h-3.5 w-3.5" />
+        Master Pack{block.qseal_parent_count ? ` (${block.qseal_parent_count})` : ''}
+      </div>
+      <Button variant="outline" size="sm" onClick={handleDownload} disabled={loading}>
+        {loading
+          ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Preparing…</>
+          : <><Download className="h-4 w-4 mr-2" />Download Parent Block</>}
+      </Button>
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Block status tracker (inline banner after creation)               */
@@ -82,6 +132,11 @@ function BlockStatusTracker({ blockId, onDone }: { blockId: string; onDone: () =
                 Download QR Codes
               </a>
             </Button>
+          )}
+
+          {/* Parent (Master Pack) download */}
+          {block.master_pack_enabled && (
+            <ParentBlockDownloadLink block={block} />
           )}
         </div>
       )}
