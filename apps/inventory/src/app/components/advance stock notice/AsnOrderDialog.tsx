@@ -1,30 +1,31 @@
 import * as React from 'react';
 
 import { useQuery } from '@tanstack/react-query';
-
+import { Truck, Trash2, Mail, Eye, Download, Loader2 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Badge, Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
-import { Truck, Trash2, Mail, Eye, Download, Loader2 } from 'lucide-react';
-import { StatusBadge } from '../quotations/StatusBadge';
-import { usePDFGeneration } from '../../hooks/usePDFGeneration';
+
+import { environment } from '../../../environments/environment';
 import { useEmailWithPdfAttachment } from '../../hooks/useEmailWithPdfAttachment';
-import { EmailComposer } from '../common';
-import { convertAsnOrderToPDFData } from '../../utils/pdf/asnOrderToPDF';
-
+import { usePDFGeneration } from '../../hooks/usePDFGeneration';
 import type { AsnOrder, AsnOrderCreate, AsnOrderItemCreate, AsnOrderStatus, AsnOrderUpdate, AsnOrderFormData, AsnOrderDialogProps } from '../../types/asn-order.types';
-import { warehouseApi } from '../../utility/api/warehouses';
 import type { Warehouse } from '../../types/warehouse.types';
-
-import { FulfillmentStatusTable } from './FulfillmentStatusTable';
-import { AsnOrderFormFields } from './AsnOrderFormFields';
 import { WarehousesResponse } from '../../types/warehouse.types';
+import { warehouseApi } from '../../utility/api/warehouses';
+import { parseAsnEntryCsv, ASN_ENTRY_SAMPLE_CSV } from '../../utility/asnEntryCsvParser';
+import { convertAsnOrderToPDFData } from '../../utils/pdf/asnOrderToPDF';
+import { EmailComposer } from '../common';
+import { StatusBadge } from '../quotations/StatusBadge';
+import { CsvImporter } from '../shared/CsvImporter';
+
+import { AsnDialogSkeleton } from './AsnDialogSkeleton';
 import type { AsnEntryLineRow } from './AsnEntryLineItemsTable';
 import { AsnEntryLineItemsTable } from './AsnEntryLineItemsTable';
-import { CsvImporter } from '../shared/CsvImporter';
-import { environment } from '../../../environments/environment';
-import { parseAsnEntryCsv, ASN_ENTRY_SAMPLE_CSV } from '../../utility/asnEntryCsvParser';
+import { AsnOrderFormFields } from './AsnOrderFormFields';
+import { FulfillmentStatusTable } from './FulfillmentStatusTable';
+
 
 
 
@@ -215,83 +216,6 @@ function AsnOrderEmailComposer({ asnOrder, targetWarehouse, emailDialogOpen, pdf
   );
 }
 
-// ---------- Skeleton loader ----------
-
-function AsnDialogSkeleton() {
-  return (
-    <div className="space-y-6 animate-pulse flex-1">
-      {/* Basic Information section */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-transparent bg-muted rounded w-40">&nbsp;</h3>
-        {/* Row 1: ASN#, By, For */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2">
-            <div className="h-4 bg-muted rounded w-20" />
-            <div className="h-10 bg-muted rounded" />
-          </div>
-          <div className="space-y-2">
-            <div className="h-4 bg-muted rounded w-8" />
-            <div className="h-10 bg-muted rounded" />
-          </div>
-          <div className="space-y-2">
-            <div className="h-4 bg-muted rounded w-8" />
-            <div className="h-10 bg-muted rounded" />
-          </div>
-        </div>
-        {/* Row 2: Order Date, Delivery Date, Status */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2">
-            <div className="h-4 bg-muted rounded w-24" />
-            <div className="h-10 bg-muted rounded" />
-          </div>
-          <div className="space-y-2">
-            <div className="h-4 bg-muted rounded w-24" />
-            <div className="h-10 bg-muted rounded" />
-          </div>
-          <div className="space-y-2">
-            <div className="h-4 bg-muted rounded w-12" />
-            <div className="h-10 bg-muted rounded" />
-          </div>
-        </div>
-        {/* Row 3: Remarks */}
-        <div className="space-y-2">
-          <div className="h-4 bg-muted rounded w-16" />
-          <div className="h-20 bg-muted rounded" />
-        </div>
-      </div>
-
-      <div className="h-px bg-border" />
-
-      {/* Line Items section */}
-      <div className="space-y-4">
-        <div className="h-4 bg-muted rounded w-24" />
-        {/* Toolbar placeholders */}
-        <div className="flex gap-2">
-          <div className="h-9 bg-muted rounded w-28" />
-          <div className="h-9 bg-muted rounded w-20" />
-        </div>
-        {/* Table skeleton */}
-        <div className="border rounded-lg overflow-hidden">
-          <div className="bg-muted/50 px-4 py-2 flex gap-8">
-            <div className="h-3 bg-muted rounded w-16" />
-            <div className="h-3 bg-muted rounded w-16" />
-            <div className="h-3 bg-muted rounded w-12" />
-            <div className="h-3 bg-muted rounded w-12" />
-          </div>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="px-4 py-3 border-t flex gap-8">
-              <div className="h-4 bg-muted rounded w-32" />
-              <div className="h-4 bg-muted rounded w-40" />
-              <div className="h-4 bg-muted rounded w-12" />
-              <div className="h-4 bg-muted rounded w-16" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ---------- component ----------
 
 export function AsnOrderDialog({ open, viewMode, asnOrder, saving, detailLoading, onSave, onOpenChange }: AsnOrderDialogProps) {
@@ -322,29 +246,32 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, detailLoading
   const allWarehouses = allWarehousesData?.warehouses ?? [];
   const assignedWarehouses = assignedWarehousesData?.warehouses ?? [];
 
-  /** "From" warehouses: user's assigned warehouses, always including the
-   *  currently-selected "From" warehouse so the Select shows correctly. */
+  /** "From" warehouses: assigned warehouses, always including the selected value. */
   const warehousesFrom = React.useMemo(() => {
     const list = [...assignedWarehouses];
-    if (formData.warehouse_id_from && !list.some((w) => w.id === formData.warehouse_id_from)) {
-      const selected = allWarehouses.find((w) => w.id === formData.warehouse_id_from);
-      if (selected) list.push(selected);
+    const selectedId = formData.warehouse_id_from || asnOrder?.warehouse_id_from;
+    if (selectedId && !list.some((w) => w.id === selectedId)) {
+      const fromAll = allWarehouses.find((w) => w.id === selectedId);
+      if (fromAll) list.push(fromAll);
+      else if (asnOrder?.from_warehouse) list.push({ id: asnOrder.from_warehouse.id, name: asnOrder.from_warehouse.name } as Warehouse);
     }
     return list;
-  }, [assignedWarehouses, allWarehouses, formData.warehouse_id_from]);
-  /** "To" warehouses: all warehouses except the selected "From" warehouse.
-   *  Always includes the currently-selected "To" warehouse so the Select
-   *  shows the correct value even while data is loading. */
+  }, [assignedWarehouses, allWarehouses, formData.warehouse_id_from, asnOrder?.warehouse_id_from, asnOrder?.from_warehouse]);
+
+  /** "To" warehouses: all except "From", always including the selected value.
+   *  Uses asnOrder.to_warehouse as fallback when API response has warehouse info
+   *  but the warehouse list queries haven't loaded yet. */
   const warehousesTo = React.useMemo(() => {
-    const filtered = allWarehouses.filter((w) => w.id !== formData.warehouse_id_from);
-    // Ensure the currently-selected "To" warehouse is always an option
-    if (formData.warehouse_id_to && !filtered.some((w) => w.id === formData.warehouse_id_to)) {
-      const selected = allWarehouses.find((w) => w.id === formData.warehouse_id_to)
-        ?? assignedWarehouses.find((w) => w.id === formData.warehouse_id_to);
-      if (selected) filtered.push(selected);
+    const selectedId = formData.warehouse_id_to || asnOrder?.warehouse_id_to;
+    const fromId = formData.warehouse_id_from || asnOrder?.warehouse_id_from;
+    const filtered = allWarehouses.filter((w) => w.id !== fromId);
+    if (selectedId && !filtered.some((w) => w.id === selectedId)) {
+      const fromAll = allWarehouses.find((w) => w.id === selectedId);
+      if (fromAll) filtered.push(fromAll);
+      else if (asnOrder?.to_warehouse) filtered.push({ id: asnOrder.to_warehouse.id, name: asnOrder.to_warehouse.name } as Warehouse);
     }
     return filtered;
-  }, [allWarehouses, assignedWarehouses, formData.warehouse_id_from, formData.warehouse_id_to]);
+  }, [allWarehouses, formData.warehouse_id_from, formData.warehouse_id_to, asnOrder?.warehouse_id_from, asnOrder?.warehouse_id_to, asnOrder?.to_warehouse]);
 
   const targetWarehouse = React.useMemo(() => {
     if (!asnOrder?.warehouse_id_to) return null;
@@ -545,9 +472,10 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, detailLoading
 
   // Show skeleton while detail API is loading AND order hasn't arrived yet
   const showSkeleton = detailLoading && !asnOrder;
-  // Show form when: (a) not in detail-loading, AND (b) warehouse lists are available or this is create mode
-  const warehousesReady = allWarehouses.length > 0 || assignedWarehouses.length > 0;
-  const showForm = !showSkeleton && (warehousesReady || !isEdit);
+  // For view/edit: wait until formData is initialized from asnOrder (effect runs after render).
+  // For create: form is ready immediately with DEFAULT_FORM.
+  const formReady = !isEdit || (formData.warehouse_id_from !== '' && formData.warehouse_id_to !== '');
+  const showForm = !showSkeleton && formReady;
 
   return (
     <>
@@ -567,8 +495,14 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, detailLoading
           {/* Form */}
           {showForm && (
           <form onSubmit={handleSubmit} className="space-y-6">
-            <AsnOrderFormFields formData={formData} warehousesFrom={warehousesFrom} warehousesTo={warehousesTo} isEdit={isEdit} readOnly={isReadOnly}
-              availableStatuses={availableStatuses} statusLabels={STATUS_LABELS} onFieldChange={handleChange}
+            <AsnOrderFormFields formData={formData}
+warehousesFrom={warehousesFrom}
+warehousesTo={warehousesTo}
+isEdit={isEdit}
+readOnly={isReadOnly}
+              availableStatuses={availableStatuses}
+statusLabels={STATUS_LABELS}
+onFieldChange={handleChange}
               warehouseError={warehouseError} />
 
             <Separator />
@@ -576,7 +510,8 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, detailLoading
               <h3 className="text-sm font-medium">Line Items</h3>
               {!isReadOnly && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <CsvImporter<AsnEntryLineRow> key={`csv-${clearKey}`} parseRows={parseAsnEntryCsv}
+                  <CsvImporter<AsnEntryLineRow> key={`csv-${clearKey}`}
+parseRows={parseAsnEntryCsv}
                     onImport={handleCsvImport}
                     // onFileSelected={handleBulkUpload}
                     onPreviewChange={setCsvPreviewActive}
@@ -621,8 +556,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, detailLoading
                       <td className="px-4 py-3"></td>
                       <td className="px-4 py-3"></td>
                     </tr>
-                  )}
-                />
+                  )}/>
               )}
             </div>
 
