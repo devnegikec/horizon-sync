@@ -176,6 +176,37 @@ export interface SessionSummary {
 
 export type ReceivingSlipStatus = 'pending_review' | 'pending_putaway' | 'putaway_complete' | 'rejected';
 
+/** Individual unit inside a receiving slip group */
+export interface ReceivingSlipGroupItem {
+  id: string;
+  serial_number: string;
+  sku: string;
+  batch_number: string | null;
+  manufacturing_date?: string;
+  expiry_date?: string;
+  quantity: number;
+  box_count: number;
+  flag: string;
+  notes: string | null;
+}
+
+/** QSeal parent summary embedded in a receiving slip group */
+export interface ReceivingSlipParentQSeal {
+  id: string;
+  serial_number: string;
+  name: string;
+  qseal_type: string;
+  capacity: number;
+}
+
+/** A group of items under one QSeal parent (box) */
+export interface ReceivingSlipGroup {
+  parent_qseal: ReceivingSlipParentQSeal;
+  product_name: string;
+  items: ReceivingSlipGroupItem[];
+}
+
+// Keep for backward compat with older slips
 export interface ReceivingSlipItem {
   id: string;
   sku: string;
@@ -184,6 +215,7 @@ export interface ReceivingSlipItem {
   box_count: number;
   flag: string;
   notes: string | null;
+  parent_qseal?: ReceivingSlipParentQSeal;
 }
 
 export interface ReceivingSlip {
@@ -197,7 +229,10 @@ export interface ReceivingSlip {
   total_items: number;
   rejection_reason: string | null;
   notes: string | null;
-  items: ReceivingSlipItem[];
+  /** New grouped format (preferred) */
+  groups?: ReceivingSlipGroup[];
+  /** Legacy flat format */
+  items?: ReceivingSlipItem[];
   created_at: string | null;
   updated_at: string | null;
 }

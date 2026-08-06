@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { RefreshCw, Eye, Loader2, PackageOpen } from 'lucide-react';
+import { RefreshCw, Eye, Loader2, PackageOpen, ChevronDown, ChevronRight } from 'lucide-react';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -13,9 +13,104 @@ import {
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useReceivingSlips } from '../../hooks/useWMS';
-import type { ReceivingSlip, ReceivingSlipItem } from '../../types/wms.types';
+import type { ReceivingSlip, ReceivingSlipGroup } from '../../types/wms.types';
 
 import { WMSStatusBadge } from './WMSStatusBadge';
+
+/* ------------------------------------------------------------------ */
+/*  Expandable group row (parent_qseal + items)                       */
+/* ------------------------------------------------------------------ */
+
+function ReceivingGroupRow({ group, boxIndex, totalBoxes }: {
+  group: ReceivingSlipGroup;
+  boxIndex: number;
+  totalBoxes: number;
+}) {
+  const [expanded, setExpanded] = React.useState(false);
+  const sku = group.items[0]?.sku ?? '—';
+  const flag = group.items[0]?.flag ?? 'ok';
+  const qty = group.items.length;
+
+  return (
+    <>
+      {/* Group (box) row */}
+      <tr className="hover:bg-muted/20 cursor-pointer transition-colors"
+        onClick={() => setExpanded((e) => !e)}>
+        <td className="px-4 py-2">
+          <span className="inline-flex items-center gap-1">
+            {expanded
+              ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            }
+            <span className="font-medium">{group.product_name}</span>
+          </span>
+        </td>
+        <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{sku}</td>
+        <td className="px-4 py-2 font-mono text-xs">{group.parent_qseal.name}</td>
+        <td className="px-4 py-2 text-center">
+          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+            {boxIndex}/{totalBoxes}
+          </span>
+        </td>
+        <td className="px-4 py-2 text-center font-medium">{qty}</td>
+        <td className="px-4 py-2"><FlagBadge flag={flag} /></td>
+      </tr>
+
+      {/* Expanded: individual item rows */}
+      {expanded && group.items.map((item) => (
+        <tr key={item.id} className="bg-muted/20">
+          <td className="px-4 py-1.5 pl-10">
+            <span className="font-mono text-xs font-medium">{item.serial_number}</span>
+          </td>
+          <td className="px-4 py-1.5 text-xs text-muted-foreground" colSpan={5}>
+            <span className="inline-flex gap-3">
+              <span>SKU: <span className="font-mono">{item.sku}</span></span>
+              {item.manufacturing_date && (
+                <span>Mfg: {new Date(item.manufacturing_date).toLocaleDateString()}</span>
+              )}
+              {item.expiry_date && (
+                <span>Exp: {new Date(item.expiry_date).toLocaleDateString()}</span>
+              )}
+            </span>
+          </td>
+        </tr>
+      ))}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Groups table                                                      */
+/* ------------------------------------------------------------------ */
+
+function ReceivingGroupsTable({ groups }: { groups: ReceivingSlipGroup[] }) {
+  if (groups.length === 0) {
+    return <p className="px-4 py-6 text-center text-muted-foreground text-xs">No items</p>;
+  }
+
+  return (
+    <table className="w-full text-sm">
+      <thead className="bg-muted/30">
+        <tr>
+          <th className="text-left px-4 py-2 font-medium text-muted-foreground">Product Name</th>
+          <th className="text-left px-4 py-2 font-medium text-muted-foreground">SKU</th>
+          <th className="text-left px-4 py-2 font-medium text-muted-foreground">Batch</th>
+          <th className="text-center px-4 py-2 font-medium text-muted-foreground">Box</th>
+          <th className="text-center px-4 py-2 font-medium text-muted-foreground">Qty</th>
+          <th className="text-left px-4 py-2 font-medium text-muted-foreground">Flag</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y">
+        {groups.map((group, idx) => (
+          <ReceivingGroupRow key={group.parent_qseal.id}
+            group={group}
+            boxIndex={idx + 1}
+            totalBoxes={groups.length} />
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 interface ReceivingSlipListProps {
   warehouseId?: string;
@@ -48,7 +143,7 @@ interface SlipDetailDialogProps {
 function SlipDetailDialog({ slip, loading, open, onOpenChange }: SlipDetailDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] max-h-[80vh] flex flex-col">
+      <DialogContent className="sm:max-w-[800px] max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {slip ? `Receiving Slip — ${slip.slip_number}` : 'Loading...'}
@@ -71,11 +166,13 @@ function SlipDetailDialog({ slip, loading, open, onOpenChange }: SlipDetailDialo
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Total Boxes</p>
-                <p className="font-semibold text-lg">{slip.total_boxes}</p>
+                <p className="font-semibold text-lg">{slip.groups?.length ?? slip.total_boxes}</p>
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Total Items</p>
-                <p className="font-semibold text-lg">{slip.total_items}</p>
+                <p className="font-semibold text-lg">
+                  {slip.groups?.reduce((sum, g) => sum + g.items.length, 0) ?? slip.total_items}
+                </p>
               </div>
             </div>
 
@@ -91,43 +188,24 @@ function SlipDetailDialog({ slip, loading, open, onOpenChange }: SlipDetailDialo
               </div>
             )}
 
-            {/* Items table */}
-            <div className="border rounded-lg overflow-hidden">
-              <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Line Items ({slip.items.length})
+            {/* Groups — each group is one parent box with expandable items */}
+            {slip.groups && slip.groups.length > 0 ? (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Line Items ({slip.groups.length} boxes, {slip.groups.reduce((s, g) => s + g.items.length, 0)} units)
+                </div>
+                <ReceivingGroupsTable groups={slip.groups} />
               </div>
-              <table className="w-full text-sm">
-                <thead className="bg-muted/30">
-                  <tr>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">SKU</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Batch</th>
-                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Qty</th>
-                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Boxes</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Flag</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {slip.items.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground text-xs">
-                        No items
-                      </td>
-                    </tr>
-                  )}
-                  {slip.items.map((item: ReceivingSlipItem) => (
-                    <tr key={item.id} className="hover:bg-muted/20">
-                      <td className="px-4 py-2 font-mono font-medium">{item.sku}</td>
-                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{item.batch_number ?? '—'}</td>
-                      <td className="px-4 py-2 text-right">{item.quantity}</td>
-                      <td className="px-4 py-2 text-right">{item.box_count}</td>
-                      <td className="px-4 py-2"><FlagBadge flag={item.flag} /></td>
-                      <td className="px-4 py-2 text-xs text-muted-foreground">{item.notes ?? '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            ) : slip.items && slip.items.length > 0 ? (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Line Items ({slip.items.length})
+                </div>
+                <p className="px-4 py-6 text-center text-muted-foreground text-xs">Flat format — no parent grouping available</p>
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground text-xs py-4">No items</p>
+            )}
 
             <p className="text-xs text-muted-foreground">
               Created: {slip.created_at ? new Date(slip.created_at).toLocaleString() : '—'}
