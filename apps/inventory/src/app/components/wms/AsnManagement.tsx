@@ -4,10 +4,10 @@ import { Plus, Loader2, Truck } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 
-import type { AsnOrder } from '../../types/asn-order.types';
 import { useAsnOrderManagement } from '../../hooks/useAsnOrderManagement';
-import { AsnOrdersTable } from '../advance stock notice/AsnOrdersTable';
+import type { AsnOrder } from '../../types/asn-order.types';
 import { AsnOrderDialog } from '../advance stock notice/AsnOrderDialog';
+import { AsnOrdersTable } from '../advance stock notice/AsnOrdersTable';
 
 interface AsnManagementProps {
   warehouseId?: string;
@@ -71,8 +71,7 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
         </Button>
       </div>
 
-      <AsnOrdersTable
-        asnOrders={management.asnOrders}
+      <AsnOrdersTable asnOrders={management.asnOrders}
         loading={management.loading}
         error={management.error}
         hasActiveFilters={!!management.filters.search || management.filters.status !== 'all'}
@@ -81,11 +80,9 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
         onDelete={handleDelete}
         onCreateOrder={handleCreate}
         serverPagination={management.serverPaginationConfig}
-        recentlyCreatedId={management.recentlyCreatedId}
-      />
+        recentlyCreatedId={management.recentlyCreatedId}/>
 
-      <AsnOrderDialog
-        open={dialogOpen}
+      <AsnOrderDialog open={dialogOpen}
         onOpenChange={(open) => {
           if (!open) handleDialogClose();
           else setDialogOpen(true);
@@ -93,13 +90,11 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
         viewMode={viewMode}
         onSave={management.handleSave}
         saving={management.saving}
-        asnOrder={selectedOrder}
-      />
+        asnOrder={selectedOrder}/>
 
       {/* Delete confirmation */}
       {confirmDeleteOrder && (
-        <DeleteConfirmDialog
-          order={confirmDeleteOrder}
+        <DeleteConfirmDialog order={confirmDeleteOrder}
           onClose={() => setConfirmDeleteOrder(null)}
           onConfirm={async () => {
             if (confirmDeleteOrder?.id) {
@@ -107,8 +102,7 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
               management.refetch();
             }
             setConfirmDeleteOrder(null);
-          }}
-        />
+          }}/>
       )}
     </div>
   );
