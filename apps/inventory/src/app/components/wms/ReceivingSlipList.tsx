@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { RefreshCw, Eye, PackageOpen } from 'lucide-react';
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, ConfirmationDialog } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { useToast } from '@horizon-sync/ui/hooks';
 
@@ -27,6 +27,9 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
   const [viewSlip, setViewSlip] = React.useState<ReceivingSlip | null>(null);
   const [viewLoading, setViewLoading] = React.useState(false);
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [confirmApproveSlip, setConfirmApproveSlip] = React.useState<ReceivingSlip | null>(null);
+  const [confirmPutAwaySlip, setConfirmPutAwaySlip] = React.useState<ReceivingSlip | null>(null);
+  const [actionLoading, setActionLoading] = React.useState(false);
 
   const { data, loading, error, refetch, approveSlip, rejectSlip, getSlip, generatePutAway } = useReceivingSlips({
     warehouse_id: warehouseId,
@@ -51,12 +54,21 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
   };
 
   const handleApprove = async (slip: ReceivingSlip) => {
-    if (!window.confirm(`Approve receiving slip ${slip.slip_number}?`)) return;
+    setConfirmApproveSlip(slip);
+  };
+
+  const handleConfirmApprove = async () => {
+    const slip = confirmApproveSlip;
+    if (!slip) return;
+    setActionLoading(true);
     try {
       await approveSlip(slip.id);
       toast({ title: 'Slip approved', description: `${slip.slip_number} moved to put-away.` });
+      setConfirmApproveSlip(null);
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to approve', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -73,12 +85,21 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
   };
 
   const handleGeneratePutAway = async (slip: ReceivingSlip) => {
-    if (!window.confirm(`Generate put-away list from ${slip.slip_number}?`)) return;
+    setConfirmPutAwaySlip(slip);
+  };
+
+  const handleConfirmPutAway = async () => {
+    const slip = confirmPutAwaySlip;
+    if (!slip) return;
+    setActionLoading(true);
     try {
       await generatePutAway(slip.id);
       toast({ title: 'Put-away generated', description: `Put-away list created from ${slip.slip_number}.` });
+      setConfirmPutAwaySlip(null);
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to generate put-away', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -210,6 +231,26 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
         loading={viewLoading}
         open={dialogOpen}
         onOpenChange={setDialogOpen}/>
+
+      <ConfirmationDialog
+        open={!!confirmApproveSlip}
+        onOpenChange={(open) => { if (!open) setConfirmApproveSlip(null); }}
+        title="Approve Receiving Slip"
+        description={`Are you sure you want to approve ${confirmApproveSlip?.slip_number}? This will move it to put-away.`}
+        confirmLabel="Approve"
+        loading={actionLoading}
+        onConfirm={handleConfirmApprove}
+      />
+
+      <ConfirmationDialog
+        open={!!confirmPutAwaySlip}
+        onOpenChange={(open) => { if (!open) setConfirmPutAwaySlip(null); }}
+        title="Generate Put-Away List"
+        description={`Generate put-away list from receiving slip ${confirmPutAwaySlip?.slip_number}?`}
+        confirmLabel="Generate"
+        loading={actionLoading}
+        onConfirm={handleConfirmPutAway}
+      />
     </div>
   );
 }
