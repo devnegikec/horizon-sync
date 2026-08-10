@@ -134,6 +134,7 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Slip #</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">ASN</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Boxes</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Items</th>
@@ -144,7 +145,7 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
               <tbody className="divide-y">
                 {data.receiving_slips.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                       No receiving slips found
                     </td>
                   </tr>
@@ -153,6 +154,13 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
                   <React.Fragment key={slip.id}>
                     <tr className="hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 font-mono font-medium">{slip.slip_number}</td>
+                      <td className="px-4 py-3 font-mono text-sm">
+                        {slip.asn_order_no ? (
+                          <span className="text-blue-600">{slip.asn_order_no}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <WMSStatusBadge status={slip.status} />
                       </td>
@@ -166,10 +174,10 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
 
                           {slip.status === 'pending_review' && (
                             <>
-                              <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:bg-green-50 h-7 px-2 text-xs" onClick={() => handleApprove(slip)}>
+                              <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:!bg-green-600 hover:!text-white h-7 px-2 text-xs" onClick={() => handleApprove(slip)}>
                                 Approve
                               </Button>
-                              <Button size="sm" variant="outline" className="text-destructive border-destructive/20 hover:bg-destructive/10 h-7 px-2 text-xs" onClick={() => setRejectingId(slip.id)}>
+                              <Button size="sm" variant="outline" className="text-destructive border-destructive/20 hover:!bg-destructive hover:!text-white h-7 px-2 text-xs" onClick={() => setRejectingId(slip.id)}>
                                 Reject
                               </Button>
                             </>
@@ -189,7 +197,7 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
                     </tr>
                     {rejectingId === slip.id && (
                       <tr>
-                        <td colSpan={6} className="px-4 py-3 bg-muted/30">
+                        <td colSpan={7} className="px-4 py-3 bg-muted/30">
                           <div className="flex items-center gap-2">
                             <input className="flex-1 border rounded px-3 py-1.5 text-sm bg-background"
                               placeholder="Rejection reason..."
@@ -232,25 +240,21 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}/>
 
-      <ConfirmationDialog
-        open={!!confirmApproveSlip}
+      <ConfirmationDialog open={!!confirmApproveSlip}
         onOpenChange={(open) => { if (!open) setConfirmApproveSlip(null); }}
         title="Approve Receiving Slip"
         description={`Are you sure you want to approve ${confirmApproveSlip?.slip_number}? This will move it to put-away.`}
         confirmLabel="Approve"
         loading={actionLoading}
-        onConfirm={handleConfirmApprove}
-      />
+        onConfirm={handleConfirmApprove} />
 
-      <ConfirmationDialog
-        open={!!confirmPutAwaySlip}
+      <ConfirmationDialog open={!!confirmPutAwaySlip}
         onOpenChange={(open) => { if (!open) setConfirmPutAwaySlip(null); }}
         title="Generate Put-Away List"
         description={`Generate put-away list from receiving slip ${confirmPutAwaySlip?.slip_number}?`}
         confirmLabel="Generate"
         loading={actionLoading}
-        onConfirm={handleConfirmPutAway}
-      />
+        onConfirm={handleConfirmPutAway} />
     </div>
   );
 }
