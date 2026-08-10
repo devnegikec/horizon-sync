@@ -3,6 +3,7 @@ import * as React from 'react';
 import { Package, Warehouse, Boxes, Layers, Forklift } from 'lucide-react';
 import { Routes, Route } from 'react-router-dom';
 
+import { Toaster } from '@horizon-sync/ui/components';
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { cn } from '@horizon-sync/ui/lib';
@@ -68,6 +69,7 @@ export function App() {
         {/* Main authenticated app */}
         <Route path="*" element={<MainApp />} />
       </Routes>
+      <Toaster />
     </ThemeProvider>
   );
 }

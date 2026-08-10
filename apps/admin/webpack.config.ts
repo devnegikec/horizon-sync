@@ -20,6 +20,7 @@ export default composePlugins(withNx(), withReact(), (config) => {
     new webpack.DefinePlugin({
       'process.env.NX_API_BASE_URL': JSON.stringify(process.env.NX_API_BASE_URL),
       'process.env.NX_API_CORE_URL': JSON.stringify(process.env.NX_API_CORE_URL),
+      'process.env.NX_API_IDENTITY_URL': JSON.stringify(process.env.NX_API_IDENTITY_URL),
     }),
   );
   return config;

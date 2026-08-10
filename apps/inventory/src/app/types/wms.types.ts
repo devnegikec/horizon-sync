@@ -224,6 +224,8 @@ export interface ReceivingSlip {
   slip_number: string;
   session_id: string;
   warehouse_id: string;
+  asn_order_id: string | null;
+  asn_order_no: string | null;
   status: ReceivingSlipStatus;
   total_boxes: number;
   total_items: number;
