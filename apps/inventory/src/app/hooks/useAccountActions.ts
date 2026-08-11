@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 import { useUserStore } from '@horizon-sync/store';
 
@@ -28,7 +29,7 @@ export function useAccountActions(): {
       const response = await accountApi.create(accessToken, data);
       return response;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create account';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       throw err;
     } finally {
@@ -47,7 +48,7 @@ export function useAccountActions(): {
       const response = await accountApi.update(accessToken, id, data);
       return response;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update account';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       throw err;
     } finally {
@@ -65,7 +66,7 @@ export function useAccountActions(): {
       setError(null);
       await accountApi.delete(accessToken, id, force);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete account';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       throw err;
     } finally {
@@ -87,7 +88,7 @@ export function useAccountActions(): {
         await accountApi.activate(accessToken, id);
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to toggle account status';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       throw err;
     } finally {
@@ -104,3 +105,5 @@ export function useAccountActions(): {
     error,
   };
 }
+
+

@@ -4,7 +4,7 @@
 
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useLocalSearch } from '../../../../../app/features/search/../../../../app/features/search/hooks/useLocalSearch';
+import { useLocalSearch } from '../../../../../app/features/search/hooks/useLocalSearch';
 import { SearchService } from '../../../../../app/features/search/services/search.service';
 import type { SearchResponse } from '../../../../../app/features/search/types/search.types';
 import React from 'react';

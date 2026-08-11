@@ -17,6 +17,7 @@ import {
 
 import type { PaymentEntry } from '../../types/payment.types';
 import { formatDate, getPaymentModeLabel } from '../../utils/payment.utils';
+import { ErrorBanner } from '../common';
 
 import { PaymentAmountDisplay } from './PaymentAmountDisplay';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
@@ -195,11 +196,7 @@ export const PaymentTable = memo(function PaymentTable({
   );
 
   if (error) {
-    return (
-      <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
-        <p className="text-sm text-destructive">{error}</p>
-      </div>
-    );
+    return <ErrorBanner entity="payments" message={error} />;
   }
 
   if (loading) {

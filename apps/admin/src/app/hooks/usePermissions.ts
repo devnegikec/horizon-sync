@@ -9,7 +9,8 @@ import {
   hasSystemAdminMasterPermission,
   canAccessSystemSettings,
   canModifySystemSettings,
-  hasCrossOrgAccess
+  hasCrossOrgAccess,
+  hasPermissionForDomain as checkDomainPermission
 } from '../utils/permissions';
 
 export interface UsePermissionsResult {
@@ -17,6 +18,7 @@ export interface UsePermissionsResult {
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
   hasAllPermissions: (permissions: string[]) => boolean;
+  hasPermissionForDomain: (domain: string) => boolean;
   hasSystemAdminMaster: boolean;
   canAccessSystemSettings: boolean;
   canModifySystemSettings: boolean;
@@ -33,6 +35,7 @@ export function usePermissions(): UsePermissionsResult {
     hasPermission: (permission: string) => hasPermission(userPermissions, permission),
     hasAnyPermission: (permissions: string[]) => hasAnyPermission(userPermissions, permissions),
     hasAllPermissions: (permissions: string[]) => hasAllPermissions(userPermissions, permissions),
+    hasPermissionForDomain: (domain: string) => checkDomainPermission(userPermissions, domain),
     hasSystemAdminMaster: hasSystemAdminMasterPermission(userPermissions),
     canAccessSystemSettings: canAccessSystemSettings(userPermissions),
     canModifySystemSettings: canModifySystemSettings(userPermissions),

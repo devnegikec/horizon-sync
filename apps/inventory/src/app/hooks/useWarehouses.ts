@@ -5,6 +5,7 @@ import { useUserStore } from '@horizon-sync/store';
 import { environment } from '../../environments/environment';
 import type { Warehouse, WarehousesResponse, CreateWarehousePayload, UpdateWarehousePayload } from '../types/warehouse.types';
 import { warehouseApi } from '../utility';
+import { getHttpErrorMessage, getFriendlyErrorMessage } from '../utility/api/core';
 const WAREHOUSE_URL = `${environment.apiCoreUrl}/api/v1/warehouses`;
 
 interface UseWarehousesResult {
@@ -57,6 +58,7 @@ export function useWarehouses(initialPage = 1, initialPageSize = 20, filters?: {
         page_size: String(currentPageSize),
         sort_by: 'created-at',
         sort_order: 'desc',
+        scope: 'all',
       })
       // Add filters to API params if provided
       if (memoizedFilters?.search) {
@@ -64,6 +66,10 @@ export function useWarehouses(initialPage = 1, initialPageSize = 20, filters?: {
       }
       if (memoizedFilters?.warehouseType && memoizedFilters.warehouseType !== 'all') {
         params.append('warehouse_type', memoizedFilters.warehouseType);
+      }
+      if (memoizedFilters?.status && memoizedFilters.status !== 'all') {
+        // Backend expects is_active as a boolean query param
+        params.append('is_active', memoizedFilters.status === 'active' ? 'true' : 'false');
       }
 
       const res = await fetch(`${WAREHOUSE_URL}?${params}`, {
@@ -73,8 +79,7 @@ export function useWarehouses(initialPage = 1, initialPageSize = 20, filters?: {
       });
 
       if (!res.ok) {
-        const message = `Error ${res.status}: ${res.statusText}`;
-        throw new Error(message);
+        throw new Error(getHttpErrorMessage(res.status));
       }
 
       const data = await res.json() as WarehousesResponse;
@@ -83,8 +88,7 @@ export function useWarehouses(initialPage = 1, initialPageSize = 20, filters?: {
       setStatusCounts(data.status_counts ?? null);
       setTypeCounts(data.type_counts ?? null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load warehouses';
-      setError(message);
+      setError(getFriendlyErrorMessage(err));
       setWarehouses([]);
       setPagination(null);
       setStatusCounts(null);
@@ -123,7 +127,7 @@ export function useWarehouseMutations(): UseWarehouseMutationsResult {
         const result = (await warehouseApi.create(accessToken, data)) as Warehouse;
         return result;
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to create warehouse';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw new Error(message);
       } finally {
@@ -142,7 +146,7 @@ export function useWarehouseMutations(): UseWarehouseMutationsResult {
         const result = (await warehouseApi.update(accessToken, id, data)) as Warehouse;
         return result;
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to update warehouse';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw new Error(message);
       } finally {
@@ -160,7 +164,7 @@ export function useWarehouseMutations(): UseWarehouseMutationsResult {
       try {
         await warehouseApi.delete(accessToken, id);
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to delete warehouse';
+        const message = getFriendlyErrorMessage(err);
         setError(message);
         throw new Error(message);
       } finally {

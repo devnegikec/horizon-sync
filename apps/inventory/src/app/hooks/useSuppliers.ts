@@ -4,6 +4,7 @@ import { useUserStore } from '@horizon-sync/store';
 
 import type { Supplier, SuppliersResponse } from '../types/supplier.types';
 import { supplierApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export function useSuppliers(page = 1, pageSize = 100) {
   const accessToken = useUserStore((s) => s.accessToken);
@@ -24,7 +25,7 @@ export function useSuppliers(page = 1, pageSize = 100) {
         const response = await supplierApi.list(accessToken, page, pageSize) as SuppliersResponse;
         setSuppliers(response.suppliers || []);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch suppliers';
+        const errorMessage = getFriendlyErrorMessage(err);
         setError(errorMessage);
         console.error('Error fetching suppliers:', err);
         setSuppliers([]);
@@ -42,3 +43,4 @@ export function useSuppliers(page = 1, pageSize = 100) {
     error,
   };
 }
+

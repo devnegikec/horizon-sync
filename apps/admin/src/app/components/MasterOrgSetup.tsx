@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Building2, Users, Settings, DollarSign, Shield, Save, RefreshCw } from 'lucide-react';
+import { Building2, Users, Settings, DollarSign, Shield, Save, RefreshCw, ToggleLeft } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -17,6 +17,8 @@ import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
 import {
   Select,
   SelectContent,
@@ -39,6 +41,7 @@ import {
   useUpdateSystemSettings,
   useUpdateMasterOrganization,
 } from '../hooks/useSystemSettings';
+import { FeatureControlsPage } from '../pages/FeatureControlsPage';
 
 const masterOrgSchema = z.object({
   name: z.string().min(1, 'Organization name is required'),
@@ -74,14 +77,16 @@ interface MasterOrgSetupProps {
 }
 
 export function MasterOrgSetup({ className = '' }: MasterOrgSetupProps) {
-  const [activeTab, setActiveTab] = useState<'organization' | 'subscription' | 'system' | 'users'>('organization');
+  const [activeTab, setActiveTab] = useState<'organization' | 'subscription' | 'system' | 'users' | 'featureControls'>('organization');
   const { canModifySystemSettings } = usePermissions();
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
 
   // Use hooks for data fetching
   const { data: settings, isLoading: settingsLoading, error: settingsError } = useSystemSettings();
   const { data: masterOrg, isLoading: masterOrgLoading } = useMasterOrganization();
   const { data: adminUsersData, isLoading: adminUsersLoading } = useSystemAdminUsers();
-  
+
   // Use mutation hooks
   const updateSettingsMutation = useUpdateSystemSettings();
   const updateMasterOrgMutation = useUpdateMasterOrganization();
@@ -254,54 +259,59 @@ export function MasterOrgSetup({ className = '' }: MasterOrgSetupProps) {
       </Card>
     );
   }
-
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Tab Navigation */}
       <div className="flex space-x-1 bg-muted p-1 rounded-lg">
         <button
           onClick={() => setActiveTab('organization')}
-          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === 'organization'
+          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'organization'
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'
-          }`}
+            }`}
         >
           <Building2 className="h-4 w-4 inline-block mr-2" />
           Organization
         </button>
         <button
           onClick={() => setActiveTab('subscription')}
-          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === 'subscription'
+          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'subscription'
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'
-          }`}
+            }`}
         >
-          <DollarSign className="h-4 w-4 inline-block mr-2" />
+          <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
           Subscription
         </button>
         <button
           onClick={() => setActiveTab('system')}
-          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === 'system'
+          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'system'
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'
-          }`}
+            }`}
         >
           <Settings className="h-4 w-4 inline-block mr-2" />
           System
         </button>
         <button
           onClick={() => setActiveTab('users')}
-          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === 'users'
+          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'users'
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'
-          }`}
+            }`}
         >
           <Users className="h-4 w-4 inline-block mr-2" />
           Admin Users
+        </button>
+        <button
+          onClick={() => setActiveTab('featureControls')}
+          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'featureControls'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+            }`}
+        >
+          <ToggleLeft className="h-4 w-4 inline-block mr-2" />
+          Feature Controls
         </button>
       </div>
 
@@ -432,7 +442,7 @@ export function MasterOrgSetup({ className = '' }: MasterOrgSetupProps) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+              <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
               Subscription & Pricing Configuration
             </CardTitle>
             <CardDescription>
@@ -687,6 +697,13 @@ export function MasterOrgSetup({ className = '' }: MasterOrgSetupProps) {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Feature Controls */}
+      {activeTab === 'featureControls' && (
+        <div className="space-y-6">
+          <FeatureControlsPage />
+        </div>
       )}
     </div>
   );

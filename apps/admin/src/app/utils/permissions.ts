@@ -126,3 +126,28 @@ export function hasCrossOrgAccess(userPermissions: Permission[]): boolean {
     PERMISSIONS.ALL_PERMISSIONS
   ]);
 }
+
+/**
+ * Domain to permission mapping for sidebar navigation
+ */
+const DOMAIN_PERMISSIONS: Record<string, string> = {
+  'organizations': PERMISSIONS.SYSTEM_ADMIN_ORGANIZATIONS,
+  'users': PERMISSIONS.SYSTEM_ADMIN_USERS,
+  'billing': PERMISSIONS.SYSTEM_ADMIN_BILLING,
+  'reporting': PERMISSIONS.SYSTEM_ADMIN_REPORTING,
+};
+
+/**
+ * Check if user has permission for a specific domain (used by sidebar navigation)
+ */
+export function hasPermissionForDomain(userPermissions: Permission[], domain: string): boolean {
+  const requiredPermission = DOMAIN_PERMISSIONS[domain];
+  if (!requiredPermission) {
+    // If domain is not mapped, deny access
+    return false;
+  }
+
+  return hasPermission(userPermissions, requiredPermission) ||
+         hasSystemAdminMasterPermission(userPermissions) ||
+         hasPermission(userPermissions, PERMISSIONS.ALL_PERMISSIONS);
+}

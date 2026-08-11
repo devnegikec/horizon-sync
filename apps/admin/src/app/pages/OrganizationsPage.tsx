@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { type Table } from '@tanstack/react-table';
 import { Building2, CheckCircle, XCircle, Clock, Download, Plus } from 'lucide-react';
 
+import { toast } from '@horizon-sync/ui';
 import {
   Card,
   CardContent,
@@ -20,12 +21,14 @@ import {
 } from '@horizon-sync/ui/components';
 import type { OrganizationsTableOrg, CreateOrgFormData, OrgDetailEditData } from '@horizon-sync/ui/components';
 import { cn } from '@horizon-sync/ui/lib';
-import { toast } from '@horizon-sync/ui';
 
+import { OrganizationCreditsCard } from '../components/OrganizationCreditsCard';
 import { useCreateOrganization } from '../hooks/useCreateOrganization';
 import { useOrganization, useUpdateOrganization } from '../hooks/useOrganization';
 import { useOrganizations } from '../hooks/useOrganizations';
-import type { AdminOrgFilters, AdminOrgListItem, OrgStatus } from '../types';
+import { usePermissions } from '../hooks/usePermissions';
+import type { AdminOrgFilters, AdminOrgListItem, OrgStatus, OrgType } from '../types';
+import { SYSTEM_ADMIN_PERMISSIONS } from '../types/permissions';
 
 const PAGE_SIZE = 20;
 
@@ -55,7 +58,22 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
   );
 }
 
+interface AdminMutationError extends Error {
+  data?: { detail?: unknown };
+}
+
+function toMutationError(error: unknown, fallback: string): Error {
+  const mutationError = error as AdminMutationError;
+  const detail = mutationError.data?.detail;
+  return detail ? new Error(typeof detail === 'string' ? detail : fallback) : mutationError;
+}
+
+// This legacy page coordinates list, create, edit, filtering, and pagination states.
+ 
 export function OrganizationsPage() {
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.ORGANIZATIONS_CREATE);
+  const canUpdate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.ORGANIZATIONS_UPDATE);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
@@ -82,7 +100,7 @@ export function OrganizationsPage() {
   // Reset to first page when filters change
   useEffect(() => { setPage(1); }, [search, statusFilter]);
 
-  const orgs = data?.organizations ?? [];
+  const orgs = useMemo(() => data?.organizations ?? [], [data?.organizations]);
   const pagination = data?.pagination;
 
   const stats = useMemo(() => {
@@ -124,10 +142,10 @@ export function OrganizationsPage() {
             email: data.email || null,
             phone: data.phone || null,
             website: data.website || null,
-            organization_type: data.organization_type as any,
+            organization_type: data.organization_type as OrgType,
             industry: data.industry || null,
             base_currency: data.base_currency || undefined,
-            status: data.status as any,
+            status: data.status as OrgStatus,
             country: data.country || null,
           },
         },
@@ -136,15 +154,17 @@ export function OrganizationsPage() {
             toast({ title: 'Organization updated', description: 'Changes saved successfully.' });
             resolve();
           },
-          onError: (error: any) => {
-            reject(error.data?.detail ? new Error(typeof error.data.detail === 'string' ? error.data.detail : 'Failed to update') : error);
+          onError: (error: unknown) => {
+            reject(toMutationError(error, 'Failed to update'));
           },
         }
       );
     });
   };
 
+  // Preserve the existing optional-field mapping expected by the create API.
   const handleCreateOrg = async (data: CreateOrgFormData) => {
+    // eslint-disable-next-line complexity
     return new Promise<void>((resolve, reject) => {
       createMutation.mutate(
         {
@@ -155,10 +175,10 @@ export function OrganizationsPage() {
           email: data.email || null,
           phone: data.phone || null,
           website: data.website || null,
-          organization_type: (data.organization_type as any) || 'business',
+          organization_type: (data.organization_type as OrgType) || 'business',
           industry: data.industry || null,
           base_currency: data.base_currency || undefined,
-          status: (data.status as any) || 'active',
+          status: (data.status as OrgStatus) || 'active',
           country: data.country || null,
         },
         {
@@ -166,8 +186,8 @@ export function OrganizationsPage() {
             toast({ title: 'Organization created', description: `${created.name} has been created.` });
             resolve();
           },
-          onError: (error: any) => {
-            reject(error.data?.detail ? new Error(typeof error.data.detail === 'string' ? error.data.detail : 'Failed to create organization') : error);
+          onError: (error: unknown) => {
+            reject(toMutationError(error, 'Failed to create organization'));
           },
         }
       );
@@ -187,24 +207,38 @@ export function OrganizationsPage() {
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button onClick={() => setCreateModalOpen(true)}
-            className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
-            <Plus className="h-4 w-4" />
-            Create Organization
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setCreateModalOpen(true)}
+              className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
+              <Plus className="h-4 w-4" />
+              Create Organization
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Organizations" value={stats.total}
-          icon={Building2} iconBg="bg-slate-100 dark:bg-slate-800" iconColor="text-slate-600 dark:text-slate-400" />
-        <StatCard title="Active" value={stats.active}
-          icon={CheckCircle} iconBg="bg-emerald-100 dark:bg-emerald-900/20" iconColor="text-emerald-600 dark:text-emerald-400" />
-        <StatCard title="Inactive" value={stats.inactive}
-          icon={XCircle} iconBg="bg-red-100 dark:bg-red-900/20" iconColor="text-red-600 dark:text-red-400" />
-        <StatCard title="Trial" value={stats.trial}
-          icon={Clock} iconBg="bg-amber-100 dark:bg-amber-900/20" iconColor="text-amber-600 dark:text-amber-400" />
+        <StatCard title="Total Organizations"
+value={stats.total}
+          icon={Building2}
+iconBg="bg-slate-100 dark:bg-slate-800"
+iconColor="text-slate-600 dark:text-slate-400" />
+        <StatCard title="Active"
+value={stats.active}
+          icon={CheckCircle}
+iconBg="bg-emerald-100 dark:bg-emerald-900/20"
+iconColor="text-emerald-600 dark:text-emerald-400" />
+        <StatCard title="Inactive"
+value={stats.inactive}
+          icon={XCircle}
+iconBg="bg-red-100 dark:bg-red-900/20"
+iconColor="text-red-600 dark:text-red-400" />
+        <StatCard title="Trial"
+value={stats.trial}
+          icon={Clock}
+iconBg="bg-amber-100 dark:bg-amber-900/20"
+iconColor="text-amber-600 dark:text-amber-400" />
       </div>
 
       {/* Filters */}
@@ -234,33 +268,32 @@ export function OrganizationsPage() {
       </div>
 
       {/* Organizations Table */}
-      <OrganizationsTable
-        orgs={orgs as (AdminOrgListItem & OrganizationsTableOrg)[]}
+      <OrganizationsTable orgs={orgs as (AdminOrgListItem & OrganizationsTableOrg)[]}
         loading={isLoading}
         error={null}
         hasActiveFilters={!!search || statusFilter !== 'all'}
         onView={handleView}
-        onEdit={handleEdit}
-        onCreateOrg={() => setCreateModalOpen(true)}
+        onEdit={canUpdate ? handleEdit : undefined}
+        onCreateOrg={canCreate ? () => setCreateModalOpen(true) : undefined}
         onTableReady={(table) => setTableInstance(table as Table<AdminOrgListItem>)}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
       {/* Create Organization Modal */}
-      <CreateOrgModal
-        open={createModalOpen}
+      <CreateOrgModal open={createModalOpen}
         onOpenChange={setCreateModalOpen}
-        onSubmit={handleCreateOrg}
-      />
+        onSubmit={handleCreateOrg}/>
 
       {/* Organization Detail / Edit Modal */}
-      <OrgDetailModal
-        open={detailModalOpen}
+      <OrgDetailModal open={detailModalOpen}
         onOpenChange={(open) => { setDetailModalOpen(open); if (!open) setSelectedOrgId(null); }}
         org={selectedOrgData ?? null}
         loading={selectedOrgLoading}
-        onUpdate={handleUpdateOrg}
-      />
+        onUpdate={canUpdate ? handleUpdateOrg : undefined}
+        viewContent={
+          selectedOrgData
+            ? <OrganizationCreditsCard organizationId={selectedOrgData.id} />
+            : null
+        }/>
     </div>
   );
 }

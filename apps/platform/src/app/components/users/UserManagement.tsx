@@ -1,7 +1,10 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { type Table } from '@tanstack/react-table';
-import { Users, UserCheck, UserLockIcon, Shield, Download, UserPlus } from 'lucide-react';
+import { Check, ChevronsUpDown, Users, UserCheck, UserLockIcon, Shield, Download, Loader2, UserPlus, X, RefreshCw } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
 import {
   Card,
@@ -14,17 +17,228 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  Input,
+  Label,
+  UsersTable,
 } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
+import { useUserStore } from '@horizon-sync/store';
+import { useToast } from '@horizon-sync/ui/hooks';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { useAuth } from '../../hooks';
-import { useUsers } from '../../hooks/useUsers';
+import { environment } from '../../../environments/environment';
+import { useAuth, useUsers } from '../../hooks';
+import { usePermissions } from '../../hooks/usePermissions';
+import { RoleService } from '../../services/role.service';
+import { UserService } from '../../services/user.service';
 import type { User, UserFilters } from '../../types/user.types';
 
 import { InviteUserModal } from '../InviteUserModal';
+import { ManageRolesDialog } from './ManageRolesDialog';
+import { UserViewDialog } from './UserViewDialog';
 
-import { UsersTable } from '@horizon-sync/ui/components';
+const namePattern = /^[A-Za-z][A-Za-z' -]*[A-Za-z]$/;
 
+const userDetailsSchema = z.object({
+  first_name: z.string()
+    .trim()
+    .min(2, 'First name must be at least 2 characters')
+    .max(50, 'First name cannot exceed 50 characters')
+    .regex(namePattern, 'First name can contain only letters, spaces, hyphens, and apostrophes'),
+  last_name: z.string()
+    .trim()
+    .min(2, 'Last name must be at least 2 characters')
+    .max(50, 'Last name cannot exceed 50 characters')
+    .regex(namePattern, 'Last name can contain only letters, spaces, hyphens, and apostrophes'),
+});
+
+type UserDetailsFormData = z.infer<typeof userDetailsSchema>;
+
+function isOrganizationOwnerOrAdmin(
+  currentUser: { user_type?: string; roles?: string[]; role?: { name?: string }; organization_id?: string | null } | null | undefined,
+  permissionRoles: string[] = []
+) {
+  const userType = currentUser?.user_type?.toLowerCase();
+  const roles = [
+    ...(currentUser?.roles ?? []),
+    currentUser?.role?.name ?? '',
+    ...permissionRoles,
+  ].map((role) => role.toLowerCase().replace(/[_-]+/g, ' ').trim()).filter(Boolean);
+  return !currentUser?.organization_id
+    || userType === 'admin'
+    || userType === 'administrator'
+    || userType === 'organization_admin'
+    || userType === 'organization_owner'
+    || roles.some((role) => role === 'admin' || role === 'administrator' || role === 'organization admin' || role === 'organization owner' || role === 'owner');
+}
+
+function isOrganizationOwnerUser(
+  currentUser: { user_type?: string; roles?: string[]; role?: { name?: string } } | null | undefined,
+  permissionRoles: string[] = []
+) {
+  const userType = currentUser?.user_type?.toLowerCase();
+  const roles = [
+    ...(currentUser?.roles ?? []),
+    currentUser?.role?.name ?? '',
+    ...permissionRoles,
+  ].map((role) => role.toLowerCase().replace(/[_-]+/g, ' ').trim()).filter(Boolean);
+  return userType === 'organization_owner'
+    || userType === 'owner'
+    || roles.some((role) => role === 'organization owner' || role === 'owner');
+}
+
+function isOrganizationAdminUser(
+  currentUser: { user_type?: string; roles?: string[]; role?: { name?: string } } | null | undefined,
+  permissionRoles: string[] = []
+) {
+  const userType = currentUser?.user_type?.toLowerCase();
+  const roles = [
+    ...(currentUser?.roles ?? []),
+    currentUser?.role?.name ?? '',
+    ...permissionRoles,
+  ].map((role) => role.toLowerCase().replace(/[_-]+/g, ' ').trim()).filter(Boolean);
+  return userType === 'admin'
+    || userType === 'administrator'
+    || userType === 'organization_admin'
+    || roles.some((role) => role === 'admin' || role === 'administrator' || role === 'organization admin');
+}
+
+function EditUserDialog({
+  user,
+  open,
+  onOpenChange,
+  onSubmit,
+}: {
+  user: User | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: UserDetailsFormData) => Promise<void>;
+}) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const form = useForm<UserDetailsFormData>({
+    resolver: zodResolver(userDetailsSchema),
+    values: {
+      first_name: user?.first_name ?? '',
+      last_name: user?.last_name ?? '',
+    },
+  });
+
+  const handleSubmit = form.handleSubmit(async (data) => {
+    setIsSubmitting(true);
+    try {
+      await onSubmit(data);
+      onOpenChange(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit User Details</DialogTitle>
+          <DialogDescription>Update the user's first and last name.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit_first_name">First Name</Label>
+            <Input id="edit_first_name" {...form.register('first_name')} className={form.formState.errors.first_name ? 'border-destructive' : ''} />
+            {form.formState.errors.first_name && <p className="text-sm text-destructive">{form.formState.errors.first_name.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit_last_name">Last Name</Label>
+            <Input id="edit_last_name" {...form.register('last_name')} className={form.formState.errors.last_name ? 'border-destructive' : ''} />
+            {form.formState.errors.last_name && <p className="text-sm text-destructive">{form.formState.errors.last_name.message}</p>}
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Searchable role filter list rendered inside the Popover ──────────────────
+function RoleFilterList({
+  roles,
+  selected,
+  onSelect,
+}: {
+  roles: string[];
+  selected: string;
+  onSelect: (role: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const filtered = useMemo(
+    () => roles.filter(r => r.toLowerCase().includes(query.toLowerCase())),
+    [roles, query]
+  );
+
+  return (
+    <div className="flex flex-col gap-1">
+      {/* Search input */}
+      <div className="relative">
+        <input
+          autoFocus
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search roles..."
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
+        />
+      </div>
+
+      {/* Options list */}
+      <div className="max-h-[220px] overflow-y-auto mt-1 space-y-0.5">
+        {/* All Roles */}
+        <button
+          type="button"
+          onClick={() => onSelect('')}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground',
+            !selected && 'bg-accent/50 font-medium'
+          )}
+        >
+          <Check className={cn('h-3.5 w-3.5 shrink-0', !selected ? 'opacity-100' : 'opacity-0')} />
+          All Roles
+        </button>
+
+        {filtered.length === 0 && (
+          <p className="px-2 py-3 text-center text-xs text-muted-foreground">No roles found</p>
+        )}
+
+        {filtered.map(role => (
+          <button
+            key={role}
+            type="button"
+            onClick={() => onSelect(role)}
+            className={cn(
+              'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground text-left',
+              selected === role && 'bg-accent/50 font-medium'
+            )}
+          >
+            <Check className={cn('h-3.5 w-3.5 shrink-0', selected === role ? 'opacity-100' : 'opacity-0')} />
+            <span className="truncate">{role}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Stat card ─────────────────────────────────────────────────────────────────
 interface StatCardProps {
   title: string;
   value: string | number;
@@ -52,17 +266,43 @@ function StatCard({ title, value, icon: Icon, iconBg, iconColor }: StatCardProps
 }
 
 export function UserManagement() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
+  const { hasPermission } = usePermissions();
+  const permissionRoles = useUserStore((state) => state.permissions.roles);
+  const { toast } = useToast();
+  const canModifyUsers = isOrganizationOwnerOrAdmin(user, permissionRoles);
+  const isCurrentUserOwner = isOrganizationOwnerUser(user, permissionRoles);
+  const shouldHideOwners = isOrganizationAdminUser(user, permissionRoles) && !isCurrentUserOwner;
+  const canInvite = canModifyUsers || hasPermission('user.invite') || hasPermission('user.create') || hasPermission('user.*') || hasPermission('*.*');
+  const canExport = canModifyUsers || hasPermission('user.read') || hasPermission('user.*') || hasPermission('*.*');
   const [filters, setFilters] = useState<UserFilters>({
     search: '',
     status: 'all',
-    userType: 'all',
+    roleName: '',
   });
+
+  // Fetch org roles for the role filter dropdown
+  const [orgRoles, setOrgRoles] = useState<string[]>([]);
+  const [rolePopoverOpen, setRolePopoverOpen] = useState(false);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    RoleService.getRoles(
+      { search: '', isSystem: null, isActive: true, page: 1, pageSize: 100 },
+      accessToken
+    )
+      .then(res => {
+        const names = (res.data ?? []).map(r => r.name).sort();
+        setOrgRoles(names);
+      })
+      .catch(() => { /* silently ignore — filter just won't populate */ });
+  }, [accessToken]);
 
   const {
     users,
     pagination,
     statusCounts,
+    pendingInvitationCount,
     loading,
     error,
     refetch,
@@ -70,26 +310,219 @@ export function UserManagement() {
     setPageSize,
     currentPage,
     currentPageSize,
-  } = useUsers(1, 20, filters, accessToken);
+  } = useUsers(1, 20, filters, accessToken, user?.organization_id);
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [tableInstance, setTableInstance] = useState<Table<User> | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [confirmDeactivateUser, setConfirmDeactivateUser] = useState<User | null>(null);
+  const [isDeactivating, setIsDeactivating] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    if (!accessToken) return;
+    setIsExporting(true);
+    try {
+      const USERS_URL = `${environment.apiBaseUrl}/api/v1/identity/users`;
+      let all: User[] = [];
+      let page = 1;
+      let totalPages = 1;
+
+      do {
+        const params = new URLSearchParams({ page: String(page), page_size: '100' });
+        const res = await fetch(`${USERS_URL}?${params}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!res.ok) break;
+        const data = await res.json() as { users: User[]; pagination: { total_pages: number } };
+        all = all.concat((data.users ?? []).filter((item) => !shouldHideOwners || !isOrganizationOwnerUser(item)));
+        totalPages = data.pagination?.total_pages ?? 1;
+        page++;
+      } while (page <= totalPages);
+
+      const headers = ['Email', 'First Name', 'Last Name', 'Display Name', 'User Type', 'Status', 'Email Verified', 'Created At'];
+      const rows = all.map((u) => [
+        u.email ?? '',
+        u.first_name ?? '',
+        u.last_name ?? '',
+        u.display_name ?? '',
+        u.user_type ?? '',
+        u.status ?? '',
+        u.email_verified ? 'Yes' : 'No',
+        u.created_at ?? '',
+      ]);
+
+      const csv = [headers.join(','), ...rows.map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'users.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [accessToken, shouldHideOwners]);
+
 
   // Reset to first page when filters change
   useEffect(() => {
     setPage(1);
   }, [filters, setPage]);
 
+  const visibleUsers = useMemo(() => {
+    let result = users.filter(item => item.id !== user?.id);
+    if (shouldHideOwners) {
+      result = result.filter(item => !isOrganizationOwnerUser(item));
+    }
+    // Client-side role name filter
+    if (filters.roleName) {
+      result = result.filter(u =>
+        u.roles && u.roles.some(r => r === filters.roleName)
+      );
+    }
+    return result;
+  }, [users, user?.id, shouldHideOwners, filters.roleName]);
+
   const stats = useMemo(() => {
     const total = pagination?.total_items ?? 0;
-    const active = statusCounts?.active ?? 0;
-    const pending = statusCounts?.pending ?? 0;
+    // statusCounts includes the current user (who is hidden from the table).
+    // Subtract 1 from active if the current user is active so the stat matches
+    // what's actually shown in the table.
+    const rawActive = statusCounts?.active ?? 0;
+    const currentUserIsActive = user?.status === 'active' || user?.is_active === true;
+    const active = Math.max(0, rawActive - (currentUserIsActive ? 1 : 0));
+    const pending = pendingInvitationCount;
     const mfaEnabled = statusCounts?.mfa_enabled ?? 0;
-    return { total, active, pending, mfaEnabled };
-  }, [pagination, statusCounts]);
+    return { total: Math.max(0, total - 1), active, pending, mfaEnabled };
+  }, [pagination, pendingInvitationCount, statusCounts, user]);
 
   const handleInviteUser = () => {
     setInviteModalOpen(true);
+  };
+
+  const handleViewUser = (user: User) => {
+    if (shouldHideOwners && isOrganizationOwnerUser(user)) return;
+    setSelectedUser(user);
+    setViewDialogOpen(true);
+  };
+
+  const handleEditUser = (user: User) => {
+    if (shouldHideOwners && isOrganizationOwnerUser(user)) {
+      toast({
+        variant: 'destructive',
+        title: 'Action not allowed',
+        description: 'Administrators cannot modify organization owner accounts.',
+      });
+      return;
+    }
+    setSelectedUser(user);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateUser = async (data: UserDetailsFormData) => {
+    if (!accessToken || !selectedUser) return;
+    if (shouldHideOwners && isOrganizationOwnerUser(selectedUser)) {
+      toast({
+        variant: 'destructive',
+        title: 'Action not allowed',
+        description: 'Administrators cannot modify organization owner accounts.',
+      });
+      return;
+    }
+    try {
+      await UserService.updateUser(selectedUser.id, {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        display_name: `${data.first_name} ${data.last_name}`.trim(),
+      }, accessToken);
+      toast({ title: 'User updated', description: 'User details updated successfully.' });
+      refetch();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Update failed',
+        description: error instanceof Error ? error.message : 'Failed to update user details.',
+      });
+      throw error;
+    }
+  };
+
+  const handleManageRoles = (targetUser: User) => {
+    if (shouldHideOwners && isOrganizationOwnerUser(targetUser)) {
+      toast({
+        variant: 'destructive',
+        title: 'Action not allowed',
+        description: 'Administrators cannot modify organization owner accounts.',
+      });
+      return;
+    }
+    setSelectedUser(targetUser);
+    setRolesDialogOpen(true);
+  };
+
+  const handleDeleteUser = (targetUser: User) => {
+    if (!accessToken) return;
+    if (shouldHideOwners && isOrganizationOwnerUser(targetUser)) {
+      toast({
+        variant: 'destructive',
+        title: 'Action not allowed',
+        description: 'Administrators cannot deactivate organization owner accounts.',
+      });
+      return;
+    }
+    setConfirmDeactivateUser(targetUser);
+  };
+
+  const executeDeactivateUser = async () => {
+    if (!accessToken || !confirmDeactivateUser) return;
+    setIsDeactivating(true);
+    try {
+      await UserService.updateUser(confirmDeactivateUser.id, {
+        status: 'inactive',
+        is_active: false,
+      }, accessToken);
+      toast({ title: 'User deactivated', description: 'User deactivated successfully.' });
+      setConfirmDeactivateUser(null);
+      refetch();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Deactivate failed',
+        description: error instanceof Error ? error.message : 'Failed to deactivate user.',
+      });
+    } finally {
+      setIsDeactivating(false);
+    }
+  };
+
+  const handleResendInvitation = async (targetUser: User) => {
+    if (!accessToken) return;
+    if (targetUser.status !== 'pending' && targetUser.status !== 'expired') {
+      toast({
+        variant: 'destructive',
+        title: 'Cannot resend',
+        description: 'Only pending or expired invitations can be resent.',
+      });
+      return;
+    }
+    try {
+      await UserService.resendInvitation(targetUser.id, accessToken);
+      toast({ title: 'Invitation resent', description: `Invitation sent to ${targetUser.email}.` });
+      refetch();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Resend failed',
+        description: error instanceof Error ? error.message : 'Failed to resend invitation.',
+      });
+    }
   };
 
   const handleInviteSuccess = () => {
@@ -122,15 +555,26 @@ export function UserManagement() {
           <p className="text-muted-foreground mt-1">Manage team members, roles, and access permissions</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
+          <Button variant="outline" className="gap-2" onClick={refetch} disabled={loading}>
+            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+            Refresh
           </Button>
-          <Button onClick={handleInviteUser}
-            className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
-            <UserPlus className="h-4 w-4" />
-            Invite User
-          </Button>
+          {canExport && (
+            <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
+              {isExporting ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />Exporting...</>
+              ) : (
+                <><Download className="h-4 w-4" />Export</>
+              )}
+            </Button>
+          )}
+          {canInvite && (
+            <Button onClick={handleInviteUser}
+              className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
+              <UserPlus className="h-4 w-4" />
+              Invite User
+            </Button>
+          )}
         </div>
       </div>
 
@@ -140,22 +584,22 @@ export function UserManagement() {
           value={stats.total}
           icon={Users}
           iconBg="bg-slate-100 dark:bg-slate-800"
-          iconColor="text-slate-600 dark:text-slate-400"/>
+          iconColor="text-slate-600 dark:text-slate-400" />
         <StatCard title="Active Users"
           value={stats.active}
           icon={UserCheck}
           iconBg="bg-emerald-100 dark:bg-emerald-900/20"
-          iconColor="text-emerald-600 dark:text-emerald-400"/>
+          iconColor="text-emerald-600 dark:text-emerald-400" />
         <StatCard title="Pending Invites"
           value={stats.pending}
           icon={UserLockIcon}
           iconBg="bg-amber-100 dark:bg-amber-900/20"
-          iconColor="text-amber-600 dark:text-amber-400"/>
+          iconColor="text-amber-600 dark:text-amber-400" />
         <StatCard title="MFA Enabled"
           value={stats.mfaEnabled}
           icon={Shield}
           iconBg="bg-[#3058EE]/10"
-          iconColor="text-[#3058EE]"/>
+          iconColor="text-[#3058EE]" />
       </div>
 
       {/* Filters */}
@@ -163,8 +607,9 @@ export function UserManagement() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <SearchInput className="sm:w-80"
             placeholder="Search by name or email..."
-            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
-          <div className="flex gap-3">
+            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))} />
+          <div className="flex gap-3 flex-wrap">
+            {/* Status filter */}
             <Select value={filters.status} onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="All Status" />
@@ -177,33 +622,119 @@ export function UserManagement() {
                 <SelectItem value="suspended">Suspended</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filters.userType} onValueChange={(value) => setFilters((prev) => ({ ...prev, userType: value }))}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="All Roles" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="user">User</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="system_admin">System Admin</SelectItem>
-              </SelectContent>
-            </Select>
+
+            {/* Role filter — searchable popover */}
+            <Popover open={rolePopoverOpen} onOpenChange={setRolePopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={rolePopoverOpen}
+                  className={cn(
+                    'w-[180px] justify-between font-normal',
+                    filters.roleName && 'border-primary text-primary'
+                  )}
+                >
+                  <span className="truncate text-sm">
+                    {filters.roleName || 'All Roles'}
+                  </span>
+                  <div className="flex items-center gap-1 ml-2 shrink-0">
+                    {filters.roleName && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="rounded-full hover:bg-muted p-0.5"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFilters(prev => ({ ...prev, roleName: '' }));
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.stopPropagation();
+                            setFilters(prev => ({ ...prev, roleName: '' }));
+                          }
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </span>
+                    )}
+                    <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                  </div>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-2" align="start">
+                <RoleFilterList
+                  roles={orgRoles}
+                  selected={filters.roleName}
+                  onSelect={(role) => {
+                    setFilters(prev => ({ ...prev, roleName: role }));
+                    setRolePopoverOpen(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
         <div className="flex items-center">{tableInstance && <DataTableViewOptions table={tableInstance} />}</div>
       </div>
 
       {/* Users Table */}
-      <UsersTable users={users}
+      <UsersTable users={visibleUsers}
         loading={loading}
         error={error}
-        hasActiveFilters={!!filters.search || filters.status !== 'all' || filters.userType !== 'all'}
+        hasActiveFilters={!!filters.search || filters.status !== 'all' || !!filters.roleName}
         onInviteUser={handleInviteUser}
+        onView={handleViewUser}
+        onEdit={canModifyUsers ? handleEditUser : undefined}
+        onDelete={canModifyUsers ? handleDeleteUser : undefined}
+        onManageRoles={canModifyUsers ? handleManageRoles : undefined}
+        onResendInvitation={canInvite ? handleResendInvitation : undefined}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}/>
+        showVerified
+        showLastLogin
+        serverPagination={serverPaginationConfig} />
 
       {/* Invite User Modal */}
       <InviteUserModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} onSuccess={handleInviteSuccess} />
+
+      <EditUserDialog
+        user={selectedUser}
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          setEditDialogOpen(open);
+          if (!open) setSelectedUser(null);
+        }}
+        onSubmit={handleUpdateUser}
+      />
+
+      {/* User View Dialog */}
+      <UserViewDialog
+        user={selectedUser}
+        isOpen={viewDialogOpen}
+        onClose={() => { setViewDialogOpen(false); setSelectedUser(null); }}
+      />
+
+      {/* Deactivate User Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmDeactivateUser}
+        onOpenChange={(open) => { if (!open) setConfirmDeactivateUser(null); }}
+        title="Deactivate User"
+        description={confirmDeactivateUser ? `Are you sure you want to deactivate "${confirmDeactivateUser.first_name} ${confirmDeactivateUser.last_name}"?` : ''}
+        confirmLabel="Deactivate"
+        variant="destructive"
+        loading={isDeactivating}
+        onConfirm={executeDeactivateUser}
+      />
+
+      {/* Manage Roles Dialog */}
+      <ManageRolesDialog
+        user={selectedUser}
+        organizationId={user?.organization_id ?? null}
+        isOpen={rolesDialogOpen}
+        onClose={() => { setRolesDialogOpen(false); setSelectedUser(null); }}
+        onSuccess={() => { refetch(); }}
+        accessToken={accessToken}
+      />
     </div>
   );
 }

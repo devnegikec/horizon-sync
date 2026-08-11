@@ -14,19 +14,59 @@ import logo from '../../../assets/ciphercode_logo.png';
 import { AuthService } from '../../services/auth.service';
 import { forgotPasswordSchema, ForgotPasswordFormData } from '../../utility/validationSchema';
 
+// sessionStorage key prefix for the per-email cooldown deadline (epoch ms).
+// Scoped per email so different users on the same browser tab don't collide.
+const COOLDOWN_KEY_PREFIX = 'forgot-password-cooldown:';
+const cooldownKey = (email: string) =>
+  `${COOLDOWN_KEY_PREFIX}${email.trim().toLowerCase()}`;
+
+const formatMMSS = (totalSeconds: number) => {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+};
+
 export function ForgotPasswordForm() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [successMessage, setSuccessMessage] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
+  // Epoch ms at which the user may resubmit. 0 = no active cooldown.
+  const [cooldownUntil, setCooldownUntil] = React.useState<number>(0);
+  const [now, setNow] = React.useState<number>(() => Date.now());
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
   });
+
+  const currentEmail = watch('email');
+
+  // Tick every second while a cooldown is active so the countdown updates.
+  React.useEffect(() => {
+    if (cooldownUntil <= 0) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [cooldownUntil]);
+
+  // When the user types/changes the email, restore any persisted cooldown
+  // for that email so the countdown survives reloads / navigation.
+  React.useEffect(() => {
+    if (!currentEmail) {
+      setCooldownUntil(0);
+      return;
+    }
+    const raw = sessionStorage.getItem(cooldownKey(currentEmail));
+    const until = raw ? Number(raw) : 0;
+    setCooldownUntil(Number.isFinite(until) && until > Date.now() ? until : 0);
+  }, [currentEmail]);
+
+  const remainingSeconds = Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
+  const cooldownActive = remainingSeconds > 0;
 
   const onSubmit = async (data: ForgotPasswordFormData) => {
     setIsSubmitting(true);
@@ -34,8 +74,19 @@ export function ForgotPasswordForm() {
     setSuccessMessage('');
 
     try {
-      await AuthService.forgotPassword(data);
-      setSuccessMessage('If an account exists with that email, we have sent a password reset link.');
+      const res = await AuthService.forgotPassword(data);
+      // The backend returns the same generic message and a `retry_after_seconds`
+      // hint regardless of whether the email is registered, so we can safely
+      // use it to drive the local cooldown without leaking account existence.
+      const seconds = Math.max(1, Number(res?.retry_after_seconds) || 5 * 60);
+      const until = Date.now() + seconds * 1000;
+      sessionStorage.setItem(cooldownKey(data.email), String(until));
+      setCooldownUntil(until);
+      setSuccessMessage(
+        'If an account exists with that email, we have sent a password reset link. ' +
+        'Please check your inbox (and spam). It may take a minute. You can request ' +
+        'a new link once the timer below ends.',
+      );
     } catch (error) {
       if (error instanceof Error) {
         setErrorMessage(error.message);
@@ -72,7 +123,7 @@ export function ForgotPasswordForm() {
               type="email"
               placeholder="john.doe@example.com"
               {...register('email')}
-              className={errors.email ? 'border-destructive' : ''}/>
+              className={errors.email ? 'border-destructive' : ''} />
             {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
 
@@ -91,12 +142,14 @@ export function ForgotPasswordForm() {
 
           <Button type="submit"
             className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
-            disabled={isSubmitting}>
+            disabled={isSubmitting || cooldownActive}>
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Sending link...
               </>
+            ) : cooldownActive ? (
+              `Resend available in ${formatMMSS(remainingSeconds)}`
             ) : (
               'Send Reset Link'
             )}

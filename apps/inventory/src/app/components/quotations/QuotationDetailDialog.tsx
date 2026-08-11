@@ -2,6 +2,8 @@ import * as React from 'react';
 
 import { FileText } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
+
 import { useEmailWithPdfAttachment } from '../../hooks/useEmailWithPdfAttachment';
 import { useQuotationPDFActions } from '../../hooks/useQuotationPDFActions';
 import { getCurrencySymbol } from '../../types/currency.types';
@@ -36,7 +38,8 @@ export function QuotationDetailDialog({ open, onOpenChange, quotation, onEdit, o
   const { loading: pdfLoading, handleDownload, handlePreview, handleGenerateBase64 } = useQuotationPDFActions();
   const { emailDialogOpen, pdfAttachment, openEmailWithPdf, handleEmailClose, handleEmailSuccess } = useEmailWithPdfAttachment();
 
-  const currencySymbol = quotation ? getCurrencySymbol(quotation.currency) : '';
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency) || 'USD';
+  const currencySymbol = quotation ? getCurrencySymbol(quotation.currency || baseCurrency) : '';
 
   const handleSendEmail = () => {
     if (!quotation) return;

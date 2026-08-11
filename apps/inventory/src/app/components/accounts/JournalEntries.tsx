@@ -17,6 +17,7 @@ import {
 
 import { journalEntriesApi, type JournalEntry } from '../../utility/api/journal-entries';
 import { formatCurrency, formatDate } from '../../utils/payment.utils';
+import { CurrencyIcon } from '@horizon-sync/ui';
 
 export function JournalEntries() {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
@@ -115,11 +116,11 @@ export function JournalEntries() {
                       {formatDate(entry.posting_date)}
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <DollarSign className="h-4 w-4" />
+                      <CurrencyIcon className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2"/>
                       Debit: {formatCurrency(entry.total_debit, 'USD')}
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <DollarSign className="h-4 w-4" />
+                      <CurrencyIcon className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2"/>
                       Credit: {formatCurrency(entry.total_credit, 'USD')}
                     </div>
                     <div className="text-muted-foreground">

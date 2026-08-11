@@ -3,6 +3,7 @@ import * as React from 'react';
 import { type Table } from '@tanstack/react-table';
 import { Users, Plus } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { DataTable } from '@horizon-sync/ui/components/data-table/DataTable';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
@@ -11,6 +12,7 @@ import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import { TableSkeleton } from '@horizon-sync/ui/components/ui/table-skeleton';
 
 import type { Customer } from '../../types/customer.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 
 import { createCustomerColumns } from './CustomerColumns';
 
@@ -37,6 +39,8 @@ export function CustomersTable({
   onCreateCustomer,
   onTableReady,
 }: CustomersTableProps) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const [tableInstance, setTableInstance] = React.useState<Table<Customer> | null>(null);
   const [confirmDialog, setConfirmDialog] = React.useState<{
     open: boolean;
@@ -91,8 +95,9 @@ export function CustomersTable({
         onViewCustomer: onView,
         onEditCustomer: onEdit,
         onToggleStatus: handleToggleStatus,
+        currencySymbol,
       }),
-    [onView, onEdit, handleToggleStatus],
+    [onView, onEdit, handleToggleStatus, currencySymbol],
   );
 
   const renderViewOptions = (table: Table<Customer>) => {

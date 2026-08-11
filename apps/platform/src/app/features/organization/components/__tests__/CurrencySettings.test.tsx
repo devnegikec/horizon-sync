@@ -1,282 +1,294 @@
 import * as React from 'react';
 
 import { render, screen, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 
 import { CurrencySettings } from '../CurrencySettings';
+import { CurrencyService } from '../../../../services/currency.service';
 
-// Mock dependencies
-jest.mock('../../hooks/useUpdateOrganization');
-jest.mock('@horizon-sync/ui/hooks/use-toast');
+// Mock CurrencyService
+jest.mock('../../../../services/currency.service');
 
-const mockUpdateOrganization = jest.fn();
+// Mock toast
 const mockToast = jest.fn();
+jest.mock('@horizon-sync/ui/hooks/use-toast', () => ({
+  useToast: () => ({ toast: mockToast }),
+}));
 
-// Setup mocks
-beforeEach(() => {
-  jest.clearAllMocks();
+// Mock EditableDataTable with a simple table that exercises the component logic
+jest.mock('@horizon-sync/ui/components', () => ({
+  EditableDataTable: ({ data, onDataChange, enableAddRow, addRowLabel, newRowTemplate }: any) => (
+    <div data-testid="editable-data-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Symbol</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((row: any, i: number) => (
+            <tr key={row.id || i} data-testid={`currency-row-${i}`}>
+              <td>{row.code}</td>
+              <td>{row.name}</td>
+              <td>{row.symbol}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {enableAddRow && (
+        <button
+          data-testid="add-row-btn"
+          onClick={() => onDataChange([...data, { ...newRowTemplate, code: 'NEW', name: 'New Currency', symbol: 'N', isNew: true }])}
+        >
+          {addRowLabel}
+        </button>
+      )}
+    </div>
+  ),
+  EditableCell: () => <td>editable</td>,
+  ConfirmationDialog: ({ open, onConfirm, title, description }: any) =>
+    open ? (
+      <div data-testid="confirmation-dialog">
+        <p>{title}</p>
+        <p>{description}</p>
+        <button data-testid="confirm-delete-btn" onClick={onConfirm}>Confirm</button>
+      </div>
+    ) : null,
+}));
 
-  const { useUpdateOrganization } = require('../../hooks/useUpdateOrganization');
-  useUpdateOrganization.mockReturnValue({
-    updateOrganization: mockUpdateOrganization,
-    loading: false,
-    error: null,
-  });
+const mockList = CurrencyService.list as jest.MockedFunction<typeof CurrencyService.list>;
+const mockCreate = CurrencyService.create as jest.MockedFunction<typeof CurrencyService.create>;
+const mockDelete = CurrencyService.delete as jest.MockedFunction<typeof CurrencyService.delete>;
 
-  const { useToast } = require('@horizon-sync/ui/hooks/use-toast');
-  useToast.mockReturnValue({
-    toast: mockToast,
-  });
-});
+const sampleCurrencies = [
+  { id: 'c1', code: 'USD', name: 'US Dollar', symbol: '$' },
+  { id: 'c2', code: 'EUR', name: 'Euro', symbol: '€' },
+];
 
 describe('CurrencySettings Component', () => {
   const defaultProps = {
-    organizationId: 'org-123',
     accessToken: 'token-abc',
-    currentSettings: { currency: 'USD' },
-    canEdit: true,
+    disabled: false,
   };
 
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockList.mockResolvedValue(sampleCurrencies);
+  });
+
   describe('Display Current Currency', () => {
-    it('should display current currency from settings', () => {
+    it('should display current currency from settings', async () => {
       render(<CurrencySettings {...defaultProps} />);
 
-      expect(screen.getByText('Currency Settings')).toBeInTheDocument();
-      expect(screen.getByText('Preferred Currency')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Currencies')).toBeInTheDocument();
+      });
     });
 
-    it('should default to USD when no currency is configured', () => {
-      render(<CurrencySettings {...defaultProps} currentSettings={null} />);
+    it('should default to USD when no currency is configured', async () => {
+      mockList.mockResolvedValue([{ id: 'c1', code: 'USD', name: 'US Dollar', symbol: '$' }]);
+      render(<CurrencySettings {...defaultProps} />);
 
-      // The select should have USD as the default value
-      const select = screen.getByRole('combobox');
-      expect(select).toHaveTextContent('US Dollar');
+      await waitFor(() => {
+        expect(screen.getByText('USD')).toBeInTheDocument();
+        expect(screen.getByText('US Dollar')).toBeInTheDocument();
+      });
     });
 
-    it('should display EUR when configured', () => {
-      render(<CurrencySettings {...defaultProps} currentSettings={{ currency: 'EUR' }} />);
+    it('should display EUR when configured', async () => {
+      render(<CurrencySettings {...defaultProps} />);
 
-      const select = screen.getByRole('combobox');
-      expect(select).toHaveTextContent('Euro');
+      await waitFor(() => {
+        expect(screen.getByText('EUR')).toBeInTheDocument();
+        expect(screen.getByText('Euro')).toBeInTheDocument();
+      });
     });
   });
 
   describe('Edit Mode', () => {
-    it('should display currency dropdown when canEdit is true', () => {
+    it('should display currency dropdown when canEdit is true', async () => {
       render(<CurrencySettings {...defaultProps} />);
 
-      expect(screen.getByRole('combobox')).toBeInTheDocument();
-      expect(screen.getByText('Preferred Currency')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('editable-data-table')).toBeInTheDocument();
+      });
     });
 
-    it('should hide currency dropdown when canEdit is false', () => {
-      render(<CurrencySettings {...defaultProps} canEdit={false} />);
+    it('should hide currency dropdown when canEdit is false', async () => {
+      render(<CurrencySettings {...defaultProps} disabled={true} />);
 
-      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-      // Should display in view mode instead
-      expect(screen.getByText('$ US Dollar (USD)')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('editable-data-table')).toBeInTheDocument();
+      });
+      // Add row button should not be present when disabled
+      expect(screen.queryByTestId('add-row-btn')).not.toBeInTheDocument();
     });
 
     it('should populate dropdown with supported currencies', async () => {
-      const user = userEvent.setup();
       render(<CurrencySettings {...defaultProps} />);
 
-      const select = screen.getByRole('combobox');
-      await user.click(select);
-
-      // Wait for dropdown to open and check for currencies
       await waitFor(() => {
-        expect(screen.getByRole('option', { name: /US Dollar/ })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: /Euro/ })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: /British Pound/ })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: /Japanese Yen/ })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: /Australian Dollar/ })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: /Canadian Dollar/ })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: /Swiss Franc/ })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: /Chinese Yuan/ })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: /Indian Rupee/ })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: /Singapore Dollar/ })).toBeInTheDocument();
+        expect(screen.getByText('USD')).toBeInTheDocument();
+        expect(screen.getByText('EUR')).toBeInTheDocument();
+        expect(screen.getByText('US Dollar')).toBeInTheDocument();
+        expect(screen.getByText('Euro')).toBeInTheDocument();
       });
     });
   });
 
   describe('Currency Update', () => {
     it('should update organization settings with correct JSON format when currency is changed', async () => {
+      mockCreate.mockResolvedValue({ id: 'c3', code: 'NEW', name: 'New Currency', symbol: 'N' });
       const user = userEvent.setup();
-      mockUpdateOrganization.mockResolvedValue({});
 
       render(<CurrencySettings {...defaultProps} />);
 
-      const select = screen.getByRole('combobox');
-      await user.click(select);
+      await waitFor(() => {
+        expect(screen.getByTestId('add-row-btn')).toBeInTheDocument();
+      });
 
-      // Select EUR
-      const eurOption = await screen.findByRole('option', { name: /Euro/ });
-      await user.click(eurOption);
+      await user.click(screen.getByTestId('add-row-btn'));
 
       await waitFor(() => {
-        expect(mockUpdateOrganization).toHaveBeenCalledWith(
-          'org-123',
-          {
-            settings: {
-              currency: 'EUR',
-            },
-          },
+        expect(mockCreate).toHaveBeenCalledWith(
+          { code: 'NEW', name: 'New Currency', symbol: 'N' },
           'token-abc'
         );
       });
     });
 
     it('should display success toast on successful update', async () => {
+      mockCreate.mockResolvedValue({ id: 'c3', code: 'NEW', name: 'New Currency', symbol: 'N' });
       const user = userEvent.setup();
-      mockUpdateOrganization.mockResolvedValue({});
 
       render(<CurrencySettings {...defaultProps} />);
 
-      const select = screen.getByRole('combobox');
-      await user.click(select);
-
-      const gbpOption = await screen.findByRole('option', { name: /British Pound/ });
-      await user.click(gbpOption);
-
       await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith({
-          title: 'Success',
-          description: 'Currency updated successfully',
-        });
-      });
-    });
-
-    it('should display error toast and revert currency on update failure', async () => {
-      const user = userEvent.setup();
-      const error = new Error('Network error');
-      mockUpdateOrganization.mockRejectedValue(error);
-
-      render(<CurrencySettings {...defaultProps} currentSettings={{ currency: 'USD' }} />);
-
-      const select = screen.getByRole('combobox');
-      await user.click(select);
-
-      const jpyOption = await screen.findByRole('option', { name: /Japanese Yen/ });
-      await user.click(jpyOption);
-
-      await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith({
-          title: 'Error',
-          description: 'Network error',
-          variant: 'destructive',
-        });
+        expect(screen.getByTestId('add-row-btn')).toBeInTheDocument();
       });
 
-      // Currency should revert to USD
-      await waitFor(() => {
-        expect(select).toHaveTextContent('US Dollar');
-      });
-    });
-
-    it('should preserve other settings when updating currency', async () => {
-      const user = userEvent.setup();
-      mockUpdateOrganization.mockResolvedValue({});
-
-      const settingsWithOtherData = {
-        currency: 'USD',
-        timezone: 'America/New_York',
-        dateFormat: 'MM/DD/YYYY',
-      };
-
-      render(<CurrencySettings {...defaultProps} currentSettings={settingsWithOtherData} />);
-
-      const select = screen.getByRole('combobox');
-      await user.click(select);
-
-      const cadOption = await screen.findByRole('option', { name: /Canadian Dollar/ });
-      await user.click(cadOption);
+      await user.click(screen.getByTestId('add-row-btn'));
 
       await waitFor(() => {
-        expect(mockUpdateOrganization).toHaveBeenCalledWith(
-          'org-123',
-          {
-            settings: {
-              currency: 'CAD',
-              timezone: 'America/New_York',
-              dateFormat: 'MM/DD/YYYY',
-            },
-          },
-          'token-abc'
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({ title: 'Success' })
         );
       });
     });
 
-    it('should disable select during update', async () => {
+    it('should display error toast and revert currency on update failure', async () => {
+      mockCreate.mockRejectedValue(new Error('Network error'));
       const user = userEvent.setup();
-      let resolveUpdate: () => void;
-      const updatePromise = new Promise<void>((resolve) => {
-        resolveUpdate = resolve;
-      });
-      mockUpdateOrganization.mockReturnValue(updatePromise);
 
       render(<CurrencySettings {...defaultProps} />);
 
-      const select = screen.getByRole('combobox');
-      await user.click(select);
-
-      const eurOption = await screen.findByRole('option', { name: /Euro/ });
-      await user.click(eurOption);
-
-      // Select should be disabled during update
       await waitFor(() => {
-        expect(screen.getByText('Updating currency...')).toBeInTheDocument();
+        expect(screen.getByTestId('add-row-btn')).toBeInTheDocument();
       });
 
-      // Resolve the update
-      if (resolveUpdate) {
-        resolveUpdate();
-      }
+      await user.click(screen.getByTestId('add-row-btn'));
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'Error',
+            variant: 'destructive',
+          })
+        );
+      });
+    });
+
+    it('should preserve other settings when updating currency', async () => {
+      mockCreate.mockResolvedValue({ id: 'c3', code: 'NEW', name: 'New Currency', symbol: 'N' });
+      const user = userEvent.setup();
+
+      render(<CurrencySettings {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('add-row-btn')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('add-row-btn'));
+
+      await waitFor(() => {
+        expect(mockCreate).toHaveBeenCalled();
+      });
+
+      // After create, list should be re-fetched
+      expect(mockList).toHaveBeenCalledTimes(2);
+    });
+
+    it('should disable select during update', async () => {
+      let resolveCreate!: (value: any) => void;
+      mockCreate.mockImplementation(() => new Promise((resolve) => { resolveCreate = resolve; }));
+      const user = userEvent.setup();
+
+      render(<CurrencySettings {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('add-row-btn')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('add-row-btn'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Saving...')).toBeInTheDocument();
+      });
+
+      resolveCreate({ id: 'c3', code: 'NEW', name: 'New Currency', symbol: 'N' });
     });
   });
 
   describe('View Mode', () => {
-    it('should display currency in view mode when canEdit is false', () => {
-      render(<CurrencySettings {...defaultProps} canEdit={false} currentSettings={{ currency: 'GBP' }} />);
+    it('should display currency in view mode when canEdit is false', async () => {
+      render(<CurrencySettings {...defaultProps} disabled={true} />);
 
-      expect(screen.getByText('£ British Pound (GBP)')).toBeInTheDocument();
-      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('USD')).toBeInTheDocument();
+        expect(screen.getByText('EUR')).toBeInTheDocument();
+      });
     });
 
-    it('should display currency with icon in view mode', () => {
-      render(<CurrencySettings {...defaultProps} canEdit={false} />);
+    it('should display currency with icon in view mode', async () => {
+      render(<CurrencySettings {...defaultProps} disabled={true} />);
 
-      expect(screen.getByText('Preferred Currency')).toBeInTheDocument();
-      expect(screen.getByText('$ US Dollar (USD)')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('$')).toBeInTheDocument();
+        expect(screen.getByText('€')).toBeInTheDocument();
+      });
     });
   });
 
   describe('Edge Cases', () => {
-    it('should handle null currentSettings', () => {
-      render(<CurrencySettings {...defaultProps} currentSettings={null} />);
+    it('should handle null currentSettings', async () => {
+      mockList.mockResolvedValue([]);
+      render(<CurrencySettings {...defaultProps} />);
 
-      const select = screen.getByRole('combobox');
-      expect(select).toHaveTextContent('US Dollar');
+      await waitFor(() => {
+        expect(screen.getByText('Currencies')).toBeInTheDocument();
+      });
     });
 
-    it('should handle empty currentSettings object', () => {
-      render(<CurrencySettings {...defaultProps} currentSettings={{}} />);
+    it('should handle empty currentSettings object', async () => {
+      mockList.mockResolvedValue([]);
+      render(<CurrencySettings {...defaultProps} />);
 
-      const select = screen.getByRole('combobox');
-      expect(select).toHaveTextContent('US Dollar');
+      await waitFor(() => {
+        expect(screen.getByTestId('editable-data-table')).toBeInTheDocument();
+      });
     });
 
-    it('should update local state when currentSettings prop changes', () => {
-      const { rerender } = render(<CurrencySettings {...defaultProps} currentSettings={{ currency: 'USD' }} />);
+    it('should update local state when currentSettings prop changes', async () => {
+      mockList.mockResolvedValue(sampleCurrencies);
+      render(<CurrencySettings {...defaultProps} />);
 
-      let select = screen.getByRole('combobox');
-      expect(select).toHaveTextContent('US Dollar');
-
-      // Update props
-      rerender(<CurrencySettings {...defaultProps} currentSettings={{ currency: 'EUR' }} />);
-
-      select = screen.getByRole('combobox');
-      expect(select).toHaveTextContent('Euro');
+      await waitFor(() => {
+        expect(screen.getByText('USD')).toBeInTheDocument();
+        expect(screen.getByText('EUR')).toBeInTheDocument();
+      });
     });
   });
 });

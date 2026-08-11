@@ -1,8 +1,7 @@
 import * as React from 'react';
 
-import { Building2, X } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 
-import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 
 import { OrganizationForm, type OrganizationFormData } from './OrganizationForm';
@@ -13,6 +12,10 @@ interface CreateOrganizationModalProps {
   onSubmit: (data: OrganizationFormData & { logoUrl: string }) => Promise<void>;
   title?: string;
   description?: string;
+  /** When provided, the built-in close button is hidden and this is called on dismiss attempts (Esc / overlay click). */
+  onCancelAttempt?: () => void;
+  /** When true, hides the built-in close button rendered inside DialogContent. */
+  hideCloseButton?: boolean;
 }
 
 export function CreateOrganizationModal({
@@ -21,6 +24,8 @@ export function CreateOrganizationModal({
   onSubmit,
   title = 'Create Organization',
   description = 'You need to create an organization to manage your inventory items.',
+  onCancelAttempt,
+  hideCloseButton,
 }: CreateOrganizationModalProps) {
   const handleSubmit = async (data: OrganizationFormData & { logoUrl: string }) => {
     try {
@@ -33,9 +38,33 @@ export function CreateOrganizationModal({
     }
   };
 
+  const handleOpenChange = (next: boolean) => {
+    if (!next && onCancelAttempt) {
+      // Intercept close attempts (Esc / overlay click / built-in X) to warn the user.
+      onCancelAttempt();
+      return;
+    }
+    onOpenChange(next);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto"
+        hideCloseButton={hideCloseButton ?? !!onCancelAttempt}
+        onEscapeKeyDown={(e) => {
+          if (onCancelAttempt) {
+            e.preventDefault();
+            onCancelAttempt();
+          }
+        }}
+        onInteractOutside={(e) => {
+          if (onCancelAttempt) {
+            e.preventDefault();
+            onCancelAttempt();
+          }
+        }}
+      >
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -46,16 +75,8 @@ export function CreateOrganizationModal({
               <p className="text-sm text-muted-foreground mt-1">{description}</p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-4 top-4"
-            onClick={() => onOpenChange(false)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
         </DialogHeader>
-        
+
         <div className="mt-6">
           <OrganizationForm
             onSubmit={handleSubmit}

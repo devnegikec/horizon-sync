@@ -29,6 +29,7 @@ export interface AdminUserDetailResponse {
   is_active: boolean;
   organization_id: string | null;
   organization_name: string | null;
+  system_admin_role_ids?: string[];
   created_at: string;
   updated_at: string | null;
 }
@@ -42,6 +43,7 @@ export interface AdminUserCreate {
   roles?: AllowedRole[];
   phone?: string | null;
   user_type?: UserType;
+  system_admin_role_ids?: string[];
 }
 
 export interface AdminUserUpdate {
@@ -56,6 +58,7 @@ export interface AdminUserUpdate {
 export interface AdminUserFilters {
   search?: string;
   is_active?: boolean;
+  user_type?: string;
   page?: number;
   page_size?: number;
 }

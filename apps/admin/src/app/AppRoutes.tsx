@@ -17,7 +17,11 @@ import { SystemPermissionsPage } from './pages/SystemPermissionsPage';
 import { SystemSettingsPage } from './pages/SystemSettingsPage';
 import { UserDetailPage } from './pages/UserDetailPage';
 import { AuditLogsPage } from './pages/AuditLogsPage';
+import { RolesPage } from './pages/RolesPage';
 import { UsersPage } from './pages/UsersPage';
+import { FeatureControlsPage } from './pages/FeatureControlsPage';
+import { WorkersPage } from './pages/WorkersPage';
+import { CreateWorkerPage } from './pages/CreateWorkerPage';
 
 export function AppRoutes() {
   return (
@@ -41,12 +45,16 @@ export function AppRoutes() {
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/users/new" element={<CreateUserPage />} />
                 <Route path="/users/:id" element={<UserDetailPage />} />
+                <Route path="/workers" element={<WorkersPage />} />
+                <Route path="/workers/new" element={<CreateWorkerPage />} />
                 <Route path="/payments" element={<PaymentsPage />} />
                 <Route path="/payment-reminders" element={<PaymentRemindersPage />} />
                 <Route path="/billing" element={<BillingManagementPage />} />
                 <Route path="/admin/permissions" element={<SystemPermissionsPage />} />
                 <Route path="/settings" element={<SystemSettingsPage />} />
                 <Route path="/audit-logs" element={<AuditLogsPage />} />
+                <Route path="/roles" element={<RolesPage />} />
+                <Route path="/feature-controls" element={<FeatureControlsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </DashboardLayout>

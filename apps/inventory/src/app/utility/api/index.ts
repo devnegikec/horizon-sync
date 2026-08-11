@@ -9,12 +9,15 @@ export type { ApiRequestOptions, ApiError } from './core';
 
 // Domain API clients
 export { warehouseApi } from './warehouses';
+export { warehouseUserApi } from './warehouseUsers';
+export type { AssignedWarehouse } from './warehouseUsers';
 export { stockLevelApi, stockMovementApi, stockEntryApi, stockReconciliationApi } from './stock';
 export { customerApi } from './customers';
 export { itemSupplierApi, supplierApi } from './suppliers';
 export { deliveryNoteApi } from './delivery-notes';
 export { quotationApi } from './quotations';
 export { salesOrderApi } from './sales-orders';
+export { asnOrderApi } from './asn-orders';
 export { itemApi } from './items';
 export { bulkImportApi, bulkExportApi } from './bulk';
 export type { BulkExportPayload, BulkExportResponse } from './bulk';

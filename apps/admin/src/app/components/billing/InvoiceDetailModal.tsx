@@ -29,6 +29,8 @@ import {
     Label,
 } from '@horizon-sync/ui/components';
 import { cn } from '@horizon-sync/ui/lib';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
 import {
     Eye,
     Send,
@@ -126,6 +128,8 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
     const [showPaymentForm, setShowPaymentForm] = useState(false);
     const [showCreatePaymentForm, setShowCreatePaymentForm] = useState(false);
     const [fullInvoice, setFullInvoice] = useState<Invoice>(invoice);
+    const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+    const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
 
     // Fetch full invoice detail with line items when modal opens
     useEffect(() => {
@@ -214,7 +218,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
     const canMarkAsSent = fullInvoice.status === 'draft';
     const canMarkAsPaid = ['sent', 'pending', 'overdue'].includes(fullInvoice.status);
     const canCreatePayment = ['sent', 'pending', 'overdue'].includes(fullInvoice.status);
-
+    
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -306,7 +310,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose, onAction }: Invoi
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="text-lg flex items-center gap-2">
-                                        <DollarSign className="h-5 w-5" />
+                                        <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
                                         Financial Information
                                     </CardTitle>
                                 </CardHeader>

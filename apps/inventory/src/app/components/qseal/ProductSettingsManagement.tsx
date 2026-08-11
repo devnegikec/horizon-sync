@@ -1,17 +1,20 @@
 import * as React from 'react';
 
-import { Settings, Plus, RefreshCw, Pencil, Trash2, X, Check, KeyRound } from 'lucide-react';
+import { Settings, Plus, RefreshCw, Pencil, Trash2, X, Check, KeyRound, Globe } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
 
 import { useQRProductSettings } from '../../hooks/useQRProductSettings';
 import type { SettingType, QRProductSetting } from '../../types/qr-product-settings.types';
+
 import { BrandManagement } from './BrandManagement';
+import { LandingPageTab } from './LandingPageTab';
 
 /* ------------------------------------------------------------------ */
 /*  Tab metadata                                                       */
@@ -138,6 +141,7 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
 
   const [addingNew, setAddingNew] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [confirmDeleteSetting, setConfirmDeleteSetting] = React.useState<QRProductSetting | null>(null);
 
   const handleCreate = async (formData: SettingFormData) => {
     try {
@@ -157,13 +161,18 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
     }
   };
 
-  const handleDelete = async (setting: QRProductSetting) => {
-    if (!window.confirm(`Delete "${setting.label}"? This cannot be undone.`)) return;
+  const handleDelete = (setting: QRProductSetting) => {
+    setConfirmDeleteSetting(setting);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDeleteSetting) return;
     try {
-      await deleteSetting(setting.id);
+      await deleteSetting(confirmDeleteSetting.id);
     } catch {
       // error surfaced via hook state
     }
+    setConfirmDeleteSetting(null);
   };
 
   const handleToggleActive = async (setting: QRProductSetting) => {
@@ -239,6 +248,15 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
             </TableBody>
           </Table>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmationDialog open={!!confirmDeleteSetting}
+          onOpenChange={(open) => { if (!open) setConfirmDeleteSetting(null); }}
+          title="Delete Setting"
+          description={confirmDeleteSetting ? `Delete "${confirmDeleteSetting.label}"? This cannot be undone.` : ''}
+          confirmLabel="Delete"
+          variant="destructive"
+          onConfirm={executeDelete}/>
       </CardContent>
     </Card>
   );
@@ -270,6 +288,10 @@ export function ProductSettingsManagement() {
             <KeyRound className="h-3.5 w-3.5 mr-1.5" />
             Brands & Keys
           </TabsTrigger>
+          <TabsTrigger value="landing-page">
+            <Globe className="h-3.5 w-3.5 mr-1.5" />
+            Landing Page
+          </TabsTrigger>
         </TabsList>
         {SETTING_TABS.map((tab) => (
           <TabsContent key={tab.key} value={tab.key}>
@@ -278,6 +300,9 @@ export function ProductSettingsManagement() {
         ))}
         <TabsContent value="brands">
           <BrandManagement />
+        </TabsContent>
+        <TabsContent value="landing-page">
+          <LandingPageTab />
         </TabsContent>
       </Tabs>
     </div>

@@ -9,6 +9,7 @@ import type {
   StockEntryFilters,
 } from '../../types/stock.types';
 import { buildUrl, buildPaginationParams } from '../../utility';
+import { getFriendlyErrorMessage } from '../../utility/api/core';
 
 export interface UseStockEntriesResult {
   data: StockEntry[];
@@ -32,7 +33,7 @@ function buildStockEntriesParams(
   filters?: Partial<StockEntryFilters>
 ): Record<string, string | number> {
   const params: Record<string, string | number> = {
-    ...buildPaginationParams(page, pageSize, 'posting_date', 'desc'),
+    ...buildPaginationParams(page, pageSize, 'created_at', 'desc'),
   };
 
   if (!filters) return params;
@@ -43,6 +44,7 @@ function buildStockEntriesParams(
     'status',
     'from_warehouse_id',
     'to_warehouse_id',
+    'warehouse_id',
     'search',
   ];
 
@@ -62,11 +64,11 @@ function buildStockEntriesParams(
  */
 function calculateStats(stockEntries: StockEntry[]): StockEntryStats {
   const totalEntries = stockEntries.length;
-  
+
   // Count entries by status
   const draftCount = stockEntries.filter((se) => se.status === 'draft').length;
   const submittedCount = stockEntries.filter((se) => se.status === 'submitted').length;
-  
+
   // Calculate total value
   const totalValue = stockEntries.reduce((sum, se) => {
     const value = typeof se.total_value === 'number' ? se.total_value : parseFloat(String(se.total_value || 0));
@@ -110,6 +112,7 @@ export function useStockEntries(options: {
   const status = filters?.status;
   const fromWarehouseId = filters?.from_warehouse_id;
   const toWarehouseId = filters?.to_warehouse_id;
+  const warehouseId = filters?.warehouse_id;
   const search = filters?.search;
 
   // Memoize filters to prevent unnecessary re-renders
@@ -118,6 +121,7 @@ export function useStockEntries(options: {
     status,
     fromWarehouseId,
     toWarehouseId,
+    warehouseId,
     search,
   ]);
 
@@ -162,7 +166,7 @@ export function useStockEntries(options: {
         setStats(calculatedStats);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load stock entries';
+      const message = getFriendlyErrorMessage(err);
       setError(message);
       setStockEntries([]);
       setPagination(null);

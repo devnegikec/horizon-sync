@@ -3,11 +3,12 @@ import * as React from 'react';
 import { type CellContext, type ColumnDef } from '@tanstack/react-table';
 import { Trash2 } from 'lucide-react';
 
- 
-import { useUserStore } from '@horizon-sync/store';
+
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { Button, EditableDataTable, EditableNumberCell } from '@horizon-sync/ui/components';
 
 import { environment } from '../../../environments/environment';
+import { getCurrencySymbol } from '../../types/currency.types';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 
 /** Minimal item shape returned by the /items/picker endpoint */
@@ -43,6 +44,8 @@ interface TableMeta {
 /** Row shape for the editable table */
 export interface StockEntryLineRow {
   item_id: string;
+  item_name?: string;
+  item_code?: string;
   qty: number;
   uom: string;
   basic_rate: number;
@@ -74,8 +77,12 @@ function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId: strin
 
 function DisabledItemCell({ itemId, meta }: { itemId: string; meta: TableMeta }) {
   const itemData = meta.getItemData?.(itemId);
-  const label = itemData ? (meta.itemLabelFormatter ?? defaultLabelFormatter)(itemData) : itemId;
-  return <div className="px-2 py-1">{label}</div>;
+  if (itemData) {
+    const label = (meta.itemLabelFormatter ?? defaultLabelFormatter)(itemData);
+    return <div className="px-2 py-1">{label}</div>;
+  }
+  // Fallback: check if the row has item_name via the table data
+  return <div className="px-2 py-1 text-muted-foreground">{itemId ? '—' : ''}</div>;
 }
 
 function QtyCellComponent({ getValue, row, table, ...rest }: CellContext<StockEntryLineRow, unknown>) {
@@ -104,18 +111,47 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<StockEntr
   const itemId = getValue() as string;
 
   if (!meta || meta.disabled) {
-    return meta ? <DisabledItemCell itemId={itemId} meta={meta} /> : <div className="px-2 py-1">{itemId}</div>;
+    // In disabled/view mode, show item_name from row data directly
+    const rowItemName = row.original.item_name;
+    const rowItemCode = row.original.item_code;
+    if (rowItemName) {
+      const label = rowItemCode ? `${rowItemName} (${rowItemCode})` : rowItemName;
+      return <div className="px-2 py-1">{label}</div>;
+    }
+    // Fallback to cache
+    if (meta) {
+      const itemData = meta.getItemData?.(itemId);
+      if (itemData) {
+        const label = (meta.itemLabelFormatter ?? defaultLabelFormatter)(itemData);
+        return <div className="px-2 py-1">{label}</div>;
+      }
+    }
+    return <div className="px-2 py-1 text-muted-foreground">{itemId ? '—' : ''}</div>;
   }
 
   if (!meta.warehouseId) {
     return (
-      <div className="px-2 py-1 text-sm text-muted-foreground italic">
-        Select a warehouse first
+      <div className="px-2 py-1.5 flex items-center gap-1.5 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+        <span className="text-xs font-medium text-amber-700 dark:text-amber-400">⚠ Please select a warehouse above to add items</span>
       </div>
     );
   }
 
   const itemData = meta.getItemData?.(itemId);
+
+  // If the cache doesn't yet have this item (first render after import/edit),
+  // but the row already carries item_name/item_code, build a temporary
+  // PickerItem so the user sees the label immediately instead of the placeholder.
+  const csvPlaceholderItem: PickerItem | null =
+    !itemData && (row.original.item_name || row.original.item_code)
+      ? {
+          id: itemId || '',
+          item_code: row.original.item_code || '',
+          item_name: row.original.item_name || row.original.item_code || '',
+          uom: row.original.uom || null,
+          standard_rate: row.original.basic_rate != null ? String(row.original.basic_rate) : null,
+        }
+      : null;
 
   return (
     <ItemPickerSelect value={itemId}
@@ -123,16 +159,43 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<StockEntr
       searchItems={meta.searchItems ?? defaultSearchItems}
       labelFormatter={meta.itemLabelFormatter ?? defaultLabelFormatter}
       valueKey="id"
-      placeholder="Select item..."
-      searchPlaceholder="Search items..."
+      placeholder={csvPlaceholderItem ? 'Click to select item…' : 'Search items...'}
+      searchPlaceholder={csvPlaceholderItem ? `Search: ${csvPlaceholderItem.item_name}` : 'Search items...'}
       minSearchLength={2}
-      selectedItemData={itemData || null} />
+      selectedItemData={itemData || csvPlaceholderItem} />
   );
 }
 
 export function StockEntryLineItemsTable({ items, onItemsChange, disabled = false, warehouseId }: StockEntryLineItemsTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const itemsCacheRef = React.useRef<Map<string, PickerItem>>(new Map());
+  const [cacheVersion, setCacheVersion] = React.useState(0);
+
+  /* Pre-seed cache from row data (item_name/item_code from API response) */
+  React.useEffect(() => {
+    let seeded = false;
+    items.forEach((row) => {
+      if (row.item_id && !itemsCacheRef.current.has(row.item_id)) {
+        itemsCacheRef.current.set(row.item_id, {
+          id: row.item_id,
+          item_code: row.item_code || '',
+          item_name: row.item_name || row.item_id,
+          uom: row.uom || null,
+          standard_rate: row.basic_rate != null ? String(row.basic_rate) : null,
+        });
+        seeded = true;
+      }
+    });
+    if (seeded) setCacheVersion((v) => v + 1);
+  }, [items]);
+
+  /* Clear items cache when warehouse changes (stock levels are warehouse-specific) */
+  React.useEffect(() => {
+    itemsCacheRef.current.clear();
+    setCacheVersion((v) => v + 1);
+  }, [warehouseId]);
 
   const searchItems = React.useCallback(async (query: string): Promise<PickerItem[]> => {
     if (!accessToken || !warehouseId) return [];
@@ -153,7 +216,8 @@ export function StockEntryLineItemsTable({ items, onItemsChange, disabled = fals
 
   const getItemData = React.useCallback(
     (itemId: string) => itemsCacheRef.current.get(itemId),
-    []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cacheVersion]
   );
 
   const handleDataChange = React.useCallback(
@@ -170,9 +234,10 @@ export function StockEntryLineItemsTable({ items, onItemsChange, disabled = fals
 
   const columns = React.useMemo<ColumnDef<StockEntryLineRow, unknown>[]>(
     () => [
-      { accessorKey: 'item_id', header: 'Item', cell: ItemPickerCellComponent, size: 250 },
+      { accessorKey: 'item_id', header: 'Item Name', cell: ItemPickerCellComponent, size: 250 },
       { accessorKey: 'qty', header: 'Quantity', cell: QtyCellComponent, size: 100 },
-      { accessorKey: 'uom', header: 'UOM', size: 80,
+      {
+        accessorKey: 'uom', header: 'UOM', size: 80,
         cell: ({ getValue }: CellContext<StockEntryLineRow, unknown>) => (
           <div className="px-2 py-1 text-sm text-muted-foreground">{String(getValue() ?? '')}</div>
         ),
@@ -182,7 +247,7 @@ export function StockEntryLineItemsTable({ items, onItemsChange, disabled = fals
         accessorKey: 'amount', header: 'Amount', size: 120,
         cell: ({ getValue }: CellContext<StockEntryLineRow, unknown>) => {
           const v = Number(getValue()) || 0;
-          return <div className="text-left font-medium">{v.toFixed(2)}</div>;
+          return <div className="text-left font-medium">{currencySymbol}{v.toFixed(2)}</div>;
         },
       },
       {
@@ -198,13 +263,19 @@ export function StockEntryLineItemsTable({ items, onItemsChange, disabled = fals
         },
       },
     ],
-    [disabled]
+    [disabled, currencySymbol]
   );
 
   const newRowTemplate: StockEntryLineRow = React.useMemo(
     () => ({ item_id: '', qty: 1, uom: 'pcs', basic_rate: 0, amount: 0, sort_order: items.length + 1 }),
     [items.length]
   );
+
+  /* Disable "Add Item" until all existing rows have valid item_id and qty > 0 */
+  const allRowsComplete = React.useMemo(() => {
+    if (items.length === 0) return true;
+    return items.every((row) => !!row.item_id && row.qty > 0);
+  }, [items]);
 
   const tableConfig = React.useMemo(
     () => ({
@@ -220,7 +291,7 @@ export function StockEntryLineItemsTable({ items, onItemsChange, disabled = fals
       <EditableDataTable data={items}
         columns={columns}
         onDataChange={handleDataChange}
-        enableAddRow={!disabled}
+        enableAddRow={!disabled && allRowsComplete}
         enableDeleteRow={!disabled}
         newRowTemplate={newRowTemplate}
         config={tableConfig} />

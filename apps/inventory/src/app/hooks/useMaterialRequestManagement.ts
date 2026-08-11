@@ -15,6 +15,7 @@ import type {
   MaterialRequestListResponse,
 } from '../types/material-request.types';
 import { materialRequestApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface MaterialRequestFilters {
   search: string;
@@ -61,6 +62,9 @@ interface UseMaterialRequestManagementResult {
     totalItems: number;
     onPaginationChange: (pageIndex: number, newPageSize: number) => void;
   };
+  confirmAction: { type: string; item: MaterialRequestListItem; title: string; message: string } | null;
+  setConfirmAction: React.Dispatch<React.SetStateAction<{ type: string; item: MaterialRequestListItem; title: string; message: string } | null>>;
+  executeConfirmedAction: () => void;
 }
 
 // Internal hook for fetching material requests
@@ -108,7 +112,7 @@ function useMaterialRequestsInternal(
       setMaterialRequests(data.material_requests ?? []);
       setPagination(data.pagination ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load material requests');
+      setError(getFriendlyErrorMessage(err));
       setMaterialRequests([]);
       setPagination(null);
     } finally {
@@ -166,7 +170,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete material request',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -182,7 +186,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to submit material request',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -198,7 +202,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to cancel material request',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -214,7 +218,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load material request details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
@@ -244,11 +248,14 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load material request details',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     }
   }, [accessToken, toast]);
+
+  // Confirmation dialog state
+  const [confirmAction, setConfirmAction] = React.useState<{ type: string; item: MaterialRequestListItem; title: string; message: string } | null>(null);
 
   const handleDelete = React.useCallback((mr: MaterialRequestListItem) => {
     if (mr.status !== 'draft') {
@@ -260,10 +267,13 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
       return;
     }
 
-    if (confirm(`Are you sure you want to delete material request ${mr.request_no}?`)) {
-      deleteMutation.mutate(mr.id);
-    }
-  }, [deleteMutation, toast]);
+    setConfirmAction({
+      type: 'delete',
+      item: mr,
+      title: 'Delete Material Request',
+      message: `Are you sure you want to delete material request ${mr.request_no}?`,
+    });
+  }, [toast]);
 
   const handleSubmit = React.useCallback((mr: MaterialRequestListItem) => {
     if (mr.status !== 'draft') {
@@ -275,10 +285,13 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
       return;
     }
 
-    if (confirm(`Are you sure you want to submit material request ${mr.request_no}?`)) {
-      submitMutation.mutate(mr.id);
-    }
-  }, [submitMutation, toast]);
+    setConfirmAction({
+      type: 'submit',
+      item: mr,
+      title: 'Submit Material Request',
+      message: `Are you sure you want to submit material request ${mr.request_no}?`,
+    });
+  }, [toast]);
 
   const handleCancel = React.useCallback((mr: MaterialRequestListItem) => {
     if (mr.status !== 'draft' && mr.status !== 'submitted') {
@@ -290,10 +303,25 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
       return;
     }
 
-    if (confirm(`Are you sure you want to cancel material request ${mr.request_no}?`)) {
-      cancelMutation.mutate(mr.id);
+    setConfirmAction({
+      type: 'cancel',
+      item: mr,
+      title: 'Cancel Material Request',
+      message: `Are you sure you want to cancel material request ${mr.request_no}?`,
+    });
+  }, [toast]);
+
+  const executeConfirmedAction = React.useCallback(() => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'delete') {
+      deleteMutation.mutate(confirmAction.item.id);
+    } else if (confirmAction.type === 'submit') {
+      submitMutation.mutate(confirmAction.item.id);
+    } else if (confirmAction.type === 'cancel') {
+      cancelMutation.mutate(confirmAction.item.id);
     }
-  }, [cancelMutation, toast]);
+    setConfirmAction(null);
+  }, [confirmAction, deleteMutation, submitMutation, cancelMutation]);
 
   const handleTableReady = React.useCallback((table: Table<MaterialRequestListItem>) => {
     setTableInstance(table);
@@ -311,6 +339,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
         // When creating, data is CreateMaterialRequestPayload
         await materialRequestApi.create(accessToken, data as CreateMaterialRequestPayload);
         toast({ title: 'Success', description: 'Material Request created successfully' });
+        setPage(1);
       }
       queryClient.invalidateQueries({ queryKey: ['material-requests'] });
       setCreateDialogOpen(false);
@@ -318,7 +347,7 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to save material request',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;
@@ -363,5 +392,8 @@ export function useMaterialRequestManagement(): UseMaterialRequestManagementResu
     handleTableReady,
     handleSave,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   };
 }

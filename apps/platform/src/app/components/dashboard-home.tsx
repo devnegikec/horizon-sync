@@ -5,6 +5,19 @@ import { ArrowUpRight, ArrowDownRight, Package, Users, DollarSign, Activity, Tre
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { cn } from '@horizon-sync/ui/lib';
+import { CurrencyIcon } from '@horizon-sync/ui';
+import { useUserStore } from '@horizon-sync/store';
+
+import { WMSDashboardHome } from './wms-dashboard-home';
+
+// ── WMS role detection ────────────────────────────────────────────────────────
+
+const WMS_ROLE_NAMES = ['WMS Admin', 'WMS Manager'];
+
+function useIsWmsRole(): boolean {
+  const roles = useUserStore((s) => s.permissions.roles);
+  return roles.some((r) => WMS_ROLE_NAMES.includes(typeof r === 'string' ? r : (r as { name?: string }).name ?? ''));
+}
 
 interface StatCardProps {
   title: string;
@@ -43,7 +56,7 @@ const stats: StatCardProps[] = [
     value: '$45,231.89',
     change: '+20.1%',
     changeType: 'positive',
-    icon: DollarSign,
+    icon: CurrencyIcon,
     iconBg: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
   },
   {
@@ -124,6 +137,12 @@ const recentActivity: RecentActivityItem[] = [
 ];
 
 export function DashboardHome() {
+  const isWms = useIsWmsRole();
+
+  if (isWms) {
+    return <WMSDashboardHome />;
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}

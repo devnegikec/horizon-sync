@@ -124,6 +124,9 @@ function buildDateString(format: DateFormat, month: string, day: string, year: s
  * // => "Jan-31-26"
  */
 export function formatDate(date: DateInput, format: DateFormat, includeTimeOrOptions?: boolean | FormatDateOptions): string {
+  // Guard against null, undefined, and empty/whitespace strings to avoid throwing on invalid input
+  if (date === null || date === undefined || (typeof date === 'string' && date.trim() === '')) return '—';
+
   const opts: FormatDateOptions = typeof includeTimeOrOptions === 'boolean' ? { includeTime: includeTimeOrOptions } : { ...includeTimeOrOptions };
 
   const d = toDate(date);

@@ -75,13 +75,15 @@ export interface DeliveryNote {
   customer?: DeliveryNoteCustomer;
   warehouse_id: string;
   warehouse?: DeliveryNoteWarehouse;
-  pick_list_id: string | null;
+  pick_list_id?: string;
+  pick_list_no?: string;
   reference_type: string | null;
   reference_id: string | null;
   reference?: DeliveryNoteReference;
   delivery_date: string | null;
   submitted_at: string | null;
   status: 'draft' | 'submitted' | 'cancelled';
+  currency?: string | null;
   remarks: string | null;
   items: DeliveryNoteItem[];
   // legacy fields (list view / older data)
@@ -132,12 +134,13 @@ export interface DeliveryNoteCreateItem {
 }
 
 export interface DeliveryNoteCreate {
-  delivery_note_no: string;
+  delivery_note_no?: string;
   customer_id: string;
   delivery_date: string;
   status: DeliveryNoteStatus;
   warehouse_id: string;
   pick_list_id?: string;
+  pick_list_no?: string;
   reference_type?: string;
   reference_id?: string;
   remarks?: string;

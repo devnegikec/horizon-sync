@@ -1,4 +1,6 @@
-import { Plus, Download, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+
+import { Plus, Download, Loader2, RefreshCw } from 'lucide-react';
 
 import { Button } from '../ui/button';
 import { cn } from '../../lib';
@@ -6,14 +8,28 @@ import { cn } from '../../lib';
 interface InvoiceManagementHeaderProps {
   onRefresh: () => void;
   onCreateInvoice: () => void;
+  onExport?: () => Promise<void>;
   isLoading?: boolean;
 }
 
 export function InvoiceManagementHeader({
   onRefresh,
   onCreateInvoice,
+  onExport,
   isLoading = false,
 }: InvoiceManagementHeaderProps) {
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (!onExport) return;
+    setIsExporting(true);
+    try {
+      await onExport();
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
@@ -25,10 +41,11 @@ export function InvoiceManagementHeader({
           <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
           Refresh
         </Button>
-        <Button variant="outline" className="gap-2">
-          <Download className="h-4 w-4" />
-          Export
-        </Button>
+        {onExport && (
+          <Button variant="outline" className="gap-2" onClick={handleExport} disabled={isExporting}>
+            {isExporting ? <><Loader2 className="h-4 w-4 animate-spin" />Exporting...</> : <><Download className="h-4 w-4" />Export</>}
+          </Button>
+        )}
         <Button variant="default" className="gap-2 text-primary-foreground shadow-lg" onClick={onCreateInvoice}>
           <Plus className="h-4 w-4" />
           New Invoice

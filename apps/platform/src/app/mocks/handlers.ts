@@ -43,7 +43,7 @@ export const handlers = [
   }),
 
   // POST /api/v1/users/invite - Invite a new user
-  http.post(`${API_BASE_URL}/api/v1/users/invite`, async ({ request }) => {
+  http.post(`${API_BASE_URL}/api/v1/identity/invitations`, async ({ request }) => {
     const body = (await request.json()) as { email: string };
     console.log('🔵 MSW: POST /users/invite', body);
 
@@ -62,13 +62,13 @@ export const handlers = [
   }),
 
   // GET /api/v1/subscriptions/current - Get current subscriptions
-  http.get(`${API_BASE_URL}/api/v1/subscriptions/current`, () => {
+  http.get(`${API_BASE_URL}/api/v1/identity/subscriptions/current`, () => {
     console.log('🔵 MSW: GET /subscriptions/current');
     return HttpResponse.json(mockSubscriptions, { status: 200 });
   }),
 
   // POST /api/v1/subscriptions - Create new subscription
-  http.post(`${API_BASE_URL}/api/v1/subscriptions`, async ({ request }) => {
+  http.post(`${API_BASE_URL}/api/v1/identity/subscriptions`, async ({ request }) => {
     const body = (await request.json()) as { plan_code: string; billing_cycle: string };
     console.log('🔵 MSW: POST /subscriptions', body);
 

@@ -27,6 +27,8 @@ import {
 } from '@horizon-sync/ui/components/ui/alert-dialog';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
 import {
   Card,
   CardContent,
@@ -44,6 +46,7 @@ import {
 } from '@horizon-sync/ui/components/ui/select';
 import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
 
+import { OrganizationCreditsCard } from '../components/OrganizationCreditsCard';
 import { useOrganization, useUpdateOrganization } from '../hooks/useOrganization';
 import type { AdminOrgDetailResponse, OrgStatus } from '../types';
 
@@ -81,6 +84,8 @@ function dash(value: string | null | undefined): string {
 }
 
 function SummaryCards({ org, loading }: { org?: AdminOrgDetailResponse; loading: boolean }) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'INR');
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <Card>
@@ -104,7 +109,7 @@ function SummaryCards({ org, loading }: { org?: AdminOrgDetailResponse; loading:
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Payment Total</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <span className="h-4 w-4 inline-flex items-center justify-center text-sm font-bold mr-2">{currencySymbol}</span>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -194,6 +199,8 @@ function DetailSkeleton() {
   );
 }
 
+// This legacy form coordinates validation, mutation errors, and suspension confirmation.
+// eslint-disable-next-line complexity
 function EditForm({
   org,
   onCancel,
@@ -438,12 +445,14 @@ function EditForm({
   );
 }
 
+// This page retains the existing loading, error, view, and edit branches.
+// eslint-disable-next-line complexity
 export function OrganizationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
 
-  const { data: org, isLoading, isError, error } = useOrganization(id!);
+  const { data: org, isLoading, isError, error } = useOrganization(id ?? '');
 
   const is404 =
     isError && (error as Error & { status?: number })?.status === 404;
@@ -485,6 +494,7 @@ export function OrganizationDetailPage() {
       ) : org ? (
         <>
           <SummaryCards org={org} loading={false} />
+          <OrganizationCreditsCard organizationId={org.id} />
           {editing ? (
             <EditForm org={org}
               onCancel={() => setEditing(false)}

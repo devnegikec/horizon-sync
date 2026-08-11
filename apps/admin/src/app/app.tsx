@@ -3,10 +3,12 @@ import { Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 
+import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Toaster } from '@horizon-sync/ui/components/ui/toaster';
 
 import { AppRoutes } from './AppRoutes';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { PermissionsProvider } from './contexts/PermissionsContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,12 +31,16 @@ export function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <Suspense fallback={<AppLoading />}>
-          <BrowserRouter>
-            <AppRoutes />
-            <Toaster />
-          </BrowserRouter>
-        </Suspense>
+        <ThemeProvider>
+          <Suspense fallback={<AppLoading />}>
+            <BrowserRouter>
+              <PermissionsProvider>
+                <AppRoutes />
+                <Toaster />
+              </PermissionsProvider>
+            </BrowserRouter>
+          </Suspense>
+        </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

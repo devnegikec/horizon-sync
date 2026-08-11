@@ -50,3 +50,5 @@ vitest.config.*.timestamp*
 
 # prompt files
 *.prompt.md
+.vercel
+.env*

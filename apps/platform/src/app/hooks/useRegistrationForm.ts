@@ -22,6 +22,8 @@ export function useRegistrationForm() {
       email: '',
       first_name: '',
       last_name: '',
+      country: '',
+      phone_country_code: '',
       phone: '',
       password: '',
       confirm_password: '',
@@ -31,19 +33,22 @@ export function useRegistrationForm() {
   const onSubmit = async (data: RegisterFormData) => {
     setIsSubmitting(true);
     try {
+      // Combine country dial code with the local number for the API.
+      const fullPhone = `${data.phone_country_code}${data.phone}`;
+
       // Prepare payload for API (exclude confirm_password)
       const payload = {
         email: data.email,
         first_name: data.first_name,
         last_name: data.last_name,
-        phone: data.phone,
+        phone: fullPhone,
         password: data.password,
       };
 
       console.log('Registration payload:', payload);
-      
+
       const response = await AuthService.register(payload);
-      
+
       console.log('Registration response:', response);
 
       toast({
@@ -81,7 +86,7 @@ export function useRegistrationForm() {
       setTimeout(() => navigate('/'), 200);
     } catch (error) {
       console.error('Registration error:', error);
-      
+
       toast({
         variant: 'destructive',
         title: 'Registration failed',
@@ -99,5 +104,7 @@ export function useRegistrationForm() {
     isSubmitting,
     reset: form.reset,
     watch: form.watch,
+    setValue: form.setValue,
+    clearErrors: form.clearErrors,
   };
 }

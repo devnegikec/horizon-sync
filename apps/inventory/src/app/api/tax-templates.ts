@@ -12,7 +12,7 @@ export const taxTemplateApi = {
     page = 1,
     limit = 20,
     filters?: {
-      tax_category?: 'Input' | 'Output';
+      tax_category?: 'Input' | 'Output' | 'Both';
       is_active?: boolean;
     }
   ): Promise<TaxTemplateListResponse> => {

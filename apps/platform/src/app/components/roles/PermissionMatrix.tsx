@@ -18,108 +18,159 @@ interface PermissionMatrixProps {
   allPermissions: Permission[];
 }
 
-// Define consistent module ordering based on actual API categories
-const MODULE_ORDER = ['Sales & Orders', 'Procurement', 'Inventory', 'Accounting', 'identity', 'core'];
+/** Turn "stock_entry" into "Stock Entry", "chart_of_account" into "Chart Of Account", etc. */
+function formatResourceLabel(resource: string): string {
+  return resource
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
-export function PermissionMatrix({ permissions, selectedPermissions, onPermissionToggle, onBulkSelect, allPermissions }: PermissionMatrixProps) {
+/** Consistent action ordering inside each resource group. */
+const ACTION_ORDER = ['read', 'create', 'update', 'delete', 'manage', 'execute'];
+
+function actionSortKey(action: string): number {
+  const idx = ACTION_ORDER.indexOf(action);
+  return idx === -1 ? ACTION_ORDER.length : idx;
+}
+
+/** Badge color per action for quick visual scanning. */
+function actionBadgeVariant(action: string): 'default' | 'secondary' | 'outline' | 'destructive' {
+  switch (action) {
+    case 'read':
+      return 'secondary';
+    case 'create':
+      return 'default';
+    case 'delete':
+      return 'destructive';
+    default:
+      return 'outline';
+  }
+}
+
+export function PermissionMatrix({
+  permissions,
+  selectedPermissions,
+  onPermissionToggle,
+  onBulkSelect,
+  allPermissions,
+}: PermissionMatrixProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [moduleFilter, setModuleFilter] = useState<string | null>(null);
-  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
+  const [collapsedResources, setCollapsedResources] = useState<Set<string>>(new Set());
 
-  // Get sorted module names
-  const sortedModules = useMemo(() => {
-    const moduleNames = Object.keys(permissions);
-    return moduleNames.sort((a, b) => {
-      const aIndex = MODULE_ORDER.indexOf(a);
-      const bIndex = MODULE_ORDER.indexOf(b);
-      if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
-      if (aIndex === -1) return 1;
-      if (bIndex === -1) return -1;
-      return aIndex - bIndex;
+  // Get unique module names for the filter dropdown (derived from permission.module field)
+  const moduleNames = useMemo(() => {
+    const modules = new Set<string>();
+    allPermissions.forEach((p) => {
+      if (p.module) modules.add(p.module);
     });
+    return Array.from(modules).sort();
+  }, [allPermissions]);
+
+  // Sort resource keys alphabetically
+  const sortedResources = useMemo(() => {
+    return Object.keys(permissions).sort((a, b) => a.localeCompare(b));
   }, [permissions]);
 
-  // Filter permissions based on search and module filter
+  // Filter permissions based on search query and module filter
   const filteredPermissions = useMemo(() => {
     const filtered: GroupedPermissions = {};
 
-    sortedModules.forEach((module) => {
-      // Skip if module filter is active and doesn't match
-      if (moduleFilter && module !== moduleFilter) return;
+    sortedResources.forEach((resource) => {
+      const resourcePerms = permissions[resource] || [];
 
-      const modulePerms = permissions[module] || [];
-      const matchingPerms = modulePerms.filter((perm) => {
+      const matchingPerms = resourcePerms.filter((perm) => {
+        // Module filter
+        if (moduleFilter && perm.module !== moduleFilter) return false;
+
+        // Search filter
         if (!searchQuery) return true;
-        const query = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase();
         return (
-          perm.name.toLowerCase().includes(query) ||
-          perm.code.toLowerCase().includes(query) ||
-          perm.resource.toLowerCase().includes(query) ||
-          perm.action.toLowerCase().includes(query)
+          perm.name.toLowerCase().includes(q) ||
+          perm.code.toLowerCase().includes(q) ||
+          perm.resource.toLowerCase().includes(q) ||
+          perm.action.toLowerCase().includes(q)
         );
       });
 
       if (matchingPerms.length > 0) {
-        filtered[module] = matchingPerms;
+        filtered[resource] = matchingPerms.sort((a, b) => actionSortKey(a.action) - actionSortKey(b.action));
       }
     });
-
     return filtered;
-  }, [permissions, sortedModules, searchQuery, moduleFilter]);
+  }, [permissions, sortedResources, searchQuery, moduleFilter]);
 
-  // Count total filtered permissions
+  // Total count for the search result indicator
   const totalFilteredCount = useMemo(() => {
     return Object.values(filteredPermissions).reduce((sum, perms) => sum + perms.length, 0);
   }, [filteredPermissions]);
 
-  // Check if all permissions in a module are selected
-  const getModuleSelectionState = useCallback(
-    (modulePerms: Permission[]) => {
-      const selectedCount = modulePerms.filter((p) => selectedPermissions.has(p.code)).length;
+  // Selection state for a resource group: 'none' | 'some' | 'all'
+  const getGroupSelectionState = useCallback(
+    (resourcePerms: Permission[]) => {
+      const selectedCount = resourcePerms.filter((p) => selectedPermissions.has(p.code)).length;
       if (selectedCount === 0) return 'none';
-      if (selectedCount === modulePerms.length) return 'all';
+      if (selectedCount === resourcePerms.length) return 'all';
       return 'some';
     },
     [selectedPermissions],
   );
 
-  // Handle module select all
-  const handleModuleSelectAll = useCallback(
-    (module: string, perms: Permission[]) => {
-      const state = getModuleSelectionState(perms);
-      const permCodes = perms.map((p) => p.code);
-      onBulkSelect(permCodes, state !== 'all');
+  // Toggle all permissions in a resource group
+  const handleGroupToggle = useCallback(
+    (resource: string, perms: Permission[]) => {
+      const state = getGroupSelectionState(perms);
+      const codes = perms.map((p) => p.code);
+      onBulkSelect(codes, state !== 'all');
     },
-    [getModuleSelectionState, onBulkSelect],
+    [getGroupSelectionState, onBulkSelect],
   );
 
-  // Check if wildcard compression is suggested
-  const wildcardSuggestion = useMemo(() => {
-    if (selectedPermissions.size === 0) return null;
-    const compressed = suggestWildcardCompression(selectedPermissions, allPermissions);
-    const hasWildcards = compressed.some((p) => isWildcardPermission(p));
-    if (hasWildcards && compressed.length < selectedPermissions.size) {
-      return compressed;
-    }
-    return null;
-  }, [selectedPermissions, allPermissions]);
-
-  const toggleModuleCollapse = useCallback((module: string) => {
-    setCollapsedModules((prev) => {
+  // Collapse / expand a resource group
+  const toggleCollapse = useCallback((resource: string) => {
+    setCollapsedResources((prev) => {
       const next = new Set(prev);
-      if (next.has(module)) {
-        next.delete(module);
+      if (next.has(resource)) {
+        next.delete(resource);
       } else {
-        next.add(module);
+        next.add(resource);
       }
       return next;
     });
   }, []);
 
+  // Expand all / collapse all
+  const allResources = Object.keys(filteredPermissions);
+  const allCollapsed = allResources.length > 0 && allResources.every((r) => collapsedResources.has(r));
+
+  const handleToggleAll = useCallback(() => {
+    if (allCollapsed) {
+      setCollapsedResources(new Set());
+    } else {
+      setCollapsedResources(new Set(allResources));
+    }
+  }, [allCollapsed, allResources]);
+
+  // Wildcard compression suggestion
+  const wildcardSuggestion = useMemo(() => {
+    if (selectedPermissions.size === 0) return null;
+    const compressed = suggestWildcardCompression(selectedPermissions, allPermissions);
+    const hasWildcards = compressed.some((p) => isWildcardPermission(p));
+    if (hasWildcards && compressed.length < selectedPermissions.size) return compressed;
+    return null;
+  }, [selectedPermissions, allPermissions]);
+
   return (
     <div className="space-y-4">
       {/* Search and Filter */}
-      <PermissionSearch onSearchChange={setSearchQuery} onModuleFilter={setModuleFilter} modules={sortedModules} resultCount={totalFilteredCount} />
+      <PermissionSearch
+        onSearchChange={setSearchQuery}
+        onModuleFilter={setModuleFilter}
+        modules={moduleNames}
+        resultCount={totalFilteredCount}
+      />
 
       {/* Wildcard Suggestion */}
       {wildcardSuggestion && (
@@ -129,12 +180,14 @@ export function PermissionMatrix({ permissions, selectedPermissions, onPermissio
             <div className="flex-1 space-y-2">
               <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Wildcard Suggestion</p>
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                You&apos;ve selected all permissions in one or more modules. Consider using wildcard permissions:
+                You&apos;ve selected all permissions for one or more resources. Consider using wildcard permissions:
               </p>
               <div className="flex flex-wrap gap-2">
                 {wildcardSuggestion.filter(isWildcardPermission).map((perm) => (
-                  <code key={perm}
-                    className="px-2 py-1 bg-blue-100 dark:bg-blue-900/40 rounded text-sm font-mono border border-blue-300 dark:border-blue-700">
+                  <code
+                    key={perm}
+                    className="px-2 py-1 bg-blue-100 dark:bg-blue-900/40 rounded text-sm font-mono border border-blue-300 dark:border-blue-700"
+                  >
                     {perm}
                   </code>
                 ))}
@@ -144,66 +197,91 @@ export function PermissionMatrix({ permissions, selectedPermissions, onPermissio
         </div>
       )}
 
-      {/* Permission Groups */}
+      {/* Expand / Collapse All toggle */}
+      {allResources.length > 3 && (
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={handleToggleAll} className="text-xs text-muted-foreground">
+            {allCollapsed ? 'Expand All' : 'Collapse All'}
+          </Button>
+        </div>
+      )}
+
+      {/* Resource Groups */}
       {totalFilteredCount === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p>No permissions match your search criteria</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {Object.entries(filteredPermissions).map(([module, modulePerms]) => {
-            const selectionState = getModuleSelectionState(modulePerms);
-            const isCollapsed = collapsedModules.has(module);
-            const shouldBeCollapsible = modulePerms.length > 10;
+        <div className="space-y-2">
+          {Object.entries(filteredPermissions).map(([resource, resourcePerms]) => {
+            const selectionState = getGroupSelectionState(resourcePerms);
+            const isCollapsed = collapsedResources.has(resource);
+            const selectedCount = resourcePerms.filter((p) => selectedPermissions.has(p.code)).length;
 
             return (
-              <div key={module} className="border rounded-lg overflow-hidden">
-                {/* Module Header */}
-                <div className="bg-muted/50 px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1">
-                    {shouldBeCollapsible && (
-                      <Button variant="ghost" size="sm" onClick={() => toggleModuleCollapse(module)} className="h-6 w-6 p-0">
-                        {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </Button>
-                    )}
-                    <Checkbox id={`module-${module}`}
-                      checked={selectionState === 'all'}
-                      onCheckedChange={() => handleModuleSelectAll(module, modulePerms)}
-                      className={cn(selectionState === 'some' && 'data-[state=checked]:bg-primary/50')}
-                      aria-label={`Select all permissions in ${module}`}/>
-                    <Label htmlFor={`module-${module}`} className="font-semibold cursor-pointer flex-1">
-                      {module}
-                    </Label>
-                    <Badge variant="secondary" className="text-xs">
-                      {modulePerms.filter((p) => selectedPermissions.has(p.code)).length} / {modulePerms.length}
-                    </Badge>
-                  </div>
-                </div>
+              <div key={resource} className="border rounded-lg overflow-hidden">
+                {/* Resource Header — always visible, acts as the collapsible trigger */}
+                <button
+                  type="button"
+                  onClick={() => toggleCollapse(resource)}
+                  className="w-full bg-muted/50 px-4 py-3 flex items-center gap-3 hover:bg-muted/70 transition-colors text-left"
+                >
+                  {isCollapsed ? (
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  )}
 
-                {/* Module Permissions */}
+                  {/* Group checkbox — stop propagation so clicking it doesn't toggle collapse */}
+                  <span
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => { if (e.key === ' ') e.stopPropagation(); }}
+                    role="presentation"
+                  >
+                    <Checkbox
+                      id={`resource-${resource}`}
+                      checked={selectionState === 'all'}
+                      onCheckedChange={() => handleGroupToggle(resource, resourcePerms)}
+                      className={cn(selectionState === 'some' && 'data-[state=checked]:bg-primary/50')}
+                      aria-label={`Select all ${formatResourceLabel(resource)} permissions`}
+                    />
+                  </span>
+
+                  <span className="font-semibold flex-1">{formatResourceLabel(resource)}</span>
+
+                  <Badge variant="secondary" className="text-xs shrink-0">
+                    {selectedCount} / {resourcePerms.length}
+                  </Badge>
+                </button>
+
+                {/* Expanded permission list */}
                 {!isCollapsed && (
-                  <div className="p-4 space-y-3">
-                    {modulePerms.map((permission) => (
-                      <div key={permission.id} className="flex items-start gap-3 group">
-                        <Checkbox id={`permission-${permission.id}`}
+                  <div className="px-4 py-3 space-y-2 border-t">
+                    {resourcePerms.map((permission) => (
+                      <div key={permission.id} className="flex items-center gap-3 group py-1">
+                        <Checkbox
+                          id={`permission-${permission.id}`}
                           checked={selectedPermissions.has(permission.code)}
                           onCheckedChange={() => onPermissionToggle(permission.code)}
-                          className="mt-0.5"
-                          aria-label={`${permission.name} - ${permission.code}`}/>
-                        <div className="flex-1 min-w-0">
-                          <Label htmlFor={`permission-${permission.id}`} className="font-medium cursor-pointer block">
-                            {permission.name}
-                          </Label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <code className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">{permission.code}</code>
-                            {isWildcardPermission(permission.code) && (
-                              <Badge variant="outline" className="text-xs">
-                                Wildcard
-                              </Badge>
-                            )}
-                          </div>
-                          {permission.description && <p className="text-sm text-muted-foreground mt-1">{permission.description}</p>}
-                        </div>
+                          aria-label={`${permission.name} — ${permission.code}`}
+                        />
+                        <Label
+                          htmlFor={`permission-${permission.id}`}
+                          className="cursor-pointer flex items-center gap-2 flex-1 min-w-0"
+                        >
+                          <Badge variant={actionBadgeVariant(permission.action)} className="text-xs capitalize shrink-0">
+                            {permission.action}
+                          </Badge>
+                          <span className="text-sm truncate">{permission.name}</span>
+                          {isWildcardPermission(permission.code) && (
+                            <Badge variant="outline" className="text-xs shrink-0">
+                              Wildcard
+                            </Badge>
+                          )}
+                        </Label>
+                        <code className="text-xs text-muted-foreground font-mono hidden sm:block shrink-0">
+                          {permission.code}
+                        </code>
                       </div>
                     ))}
                   </div>

@@ -9,8 +9,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
+import { useUserStore } from '@horizon-sync/store';
 
-import { useWarehouses } from '../../hooks/useWarehouses';
+import { environment } from '../../../environments/environment';
 import type { StockEntryFormState } from '../../types/stock.types';
 
 const ENTRY_TYPE_OPTIONS = [
@@ -27,6 +28,32 @@ const STATUS_OPTIONS = [
   { value: 'cancelled', label: 'Cancelled' },
 ] as const;
 
+interface AssignedWarehouse {
+  id: string;
+  name: string;
+  code: string;
+}
+
+function useAssignedWarehouses() {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [warehouses, setWarehouses] = React.useState<AssignedWarehouse[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!accessToken) { setWarehouses([]); setLoading(false); return; }
+    setLoading(true);
+    fetch(`${environment.apiCoreUrl}/api/v1/warehouse-users/my-warehouses`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((res) => res.ok ? res.json() : Promise.reject())
+      .then((data) => setWarehouses(data.warehouses ?? []))
+      .catch(() => setWarehouses([]))
+      .finally(() => setLoading(false));
+  }, [accessToken]);
+
+  return { warehouses, loading };
+}
+
 interface WarehouseSelectorProps {
   label: string;
   htmlId: string;
@@ -35,7 +62,14 @@ interface WarehouseSelectorProps {
 }
 
 function WarehouseSelector({ label, htmlId, value, onChange }: WarehouseSelectorProps) {
-  const { warehouses, loading } = useWarehouses(1, 100);
+  const { warehouses, loading } = useAssignedWarehouses();
+
+  // Auto-select if only one warehouse is assigned and no value is set yet
+  React.useEffect(() => {
+    if (!loading && warehouses.length === 1 && !value) {
+      onChange(warehouses[0].id);
+    }
+  }, [loading, warehouses, value, onChange]);
 
   return (
     <div className="space-y-2">
@@ -112,9 +146,12 @@ interface StockEntryHeaderProps {
   form: StockEntryFormState;
   isEditing: boolean;
   onFieldChange: (field: keyof StockEntryFormState, value: string) => void;
+  disabled?: boolean;
+  fromWarehouseName?: string;
+  toWarehouseName?: string;
 }
 
-export function StockEntryHeader({ form, isEditing, onFieldChange }: StockEntryHeaderProps) {
+export function StockEntryHeader({ form, isEditing, onFieldChange, disabled = false, fromWarehouseName, toWarehouseName }: StockEntryHeaderProps) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -129,7 +166,8 @@ export function StockEntryHeader({ form, isEditing, onFieldChange }: StockEntryH
         <div className="space-y-2">
           <Label htmlFor="stock_entry_type">Entry Type</Label>
           <Select value={form.stock_entry_type}
-            onValueChange={(v) => onFieldChange('stock_entry_type', v)}>
+            onValueChange={(v) => onFieldChange('stock_entry_type', v)}
+            disabled={disabled}>
             <SelectTrigger>
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
@@ -147,7 +185,8 @@ export function StockEntryHeader({ form, isEditing, onFieldChange }: StockEntryH
         <div className="space-y-2">
           <Label htmlFor="status">Status</Label>
           <Select value={form.status}
-            onValueChange={(v) => onFieldChange('status', v)}>
+            onValueChange={(v) => onFieldChange('status', v)}
+            disabled={disabled}>
             <SelectTrigger>
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
@@ -166,10 +205,27 @@ export function StockEntryHeader({ form, isEditing, onFieldChange }: StockEntryH
             type="date"
             value={form.posting_date}
             onChange={(e) => onFieldChange('posting_date', e.target.value)}
-            required />
+            required
+            disabled={disabled} />
         </div>
       </div>
-      <WarehouseFields form={form} onFieldChange={onFieldChange} />
+      {!disabled && <WarehouseFields form={form} onFieldChange={onFieldChange} />}
+      {disabled && (
+        <div className="grid grid-cols-2 gap-4">
+          {fromWarehouseName && (
+            <div className="space-y-2">
+              <Label>From Warehouse</Label>
+              <Input value={fromWarehouseName} disabled />
+            </div>
+          )}
+          {toWarehouseName && (
+            <div className="space-y-2">
+              <Label>To Warehouse</Label>
+              <Input value={toWarehouseName} disabled />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

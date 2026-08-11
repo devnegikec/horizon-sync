@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 
 import { getReconciliationReport, exportReconciliationReport } from '../utility/api/payments';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface ReconciliationFilters {
   date_from?: string;
@@ -55,7 +56,7 @@ export function usePaymentReports(filters: ReconciliationFilters) {
       const data = await getReconciliationReport(filters);
       setReportData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load report');
+      setError(getFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -65,7 +66,7 @@ export function usePaymentReports(filters: ReconciliationFilters) {
     try {
       await exportReconciliationReport(filters, format);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to export report');
+      setError(getFriendlyErrorMessage(err));
     }
   };
 

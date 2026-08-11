@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 import type { PaymentEntry, PaymentFilters } from '../types/payment.types';
 import { paymentApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 const DEFAULT_FILTERS: Partial<PaymentFilters> = {
   page: 1,
@@ -26,7 +27,7 @@ export function usePayments(filters: Partial<PaymentFilters> = {}) {
       setPayments(response.payment_entries || []);
       setTotalCount(response.pagination?.total || 0);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch payments';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
       console.error('Error fetching payments:', err);
       setPayments([]);

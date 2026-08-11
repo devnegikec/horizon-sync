@@ -3,6 +3,7 @@ import * as React from 'react';
 import { type CellContext, type ColumnDef } from '@tanstack/react-table';
 import { AlertTriangle, Info, Trash2 } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { Button, EditableCell, EditableDataTable, EditableNumberCell, Input } from '@horizon-sync/ui/components';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 
@@ -85,13 +86,74 @@ function QuantityCellComponent({ getValue, row, column, table, cell, renderValue
   const itemId = row.original.item_id;
   const itemData = meta?.getItemData?.(itemId);
   const qty = Number(getValue()) || 0;
-  const cellProps = { getValue, row, column, table, cell, renderValue };
+
+  const [value, setValue] = React.useState<string>(String(getValue() ?? ''));
+
+  React.useEffect(() => {
+    setValue(String(getValue() ?? ''));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getValue()]);
+
+  const handleBlur = () => {
+    const numValue = parseFloat(value) || 0;
+    if (meta?.updateData) {
+      meta.updateData(row.index, column.id, numValue);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') e.currentTarget.blur();
+  };
 
   return (
-    <div className="flex items-center">
-      <EditableNumberCell {...cellProps} />
+    <div className="flex items-center gap-1">
+      <Input
+        type="number"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className="h-8 w-20 min-w-[5rem] pr-6"
+        step="0.01"
+        min="0"
+      />
       <QtyInfoIcon qty={qty} itemData={itemData} />
     </div>
+  );
+}
+
+// Rate cell: always-visible number input
+function RateCellComponent({ getValue, row, column, table }: CellContext<QuotationLineItemCreate, unknown>) {
+  const meta = table.options.meta as TableMeta | undefined;
+  const [value, setValue] = React.useState<string>(String(getValue() ?? ''));
+
+  React.useEffect(() => {
+    setValue(String(getValue() ?? ''));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getValue()]);
+
+  const handleBlur = () => {
+    const numValue = parseFloat(value) || 0;
+    if (meta?.updateData) {
+      meta.updateData(row.index, column.id, numValue);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') e.currentTarget.blur();
+  };
+
+  return (
+    <Input
+      type="number"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className="h-8 w-24 min-w-[6rem] pr-6"
+      step="0.01"
+      min="0"
+    />
   );
 }
 
@@ -99,7 +161,7 @@ function QuantityCellComponent({ getValue, row, column, table, cell, renderValue
 function DiscountCellComponent({ row, table }: CellContext<QuotationLineItemCreate, unknown>) {
   const meta = table.options.meta as TableMeta | undefined;
   const disabled = meta?.disabled ?? false;
-  const sym = getCurrencySymbol(meta?.currency ?? 'INR');
+  const sym = getCurrencySymbol(meta?.currency ?? 'USD');
   const type = (row.original.discount_type || 'percentage') as 'flat' | 'percentage';
   const value = Number(row.original.discount_value ?? 0);
   const lineAmount = Number(row.original.amount ?? 0);
@@ -111,7 +173,7 @@ function DiscountCellComponent({ row, table }: CellContext<QuotationLineItemCrea
   }
 
   return (
-    <div className="flex flex-col gap-1 min-w-[100px]">
+    <div className="flex flex-col gap-1 min-w-[120px]">
       <div className="flex gap-1 items-center">
         <select className="h-8 w-14 rounded-md border border-input bg-background px-1.5 text-xs"
           value={type}
@@ -123,7 +185,7 @@ function DiscountCellComponent({ row, table }: CellContext<QuotationLineItemCrea
         <Input type="number"
           min={0}
           step={type === 'percentage' ? 1 : 0.01}
-          className="h-8 w-16 text-xs"
+          className="h-8 w-20 min-w-[5rem] pr-6 text-xs"
           value={value || ''}
           onChange={(e) => meta?.updateData?.(row.index, 'discount_value', e.target.value === '' ? 0 : Number(e.target.value))}
           placeholder="0"
@@ -179,7 +241,9 @@ function TaxBreakupAmountIcon({ itemData, symbol, amount }: { itemData: Quotatio
   );
 }
 
-export function QuotationLineItemsTable({ items, onItemsChange, disabled = false, currency = 'INR', summary }: QuotationLineItemsTableProps) {
+export function QuotationLineItemsTable({ items, onItemsChange, disabled = false, currency, summary }: QuotationLineItemsTableProps) {
+  const storeCurrency = useCurrencyStore((s) => s.baseCurrency) || 'USD';
+  const effectiveCurrency = currency || storeCurrency;
   const { searchItems, getItemData, handleDataChange } = useQuotationLineItems(items, onItemsChange);
 
   const itemLabelFormatter = React.useCallback(
@@ -196,7 +260,7 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
       const amount = Number(props.row.original.amount) || 0;
       const discountAmount = Number(props.row.original.discount_amount) || 0;
       const netAmount = Math.max(0, amount - discountAmount);
-      const sym = getCurrencySymbol(currency);
+      const sym = getCurrencySymbol(effectiveCurrency);
       return (
         <div className="flex items-center text-left">
           <span>{sym}{value.toFixed(2)}</span>
@@ -225,12 +289,18 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
 
   const columns = React.useMemo<ColumnDef<QuotationLineItemCreate, unknown>[]>(
     () => {
-      const sym = getCurrencySymbol(currency);
+      const sym = getCurrencySymbol(effectiveCurrency);
       return [
       { accessorKey: 'item_id', header: 'Item', cell: ItemPickerCellComponent, size: 250 },
-      { accessorKey: 'qty', header: 'Quantity', cell: disabled ? undefined : QuantityCellComponent, size: 120 },
-      { accessorKey: 'uom', header: 'UOM', cell: disabled ? undefined : EditableCell, size: 80 },
-      { accessorKey: 'rate', header: 'Rate', cell: disabled ? undefined : EditableNumberCell, size: 120 },
+      { accessorKey: 'qty', header: 'Quantity', cell: disabled
+        ? ({ getValue }: CellContext<QuotationLineItemCreate, unknown>) => <div className="text-left">{Number(getValue()) || ''}</div>
+        : QuantityCellComponent, size: 150 },
+      { accessorKey: 'uom', header: 'UOM', cell: disabled
+        ? ({ getValue }: CellContext<QuotationLineItemCreate, unknown>) => <div className="text-left">{String(getValue() || '')}</div>
+        : EditableCell, size: 80 },
+      { accessorKey: 'rate', header: 'Rate', cell: disabled
+        ? ({ getValue }: CellContext<QuotationLineItemCreate, unknown>) => { const v = Number(getValue()) || 0; return <div className="text-left">{sym}{v.toFixed(2)}</div>; }
+        : RateCellComponent, size: 140 },
       {
         accessorKey: 'amount', header: 'Amount', size: 120,
         cell: ({ getValue }: CellContext<QuotationLineItemCreate, unknown>) => {
@@ -241,7 +311,7 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
       {
         id: 'discount',
         header: 'Discount',
-        size: 140,
+        size: 160,
         cell: DiscountCellComponent,
       },
       { accessorKey: 'tax_rate', header: 'Tax %', size: 80, cell: taxRateCell },
@@ -292,13 +362,13 @@ export function QuotationLineItemsTable({ items, onItemsChange, disabled = false
     () => ({
       showPagination: false,
       enableColumnVisibility: false,
-      meta: { getItemData, searchItems, itemLabelFormatter, disabled, currency },
+      meta: { getItemData, searchItems, itemLabelFormatter, disabled, currency: effectiveCurrency },
     }),
-    [getItemData, searchItems, itemLabelFormatter, disabled, currency]
+    [getItemData, searchItems, itemLabelFormatter, disabled, effectiveCurrency]
   );
 
   const renderFooter = React.useCallback(
-    () => (summary ? <SummaryFooterRows summary={summary} currency={currency} /> : null),
+    () => (summary ? <SummaryFooterRows summary={summary} currency={effectiveCurrency} /> : null),
     [summary, currency]
   );
 

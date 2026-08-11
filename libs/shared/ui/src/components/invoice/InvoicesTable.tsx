@@ -17,6 +17,7 @@ import {
 import { EmptyState } from '../ui/empty-state';
 
 import type { Invoice } from '../../types/invoice.types';
+import { getCurrencySymbol } from '../../types/currency.types';
 import { formatDate } from '../../utils/formatDate';
 
 import { InvoiceStatusBadge } from './InvoiceStatusBadge';
@@ -26,6 +27,8 @@ export interface InvoicesTableProps {
   loading: boolean;
   error: string | null;
   hasActiveFilters: boolean;
+  /** Base currency code from the org settings (e.g. 'INR', 'USD'). Used as fallback when invoice.currency is null. */
+  baseCurrency?: string;
   onView: (invoice: Invoice) => void;
   onDelete: (invoice: Invoice) => void;
   onMarkAsPaid: (invoice: Invoice) => void;
@@ -45,6 +48,7 @@ export function InvoicesTable({
   loading,
   error,
   hasActiveFilters,
+  baseCurrency = 'USD',
   onView,
   onDelete,
   onMarkAsPaid,
@@ -150,11 +154,11 @@ export function InvoicesTable({
           return (
             <div className="text-right">
               <p className="font-semibold">
-                {invoice.currency} {Number(invoice.grand_total).toFixed(2)}
+                {getCurrencySymbol(invoice.currency || baseCurrency)} {Number(invoice.grand_total).toFixed(2)}
               </p>
               {invoice.outstanding_amount > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Due: {invoice.currency} {Number(invoice.outstanding_amount).toFixed(2)}
+                  Due: {getCurrencySymbol(invoice.currency || baseCurrency)} {Number(invoice.outstanding_amount).toFixed(2)}
                 </p>
               )}
             </div>

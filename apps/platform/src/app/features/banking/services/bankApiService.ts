@@ -1,32 +1,7 @@
 import { BankApiConnection } from '../types';
-
-const API_BASE_URL = process.env['NX_CORE_API_BASE_URL'] || process.env['NX_API_BASE_URL'] || 'http://localhost:8001';
+import { coreApiClient } from '../../../utility/api-core';
 
 class BankApiService {
-    private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-        const url = `${API_BASE_URL}/api/v1${endpoint}`;
-
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.getAuthToken()}`,
-                ...options?.headers,
-            },
-            ...options,
-        });
-
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`API Error: ${response.status} - ${error}`);
-        }
-
-        return response.json();
-    }
-
-    private getAuthToken(): string {
-        return localStorage.getItem('auth_token') || '';
-    }
-
     // Connect bank account to API
     async connectBankApi(accountId: string, data: {
         api_provider: string;
@@ -34,17 +9,12 @@ class BankApiService {
         sync_frequency: 'real-time' | 'hourly' | 'daily' | 'weekly';
         auto_reconciliation: boolean;
     }): Promise<BankApiConnection> {
-        return this.request<BankApiConnection>(`/bank-accounts/${accountId}/api/connect`, {
-            method: 'POST',
-            body: JSON.stringify(data),
-        });
+        return coreApiClient.post<BankApiConnection>(`/bank-accounts/${accountId}/api/connect`, data);
     }
 
     // Disconnect bank API
     async disconnectBankApi(accountId: string): Promise<void> {
-        await this.request(`/bank-accounts/${accountId}/api/disconnect`, {
-            method: 'DELETE',
-        });
+        await coreApiClient.delete(`/bank-accounts/${accountId}/api/disconnect`);
     }
 
     // Test bank API connection
@@ -54,12 +24,7 @@ class BankApiService {
         balance?: number;
         last_transaction_date?: string;
     }> {
-        return this.request<{
-            success: boolean;
-            message: string;
-            balance?: number;
-            last_transaction_date?: string;
-        }>(`/bank-accounts/${accountId}/api/test`);
+        return coreApiClient.get(`/bank-accounts/${accountId}/api/test`);
     }
 
     // Sync bank account data
@@ -68,13 +33,7 @@ class BankApiService {
         balance_updated: boolean;
         last_sync: string;
     }> {
-        return this.request<{
-            transactions_synced: number;
-            balance_updated: boolean;
-            last_sync: string;
-        }>(`/bank-accounts/${accountId}/sync`, {
-            method: 'POST',
-        });
+        return coreApiClient.post(`/bank-accounts/${accountId}/sync`);
     }
 
     // Get sync status
@@ -84,12 +43,7 @@ class BankApiService {
         next_sync?: string;
         error_message?: string;
     }> {
-        return this.request<{
-            status: 'idle' | 'syncing' | 'error';
-            last_sync: string;
-            next_sync?: string;
-            error_message?: string;
-        }>(`/bank-accounts/${accountId}/sync/status`);
+        return coreApiClient.get(`/bank-accounts/${accountId}/sync/status`);
     }
 
     // Get available bank API providers
@@ -100,13 +54,7 @@ class BankApiService {
         features: string[];
         setup_instructions: string;
     }>> {
-        return this.request<Array<{
-            id: string;
-            name: string;
-            supported_countries: string[];
-            features: string[];
-            setup_instructions: string;
-        }>>('/bank-api/providers');
+        return coreApiClient.get('/bank-api/providers');
     }
 
     // Bulk sync all connected accounts
@@ -118,16 +66,7 @@ class BankApiService {
             error: string;
         }>;
     }> {
-        return this.request<{
-            total_accounts: number;
-            synced_successfully: number;
-            failed: Array<{
-                account_id: string;
-                error: string;
-            }>;
-        }>('/bank-api/bulk-sync', {
-            method: 'POST',
-        });
+        return coreApiClient.post('/bank-api/bulk-sync');
     }
 }
 

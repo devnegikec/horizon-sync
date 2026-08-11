@@ -1,8 +1,11 @@
 import * as React from 'react';
 
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { TooltipProvider } from '@horizon-sync/ui/components/ui/tooltip';
 
+import { environment } from '../../environments/environment';
+import { OrganizationGuard } from './OrganizationGuard';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 
@@ -14,6 +17,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
   const [isMobile, setIsMobile] = React.useState(false);
+
+  // Fetch currencies on mount so the base currency is available everywhere
+  const accessToken = useUserStore((s) => s.accessToken);
+  const fetchCurrencies = useCurrencyStore((s) => s.fetchCurrencies);
+  React.useEffect(() => {
+    if (accessToken && environment.apiCoreUrl) {
+      fetchCurrencies(environment.apiCoreUrl, accessToken);
+    }
+  }, [accessToken, fetchCurrencies]);
 
   // Detect mobile/desktop on mount and resize
   React.useEffect(() => {
@@ -51,7 +63,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <ThemeProvider>
       <TooltipProvider>
-        <div className="flex h-screen overflow-hidden bg-background">
+        <OrganizationGuard>
+          <div className="flex h-screen overflow-hidden bg-background">
           {/* Backdrop for mobile */}
           {isMobile && sidebarOpen && (
             <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity" onClick={handleCloseSidebar} aria-hidden="true" />
@@ -70,6 +83,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </main>
           </div>
         </div>
+        </OrganizationGuard>
       </TooltipProvider>
     </ThemeProvider>
   );

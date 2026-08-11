@@ -12,8 +12,10 @@ import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
 import { cn } from '@horizon-sync/ui/lib';
+import { CurrencyIcon } from '@horizon-sync/ui';
 
 import { useDashboardOverview } from '../hooks/useDashboardOverview';
+import { usePermissions } from '../hooks/usePermissions';
 import type { DashboardFilters, ActivityLogItem } from '../types';
 
 interface StatCardProps {
@@ -118,16 +120,25 @@ function ActivityFeed({ items, loading }: { items: ActivityLogItem[]; loading: b
 }
 
 const QUICK_ACTIONS = [
-  { label: 'Manage Organizations', icon: Building2, path: '/organizations' },
-  { label: 'Manage Users', icon: Users, path: '/users' },
-  { label: 'View Invoices', icon: FileText, path: '/invoices' },
-  { label: 'View Payments', icon: CreditCard, path: '/payments' },
+  { label: 'Manage Organizations', icon: Building2, path: '/organizations', domain: 'organizations' },
+  { label: 'Manage Users', icon: Users, path: '/users', domain: 'users' },
+  { label: 'View Invoices', icon: FileText, path: '/invoices', domain: 'billing' },
+  { label: 'View Payments', icon: CreditCard, path: '/payments', domain: 'billing' },
 ];
 
 export function DashboardPage() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<DashboardFilters>({});
-  const { data, isLoading, isError, refetch } = useDashboardOverview(filters);
+  const { hasPermissionForDomain, hasSystemAdminMaster, hasPermission } = usePermissions();
+
+  // Only fetch dashboard overview if user has reporting permission
+  const canViewReporting = hasSystemAdminMaster || hasPermissionForDomain('reporting');
+  const { data, isLoading, isError, error, refetch } = useDashboardOverview(filters, canViewReporting);
+
+  const visibleQuickActions = React.useMemo(
+    () => QUICK_ACTIONS.filter((a) => hasSystemAdminMaster || hasPermissionForDomain(a.domain)),
+    [hasSystemAdminMaster, hasPermissionForDomain],
+  );
 
   const handleDateChange = (field: 'date_from' | 'date_to', value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value || undefined }));
@@ -150,18 +161,23 @@ export function DashboardPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Welcome back! Here's an overview of your platform.</p>
+          <p className="text-muted-foreground mt-1">
+            {canViewReporting ? "Welcome back! Here's an overview of your platform." : 'Welcome back! Use the sidebar to navigate to your assigned sections.'}
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Input type="date" value={filters.date_from ?? ''} onChange={(e) => handleDateChange('date_from', e.target.value)} className="w-36" />
-          <Input type="date" value={filters.date_to ?? ''} onChange={(e) => handleDateChange('date_to', e.target.value)} className="w-36" />
-          <Button onClick={() => refetch()} variant="outline" className="gap-2">
-            <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} /> Refresh
-          </Button>
-        </div>
+        {canViewReporting && (
+          <div className="flex items-center gap-3">
+            <Input type="date" value={filters.date_from ?? ''} onChange={(e) => handleDateChange('date_from', e.target.value)} className="w-36" />
+            <Input type="date" value={filters.date_to ?? ''} onChange={(e) => handleDateChange('date_to', e.target.value)} className="w-36" />
+            <Button onClick={() => refetch()} variant="outline" className="gap-2">
+              <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} /> Refresh
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid — only for users with reporting access */}
+      {canViewReporting && (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { title: 'Total Organizations', value: data?.organizations.total ?? 0, icon: Building2, iconBg: 'bg-gradient-to-br from-violet-500 to-fuchsia-500' },
@@ -174,23 +190,27 @@ export function DashboardPage() {
           </div>
         ))}
       </div>
+      )}
 
-      {/* Revenue Cards */}
+      {/* Revenue Cards — only for users with reporting access */}
+      {canViewReporting && (
       <div className="grid gap-4 sm:grid-cols-3">
         {[
           { title: 'Total Invoiced', value: formatRevenue(data?.revenue.total_invoiced), icon: FileText, iconBg: 'bg-gradient-to-br from-emerald-500 to-emerald-600' },
-          { title: 'Total Outstanding', value: formatRevenue(data?.revenue.total_outstanding), icon: DollarSign, iconBg: 'bg-gradient-to-br from-amber-500 to-orange-500' },
-          { title: 'Total Received', value: formatRevenue(data?.revenue.total_received), icon: CreditCard, iconBg: 'bg-gradient-to-br from-[#3058EE] to-[#7D97F6]' },
+          { title: 'Total Outstanding', value: formatRevenue(data?.revenue.total_outstanding), icon: CurrencyIcon, iconBg: 'bg-gradient-to-br from-amber-500 to-orange-500' },
+          { title: 'Total Received', value: formatRevenue(data?.revenue.total_received), icon: CurrencyIcon, iconBg: 'bg-gradient-to-br from-[#3058EE] to-[#7D97F6]' },
         ].map((stat, index) => (
           <div key={stat.title} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${(index + 4) * 100}ms` }}>
             <StatCard {...stat} loading={isLoading} />
           </div>
         ))}
       </div>
+      )}
 
       {/* Activity + Quick Actions */}
       <div className="grid gap-6 lg:grid-cols-7">
-        {/* Recent Activity */}
+        {/* Recent Activity — only for users with reporting access */}
+        {canViewReporting && (
         <div className="lg:col-span-4 rounded-xl border border-border bg-card p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -200,13 +220,14 @@ export function DashboardPage() {
           </div>
           <ActivityFeed items={data?.recent_activity ?? []} loading={isLoading} />
         </div>
+        )}
 
         {/* Quick Actions + Trial Orgs */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className={cn(canViewReporting ? 'lg:col-span-3' : 'lg:col-span-7', 'space-y-6')}>
           <div className="rounded-xl border border-border bg-gradient-to-br from-[#3058EE]/5 via-transparent to-[#7D97F6]/5 p-6">
             <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-            <div className="grid gap-3 grid-cols-2">
-              {QUICK_ACTIONS.map((action) => (
+            <div className={cn('grid gap-3', canViewReporting ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4')}>
+              {visibleQuickActions.map((action) => (
                 <Button key={action.label} variant="outline" className="h-auto py-4 flex-col gap-2 hover:border-[#3058EE]/50 hover:bg-[#3058EE]/5 transition-all"
                   onClick={() => navigate(action.path)}>
                   <action.icon className="h-5 w-5 text-[#3058EE]" />
@@ -216,7 +237,8 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {/* Trial Orgs Card */}
+          {/* Trial Orgs Card — only for reporting users */}
+          {canViewReporting && (
           <div className="rounded-xl border border-border bg-card p-6">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-semibold">Trial Organizations</h2>
@@ -231,6 +253,7 @@ export function DashboardPage() {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,36 +1,38 @@
 import * as React from 'react';
 
-import { Upload, Image, Link, Clock, MoreHorizontal, Info, X } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { Upload, Image, Link, Clock, MoreHorizontal, Info, Trash2 } from 'lucide-react';
+import { Controller, useForm } from 'react-hook-form';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@horizon-sync/ui/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@horizon-sync/ui/components/ui/tooltip';
 
 import { useBrands } from '../../features/qr-management/hooks/useBrands';
-import type { CreateQSealProductPayload, QSealProduct } from '../../types/qseal.types';
+import { useQRProductSettings } from '../../hooks/useQRProductSettings';
+import type { QRProductSetting } from '../../types/qr-product-settings.types';
+import type { CreateQSealProductPayload, QSealProduct, QSealProductImageChanges } from '../../types/qseal.types';
 import { FormDialog } from '../containers';
 
 interface FormValues {
   brand_id: string;
   name: string;
-  generic_name: string;
   gtin: string;
   industry: string;
   landing_page: string;
   client_product_auth_url: string;
   activation_method: string;
   sr_number_type: string;
-  warranty_period_months: string;
+  serial_prefix_setting_id: string;
+  shelf_life_setting_id: string;
   email: string;
   phone_number: string;
   redirect_to_client: boolean;
@@ -44,23 +46,24 @@ const ACTIVATION_OPTIONS = [
 ];
 
 const SR_NUMBER_OPTIONS = [
-  { value: 'random_6_alpha_numeric', label: 'Random-6 Digit Alpha Numeric' },
-  { value: 'random_8_alpha_numeric', label: 'Random-8 Digit Alpha Numeric' },
-  { value: 'sequential', label: 'Sequential' },
-  { value: 'custom', label: 'Custom' },
+  { value: 'R8DAN', label: 'Random-8 Digit Alpha Numeric' },
+  { value: 'R6DAN', label: 'Random-6 Digit Alpha Numeric' },
+  { value: 'R4DAN', label: 'Random-4 Digit Alpha Numeric' },
+  { value: 'S8DN', label: 'Serialized-8 Digit Max' },
+  { value: 'S10DN', label: 'Serialized-10 Digit Max' },
 ];
 
 const DEFAULT_VALUES: FormValues = {
   brand_id: '',
   name: '',
-  generic_name: '',
   gtin: '',
   industry: '',
   landing_page: '',
   client_product_auth_url: '',
   activation_method: 'pre',
-  sr_number_type: 'random_6_alpha_numeric',
-  warranty_period_months: '',
+  sr_number_type: 'R6DAN',
+  serial_prefix_setting_id: '',
+  shelf_life_setting_id: '',
   email: '',
   phone_number: '',
   redirect_to_client: false,
@@ -68,7 +71,7 @@ const DEFAULT_VALUES: FormValues = {
   banner_image_url: '',
 };
 
-function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
+function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ className?: string }>; title: string }) {
   return (
     <div className="flex items-center gap-2 text-primary">
       <Icon className="h-4 w-4" />
@@ -77,8 +80,25 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: 
   );
 }
 
-function FieldHint({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs text-muted-foreground mt-1">{children}</p>;
+function LabelWithTooltip({ htmlFor, label, required, hint }: { htmlFor?: string; label: string; required?: boolean; hint: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <Label htmlFor={htmlFor}>
+        {label}
+        {required && <span className="text-destructive ml-0.5">*</span>}
+      </Label>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help hover:text-primary transition-colors" />
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p className="max-w-[250px] text-xs">{hint}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
 }
 
 // ─── Brand Select Section ────────────────────────────────────────────────────
@@ -86,9 +106,10 @@ function FieldHint({ children }: { children: React.ReactNode }) {
 interface BrandSelectSectionProps {
   brandId: string;
   onBrandChange: (id: string) => void;
+  disabled?: boolean;
 }
 
-function BrandSelectSection({ brandId, onBrandChange }: BrandSelectSectionProps) {
+function BrandSelectSection({ brandId, onBrandChange, disabled = false }: BrandSelectSectionProps) {
   const { data, loading } = useBrands();
   const brands = data?.brands ?? [];
 
@@ -96,9 +117,9 @@ function BrandSelectSection({ brandId, onBrandChange }: BrandSelectSectionProps)
     <div className="space-y-3">
       <SectionHeader icon={Info} title="Brand" />
       <div className="space-y-1">
-        <Label>Brand <span className="text-destructive">*</span></Label>
-        <Select value={brandId} onValueChange={onBrandChange} disabled={loading}>
-          <SelectTrigger>
+        <LabelWithTooltip label="Brand" required hint="Select the brand this product belongs to. The brand's ECDSA key pair will be used to sign QR codes." />
+        <Select value={brandId} onValueChange={onBrandChange} disabled={loading || disabled}>
+          <SelectTrigger aria-label="Brand">
             <SelectValue placeholder={loading ? 'Loading brands…' : 'Select a brand'} />
           </SelectTrigger>
           <SelectContent>
@@ -110,7 +131,6 @@ function BrandSelectSection({ brandId, onBrandChange }: BrandSelectSectionProps)
             ))}
           </SelectContent>
         </Select>
-        <FieldHint>Select the brand this product belongs to. The brand&apos;s ECDSA key pair will be used to sign QR codes.</FieldHint>
       </div>
     </div>
   );
@@ -124,14 +144,17 @@ interface ImageDropZoneProps {
   hint: string;
   sizeHint: string;
   value: string;
-  onChange: (url: string) => void;
+  error?: string;
+  onFileSelect: (file: File) => void;
+  onRemove: () => void;
 }
 
-function ImageDropZone({ label, required, hint, sizeHint, value, onChange }: ImageDropZoneProps) {
+function ImageDropZone({ label, required, hint, sizeHint, value, error, onFileSelect, onRemove }: ImageDropZoneProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFile = (file: File) => {
-    onChange(URL.createObjectURL(file));
+    onFileSelect(file);
+    if (inputRef.current) inputRef.current.value = '';
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -146,27 +169,65 @@ function ImageDropZone({ label, required, hint, sizeHint, value, onChange }: Ima
 
   return (
     <div className="space-y-2">
-      <Label>
-        {label}
-        {required && <span className="text-destructive ml-0.5">*</span>}
-      </Label>
+      <div className="flex items-center gap-1.5">
+        <Label>
+          {label}
+          {required && <span className="text-destructive ml-0.5">*</span>}
+        </Label>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help hover:text-primary transition-colors" />
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p className="max-w-[250px] text-xs">{hint}{sizeHint ? ` ${sizeHint}` : ''}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
       {value ? (
-        <div className="relative rounded-lg border overflow-hidden bg-muted/30">
+        <div className="rounded-lg border overflow-hidden bg-muted/30">
           <img src={value} alt={label} className="w-full h-32 object-contain" />
-          <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6 bg-background/80" onClick={() => onChange('')}>
-            <X className="h-3 w-3" />
-          </Button>
+          <div className="flex justify-end gap-2 border-t bg-background/90 p-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
+              <Upload className="mr-1.5 h-3.5 w-3.5" />
+              Replace
+            </Button>
+            <Button type="button" variant="destructive" size="sm" onClick={onRemove}>
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              Remove
+            </Button>
+          </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer hover:border-primary/50 transition-colors" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} onClick={() => inputRef.current?.click()} role="button" tabIndex={0} onKeyDown={handleKeyDown}>
+        <div className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer hover:border-primary/50 transition-colors ${error ? 'border-destructive' : ''}`}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDrop}
+          onClick={() => inputRef.current?.click()}
+          role="button"
+          tabIndex={0}
+          onKeyDown={handleKeyDown}>
           <Upload className="h-6 w-6 text-primary" />
           <span className="text-sm text-muted-foreground">Drag &amp; drop {label.toLowerCase()} here or</span>
-          <Button type="button" variant="default" size="sm">Choose File</Button>
+          <Button type="button" variant="default" size="sm">
+            Choose File
+          </Button>
           <span className="text-xs text-muted-foreground">{sizeHint}</span>
         </div>
       )}
-      <input ref={inputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-      <FieldHint>{hint}</FieldHint>
+      <input ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+        }}/>
+      {error && (
+        <p className="text-xs text-destructive" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -176,17 +237,44 @@ function ImageDropZone({ label, required, hint, sizeHint, value, onChange }: Ima
 interface ProductImagesSectionProps {
   imageUrl: string;
   bannerImageUrl: string;
-  onImageChange: (url: string) => void;
-  onBannerChange: (url: string) => void;
+  onImageSelect: (file: File) => void;
+  onBannerSelect: (file: File) => void;
+  onImageRemove: () => void;
+  onBannerRemove: () => void;
+  logoError?: string;
+  bannerError?: string;
 }
 
-function ProductImagesSection({ imageUrl, bannerImageUrl, onImageChange, onBannerChange }: ProductImagesSectionProps) {
+function ProductImagesSection({
+  imageUrl,
+  bannerImageUrl,
+  onImageSelect,
+  onBannerSelect,
+  onImageRemove,
+  onBannerRemove,
+  logoError,
+  bannerError,
+}: ProductImagesSectionProps) {
   return (
     <div className="space-y-3">
       <SectionHeader icon={Image} title="Product Images" />
       <div className="grid grid-cols-2 gap-4">
-        <ImageDropZone label="Logo" required hint="The logo will be displayed on authentication pages and certificates" sizeHint="Recommended size: 300x300px (PNG, JPG)" value={imageUrl} onChange={onImageChange} />
-        <ImageDropZone label="Banner Image" hint="Optional banner image for product pages (displayed above content)" sizeHint="Recommended size: 1200x400px (PNG, JPG)" value={bannerImageUrl} onChange={onBannerChange} />
+        <ImageDropZone label="Logo"
+          required
+          hint="The logo will be displayed on authentication pages and certificates"
+          sizeHint="Recommended size: 300x300px (PNG, JPG, WebP)"
+          value={imageUrl}
+          error={logoError}
+          onFileSelect={onImageSelect}
+          onRemove={onImageRemove}/>
+        <ImageDropZone label="Banner Image"
+          required
+          hint="The banner image will be displayed above product content"
+          sizeHint="Recommended size: 1200x400px (PNG, JPG, WebP)"
+          value={bannerImageUrl}
+          error={bannerError}
+          onFileSelect={onBannerSelect}
+          onRemove={onBannerRemove}/>
       </div>
     </div>
   );
@@ -196,43 +284,59 @@ function ProductImagesSection({ imageUrl, bannerImageUrl, onImageChange, onBanne
 
 interface ProductInfoSectionProps {
   register: ReturnType<typeof useForm<FormValues>>['register'];
+  control: ReturnType<typeof useForm<FormValues>>['control'];
   errors: ReturnType<typeof useForm<FormValues>>['formState']['errors'];
+  shelfLifeSettings: QRProductSetting[];
+  shelfLifeLoading: boolean;
+  shelfLifeError: string | null;
 }
 
-function ProductInfoSection({ register, errors }: ProductInfoSectionProps) {
+function ProductInfoSection({ register, control, errors, shelfLifeSettings, shelfLifeLoading, shelfLifeError }: ProductInfoSectionProps) {
   return (
     <div className="space-y-3">
       <SectionHeader icon={Info} title="Product Information" />
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="name">Product Name <span className="text-destructive">*</span></Label>
+          <LabelWithTooltip htmlFor="name" label="Product Name" required hint="The official name of your product as it should appear to customers" />
           <Input id="name" placeholder="Product name" {...register('name', { required: 'Product name is required' })} />
-          <FieldHint>The official name of your product as it should appear to customers</FieldHint>
           {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
         </div>
         <div className="space-y-1">
-          <Label htmlFor="generic_name">Generic Name</Label>
-          <Input id="generic_name" placeholder="Generic name" {...register('generic_name')} />
-          <FieldHint>Optional generic name or category for this product</FieldHint>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="gtin">GTIN <span className="text-destructive">*</span></Label>
+          <LabelWithTooltip htmlFor="gtin" label="GTIN" required hint="Global Trade Item Number (UPC, EAN, ISBN, etc.) - 12-14 digits" />
           <Input id="gtin" placeholder="e.g. 012345678901" {...register('gtin', { required: 'GTIN is required' })} />
-          <FieldHint>Global Trade Item Number (UPC, EAN, ISBN, etc.) - 12-14 digits</FieldHint>
           {errors.gtin && <p className="text-xs text-destructive">{errors.gtin.message}</p>}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="industry">Industry</Label>
+          <LabelWithTooltip htmlFor="industry" label="Industry" hint="Industry or sector this product belongs to" />
           <Input id="industry" placeholder="e.g. Pharmaceuticals" {...register('industry')} />
-          <FieldHint>Industry or sector this product belongs to</FieldHint>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="warranty_period_months">Shelf Life <span className="text-destructive">*</span></Label>
-          <Input id="warranty_period_months" type="number" min="0" placeholder="e.g. 10" {...register('warranty_period_months', { required: 'Shelf life is required' })} />
-          <FieldHint>Expected lifespan or warranty period for this product (months)</FieldHint>
-          {errors.warranty_period_months && <p className="text-xs text-destructive">{errors.warranty_period_months.message}</p>}
+          <LabelWithTooltip htmlFor="shelf_life_setting_id" label="Shelf Life" required hint="Select a Shelf Life value configured in Settings" />
+          <Controller name="shelf_life_setting_id"
+            control={control}
+            rules={{ required: 'Shelf life is required' }}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange} disabled={shelfLifeLoading || shelfLifeSettings.length === 0}>
+                <SelectTrigger id="shelf_life_setting_id" aria-label="Shelf Life">
+                  <SelectValue placeholder={shelfLifeLoading ? 'Loading shelf life values…' : 'Select shelf life'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {shelfLifeSettings.map((setting) => (
+                    <SelectItem key={setting.id} value={setting.id}>
+                      {setting.label}
+                      {!setting.is_active ? ' (Inactive)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}/>
+          {!shelfLifeLoading && !shelfLifeError && shelfLifeSettings.length === 0 && (
+            <p className="text-xs text-muted-foreground">No active Shelf Life values are configured.</p>
+          )}
+          {shelfLifeError && <p className="text-xs text-destructive">{shelfLifeError}</p>}
+          {errors.shelf_life_setting_id && <p className="text-xs text-destructive">{errors.shelf_life_setting_id.message}</p>}
         </div>
       </div>
     </div>
@@ -252,15 +356,13 @@ function ProductUrlsSection({ register, errors }: ProductUrlsSectionProps) {
       <SectionHeader icon={Link} title="Product URLs" />
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="landing_page">Landing Page <span className="text-destructive">*</span></Label>
+          <LabelWithTooltip htmlFor="landing_page" label="Landing Page" required hint="Main product page URL where customers can learn about this product" />
           <Input id="landing_page" type="url" placeholder="https://..." {...register('landing_page', { required: 'Landing page is required' })} />
-          <FieldHint>Main product page URL where customers can learn about this product</FieldHint>
           {errors.landing_page && <p className="text-xs text-destructive">{errors.landing_page.message}</p>}
         </div>
         <div className="space-y-1">
-          <Label htmlFor="client_product_auth_url">Product Auth URL <span className="text-destructive">*</span></Label>
+          <LabelWithTooltip htmlFor="client_product_auth_url" label="Product Auth URL" required hint="URL where customers will be sent after QR scan" />
           <Input id="client_product_auth_url" type="url" placeholder="https://..." {...register('client_product_auth_url', { required: 'Product auth URL is required' })} />
-          <FieldHint>URL where customers will be sent after QR scan</FieldHint>
           {errors.client_product_auth_url && <p className="text-xs text-destructive">{errors.client_product_auth_url.message}</p>}
         </div>
       </div>
@@ -273,38 +375,81 @@ function ProductUrlsSection({ register, errors }: ProductUrlsSectionProps) {
 interface ActivationDetailsSectionProps {
   activationMethod: string;
   srNumberType: string;
+  serialPrefixSettingId: string;
+  serialPrefixSettings: QRProductSetting[];
+  serialPrefixLoading: boolean;
+  serialPrefixError: string | null;
+  serialPrefixValidationError?: string;
   onActivationChange: (v: string) => void;
   onSrNumberChange: (v: string) => void;
+  onSerialPrefixChange: (v: string) => void;
 }
 
-function ActivationDetailsSection({ activationMethod, srNumberType, onActivationChange, onSrNumberChange }: ActivationDetailsSectionProps) {
+function ActivationDetailsSection({
+  activationMethod,
+  srNumberType,
+  serialPrefixSettingId,
+  serialPrefixSettings,
+  serialPrefixLoading,
+  serialPrefixError,
+  serialPrefixValidationError,
+  onActivationChange,
+  onSrNumberChange,
+  onSerialPrefixChange,
+}: ActivationDetailsSectionProps) {
   return (
     <div className="space-y-3">
       <SectionHeader icon={Clock} title="Activation Details" />
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label>Activation Method <span className="text-destructive">*</span></Label>
+          <LabelWithTooltip label="Activation Method" required hint="Choose how customers will activate this product (pre-activated or post-activation)" />
           <Select value={activationMethod} onValueChange={onActivationChange}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               {ACTIVATION_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <FieldHint>Choose how customers will activate this product (pre-activated or post-activation)</FieldHint>
         </div>
         <div className="space-y-1">
-          <Label>Serial Number Type <span className="text-destructive">*</span></Label>
+          <LabelWithTooltip label="Serial Number Type" required hint="Select the format of serial numbers for this product" />
           <Select value={srNumberType} onValueChange={onSrNumberChange}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               {SR_NUMBER_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <FieldHint>Select the format of serial numbers for this product</FieldHint>
+        </div>
+        <div className="space-y-1">
+          <LabelWithTooltip label="Serial Prefix" required hint="Select a Serial Prefix configured in Product Settings" />
+          <Select value={serialPrefixSettingId} onValueChange={onSerialPrefixChange} disabled={serialPrefixLoading}>
+            <SelectTrigger aria-label="Serial Prefix">
+              <SelectValue placeholder={serialPrefixLoading ? 'Loading prefixes…' : 'Select a serial prefix'} />
+            </SelectTrigger>
+            <SelectContent>
+              {serialPrefixSettings.map((setting) => (
+                <SelectItem key={setting.id} value={setting.id}>
+                  {setting.value} — {setting.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!serialPrefixLoading && !serialPrefixError && serialPrefixSettings.length === 0 && (
+            <p className="text-xs text-muted-foreground">No active Serial Prefix values are configured.</p>
+          )}
+          {serialPrefixError && <p className="text-xs text-destructive">{serialPrefixError}</p>}
+          {serialPrefixValidationError && <p className="text-xs text-destructive">{serialPrefixValidationError}</p>}
         </div>
       </div>
     </div>
@@ -325,19 +470,19 @@ function AdditionalDetailsSection({ register, redirectToClient, onRedirectChange
       <SectionHeader icon={MoreHorizontal} title="Additional Details" />
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <Label htmlFor="email">Contact Email</Label>
+          <LabelWithTooltip htmlFor="email" label="Contact Email" hint="Customer support email for this product" />
           <Input id="email" type="email" placeholder="support@example.com" {...register('email')} />
-          <FieldHint>Customer support email for this product</FieldHint>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="phone_number">Contact Phone</Label>
+          <LabelWithTooltip htmlFor="phone_number" label="Contact Phone" hint="Customer support phone number for this product" />
           <Input id="phone_number" type="tel" placeholder="+1 234 567 8900" {...register('phone_number')} />
-          <FieldHint>Customer support phone number for this product</FieldHint>
         </div>
       </div>
       <div className="flex items-center space-x-2 pt-1">
         <Checkbox id="redirect_to_client" checked={redirectToClient} onCheckedChange={(checked) => onRedirectChange(checked === true)} />
-        <Label htmlFor="redirect_to_client" className="text-sm font-normal cursor-pointer">Redirect to Product URL after QR scan</Label>
+        <Label htmlFor="redirect_to_client" className="text-sm font-normal cursor-pointer">
+          Redirect to Product URL after QR scan
+        </Label>
       </div>
     </div>
   );
@@ -353,21 +498,41 @@ function nullToEmpty(val: string | null | undefined): string {
   return val ?? '';
 }
 
+function isPersistedImageUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function normalizeSerialNumberType(value: string | null | undefined): string {
+  const normalized = value?.toUpperCase();
+  const legacyTypes: Record<string, string> = {
+    RANDOM_8_ALPHA_NUMERIC: 'R8DAN',
+    RANDOM_6_ALPHA_NUMERIC: 'R6DAN',
+    RANDOM_4_ALPHA_NUMERIC: 'R4DAN',
+    SEQUENTIAL: 'S8DN',
+    SEQUENTIAL_8_DIGIT: 'S8DN',
+    SEQUENTIAL_10_DIGIT: 'S10DN',
+  };
+  return legacyTypes[normalized ?? ''] ?? normalized ?? 'R6DAN';
+}
+
 function buildPayload(data: FormValues): CreateQSealProductPayload {
   const n = emptyToNull;
   return {
     brand_id: n(data.brand_id),
     name: data.name,
-    generic_name: n(data.generic_name),
     gtin: n(data.gtin),
     industry: n(data.industry),
     landing_page: n(data.landing_page),
-    image_url: n(data.image_url),
-    banner_image_url: n(data.banner_image_url),
     client_product_auth_url: n(data.client_product_auth_url),
     activation_method: data.activation_method,
     sr_number_type: n(data.sr_number_type),
-    warranty_period_months: data.warranty_period_months ? Number(data.warranty_period_months) : null,
+    serial_prefix_setting_id: data.serial_prefix_setting_id,
+    shelf_life_setting_id: data.shelf_life_setting_id,
     email: n(data.email),
     phone_number: n(data.phone_number),
     redirect_to_client: data.redirect_to_client,
@@ -377,21 +542,48 @@ function buildPayload(data: FormValues): CreateQSealProductPayload {
 function getInitialValues(product: QSealProduct): FormValues {
   const e = nullToEmpty;
   return {
-    brand_id: '',
+    brand_id: product.brand_id ?? '',
     name: product.name,
-    generic_name: e(product.generic_name),
     gtin: e(product.gtin),
     industry: e(product.industry),
     landing_page: e(product.landing_page),
     client_product_auth_url: e(product.client_product_auth_url),
     activation_method: product.activation_method || 'pre',
-    sr_number_type: product.sr_number_type || 'random_6_alpha_numeric',
-    warranty_period_months: product.warranty_period_months?.toString() ?? '',
+    sr_number_type: normalizeSerialNumberType(product.sr_number_type),
+    serial_prefix_setting_id: product.serial_prefix_setting_id ?? '',
+    shelf_life_setting_id: product.shelf_life_setting_id ?? '',
     email: e(product.email),
     phone_number: e(product.phone_number),
     redirect_to_client: product.redirect_to_client ?? false,
     image_url: e(product.image_url),
     banner_image_url: e(product.banner_image_url),
+  };
+}
+
+function getFormDefaultValues(product?: QSealProduct | null): FormValues {
+  return product ? getInitialValues(product) : DEFAULT_VALUES;
+}
+
+function getDisplayedImageUrl(preview: string, persistedUrl: string, removed: boolean): string {
+  if (removed) return '';
+  if (preview) return preview;
+  return isPersistedImageUrl(persistedUrl) ? persistedUrl : '';
+}
+
+function getImageValidation(
+  logoFile: File | null,
+  bannerFile: File | null,
+  imageUrl: string,
+  bannerImageUrl: string,
+  removeLogo: boolean,
+  removeBanner: boolean,
+) {
+  const hasLogo = Boolean(logoFile) || (!removeLogo && isPersistedImageUrl(imageUrl));
+  const hasBanner = Boolean(bannerFile) || (!removeBanner && isPersistedImageUrl(bannerImageUrl));
+  return {
+    valid: hasLogo && hasBanner,
+    logoError: hasLogo ? '' : 'Logo is required. Please upload an image.',
+    bannerError: hasBanner ? '' : 'Banner image is required. Please upload an image.',
   };
 }
 
@@ -401,40 +593,167 @@ interface QSealProductDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   product?: QSealProduct | null;
-  onSave: (data: CreateQSealProductPayload) => void;
+  onSave: (data: CreateQSealProductPayload, imageChanges: QSealProductImageChanges) => void | Promise<void>;
   saving?: boolean;
 }
 
 export function QSealProductDialog({ open, onOpenChange, product, onSave, saving }: QSealProductDialogProps) {
   const isEdit = !!product;
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormValues>({ defaultValues: DEFAULT_VALUES });
+  const { settings, loading: shelfLifeLoading, error: shelfLifeError } = useQRProductSettings('shelf_life');
+  const { settings: serialPrefixSettingsData, loading: serialPrefixLoading, error: serialPrefixError } = useQRProductSettings('serial_prefix');
+  const {
+    register,
+    control,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<FormValues>({
+    defaultValues: getFormDefaultValues(product),
+  });
+  const [logoFile, setLogoFile] = React.useState<File | null>(null);
+  const [bannerFile, setBannerFile] = React.useState<File | null>(null);
+  const [removeLogo, setRemoveLogo] = React.useState(false);
+  const [removeBanner, setRemoveBanner] = React.useState(false);
+  const [logoPreview, setLogoPreview] = React.useState('');
+  const [bannerPreview, setBannerPreview] = React.useState('');
+  const [logoError, setLogoError] = React.useState('');
+  const [bannerError, setBannerError] = React.useState('');
 
   const brandId = watch('brand_id');
   const activationMethod = watch('activation_method');
   const srNumberType = watch('sr_number_type');
+  const serialPrefixSettingId = watch('serial_prefix_setting_id');
   const redirectToClient = watch('redirect_to_client');
   const imageUrl = watch('image_url');
   const bannerImageUrl = watch('banner_image_url');
+  const currentShelfLifeSettingId = watch('shelf_life_setting_id');
+  const shelfLifeSettings = React.useMemo(
+    () => settings.filter((setting) => setting.is_active || setting.id === currentShelfLifeSettingId),
+    [settings, currentShelfLifeSettingId],
+  );
+  const serialPrefixSettings = React.useMemo(
+    () => serialPrefixSettingsData.filter((setting) => setting.is_active || setting.id === serialPrefixSettingId),
+    [serialPrefixSettingsData, serialPrefixSettingId],
+  );
 
   React.useEffect(() => {
-    if (open) reset(product ? getInitialValues(product) : DEFAULT_VALUES);
+    if (open) {
+      reset(product ? getInitialValues(product) : DEFAULT_VALUES);
+      setLogoFile(null);
+      setBannerFile(null);
+      setRemoveLogo(false);
+      setRemoveBanner(false);
+      setLogoPreview('');
+      setBannerPreview('');
+      setLogoError('');
+      setBannerError('');
+    }
   }, [open, product, reset]);
 
-  const onSubmit = handleSubmit((data: FormValues) => onSave(buildPayload(data)));
+  React.useEffect(() => {
+    return () => {
+      if (logoPreview) URL.revokeObjectURL(logoPreview);
+    };
+  }, [logoPreview]);
+
+  React.useEffect(() => {
+    return () => {
+      if (bannerPreview) URL.revokeObjectURL(bannerPreview);
+    };
+  }, [bannerPreview]);
+
+  const handleLogoSelect = (file: File) => {
+    setLogoFile(file);
+    setRemoveLogo(false);
+    setLogoPreview(URL.createObjectURL(file));
+    setLogoError('');
+  };
+
+  const handleBannerSelect = (file: File) => {
+    setBannerFile(file);
+    setRemoveBanner(false);
+    setBannerPreview(URL.createObjectURL(file));
+    setBannerError('');
+  };
+
+  const validateImages = () => {
+    const validation = getImageValidation(
+      logoFile,
+      bannerFile,
+      imageUrl,
+      bannerImageUrl,
+      removeLogo,
+      removeBanner,
+    );
+    setLogoError(validation.logoError);
+    setBannerError(validation.bannerError);
+    return validation.valid;
+  };
+
+  const onSubmit = handleSubmit((data: FormValues) => {
+    if (!validateImages()) return;
+
+    return onSave(buildPayload(data), {
+      logoFile,
+      bannerFile,
+      removeLogo,
+      removeBanner,
+    });
+  }, validateImages);
 
   return (
-    <FormDialog open={open} onOpenChange={onOpenChange} title={isEdit ? 'Edit QSeal Product' : 'Create New Product'} size="md" onSubmit={onSubmit} submitLabel={isEdit ? 'Save Changes' : 'Create Product'} saving={saving}>
-      <BrandSelectSection brandId={brandId} onBrandChange={(v) => setValue('brand_id', v)} />
+    <FormDialog open={open}
+      onOpenChange={onOpenChange}
+      title={isEdit ? 'Edit QSeal Product' : 'Create New Product'}
+      size="md"
+      onSubmit={onSubmit}
+      submitLabel={isEdit ? 'Save Changes' : 'Create Product'}
+      saving={saving}>
+      <BrandSelectSection brandId={brandId} onBrandChange={(v) => setValue('brand_id', v)} disabled={isEdit} />
       <Separator />
-      <ProductImagesSection imageUrl={imageUrl} bannerImageUrl={bannerImageUrl} onImageChange={(v) => setValue('image_url', v)} onBannerChange={(v) => setValue('banner_image_url', v)} />
+      <ProductImagesSection imageUrl={getDisplayedImageUrl(logoPreview, imageUrl, removeLogo)}
+        bannerImageUrl={getDisplayedImageUrl(bannerPreview, bannerImageUrl, removeBanner)}
+        onImageSelect={handleLogoSelect}
+        onBannerSelect={handleBannerSelect}
+        logoError={logoError}
+        bannerError={bannerError}
+        onImageRemove={() => {
+          setLogoFile(null);
+          setLogoPreview('');
+          setRemoveLogo(true);
+        }}
+        onBannerRemove={() => {
+          setBannerFile(null);
+          setBannerPreview('');
+          setRemoveBanner(true);
+        }}/>
       <Separator />
-      <ProductInfoSection register={register} errors={errors} />
+      <ProductInfoSection register={register}
+        control={control}
+        errors={errors}
+        shelfLifeSettings={shelfLifeSettings}
+        shelfLifeLoading={shelfLifeLoading}
+        shelfLifeError={shelfLifeError}/>
       <Separator />
       <ProductUrlsSection register={register} errors={errors} />
       <Separator />
-      <ActivationDetailsSection activationMethod={activationMethod} srNumberType={srNumberType} onActivationChange={(v) => setValue('activation_method', v)} onSrNumberChange={(v) => setValue('sr_number_type', v)} />
+      <input type="hidden" {...register('serial_prefix_setting_id', { required: 'Serial prefix is required' })} />
+      <ActivationDetailsSection activationMethod={activationMethod}
+        srNumberType={srNumberType}
+        serialPrefixSettingId={serialPrefixSettingId}
+        serialPrefixSettings={serialPrefixSettings}
+        serialPrefixLoading={serialPrefixLoading}
+        serialPrefixError={serialPrefixError}
+        serialPrefixValidationError={errors.serial_prefix_setting_id?.message}
+        onActivationChange={(v) => setValue('activation_method', v)}
+        onSrNumberChange={(v) => setValue('sr_number_type', v)}
+        onSerialPrefixChange={(v) => setValue('serial_prefix_setting_id', v, { shouldValidate: true })}/>
       <Separator />
-      <AdditionalDetailsSection register={register} redirectToClient={redirectToClient} onRedirectChange={(checked) => setValue('redirect_to_client', checked)} />
+      <AdditionalDetailsSection register={register}
+        redirectToClient={redirectToClient}
+        onRedirectChange={(checked) => setValue('redirect_to_client', checked)}/>
     </FormDialog>
   );
 }

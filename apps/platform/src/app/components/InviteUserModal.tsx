@@ -1,26 +1,52 @@
 import * as React from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { UserPlus, Send, Package, CreditCard, Users2 } from 'lucide-react';
+import { Info, Send, UserPlus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 
 import { useAuth } from '../hooks';
+import { environment } from '../../environments/environment';
 import { RoleService } from '../services/role.service';
 import { UserService, InviteUserPayload } from '../services/user.service';
-import type { Role, Permission } from '../types/role.types';
+import type { Role, ModuleGroup } from '../types/role.types';
+import { ModulePermissionMatrix } from './roles/ModulePermissionMatrix';
+
+interface WarehouseOption {
+  id: string;
+  name: string;
+  code: string;
+}
+
+const SCOPED_WMS_ROLE_NAMES = ['WMS Manager', 'WMS Operator', 'ASN Coordinator'];
+const GLOBAL_WMS_ROLE_NAMES = ['WMS Admin'];
+
+const namePattern = /^[A-Za-z][A-Za-z' -]*[A-Za-z]$/;
 
 const inviteUserSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  first_name: z.string().min(2, 'First name must be at least 2 characters'),
-  last_name: z.string().min(2, 'Last name must be at least 2 characters'),
+  email: z.string()
+    .trim()
+    .min(1, 'Email address is required')
+    .email('Please enter a valid email address')
+    .max(254, 'Email address is too long')
+    .transform((value) => value.toLowerCase()),
+  first_name: z.string()
+    .trim()
+    .min(2, 'First name must be at least 2 characters')
+    .max(50, 'First name cannot exceed 50 characters')
+    .regex(namePattern, 'First name can contain only letters, spaces, hyphens, and apostrophes'),
+  last_name: z.string()
+    .trim()
+    .min(2, 'Last name must be at least 2 characters')
+    .max(50, 'Last name cannot exceed 50 characters')
+    .regex(namePattern, 'Last name can contain only letters, spaces, hyphens, and apostrophes'),
   role_id: z.string().optional(),
   message: z.string().optional(),
 });
@@ -33,41 +59,23 @@ interface InviteUserModalProps {
   onSuccess?: () => void;
 }
 
-interface PermissionGroup {
-  title: string;
-  icon: React.ComponentType<{ className?: string }>;
-  permissions: Array<{
-    id: string;
-    code: string;
-    name: string;
-    checked: boolean;
-  }>;
-}
-
-// Icon mapping for permission groups
-const getIconForModule = (moduleName: string): React.ComponentType<{ className?: string }> => {
-  const lowerModule = moduleName.toLowerCase();
-  if (lowerModule.includes('crm') || lowerModule.includes('sales') || lowerModule.includes('customer')) {
-    return Users2;
-  }
-  if (lowerModule.includes('inventory') || lowerModule.includes('stock') || lowerModule.includes('warehouse')) {
-    return Package;
-  }
-  if (lowerModule.includes('billing') || lowerModule.includes('subscription') || lowerModule.includes('payment')) {
-    return CreditCard;
-  }
-  return Package; // Default icon
-};
-
 // eslint-disable-next-line complexity
 export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserModalProps) {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
   const [roles, setRoles] = React.useState<Role[]>([]);
   const [rolesLoading, setRolesLoading] = React.useState(false);
   const [selectedRoleId, setSelectedRoleId] = React.useState<string>('');
   const [permissionsLoading, setPermissionsLoading] = React.useState(false);
+  const [roleModules, setRoleModules] = React.useState<ModuleGroup[]>([]);
+  const [rolePermissionCodes, setRolePermissionCodes] = React.useState<Set<string>>(new Set());
+  const [warehouses, setWarehouses] = React.useState<WarehouseOption[]>([]);
+  const [warehousesLoading, setWarehousesLoading] = React.useState(false);
+  const [warehouseError, setWarehouseError] = React.useState('');
+  const [selectedWarehouseIds, setSelectedWarehouseIds] = React.useState<Set<string>>(new Set());
+  const [showWarehouseValidation, setShowWarehouseValidation] = React.useState(false);
+  const [warehouseRole, setWarehouseRole] = React.useState('operator');
 
   const {
     register,
@@ -79,21 +87,12 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     resolver: zodResolver(inviteUserSchema),
   });
 
-  const [permissionGroups, setPermissionGroups] = React.useState<PermissionGroup[]>([]);
-
   const fetchRoles = React.useCallback(async () => {
     if (!accessToken) return;
-
     setRolesLoading(true);
     try {
       const response = await RoleService.getRoles(
-        {
-          search: '',
-          isSystem: null,
-          isActive: true,
-          page: 1,
-          pageSize: 100,
-        },
+        { search: '', isSystem: null, isActive: true, page: 1, pageSize: 100 },
         accessToken
       );
       setRoles(response.data || []);
@@ -105,77 +104,97 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     }
   }, [accessToken]);
 
-  const transformPermissionsToGroups = React.useCallback((groupedData: Record<string, Permission[]>, rolePermissionIds: Set<string>): PermissionGroup[] => {
-    return Object.entries(groupedData).map(([moduleName, permissions]) => ({
-      title: moduleName,
-      icon: getIconForModule(moduleName),
-      permissions: (permissions as Permission[]).map((perm) => ({
-        id: perm.id,
-        code: perm.code,
-        name: perm.name,
-        checked: rolePermissionIds.has(perm.id),
-      })),
-    }));
-  }, []);
+  const fetchWarehouses = React.useCallback(async () => {
+    if (!accessToken) return;
+    setWarehousesLoading(true);
+    try {
+      const url = `${environment.apiCoreUrl}/api/v1/warehouses?page=1&page_size=100&is_active=true&scope=all`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Failed to fetch warehouses: ${response.status} ${errText}`);
+      }
+      const data = await response.json();
+      setWarehouses(data.warehouses || []);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to fetch warehouses';
+      console.error(msg);
+      setWarehouseError(msg);
+    } finally {
+      setWarehousesLoading(false);
+    }
+  }, [accessToken]);
 
   const fetchPermissionsForRole = React.useCallback(async (roleId: string) => {
     if (!accessToken) return;
-
     setPermissionsLoading(true);
     try {
-      // Fetch the selected role with permissions
       const selectedRole = await RoleService.getRole(roleId, accessToken);
-      const rolePermissionIds = new Set(selectedRole.permissions?.map((p) => p.id) || []);
+      const roleCodes = new Set(selectedRole.permissions?.map((p) => p.code) || []);
+      setRolePermissionCodes(roleCodes);
 
-      // Fetch all grouped permissions
       const groupedResponse = await RoleService.getGroupedPermissions(accessToken);
-      const groupedData = groupedResponse.data || {};
 
-      // Transform API response to UI format
-      const groups = transformPermissionsToGroups(groupedData, rolePermissionIds);
-      setPermissionGroups(groups);
+      // Build module view showing only permissions this role has
+      const filteredModules: ModuleGroup[] = (groupedResponse.modules ?? [])
+        .map((mod) => ({
+          ...mod,
+          resources: mod.resources
+            .map((res) => ({
+              ...res,
+              permissions: res.permissions.filter((p) => roleCodes.has(p.code)),
+            }))
+            .filter((res) => res.permissions.length > 0),
+        }))
+        .filter((mod) => mod.resources.length > 0);
+
+      setRoleModules(filteredModules);
     } catch (error) {
       console.error('Failed to fetch permissions:', error);
       setErrorMessage('Failed to load permissions. Please try again.');
     } finally {
       setPermissionsLoading(false);
     }
-  }, [accessToken, transformPermissionsToGroups]);
+  }, [accessToken]);
 
-  // Fetch roles when modal opens
   React.useEffect(() => {
     if (open && accessToken) {
       fetchRoles();
+      fetchWarehouses();
     }
-  }, [open, accessToken, fetchRoles]);
+  }, [open, accessToken, fetchRoles, fetchWarehouses]);
 
-  // Fetch permissions when role is selected
   React.useEffect(() => {
     if (selectedRoleId && accessToken) {
       fetchPermissionsForRole(selectedRoleId);
     } else {
-      // Reset permissions when no role is selected
-      setPermissionGroups([]);
+      setRoleModules([]);
+      setRolePermissionCodes(new Set());
     }
   }, [selectedRoleId, accessToken, fetchPermissionsForRole]);
 
-  const togglePermission = (groupIndex: number, permissionIndex: number) => {
-    setPermissionGroups((prev) => {
-      const newGroups = [...prev];
-      newGroups[groupIndex].permissions[permissionIndex].checked = !newGroups[groupIndex].permissions[permissionIndex].checked;
-      return newGroups;
-    });
-  };
+  const selectedRole = roles.find((r) => r.id === selectedRoleId);
+  const isScopedWmsRole = selectedRole ? SCOPED_WMS_ROLE_NAMES.includes(selectedRole.name) : false;
+  const isGlobalWmsRole = selectedRole ? GLOBAL_WMS_ROLE_NAMES.includes(selectedRole.name) : false;
 
   const handleFormSubmit = React.useCallback(async (data: InviteUserFormData) => {
     if (!accessToken) {
       setErrorMessage('You must be logged in to invite users');
       return;
     }
-
+    if (isScopedWmsRole && selectedWarehouseIds.size === 0) {
+      setShowWarehouseValidation(true);
+      setErrorMessage('Please select at least one warehouse for this role');
+      return;
+    }
     setIsSubmitting(true);
     setErrorMessage('');
-
     try {
       const payload: InviteUserPayload = {
         email: data.email,
@@ -183,48 +202,117 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
         last_name: data.last_name,
         role_id: data.role_id,
         message: data.message,
+        organization_id: user?.organization_id ?? undefined,
+        extra_data: {
+          warehouse_ids: Array.from(selectedWarehouseIds),
+          warehouse_role: warehouseRole,
+        },
       };
-
       await UserService.inviteUser(payload, accessToken);
 
-      // Reset form and close modal
+      // Create pending warehouse assignments
+      if (isScopedWmsRole && selectedWarehouseIds.size > 0) {
+        const pendingUrl = `${environment.apiCoreUrl}/api/v1/warehouse-users/pending`;
+        await fetch(pendingUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            email: data.email,
+            warehouse_ids: Array.from(selectedWarehouseIds),
+            role: warehouseRole,
+            is_primary: false,
+          }),
+        });
+      }
+
+      // WMS Admin: auto-assign ALL warehouses with is_primary=true (global access)
+      if (isGlobalWmsRole && warehouses.length > 0) {
+        const pendingUrl = `${environment.apiCoreUrl}/api/v1/warehouse-users/pending`;
+        await fetch(pendingUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            email: data.email,
+            warehouse_ids: warehouses.map((w) => w.id),
+            role: 'supervisor',
+            is_primary: true,
+          }),
+        });
+      }
+
       reset();
-      setPermissionGroups((prev) =>
-        prev.map((group) => ({
-          ...group,
-          permissions: group.permissions.map((p) => ({ ...p, checked: false })),
-        })),
-      );
+      setSelectedRoleId('');
+      setRoleModules([]);
+      setSelectedWarehouseIds(new Set());
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
-      if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('An unexpected error occurred. Please try again.');
-      }
+      setErrorMessage(error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [accessToken, reset, onOpenChange, onSuccess]);
+  }, [
+    accessToken,
+    reset,
+    onOpenChange,
+    onSuccess,
+    user?.organization_id,
+    isScopedWmsRole,
+    selectedWarehouseIds,
+    warehouseRole,
+    selectedRole?.name,
+  ]);
 
   const handleClose = () => {
     reset();
     setErrorMessage('');
     setSelectedRoleId('');
-    setPermissionGroups([]);
+    setRoleModules([]);
+    setSelectedWarehouseIds(new Set());
+    setWarehouseError('');
+    setShowWarehouseValidation(false);
     onOpenChange(false);
   };
 
   const handleRoleChange = (roleId: string) => {
     setValue('role_id', roleId);
     setSelectedRoleId(roleId);
+    setSelectedWarehouseIds(new Set());
+    setWarehouseError('');
+    setShowWarehouseValidation(false);
+    // Default warehouse_role based on role name
+    const role = roles.find((r) => r.id === roleId);
+    const name = role?.name ?? '';
+    if (name === 'WMS Admin') setWarehouseRole('supervisor');
+    else if (name === 'WMS Manager') setWarehouseRole('manager');
+    else if (name === 'WMS Operator') setWarehouseRole('operator');
+    else if (name === 'ASN Coordinator') setWarehouseRole('coordinator');
+    else setWarehouseRole('operator');
+  };
+
+  // No auto-select needed — WMS Admin doesn't show the warehouse picker
+
+  const toggleWarehouse = (warehouseId: string) => {
+    setSelectedWarehouseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(warehouseId)) next.delete(warehouseId);
+      else next.add(warehouseId);
+      return next;
+    });
+    setShowWarehouseValidation(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl flex flex-col max-h-[90vh] p-0 gap-0">
+        {/* Fixed header */}
+        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#3058EE] to-[#7D97F6]">
               <UserPlus className="h-5 w-5 text-white" />
@@ -236,123 +324,186 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-          {/* Email Address */}
-          <div className="space-y-2">
-            <Label htmlFor="email">
-              Email Address <span className="text-destructive">*</span>
-            </Label>
-            <Input id="email"
-              type="email"
-              placeholder="user@example.com"
-              {...register('email')}
-              className={errors.email ? 'border-destructive' : ''}/>
-            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-            <p className="text-xs text-muted-foreground">Invitation will be sent to this email</p>
-          </div>
-
-          {/* First Name and Last Name */}
-          <div className="grid grid-cols-2 gap-4">
+        {/* Scrollable form body */}
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+            {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="first_name">
-                First Name <span className="text-destructive">*</span>
+              <Label htmlFor="email">
+                Email Address <span className="text-destructive">*</span>
               </Label>
-              <Input id="first_name" placeholder="John" {...register('first_name')} className={errors.first_name ? 'border-destructive' : ''} />
-              {errors.first_name && <p className="text-sm text-destructive">{errors.first_name.message}</p>}
+              <Input
+                id="email"
+                type="email"
+                placeholder="user@example.com"
+                {...register('email')}
+                className={errors.email ? 'border-destructive' : ''}
+              />
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+              <p className="text-xs text-muted-foreground">Invitation will be sent to this email</p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="last_name">
-                Last Name <span className="text-destructive">*</span>
-              </Label>
-              <Input id="last_name" placeholder="Doe" {...register('last_name')} className={errors.last_name ? 'border-destructive' : ''} />
-              {errors.last_name && <p className="text-sm text-destructive">{errors.last_name.message}</p>}
+            {/* Name */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="first_name">
+                  First Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="first_name"
+                  placeholder="John"
+                  {...register('first_name')}
+                  className={errors.first_name ? 'border-destructive' : ''}
+                />
+                {errors.first_name && <p className="text-sm text-destructive">{errors.first_name.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="last_name">
+                  Last Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="last_name"
+                  placeholder="Doe"
+                  {...register('last_name')}
+                  className={errors.last_name ? 'border-destructive' : ''}
+                />
+                {errors.last_name && <p className="text-sm text-destructive">{errors.last_name.message}</p>}
+              </div>
             </div>
-          </div>
 
-          {/* Assign Role */}
-          <div className="space-y-2">
-            <Label htmlFor="role_id">Assign Role</Label>
-            <Select onValueChange={handleRoleChange} value={selectedRoleId} disabled={rolesLoading}>
-              <SelectTrigger>
-                <SelectValue placeholder={rolesLoading ? 'Loading roles...' : 'Choose a role'} />
-              </SelectTrigger>
-              <SelectContent>
-                {roles.length === 0 && !rolesLoading && (
-                  <SelectItem value="" disabled>No roles available</SelectItem>
-                )}
-                {roles.map((role) => (
-                  <SelectItem key={role.id} value={role.id}>
-                    {role.name}
-                    {role.description && <span className="text-muted-foreground ml-2">({role.description})</span>}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">Select primary role for this user</p>
-          </div>
+            {/* Role selector */}
+            <div className="space-y-2">
+              <Label htmlFor="role_id">Assign Role</Label>
+              <Select onValueChange={handleRoleChange} value={selectedRoleId} disabled={rolesLoading}>
+                <SelectTrigger>
+                  <SelectValue placeholder={rolesLoading ? 'Loading roles...' : 'Choose a role'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.length === 0 && !rolesLoading && (
+                    <SelectItem value="" disabled>No roles available</SelectItem>
+                  )}
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      <div className="flex flex-col">
+                        <span>{role.name}</span>
+                        {role.description && (
+                          <span className="text-xs text-muted-foreground">{role.description}</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Select the primary role for this user</p>
+            </div>
 
-          {/* Role Permissions */}
-          {selectedRoleId && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-sm">Role Permissions</h3>
-                <p className="text-xs text-muted-foreground">
-                  {permissionsLoading ? 'Loading permissions...' : 'Permissions assigned to the selected role'}
+            {/* Warehouse assignment for scoped WMS roles */}
+            {selectedRoleId && isGlobalWmsRole && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-700">
+                <Info className="h-4 w-4 shrink-0" />
+                <p className="text-sm">
+                  WMS Admin has access to <strong>all warehouses</strong> by default. No warehouse selection needed.
                 </p>
               </div>
-
-              {permissionsLoading ? (
-                <div className="flex items-center justify-center p-8">
-                  <p className="text-sm text-muted-foreground">Loading permissions...</p>
+            )}
+            {selectedRoleId && isScopedWmsRole && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="font-semibold">Assign Warehouses <span className="text-destructive">*</span></Label>
+                  <p className="text-xs text-muted-foreground">
+                    {warehousesLoading
+                      ? 'Loading warehouses...'
+                      : 'Select the warehouses this user will have access to'}
+                  </p>
                 </div>
-              ) : permissionGroups.length === 0 ? (
-                <div className="flex items-center justify-center p-8">
-                  <p className="text-sm text-muted-foreground">No permissions available</p>
-                </div>
-              ) : (
-                <div className="space-y-4 max-h-[400px] overflow-y-auto">
-                  {permissionGroups.map((group, groupIndex) => (
-                    <div key={group.title} className="rounded-lg border border-border p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <group.icon className="h-5 w-5 text-muted-foreground" />
-                        <h4 className="font-semibold text-sm">{group.title}</h4>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {group.permissions.map((permission, permissionIndex) => (
-                          <div key={permission.id} className="flex items-center space-x-2">
-                            <Checkbox id={permission.id}
-                              checked={permission.checked}
-                              disabled={true}
-                              onCheckedChange={() => togglePermission(groupIndex, permissionIndex)}/>
-                            <label htmlFor={permission.id}
-                              className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                              {permission.name}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
-          {/* Error Message */}
-          {errorMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
-              <p className="text-sm">{errorMessage}</p>
-            </div>
-          )}
+                {warehousesLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading warehouses...</p>
+                ) : warehouseError ? (
+                  <p className="text-sm text-destructive">{warehouseError}</p>
+                ) : warehouses.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No warehouses available</p>
+                ) : (
+                  <div className="max-h-[200px] overflow-y-auto rounded-lg border p-2 space-y-1">
+                    {warehouses.map((wh) => (
+                      <label
+                        key={wh.id}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedWarehouseIds.has(wh.id)}
+                          onCheckedChange={() => toggleWarehouse(wh.id)}
+                        />
+                        <span className="text-sm">
+                          {wh.name} {wh.code ? `(${wh.code})` : ''}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
 
-          <DialogFooter>
+                {showWarehouseValidation && selectedWarehouseIds.size === 0 && isScopedWmsRole && (
+                  <p className="text-xs text-destructive">At least one warehouse must be selected</p>
+                )}
+              </div>
+            )}
+
+            {/* Role permissions preview — read-only module view */}
+            {selectedRoleId && (
+              <div className="space-y-3">
+                <div>
+                  <h3 className="font-semibold text-sm">
+                    Permissions granted by{' '}
+                    <span className="text-[#3058EE]">{selectedRole?.name ?? 'this role'}</span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {permissionsLoading
+                      ? 'Loading permissions...'
+                      : roleModules.length === 0
+                        ? 'This role has no specific module permissions'
+                        : 'The user will have access to the following features'}
+                  </p>
+                </div>
+
+                {permissionsLoading ? (
+                  <div className="flex items-center justify-center p-8">
+                    <p className="text-sm text-muted-foreground">Loading permissions...</p>
+                  </div>
+                ) : roleModules.length > 0 ? (
+                  <div className="max-h-[320px] overflow-y-auto rounded-lg border p-1">
+                    <ModulePermissionMatrix
+                      modules={roleModules}
+                      selectedPermissions={rolePermissionCodes}
+                      onPermissionToggle={() => { /* read-only */ }}
+                      onBulkSelect={() => { /* read-only */ }}
+                      readOnly
+                    />
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {/* Error */}
+            {errorMessage && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
+                <p className="text-sm">{errorMessage}</p>
+              </div>
+            )}
+
+          </div>{/* end scrollable body */}
+
+          {/* Fixed footer */}
+          <div className="px-6 py-4 border-t shrink-0 flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white"
+            >
               {isSubmitting ? (
-                <>Sending...</>
+                'Sending...'
               ) : (
                 <>
                   <Send className="mr-2 h-4 w-4" />
@@ -360,7 +511,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
                 </>
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

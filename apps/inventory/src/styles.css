@@ -2,11 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Leaflet / Tailwind compatibility ───────────────────────────────────
+   Tailwind's preflight reset makes all images block-level with
+   max-width:100%. Leaflet tiles are absolutely-positioned inline
+   images — this reset breaks tile alignment and causes grey gaps.
+   The overrides below restore Leaflet's expected defaults. ─────────── */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
+.leaflet-container img,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+  max-width: none !important;
+}
+
+.leaflet-tile {
+  visibility: inherit !important;
+}
+
 /* Themed scrollbar */
 @layer base {
   * {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  @keyframes flash-green {
+    0% { background-color: rgba(34, 197, 94, 0.25); }
+    50% { background-color: rgba(34, 197, 94, 0.12); }
+    100% { background-color: rgba(34, 197, 94, 0.06); }
+  }
+
+  .animate-flash-green {
+    animation: flash-green 2s ease-out forwards;
   }
 
   *::-webkit-scrollbar {

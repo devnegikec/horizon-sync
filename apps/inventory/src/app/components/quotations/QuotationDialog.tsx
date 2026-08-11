@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 
-import { useUserStore } from '@horizon-sync/store';
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
 import { Separator } from '@horizon-sync/ui/components';
 
 import type { CustomerResponse } from '../../types/customer.types';
@@ -16,6 +16,7 @@ import { QuotationLineItemsTable } from './QuotationLineItemsTable';
 
 export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving }: QuotationDialogProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency) || 'USD';
   const isEdit = !!quotation;
 
   const [formData, setFormData] = React.useState<QuotationFormState>({
@@ -23,7 +24,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
     customer_id: '',
     quotation_date: new Date().toISOString().slice(0, 10),
     valid_until: new Date().toISOString().slice(0, 10),
-    currency: 'INR',
+    currency: baseCurrency,
     status: 'draft',
     remarks: '',
     discount_type: 'percentage',
@@ -61,7 +62,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
         customer_id: '',
         quotation_date: new Date().toISOString().slice(0, 10),
         valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-        currency: 'INR',
+        currency: baseCurrency,
         status: 'draft',
         remarks: '',
         discount_type: 'percentage',
@@ -69,7 +70,7 @@ export function QuotationDialog({ open, onOpenChange, quotation, onSave, saving 
       });
       setItems([{ ...emptyItem, sort_order: 1 }]);
     }
-  }, [quotation]);
+  }, [quotation, baseCurrency]);
 
   React.useEffect(() => {
     initializeFormData();

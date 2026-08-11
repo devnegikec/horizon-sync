@@ -10,9 +10,9 @@ import * as fc from 'fast-check';
 import { render } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { GlobalSearch } from '../../../../../app/features/search/../../../../app/features/search/components/GlobalSearch';
-import { LocalSearch } from '../../../../../app/features/search/../../../../app/features/search/components/LocalSearch';
-import { SearchResultItem } from '../../../../../app/features/search/../../../../app/features/search/components/SearchResultItem';
+import { GlobalSearch } from '../../../../../app/features/search/components/GlobalSearch';
+import { LocalSearch } from '../../../../../app/features/search/components/LocalSearch';
+import { SearchResultItem } from '../../../../../app/features/search/components/SearchResultItem';
 import { SearchService } from '../../../../../app/features/search/services/search.service';
 import type { SearchResponse, SearchResult } from '../../../../../app/features/search/types/search.types';
 

@@ -292,9 +292,11 @@ export interface StockEntryFilters {
   status: string;
   from_warehouse_id: string;
   to_warehouse_id: string;
+  warehouse_id: string;
 }
 
 export interface StockReconciliationFilters {
   search: string;
   status: string;
+  warehouse_id: string;
 }

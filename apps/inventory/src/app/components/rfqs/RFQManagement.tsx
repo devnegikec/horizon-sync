@@ -1,10 +1,10 @@
 import * as React from 'react';
 
-import { AlertTriangle } from 'lucide-react';
-
 import { Card, CardContent } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 
 import { useRFQManagement } from '../../hooks/useRFQManagement';
+import { ErrorBanner } from '../common';
 
 import {
   RFQHeader,
@@ -41,21 +41,15 @@ export function RFQManagement() {
     handleTableReady,
     handleSave,
     serverPaginationConfig,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   } = useRFQManagement();
 
   // Error display component
   const ErrorDisplay = React.useMemo(() => {
     if (!error) return null;
-    return (
-      <Card className="border-destructive">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm font-medium">Error loading RFQs: {error}</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <ErrorBanner entity="RFQs" message={error} />;
   }, [error]);
 
   return (
@@ -91,6 +85,17 @@ export function RFQManagement() {
 
       {/* Create/Edit Dialog */}
       <RFQDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} rfq={editRFQ} onSave={handleSave} saving={saving} />
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.message || ''}
+        confirmLabel={confirmAction?.type === 'delete' ? 'Delete' : confirmAction?.type === 'close' ? 'Close' : 'Send'}
+        variant={confirmAction?.type === 'send' ? 'default' : 'destructive'}
+        onConfirm={executeConfirmedAction}
+      />
     </div>
   );
 }

@@ -4,7 +4,7 @@
  */
 
 import { renderHook, act } from '@testing-library/react';
-import { useSearchNavigation } from '../../../../../app/features/search/../../../../app/features/search/hooks/useSearchNavigation';
+import { useSearchNavigation } from '../../../../../app/features/search/hooks/useSearchNavigation';
 import { SearchResult } from '../../../../../app/features/search/types/search.types';
 
 describe('useSearchNavigation', () => {

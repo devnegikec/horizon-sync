@@ -143,6 +143,11 @@ export function Step2PricingOrdering({ formData, setFormData }: Step2PricingOrde
                             placeholder="0 (unlimited)"/>
                     </div>
                 </div>
+                {formData.maxOrderQty > 0 && formData.minOrderQty > formData.maxOrderQty && (
+                    <p className="text-xs text-red-500">
+                        Maximum order quantity must be ≥ minimum order quantity
+                    </p>
+                )}
             </div>
 
             {/* Quality Inspection Section */}

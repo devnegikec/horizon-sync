@@ -1,5 +1,6 @@
 export { CustomerAddressBlock } from './CustomerAddressBlock';
 export type { CustomerAddressData } from './CustomerAddressBlock';
+export { ErrorBanner } from './ErrorBanner';
 export { PartyInfoCard } from './PartyInfoCard';
 export type { PartyInfoData } from './PartyInfoCard';
 export { CurrencySelect } from './CurrencySelect';

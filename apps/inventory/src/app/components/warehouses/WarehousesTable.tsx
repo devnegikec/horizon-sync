@@ -64,6 +64,7 @@ export interface WarehousesTableProps {
   onView: (warehouse: Warehouse) => void;
   onEdit: (warehouse: Warehouse) => void;
   onDelete: (warehouse: Warehouse) => void;
+  onToggleStatus?: (warehouse: Warehouse) => void;
   onCreateWarehouse: () => void;
   onTableReady?: (table: Table<Warehouse>) => void;
   serverPagination?: {
@@ -82,6 +83,7 @@ export function WarehousesTable({
   onView,
   onEdit,
   onDelete,
+  onToggleStatus,
   onCreateWarehouse,
   onTableReady,
   serverPagination
@@ -214,12 +216,12 @@ export function WarehousesTable({
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {warehouse.is_active ? (
-                    <DropdownMenuItem onClick={() => onDelete(warehouse)}>
+                    <DropdownMenuItem onClick={() => onToggleStatus?.(warehouse)}>
                       <PowerOff className="mr-2 h-4 w-4" />
                       Deactivate
                     </DropdownMenuItem>
                   ) : (
-                    <DropdownMenuItem onClick={() => onDelete(warehouse)}>
+                    <DropdownMenuItem onClick={() => onToggleStatus?.(warehouse)}>
                       <Power className="mr-2 h-4 w-4" />
                       Activate
                     </DropdownMenuItem>
@@ -236,7 +238,7 @@ export function WarehousesTable({
         enableSorting: false,
       },
     ],
-    [onView, onEdit, onDelete],
+    [onView, onEdit, onDelete, onToggleStatus],
   );
 
   const renderViewOptions = (table: Table<Warehouse>) => {

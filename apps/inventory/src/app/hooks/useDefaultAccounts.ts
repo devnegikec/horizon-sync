@@ -4,6 +4,7 @@ import { useUserStore } from '@horizon-sync/store';
 
 import { accountApi } from '../utility/api/accounts';
 import type { DefaultAccountMapping } from '../types/account.types';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export function useDefaultAccounts() {
   const { accessToken } = useUserStore();
@@ -20,7 +21,7 @@ export function useDefaultAccounts() {
       const response = await accountApi.getDefaultAccounts(accessToken);
       setDefaultAccounts(response as DefaultAccountMapping[]);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load default accounts';
+      const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
     } finally {
       setLoading(false);

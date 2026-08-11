@@ -8,6 +8,7 @@ import type {
   UpdatePaymentPayload,
 } from '../types/payment.types';
 import { paymentApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export function usePaymentActions() {
   const { toast } = useToast();
@@ -23,7 +24,7 @@ export function usePaymentActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create payment';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -48,7 +49,7 @@ export function usePaymentActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update payment';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -70,7 +71,7 @@ export function usePaymentActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to confirm payment';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -95,7 +96,7 @@ export function usePaymentActions() {
       });
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to cancel payment';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -126,7 +127,7 @@ export function usePaymentActions() {
       });
       return true;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to download receipt';
+      const errorMessage = getFriendlyErrorMessage(err);
       toast({
         title: 'Error',
         description: errorMessage,
@@ -147,3 +148,4 @@ export function usePaymentActions() {
     downloadReceipt,
   };
 }
+

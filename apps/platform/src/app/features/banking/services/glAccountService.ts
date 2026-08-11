@@ -67,7 +67,7 @@ class GLAccountService {
 
     // Get a specific GL Account by ID
     async getGLAccount(accountId: string): Promise<GLAccount> {
-        return this.request<GLAccount>(`/api/v1/chart-of-accounts/${accountId}`);
+        return this.request<GLAccount>(`/chart-of-accounts/${accountId}`);
     }
 
 

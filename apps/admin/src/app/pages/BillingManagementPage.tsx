@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 
 import { Building2, Calendar, DollarSign, FileText, TrendingUp, Download, Plus, CreditCard, Filter, MoreHorizontal, Eye, CheckCircle, Mail } from 'lucide-react';
+import { CurrencyIcon } from '@horizon-sync/ui';
 
 import {
     Card,
@@ -32,6 +33,8 @@ import { toast } from '@horizon-sync/ui';
 import { BillingManagementService } from '../services/billing-management.service';
 import { AdminInvoiceService } from '../services/admin-invoice.service';
 import { PaymentReminderService } from '../services/payment-reminder.service';
+import { usePermissions } from '../hooks/usePermissions';
+import { SYSTEM_ADMIN_PERMISSIONS } from '../types/permissions';
 import type {
     SubscriptionInvoiceCreateRequest,
     SubscriptionInvoiceResponse,
@@ -130,6 +133,9 @@ function getTierBadge(tier: string) {
 }
 
 export function BillingManagementPage() {
+    const { hasPermission } = usePermissions();
+    const canCreate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.BILLING_CREATE);
+    const canUpdate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.BILLING_UPDATE);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [organizationBilling, setOrganizationBilling] = useState<OrganizationBillingInfo[]>([]);
     const [summary, setSummary] = useState<BillingSummary | null>(null);
@@ -552,13 +558,15 @@ export function BillingManagementPage() {
                         <Download className="h-4 w-4 mr-2" />
                         Export
                     </Button>
-                    <Button
-                        onClick={() => setShowCreateInvoiceModal(true)}
-                        size="sm"
-                    >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Invoice
-                    </Button>
+                    {canCreate && (
+                        <Button
+                            onClick={() => setShowCreateInvoiceModal(true)}
+                            size="sm"
+                        >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Invoice
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -568,7 +576,7 @@ export function BillingManagementPage() {
                     <StatCard
                         title="Total Revenue"
                         value={formatCurrency(summary.total_paid)}
-                        icon={DollarSign}
+                        icon={CurrencyIcon}
                         iconBg="bg-green-50"
                         iconColor="text-green-600"
                     />

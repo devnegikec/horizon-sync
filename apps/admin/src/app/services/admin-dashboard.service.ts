@@ -39,7 +39,8 @@ export class AdminDashboardService {
       } catch {
         // ignore JSON parse failure
       }
-      handleApiError(error);
+      // Suppress toast for 403 — dashboard handles it gracefully
+      handleApiError(error, { silent403: true });
     }
 
     if (response.status === 204) {

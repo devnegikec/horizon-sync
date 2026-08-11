@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { Users, MoreHorizontal, Eye, Edit, Key, Mail, Shield, Clock, UserPlus } from 'lucide-react';
+import { Users, MoreHorizontal, Eye, Edit, Key, Mail, Shield, Clock, UserPlus, ShieldCheck } from 'lucide-react';
 
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import { Avatar, AvatarFallback, AvatarImage } from '@horizon-sync/ui/components/ui/avatar';
@@ -30,6 +30,7 @@ export interface UsersTableProps {
   onEdit?: (user: User) => void;
   onResetPassword?: (user: User) => void;
   onManagePermissions?: (user: User) => void;
+  onManageRoles?: (user: User) => void;
   onResendInvitation?: (user: User) => void;
   onInviteUser: () => void;
   onTableReady?: (table: Table<User>) => void;
@@ -50,6 +51,7 @@ export function UsersTable({
   onEdit,
   onResetPassword,
   onManagePermissions,
+  onManageRoles,
   onResendInvitation,
   onInviteUser,
   onTableReady,
@@ -107,7 +109,20 @@ export function UsersTable({
         accessorKey: 'user_type',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Role" />,
         cell: ({ row }) => {
-          const typeBadge = getUserTypeBadge(row.original.user_type);
+          const user = row.original;
+          // Show org-level role names if available, fall back to user_type badge
+          if (user.roles && user.roles.length > 0) {
+            return (
+              <div className="flex flex-wrap gap-1">
+                {user.roles.map((role) => (
+                  <Badge key={role} variant="secondary" className="text-xs">
+                    {role}
+                  </Badge>
+                ))}
+              </div>
+            );
+          }
+          const typeBadge = getUserTypeBadge(user.user_type);
           return <Badge variant={typeBadge.variant}>{typeBadge.label}</Badge>;
         },
       },
@@ -194,7 +209,13 @@ export function UsersTable({
                       Manage Permissions
                     </DropdownMenuItem>
                   )}
-                  {onResendInvitation && user.status === 'pending' && (
+                  {onManageRoles && (
+                    <DropdownMenuItem onClick={() => onManageRoles(user)}>
+                      <ShieldCheck className="mr-2 h-4 w-4" />
+                      Manage Roles
+                    </DropdownMenuItem>
+                  )}
+                  {onResendInvitation && (user.status === 'pending' || user.status === 'expired') && (
                     <DropdownMenuItem onClick={() => onResendInvitation(user)}>
                       <Mail className="mr-2 h-4 w-4" />
                       Resend Invitation
@@ -208,7 +229,7 @@ export function UsersTable({
         enableSorting: false,
       },
     ],
-    [onView, onEdit, onResetPassword, onManagePermissions, onResendInvitation]
+    [onView, onEdit, onResetPassword, onManagePermissions, onManageRoles, onResendInvitation]
   );
 
   const renderViewOptions = (table: Table<User>) => {
@@ -258,7 +279,7 @@ export function UsersTable({
                     Invite User
                   </Button>
                 ) : undefined
-              }/>
+              } />
           </div>
         </CardContent>
       </Card>
@@ -283,7 +304,7 @@ export function UsersTable({
           filterPlaceholder="Search by name or email..."
           renderViewOptions={renderViewOptions}
           fixedHeader
-          maxHeight="auto"/>
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );

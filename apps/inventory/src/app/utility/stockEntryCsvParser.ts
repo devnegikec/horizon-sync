@@ -29,11 +29,41 @@ export interface ParseResult {
 //  Sample CSV                                                         //
 // ------------------------------------------------------------------ //
 
-export const STOCK_ENTRY_SAMPLE_CSV = [
-  'Stock Entry Type,Posting Date,Posting Time,From Warehouse Code,To Warehouse Code,Item Code,Description,Remarks,Quantity,UOM,Basic Rate,Valuation Rate,Batch Number',
-  'material_receipt,2026-02-25,09:00,,WH-MXR-02,ITM-2026-00001,test description,no remarks,10,KG,908.00,807.50,BT-008',
-  'material_issue,2026-02-25,09:00,WH-MXR-02,,ITM-2026-00002,another item,,5,PCS,150.00,150.00,',
-].join('\n');
+/** Default static sample when no items are available. */
+const DEFAULT_SAMPLE_ROWS = [
+  'material_receipt,2026-06-12,09:00,<YOUR_WAREHOUSE_CODE>,ITM-001,Sample Item 1,Inbound shipment,10,Nos,100.00,100.00,BATCH-001',
+  'material_receipt,2026-06-12,09:00,<YOUR_WAREHOUSE_CODE>,ITM-002,Sample Item 2,,25,Nos,50.00,50.00,',
+];
+
+/**
+ * Build a sample CSV string for stock entry.
+ * If items are provided, uses actual item codes/names from the user's item list
+ * for a more convenient import experience.
+ */
+export function buildStockEntrySampleCsv(
+  items?: Array<{ item_code: string; item_name: string; uom?: string }>,
+  warehouseCode?: string,
+): string {
+  const header = 'Stock Entry Type,Posting Date,Posting Time,To Warehouse Code,Item Code,Description,Remarks,Quantity,UOM,Basic Rate,Valuation Rate,Batch Number';
+  const whCode = warehouseCode || '<YOUR_WAREHOUSE_CODE>';
+
+  if (!items || items.length === 0) {
+    return [header, ...DEFAULT_SAMPLE_ROWS.map((r) => r.replace('<YOUR_WAREHOUSE_CODE>', whCode))].join('\n');
+  }
+
+  // Use the first few actual items from the user's item list
+  const sampleItems = items.slice(0, 3);
+  const rows = sampleItems.map((item, idx) => {
+    const qty = (idx + 1) * 10;
+    const rate = (idx + 1) * 100;
+    return `material_receipt,${new Date().toISOString().split('T')[0]},09:00,${whCode},${item.item_code},${item.item_name.replace(/,/g, ' ')},Inbound shipment,${qty},${item.uom || 'Nos'},${rate}.00,${rate}.00,`;
+  });
+
+  return [header, ...rows].join('\n');
+}
+
+/** Legacy static export (for backward compatibility if used elsewhere). */
+export const STOCK_ENTRY_SAMPLE_CSV = buildStockEntrySampleCsv();
 
 // ------------------------------------------------------------------ //
 //  Column index map                                                   //

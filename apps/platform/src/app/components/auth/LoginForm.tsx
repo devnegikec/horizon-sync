@@ -32,28 +32,29 @@ export function LoginForm() {
   React.useEffect(() => {
     // Debug: trace login form state to help diagnose persistent loader
     // Remove or disable this in production once the issue is resolved
-    // eslint-disable-next-line no-console
+     
     console.debug('LoginForm state:', { loading, error, success, rememberMe });
   }, [loading, error, success, rememberMe]);
 
   return (
-    <Card className="w-full max-w-md border-none shadow-2xl">
+    <Card className="w-full max-w-md border-none shadow-2xl" data-testid="login-card">
       <LoginHeader />
       <CardContent>
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4" data-testid="login-form">
           <FormInput id="email"
             label="Work Email"
             type="email"
             placeholder="john.doe@company.com"
             register={register('email')}
-            error={errors.email?.message}/>
+            error={errors.email?.message}
+            data-testid="login-email"/>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">
                 Password <span className="text-destructive">*</span>
               </Label>
-              <a href="/forgot-password" title="Forgot Password" className="text-sm text-[#3058EE] hover:underline">
+              <a href="/forgot-password" title="Forgot Password" className="text-sm text-[#3058EE] hover:underline" data-testid="login-forgot-password">
                 Forgot Password?
               </a>
             </div>
@@ -62,6 +63,7 @@ export function LoginForm() {
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Enter your password"
                 autoComplete="current-password"
+                data-testid="login-password"
                 {...register('password')}
                 className={errors.password ? 'border-destructive pr-10' : 'pr-10'} />
               <Button type="button"
@@ -78,7 +80,7 @@ export function LoginForm() {
                 )}
               </Button>
             </div>
-            {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+            {errors.password && <p className="text-sm text-destructive" data-testid="login-password-error">{errors.password.message}</p>}
           </div>
 
           {!isLocal && (
@@ -94,10 +96,10 @@ export function LoginForm() {
             </div>
           )}
 
-          {success && <StatusAlert message={success} variant="success" />}
-          {error && <StatusAlert message={error} variant="error" />}
+          {success && <StatusAlert message={success} variant="success" data-testid="login-success" />}
+          {error && <StatusAlert message={error} variant="error" data-testid="login-error" />}
 
-          <Button type="submit" className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] text-white" disabled={loading}>
+          <Button type="submit" className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] text-white" disabled={loading} data-testid="login-submit">
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...

@@ -5,6 +5,7 @@ export interface ApiItem {
   item_name: string;
   item_type: string;
   uom: string | null;
+  sku?: string | null;
   item_group_id: string | null;
   item_group_name: string | null;
   standard_rate: string | null;
@@ -33,6 +34,7 @@ export interface ItemsResponse {
 export interface CreateItemPayload {
   item_code: string;
   item_name: string;
+  sku?: string | null;
   description: string;
   item_group_id: string;
   item_type: string;
@@ -82,6 +84,7 @@ export interface UpdateItemPayload {
   organization_id?: string;
   item_code: string;
   item_name: string;
+  sku?: string | null;
   description: string;
   item_group_id: string;
   item_group: UpdateItemGroupRef;

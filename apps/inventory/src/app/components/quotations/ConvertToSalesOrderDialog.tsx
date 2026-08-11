@@ -3,7 +3,9 @@ import * as React from 'react';
 import { ArrowRight, FileText } from 'lucide-react';
 
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Separator } from '@horizon-sync/ui/components';
+import { useCurrencyStore } from '@horizon-sync/store';
 
+import { getCurrencySymbol } from '../../types/currency.types';
 import type { Quotation } from '../../types/quotation.types';
 
 import { LineItemTable } from './LineItemTable';
@@ -28,6 +30,7 @@ export function ConvertToSalesOrderDialog({
   onConvert, 
   converting 
 }: ConvertToSalesOrderDialogProps) {
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency) || 'USD';
   const [formData, setFormData] = React.useState({
     order_date: new Date().toISOString().slice(0, 10),
     delivery_date: '',
@@ -44,7 +47,14 @@ export function ConvertToSalesOrderDialog({
   }, [open, quotation]);
 
   const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+      // If order_date changes and delivery_date is now before it, clear delivery_date
+      if (field === 'order_date' && prev.delivery_date && value > prev.delivery_date) {
+        updated.delivery_date = '';
+      }
+      return updated;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -117,7 +127,7 @@ export function ConvertToSalesOrderDialog({
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Grand Total</p>
-                <p className="font-medium">{quotation.currency} {Number(quotation.grand_total).toFixed(2)}</p>
+                <p className="font-medium">{getCurrencySymbol(quotation.currency || baseCurrency)} {Number(quotation.grand_total).toFixed(2)}</p>
               </div>
             </div>
           </div>
@@ -168,14 +178,15 @@ export function ConvertToSalesOrderDialog({
                 <Input id="delivery_date"
                   type="date"
                   value={formData.delivery_date}
+                  min={formData.order_date}
                   onChange={(e) => handleChange('delivery_date', e.target.value)}/>
               </div>
             </div>
 
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-3 text-sm">
+            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 p-3 text-sm">
               <p className="text-blue-900 dark:text-blue-100">
-                The sales order will be created with all line items from this quotation. 
-                Customer, currency, and remarks will be copied automatically.
+                The sales order will be created with all line items from this Quotation. 
+                Customer, Currency, and Remarks will be copied automatically.
               </p>
             </div>
           </div>

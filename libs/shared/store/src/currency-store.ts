@@ -28,10 +28,10 @@ export const useCurrencyStore = create<CurrencyStoreState>()(
       lastFetched: null,
 
       fetchCurrencies: async (apiBaseUrl: string, accessToken: string) => {
-        // Skip if already loaded (cache for 10 minutes)
-        const { lastFetched, loading } = get();
+        // Skip if already loaded (cache for 10 minutes), but always fetch if baseCurrency is null
+        const { lastFetched, loading, baseCurrency } = get();
         if (loading) return;
-        if (lastFetched && Date.now() - lastFetched < 10 * 60 * 1000) return;
+        if (baseCurrency && lastFetched && Date.now() - lastFetched < 10 * 60 * 1000) return;
 
         set({ loading: true, error: null }, false, 'fetchCurrencies/start');
 
@@ -48,17 +48,31 @@ export const useCurrencyStore = create<CurrencyStoreState>()(
           }
 
           const data = await res.json();
+          const fetchedBase = data.base_currency ?? null;
 
           set(
             {
               currencies: data.currencies ?? [],
-              baseCurrency: data.base_currency ?? null,
+              baseCurrency: fetchedBase,
               loading: false,
               lastFetched: Date.now(),
             },
             false,
             'fetchCurrencies/success'
           );
+
+          // If baseCurrency is still null/USD-default after org creation,
+          // retry once after 3s (backend seeding may still be in progress)
+          if (!fetchedBase || fetchedBase === 'USD') {
+            const retryCount = (get() as any)._retryCount ?? 0;
+            if (retryCount < 2) {
+              (get() as any)._retryCount = retryCount + 1;
+              setTimeout(() => {
+                set({ lastFetched: null }, false, 'fetchCurrencies/retryInvalidate');
+                get().fetchCurrencies(apiBaseUrl, accessToken);
+              }, 3000);
+            }
+          }
         } catch (err: any) {
           set(
             { loading: false, error: err.message || 'Failed to fetch currencies' },

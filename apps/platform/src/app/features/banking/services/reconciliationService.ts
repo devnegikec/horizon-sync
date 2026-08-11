@@ -2,7 +2,6 @@ import {
     UnreconciledTransaction,
     UnreconciledJournalEntry,
     BankAccountBalance,
-    ReconciliationFilterParams,
     SuggestedMatch,
     ReconciliationHistory,
     UndoReconciliationRequest,
@@ -10,51 +9,25 @@ import {
     ReconciliationReportData,
     ReconciliationReportFilters,
 } from '../types';
-
-// API Base URL - should come from environment config
-// Banking endpoints are on Core Service (port 8001), not Identity Service (port 8000)
-const API_BASE_URL = process.env['NX_CORE_API_BASE_URL'] || process.env['NX_API_CORE_URL'] || 'http://localhost:8001';
+import { coreApiClient } from '../../../utility/api-core';
+import { ApiError } from '@horizon-sync/utils';
 
 class ReconciliationService {
-    private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-        const url = `${API_BASE_URL}/api/v1${endpoint}`;
-
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.getAuthToken()}`,
-                ...options?.headers,
-            },
-            ...options,
-        });
-
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`API Error: ${response.status} - ${error}`);
-        }
-
-        return response.json();
-    }
-
-    private getAuthToken(): string {
-        return localStorage.getItem('auth_token') || '';
-    }
-
     // Get unreconciled transactions
     async getUnreconciledTransactions(
         bankAccountId: string,
         dateFrom: string,
         dateTo: string
     ): Promise<UnreconciledTransaction[]> {
-        const searchParams = new URLSearchParams();
-        searchParams.append('bank_account_id', bankAccountId);
-        searchParams.append('date_from', dateFrom);
-        searchParams.append('date_to', dateTo);
-
-        const queryString = searchParams.toString();
-        return this.request<UnreconciledTransaction[]>(
-            `/reconciliations/unreconciled-transactions?${queryString}`
-        );
+        try {
+            return await coreApiClient.get<UnreconciledTransaction[]>(
+                '/reconciliations/unreconciled-transactions',
+                { bank_account_id: bankAccountId, date_from: dateFrom, date_to: dateTo },
+            );
+        } catch (err) {
+            if (err instanceof ApiError && err.isFeatureDisabled) return [];
+            throw err;
+        }
     }
 
     // Get unreconciled journal entries
@@ -63,22 +36,25 @@ class ReconciliationService {
         dateFrom: string,
         dateTo: string
     ): Promise<UnreconciledJournalEntry[]> {
-        const searchParams = new URLSearchParams();
-        searchParams.append('gl_account_id', glAccountId);
-        searchParams.append('date_from', dateFrom);
-        searchParams.append('date_to', dateTo);
-
-        const queryString = searchParams.toString();
-        return this.request<UnreconciledJournalEntry[]>(
-            `/reconciliations/unreconciled-journal-entries?${queryString}`
-        );
+        try {
+            return await coreApiClient.get<UnreconciledJournalEntry[]>(
+                '/reconciliations/unreconciled-journal-entries',
+                { gl_account_id: glAccountId, date_from: dateFrom, date_to: dateTo },
+            );
+        } catch (err) {
+            if (err instanceof ApiError && err.isFeatureDisabled) return [];
+            throw err;
+        }
     }
 
     // Get bank account balance
-    async getBankAccountBalance(bankAccountId: string): Promise<BankAccountBalance> {
-        return this.request<BankAccountBalance>(
-            `/bank-accounts/${bankAccountId}/balance`
-        );
+    async getBankAccountBalance(bankAccountId: string): Promise<BankAccountBalance | null> {
+        try {
+            return await coreApiClient.get<BankAccountBalance>(`/bank-accounts/${bankAccountId}/balance`);
+        } catch (err) {
+            if (err instanceof ApiError && err.isFeatureDisabled) return null;
+            throw err;
+        }
     }
 
     // Get suggested matches
@@ -87,39 +63,26 @@ class ReconciliationService {
         dateFrom?: string,
         dateTo?: string
     ): Promise<SuggestedMatch[]> {
-        const searchParams = new URLSearchParams();
-        if (bankAccountId) searchParams.append('bank_account_id', bankAccountId);
-        if (dateFrom) searchParams.append('date_from', dateFrom);
-        if (dateTo) searchParams.append('date_to', dateTo);
-
-        const queryString = searchParams.toString();
-        const endpoint = queryString 
-            ? `/reconciliations/suggested?${queryString}`
-            : '/reconciliations/suggested';
-        
-        return this.request<SuggestedMatch[]>(endpoint);
+        try {
+            return await coreApiClient.get<SuggestedMatch[]>('/reconciliations/suggested', {
+                bank_account_id: bankAccountId,
+                date_from: dateFrom,
+                date_to: dateTo,
+            });
+        } catch (err) {
+            if (err instanceof ApiError && err.isFeatureDisabled) return [];
+            throw err;
+        }
     }
 
     // Confirm suggested match
     async confirmSuggestedMatch(reconciliationId: string, notes?: string): Promise<void> {
-        return this.request<void>(
-            `/reconciliations/${reconciliationId}/confirm`,
-            {
-                method: 'POST',
-                body: JSON.stringify({ notes }),
-            }
-        );
+        return coreApiClient.post(`/reconciliations/${reconciliationId}/confirm`, { notes });
     }
 
     // Reject suggested match
     async rejectSuggestedMatch(reconciliationId: string, reason: string): Promise<void> {
-        return this.request<void>(
-            `/reconciliations/${reconciliationId}/reject`,
-            {
-                method: 'POST',
-                body: JSON.stringify({ reason }),
-            }
-        );
+        return coreApiClient.post(`/reconciliations/${reconciliationId}/reject`, { reason });
     }
 
     // Get reconciliation history
@@ -129,18 +92,12 @@ class ReconciliationService {
         dateTo?: string,
         includeRejected: boolean = true
     ): Promise<ReconciliationHistory[]> {
-        const searchParams = new URLSearchParams();
-        if (bankAccountId) searchParams.append('bank_account_id', bankAccountId);
-        if (dateFrom) searchParams.append('date_from', dateFrom);
-        if (dateTo) searchParams.append('date_to', dateTo);
-        if (includeRejected) searchParams.append('include_rejected', 'true');
-
-        const queryString = searchParams.toString();
-        const endpoint = queryString 
-            ? `/reconciliations/history?${queryString}`
-            : '/reconciliations/history';
-        
-        return this.request<ReconciliationHistory[]>(endpoint);
+        return coreApiClient.get<ReconciliationHistory[]>('/reconciliations/history', {
+            bank_account_id: bankAccountId,
+            date_from: dateFrom,
+            date_to: dateTo,
+            include_rejected: includeRejected ? 'true' : undefined,
+        });
     }
 
     // Undo reconciliation
@@ -148,13 +105,7 @@ class ReconciliationService {
         reconciliationId: string,
         request: UndoReconciliationRequest
     ): Promise<void> {
-        return this.request<void>(
-            `/reconciliations/${reconciliationId}/undo`,
-            {
-                method: 'POST',
-                body: JSON.stringify(request),
-            }
-        );
+        return coreApiClient.post(`/reconciliations/${reconciliationId}/undo`, request);
     }
 
     // Run auto-reconciliation
@@ -163,90 +114,66 @@ class ReconciliationService {
         dateFrom: string,
         dateTo: string
     ): Promise<AutoReconciliationResult> {
-        return this.request<AutoReconciliationResult>(
-            '/reconciliations/auto-run',
-            {
-                method: 'POST',
-                body: JSON.stringify({
-                    bank_account_id: bankAccountId,
-                    date_from: dateFrom,
-                    date_to: dateTo,
-                }),
-            }
-        );
+        return coreApiClient.post<AutoReconciliationResult>('/reconciliations/auto-run', {
+            bank_account_id: bankAccountId,
+            date_from: dateFrom,
+            date_to: dateTo,
+        });
     }
 
     // Get reconciliation report
     async getReconciliationReport(
         filters: ReconciliationReportFilters
     ): Promise<ReconciliationReportData> {
-        const searchParams = new URLSearchParams();
-        if (filters.bank_account_id) searchParams.append('bank_account_id', filters.bank_account_id);
-        if (filters.date_from) searchParams.append('date_from', filters.date_from);
-        if (filters.date_to) searchParams.append('date_to', filters.date_to);
-        if (filters.status && filters.status !== 'all') searchParams.append('status', filters.status);
-
-        const queryString = searchParams.toString();
-        const endpoint = queryString 
-            ? `/reconciliations/report?${queryString}`
-            : '/reconciliations/report';
-        
-        return this.request<ReconciliationReportData>(endpoint);
+        return coreApiClient.get<ReconciliationReportData>('/reconciliations/report', {
+            bank_account_id: filters.bank_account_id,
+            date_from: filters.date_from,
+            date_to: filters.date_to,
+            status: filters.status !== 'all' ? filters.status : undefined,
+        });
     }
 
     // Export report to CSV
     async exportReportToCSV(filters: ReconciliationReportFilters): Promise<Blob> {
-        const searchParams = new URLSearchParams();
-        if (filters.bank_account_id) searchParams.append('bank_account_id', filters.bank_account_id);
-        if (filters.date_from) searchParams.append('date_from', filters.date_from);
-        if (filters.date_to) searchParams.append('date_to', filters.date_to);
-        if (filters.status && filters.status !== 'all') searchParams.append('status', filters.status);
+        const params: Record<string, string | undefined> = {
+            bank_account_id: filters.bank_account_id,
+            date_from: filters.date_from,
+            date_to: filters.date_to,
+            status: filters.status !== 'all' ? filters.status : undefined,
+        };
 
-        const queryString = searchParams.toString();
-        const endpoint = queryString 
-            ? `/reconciliations/report/export/csv?${queryString}`
-            : '/reconciliations/report/export/csv';
-        
-        const url = `${API_BASE_URL}/api/v1${endpoint}`;
-        const response = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${this.getAuthToken()}`,
-            },
-        });
-
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`API Error: ${response.status} - ${error}`);
+        const query = new URLSearchParams();
+        for (const [key, value] of Object.entries(params)) {
+            if (value) query.append(key, value);
         }
+        const qs = query.toString();
+        const endpoint = qs
+            ? `/reconciliations/report/export/csv?${qs}`
+            : '/reconciliations/report/export/csv';
 
+        const response = await coreApiClient.raw(endpoint);
         return response.blob();
     }
 
     // Export report to PDF
     async exportReportToPDF(filters: ReconciliationReportFilters): Promise<Blob> {
-        const searchParams = new URLSearchParams();
-        if (filters.bank_account_id) searchParams.append('bank_account_id', filters.bank_account_id);
-        if (filters.date_from) searchParams.append('date_from', filters.date_from);
-        if (filters.date_to) searchParams.append('date_to', filters.date_to);
-        if (filters.status && filters.status !== 'all') searchParams.append('status', filters.status);
+        const params: Record<string, string | undefined> = {
+            bank_account_id: filters.bank_account_id,
+            date_from: filters.date_from,
+            date_to: filters.date_to,
+            status: filters.status !== 'all' ? filters.status : undefined,
+        };
 
-        const queryString = searchParams.toString();
-        const endpoint = queryString 
-            ? `/reconciliations/report/export/pdf?${queryString}`
-            : '/reconciliations/report/export/pdf';
-        
-        const url = `${API_BASE_URL}/api/v1${endpoint}`;
-        const response = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${this.getAuthToken()}`,
-            },
-        });
-
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`API Error: ${response.status} - ${error}`);
+        const query = new URLSearchParams();
+        for (const [key, value] of Object.entries(params)) {
+            if (value) query.append(key, value);
         }
+        const qs = query.toString();
+        const endpoint = qs
+            ? `/reconciliations/report/export/pdf?${qs}`
+            : '/reconciliations/report/export/pdf';
 
+        const response = await coreApiClient.raw(endpoint);
         return response.blob();
     }
 
@@ -256,17 +183,11 @@ class ReconciliationService {
         journalEntryIds: string[],
         notes?: string
     ): Promise<void> {
-        return this.request<void>(
-            '/reconciliations/manual',
-            {
-                method: 'POST',
-                body: JSON.stringify({
-                    bank_transaction_id: bankTransactionId,
-                    journal_entry_ids: journalEntryIds,
-                    notes,
-                }),
-            }
-        );
+        return coreApiClient.post('/reconciliations/manual', {
+            bank_transaction_id: bankTransactionId,
+            journal_entry_ids: journalEntryIds,
+            notes,
+        });
     }
 
     // Create many-to-one reconciliation
@@ -275,17 +196,11 @@ class ReconciliationService {
         journalEntryIds: string[],
         notes?: string
     ): Promise<void> {
-        return this.request<void>(
-            '/reconciliations/many-to-one',
-            {
-                method: 'POST',
-                body: JSON.stringify({
-                    bank_transaction_id: bankTransactionId,
-                    journal_entry_ids: journalEntryIds,
-                    notes,
-                }),
-            }
-        );
+        return coreApiClient.post('/reconciliations/many-to-one', {
+            bank_transaction_id: bankTransactionId,
+            journal_entry_ids: journalEntryIds,
+            notes,
+        });
     }
 }
 

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 
 import { qrBlockService } from '../services/qrBlockService';
-import type { QRBlock, QRBlockListResponse } from '../types/qrBlock.types';
+import type { QRBlockListResponse } from '../types/qrBlock.types';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export const useQRBlocks = (productId: string) => {
   const [data, setData] = useState<QRBlockListResponse | null>(null);
@@ -14,8 +15,8 @@ export const useQRBlocks = (productId: string) => {
     try {
       const result = await qrBlockService.listBlocks(productId, { page, page_size: 20 });
       setData(result);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to fetch blocks');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to fetch blocks'));
     } finally {
       setLoading(false);
     }

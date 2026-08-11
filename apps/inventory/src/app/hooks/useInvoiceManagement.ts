@@ -7,8 +7,10 @@ import type { Table } from '@tanstack/react-table';
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
+import { FEATURE_DISABLED_CODE, HTTP_FEATURE_DISABLED } from '@horizon-sync/ui';
 import type { Invoice, InvoiceResponse, InvoiceType, InvoiceStatus } from '../types/invoice.types';
 import { invoiceApi } from '../utility/api/invoices';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface InvoiceFilters {
   search: string;
@@ -45,7 +47,13 @@ function useInvoices(
   }, []);
 
   const handleFetchError = React.useCallback((err: unknown) => {
-    setError(err instanceof Error ? err.message : 'Failed to load invoices');
+    // Detect feature flag disabled (HTTP 423 with FEATURE_DISABLED code)
+    const apiErr = err as { status?: number; details?: { detail?: { code?: string } } };
+    if (apiErr?.status === HTTP_FEATURE_DISABLED && apiErr?.details?.detail?.code === FEATURE_DISABLED_CODE) {
+      setError(FEATURE_DISABLED_CODE);
+    } else {
+      setError(getFriendlyErrorMessage(err));
+    }
     setInvoices([]);
     setPagination(null);
   }, []);
@@ -131,7 +139,7 @@ export function useInvoiceManagement() {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete invoice',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -151,7 +159,7 @@ export function useInvoiceManagement() {
     onError: (err) => {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to mark invoice as paid',
+        description: getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
     },
@@ -167,7 +175,7 @@ export function useInvoiceManagement() {
       } catch (err) {
         toast({
           title: 'Error',
-          description: err instanceof Error ? err.message : 'Failed to load invoice details',
+          description: getFriendlyErrorMessage(err),
           variant: 'destructive',
         });
       }
@@ -178,6 +186,9 @@ export function useInvoiceManagement() {
   const handleCreate = React.useCallback(() => {
     setCreateDialogOpen(true);
   }, []);
+
+  // Confirmation dialog state for delete
+  const [confirmAction, setConfirmAction] = React.useState<{ type: string; item: Invoice; title: string; message: string } | null>(null);
 
   const handleDelete = React.useCallback(
     (invoice: Invoice) => {
@@ -190,12 +201,23 @@ export function useInvoiceManagement() {
         return;
       }
 
-      if (window.confirm(`Are you sure you want to delete invoice ${invoice.invoice_no}?`)) {
-        deleteMutation.mutate(invoice.id);
-      }
+      setConfirmAction({
+        type: 'delete',
+        item: invoice,
+        title: 'Delete Invoice',
+        message: `Are you sure you want to delete invoice ${invoice.invoice_no}?`,
+      });
     },
-    [deleteMutation, toast]
+    [toast]
   );
+
+  const executeConfirmedAction = React.useCallback(() => {
+    if (!confirmAction) return;
+    if (confirmAction.type === 'delete') {
+      deleteMutation.mutate(confirmAction.item.id);
+    }
+    setConfirmAction(null);
+  }, [confirmAction, deleteMutation]);
 
   const handleMarkAsPaid = React.useCallback(
     (invoice: Invoice) => {
@@ -272,5 +294,8 @@ export function useInvoiceManagement() {
     invoiceToMarkPaid,
     confirmMarkAsPaid,
     isMarkingAsPaid: markAsPaidMutation.isPending,
+    confirmAction,
+    setConfirmAction,
+    executeConfirmedAction,
   };
 }

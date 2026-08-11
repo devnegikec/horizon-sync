@@ -16,6 +16,7 @@ import {
   SelectValue,
   Badge,
 } from '@horizon-sync/ui/components';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import type {
@@ -99,6 +100,7 @@ export const SystemConfiguration: React.FC = () => {
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [mappingToDelete, setMappingToDelete] = useState<{ index: number; config: TransactionTypeConfig } | null>(null);
+  const [confirmClearDataOpen, setConfirmClearDataOpen] = useState(false);
 
   // Default accounts state
   const [defaultAccounts, setDefaultAccounts] = useState<TransactionTypeConfig[]>([]);
@@ -444,14 +446,14 @@ export const SystemConfiguration: React.FC = () => {
     }
   };
 
-  const handleClearData = async () => {
+  const handleClearData = () => {
     if (!accessToken) return;
+    setConfirmClearDataOpen(true);
+  };
 
-    const confirmed = window.confirm(
-      'Are you sure you want to delete ALL accounts? This action cannot be undone!'
-    );
-
-    if (!confirmed) return;
+  const executeClearData = async () => {
+    if (!accessToken) return;
+    setConfirmClearDataOpen(false);
 
     try {
       setSeeding(true);
@@ -858,6 +860,17 @@ export const SystemConfiguration: React.FC = () => {
         }
         confirmText="Delete Mapping"
         cancelText="Cancel"
+      />
+
+      {/* Clear All Accounts Confirmation Dialog */}
+      <ConfirmationDialog
+        open={confirmClearDataOpen}
+        onOpenChange={setConfirmClearDataOpen}
+        title="Delete All Accounts"
+        description="Are you sure you want to delete ALL accounts? This action cannot be undone!"
+        confirmLabel="Delete All"
+        variant="destructive"
+        onConfirm={executeClearData}
       />
     </div>
   );
