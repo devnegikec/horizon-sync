@@ -31,7 +31,7 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
   const [confirmPutAwaySlip, setConfirmPutAwaySlip] = React.useState<ReceivingSlip | null>(null);
   const [actionLoading, setActionLoading] = React.useState(false);
 
-  const { data, loading, error, refetch, approveSlip, rejectSlip, getSlip, generatePutAway } = useReceivingSlips({
+  const { data, loading, error, refetch, approveSlip, rejectSlip, rejectItem, getSlip, generatePutAway } = useReceivingSlips({
     warehouse_id: warehouseId,
     status: statusFilter === 'all' ? undefined : statusFilter,
     page,
@@ -81,6 +81,20 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
       setRejectReason('');
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to reject', variant: 'destructive' });
+    }
+  };
+
+  const handleRejectItem = async (slipId: string, itemId: string, reason: string) => {
+    try {
+      await rejectItem(slipId, itemId, reason);
+      toast({ title: 'Item rejected', description: 'Item marked as rejected.' });
+      // Refresh detail view
+      if (viewSlip?.id === slipId) {
+        const updated = await getSlip(slipId);
+        setViewSlip(updated);
+      }
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to reject item', variant: 'destructive' });
     }
   };
 
@@ -202,7 +216,7 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
                             <input className="flex-1 border rounded px-3 py-1.5 text-sm bg-background"
                               placeholder="Rejection reason..."
                               value={rejectReason}
-                              onChange={(e) => setRejectReason(e.target.value)}/>
+                              onChange={(e) => setRejectReason(e.target.value)} />
                             <Button size="sm" variant="destructive" onClick={() => handleReject(slip)} disabled={!rejectReason.trim()}>
                               Confirm Reject
                             </Button>
@@ -238,7 +252,8 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
       <SlipDetailDialog slip={viewSlip}
         loading={viewLoading}
         open={dialogOpen}
-        onOpenChange={setDialogOpen}/>
+        onOpenChange={setDialogOpen}
+        onRejectItem={handleRejectItem} />
 
       <ConfirmationDialog open={!!confirmApproveSlip}
         onOpenChange={(open) => { if (!open) setConfirmApproveSlip(null); }}

@@ -163,6 +163,12 @@ export const inboundApi = {
       method: 'POST',
       body: JSON.stringify({ flag, notes }),
     }),
+
+  rejectItem: (token: string, slipId: string, itemId: string, reason: string) =>
+    req<unknown>(`${BASE}/inbound/receiving-slips/${slipId}/items/${itemId}/reject`, token, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
 };
 
 // ============================================

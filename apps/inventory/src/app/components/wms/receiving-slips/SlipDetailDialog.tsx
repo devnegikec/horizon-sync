@@ -12,9 +12,10 @@ interface SlipDetailDialogProps {
   loading: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRejectItem?: (slipId: string, itemId: string, reason: string) => Promise<void>;
 }
 
-export function SlipDetailDialog({ slip, loading, open, onOpenChange }: SlipDetailDialogProps) {
+export function SlipDetailDialog({ slip, loading, open, onOpenChange, onRejectItem }: SlipDetailDialogProps) {
   return (
     <DetailDialog
       open={open}
@@ -61,7 +62,7 @@ export function SlipDetailDialog({ slip, loading, open, onOpenChange }: SlipDeta
               <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Line Items ({slip.groups.length} boxes, {slip.groups.reduce((s, g) => s + g.items.length, 0)} units)
               </div>
-              <ReceivingGroupsTable groups={slip.groups} />
+              <ReceivingGroupsTable groups={slip.groups} slipId={slip.id} onRejectItem={onRejectItem} />
             </div>
           ) : slip.items && slip.items.length > 0 ? (
             <div className="border rounded-lg overflow-hidden">
