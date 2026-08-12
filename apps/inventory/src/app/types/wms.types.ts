@@ -252,11 +252,13 @@ export type PutAwayStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled
 
 export interface PutAwayItem {
   id: string;
-  put_away_list_id: string;
+  item_id: string;
   sku: string;
+  item_name?: string | null;
   batch_number: string | null;
   quantity: number;
-  suggested_bin_id: string | null;
+  bin_location_id: string | null;
+  bin_location_code: string | null;
   suggested_bin_code: string | null;
   status: 'pending' | 'completed' | 'skipped';
   sort_order: number;
@@ -268,6 +270,7 @@ export interface PutAwayList {
   put_away_list_no: string;
   warehouse_id: string;
   receiving_slip_id: string | null;
+  receiving_slip_no: string | null;
   reference_type: string | null;
   reference_id: string | null;
   status: PutAwayStatus;
@@ -275,7 +278,9 @@ export interface PutAwayList {
   completed_items: number;
   pending_items: number;
   remarks: string | null;
+  warnings?: string[] | null;
   assigned_to: string | null;
+  worker_name: string | null;
   items: PutAwayItem[];
   completed_at: string | null;
   created_at: string | null;
