@@ -1,6 +1,9 @@
 import * as React from 'react';
 
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, XCircle } from 'lucide-react';
+
+import { Button } from '@horizon-sync/ui/components/ui/button';
+import { useToast } from '@horizon-sync/ui/hooks';
 
 import type { ReceivingSlipGroup } from '../../../types/wms.types';
 
@@ -10,15 +13,34 @@ import { FlagBadge } from './FlagBadge';
 /*  Expandable group row (parent_qseal + items)                       */
 /* ------------------------------------------------------------------ */
 
-export function ReceivingGroupRow({ group, boxIndex, totalBoxes }: {
+export function ReceivingGroupRow({ group, boxIndex, totalBoxes, slipId, onRejectItem }: {
   group: ReceivingSlipGroup;
   boxIndex: number;
   totalBoxes: number;
+  slipId: string;
+  onRejectItem?: (slipId: string, itemId: string, reason: string) => Promise<void>;
 }) {
+  const { toast } = useToast();
   const [expanded, setExpanded] = React.useState(false);
+  const [rejectingId, setRejectingId] = React.useState<string | null>(null);
   const sku = group.items[0]?.sku ?? '—';
   const flag = group.items[0]?.flag ?? 'ok';
   const qty = group.items.length;
+
+  const handleReject = async (item: any) => {
+    if (!onRejectItem || !slipId) return;
+    const reason = prompt('Rejection reason:');
+    if (!reason?.trim()) return;
+    setRejectingId(item.id);
+    try {
+      await onRejectItem(slipId, item.serial_number || item.id, reason);
+      toast({ title: 'Item rejected' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err?.message || 'Failed', variant: 'destructive' });
+    } finally {
+      setRejectingId(null);
+    }
+  };
 
   return (
     <>
@@ -43,6 +65,7 @@ export function ReceivingGroupRow({ group, boxIndex, totalBoxes }: {
         </td>
         <td className="px-4 py-2 text-center font-medium">{qty}</td>
         <td className="px-4 py-2"><FlagBadge flag={flag} /></td>
+        <td className="px-4 py-2" />{/* Actions placeholder */}
       </tr>
 
       {/* Expanded: individual item rows */}

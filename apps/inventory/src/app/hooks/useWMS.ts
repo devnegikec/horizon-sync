@@ -239,7 +239,16 @@ export function useReceivingSlips(params: { warehouse_id?: string; status?: stri
     [accessToken, fetch],
   );
 
-  return { data, loading, error, refetch: fetch, approveSlip, rejectSlip, getSlip, generatePutAway };
+  const rejectItem = React.useCallback(
+    async (slipId: string, itemId: string, reason: string): Promise<void> => {
+      if (!accessToken) throw new Error('Not authenticated');
+      await inboundApi.rejectItem(accessToken, slipId, itemId, reason);
+      await fetch();
+    },
+    [accessToken, fetch],
+  );
+
+  return { data, loading, error, refetch: fetch, approveSlip, rejectSlip, rejectItem, getSlip, generatePutAway };
 }
 
 // ============================================

@@ -70,6 +70,7 @@ export function PutAwayView({ warehouseId }: PutAwayViewProps) {
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">List #</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Receiving Slip</th>
                 <th className="text-right px-4 py-3 font-medium text-muted-foreground">Items</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Worker</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Created</th>
@@ -79,7 +80,7 @@ export function PutAwayView({ warehouseId }: PutAwayViewProps) {
             <tbody className="divide-y">
               {lists.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                     No put-away lists found. Generate one from an approved receiving slip.
                   </td>
                 </tr>
@@ -88,15 +89,16 @@ export function PutAwayView({ warehouseId }: PutAwayViewProps) {
                 <tr key={list.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-mono font-medium">{list.put_away_list_no}</td>
                   <td className="px-4 py-3"><WMSStatusBadge status={list.status} /></td>
+                  <td className="px-4 py-3 font-mono text-xs">{list.receiving_slip_no ?? '—'}</td>
                   <td className="px-4 py-3 text-right">{list.total_items}</td>
-                  <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{list.assigned_to ?? '—'}</td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs">{list.worker_name ?? list.assigned_to ?? '—'}</td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {list.created_at ? new Date(list.created_at).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Button size="sm"
-variant="ghost"
-className="gap-1 h-7 px-2 text-xs"
+                      variant="ghost"
+                      className="gap-1 h-7 px-2 text-xs"
                       onClick={() => { setViewListId(list.id); setDialogOpen(true); }}>
                       <Eye className="h-3.5 w-3.5" />
                       View
@@ -125,7 +127,7 @@ className="gap-1 h-7 px-2 text-xs"
 
       <PutAwayDetailDialog listId={viewListId}
         open={dialogOpen}
-        onOpenChange={setDialogOpen}/>
+        onOpenChange={setDialogOpen} />
     </div>
   );
 }
