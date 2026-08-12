@@ -74,34 +74,11 @@ export function ReceivingGroupRow({ group, boxIndex, totalBoxes, slipId, onRejec
           <td className="px-4 py-1.5 pl-10">
             <span className="font-mono text-xs font-medium">{item.serial_number}</span>
           </td>
-          <td className="px-4 py-1.5 text-xs text-muted-foreground" colSpan={4}>
-            <span className="inline-flex gap-3">
-              <span>SKU: <span className="font-mono">{item.sku}</span></span>
-              {item.manufacturing_date && (
-                <span>Mfg: {new Date(item.manufacturing_date).toLocaleDateString()}</span>
-              )}
-              {item.expiry_date && (
-                <span>Exp: {new Date(item.expiry_date).toLocaleDateString()}</span>
-              )}
-            </span>
-          </td>
-          <td className="px-2 py-1.5 text-right">
-            {onRejectItem && flag !== 'rejected' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-destructive hover:bg-destructive/10"
-                disabled={rejectingId === item.id}
-                onClick={(e) => { e.stopPropagation(); handleReject(item); }}
-              >
-                <XCircle className="h-3.5 w-3.5 mr-1" />
-                {rejectingId === item.id ? '...' : 'Reject'}
-              </Button>
-            )}
-            {flag === 'rejected' && (
-              <span className="text-xs text-destructive font-medium">Rejected</span>
-            )}
-          </td>
+          <td className="px-4 py-1.5 font-mono text-xs">{item.sku}</td>
+          <td className="px-4 py-1.5 font-mono text-xs">{item.batch_number}</td>
+          <td className="px-4 py-1.5 text-center font-mono text-xs">{item.box_count}</td>
+          <td className="px-4 py-1.5 text-center font-mono text-xs">{item.quantity}</td>
+          <td className="px-4 py-1.5"><FlagBadge flag={item.flag} /></td>
         </tr>
       ))}
     </>
