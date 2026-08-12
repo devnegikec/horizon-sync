@@ -16,19 +16,6 @@ interface LocationQRPanelProps {
   warehouseId?: string;
 }
 
-interface BinQRPayload {
-  type: 'location';
-  org_id: string;
-  org_name: string;
-  warehouse_id: string;
-  warehouse_code: string;
-  warehouse_name: string;
-  location_id: string;
-  full_path: string;
-  location_type: string;
-  location_code: string;
-}
-
 async function generateQRDataUrl(data: string, size = 200): Promise<string> {
   return QRCode.toDataURL(data, { width: size, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
 }
@@ -100,19 +87,8 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
     try {
       const qrDataUrls = await Promise.all(
         selectedLocations.map((loc) => {
-          const payload: BinQRPayload = {
-            type: 'location',
-            org_id: loc.organization_id,
-            org_name: '',
-            warehouse_id: loc.warehouse_id,
-            warehouse_code: '',
-            warehouse_name: '',
-            location_id: loc.id,
-            full_path: loc.full_path || loc.code,
-            location_type: loc.location_type,
-            location_code: loc.code,
-          };
-          return generateQRDataUrl(JSON.stringify(payload));
+          const qrCode = loc.qr_code || loc.code;
+          return generateQRDataUrl(qrCode);
         })
       );
 
@@ -121,9 +97,11 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
       const pages = selectedLocations.map((loc, idx) => {
         const breakStyle = idx < selectedLocations.length - 1 ? 'page-break-after:always;' : '';
         const label = loc.full_path || loc.code;
+        const qrCode = loc.qr_code || loc.code;
         return `<div style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;${breakStyle}">
           <div style="text-align:center;border:1px dashed #ccc;padding:24px;max-width:280px;">
-            <div style="font-size:20px;font-weight:700;margin-bottom:4px;">${label}</div>
+            <div style="font-size:18px;font-weight:700;margin-bottom:2px;">${label}</div>
+            <div style="font-size:22px;font-weight:700;color:#1A73E8;margin-bottom:4px;font-family:monospace;">${qrCode}</div>
             <div style="font-size:11px;color:#666;margin-bottom:8px;">Bin Location</div>
             <div style="margin:8px 0;"><img src="${qrDataUrls[idx]}" alt="QR" width="200" height="200" style="max-width:100%;height:auto;" /></div>
             <div style="font-size:9px;color:#999;margin-top:4px;">Scan for put-away / picking</div>
@@ -150,19 +128,8 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
   const handlePrintSingle = async (loc: WarehouseLocation) => {
     setPrinting(true);
     try {
-      const payload: BinQRPayload = {
-        type: 'location',
-        org_id: loc.organization_id,
-        org_name: '',
-        warehouse_id: loc.warehouse_id,
-        warehouse_code: '',
-        warehouse_name: '',
-        location_id: loc.id,
-        full_path: loc.full_path || loc.code,
-        location_type: loc.location_type,
-        location_code: loc.code,
-      };
-      const qrDataUrl = await generateQRDataUrl(JSON.stringify(payload));
+      const qrCode = (loc as any).qr_code || loc.code;
+      const qrDataUrl = await generateQRDataUrl(qrCode);
       const label = loc.full_path || loc.code;
 
       const win = window.open('', '_blank', 'width=400,height=400');
@@ -171,13 +138,14 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
         <html><head><title>Bin QR Code</title><style>
           body { display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif; }
           .label { text-align:center;border:1px dashed #ccc;padding:24px;max-width:300px; }
-          .name { font-size:20px;font-weight:700;margin-bottom:2px; }
+          .name { font-size:18px;font-weight:700;margin-bottom:2px; }
+          .code { font-size:24px;font-weight:700;color:#1A73E8;margin-bottom:4px;font-family:monospace; }
           .type { font-size:11px;color:#666;margin-bottom:8px; }
           .qrcode { margin:8px 0; }
           .qrcode img { max-width:100%;height:auto; }
           .hint { font-size:9px;color:#999;margin-top:4px; }
         </style></head>
-        <body><div class="label"><div class="name">${label}</div><div class="type">Bin Location</div><div class="qrcode"><img src="${qrDataUrl}" alt="QR" width="200" height="200" /></div><div class="hint">Scan for put-away / picking</div></div></body></html>
+        <body><div class="label"><div class="name">${label}</div><div class="code">${qrCode}</div><div class="type">Bin Location</div><div class="qrcode"><img src="${qrDataUrl}" alt="QR" width="200" height="200" /></div><div class="hint">Scan for put-away / picking</div></div></body></html>
       `);
       win.document.close();
       win.focus();
@@ -188,6 +156,51 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
       setPrinting(false);
     }
   };
+
+  // ── QR Row sub-component ──
+  function QRRow({ loc, qrValue, selected, onToggle, onPrint, printing }: {
+    loc: WarehouseLocation;
+    qrValue: string;
+    selected: boolean;
+    onToggle: () => void;
+    onPrint: () => void;
+    printing: boolean;
+  }) {
+    const [qrImg, setQrImg] = React.useState<string>('');
+    React.useEffect(() => {
+      generateQRDataUrl(qrValue, 120).then(setQrImg).catch(() => {});
+    }, [qrValue]);
+
+    return (
+      <tr className="border-t hover:bg-muted/30">
+        <td className="p-3">
+          <Checkbox checked={selected} onCheckedChange={onToggle} />
+        </td>
+        <td className="p-3 font-mono text-xs">{loc.full_path || loc.code}</td>
+        <td className="p-3">
+          <span className="font-mono text-sm font-bold text-blue-600 tracking-wider">{qrValue}</span>
+        </td>
+        <td className="p-3 text-xs text-muted-foreground">
+          {loc.available_capacity}/{loc.total_capacity} {loc.capacity_uom || 'units'}
+        </td>
+        <td className="p-3 text-center">
+          {qrImg ? (
+            <div className="inline-flex flex-col items-center gap-1">
+              <img src={qrImg} alt="QR" className="w-[80px] h-[80px] rounded border" />
+              <span className="font-mono text-[10px] text-muted-foreground">{loc.full_path || loc.code}</span>
+            </div>
+          ) : (
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
+          )}
+        </td>
+        <td className="p-3 text-center">
+          <Button variant="ghost" size="sm" onClick={onPrint} disabled={printing}>
+            <Printer className="h-4 w-4" />
+          </Button>
+        </td>
+      </tr>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -222,32 +235,19 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
                     <Checkbox checked={selectedIds.size === filteredLocations.length && filteredLocations.length > 0}
                       onCheckedChange={(c) => c ? selectAll() : deselectAll()}/>
                   </th>
-                  <th className="p-3 text-left font-medium">Code</th>
-                  <th className="p-3 text-left font-medium">Full Path</th>
-                  <th className="p-3 text-left font-medium">Name</th>
+                  <th className="p-3 text-left font-medium">Path</th>
+                  <th className="p-3 text-left font-medium">Bin Code</th>
                   <th className="p-3 text-left font-medium">Capacity</th>
-                  <th className="p-3 text-center font-medium w-24">Print QR</th>
+                  <th className="p-3 text-center font-medium w-[180px]">QR Code</th>
+                  <th className="p-3 text-center font-medium w-20">Print</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredLocations.map((loc) => (
-                  <tr key={loc.id} className="border-t hover:bg-muted/30">
-                    <td className="p-3">
-                      <Checkbox checked={selectedIds.has(loc.id)} onCheckedChange={() => toggleSelection(loc.id)} />
-                    </td>
-                    <td className="p-3 font-mono text-xs">{loc.code}</td>
-                    <td className="p-3 font-mono text-xs text-muted-foreground">{loc.full_path || '—'}</td>
-                    <td className="p-3">{loc.name || '—'}</td>
-                    <td className="p-3 text-xs text-muted-foreground">
-                      {loc.available_capacity}/{loc.total_capacity} {loc.capacity_uom || 'units'}
-                    </td>
-                    <td className="p-3 text-center">
-                      <Button variant="ghost" size="sm" onClick={() => handlePrintSingle(loc)} disabled={printing}>
-                        <Printer className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {filteredLocations.map((loc) => {
+                  const qrValue = loc.qr_code || loc.code;
+                  return <QRRow key={loc.id} loc={loc} qrValue={qrValue} selected={selectedIds.has(loc.id)}
+                    onToggle={() => toggleSelection(loc.id)} onPrint={() => handlePrintSingle(loc)} printing={printing} />;
+                })}
               </tbody>
             </table>
           </div>
