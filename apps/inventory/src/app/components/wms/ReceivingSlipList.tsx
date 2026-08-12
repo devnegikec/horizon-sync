@@ -165,7 +165,22 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
                         <WMSStatusBadge status={slip.status} />
                       </td>
                       <td className="px-4 py-3 text-right">{slip.total_boxes}</td>
-                      <td className="px-4 py-3 text-right">{slip.total_items}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div>{slip.total_items}</div>
+                        {slip.groups && slip.groups.length > 0 && (() => {
+                          const flags: Record<string, number> = {};
+                          slip.groups.forEach((g) => g.items.forEach((item) => {
+                            flags[item.flag] = (flags[item.flag] || 0) + 1;
+                          }));
+                          const summary = Object.entries(flags)
+                            .filter(([, c]) => c > 0)
+                            .map(([f, c]) => `${c} ${f}`)
+                            .join(' · ');
+                          return summary ? (
+                            <div className="text-xs text-muted-foreground mt-0.5">{summary}</div>
+                          ) : null;
+                        })()}
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {slip.created_at ? new Date(slip.created_at).toLocaleDateString() : '—'}
                       </td>
