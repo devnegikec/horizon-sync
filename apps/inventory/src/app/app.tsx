@@ -64,8 +64,9 @@ export function App() {
   return (
     <ThemeProvider>
       <Routes>
-        {/* Public QR verification route — no auth required */}
+        {/* Public QR verification routes — no auth required */}
         <Route path="/g/:gtin/s/:serial/:timestamp" element={<PublicQRValidation />} />
+        <Route path="/01/:gtin/21/:serial" element={<PublicQRValidation />} />
         {/* Main authenticated app */}
         <Route path="*" element={<MainApp />} />
       </Routes>

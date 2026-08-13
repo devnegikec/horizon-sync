@@ -39,8 +39,20 @@ export function QRVerifyPage() {
     try {
       const urlObj = new URL(url);
       const parts = urlObj.pathname.split('/');
+
+      // GS1 Digital Link: /01/{gtin}/21/{serial}?c={sig}&n={nonce}
+      const gs1Idx = parts.indexOf('21');
+      if (gs1Idx !== -1 && parts[gs1Idx - 2] === '01' && parts[gs1Idx + 1]) {
+        return {
+          serial_number: parts[gs1Idx + 1],
+          nonce: urlObj.searchParams.get('n') || '',
+          cipher: urlObj.searchParams.get('c') || '',
+        };
+      }
+
+      // Legacy: /g/{gtin}/s/{serial}/{nonce}?c={sig}
       const sIndex = parts.indexOf('s');
-      
+
       if (sIndex === -1 || !parts[sIndex + 1] || !parts[sIndex + 2]) {
         throw new Error('Invalid QR URL format');
       }
@@ -51,7 +63,7 @@ export function QRVerifyPage() {
         cipher: urlObj.searchParams.get('c') || '',
       };
     } catch (err) {
-      throw new Error('Invalid QR URL format. Expected: https://domain/g/{gtin}/s/{serial}/{nonce}?c={signature}');
+      throw new Error('Invalid QR URL format. Expected: https://domain/01/{gtin}/21/{serial}?c={sig}&n={nonce} or https://domain/g/{gtin}/s/{serial}/{nonce}?c={signature}');
     }
   };
 
@@ -114,7 +126,7 @@ export function QRVerifyPage() {
                 type="text"
                 value={qrUrl}
                 onChange={(e) => setQrUrl(e.target.value)}
-                placeholder="https://example.com/g/1234567890/s/ABC123/1234567890?c=..."
+                placeholder="https://example.com/01/12345678901234/21/ABC123?c=...&n=..."
                 className="font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground">

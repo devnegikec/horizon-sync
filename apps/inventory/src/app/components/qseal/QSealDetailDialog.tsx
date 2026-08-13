@@ -110,7 +110,7 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
           <ProductBadges product={product} />
 
           {product.generic_name && (
-            <p className="text-sm text-muted-foreground">{product.generic_name}</p>
+            <p className="text-sm text-muted-foreground">SKU: {product.generic_name}</p>
           )}
 
           <Separator />

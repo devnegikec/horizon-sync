@@ -101,19 +101,21 @@ export default function PublicQRValidation() {
   }>();
   const [searchParams] = useSearchParams();
   const cipher = searchParams.get('c');
+  // Legacy /g/ route passes timestamp in the path; GS1 /01/ route passes it as ?n=
+  const nonce = timestamp || searchParams.get('n') || '';
 
   const [result, setResult] = React.useState<VerificationResult | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (serial && timestamp && cipher) {
-      verify(serial, timestamp, cipher);
+    if (serial && nonce && cipher) {
+      verify(serial, nonce, cipher);
     } else {
       setLoading(false);
       setError('Missing verification parameters');
     }
-  }, [serial, timestamp, cipher]);
+  }, [serial, nonce, cipher]);
 
   const verify = async (serialNumber: string, nonce: string, sig: string) => {
     setLoading(true);
