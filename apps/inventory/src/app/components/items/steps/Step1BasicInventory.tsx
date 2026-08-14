@@ -10,6 +10,7 @@ import { UNIT_OF_MEASURE_OPTIONS } from '../../../constants/item-constants';
 import { ITEM_TYPE_OPTIONS, ITEM_STATUS_OPTIONS, VALUATION_METHOD_OPTIONS } from '../../../constants/item-type-constants';
 import type { ApiItemGroup } from '../../../types/item-groups.types';
 import type { ItemFormData } from '../../../utility/item-payload-builders';
+import { useBrands } from '../../../features/qr-management/hooks/useBrands';
 
 interface Step1BasicInventoryProps {
     formData: ItemFormData & { itemGroupName: string };
@@ -23,13 +24,33 @@ export function Step1BasicInventory({
     itemGroups,
 }: Step1BasicInventoryProps) {
     const hasItemGroups = itemGroups.length > 0;
+    const { data: brandsData, loading: brandsLoading } = useBrands();
+    const brands = brandsData?.brands ?? [];
+
+    function BrandSelect({ formData, setFormData }: { formData: ItemFormData & { itemGroupName: string }; setFormData: React.Dispatch<React.SetStateAction<ItemFormData & { itemGroupName: string }>> }) {
+        return (
+            <Select value={formData.brandId}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, brandId: value }))}>
+                <SelectTrigger>
+                    <SelectValue placeholder={brandsLoading ? 'Loading brands…' : 'Select brand'} />
+                </SelectTrigger>
+                <SelectContent>
+                    {brands.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                            {b.name}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        );
+    }
 
     return (
         <div className="grid gap-6 py-4">
             {/* Basic Information Section */}
             <div className="space-y-4">
                 <h3 className="text-base font-semibold border-b pb-2">Basic Information</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="itemCode">
@@ -51,6 +72,29 @@ export function Step1BasicInventory({
                             onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                             placeholder="Enter item name"
                             required/>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="sku">SKU</Label>
+                        <Input id="sku"
+                            value={formData.sku}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, sku: e.target.value }))}
+                            placeholder="e.g., SKU-12345"/>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="gtin">GTIN</Label>
+                        <Input id="gtin"
+                            value={formData.gtin}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, gtin: e.target.value }))}
+                            placeholder="e.g., 012345678901"/>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="brand">Brand</Label>
+                        <BrandSelect formData={formData} setFormData={setFormData} />
                     </div>
                 </div>
 
@@ -153,7 +197,7 @@ export function Step1BasicInventory({
             {/* Stock & Inventory Section */}
             <div className="space-y-4">
                 <h3 className="text-base font-semibold border-b pb-2">Stock & Inventory</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center space-x-2">
                         <Checkbox id="maintainStock"
@@ -199,7 +243,7 @@ export function Step1BasicInventory({
             {/* Variants Section */}
             <div className="space-y-4">
                 <h3 className="text-base font-semibold border-b pb-2">Variants</h3>
-                
+
                 <div className="flex items-center space-x-2">
                     <Checkbox id="hasVariants"
                         checked={formData.hasVariants}
@@ -243,7 +287,7 @@ export function Step1BasicInventory({
             {/* Batch & Serial Numbers Section */}
             <div className="space-y-4">
                 <h3 className="text-base font-semibold border-b pb-2">Batch & Serial Numbers</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center space-x-2">
                         <Checkbox id="hasBatchNo"

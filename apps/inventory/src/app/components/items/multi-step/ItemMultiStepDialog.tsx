@@ -73,6 +73,8 @@ function validateStep(step: number, formData: ItemFormData): boolean {
 const getInitialFormData = (initialData?: Partial<ItemFormData>): ItemFormData => ({
   itemCode: '',
   name: '',
+  brandId: '',
+  gtin: '',
   sku: '',
   description: '',
   itemGroupId: '',

@@ -50,7 +50,8 @@ async function req<T>(url: string, token: string, options: RequestInit = {}): Pr
     const text = await res.text();
     let detail = text;
     try {
-      detail = JSON.parse(text)?.detail ?? text;
+      const parsed = JSON.parse(text);
+      detail = parsed?.message ?? parsed?.detail ?? text;
     } catch {
       // not json
     }

@@ -34,6 +34,8 @@ export interface ItemsResponse {
 export interface CreateItemPayload {
   item_code: string;
   item_name: string;
+  brand_id?: string | null;
+  gtin?: string | null;
   sku?: string | null;
   description: string;
   item_group_id: string;
@@ -84,6 +86,8 @@ export interface UpdateItemPayload {
   organization_id?: string;
   item_code: string;
   item_name: string;
+  brand_id?: string | null;
+  gtin?: string | null;
   sku?: string | null;
   description: string;
   item_group_id: string;
