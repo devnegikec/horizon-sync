@@ -725,6 +725,49 @@ export interface WMSDashboardStats {
 }
 
 // ============================================
+// CAPACITY TYPES
+// ============================================
+
+export type BinState = 'empty' | 'available' | 'almost_full' | 'full';
+
+export interface VolumeCapacity {
+  occupied_m3: number;
+  capacity_m3: number | null;
+  pct: number | null;
+}
+
+export interface WeightCapacity {
+  occupied_kg: number;
+  capacity_kg: number | null;
+  pct: number | null;
+}
+
+export interface CapacityTreeNode {
+  node: string;
+  level: string;
+  code: string;
+  full_path: string | null;
+  volume: VolumeCapacity;
+  weight: WeightCapacity;
+  binding_pct: number | null;
+  bin_state: BinState | null;
+  is_available: boolean | null;
+  children: CapacityTreeNode[];
+}
+
+export interface BinStateResponse {
+  bin_id: string;
+  code: string;
+  position_x: number;
+  position_y: number;
+  position_z: number;
+  qr_code: string | null;
+  bin_state: BinState;
+  binding_pct: number | null;
+  is_available: boolean;
+}
+
+// ============================================
 // SHARED TYPES
 // ============================================
 

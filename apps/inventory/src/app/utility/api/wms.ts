@@ -34,6 +34,8 @@ import type {
   CopyStockRequest,
   StockImportRequest,
   StockImportResult,
+  BinStateResponse,
+  CapacityTreeNode,
   WMSDashboardStats,
 } from '../../types/wms.types';
 
@@ -374,4 +376,16 @@ export const wmsDashboardApi = {
     }
     return req<WMSDashboardStats>(`${BASE}/wms-dashboard/stats?${p}`, token);
   },
+};
+
+// ============================================
+// CAPACITY
+// ============================================
+
+export const capacityApi = {
+  getTree: (token: string, warehouseId: string) =>
+    req<CapacityTreeNode>(`${BASE}/capacity/warehouses/${warehouseId}/tree`, token),
+
+  getBinStates: (token: string, warehouseId: string) =>
+    req<BinStateResponse[]>(`${BASE}/capacity/warehouses/${warehouseId}/bin-states`, token),
 };

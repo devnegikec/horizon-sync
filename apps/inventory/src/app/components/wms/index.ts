@@ -1,4 +1,5 @@
 export { WMSManagement } from './WMSManagement';
+export { WarehouseCapacityCard } from './WarehouseCapacityCard';
 export { LocationTreeView } from './LocationTreeView';
 export { InboundScanPanel } from './InboundScanPanel';
 export { ReceivingSlipList } from './ReceivingSlipList';

@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Warehouse, ArrowDownToLine, ArrowUpFromLine, Box, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers, QrCode, Truck } from 'lucide-react';
+import { Warehouse, ArrowDownToLine, ArrowUpFromLine, Box, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers, QrCode, Truck, LayoutDashboard } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
@@ -12,7 +12,9 @@ import { useMyWarehouses } from '../../hooks/useMyWarehouses';
 import { StockManagement } from '../stock';
 
 import { AsnManagement } from './AsnManagement';
+import { DashboardPanel } from './DashboardPanel';
 import { DeviceManagementPanel } from './DeviceManagementPanel';
+import { WarehouseCapacityCard } from './WarehouseCapacityCard';
 import { LocationQRPanel } from './LocationQRPanel';
 import { LocationTreeView } from './LocationTreeView';
 import { OutboundManagement } from './OutboundManagement';
@@ -22,7 +24,7 @@ import { Warehouse3DView } from './Warehouse3DView';
 import { WarehouseLayoutDesigner } from './WarehouseLayoutDesigner';
 import { WorkersManagementPanel } from './WorkersManagementPanel';
 
-type WMSView = 'asn' | 'inbound' | 'outbound' | 'stock' | 'manage';
+type WMSView = 'dashboard' | 'asn' | 'inbound' | 'outbound' | 'stock' | 'manage';
 type LayoutTab = 'tree' | 'designer' | '3d';
 type InboundSection = 'receiving' | 'putaway';
 
@@ -45,7 +47,7 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 }
 
 export function WMSManagement() {
-  const [activeView, setActiveView] = React.useState<WMSView>('asn');
+  const [activeView, setActiveView] = React.useState<WMSView>('dashboard');
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('');
   const [manageSection, setManageSection] = React.useState<'workers' | 'devices' | 'layout' | 'location-qr'>('workers');
   const [inboundSection, setInboundSection] = React.useState<InboundSection>('receiving');
@@ -120,6 +122,7 @@ export function WMSManagement() {
       {/* Sub-navigation */}
       <div className="border-b">
         <nav className="flex items-center gap-1 pb-0 overflow-x-auto">
+          <NavItem icon={LayoutDashboard} label="Dashboard" isActive={activeView === 'dashboard'} onClick={() => setActiveView('dashboard')} />
           <NavItem icon={Truck} label="Advance Stock Notice" isActive={activeView === 'asn'} onClick={() => setActiveView('asn')} />
           <NavItem icon={ArrowDownToLine} label="Inbound" isActive={activeView === 'inbound'} onClick={() => setActiveView('inbound')} />
           <NavItem icon={ArrowUpFromLine} label="Outbound" isActive={activeView === 'outbound'} onClick={() => setActiveView('outbound')} />
@@ -132,6 +135,17 @@ export function WMSManagement() {
 
       {/* Content */}
       <div>
+        {activeView === 'dashboard' && (
+          selectedWarehouseId ? (
+            <div className="space-y-6">
+              <WarehouseCapacityCard warehouseId={selectedWarehouseId} />
+              <DashboardPanel warehouseId={selectedWarehouseId} />
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Select a warehouse to view its capacity.</p>
+          )
+        )}
+
         {activeView === 'asn' && (
           <AsnManagement warehouseId={selectedWarehouseId || undefined} />
         )}
