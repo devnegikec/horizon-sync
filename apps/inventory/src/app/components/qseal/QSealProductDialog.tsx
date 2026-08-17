@@ -29,7 +29,7 @@ import { FormDialog } from '../containers';
 interface FormValues {
   brand_id: string;
   name: string;
-  generic_name: string;
+  sku: string;
   gtin: string;
   industry: string;
   landing_page: string;
@@ -59,7 +59,7 @@ const SR_NUMBER_OPTIONS = [
 const DEFAULT_VALUES: FormValues = {
   brand_id: '',
   name: '',
-  generic_name: '',
+  sku: '',
   gtin: '',
   industry: '',
   landing_page: '',
@@ -242,16 +242,19 @@ function ProductInfoSection({ register, errors }: ProductInfoSectionProps) {
           <Input id="name" placeholder="Product name" {...register('name', { required: 'Product name is required' })} />
           {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
         </div>
+
         <div className="space-y-1">
-          <LabelWithTooltip htmlFor="generic_name" label="Generic Name" hint="Optional generic name or category for this product" />
-          <Input id="generic_name" placeholder="Generic name" {...register('generic_name')} />
+          <LabelWithTooltip htmlFor="sku" label="SKU" hint="Optional SKU or internal product code" />
+          <Input id="sku" placeholder="e.g. SKU-12345" {...register('sku')} />
         </div>
+
         <div className="space-y-1">
           <LabelWithTooltip htmlFor="gtin" label="GTIN" required hint="Global Trade Item Number (UPC, EAN, ISBN, etc.) - 12-14 digits" />
           <Input id="gtin" placeholder="e.g. 012345678901" {...register('gtin', { required: 'GTIN is required' })} />
           {errors.gtin && <p className="text-xs text-destructive">{errors.gtin.message}</p>}
         </div>
       </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <LabelWithTooltip htmlFor="industry" label="Industry" hint="Industry or sector this product belongs to" />
@@ -380,7 +383,7 @@ function buildPayload(data: FormValues): CreateQSealProductPayload {
   return {
     brand_id: n(data.brand_id),
     name: data.name,
-    generic_name: n(data.generic_name),
+    generic_name: n(data.sku),
     gtin: n(data.gtin),
     industry: n(data.industry),
     landing_page: n(data.landing_page),
@@ -401,7 +404,7 @@ function getInitialValues(product: QSealProduct): FormValues {
   return {
     brand_id: '',
     name: product.name,
-    generic_name: e(product.generic_name),
+    sku: e(product.generic_name),
     gtin: e(product.gtin),
     industry: e(product.industry),
     landing_page: e(product.landing_page),

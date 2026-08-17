@@ -41,6 +41,7 @@ export interface WarehouseLocation {
   position_y: number;
   is_active: boolean;
   version: number;
+  qr_code: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -24,6 +24,7 @@ interface ItemDetailResponse {
   organization_id: string;
   item_code: string;
   item_name: string;
+  sku: string | null;
   description: string;
   item_group_id: string | null;
   item_group: { id: string; code: string; name: string } | null;
@@ -64,6 +65,8 @@ interface ItemDetailResponse {
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  brand_id: string | null;
+  gtin: string | null;
 }
 
 // --- Mappers ---
@@ -71,6 +74,9 @@ interface ItemDetailResponse {
 function mapDetailToFormValues(detail: ItemDetailResponse): ItemFormSchemaType {
   return {
     ...mapFormBasicFields(detail),
+    sku: detail.sku || '',
+    brandId: detail.brand_id || '',
+    gtin: detail.gtin || '',
     ...mapFormStockFields(detail),
     ...mapFormPricingFields(detail),
     ...mapFormAdditionalFields(detail),
@@ -204,6 +210,8 @@ const DEFAULT_FORM_VALUES: ItemFormSchemaType = {
   tags: [],
   customFields: {},
   extraData: {},
+  brandId: '',
+  gtin: '',
 };
 
 // --- Component ---

@@ -24,8 +24,14 @@ export function ReceivingGroupRow({ group, boxIndex, totalBoxes, slipId, onRejec
   const [expanded, setExpanded] = React.useState(false);
   const [rejectingId, setRejectingId] = React.useState<string | null>(null);
   const sku = group.items[0]?.sku ?? '—';
-  const flag = group.items[0]?.flag ?? 'ok';
   const qty = group.items.length;
+
+  // Aggregate the group-level flag from its child items instead of just the
+  // first item, so a single rejected child doesn't mark the whole group.
+  const itemFlags = group.items.map((i) => i.flag ?? 'ok');
+  const allRejected = itemFlags.length > 0 && itemFlags.every((f) => f === 'rejected');
+  const anyRejected = itemFlags.some((f) => f === 'rejected');
+  const groupFlag = allRejected ? 'rejected' : anyRejected ? 'mixed' : (group.items[0]?.flag ?? 'ok');
 
   const handleReject = async (item: any) => {
     if (!onRejectItem || !slipId) return;
@@ -33,7 +39,7 @@ export function ReceivingGroupRow({ group, boxIndex, totalBoxes, slipId, onRejec
     if (!reason?.trim()) return;
     setRejectingId(item.id);
     try {
-      await onRejectItem(slipId, item.serial_number || item.id, reason);
+      await onRejectItem(slipId, item.id, reason);
       toast({ title: 'Item rejected' });
     } catch (err: any) {
       toast({ title: 'Error', description: err?.message || 'Failed', variant: 'destructive' });
@@ -64,7 +70,7 @@ export function ReceivingGroupRow({ group, boxIndex, totalBoxes, slipId, onRejec
           </span>
         </td>
         <td className="px-4 py-2 text-center font-medium">{qty}</td>
-        <td className="px-4 py-2"><FlagBadge flag={flag} /></td>
+        <td className="px-4 py-2"><FlagBadge flag={groupFlag} /></td>
         <td className="px-4 py-2" />{/* Actions placeholder */}
       </tr>
 
@@ -86,11 +92,11 @@ export function ReceivingGroupRow({ group, boxIndex, totalBoxes, slipId, onRejec
             </span>
           </td>
           <td className="px-2 py-1.5 text-right">
-            {onRejectItem && flag !== 'rejected' && (
+            {onRejectItem && item.flag !== 'rejected' && (
               <Button
-                variant="ghost"
                 size="sm"
-                className="h-7 text-xs text-destructive hover:bg-destructive/10"
+                variant="outline"
+                className="text-destructive border-destructive/20 hover:!bg-destructive hover:!text-white h-7 px-2 text-xs"
                 disabled={rejectingId === item.id}
                 onClick={(e) => { e.stopPropagation(); handleReject(item); }}
               >
@@ -98,7 +104,7 @@ export function ReceivingGroupRow({ group, boxIndex, totalBoxes, slipId, onRejec
                 {rejectingId === item.id ? '...' : 'Reject'}
               </Button>
             )}
-            {flag === 'rejected' && (
+            {item.flag === 'rejected' && (
               <span className="text-xs text-destructive font-medium">Rejected</span>
             )}
           </td>

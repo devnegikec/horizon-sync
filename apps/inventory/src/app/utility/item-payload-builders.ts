@@ -6,6 +6,8 @@ export interface ItemFormData {
   // Basic Information
   itemCode: string;
   name: string;
+  brandId: string;
+  gtin: string;
   sku: string;
   description: string;
   itemGroupId: string;
@@ -62,6 +64,8 @@ export function buildCreateItemPayload(formData: ItemFormData): CreateItemPayloa
 
   return {
     item_code: formData.itemCode,
+    brand_id: formData.brandId || null,
+    gtin: formData.gtin || null,
     item_name: formData.name,
     sku: formData.sku || null,
     description: formData.description,
@@ -118,6 +122,8 @@ export function buildUpdateItemPayload(formData: ItemFormData, itemGroup: ApiIte
 
   return {
     item_code: formData.itemCode,
+    brand_id: formData.brandId || null,
+    gtin: formData.gtin || null,
     item_name: formData.name,
     sku: formData.sku || null,
     description: formData.description,

@@ -13,6 +13,9 @@ export const ITEM_TYPES = ['stock', 'service', 'fixed_asset', 'consumable'] as c
 
 export const itemFormSchema = z.object({
   itemCode: z.string().optional().or(z.literal('')),
+  sku: z.string().optional().or(z.literal('')),
+  brandId: z.string().optional().or(z.literal('')),
+  gtin: z.string().max(20, 'GTIN must be 20 characters or less').optional().or(z.literal('')),
   name: z.string().min(1, 'Item name is required').max(255, 'Item name must be 255 characters or less'),
   description: z.string().max(1000, 'Description must be 1000 characters or less').optional().or(z.literal('')),
   itemGroupId: z.string().optional().or(z.literal('')),

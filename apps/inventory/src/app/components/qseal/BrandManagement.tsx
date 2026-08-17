@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { KeyRound, Plus, RefreshCw, Copy, Check, Loader2, ShieldCheck } from 'lucide-react';
+import { KeyRound, Plus, RefreshCw, Loader2 } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -12,88 +12,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 import { useBrands } from '../../features/qr-management/hooks/useBrands';
 import { useCreateBrand } from '../../features/qr-management/hooks/useCreateBrand';
-import type { Brand } from '../../features/qr-management/types/brand.types';
-
-/* ------------------------------------------------------------------ */
-/*  Copyable public key (truncated)                                   */
-/* ------------------------------------------------------------------ */
-
-function PublicKeyDisplay({ publicKey }: { publicKey: string }) {
-  const [copied, setCopied] = React.useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(publicKey);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="flex items-center gap-2 max-w-xs">
-      <code className="text-xs font-mono bg-muted px-2 py-1 rounded truncate flex-1" title={publicKey}>
-        {publicKey.slice(0, 20)}…{publicKey.slice(-8)}
-      </code>
-      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleCopy}>
-        {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-      </Button>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Brand detail dialog (full public key)                             */
-/* ------------------------------------------------------------------ */
-
-function BrandDetailDialog({ brand, open, onOpenChange }: { brand: Brand; open: boolean; onOpenChange: (v: boolean) => void }) {
-  const [copied, setCopied] = React.useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(brand.public_key);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            {brand.name}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">Short Code</p>
-              <p className="font-mono font-medium">{brand.short_code}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Created</p>
-              <p className="font-medium">{new Date(brand.created_at).toLocaleDateString()}</p>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <p className="text-sm text-muted-foreground">ECDSA P-256 Public Key</p>
-            <div className="relative">
-              <code className="block text-xs font-mono bg-muted p-3 rounded break-all leading-relaxed pr-20">
-                {brand.public_key}
-              </code>
-              <Button variant="outline" size="sm" className="absolute top-2 right-2" onClick={handleCopy}>
-                {copied ? <><Check className="h-3.5 w-3.5 mr-1 text-green-600" />Copied</> : <><Copy className="h-3.5 w-3.5 mr-1" />Copy</>}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Uncompressed X9.62 hex (130 chars, starts with 04). The private key is stored encrypted on the server and never exposed.
-            </p>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /*  Create brand dialog                                                */
@@ -140,7 +58,7 @@ function CreateBrandDialog({ open, onOpenChange, onCreated }: CreateBrandDialogP
           </div>
           <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground flex items-start gap-2">
             <KeyRound className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            An ECDSA P-256 key pair will be auto-generated and securely stored. You can view the public key after creation.
+            An ECDSA P-256 key pair will be auto-generated and securely stored.
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
@@ -162,7 +80,6 @@ function CreateBrandDialog({ open, onOpenChange, onCreated }: CreateBrandDialogP
 export function BrandManagement() {
   const { data, loading, error, refetch } = useBrands();
   const [createOpen, setCreateOpen] = React.useState(false);
-  const [selectedBrand, setSelectedBrand] = React.useState<Brand | null>(null);
 
   const brands = data?.brands ?? [];
 
@@ -219,9 +136,7 @@ export function BrandManagement() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Short Code</TableHead>
-                  <TableHead>Public Key</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -231,14 +146,8 @@ export function BrandManagement() {
                     <TableCell>
                       <Badge variant="outline" className="font-mono">{brand.short_code}</Badge>
                     </TableCell>
-                    <TableCell>
-                      <PublicKeyDisplay publicKey={brand.public_key} />
-                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(brand.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedBrand(brand)}>View Key</Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -249,10 +158,6 @@ export function BrandManagement() {
       </Card>
 
       <CreateBrandDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={refetch} />
-
-      {selectedBrand && (
-        <BrandDetailDialog brand={selectedBrand} open={!!selectedBrand} onOpenChange={(v) => { if (!v) setSelectedBrand(null); }} />
-      )}
     </div>
   );
 }

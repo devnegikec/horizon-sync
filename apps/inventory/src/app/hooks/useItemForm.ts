@@ -59,6 +59,8 @@ const getInitialFormData = (): ItemFormData & { itemGroupName: string } => ({
   // Tax & Additional
   salesTaxTemplateId: null,
   purchaseTaxTemplateId: null,
+  brandId: '',
+  gtin: '',
   barcode: '',
   imageUrl: '',
   images: [],
@@ -121,6 +123,8 @@ export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult
         // Tax & Additional
         salesTaxTemplateId: item.salesTaxTemplateId || null,
         purchaseTaxTemplateId: item.purchaseTaxTemplateId || null,
+        brandId: (item as Item & { brandId?: string }).brandId || '',
+        gtin: (item as Item & { gtin?: string }).gtin || '',
         barcode: item.barcode || '',
         imageUrl: item.imageUrl || '',
         images: item.images || [],
