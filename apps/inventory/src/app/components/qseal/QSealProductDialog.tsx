@@ -442,7 +442,7 @@ function buildPayload(data: FormValues): CreateQSealProductPayload {
   return {
     brand_id: n(data.brand_id),
     name: data.name,
-    generic_name: n(data.sku),
+    sku: n(data.sku),
     gtin: n(data.gtin),
     industry: n(data.industry),
     landing_page: n(data.landing_page),
@@ -478,7 +478,7 @@ function getInitialValues(product: QSealProduct): FormValues {
   return {
     brand_id: '',
     name: product.name,
-    sku: e(product.generic_name),
+    sku: e(product.sku ?? product.generic_name),
     gtin: e(product.gtin),
     industry: e(product.industry),
     landing_page: e(product.landing_page),
