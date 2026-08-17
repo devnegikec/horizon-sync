@@ -58,6 +58,16 @@ interface ItemDetailResponse {
   tags: string[];
   custom_fields: Record<string, unknown>;
   extra_data: Record<string, unknown>;
+  packaging_units: Array<{
+    id: string;
+    unit_name: string;
+    conversion_factor: number;
+    length_mm: number | null;
+    width_mm: number | null;
+    height_mm: number | null;
+    weight_grams: number | null;
+    is_base_unit: boolean;
+  }> | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: string;
@@ -138,6 +148,8 @@ function OverviewTab({ detail }: { detail: ItemDetailResponse }) {
         </div>
       </SectionCard>
 
+      <PackagingDetailsCard detail={detail} />
+
       {detail.tags && detail.tags.length > 0 && (
         <SectionCard title="Tags">
           <div className="flex flex-wrap gap-2">
@@ -148,6 +160,39 @@ function OverviewTab({ detail }: { detail: ItemDetailResponse }) {
         </SectionCard>
       )}
     </div>
+  );
+}
+
+function PackagingDetailsCard({ detail }: { detail: ItemDetailResponse }) {
+  const units = detail.packaging_units ?? [];
+  if (units.length === 0) {
+    return (
+      <SectionCard title="Packaging Details">
+        <p className="text-sm text-muted-foreground">No packaging details configured</p>
+      </SectionCard>
+    );
+  }
+
+  const base = units.find((u) => u.is_base_unit) ?? units[0];
+  const hasDimensions = base.length_mm != null && base.width_mm != null && base.height_mm != null;
+
+  return (
+    <SectionCard title="Packaging Details">
+      <div className="grid grid-cols-2 gap-4">
+        <InfoRow icon={Box} label="Base Unit" value={base.unit_name} />
+        <InfoRow icon={Layers} label="Conversion Factor" value={base.conversion_factor} />
+        <InfoRow
+          icon={Ruler}
+          label="Dimensions (L × W × H)"
+          value={hasDimensions ? `${base.length_mm} × ${base.width_mm} × ${base.height_mm} mm` : undefined}
+        />
+        <InfoRow
+          icon={Weight}
+          label="Weight"
+          value={base.weight_grams != null ? `${base.weight_grams} g` : undefined}
+        />
+      </div>
+    </SectionCard>
   );
 }
 
@@ -227,7 +272,7 @@ function AdditionalTab({ detail }: { detail: ItemDetailResponse }) {
 
   if (!hasContent) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+      <div className="flex min-h-[320px] flex-col items-center justify-center text-muted-foreground">
         <Settings2 className="h-8 w-8 mb-2 opacity-50" />
         <p className="text-sm">No additional data configured</p>
       </div>
@@ -298,24 +343,24 @@ function DialogHeaderSection({ detail, item, standardRate, currencySymbol }: { d
 
 function DetailTabs({ detail, currencySymbol }: { detail: ItemDetailResponse; currencySymbol: string }) {
   return (
-    <Tabs defaultValue="overview" className="mt-4">
-      <TabsList className="w-full">
+    <Tabs defaultValue="overview" className="mt-4 flex min-h-0 flex-1 flex-col">
+      <TabsList className="w-full shrink-0">
         <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
         <TabsTrigger value="stock" className="flex-1">Stock & Pricing</TabsTrigger>
         <TabsTrigger value="quality" className="flex-1">Quality & Reorder</TabsTrigger>
         <TabsTrigger value="additional" className="flex-1">Additional</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="overview" className="mt-4">
+      <TabsContent value="overview" className="mt-4 min-h-0 flex-1 overflow-y-auto">
         <OverviewTab detail={detail} />
       </TabsContent>
-      <TabsContent value="stock" className="mt-4">
+      <TabsContent value="stock" className="mt-4 min-h-0 flex-1 overflow-y-auto">
         <StockPricingTab detail={detail} currencySymbol={currencySymbol} />
       </TabsContent>
-      <TabsContent value="quality" className="mt-4">
+      <TabsContent value="quality" className="mt-4 min-h-0 flex-1 overflow-y-auto">
         <QualityReorderTab detail={detail} />
       </TabsContent>
-      <TabsContent value="additional" className="mt-4">
+      <TabsContent value="additional" className="mt-4 min-h-0 flex-1 overflow-y-auto">
         <AdditionalTab detail={detail} />
       </TabsContent>
     </Tabs>
@@ -351,11 +396,14 @@ export function ItemDetailDialog({ open, onOpenChange, item }: ItemDetailDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[750px] max-h-[85vh] overflow-y-auto">
+      <DialogContent
+        className="sm:max-w-[750px] max-h-[85vh] flex flex-col overflow-hidden"
+        style={{ display: 'flex', flexDirection: 'column', height: 'min(85vh, 820px)' }}
+      >
         <DialogHeaderSection detail={detail} item={item} standardRate={standardRate} currencySymbol={currencySymbol} />
 
         {loading && (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex flex-1 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             <span className="ml-2 text-sm text-muted-foreground">Loading details...</span>
           </div>

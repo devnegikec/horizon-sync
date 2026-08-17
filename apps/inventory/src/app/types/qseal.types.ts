@@ -85,8 +85,18 @@ export interface QSealProductListResponse {
   };
 }
 
+export interface QSealPackagingDetailsPayload {
+  unit_name: string;
+  conversion_factor: number;
+  length_mm: number | null;
+  width_mm: number | null;
+  height_mm: number | null;
+  weight_grams: number | null;
+}
+
 export interface CreateQSealProductPayload {
   name: string;
+  packaging_details?: QSealPackagingDetailsPayload | null;
   brand_id?: string | null;
   sku?: string | null;
   generic_name?: string | null;
@@ -109,6 +119,7 @@ export interface CreateQSealProductPayload {
 export interface UpdateQSealProductPayload {
   name?: string | null;
   sku?: string | null;
+  packaging_details?: QSealPackagingDetailsPayload | null;
   generic_name?: string | null;
   gtin?: string | null;
   industry?: string | null;

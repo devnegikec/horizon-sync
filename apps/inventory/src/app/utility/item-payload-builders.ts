@@ -1,5 +1,5 @@
 import type { ApiItemGroup } from '../types/item-groups.types';
-import type { CreateItemPayload, UpdateItemPayload } from '../types/items-api.types';
+import type { CreateItemPayload, PackagingDetailsPayload, UpdateItemPayload } from '../types/items-api.types';
 
 
 export interface ItemFormData {
@@ -54,6 +54,35 @@ export interface ItemFormData {
   tags: string[];
   customFields: Record<string, unknown>;
   extraData: Record<string, unknown>;
+
+  // Packaging Details (base packaging unit)
+  packagingUnitName: string;
+  packagingConversionFactor: string;
+  packagingLengthMm: string;
+  packagingWidthMm: string;
+  packagingHeightMm: string;
+  packagingWeightGrams: string;
+}
+
+
+function buildPackagingDetailsPayload(formData: ItemFormData): PackagingDetailsPayload {
+  return {
+    unit_name: formData.packagingUnitName || 'Each',
+    conversion_factor: parseFloat(formData.packagingConversionFactor) || 1,
+    length_mm: parseFloat(formData.packagingLengthMm) || null,
+    width_mm: parseFloat(formData.packagingWidthMm) || null,
+    height_mm: parseFloat(formData.packagingHeightMm) || null,
+    weight_grams: parseFloat(formData.packagingWeightGrams) || null,
+  };
+}
+
+function hasPackagingDetails(formData: ItemFormData): boolean {
+  return !!(formData.packagingLengthMm ||
+    formData.packagingWidthMm ||
+    formData.packagingHeightMm ||
+    formData.packagingWeightGrams ||
+    formData.packagingConversionFactor !== '1' ||
+    (formData.packagingUnitName && formData.packagingUnitName !== 'Each'));
 }
 
 
@@ -103,6 +132,9 @@ export function buildCreateItemPayload(formData: ItemFormData): CreateItemPayloa
     sales_tax_template_id: formData.salesTaxTemplateId,
     purchase_tax_template_id: formData.purchaseTaxTemplateId,
     extra_data: formData.extraData,
+    ...(hasPackagingDetails(formData)
+      ? { packaging_details: buildPackagingDetailsPayload(formData) }
+      : {}),
   };
 }
 
@@ -166,6 +198,9 @@ export function buildUpdateItemPayload(formData: ItemFormData, itemGroup: ApiIte
     sales_tax_template_id: formData.salesTaxTemplateId,
     purchase_tax_template_id: formData.purchaseTaxTemplateId,
     extra_data: formData.extraData,
+    ...(hasPackagingDetails(formData)
+      ? { packaging_details: buildPackagingDetailsPayload(formData) }
+      : {}),
   };
 }
 

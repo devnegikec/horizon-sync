@@ -323,7 +323,7 @@ export function ItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] h-[820px] max-h-[85vh] overflow-y-auto">
         <ItemDialogHeader isEditing={isEditing} />
 
         {fetchingDetail ? (
@@ -334,7 +334,7 @@ export function ItemDialog({
         ) : (
           <FormProvider {...methods}>
             <form onSubmit={methods.handleSubmit(onSubmit)}>
-              <ItemFormFields formData={formData} setFormData={setFormData} itemGroups={itemGroups} onItemGroupsRefresh={onItemGroupsRefresh} isLoading={isLoading} salesTaxTemplates={salesTaxTemplates} purchaseTaxTemplates={purchaseTaxTemplates} isLoadingTaxTemplates={isLoadingTaxTemplates}/>
+              <ItemFormFields formData={formData} setFormData={setFormData} itemGroups={itemGroups} onItemGroupsRefresh={onItemGroupsRefresh} isLoading={isLoading} salesTaxTemplates={salesTaxTemplates} purchaseTaxTemplates={purchaseTaxTemplates} isLoadingTaxTemplates={isLoadingTaxTemplates} />
             </form>
           </FormProvider>
         )}
