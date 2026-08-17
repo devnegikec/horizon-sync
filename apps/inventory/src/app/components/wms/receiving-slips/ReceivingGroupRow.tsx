@@ -94,9 +94,9 @@ export function ReceivingGroupRow({ group, boxIndex, totalBoxes, slipId, onRejec
           <td className="px-2 py-1.5 text-right">
             {onRejectItem && item.flag !== 'rejected' && (
               <Button
-                variant="ghost"
                 size="sm"
-                className="h-7 text-xs text-destructive hover:bg-destructive/10"
+                variant="outline"
+                className="text-destructive border-destructive/20 hover:!bg-destructive hover:!text-white h-7 px-2 text-xs"
                 disabled={rejectingId === item.id}
                 onClick={(e) => { e.stopPropagation(); handleReject(item); }}
               >
