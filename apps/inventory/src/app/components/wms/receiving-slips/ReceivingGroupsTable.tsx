@@ -30,7 +30,7 @@ export function ReceivingGroupsTable({ groups, slipId, onRejectItem }: {
       </thead>
       <tbody className="divide-y">
         {groups.map((group, idx) => (
-          <ReceivingGroupRow key={group.parent_qseal.id}
+          <ReceivingGroupRow key={group.parent_qseal?.id ?? `group-${idx}`}
             group={group}
             boxIndex={idx + 1}
             totalBoxes={groups.length}

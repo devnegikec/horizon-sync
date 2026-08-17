@@ -80,9 +80,36 @@ function buildLinesFromEntry(entry: StockEntry): StockEntryLineRow[] {
     qty: item.qty || 0,
     uom: item.uom || 'pcs',
     basic_rate: item.basic_rate || 0,
-    amount: (item.qty || 0) * (item.basic_rate || 0),
+    amount: Number(item.basic_amount ?? (item.qty || 0) * (item.basic_rate || 0)),
     sort_order: idx + 1,
   }));
+}
+
+/** Aggregates duplicate line items into a single row per item for view mode. */
+function buildViewLinesFromEntry(entry: StockEntry): StockEntryLineRow[] {
+  if (!entry.items || entry.items.length === 0) return [{ ...EMPTY_LINE }];
+  const grouped = new Map<string, StockEntryLineRow>();
+  for (const item of entry.items) {
+    const qty = Number(item.qty || 0);
+    const amount = Number(item.basic_amount ?? qty * (item.basic_rate || 0));
+    const existing = grouped.get(item.item_id);
+    if (existing) {
+      existing.qty += qty;
+      existing.amount += amount;
+    } else {
+      grouped.set(item.item_id, {
+        item_id: item.item_id,
+        item_name: item.item_name || undefined,
+        item_code: item.item_code || undefined,
+        qty,
+        uom: item.uom || 'pcs',
+        basic_rate: Number(item.basic_rate || 0),
+        amount,
+        sort_order: 1,
+      });
+    }
+  }
+  return Array.from(grouped.values()).map((row, idx) => ({ ...row, sort_order: idx + 1 }));
 }
 
 function buildPayload(form: StockEntryFormState, lines: StockEntryLineRow[]) {
@@ -189,13 +216,13 @@ export function StockEntryDialog({
   React.useEffect(() => {
     if (entry) {
       setForm(buildFormFromEntry(entry));
-      setLineItems(buildLinesFromEntry(entry));
+      setLineItems(viewMode ? buildViewLinesFromEntry(entry) : buildLinesFromEntry(entry));
     } else {
       setForm({ ...DEFAULT_FORM, posting_date: new Date().toISOString().split('T')[0] });
       setLineItems([{ ...EMPTY_LINE }]);
     }
     setSubmitError(null);
-  }, [entry, open]);
+  }, [entry, open, viewMode]);
 
   /* Field change handler — clears irrelevant warehouse on type switch, resets items on warehouse change */
   const handleFieldChange = React.useCallback((field: keyof StockEntryFormState, value: string) => {

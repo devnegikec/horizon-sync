@@ -202,7 +202,7 @@ export function WMSManagement() {
         )}
 
         {activeView === 'stock' && (
-          <StockManagement />
+          <StockManagement warehouseId={selectedWarehouseId || undefined} />
         )}
 
         {activeView === 'manage' && canManage && (
