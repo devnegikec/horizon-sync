@@ -11,6 +11,7 @@ export type QSealProductStatus = 'active' | 'inactive';
 export interface QSealProductListItem {
   id: string;
   name: string;
+  sku: string | null;
   generic_name: string | null;
   gtin: string | null;
   industry: string | null;
@@ -27,6 +28,7 @@ export interface QSealProduct {
   id: string;
   organization_id: string;
   name: string;
+  sku: string | null;
   generic_name: string | null;
   gtin: string | null;
   industry: string | null;
@@ -86,6 +88,7 @@ export interface QSealProductListResponse {
 export interface CreateQSealProductPayload {
   name: string;
   brand_id?: string | null;
+  sku?: string | null;
   generic_name?: string | null;
   gtin?: string | null;
   industry?: string | null;
@@ -105,6 +108,7 @@ export interface CreateQSealProductPayload {
 
 export interface UpdateQSealProductPayload {
   name?: string | null;
+  sku?: string | null;
   generic_name?: string | null;
   gtin?: string | null;
   industry?: string | null;
