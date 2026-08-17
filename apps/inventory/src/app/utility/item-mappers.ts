@@ -1,5 +1,26 @@
-import type { Item } from '../types/item.types';
+import type { Item, ItemPackagingDetails } from '../types/item.types';
 import type { ApiItem } from '../types/items-api.types';
+
+function toNullableNumber(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = parseFloat(String(v));
+  return Number.isFinite(n) ? n : null;
+}
+
+function mapPackagingDetails(units: unknown): ItemPackagingDetails | null {
+  if (!Array.isArray(units) || units.length === 0) return null;
+  const list = units as Array<Record<string, unknown>>;
+  const base = list.find((u) => u?.is_base_unit === true) ?? list[0];
+  if (!base) return null;
+  return {
+    unitName: (base.unit_name as string) ?? 'Each',
+    conversionFactor: Number(base.conversion_factor ?? 1) || 1,
+    lengthMm: toNullableNumber(base.length_mm),
+    widthMm: toNullableNumber(base.width_mm),
+    heightMm: toNullableNumber(base.height_mm),
+    weightGrams: toNullableNumber(base.weight_grams),
+  };
+}
 
 /**
  * Maps an API item response to the frontend Item type.
@@ -52,5 +73,6 @@ export function apiItemToItem(api: ApiItem): Item {
     tags: (api as any).tags ?? [],
     customFields: (api as any).custom_fields ?? {},
     extraData: (api as any).extra_data ?? {},
+    packagingDetails: mapPackagingDetails((api as any).packaging_units),
   };
 }

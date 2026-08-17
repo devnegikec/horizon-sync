@@ -25,7 +25,7 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
 
       <div className="space-y-4">
         <h4 className="text-sm font-semibold border-b pb-2">Pricing</h4>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="standardRate">
@@ -38,7 +38,7 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
               value={formData.defaultPrice}
               onChange={(e) => onUpdate({ defaultPrice: e.target.value })}
               placeholder="0.00"
-              required/>
+              required />
           </div>
 
           <div className="space-y-2">
@@ -49,7 +49,7 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
               min="0"
               value={formData.valuationRate}
               onChange={(e) => onUpdate({ valuationRate: e.target.value })}
-              placeholder="0.00"/>
+              placeholder="0.00" />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -64,7 +64,7 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
               value={formData.minOrderQty}
               onChange={(e) => onUpdate({ minOrderQty: Number(e.target.value) || 1 })}
               placeholder="1"
-              required/>
+              required />
           </div>
 
           <div className="space-y-2">
@@ -75,7 +75,7 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
               min="0"
               value={formData.maxOrderQty || ''}
               onChange={(e) => onUpdate({ maxOrderQty: Number(e.target.value) || 0 })}
-              placeholder="0 (unlimited)"/>
+              placeholder="0 (unlimited)" />
             {formData.maxOrderQty > 0 && formData.minOrderQty > formData.maxOrderQty && (
               <p className="text-xs text-red-500">
                 Maximum order quantity must be ≥ minimum order quantity
@@ -87,14 +87,14 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
 
       <div className="space-y-4">
         <h4 className="text-sm font-semibold border-b pb-2">Stock Settings</h4>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div className="flex items-center space-x-2">
             <Checkbox id="maintainStock"
               checked={formData.maintainStock}
               onCheckedChange={(checked) =>
                 onUpdate({ maintainStock: checked === true })
-              }/>
+              } />
             <Label htmlFor="maintainStock" className="cursor-pointer">
               Maintain Stock
             </Label>
@@ -105,7 +105,7 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
               checked={formData.allowNegativeStock}
               onCheckedChange={(checked) =>
                 onUpdate({ allowNegativeStock: checked === true })
-              }/>
+              } />
             <Label htmlFor="allowNegativeStock" className="cursor-pointer">
               Allow Negative Stock
             </Label>
@@ -132,14 +132,14 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
 
       <div className="space-y-4">
         <h4 className="text-sm font-semibold border-b pb-2">Additional Details</h4>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="barcode">Barcode</Label>
             <Input id="barcode"
               value={formData.barcode}
               onChange={(e) => onUpdate({ barcode: e.target.value })}
-              placeholder="Enter barcode"/>
+              placeholder="Enter barcode" />
           </div>
 
           <div className="space-y-2">
@@ -147,7 +147,62 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
             <Input id="imageUrl"
               value={formData.imageUrl}
               onChange={(e) => onUpdate({ imageUrl: e.target.value })}
-              placeholder="https://example.com/image.jpg"/>
+              placeholder="https://example.com/image.jpg" />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h4 className="text-sm font-semibold border-b pb-2">Packaging Details</h4>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="packagingUnitName">Base Unit Name</Label>
+            <Input id="packagingUnitName"
+              value={formData.packagingUnitName}
+              onChange={(e) => onUpdate({ packagingUnitName: e.target.value })}
+              placeholder="Each" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="packagingConversionFactor">Conversion Factor</Label>
+            <Input id="packagingConversionFactor"
+              type="number"
+              step="1"
+              min="1"
+              value={formData.packagingConversionFactor}
+              onChange={(e) => onUpdate({ packagingConversionFactor: e.target.value })}
+              placeholder="1" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="packagingLengthMm">Length (mm)</Label>
+            <Input id="packagingLengthMm"
+              type="number" step="0.1" min="0"
+              value={formData.packagingLengthMm}
+              onChange={(e) => onUpdate({ packagingLengthMm: e.target.value })}
+              placeholder="0" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="packagingWidthMm">Width (mm)</Label>
+            <Input id="packagingWidthMm"
+              type="number" step="0.1" min="0"
+              value={formData.packagingWidthMm}
+              onChange={(e) => onUpdate({ packagingWidthMm: e.target.value })}
+              placeholder="0" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="packagingHeightMm">Height (mm)</Label>
+            <Input id="packagingHeightMm"
+              type="number" step="0.1" min="0"
+              value={formData.packagingHeightMm}
+              onChange={(e) => onUpdate({ packagingHeightMm: e.target.value })}
+              placeholder="0" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="packagingWeightGrams">Weight (g)</Label>
+            <Input id="packagingWeightGrams"
+              type="number" step="0.1" min="0"
+              value={formData.packagingWeightGrams}
+              onChange={(e) => onUpdate({ packagingWeightGrams: e.target.value })}
+              placeholder="0" />
           </div>
         </div>
       </div>
