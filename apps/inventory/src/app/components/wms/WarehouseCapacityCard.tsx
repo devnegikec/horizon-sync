@@ -31,6 +31,18 @@ function stateForPct(pct: number | null): BinState {
     return 'available';
 }
 
+/** Coerce a backend value to a number (Decimal fields are serialized as strings). */
+function toNumber(value: unknown): number | null {
+    if (value == null) return null;
+    const n = typeof value === 'number' ? value : Number.parseFloat(String(value));
+    return Number.isFinite(n) ? n : null;
+}
+
+function fmt(value: unknown, digits: number): string {
+    const n = toNumber(value);
+    return n == null ? '—' : n.toFixed(digits);
+}
+
 function ProgressBar({ pct, color }: { pct: number | null; color: string }) {
     const value = Math.max(0, Math.min(100, pct ?? 0));
     return (
@@ -70,12 +82,12 @@ export function WarehouseCapacityCard({ warehouseId }: WarehouseCapacityCardProp
         };
     }, [accessToken, warehouseId, toast]);
 
-    const binding = data?.binding_pct ?? 0;
+    const binding = toNumber(data?.binding_pct) ?? 0;
     const state = stateForPct(binding);
     const meta = STATE_META[state];
-    const volPct = data?.volume?.pct ?? null;
-    const wtPct = data?.weight?.pct ?? null;
-    const hasWeight = data != null && data.weight.capacity_kg != null;
+    const volPct = toNumber(data?.volume?.pct);
+    const wtPct = toNumber(data?.weight?.pct);
+    const hasWeight = toNumber(data?.weight?.capacity_kg) != null;
 
     return (
         <Card>
@@ -104,8 +116,8 @@ export function WarehouseCapacityCard({ warehouseId }: WarehouseCapacityCardProp
                                     <Boxes className="h-4 w-4" /> Volume
                                 </span>
                                 <span className="font-medium">
-                                    {data.volume.occupied_m3.toFixed(3)} /{' '}
-                                    {data.volume.capacity_m3 != null ? data.volume.capacity_m3.toFixed(3) : '—'} m³
+                                    {fmt(data.volume?.occupied_m3, 3)} /{' '}
+                                    {fmt(data.volume?.capacity_m3, 3)} m³
                                     {volPct != null && <span className="ml-2 text-muted-foreground">{volPct.toFixed(1)}%</span>}
                                 </span>
                             </div>
@@ -119,8 +131,8 @@ export function WarehouseCapacityCard({ warehouseId }: WarehouseCapacityCardProp
                                         <Weight className="h-4 w-4" /> Weight
                                     </span>
                                     <span className="font-medium">
-                                        {data.weight.occupied_kg.toFixed(2)} /{' '}
-                                        {data.weight.capacity_kg != null ? data.weight.capacity_kg.toFixed(2) : '—'} kg
+                                        {fmt(data.weight?.occupied_kg, 2)} /{' '}
+                                        {fmt(data.weight?.capacity_kg, 2)} kg
                                         {wtPct != null && <span className="ml-2 text-muted-foreground">{wtPct.toFixed(1)}%</span>}
                                     </span>
                                 </div>
