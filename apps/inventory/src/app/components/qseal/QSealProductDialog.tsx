@@ -42,6 +42,12 @@ interface FormValues {
   redirect_to_client: boolean;
   image_url: string;
   banner_image_url: string;
+  packaging_unit_name: string;
+  packaging_conversion_factor: string;
+  packaging_length_mm: string;
+  packaging_width_mm: string;
+  packaging_height_mm: string;
+  packaging_weight_grams: string;
 }
 
 const ACTIVATION_OPTIONS = [
@@ -72,6 +78,12 @@ const DEFAULT_VALUES: FormValues = {
   redirect_to_client: false,
   image_url: '',
   banner_image_url: '',
+  packaging_unit_name: 'Each',
+  packaging_conversion_factor: '1',
+  packaging_length_mm: '',
+  packaging_width_mm: '',
+  packaging_height_mm: '',
+  packaging_weight_grams: '',
 };
 
 function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ className?: string }>; title: string }) {
@@ -368,6 +380,46 @@ function AdditionalDetailsSection({ register, redirectToClient, onRedirectChange
   );
 }
 
+// ─── Packaging Details ──────────────────────────────────────────────────────────
+
+interface PackagingDetailsSectionProps {
+  register: ReturnType<typeof useForm<FormValues>>['register'];
+}
+
+function PackagingDetailsSection({ register }: PackagingDetailsSectionProps) {
+  return (
+    <div className="space-y-3">
+      <SectionHeader icon={Info} title="Packaging Details" />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="packaging_unit_name" label="Base Unit Name" hint="The base packaging unit (e.g. Each)" />
+          <Input id="packaging_unit_name" placeholder="Each" {...register('packaging_unit_name')} />
+        </div>
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="packaging_conversion_factor" label="Conversion Factor" hint="Base units per pack (must be ≥ 1)" />
+          <Input id="packaging_conversion_factor" type="number" step="1" min="1" placeholder="1" {...register('packaging_conversion_factor')} />
+        </div>
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="packaging_length_mm" label="Length (mm)" hint="Physical length in millimetres" />
+          <Input id="packaging_length_mm" type="number" step="0.1" min="0" placeholder="0" {...register('packaging_length_mm')} />
+        </div>
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="packaging_width_mm" label="Width (mm)" hint="Physical width in millimetres" />
+          <Input id="packaging_width_mm" type="number" step="0.1" min="0" placeholder="0" {...register('packaging_width_mm')} />
+        </div>
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="packaging_height_mm" label="Height (mm)" hint="Physical height in millimetres" />
+          <Input id="packaging_height_mm" type="number" step="0.1" min="0" placeholder="0" {...register('packaging_height_mm')} />
+        </div>
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="packaging_weight_grams" label="Weight (g)" hint="Physical weight in grams" />
+          <Input id="packaging_weight_grams" type="number" step="0.1" min="0" placeholder="0" {...register('packaging_weight_grams')} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function emptyToNull(val: string): string | null {
@@ -380,6 +432,13 @@ function nullToEmpty(val: string | null | undefined): string {
 
 function buildPayload(data: FormValues): CreateQSealProductPayload {
   const n = emptyToNull;
+  const hasPackaging = !!(data.packaging_length_mm ||
+    data.packaging_width_mm ||
+    data.packaging_height_mm ||
+    data.packaging_weight_grams ||
+    data.packaging_conversion_factor !== '1' ||
+    (data.packaging_unit_name && data.packaging_unit_name !== 'Each'));
+
   return {
     brand_id: n(data.brand_id),
     name: data.name,
@@ -396,11 +455,26 @@ function buildPayload(data: FormValues): CreateQSealProductPayload {
     email: n(data.email),
     phone_number: n(data.phone_number),
     redirect_to_client: data.redirect_to_client,
+    ...(hasPackaging
+      ? {
+        packaging_details: {
+          unit_name: data.packaging_unit_name || 'Each',
+          conversion_factor: Number(data.packaging_conversion_factor) || 1,
+          length_mm: parseFloat(data.packaging_length_mm) || null,
+          width_mm: parseFloat(data.packaging_width_mm) || null,
+          height_mm: parseFloat(data.packaging_height_mm) || null,
+          weight_grams: parseFloat(data.packaging_weight_grams) || null,
+        },
+      }
+      : {}),
   };
 }
 
 function getInitialValues(product: QSealProduct): FormValues {
   const e = nullToEmpty;
+  const pd = (product.extra_data as Record<string, unknown> | null | undefined)?.packaging_details as
+    | Record<string, unknown>
+    | undefined;
   return {
     brand_id: '',
     name: product.name,
@@ -417,6 +491,14 @@ function getInitialValues(product: QSealProduct): FormValues {
     redirect_to_client: product.redirect_to_client ?? false,
     image_url: e(product.image_url),
     banner_image_url: e(product.banner_image_url),
+    packaging_unit_name: (pd?.unit_name as string) || 'Each',
+    packaging_conversion_factor: pd?.conversion_factor != null
+      ? String(pd.conversion_factor)
+      : '1',
+    packaging_length_mm: pd?.length_mm != null ? String(pd.length_mm) : '',
+    packaging_width_mm: pd?.width_mm != null ? String(pd.width_mm) : '',
+    packaging_height_mm: pd?.height_mm != null ? String(pd.height_mm) : '',
+    packaging_weight_grams: pd?.weight_grams != null ? String(pd.weight_grams) : '',
   };
 }
 
@@ -460,6 +542,8 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
       <ActivationDetailsSection activationMethod={activationMethod} srNumberType={srNumberType} onActivationChange={(v) => setValue('activation_method', v)} onSrNumberChange={(v) => setValue('sr_number_type', v)} />
       <Separator />
       <AdditionalDetailsSection register={register} redirectToClient={redirectToClient} onRedirectChange={(checked) => setValue('redirect_to_client', checked)} />
+      <Separator />
+      <PackagingDetailsSection register={register} />
     </FormDialog>
   );
 }

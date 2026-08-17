@@ -1,3 +1,25 @@
+/** Packaging unit returned inside an item detail response */
+export interface ApiPackagingUnit {
+  id: string;
+  unit_name: string;
+  conversion_factor: number;
+  length_mm: number | null;
+  width_mm: number | null;
+  height_mm: number | null;
+  weight_grams: number | null;
+  is_base_unit: boolean;
+}
+
+/** Nested packaging details accepted on create/update item payloads */
+export interface PackagingDetailsPayload {
+  unit_name: string;
+  conversion_factor: number;
+  length_mm: number | null;
+  width_mm: number | null;
+  height_mm: number | null;
+  weight_grams: number | null;
+}
+
 /** API item shape from core service GET /items */
 export interface ApiItem {
   id: string;
@@ -14,6 +36,7 @@ export interface ApiItem {
   barcode: string | null;
   image_url: string | null;
   created_at: string | null;
+  packaging_units?: ApiPackagingUnit[] | null;
 }
 
 export interface ItemsPagination {
@@ -32,6 +55,7 @@ export interface ItemsResponse {
 
 /** Payload for POST /items (create item) */
 export interface CreateItemPayload {
+  packaging_details?: PackagingDetailsPayload | null;
   item_code: string;
   item_name: string;
   brand_id?: string | null;
@@ -83,6 +107,7 @@ export interface UpdateItemGroupRef {
 
 /** Payload for PUT /items/:id (update item) */
 export interface UpdateItemPayload {
+  packaging_details?: PackagingDetailsPayload | null;
   organization_id?: string;
   item_code: string;
   item_name: string;

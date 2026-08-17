@@ -67,6 +67,14 @@ const getInitialFormData = (): ItemFormData & { itemGroupName: string } => ({
   tags: [],
   customFields: {},
   extraData: {},
+
+  // Packaging Details
+  packagingUnitName: 'Each',
+  packagingConversionFactor: '1',
+  packagingLengthMm: '',
+  packagingWidthMm: '',
+  packagingHeightMm: '',
+  packagingWeightGrams: '',
 });
 
 export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult {
@@ -131,6 +139,14 @@ export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult
         tags: item.tags || [],
         customFields: item.customFields || {},
         extraData: item.extraData || {},
+
+        // Packaging Details
+        packagingUnitName: item.packagingDetails?.unitName || 'Each',
+        packagingConversionFactor: item.packagingDetails?.conversionFactor?.toString() || '1',
+        packagingLengthMm: item.packagingDetails?.lengthMm?.toString() || '',
+        packagingWidthMm: item.packagingDetails?.widthMm?.toString() || '',
+        packagingHeightMm: item.packagingDetails?.heightMm?.toString() || '',
+        packagingWeightGrams: item.packagingDetails?.weightGrams?.toString() || '',
       });
     } else {
       resetForm();

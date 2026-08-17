@@ -1,3 +1,12 @@
+export interface ItemPackagingDetails {
+  unitName: string;
+  conversionFactor: number;
+  lengthMm: number | null;
+  widthMm: number | null;
+  heightMm: number | null;
+  weightGrams: number | null;
+}
+
 export interface Item {
   id: string;
   itemCode: string;
@@ -44,6 +53,7 @@ export interface Item {
   tags?: string[];
   customFields?: Record<string, unknown>;
   extraData?: Record<string, unknown>;
+  packagingDetails?: ItemPackagingDetails | null;
 }
 
 export interface ItemGroup {

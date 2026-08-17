@@ -36,7 +36,7 @@ export function SimpleItemFormFields({
       {/* Basic Information */}
       <div className="space-y-4">
         <h3 className="text-base font-semibold border-b pb-2">Basic Information</h3>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="itemCode">
@@ -46,7 +46,7 @@ export function SimpleItemFormFields({
               value={formData.itemCode}
               onChange={(e) => setFormData((prev) => ({ ...prev, itemCode: e.target.value }))}
               placeholder="e.g., ELEC-001"
-              required/>
+              required />
           </div>
 
           <div className="space-y-2">
@@ -57,7 +57,7 @@ export function SimpleItemFormFields({
               value={formData.name}
               onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
               placeholder="Enter item name"
-              required/>
+              required />
           </div>
         </div>
 
@@ -67,7 +67,7 @@ export function SimpleItemFormFields({
             value={formData.description}
             onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
             placeholder="Enter item description"
-            rows={3}/>
+            rows={3} />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -160,7 +160,7 @@ export function SimpleItemFormFields({
       {/* Pricing */}
       <div className="space-y-4">
         <h3 className="text-base font-semibold border-b pb-2">Pricing</h3>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="standardRate">
@@ -173,7 +173,7 @@ export function SimpleItemFormFields({
               value={formData.defaultPrice}
               onChange={(e) => setFormData((prev) => ({ ...prev, defaultPrice: e.target.value }))}
               placeholder="0.00"
-              required/>
+              required />
           </div>
 
           <div className="space-y-2">
@@ -184,7 +184,7 @@ export function SimpleItemFormFields({
               min="0"
               value={formData.valuationRate}
               onChange={(e) => setFormData((prev) => ({ ...prev, valuationRate: e.target.value }))}
-              placeholder="0.00"/>
+              placeholder="0.00" />
           </div>
         </div>
       </div>
@@ -192,14 +192,14 @@ export function SimpleItemFormFields({
       {/* Stock Settings */}
       <div className="space-y-4">
         <h3 className="text-base font-semibold border-b pb-2">Stock Settings</h3>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div className="flex items-center space-x-2">
             <Checkbox id="maintainStock"
               checked={formData.maintainStock}
               onCheckedChange={(checked) =>
                 setFormData((prev) => ({ ...prev, maintainStock: checked === true }))
-              }/>
+              } />
             <Label htmlFor="maintainStock" className="cursor-pointer">
               Maintain Stock
             </Label>
@@ -210,7 +210,7 @@ export function SimpleItemFormFields({
               checked={formData.allowNegativeStock}
               onCheckedChange={(checked) =>
                 setFormData((prev) => ({ ...prev, allowNegativeStock: checked === true }))
-              }/>
+              } />
             <Label htmlFor="allowNegativeStock" className="cursor-pointer">
               Allow Negative Stock
             </Label>
@@ -242,7 +242,7 @@ export function SimpleItemFormFields({
               min="1"
               value={formData.minOrderQty || 1}
               onChange={(e) => setFormData((prev) => ({ ...prev, minOrderQty: parseInt(e.target.value) || 1 }))}
-              placeholder="1"/>
+              placeholder="1" />
           </div>
 
           <div className="space-y-2">
@@ -252,7 +252,7 @@ export function SimpleItemFormFields({
               min="1"
               value={formData.maxOrderQty || 1}
               onChange={(e) => setFormData((prev) => ({ ...prev, maxOrderQty: parseInt(e.target.value) || 1 }))}
-              placeholder="1"/>
+              placeholder="1" />
           </div>
         </div>
       </div>
@@ -260,14 +260,14 @@ export function SimpleItemFormFields({
       {/* Additional Info */}
       <div className="space-y-4">
         <h3 className="text-base font-semibold border-b pb-2">Additional Information</h3>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="barcode">Barcode</Label>
             <Input id="barcode"
               value={formData.barcode}
               onChange={(e) => setFormData((prev) => ({ ...prev, barcode: e.target.value }))}
-              placeholder="Enter barcode"/>
+              placeholder="Enter barcode" />
           </div>
 
           <div className="space-y-2">
@@ -275,7 +275,69 @@ export function SimpleItemFormFields({
             <Input id="imageUrl"
               value={formData.imageUrl}
               onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
-              placeholder="https://example.com/image.jpg"/>
+              placeholder="https://example.com/image.jpg" />
+          </div>
+        </div>
+      </div>
+
+      {/* Packaging Details */}
+      <div className="space-y-4">
+        <h3 className="text-base font-semibold border-b pb-2">Packaging Details</h3>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="packagingUnitName">Base Unit Name</Label>
+            <Input id="packagingUnitName"
+              value={formData.packagingUnitName}
+              onChange={(e) => setFormData((prev) => ({ ...prev, packagingUnitName: e.target.value }))}
+              placeholder="Each" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="packagingConversionFactor">Conversion Factor</Label>
+            <Input id="packagingConversionFactor"
+              type="number"
+              step="1"
+              min="1"
+              value={formData.packagingConversionFactor}
+              onChange={(e) => setFormData((prev) => ({ ...prev, packagingConversionFactor: e.target.value }))}
+              placeholder="1" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="packagingLengthMm">Length (mm)</Label>
+            <Input id="packagingLengthMm"
+              type="number" step="0.1" min="0"
+              value={formData.packagingLengthMm}
+              onChange={(e) => setFormData((prev) => ({ ...prev, packagingLengthMm: e.target.value }))}
+              placeholder="0" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="packagingWidthMm">Width (mm)</Label>
+            <Input id="packagingWidthMm"
+              type="number" step="0.1" min="0"
+              value={formData.packagingWidthMm}
+              onChange={(e) => setFormData((prev) => ({ ...prev, packagingWidthMm: e.target.value }))}
+              placeholder="0" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="packagingHeightMm">Height (mm)</Label>
+            <Input id="packagingHeightMm"
+              type="number" step="0.1" min="0"
+              value={formData.packagingHeightMm}
+              onChange={(e) => setFormData((prev) => ({ ...prev, packagingHeightMm: e.target.value }))}
+              placeholder="0" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="packagingWeightGrams">Weight (g)</Label>
+            <Input id="packagingWeightGrams"
+              type="number" step="0.1" min="0"
+              value={formData.packagingWeightGrams}
+              onChange={(e) => setFormData((prev) => ({ ...prev, packagingWeightGrams: e.target.value }))}
+              placeholder="0" />
           </div>
         </div>
       </div>
@@ -283,7 +345,7 @@ export function SimpleItemFormFields({
       {/* Tax Templates */}
       <div className="space-y-4">
         <h3 className="text-base font-semibold border-b pb-2">Tax Templates</h3>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Sales Tax Template</Label>
@@ -326,7 +388,7 @@ export function SimpleItemFormFields({
       {/* Custom Fields */}
       <div className="space-y-4">
         <h3 className="text-base font-semibold border-b pb-2">Custom Fields (JSON)</h3>
-        
+
         <div className="space-y-2">
           <Textarea value={JSON.stringify(formData.customFields, null, 2)}
             onChange={(e) => {
@@ -338,7 +400,7 @@ export function SimpleItemFormFields({
               }
             }}
             placeholder='{"key": "value"}'
-            rows={4}/>
+            rows={4} />
           <p className="text-xs text-muted-foreground">Enter valid JSON format</p>
         </div>
       </div>
