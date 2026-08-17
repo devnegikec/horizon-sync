@@ -253,7 +253,11 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
         loading={viewLoading}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onRejectItem={handleRejectItem} />
+        onRejectItem={
+          viewSlip?.status === 'pending_review' || viewSlip?.status === 'pending_putaway'
+            ? handleRejectItem
+            : undefined
+        } />
 
       <ConfirmationDialog open={!!confirmApproveSlip}
         onOpenChange={(open) => { if (!open) setConfirmApproveSlip(null); }}

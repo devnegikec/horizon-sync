@@ -720,7 +720,7 @@ function useStockEntryActions(refetch: () => void) {
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
-export function StockManagement() {
+export function StockManagement({ warehouseId }: { warehouseId?: string }) {
   const [activeTab, setActiveTab] = React.useState<ActiveTab>('levels');
   const [stockEntryDialogOpen, setStockEntryDialogOpen] = React.useState(false);
   const [stockEntryViewMode, setStockEntryViewMode] = React.useState(false);
@@ -745,6 +745,14 @@ export function StockManagement() {
   });
   const [warehouseSearch, setWarehouseSearch] = useState('');
   const [warehouseOpen, setWarehouseOpen] = useState(false);
+
+  // Sync external warehouse selection (e.g., the WMS warehouse switcher) into
+  // this module's own warehouse filter.
+  React.useEffect(() => {
+    if (warehouseId && warehouseId !== filters.warehouseId) {
+      setFilters((prev) => ({ ...prev, warehouseId }));
+    }
+  }, [warehouseId, filters.warehouseId]);
 
   const asnManagement = useAsnOrderManagement();
   const setAsnFilters = asnManagement.setFilters;

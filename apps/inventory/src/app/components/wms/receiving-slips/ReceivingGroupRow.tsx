@@ -63,7 +63,7 @@ export function ReceivingGroupRow({ group, boxIndex, totalBoxes, slipId, onRejec
           </span>
         </td>
         <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{sku}</td>
-        <td className="px-4 py-2 font-mono text-xs">{group.parent_qseal.name}</td>
+        <td className="px-4 py-2 font-mono text-xs">{group.parent_qseal?.name ?? '—'}</td>
         <td className="px-4 py-2 text-center">
           <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
             {boxIndex}/{totalBoxes}

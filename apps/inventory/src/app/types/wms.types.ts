@@ -202,7 +202,7 @@ export interface ReceivingSlipParentQSeal {
 
 /** A group of items under one QSeal parent (box) */
 export interface ReceivingSlipGroup {
-  parent_qseal: ReceivingSlipParentQSeal;
+  parent_qseal: ReceivingSlipParentQSeal | null;
   product_name: string;
   items: ReceivingSlipGroupItem[];
 }

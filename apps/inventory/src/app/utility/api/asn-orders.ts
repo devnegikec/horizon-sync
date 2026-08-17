@@ -5,7 +5,7 @@ export const asnOrderApi = {
   list: (accessToken: string, page = 1, pageSize = 20, filters?: { status?: string; warehouse_id?: string; search?: string; sort_by?: string; sort_order?: 'asc' | 'desc' }) =>
     apiRequest('/asn-orders', accessToken, {
       params: {
-        ...buildPaginationParams(page, pageSize, filters?.sort_by || 'order_date', filters?.sort_order || 'desc'),
+        ...buildPaginationParams(page, pageSize, filters?.sort_by || 'created_at', filters?.sort_order || 'desc'),
         status: filters?.status,
         warehouse_id: filters?.warehouse_id,
         search: filters?.search,
