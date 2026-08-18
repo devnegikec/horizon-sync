@@ -8,18 +8,30 @@ import {
     Upload,
     Loader2,
     FileUp,
+    FileDown,
+    Plus,
+    ChevronDown,
+    Trash2,
 } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { cn } from '@horizon-sync/ui/lib';
 import { useUserStore } from '@horizon-sync/store';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@horizon-sync/ui/components/ui/dropdown-menu';
 
+import { environment } from '../../../environments/environment';
+import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 import { PickListView } from './PickListView';
 import { GateVerificationPanel } from './GateVerificationPanel';
 import { DispatchList } from './DispatchList';
 import { outboundApi } from '../../utility/api/wms';
-import type { PickList } from '../../types/wms.types';
+import type { PickList, SAPInvoicePayload } from '../../types/wms.types';
 
 // ============================================
 // TYPES
@@ -41,6 +53,23 @@ interface ImportDialogProps {
     onSuccess: () => void;
     accessToken: string | null;
     warehouseId: string | null;
+}
+
+const SAMPLE_ORDER_CSV = `invoice_reference,sku,description,quantity,uom
+INV-1001,PPI-SKO-89,Prestige Digi Kettle 2.0 Litre with 6 Preset Modes,2,Nos
+INV-1001,PPI-SKO-90,Prestige Deluxe Plus Aluminium Outer Lid Pressure Pan, Silver,2,Nos
+`;
+
+function downloadSampleCsv() {
+    const blob = new Blob([SAMPLE_ORDER_CSV], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'incoming-order-sample.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 function ImportDialog({ open, onClose, onSuccess, accessToken, warehouseId }: ImportDialogProps) {
@@ -114,10 +143,14 @@ function ImportDialog({ open, onClose, onSuccess, accessToken, warehouseId }: Im
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div className="bg-background rounded-xl shadow-xl border w-full max-w-md p-6 space-y-4">
-                <h2 className="text-lg font-semibold">Import Pick List</h2>
+                <h2 className="text-lg font-semibold">Import Incoming Order</h2>
                 <p className="text-sm text-muted-foreground">
                     Upload a PDF packing slip or CSV order file to generate a pick list.
                 </p>
+                <Button variant="ghost" size="sm" className="gap-2 w-fit" onClick={downloadSampleCsv}>
+                    <FileDown className="h-4 w-4" />
+                    Download sample CSV
+                </Button>
 
                 {/* File drop zone */}
                 <label
@@ -177,6 +210,203 @@ function ImportDialog({ open, onClose, onSuccess, accessToken, warehouseId }: Im
 }
 
 // ============================================
+// CREATE PICK LIST DIALOG
+// ============================================
+
+interface PickerItem {
+    id: string;
+    item_code: string;
+    item_name: string;
+    uom: string | null;
+    standard_rate: string | null;
+}
+
+interface CreateLineRow {
+    key: string;
+    item_id: string;
+    sku: string;
+    quantity: number;
+    uom: string;
+}
+
+interface CreatePickListDialogProps {
+    open: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+    accessToken: string | null;
+    warehouseId: string | null;
+}
+
+function makeKey() {
+    return Math.random().toString(36).slice(2);
+}
+
+function CreatePickListDialog({ open, onClose, onSuccess, accessToken, warehouseId }: CreatePickListDialogProps) {
+    const [invoiceRef, setInvoiceRef] = React.useState('');
+    const [lines, setLines] = React.useState<CreateLineRow[]>([
+        { key: makeKey(), item_id: '', sku: '', quantity: 1, uom: 'pcs' },
+    ]);
+    const [saving, setSaving] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
+    const itemsCacheRef = React.useRef<Map<string, PickerItem>>(new Map());
+
+    const searchItems = React.useCallback(async (query: string): Promise<PickerItem[]> => {
+        if (!accessToken || !warehouseId) return [];
+        const url = `${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(query)}&warehouse_id=${encodeURIComponent(warehouseId)}`;
+        const res = await fetch(url, {
+            headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        });
+        if (!res.ok) throw new Error('Failed to fetch items');
+        const data = await res.json();
+        const items: PickerItem[] = data.items ?? [];
+        items.forEach((it) => itemsCacheRef.current.set(it.id, it));
+        return items;
+    }, [accessToken, warehouseId]);
+
+    const updateLine = React.useCallback((key: string, patch: Partial<CreateLineRow>) => {
+        setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+    }, []);
+
+    const handleSelectItem = React.useCallback((key: string, itemId: string) => {
+        const item = itemsCacheRef.current.get(itemId);
+        updateLine(key, {
+            item_id: itemId,
+            sku: item?.item_code ?? '',
+            uom: item?.uom || 'pcs',
+        });
+    }, [updateLine]);
+
+    const addLine = React.useCallback(() => {
+        setLines((prev) => [...prev, { key: makeKey(), item_id: '', sku: '', quantity: 1, uom: 'pcs' }]);
+    }, []);
+
+    const removeLine = React.useCallback((key: string) => {
+        setLines((prev) => prev.filter((l) => l.key !== key));
+    }, []);
+
+    const handleSubmit = async () => {
+        if (!accessToken || !warehouseId) return;
+        if (!invoiceRef.trim()) {
+            setError('Invoice reference is required');
+            return;
+        }
+        const validLines = lines.filter((l) => l.item_id);
+        if (validLines.length === 0) {
+            setError('Add at least one item');
+            return;
+        }
+
+        setSaving(true);
+        setError(null);
+        try {
+            const payload: SAPInvoicePayload = {
+                invoice_reference: invoiceRef.trim(),
+                warehouse_id: warehouseId,
+                items: validLines.map((l) => ({
+                    item_id: l.item_id,
+                    sku: l.sku,
+                    quantity: Number(l.quantity) || 0,
+                    uom: l.uom || 'pcs',
+                })),
+            };
+            await outboundApi.createFromInvoice(accessToken, payload);
+            window.dispatchEvent(new CustomEvent('app:toast', {
+                detail: { title: 'Pick List Created', description: `Pick list created for invoice ${invoiceRef.trim()}` },
+            }));
+            setInvoiceRef('');
+            setLines([{ key: makeKey(), item_id: '', sku: '', quantity: 1, uom: 'pcs' }]);
+            onClose();
+            onSuccess();
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to create pick list');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (!open) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-background rounded-xl shadow-xl border w-full max-w-2xl p-6 space-y-4">
+                <h2 className="text-lg font-semibold">Create Pick List</h2>
+                <p className="text-sm text-muted-foreground">
+                    Create a pick list from an incoming order (invoice).
+                </p>
+
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Invoice Reference</label>
+                    <Input
+                        value={invoiceRef}
+                        onChange={(e) => setInvoiceRef(e.target.value)}
+                        placeholder="e.g. INV-1001"
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">Items</label>
+                        <Button variant="ghost" size="sm" onClick={addLine} className="gap-1">
+                            <Plus className="h-4 w-4" />
+                            Add Item
+                        </Button>
+                    </div>
+                    <div className="space-y-2">
+                        {lines.map((line) => (
+                            <div key={line.key} className="flex items-center gap-2">
+                                <div className="flex-1 min-w-0">
+                                    <ItemPickerSelect<PickerItem>
+                                        value={line.item_id}
+                                        onValueChange={(id) => handleSelectItem(line.key, id)}
+                                        searchItems={searchItems}
+                                        labelFormatter={(it) => `${it.item_name} (${it.item_code})`}
+                                        valueKey="id"
+                                        placeholder="Search item..."
+                                    />
+                                </div>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    className="w-24"
+                                    value={line.quantity}
+                                    onChange={(e) => updateLine(line.key, { quantity: Number(e.target.value) || 0 })}
+                                />
+                                <Input
+                                    className="w-20"
+                                    value={line.uom}
+                                    onChange={(e) => updateLine(line.key, { uom: e.target.value })}
+                                    placeholder="pcs"
+                                />
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeLine(line.key)}
+                                    disabled={lines.length === 1}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {error && (
+                    <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">{error}</div>
+                )}
+
+                <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={handleSubmit} disabled={saving}>
+                        {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                        Create Pick List
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ============================================
 // HEADER
 // ============================================
 
@@ -190,6 +420,7 @@ function OutboundHeader({ activeTab, warehouseId, onImportSuccess }: HeaderProps
     const accessToken = useUserStore((s) => s.accessToken);
     const [exporting, setExporting] = React.useState(false);
     const [importOpen, setImportOpen] = React.useState(false);
+    const [createOpen, setCreateOpen] = React.useState(false);
 
     const showActions = activeTab === 'pick';
 
@@ -256,22 +487,32 @@ function OutboundHeader({ activeTab, warehouseId, onImportSuccess }: HeaderProps
                 </div>
                 {showActions && (
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
-                            <Upload className="h-4 w-4" />
-                            Import Pick List
-                        </Button>
-                        <Button variant="outline" className="gap-2" onClick={handleExport} disabled={exporting}>
-                            {exporting ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Exporting...
-                                </>
-                            ) : (
-                                <>
-                                    <Download className="h-4 w-4" />
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="gap-2">
+                                    <Upload className="h-4 w-4" />
+                                    Import/Export Incoming Order
+                                    <ChevronDown className="h-4 w-4 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setImportOpen(true)}>
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Import Incoming Order
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleExport} disabled={exporting}>
+                                    {exporting ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <Download className="h-4 w-4 mr-2" />
+                                    )}
                                     Export Pick Lists
-                                </>
-                            )}
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button className="gap-2" onClick={() => setCreateOpen(true)}>
+                            <Plus className="h-4 w-4" />
+                            New
                         </Button>
                     </div>
                 )}
@@ -280,6 +521,14 @@ function OutboundHeader({ activeTab, warehouseId, onImportSuccess }: HeaderProps
             <ImportDialog
                 open={importOpen}
                 onClose={() => setImportOpen(false)}
+                onSuccess={onImportSuccess}
+                accessToken={accessToken}
+                warehouseId={warehouseId}
+            />
+
+            <CreatePickListDialog
+                open={createOpen}
+                onClose={() => setCreateOpen(false)}
                 onSuccess={onImportSuccess}
                 accessToken={accessToken}
                 warehouseId={warehouseId}

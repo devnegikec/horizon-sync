@@ -240,6 +240,12 @@ export const outboundApi = {
   cancelPickList: (token: string, id: string) =>
     req<PickList>(`${BASE}/outbound/${id}/cancel`, token, { method: 'POST', body: '{}' }),
 
+  assignWorker: (token: string, id: string, workerId: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/assign`, token, {
+      method: 'POST',
+      body: JSON.stringify({ worker_id: workerId }),
+    }),
+
   // Gate Verification
   startGateSession: (token: string, data: GateSessionRequest) =>
     req<GateSession>(`${BASE}/outbound/gate-sessions`, token, { method: 'POST', body: JSON.stringify(data) }),
