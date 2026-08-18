@@ -257,6 +257,9 @@ export interface PutAwayItem {
   sku: string;
   item_name?: string | null;
   batch_number: string | null;
+  serial_number?: string | null;
+  manufacturing_date?: string | null;
+  expiry_date?: string | null;
   quantity: number;
   bin_location_id: string | null;
   bin_location_code: string | null;
@@ -317,6 +320,13 @@ export interface PickListProgress {
   completion_percentage: number;
 }
 
+export interface PickSerialDetail {
+  serial_number: string;
+  sku?: string | null;
+  manufacturing_date?: string | null;
+  expiry_date?: string | null;
+}
+
 export interface PickListItem {
   id: string;
   item_id: string;
@@ -326,10 +336,14 @@ export interface PickListItem {
   qty: number;
   picked_qty: number;
   uom: string;
+  per_case_qty?: number | null;
+  case_qty?: number | null;
+  loose_qty?: number | null;
   batch_no: string | null;
   bin_location_id: string | null;
   bin_location_path?: string | null;
   sort_order: number;
+  serials?: PickSerialDetail[];
 }
 
 export interface PickList {
@@ -340,6 +354,9 @@ export interface PickList {
   status: PickListStatus;
   pick_date: string | null;
   reference_type: string | null;
+  remarks?: string | null;
+  assigned_to?: string | null;
+  worker_name?: string | null;
   invoice_reference: string | null;
   completed_at: string | null;
   created_at: string | null;
