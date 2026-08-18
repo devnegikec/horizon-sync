@@ -433,7 +433,24 @@ export function usePickList(pickListId: string | null) {
     }
   }, [accessToken, pickListId]);
 
-  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel };
+  const assignWorker = React.useCallback(
+    async (workerId: string): Promise<PickList> => {
+      if (!pickListId || !accessToken) throw new Error('No pick list selected');
+      setError(null);
+      try {
+        const result = await outboundApi.assignWorker(accessToken, pickListId, workerId);
+        setPickList(result);
+        return result;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to assign worker';
+        setError(msg);
+        throw new Error(msg);
+      }
+    },
+    [accessToken, pickListId],
+  );
+
+  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker };
 }
 
 // ============================================
