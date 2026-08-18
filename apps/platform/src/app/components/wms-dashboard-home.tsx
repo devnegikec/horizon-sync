@@ -37,6 +37,7 @@ import { cn } from '@horizon-sync/ui/lib';
 import { useUserStore } from '@horizon-sync/store';
 
 import { environment } from '../../environments/environment';
+import { WarehouseCapacityCard } from './warehouse-capacity-card';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -388,6 +389,29 @@ export function WMSDashboardHome() {
         />
       </div>
 
+      {/* Warehouse Capacity */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-3 w-3 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400" />
+          <h2 className="text-lg font-semibold">Warehouse Capacity</h2>
+        </div>
+        {selectedWarehouseId === 'all' ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {warehouses.map((wh) => (
+              <WarehouseCapacityCard key={wh.id} warehouseId={wh.id} warehouseName={wh.name} />
+            ))}
+            {warehouses.length === 0 && (
+              <p className="text-sm text-muted-foreground col-span-2">No warehouses available.</p>
+            )}
+          </div>
+        ) : (
+          <WarehouseCapacityCard
+            warehouseId={selectedWarehouseId}
+            warehouseName={warehouses.find((w) => w.id === selectedWarehouseId)?.name}
+          />
+        )}
+      </div>
+
       {/* Charts — modern interactive layout */}
       <div className="grid gap-6 lg:grid-cols-2">
 
@@ -429,43 +453,43 @@ export function WMSDashboardHome() {
                   No inbound stock data for this period
                 </div>
               ) : (
-              <div className="h-[180px] flex items-end gap-1.5 border-l border-b border-border/50 pl-2 pb-1">
-                {inboundChart.map((b, i) => {
-                  const pct = maxInbound > 0 ? (b.qty / maxInbound) * 100 : 0;
-                  return (
-                    <div key={i} className="flex-1 group relative flex flex-col items-center justify-end h-full">
-                      {/* Value label on top */}
-                      <span className="text-[10px] font-medium text-emerald-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {b.qty > 0 ? b.qty.toLocaleString() : ''}
-                      </span>
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
-                        <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
-                          <div className="font-semibold">{b.label}</div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-emerald-600 font-medium">{b.qty.toLocaleString()} units</span>
-                            <span className="text-muted-foreground">·</span>
-                            <span>{formatCurrency(b.value)}</span>
+                <div className="h-[180px] flex items-end gap-1.5 border-l border-b border-border/50 pl-2 pb-1">
+                  {inboundChart.map((b, i) => {
+                    const pct = maxInbound > 0 ? (b.qty / maxInbound) * 100 : 0;
+                    return (
+                      <div key={i} className="flex-1 group relative flex flex-col items-center justify-end h-full">
+                        {/* Value label on top */}
+                        <span className="text-[10px] font-medium text-emerald-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {b.qty > 0 ? b.qty.toLocaleString() : ''}
+                        </span>
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                          <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
+                            <div className="font-semibold">{b.label}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-emerald-600 font-medium">{b.qty.toLocaleString()} units</span>
+                              <span className="text-muted-foreground">·</span>
+                              <span>{formatCurrency(b.value)}</span>
+                            </div>
                           </div>
                         </div>
+                        {/* Bar */}
+                        <div
+                          className="w-full bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-105 origin-bottom"
+                          style={{ height: `${Math.max(pct, 2)}%` }}
+                        />
                       </div>
-                      {/* Bar */}
-                      <div
-                        className="w-full bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-105 origin-bottom"
-                        style={{ height: `${Math.max(pct, 2)}%` }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
               )}
               {/* X-axis labels */}
               {inboundChart.length > 0 && (
-              <div className="flex mt-2 pl-2">
-                {inboundChart.map((b) => (
-                  <span key={b.label} className="flex-1 text-center text-[11px] text-muted-foreground font-medium">{b.label}</span>
-                ))}
-              </div>
+                <div className="flex mt-2 pl-2">
+                  {inboundChart.map((b) => (
+                    <span key={b.label} className="flex-1 text-center text-[11px] text-muted-foreground font-medium">{b.label}</span>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -509,43 +533,43 @@ export function WMSDashboardHome() {
                   No outbound stock data for this period
                 </div>
               ) : (
-              <div className="h-[180px] flex items-end gap-1.5 border-l border-b border-border/50 pl-2 pb-1">
-                {outboundChart.map((b, i) => {
-                  const pct = maxOutbound > 0 ? (b.qty / maxOutbound) * 100 : 0;
-                  return (
-                    <div key={i} className="flex-1 group relative flex flex-col items-center justify-end h-full">
-                      {/* Value label on top */}
-                      <span className="text-[10px] font-medium text-rose-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {b.qty > 0 ? b.qty.toLocaleString() : ''}
-                      </span>
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
-                        <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
-                          <div className="font-semibold">{b.label}</div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-rose-600 font-medium">{b.qty.toLocaleString()} units</span>
-                            <span className="text-muted-foreground">·</span>
-                            <span>{formatCurrency(b.value)}</span>
+                <div className="h-[180px] flex items-end gap-1.5 border-l border-b border-border/50 pl-2 pb-1">
+                  {outboundChart.map((b, i) => {
+                    const pct = maxOutbound > 0 ? (b.qty / maxOutbound) * 100 : 0;
+                    return (
+                      <div key={i} className="flex-1 group relative flex flex-col items-center justify-end h-full">
+                        {/* Value label on top */}
+                        <span className="text-[10px] font-medium text-rose-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {b.qty > 0 ? b.qty.toLocaleString() : ''}
+                        </span>
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                          <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
+                            <div className="font-semibold">{b.label}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-rose-600 font-medium">{b.qty.toLocaleString()} units</span>
+                              <span className="text-muted-foreground">·</span>
+                              <span>{formatCurrency(b.value)}</span>
+                            </div>
                           </div>
                         </div>
+                        {/* Bar */}
+                        <div
+                          className="w-full bg-gradient-to-t from-rose-500 to-orange-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-rose-500/20 hover:scale-105 origin-bottom"
+                          style={{ height: `${Math.max(pct, 2)}%` }}
+                        />
                       </div>
-                      {/* Bar */}
-                      <div
-                        className="w-full bg-gradient-to-t from-rose-500 to-orange-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-rose-500/20 hover:scale-105 origin-bottom"
-                        style={{ height: `${Math.max(pct, 2)}%` }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
               )}
               {/* X-axis labels */}
               {outboundChart.length > 0 && (
-              <div className="flex mt-2 pl-2">
-                {outboundChart.map((b) => (
-                  <span key={b.label} className="flex-1 text-center text-[11px] text-muted-foreground font-medium">{b.label}</span>
-                ))}
-              </div>
+                <div className="flex mt-2 pl-2">
+                  {outboundChart.map((b) => (
+                    <span key={b.label} className="flex-1 text-center text-[11px] text-muted-foreground font-medium">{b.label}</span>
+                  ))}
+                </div>
               )}
             </div>
           </div>

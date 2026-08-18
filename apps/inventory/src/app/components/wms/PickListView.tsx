@@ -1,10 +1,9 @@
 import * as React from 'react';
 
-import { RefreshCw, ScanLine, CheckCircle2, X, Eye, UserRound, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { RefreshCw, CheckCircle2, Eye, UserRound, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { DetailDialog } from '@horizon-sync/ui/components/ui/detail-dialog';
 import {
@@ -421,16 +420,12 @@ interface PickListDetailDialogProps {
 
 function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDialogProps) {
   const { toast } = useToast();
-  const { pickList, loading, error, recordScan, complete, cancel, assignWorker } = usePickList(listId);
+  const { pickList, loading, error, complete, cancel, assignWorker } = usePickList(listId);
   const workers = useWorkers(open);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
-  const [qrInput, setQrInput] = React.useState('');
-  const [scanError, setScanError] = React.useState<string | null>(null);
-  const [scanning, setScanning] = React.useState(false);
   const [assignOpen, setAssignOpen] = React.useState(false);
   const [qrOpen, setQrOpen] = React.useState(false);
   const [confirmAction, setConfirmAction] = React.useState<'complete' | 'cancel' | null>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
 
   const assignedWorker = pickList?.assigned_to ? workerById.get(pickList.assigned_to) : undefined;
   const assignedWorkerName = pickList?.assigned_to
@@ -445,22 +440,6 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
     },
     [assignWorker],
   );
-
-  const handleScan = async () => {
-    if (!qrInput.trim()) return;
-    setScanError(null);
-    setScanning(true);
-    try {
-      const result = await recordScan(qrInput.trim());
-      setQrInput('');
-      toast({ title: 'Item scanned', description: `${result.sku} — ${result.scanned_qty} units` });
-      inputRef.current?.focus();
-    } catch (err) {
-      setScanError(err instanceof Error ? err.message : 'Scan failed');
-    } finally {
-      setScanning(false);
-    }
-  };
 
   const handleComplete = async () => {
     try {
@@ -482,7 +461,6 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
 
   const progress = pickList?.progress ?? null;
   const canComplete = pickList?.status === 'in_progress' && (progress?.remaining_items ?? 0) === 0;
-  const canScan = pickList?.status === 'draft' || pickList?.status === 'in_progress';
   const canCancel = !!pickList && pickList.status !== 'completed' && pickList.status !== 'cancelled';
 
   const footer = (
@@ -577,33 +555,6 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
                   <span>Qty: {progress.picked_qty} / {progress.total_qty}</span>
                   <span>Remaining: {progress.remaining_qty}</span>
                 </div>
-              </div>
-            )}
-
-            {/* Scan input */}
-            {canScan && (
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    ref={inputRef}
-                    value={qrInput}
-                    onChange={(e) => setQrInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleScan()}
-                    placeholder="Scan item QR code..."
-                    className="font-mono text-sm"
-                    autoFocus
-                  />
-                  <Button onClick={handleScan} disabled={scanning} className="gap-2 shrink-0">
-                    <ScanLine className="h-4 w-4" />
-                    {scanning ? 'Scanning...' : 'Scan'}
-                  </Button>
-                </div>
-                {scanError && (
-                  <div className="flex items-start gap-2 p-2.5 bg-destructive/10 text-destructive rounded-md text-sm">
-                    <X className="h-4 w-4 mt-0.5 shrink-0" />
-                    {scanError}
-                  </div>
-                )}
               </div>
             )}
 
