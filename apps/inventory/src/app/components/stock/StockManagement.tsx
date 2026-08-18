@@ -746,13 +746,12 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
   const [warehouseSearch, setWarehouseSearch] = useState('');
   const [warehouseOpen, setWarehouseOpen] = useState(false);
 
-  // Sync external warehouse selection (e.g., the WMS warehouse switcher) into
-  // this module's own warehouse filter.
-  React.useEffect(() => {
-    if (warehouseId && warehouseId !== filters.warehouseId) {
-      setFilters((prev) => ({ ...prev, warehouseId }));
-    }
-  }, [warehouseId, filters.warehouseId]);
+  // When a warehouse is selected from the top-level WMS switcher, the filter is
+  // locked to that warehouse. Derive the effective value directly from the prop
+  // so the first fetch already uses the locked warehouse (no "all warehouses"
+  // flash followed by a re-fetch).
+  const isWarehouseLocked = Boolean(warehouseId);
+  const effectiveWarehouseId = isWarehouseLocked ? (warehouseId ?? '') : filters.warehouseId;
 
   const asnManagement = useAsnOrderManagement();
   const setAsnFilters = asnManagement.setFilters;
@@ -765,14 +764,14 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
     setMovementsFilters(reset);
     setEntriesFilters(reset);
     setReconciliationsFilters(reset);
-  }, [filters.warehouseId, filters.status, filters.search]);
+  }, [effectiveWarehouseId, filters.status, filters.search]);
 
   /* ---------- data hooks with filters ---------- */
   const levelsData = useStockLevels({
     page: levelsFilters.page,
     pageSize: levelsFilters.pageSize,
     filters: {
-      warehouse_id: filters.warehouseId,
+      warehouse_id: effectiveWarehouseId,
       search: filters.search,
     },
   });
@@ -780,7 +779,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
     page: movementsFilters.page,
     pageSize: movementsFilters.pageSize,
     filters: {
-      warehouse_id: filters.warehouseId,
+      warehouse_id: effectiveWarehouseId,
       search: filters.search,
     },
   });
@@ -788,7 +787,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
     page: entriesFilters.page,
     pageSize: entriesFilters.pageSize,
     filters: {
-      warehouse_id: filters.warehouseId,
+      warehouse_id: effectiveWarehouseId,
       status: filters.status,
       search: filters.search,
     },
@@ -797,7 +796,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
     page: reconciliationsFilters.page,
     pageSize: reconciliationsFilters.pageSize,
     filters: {
-      warehouse_id: filters.warehouseId,
+      warehouse_id: effectiveWarehouseId,
       status: filters.status,
       search: filters.search,
     },
@@ -809,7 +808,6 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
 
   /* ---------- warehouse selector ---------- */
   const { warehouses: allWarehouses, loading: warehousesLoading } = useMyWarehouses();
-  const isWarehouseLocked = Boolean(warehouseId);
   const filteredWarehouses = React.useMemo(() => {
     const base = isWarehouseLocked
       ? allWarehouses.filter((w) => w.id === warehouseId)
@@ -823,16 +821,16 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
         w.city?.toLowerCase().includes(q),
     );
   }, [allWarehouses, warehouseSearch, isWarehouseLocked, warehouseId]);
-  const selectedWarehouse = allWarehouses.find((w) => w.id === filters.warehouseId);
+  const selectedWarehouse = allWarehouses.find((w) => w.id === effectiveWarehouseId);
 
   // Sync global filters → ASN management
   React.useEffect(() => {
     setAsnFilters({
       search: filters.search,
       status: filters.status,
-      warehouse_id: filters.warehouseId,
+      warehouse_id: effectiveWarehouseId,
     });
-  }, [filters.search, filters.status, filters.warehouseId, setAsnFilters]);
+  }, [filters.search, filters.status, effectiveWarehouseId, setAsnFilters]);
 
   /* ---------- status options per tab ---------- */
   const statusOptions = React.useMemo(() => {
