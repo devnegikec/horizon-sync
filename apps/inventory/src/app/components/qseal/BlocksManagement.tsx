@@ -71,10 +71,10 @@ function ParentBlockDownloadLink({ block }: { block: QRBlock }) {
   };
 
   return (
-    <div className="space-y-1 pt-1 border-t">
+    <div className="rounded-md border p-3 space-y-1">
       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         <Layers className="h-3.5 w-3.5" />
-        Master Pack{block.qseal_parent_count ? ` (${block.qseal_parent_count})` : ''}
+        Parent QR Codes{block.qseal_parent_count ? ` (${block.qseal_parent_count})` : ''}
       </div>
       <Button variant="outline" size="sm" onClick={handleDownload} disabled={loading}>
         {loading
@@ -125,19 +125,27 @@ function BlockStatusTracker({ blockId, onDone }: { blockId: string; onDone: () =
             <CheckCircle2 className="h-4 w-4" />
             Generation complete
           </div>
-          {block.download_url && (
-            <Button variant="outline" size="sm" asChild>
-              <a href={block.download_url} target="_blank" rel="noreferrer">
-                <Download className="h-4 w-4 mr-2" />
-                Download QR Codes
-              </a>
-            </Button>
-          )}
+          <div className={`grid gap-3 ${block.master_pack_enabled && block.download_url ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {block.download_url && (
+              <div className="rounded-md border p-3 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <QrCode className="h-3.5 w-3.5" />
+                  Child QR Codes
+                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <a href={block.download_url} target="_blank" rel="noreferrer">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download QR Codes
+                  </a>
+                </Button>
+              </div>
+            )}
 
-          {/* Parent (Master Pack) download */}
-          {block.master_pack_enabled && (
-            <ParentBlockDownloadLink block={block} />
-          )}
+            {/* Parent (Master Pack) download */}
+            {block.master_pack_enabled && (
+              <ParentBlockDownloadLink block={block} />
+            )}
+          </div>
         </div>
       )}
 
