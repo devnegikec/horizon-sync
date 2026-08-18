@@ -809,16 +809,20 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
 
   /* ---------- warehouse selector ---------- */
   const { warehouses: allWarehouses, loading: warehousesLoading } = useMyWarehouses();
+  const isWarehouseLocked = Boolean(warehouseId);
   const filteredWarehouses = React.useMemo(() => {
-    if (!warehouseSearch) return allWarehouses;
+    const base = isWarehouseLocked
+      ? allWarehouses.filter((w) => w.id === warehouseId)
+      : allWarehouses;
+    if (!warehouseSearch) return base;
     const q = warehouseSearch.toLowerCase();
-    return allWarehouses.filter(
+    return base.filter(
       (w) =>
         w.name.toLowerCase().includes(q) ||
         w.code?.toLowerCase().includes(q) ||
         w.city?.toLowerCase().includes(q),
     );
-  }, [allWarehouses, warehouseSearch]);
+  }, [allWarehouses, warehouseSearch, isWarehouseLocked, warehouseId]);
   const selectedWarehouse = allWarehouses.find((w) => w.id === filters.warehouseId);
 
   // Sync global filters → ASN management
@@ -1041,6 +1045,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
                 role="combobox"
                 aria-expanded={warehouseOpen}
                 className="w-[220px] justify-between"
+                disabled={isWarehouseLocked}
               >
                 <span className="flex items-center gap-2 truncate">
                   <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -1051,25 +1056,29 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
             </PopoverTrigger>
             <PopoverContent className="w-[220px] p-0">
               <div className="p-2">
-                <Input
-                  placeholder="Search warehouses..."
-                  value={warehouseSearch}
-                  onChange={(e) => setWarehouseSearch(e.target.value)}
-                  className="mb-2"
-                />
+                {!isWarehouseLocked && (
+                  <Input
+                    placeholder="Search warehouses..."
+                    value={warehouseSearch}
+                    onChange={(e) => setWarehouseSearch(e.target.value)}
+                    className="mb-2"
+                  />
+                )}
                 <div className="max-h-60 overflow-auto space-y-1">
-                  <button
-                    className="w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-                    onClick={() => {
-                      setFilters((prev) => ({ ...prev, warehouseId: '' }));
-                      setWarehouseOpen(false);
-                    }}
-                  >
-                    <span className="h-4 w-4 flex items-center justify-center">
-                      {!filters.warehouseId && <Check className="h-4 w-4" />}
-                    </span>
-                    All Warehouses
-                  </button>
+                  {!isWarehouseLocked && (
+                    <button
+                      className="w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                      onClick={() => {
+                        setFilters((prev) => ({ ...prev, warehouseId: '' }));
+                        setWarehouseOpen(false);
+                      }}
+                    >
+                      <span className="h-4 w-4 flex items-center justify-center">
+                        {!filters.warehouseId && <Check className="h-4 w-4" />}
+                      </span>
+                      All Warehouses
+                    </button>
+                  )}
                   {warehousesLoading && (
                     <div className="px-2 py-1 text-sm text-muted-foreground">Loading...</div>
                   )}
@@ -1113,12 +1122,16 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
           )}
 
           {/* Clear all filters */}
-          {(filters.search || filters.warehouseId || filters.status !== 'all') && (
+          {(filters.search || (!isWarehouseLocked && filters.warehouseId) || filters.status !== 'all') && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() =>
-                setFilters({ search: '', warehouseId: '', status: 'all' })
+                setFilters({
+                  search: '',
+                  warehouseId: isWarehouseLocked ? (warehouseId ?? '') : '',
+                  status: 'all',
+                })
               }
               className="gap-1 text-muted-foreground"
             >
