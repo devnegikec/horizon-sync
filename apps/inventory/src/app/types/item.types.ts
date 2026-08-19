@@ -1,6 +1,7 @@
 export interface ItemPackagingDetails {
   unitName: string;
   conversionFactor: number;
+  itemsPerMasterPack?: number | null;
   lengthMm: number | null;
   widthMm: number | null;
   heightMm: number | null;

@@ -15,6 +15,7 @@ function mapPackagingDetails(units: unknown): ItemPackagingDetails | null {
   return {
     unitName: (base.unit_name as string) ?? 'Each',
     conversionFactor: Number(base.conversion_factor ?? 1) || 1,
+    itemsPerMasterPack: toNullableNumber(base.items_per_master_pack),
     lengthMm: toNullableNumber(base.length_mm),
     widthMm: toNullableNumber(base.width_mm),
     heightMm: toNullableNumber(base.height_mm),
