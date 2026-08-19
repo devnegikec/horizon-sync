@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { RefreshCw, ScanLine, CheckCircle2, X, Eye, UserRound, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { RefreshCw, ScanLine, CheckCircle2, X, Eye, UserRound, Loader2, ChevronDown, ChevronRight, MapPin, Search } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -17,8 +17,8 @@ import { useToast } from '@horizon-sync/ui/hooks';
 import { useUserStore } from '@horizon-sync/store';
 
 import { usePickList, usePickLists } from '../../hooks/useWMS';
-import type { PickList, PickListItem, PickSerialDetail, WMSWorker } from '../../types/wms.types';
-import { wmsWorkerApi } from '../../utility/api/wms';
+import type { PickListItem, PickSerialDetail, WarehouseLocation, WMSWorker } from '../../types/wms.types';
+import { layoutApi, wmsWorkerApi } from '../../utility/api/wms';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
 function workerDisplayName(w: WMSWorker | undefined): string | null {
@@ -128,6 +128,147 @@ function useWorkers(enabled: boolean): WMSWorker[] {
   }, [enabled, accessToken]);
 
   return workers;
+}
+
+interface PickBin {
+  id: string;
+  label: string;
+  sku?: string | null;
+}
+
+interface PickBinDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  warehouseId: string;
+  suggestedBins: PickBin[];
+  onSelect: (bin: PickBin | null) => void;
+}
+
+function PickBinDialog({ open, onOpenChange, warehouseId, suggestedBins, onSelect }: PickBinDialogProps) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [query, setQuery] = React.useState('');
+  const [results, setResults] = React.useState<WarehouseLocation[]>([]);
+  const [searching, setSearching] = React.useState(false);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchBins = React.useCallback(
+    (q: string) => {
+      if (!accessToken || !warehouseId || q.trim().length < 1) {
+        setResults([]);
+        return;
+      }
+      setSearching(true);
+      layoutApi
+        .searchLocations(accessToken, warehouseId, q, 10)
+        .then((data) => setResults(data.filter((loc) => loc.location_type === 'bin')))
+        .catch(() => setResults([]))
+        .finally(() => setSearching(false));
+    },
+    [accessToken, warehouseId],
+  );
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => searchBins(value), 300);
+  };
+
+  React.useEffect(() => {
+    if (open) {
+      setQuery('');
+      setResults([]);
+    }
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>Pick Location</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {suggestedBins.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Suggested bins</p>
+              <div className="border rounded-lg divide-y">
+                {suggestedBins.map((bin) => (
+                  <button
+                    key={bin.id}
+                    type="button"
+                    className="w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-muted transition-colors"
+                    onClick={() => { onSelect(bin); onOpenChange(false); }}
+                  >
+                    <MapPin className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-mono font-medium">{bin.label}</span>
+                      {bin.sku && <span className="text-xs text-muted-foreground ml-2">{bin.sku}</span>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Or pick from a different location</p>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-10"
+                placeholder="Search bins..."
+                value={query}
+                onChange={(e) => handleQueryChange(e.target.value)}
+              />
+            </div>
+
+            {searching && (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {!searching && results.length > 0 && (
+              <div className="border rounded-lg max-h-[200px] overflow-y-auto">
+                {results.map((loc) => (
+                  <button
+                    key={loc.id}
+                    type="button"
+                    className="w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-muted transition-colors"
+                    onClick={() => { onSelect({ id: loc.id, label: loc.code }); onOpenChange(false); }}
+                  >
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-mono font-medium">{loc.code}</span>
+                      {loc.full_path && (
+                        <span className="text-xs text-muted-foreground ml-2 truncate">{loc.full_path}</span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {!searching && query.length >= 1 && results.length === 0 && (
+              <p className="text-xs text-muted-foreground py-2">No bins found matching &quot;{query}&quot;</p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { onSelect(null); onOpenChange(false); }}
+            >
+              Use suggested bin (auto)
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ============================================
@@ -430,6 +571,8 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
   const [assignOpen, setAssignOpen] = React.useState(false);
   const [qrOpen, setQrOpen] = React.useState(false);
   const [confirmAction, setConfirmAction] = React.useState<'complete' | 'cancel' | null>(null);
+  const [pickBin, setPickBin] = React.useState<PickBin | null>(null);
+  const [binDialogOpen, setBinDialogOpen] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const assignedWorker = pickList?.assigned_to ? workerById.get(pickList.assigned_to) : undefined;
@@ -438,6 +581,23 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
     : null;
   const assignedEmployeeId = assignedWorker?.employee_id ?? null;
   const assignedWorkerQr = workerQrValue(assignedWorker);
+
+  const suggestedBins = React.useMemo(() => {
+    if (!pickList) return [];
+    const seen = new Map<string, PickBin>();
+    for (const it of pickList.items) {
+      const remaining = (it.qty || 0) - (it.picked_qty || 0);
+      if (remaining <= 0 || !it.bin_location_id) continue;
+      if (!seen.has(it.bin_location_id)) {
+        seen.set(it.bin_location_id, {
+          id: it.bin_location_id,
+          label: it.bin_location_path || it.bin_location_id,
+          sku: it.sku ?? null,
+        });
+      }
+    }
+    return Array.from(seen.values());
+  }, [pickList]);
 
   const handleAssign = React.useCallback(
     async (workerId: string) => {
@@ -451,9 +611,12 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
     setScanError(null);
     setScanning(true);
     try {
-      const result = await recordScan(qrInput.trim());
+      const result = await recordScan(qrInput.trim(), pickBin?.id ?? null);
       setQrInput('');
-      toast({ title: 'Item scanned', description: `${result.sku} — ${result.scanned_qty} units` });
+      toast({
+        title: 'Item scanned',
+        description: `${result.sku} — ${result.scanned_qty} units${pickBin ? ` from ${pickBin.label}` : ''}`,
+      });
       inputRef.current?.focus();
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'Scan failed');
@@ -583,6 +746,23 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
             {/* Scan input */}
             {canScan && (
               <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-muted-foreground">Pick from:</span>
+                  <span className="text-sm font-mono font-medium">
+                    {pickBin ? pickBin.label : 'Suggested bin (auto)'}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 ml-auto"
+                    onClick={() => setBinDialogOpen(true)}
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    Change Bin
+                  </Button>
+                </div>
                 <div className="flex gap-2">
                   <Input
                     ref={inputRef}
@@ -652,6 +832,13 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
         onAssign={handleAssign}
       />
       <WorkerQrDialog open={qrOpen} onOpenChange={setQrOpen} worker={assignedWorker} />
+      <PickBinDialog
+        open={binDialogOpen}
+        onOpenChange={setBinDialogOpen}
+        warehouseId={pickList?.warehouse_id ?? ''}
+        suggestedBins={suggestedBins}
+        onSelect={setPickBin}
+      />
       <ConfirmDialog
         open={confirmAction !== null}
         onOpenChange={(o) => {

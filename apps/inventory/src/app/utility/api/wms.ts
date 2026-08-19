@@ -228,10 +228,10 @@ export const outboundApi = {
   getPickList: (token: string, id: string) =>
     req<PickList>(`${BASE}/outbound/${id}`, token),
 
-  recordPickScan: (token: string, pickListId: string, qrData: string) =>
+  recordPickScan: (token: string, pickListId: string, qrData: string, binLocationId?: string | null) =>
     req<PickScanResult>(`${BASE}/outbound/${pickListId}/scan`, token, {
       method: 'POST',
-      body: JSON.stringify({ qr_data: qrData }),
+      body: JSON.stringify({ qr_data: qrData, bin_location_id: binLocationId ?? null }),
     }),
 
   completePickList: (token: string, id: string) =>

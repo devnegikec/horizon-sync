@@ -384,11 +384,11 @@ export function usePickList(pickListId: string | null) {
   }, [fetchPickList]);
 
   const recordScan = React.useCallback(
-    async (qrData: string): Promise<PickScanResult> => {
+    async (qrData: string, binLocationId?: string | null): Promise<PickScanResult> => {
       if (!pickListId || !accessToken) throw new Error('No pick list selected');
       setError(null);
       try {
-        const result = await outboundApi.recordPickScan(accessToken, pickListId, qrData);
+        const result = await outboundApi.recordPickScan(accessToken, pickListId, qrData, binLocationId);
         await fetchPickList();
         return result;
       } catch (err) {

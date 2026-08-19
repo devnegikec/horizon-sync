@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { LayoutDashboard, Package, BarChart3, Settings, Users, FileText, HelpCircle, Zap, CreditCard, DollarSign, ShoppingCart, BookOpen, Shield, Receipt, Building2, QrCode, Warehouse } from 'lucide-react';
+import { LayoutDashboard, Package, BarChart3, Settings, Users, FileText, HelpCircle, CreditCard, DollarSign, ShoppingCart, BookOpen, Shield, Receipt, Building2, QrCode, Warehouse } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
@@ -12,6 +12,10 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
 import { environment } from '../../environments/environment';
 import { CurrencyIcon } from '@horizon-sync/ui';
+
+import logoLight from '../../assets/ciphercode_571_logo.png';
+import logoDark from '../../assets/White_Ciphercode.webp';
+import logoMark from '../../assets/ciphercode_528_logo.png';
 
 /** Wrapper that reads baseCurrency from the store and passes it to CurrencyIcon */
 function DynamicCurrencyIcon({ className }: { className?: string }) {
@@ -153,16 +157,13 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
     )}>
       {/* Logo Section */}
       <div className="flex h-16 items-center gap-3 px-4 border-b border-border">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500">
-          <Zap className="h-5 w-5 text-white" />
-        </div>
-        {!collapsed && (
-          <div className="flex flex-col">
-            <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-violet-600 to-fuchsia-600 dark:from-violet-400 dark:to-fuchsia-400 bg-clip-text text-transparent">
-              Horizon
-            </span>
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground -mt-0.5">Sync Platform</span>
-          </div>
+        {collapsed ? (
+          <img src={logoMark} alt="Ciphercode" className="h-9 w-9 shrink-0 object-contain" />
+        ) : (
+          <>
+            <img src={logoLight} alt="Ciphercode" className="h-8 w-auto max-w-[180px] shrink-0 object-contain object-left dark:hidden" />
+            <img src={logoDark} alt="Ciphercode" className="h-8 w-auto max-w-[180px] shrink-0 object-contain object-left hidden dark:block" />
+          </>
         )}
       </div>
 
