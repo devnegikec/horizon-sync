@@ -4,6 +4,8 @@ import * as React from 'react';
 
 import { User, Building, Users, Check, Building2 } from 'lucide-react';
 
+import logo from '../../../assets/ciphercode_528_logo.png';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 
 import { useOnboardingStore } from '../../hooks/useOnboardingStore';
@@ -63,11 +65,9 @@ export function OnboardingWizard() {
       <CardHeader className="space-y-4 pb-6">
         {/* Brand Logo */}
         <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#3058EE] to-[#7D97F6]">
-            <span className="font-bold text-lg text-white">H</span>
-          </div>
+          <img src={logo} alt="Ciphercode" className="h-10 w-10 object-contain" />
           <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-[#3058EE] to-[#7D97F6] bg-clip-text text-transparent">
-            Horizon Sync
+            Ciphercode
           </span>
         </div>
 

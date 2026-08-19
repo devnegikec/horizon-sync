@@ -182,13 +182,13 @@ export function OrganizationGuard({ children }: OrganizationGuardProps) {
           toast({
             title: 'Organization setup is required',
             description:
-              'You must complete the organization setup to continue using Horizon Sync.',
+              'You must complete the organization setup to continue using Ciphercode.',
             variant: 'destructive',
           });
         }}
         onSubmit={handleCreateOrganization}
         title="Set Up Your Organization"
-        description="Create your organization to get started with Horizon Sync."
+        description="Create your organization to get started with Ciphercode."
       />
     </>
   );
