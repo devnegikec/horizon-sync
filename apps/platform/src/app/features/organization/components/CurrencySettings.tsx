@@ -259,7 +259,7 @@ export function CurrencySettings({ accessToken, disabled }: CurrencySettingsProp
                     <SelectValue placeholder="Select currency" />
                   </SelectTrigger>
                   <SelectContent>
-                    {currencies.map((c) => (
+                    {currencies.filter((c) => c.code).map((c) => (
                       <SelectItem key={c.code} value={c.code}>
                         <span className="font-mono mr-2">{c.symbol}</span>
                         {c.code} — {c.name}
@@ -310,14 +310,14 @@ export function CurrencySettings({ accessToken, disabled }: CurrencySettingsProp
         <CardContent>
           <div className={currencies.length > 10 ? 'max-h-[480px] overflow-y-auto pr-1' : undefined}>
             <EditableDataTable data={currencies}
-            columns={columns}
-            config={config}
-            onDataChange={handleDataChange}
-            enableAddRow={false}
-            enableDeleteRow={false}
-            newRowTemplate={EMPTY_ROW}
-            addRowLabel="Add Currency"
-            heading="" />
+              columns={columns}
+              config={config}
+              onDataChange={handleDataChange}
+              enableAddRow={false}
+              enableDeleteRow={false}
+              newRowTemplate={EMPTY_ROW}
+              addRowLabel="Add Currency"
+              heading="" />
           </div>
           {saving && (
             <div className="text-muted-foreground text-sm mt-2">Saving...</div>
