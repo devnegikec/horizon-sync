@@ -4,9 +4,8 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { Download, Loader2, AlertCircle, CheckCircle2, RefreshCw, Layers, QrCode } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
+import { Badge, Button, Card, CardContent, DetailDialog, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 
 import { environment } from '../../../environments/environment';
 import { useBlockDownload } from '../../features/qr-management/hooks/useBlockDownload';
@@ -154,7 +153,7 @@ function BlockInfoPanel({ block, onRetry }: { block: QRBlock; onRetry?: (block: 
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                 <div className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${block.progress}%` }}/>
+                  style={{ width: `${block.progress}%` }} />
               </div>
             </div>
           )}
@@ -252,9 +251,9 @@ function BlockItemsTable({ blockId }: { blockId: string }) {
       header: ({ column }) => <DataTableColumnHeader column={column} title="Active" />,
       cell: ({ row }) => (
         <Badge variant="secondary"
-className={row.original.qr_active
-          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-          : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'}>
+          className={row.original.qr_active
+            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'}>
           {row.original.qr_active ? 'Active' : 'Inactive'}
         </Badge>
       ),
@@ -341,32 +340,26 @@ export function BlockDetailDialog({ blockId, open, onOpenChange, onRetry }: Bloc
   const { block, loading } = useBlockStatus(open ? blockId : null);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Block Details</DialogTitle>
-        </DialogHeader>
+    <DetailDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Block Details"
+      size="lg"
+      loading={loading && !block}
+      loadingMessage="Loading block…"
+    >
+      {block && (
+        <div className="space-y-6">
+          <BlockInfoPanel block={block} onRetry={onRetry} />
 
-        {loading && !block && (
-          <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading block…
-          </div>
-        )}
-
-        {block && (
-          <div className="space-y-6">
-            <BlockInfoPanel block={block} onRetry={onRetry} />
-
-            {block.status === 'completed' && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold">Generated Items ({block.quantity.toLocaleString()})</h3>
-                <BlockItemsTable blockId={block.id} />
-              </div>
-            )}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          {block.status === 'completed' && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold">Generated Items ({block.quantity.toLocaleString()})</h3>
+              <BlockItemsTable blockId={block.id} />
+            </div>
+          )}
+        </div>
+      )}
+    </DetailDialog>
   );
 }

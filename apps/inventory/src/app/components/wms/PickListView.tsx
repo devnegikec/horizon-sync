@@ -4,7 +4,6 @@ import { RefreshCw, ScanLine, CheckCircle2, X, Eye, UserRound, Loader2, ChevronD
 import QRCode from 'qrcode';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { DetailDialog } from '@horizon-sync/ui/components/ui/detail-dialog';
 import {
@@ -562,12 +561,9 @@ interface PickListDetailDialogProps {
 
 function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDialogProps) {
   const { toast } = useToast();
-  const { pickList, loading, error, recordScan, complete, cancel, assignWorker } = usePickList(listId);
+  const { pickList, loading, error, complete, cancel, assignWorker } = usePickList(listId);
   const workers = useWorkers(open);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
-  const [qrInput, setQrInput] = React.useState('');
-  const [scanError, setScanError] = React.useState<string | null>(null);
-  const [scanning, setScanning] = React.useState(false);
   const [assignOpen, setAssignOpen] = React.useState(false);
   const [qrOpen, setQrOpen] = React.useState(false);
   const [confirmAction, setConfirmAction] = React.useState<'complete' | 'cancel' | null>(null);
@@ -645,7 +641,6 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
 
   const progress = pickList?.progress ?? null;
   const canComplete = pickList?.status === 'in_progress' && (progress?.remaining_items ?? 0) === 0;
-  const canScan = pickList?.status === 'draft' || pickList?.status === 'in_progress';
   const canCancel = !!pickList && pickList.status !== 'completed' && pickList.status !== 'cancelled';
 
   const footer = (

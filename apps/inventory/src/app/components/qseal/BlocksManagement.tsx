@@ -11,6 +11,7 @@ import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
 import { environment } from '../../../environments/environment';
 import { useAllQRBlocks } from '../../features/qr-management/hooks/useAllQRBlocks';
+import { useBlockDownload } from '../../features/qr-management/hooks/useBlockDownload';
 import { useBlockStatus } from '../../features/qr-management/hooks/useBlockStatus';
 import type { BlockStatus, QRBlock, QRType } from '../../features/qr-management/types/qrBlock.types';
 import { formatDate } from '../../utility/formatDate';
@@ -86,6 +87,25 @@ function ParentBlockDownloadLink({ block }: { block: QRBlock }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Child (QR Codes) download — always fetches a fresh signed URL     */
+/* ------------------------------------------------------------------ */
+
+function ChildBlockDownloadButton({ block, label = 'Download QR Codes' }: { block: QRBlock; label?: string }) {
+  const { download, loading, error } = useBlockDownload();
+
+  return (
+    <div className="space-y-1">
+      <Button variant="outline" size="sm" onClick={() => download(block.id, `qr_${block.batch}.xlsx`)} disabled={loading}>
+        {loading
+          ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Preparing…</>
+          : <><Download className="h-4 w-4 mr-2" />{label}</>}
+      </Button>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Block status tracker (inline banner after creation)               */
 /* ------------------------------------------------------------------ */
 
@@ -125,21 +145,14 @@ function BlockStatusTracker({ blockId, onDone }: { blockId: string; onDone: () =
             <CheckCircle2 className="h-4 w-4" />
             Generation complete
           </div>
-          <div className={`grid gap-3 ${block.master_pack_enabled && block.download_url ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            {block.download_url && (
-              <div className="rounded-md border p-3 space-y-1">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <QrCode className="h-3.5 w-3.5" />
-                  Child QR Codes
-                </div>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={block.download_url} target="_blank" rel="noreferrer">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download QR Codes
-                  </a>
-                </Button>
+          <div className={`grid gap-3 ${block.master_pack_enabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            <div className="rounded-md border p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <QrCode className="h-3.5 w-3.5" />
+                Child QR Codes{block.quantity ? ` (${block.quantity.toLocaleString()})` : ''}
               </div>
-            )}
+              <ChildBlockDownloadButton block={block} />
+            </div>
 
             {/* Parent (Master Pack) download */}
             {block.master_pack_enabled && (
@@ -263,15 +276,8 @@ function BlocksTable({ blocks, loading, error, onCreateBlock, onViewBlock, serve
       enableSorting: false,
       cell: ({ row }) => {
         const b = row.original;
-        if (b.status !== 'completed' || !b.download_url) return null;
-        return (
-          <Button variant="outline" size="sm" asChild>
-            <a href={b.download_url} target="_blank" rel="noreferrer">
-              <Download className="h-4 w-4 mr-2" />
-              Download
-            </a>
-          </Button>
-        );
+        if (b.status !== 'completed') return null;
+        return <ChildBlockDownloadButton block={b} label="Download" />;
       },
     },
     {
@@ -328,7 +334,7 @@ function BlocksTable({ blocks, loading, error, onCreateBlock, onViewBlock, serve
                 <Plus className="h-4 w-4" />
                 New Block
               </Button>
-            }/>
+            } />
         </CardContent>
       </Card>
     );
@@ -354,7 +360,7 @@ function BlocksTable({ blocks, loading, error, onCreateBlock, onViewBlock, serve
             return null;
           }}
           fixedHeader
-          maxHeight="auto"/>
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );
@@ -409,7 +415,7 @@ export function BlocksManagement() {
         error={error}
         onCreateBlock={() => setCreateOpen(true)}
         onViewBlock={(b) => setDetailBlockId(b.id)}
-        serverPagination={serverPaginationConfig}/>
+        serverPagination={serverPaginationConfig} />
 
       <CreateBlockDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={(id) => { setTrackedBlockId(id); refetch(page); }} />
 

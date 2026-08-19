@@ -173,6 +173,16 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
               placeholder="1" />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="packagingItemsPerMasterPack">Items per Master Pack</Label>
+            <Input id="packagingItemsPerMasterPack"
+              type="number"
+              step="1"
+              min="1"
+              value={formData.packagingItemsPerMasterPack}
+              onChange={(e) => onUpdate({ packagingItemsPerMasterPack: e.target.value })}
+              placeholder="10" />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="packagingLengthMm">Length (mm)</Label>
             <Input id="packagingLengthMm"
               type="number" step="0.1" min="0"

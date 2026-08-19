@@ -155,6 +155,7 @@ export interface CreateBlockDialogProps {
 export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlockDialogProps) {
   const { createBlock, loading, error } = useCreateBlock();
   const { credits, loading: creditsLoading, refetch: refetchCredits } = useQRCredits();
+  const accessToken = useUserStore((s) => s.accessToken);
   const [productId, setProductId] = React.useState('');
   const [batch, setBatch] = React.useState('');
   const [quantity, setQuantity] = React.useState(100);
@@ -162,9 +163,10 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
   const [srType, setSrType] = React.useState<SerialNumberType>('R6DAN');
   const [includeQrImage, setIncludeQrImage] = React.useState(true);
   const [masterPackEnabled, setMasterPackEnabled] = React.useState(false);
-  const [masterPackSize, setMasterPackSize] = React.useState(10);
+  const [masterPackSize, setMasterPackSize] = React.useState(0);
+  const [masterPackEditable, setMasterPackEditable] = React.useState(false);
 
-  const reset = () => {
+  const reset = React.useCallback(() => {
     setProductId('');
     setBatch('');
     setQuantity(100);
@@ -172,11 +174,58 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
     setSrType('R6DAN');
     setIncludeQrImage(true);
     setMasterPackEnabled(false);
-    setMasterPackSize(10);
+    setMasterPackSize(0);
+    setMasterPackEditable(false);
+  }, []);
+
+  // Reset the form every time the dialog is reopened so stale data
+  // from a previously filled (and closed) block is never shown.
+  React.useEffect(() => {
+    if (open) {
+      reset();
+    }
+  }, [open, reset]);
+
+  // Auto-populate Items per Master Pack from the selected product's packaging details
+  const handleProductChange = async (id: string) => {
+    setProductId(id);
+    setMasterPackEditable(false);
+    if (!accessToken || !id) return;
+    try {
+      const product = await qrProductApi.getById(accessToken, id);
+      const packaging = (product.extra_data as any)?.packaging_details;
+      const raw =
+        product.items_per_master_pack ??
+        packaging?.items_per_master_pack ??
+        packaging?.conversion_factor;
+      const n = raw != null ? Math.round(Number(raw)) : 0;
+      setMasterPackSize(Number.isFinite(n) && n > 0 ? n : 0);
+    } catch {
+      // keep the existing value on lookup failure
+    }
+  };
+
+  const handleChangePackSize = () => {
+    if (!masterPackEditable) {
+      notificationService.warning(
+        'Changing "Items per Master Pack" here may affect your packaging configuration. We recommend updating it in the item packaging details instead.',
+        { duration: 6000 },
+      );
+      setMasterPackEditable(true);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Master pack requires Items per Master Pack to be set (from item details)
+    if (masterPackEnabled && (!masterPackSize || masterPackSize <= 0)) {
+      notificationService.warning(
+        'Items per Master Pack is not set for this product. Please set it in the item packaging details and try again.',
+        { duration: 6000 },
+      );
+      return;
+    }
 
     // Check credits before submission
     if (credits !== null && credits < quantity) {
@@ -250,15 +299,15 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Product *</Label>
-            <ProductSelect value={productId} onChange={(id) => setProductId(id)} />
+            <ProductSelect value={productId} onChange={(id) => handleProductChange(id)} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="batch">Batch Name *</Label>
-            <Input id="batch" value={batch} onChange={(e) => setBatch(e.target.value)} maxLength={50} placeholder="e.g. Batch-Jan-2025" required />
+            <Input id="batch" value={batch} onChange={(e) => setBatch(e.target.value)} maxLength={50} placeholder="e.g. Batch-Jan-2025" disabled={!productId} required />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="quantity">Quantity * (1–10,000)</Label>
-            <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} min={1} max={10000} required />
+            <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} min={1} max={10000} disabled={!productId} required />
             {!hasEnoughCredits && (
               <p className="text-xs text-destructive">
                 Insufficient credits. You need {quantity.toLocaleString()} but only have {credits?.toLocaleString() || 0}.
@@ -268,7 +317,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
           <div className="space-y-1.5">
             <Label>QR Type</Label>
             <Select value={qrType} onValueChange={(v) => setQrType(v as QRType)}>
-              <SelectTrigger>
+              <SelectTrigger disabled={!productId}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -281,7 +330,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
           <div className="space-y-1.5">
             <Label>Serial Number Type</Label>
             <Select value={srType} onValueChange={(v) => setSrType(v as SerialNumberType)}>
-              <SelectTrigger>
+              <SelectTrigger disabled={!productId}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -296,7 +345,8 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
               id="includeQrImage"
               checked={includeQrImage}
               onChange={(e) => setIncludeQrImage(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
+              disabled={!productId}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
             <Label htmlFor="includeQrImage" className="text-sm font-normal cursor-pointer">
               Include QR code images in Excel
             </Label>
@@ -314,7 +364,8 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
                 id="masterPackEnabled"
                 checked={masterPackEnabled}
                 onChange={(e) => setMasterPackEnabled(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
+                disabled={!productId}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
               <Label htmlFor="masterPackEnabled" className="text-sm font-medium cursor-pointer flex items-center gap-1.5">
                 <Layers className="h-4 w-4" />
                 Enable Master Pack (Cascade)
@@ -324,16 +375,29 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
               <div className="pl-6 space-y-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="masterPackSize">Items per Master Pack</Label>
-                  <Input id="masterPackSize"
-                    type="number"
-                    value={masterPackSize}
-                    onChange={(e) => setMasterPackSize(Math.max(1, Number(e.target.value)))}
-                    min={1}
-                    max={quantity}
-                    required/>
+                  <div className="flex items-center gap-2">
+                    <Input id="masterPackSize"
+                      type="number"
+                      value={masterPackSize}
+                      onChange={(e) => setMasterPackSize(Math.max(1, Number(e.target.value)))}
+                      min={1}
+                      max={quantity}
+                      disabled={!productId || !masterPackEditable}
+                      required />
+                    {!masterPackEditable && (
+                      <Button type="button" variant="outline" size="sm" onClick={handleChangePackSize}>
+                        Change
+                      </Button>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Number of child QR codes grouped under each parent master pack
                   </p>
+                  {masterPackSize <= 0 && (
+                    <p className="text-xs text-amber-600">
+                      Items per Master Pack is not set for this product. Please set it in the item packaging details.
+                    </p>
+                  )}
                 </div>
                 {masterPackSize > 0 && masterPackParentCount > 0 && (
                   <div className="bg-muted/50 rounded-md p-3 text-sm">
