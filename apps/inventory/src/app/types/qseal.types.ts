@@ -44,6 +44,8 @@ export interface QSealProduct {
   sr_number_type: string | null;
   redirect_to_client: boolean;
   warranty_period_months: number | null;
+  linked_item_id?: string | null;
+  items_per_master_pack?: number | null;
   extra_data: Record<string, unknown> | null;
   created_by: string | null;
   created_at: string;
@@ -88,6 +90,7 @@ export interface QSealProductListResponse {
 export interface QSealPackagingDetailsPayload {
   unit_name: string;
   conversion_factor: number;
+  items_per_master_pack?: number | null;
   length_mm: number | null;
   width_mm: number | null;
   height_mm: number | null;

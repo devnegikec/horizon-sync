@@ -113,6 +113,7 @@ const getInitialFormData = (initialData?: Partial<ItemFormData>): ItemFormData =
   extraData: {},
   packagingUnitName: 'Each',
   packagingConversionFactor: '1',
+  packagingItemsPerMasterPack: '',
   packagingLengthMm: '',
   packagingWidthMm: '',
   packagingHeightMm: '',

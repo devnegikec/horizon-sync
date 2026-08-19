@@ -44,6 +44,7 @@ interface FormValues {
   banner_image_url: string;
   packaging_unit_name: string;
   packaging_conversion_factor: string;
+  packaging_items_per_master_pack: string;
   packaging_length_mm: string;
   packaging_width_mm: string;
   packaging_height_mm: string;
@@ -80,6 +81,7 @@ const DEFAULT_VALUES: FormValues = {
   banner_image_url: '',
   packaging_unit_name: 'Each',
   packaging_conversion_factor: '1',
+  packaging_items_per_master_pack: '',
   packaging_length_mm: '',
   packaging_width_mm: '',
   packaging_height_mm: '',
@@ -400,6 +402,10 @@ function PackagingDetailsSection({ register }: PackagingDetailsSectionProps) {
           <Input id="packaging_conversion_factor" type="number" step="1" min="1" placeholder="1" {...register('packaging_conversion_factor')} />
         </div>
         <div className="space-y-1">
+          <LabelWithTooltip htmlFor="packaging_items_per_master_pack" label="Items per Master Pack" hint="Number of items grouped under one master pack" />
+          <Input id="packaging_items_per_master_pack" type="number" step="1" min="1" placeholder="10" {...register('packaging_items_per_master_pack')} />
+        </div>
+        <div className="space-y-1">
           <LabelWithTooltip htmlFor="packaging_length_mm" label="Length (mm)" hint="Physical length in millimetres" />
           <Input id="packaging_length_mm" type="number" step="0.1" min="0" placeholder="0" {...register('packaging_length_mm')} />
         </div>
@@ -437,6 +443,7 @@ function buildPayload(data: FormValues): CreateQSealProductPayload {
     data.packaging_height_mm ||
     data.packaging_weight_grams ||
     data.packaging_conversion_factor !== '1' ||
+    data.packaging_items_per_master_pack ||
     (data.packaging_unit_name && data.packaging_unit_name !== 'Each'));
 
   return {
@@ -460,6 +467,9 @@ function buildPayload(data: FormValues): CreateQSealProductPayload {
         packaging_details: {
           unit_name: data.packaging_unit_name || 'Each',
           conversion_factor: Number(data.packaging_conversion_factor) || 1,
+          items_per_master_pack: data.packaging_items_per_master_pack
+            ? Number(data.packaging_items_per_master_pack)
+            : null,
           length_mm: parseFloat(data.packaging_length_mm) || null,
           width_mm: parseFloat(data.packaging_width_mm) || null,
           height_mm: parseFloat(data.packaging_height_mm) || null,
@@ -495,6 +505,9 @@ function getInitialValues(product: QSealProduct): FormValues {
     packaging_conversion_factor: pd?.conversion_factor != null
       ? String(pd.conversion_factor)
       : '1',
+    packaging_items_per_master_pack: pd?.items_per_master_pack != null
+      ? String(pd.items_per_master_pack)
+      : '',
     packaging_length_mm: pd?.length_mm != null ? String(pd.length_mm) : '',
     packaging_width_mm: pd?.width_mm != null ? String(pd.width_mm) : '',
     packaging_height_mm: pd?.height_mm != null ? String(pd.height_mm) : '',
