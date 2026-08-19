@@ -1,12 +1,6 @@
 import { QrCode, Tag } from 'lucide-react';
 
-import { Badge } from '@horizon-sync/ui/components';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components/ui/dialog';
+import { Badge, DetailDialog } from '@horizon-sync/ui/components';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 
 import type { QSealProduct } from '../../types/qseal.types';
@@ -90,39 +84,40 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
   if (!product) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <QrCode className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="font-semibold">{product.name}</p>
-              {product.gtin && (
-                <p className="text-xs text-muted-foreground font-mono font-normal">{product.gtin}</p>
-              )}
-            </div>
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <ProductBadges product={product} />
-
-          {(product.sku || product.generic_name) && (
-            <p className="text-sm text-muted-foreground">SKU: {product.sku ?? product.generic_name}</p>
-          )}
-
-          <Separator />
-          <ProductDetails product={product} />
-          <Separator />
-
-          <div className="divide-y">
-            <MetricRow label="Created" value={formatDate(product.created_at, 'DD-MMM-YY')} />
-            <MetricRow label="Last Updated" value={formatDate(product.updated_at, 'DD-MMM-YY')} />
+    <DetailDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      title={
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <QrCode className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <p className="font-semibold">{product.name}</p>
+            {product.gtin && (
+              <p className="text-xs text-muted-foreground font-mono font-normal">{product.gtin}</p>
+            )}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      }
+    >
+      <div className="space-y-4">
+        <ProductBadges product={product} />
+
+        {(product.sku || product.generic_name) && (
+          <p className="text-sm text-muted-foreground">SKU: {product.sku ?? product.generic_name}</p>
+        )}
+
+        <Separator />
+        <ProductDetails product={product} />
+        <Separator />
+
+        <div className="divide-y">
+          <MetricRow label="Created" value={formatDate(product.created_at, 'DD-MMM-YY')} />
+          <MetricRow label="Last Updated" value={formatDate(product.updated_at, 'DD-MMM-YY')} />
+        </div>
+      </div>
+    </DetailDialog>
   );
 }
