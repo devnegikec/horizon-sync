@@ -28,6 +28,8 @@ export interface QSealProduct {
   id: string;
   organization_id: string;
   name: string;
+  brand_id?: string | null;
+  brand_name?: string | null;
   sku: string | null;
   generic_name: string | null;
   gtin: string | null;
@@ -50,6 +52,41 @@ export interface QSealProduct {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+
+  // Item-sourced mirrors (synced from the linked inventory item)
+  item_code?: string | null;
+  description?: string | null;
+  uom?: string | null;
+  standard_rate?: number | string | null;
+  valuation_rate?: number | string | null;
+  weight_per_unit?: number | string | null;
+  weight_uom?: string | null;
+  barcode?: string | null;
+  maintain_stock?: boolean | null;
+  has_batch_no?: boolean | null;
+  has_serial_no?: boolean | null;
+  item_type?: string | null;
+  valuation_method?: string | null;
+  allow_negative_stock?: boolean | null;
+  item_group_id?: string | null;
+  has_variants?: boolean | null;
+  variant_of?: string | null;
+  variant_attributes?: Record<string, unknown> | null;
+  batch_number_series?: string | null;
+  serial_number_series?: string | null;
+  enable_auto_reorder?: boolean | null;
+  reorder_level?: number | null;
+  reorder_qty?: number | null;
+  min_order_qty?: number | null;
+  max_order_qty?: number | null;
+  inspection_required_before_purchase?: boolean | null;
+  inspection_required_before_delivery?: boolean | null;
+  quality_inspection_template?: string | null;
+  sales_tax_template_id?: string | null;
+  purchase_tax_template_id?: string | null;
+  images?: string[] | null;
+  tags?: string[] | null;
+  custom_fields?: Record<string, unknown> | null;
 }
 
 /** Helper to derive display status from is_active */
