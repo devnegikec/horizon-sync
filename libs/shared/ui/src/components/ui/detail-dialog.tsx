@@ -35,6 +35,8 @@ export interface DetailDialogProps {
   closeLabel?: string;
   children: React.ReactNode;
   contentClassName?: string;
+  /** Inline styles applied to the dialog content (use for fixed heights). */
+  style?: React.CSSProperties;
 }
 
 export function DetailDialog({
@@ -49,10 +51,11 @@ export function DetailDialog({
   closeLabel = 'Close',
   children,
   contentClassName,
+  style,
 }: DetailDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={contentClassName ?? sizeClasses[size]}>
+      <DialogContent className={contentClassName ?? sizeClasses[size]} style={style}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -67,7 +70,7 @@ export function DetailDialog({
         )}
 
         {!loading && (
-          <div className="flex-1 overflow-y-auto">{children}</div>
+          <div className="flex-1 min-h-0 overflow-y-auto">{children}</div>
         )}
 
         {footer !== undefined ? (

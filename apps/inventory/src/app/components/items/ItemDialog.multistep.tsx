@@ -1,4 +1,6 @@
 
+import * as React from 'react';
+
 import { useUserStore } from '@horizon-sync/store';
 
 import { useItemSubmission } from '../../hooks/useItemSubmission';
@@ -29,6 +31,14 @@ function itemToFormData(item: Item): Partial<ItemFormData> {
   return {
     itemCode: item.itemCode ?? '',
     name: item.name ?? '',
+    brandId: item.brandId ?? '',
+    gtin: item.gtin ?? '',
+    industry: item.industry ?? '',
+    landingPage: item.landingPage ?? '',
+    warrantyPeriodMonths: item.warrantyPeriodMonths != null ? String(item.warrantyPeriodMonths) : '',
+    qrType: item.qrType ?? '',
+    activationMethod: item.activationMethod ?? 'pre',
+    srNumberType: item.srNumberType ?? '',
     sku: item.sku ?? '',
     description: item.description ?? '',
     itemGroupId: item.itemGroupId ?? '',
@@ -110,8 +120,9 @@ export function ItemDialogMultiStep({
     await handleSubmit(formData);
   };
 
-  // Convert item to initialData for the multi-step form
-  const initialData = item ? itemToFormData(item) : undefined;
+  // Convert item to initialData for the multi-step form (memoized so the
+  // wizard does not reset while the dialog is open).
+  const initialData = React.useMemo(() => (item ? itemToFormData(item) : undefined), [item]);
 
   return (
     <ItemMultiStepDialog open={open}

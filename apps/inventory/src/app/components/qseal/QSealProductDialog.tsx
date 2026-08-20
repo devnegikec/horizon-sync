@@ -24,14 +24,16 @@ import {
 
 import { useBrands } from '../../features/qr-management/hooks/useBrands';
 import type { CreateQSealProductPayload, QSealProduct } from '../../types/qseal.types';
-import { FormDialog } from '../containers';
+import { DetailDialog } from '@horizon-sync/ui/components';
 
 interface FormValues {
   brand_id: string;
   name: string;
+  generic_name: string;
   sku: string;
   gtin: string;
   industry: string;
+  qr_type: string;
   landing_page: string;
   client_product_auth_url: string;
   activation_method: string;
@@ -63,12 +65,20 @@ const SR_NUMBER_OPTIONS = [
   { value: 'custom', label: 'Custom' },
 ];
 
+const QR_TYPE_OPTIONS = [
+  { value: 'dynamic', label: 'Dynamic' },
+  { value: 'secure_qr_runtime', label: 'Secure QR Runtime' },
+  { value: 'static_qr', label: 'Static QR' },
+];
+
 const DEFAULT_VALUES: FormValues = {
   brand_id: '',
   name: '',
+  generic_name: '',
   sku: '',
   gtin: '',
   industry: '',
+  qr_type: '',
   landing_page: '',
   client_product_auth_url: '',
   activation_method: 'pre',
@@ -244,9 +254,11 @@ function ProductImagesSection({ imageUrl, bannerImageUrl, onImageChange, onBanne
 interface ProductInfoSectionProps {
   register: ReturnType<typeof useForm<FormValues>>['register'];
   errors: ReturnType<typeof useForm<FormValues>>['formState']['errors'];
+  qrType: string;
+  onQrTypeChange: (v: string) => void;
 }
 
-function ProductInfoSection({ register, errors }: ProductInfoSectionProps) {
+function ProductInfoSection({ register, errors, qrType, onQrTypeChange }: ProductInfoSectionProps) {
   return (
     <div className="space-y-3">
       <SectionHeader icon={Info} title="Product Information" />
@@ -255,6 +267,11 @@ function ProductInfoSection({ register, errors }: ProductInfoSectionProps) {
           <LabelWithTooltip htmlFor="name" label="Product Name" required hint="The official name of your product as it should appear to customers" />
           <Input id="name" placeholder="Product name" {...register('name', { required: 'Product name is required' })} />
           {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+        </div>
+
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="generic_name" label="Generic Name" hint="Generic or scientific name of the product" />
+          <Input id="generic_name" placeholder="e.g. Paracetamol" {...register('generic_name')} />
         </div>
 
         <div className="space-y-1">
@@ -274,6 +291,20 @@ function ProductInfoSection({ register, errors }: ProductInfoSectionProps) {
           <LabelWithTooltip htmlFor="industry" label="Industry" hint="Industry or sector this product belongs to" />
           <Input id="industry" placeholder="e.g. Pharmaceuticals" {...register('industry')} />
         </div>
+        <div className="space-y-1">
+          <LabelWithTooltip label="QR Type" hint="QR code generation type for this product" />
+          <Select value={qrType} onValueChange={onQrTypeChange}>
+            <SelectTrigger><SelectValue placeholder="Select QR type" /></SelectTrigger>
+            <SelectContent>
+              {QR_TYPE_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <LabelWithTooltip htmlFor="warranty_period_months" label="Shelf Life" required hint="Expected lifespan or warranty period for this product (months)" />
           <Input id="warranty_period_months" type="number" min="0" placeholder="e.g. 10" {...register('warranty_period_months', { required: 'Shelf life is required' })} />
@@ -449,9 +480,11 @@ function buildPayload(data: FormValues): CreateQSealProductPayload {
   return {
     brand_id: n(data.brand_id),
     name: data.name,
+    generic_name: n(data.generic_name),
     sku: n(data.sku),
     gtin: n(data.gtin),
     industry: n(data.industry),
+    qr_type: n(data.qr_type),
     landing_page: n(data.landing_page),
     image_url: n(data.image_url),
     banner_image_url: n(data.banner_image_url),
@@ -488,9 +521,11 @@ function getInitialValues(product: QSealProduct): FormValues {
   return {
     brand_id: '',
     name: product.name,
+    generic_name: e(product.generic_name),
     sku: e(product.sku ?? product.generic_name),
     gtin: e(product.gtin),
     industry: e(product.industry),
+    qr_type: e(product.qr_type),
     landing_page: e(product.landing_page),
     client_product_auth_url: e(product.client_product_auth_url),
     activation_method: product.activation_method || 'pre',
@@ -535,6 +570,7 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   const redirectToClient = watch('redirect_to_client');
   const imageUrl = watch('image_url');
   const bannerImageUrl = watch('banner_image_url');
+  const qrType = watch('qr_type');
 
   React.useEffect(() => {
     if (open) reset(product ? getInitialValues(product) : DEFAULT_VALUES);
@@ -543,20 +579,40 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   const onSubmit = handleSubmit((data: FormValues) => onSave(buildPayload(data)));
 
   return (
-    <FormDialog open={open} onOpenChange={onOpenChange} title={isEdit ? 'Edit QSeal Product' : 'Create New Product'} size="md" onSubmit={onSubmit} submitLabel={isEdit ? 'Save Changes' : 'Create Product'} saving={saving}>
-      <BrandSelectSection brandId={brandId} onBrandChange={(v) => setValue('brand_id', v)} />
-      <Separator />
-      <ProductImagesSection imageUrl={imageUrl} bannerImageUrl={bannerImageUrl} onImageChange={(v) => setValue('image_url', v)} onBannerChange={(v) => setValue('banner_image_url', v)} />
-      <Separator />
-      <ProductInfoSection register={register} errors={errors} />
-      <Separator />
-      <ProductUrlsSection register={register} errors={errors} />
-      <Separator />
-      <ActivationDetailsSection activationMethod={activationMethod} srNumberType={srNumberType} onActivationChange={(v) => setValue('activation_method', v)} onSrNumberChange={(v) => setValue('sr_number_type', v)} />
-      <Separator />
-      <AdditionalDetailsSection register={register} redirectToClient={redirectToClient} onRedirectChange={(checked) => setValue('redirect_to_client', checked)} />
-      <Separator />
-      <PackagingDetailsSection register={register} />
-    </FormDialog>
+    <DetailDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      contentClassName="max-w-4xl flex flex-col"
+      style={{ height: 'min(85vh, 820px)' }}
+      title={isEdit ? 'Edit QSeal Product' : 'Create New Product'}
+      showCloseButton={false}
+      footer={
+        <div className="flex items-center justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="submit" form="qseal-product-form" disabled={saving}>
+            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Product'}
+          </Button>
+        </div>
+      }
+    >
+      <form id="qseal-product-form" onSubmit={onSubmit} className="space-y-6">
+        <BrandSelectSection brandId={brandId} onBrandChange={(v) => setValue('brand_id', v)} />
+        <Separator />
+        <ProductImagesSection imageUrl={imageUrl} bannerImageUrl={bannerImageUrl} onImageChange={(v) => setValue('image_url', v)} onBannerChange={(v) => setValue('banner_image_url', v)} />
+        <Separator />
+        <ProductInfoSection register={register} errors={errors} qrType={qrType} onQrTypeChange={(v) => setValue('qr_type', v)} />
+        <Separator />
+        <ProductUrlsSection register={register} errors={errors} />
+        <Separator />
+        <ActivationDetailsSection activationMethod={activationMethod} srNumberType={srNumberType} onActivationChange={(v) => setValue('activation_method', v)} onSrNumberChange={(v) => setValue('sr_number_type', v)} />
+        <Separator />
+        <AdditionalDetailsSection register={register} redirectToClient={redirectToClient} onRedirectChange={(checked) => setValue('redirect_to_client', checked)} />
+        <Separator />
+        <PackagingDetailsSection register={register} />
+      </form>
+    </DetailDialog>
   );
 }

@@ -4,6 +4,7 @@ import { RefreshCw, ScanLine, CheckCircle2, X, Eye, UserRound, Loader2, ChevronD
 import QRCode from 'qrcode';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
+import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { DetailDialog } from '@horizon-sync/ui/components/ui/detail-dialog';
 import {
@@ -561,7 +562,7 @@ interface PickListDetailDialogProps {
 
 function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDialogProps) {
   const { toast } = useToast();
-  const { pickList, loading, error, complete, cancel, assignWorker } = usePickList(listId);
+  const { pickList, loading, error, complete, cancel, assignWorker, recordScan } = usePickList(listId);
   const workers = useWorkers(open);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
   const [assignOpen, setAssignOpen] = React.useState(false);
@@ -569,6 +570,9 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
   const [confirmAction, setConfirmAction] = React.useState<'complete' | 'cancel' | null>(null);
   const [pickBin, setPickBin] = React.useState<PickBin | null>(null);
   const [binDialogOpen, setBinDialogOpen] = React.useState(false);
+  const [qrInput, setQrInput] = React.useState('');
+  const [scanning, setScanning] = React.useState(false);
+  const [scanError, setScanError] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const assignedWorker = pickList?.assigned_to ? workerById.get(pickList.assigned_to) : undefined;
@@ -640,6 +644,7 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
   };
 
   const progress = pickList?.progress ?? null;
+  const canScan = pickList?.status === 'in_progress';
   const canComplete = pickList?.status === 'in_progress' && (progress?.remaining_items ?? 0) === 0;
   const canCancel = !!pickList && pickList.status !== 'completed' && pickList.status !== 'cancelled';
 

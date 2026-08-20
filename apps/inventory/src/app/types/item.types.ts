@@ -54,6 +54,14 @@ export interface Item {
   tags?: string[];
   customFields?: Record<string, unknown>;
   extraData?: Record<string, unknown>;
+  brandId?: string | null;
+  gtin?: string | null;
+  industry?: string | null;
+  landingPage?: string | null;
+  warrantyPeriodMonths?: number | null;
+  qrType?: string | null;
+  activationMethod?: string | null;
+  srNumberType?: string | null;
   packagingDetails?: ItemPackagingDetails | null;
 }
 

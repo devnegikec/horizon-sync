@@ -74,6 +74,16 @@ export function apiItemToItem(api: ApiItem): Item {
     tags: (api as any).tags ?? [],
     customFields: (api as any).custom_fields ?? {},
     extraData: (api as any).extra_data ?? {},
+    brandId: (api as any).brand_id ?? api.brand_id ?? null,
+    gtin: (api as any).gtin ?? api.gtin ?? null,
+    industry: (api as any).industry ?? api.industry ?? null,
+    landingPage: (api as any).landing_page ?? api.landing_page ?? null,
+    warrantyPeriodMonths: (api as any).warranty_period_months != null
+      ? Number((api as any).warranty_period_months)
+      : null,
+    qrType: (api as any).qr_type ?? api.qr_type ?? null,
+    activationMethod: (api as any).activation_method ?? api.activation_method ?? null,
+    srNumberType: (api as any).sr_number_type ?? api.sr_number_type ?? null,
     packagingDetails: mapPackagingDetails((api as any).packaging_units),
   };
 }
