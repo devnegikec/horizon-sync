@@ -38,6 +38,14 @@ export interface ApiItem {
   image_url: string | null;
   created_at: string | null;
   packaging_units?: ApiPackagingUnit[] | null;
+  brand_id?: string | null;
+  gtin?: string | null;
+  industry?: string | null;
+  landing_page?: string | null;
+  warranty_period_months?: number | null;
+  qr_type?: string | null;
+  activation_method?: string | null;
+  sr_number_type?: string | null;
 }
 
 export interface ItemsPagination {
@@ -61,6 +69,12 @@ export interface CreateItemPayload {
   item_name: string;
   brand_id?: string | null;
   gtin?: string | null;
+  industry?: string | null;
+  landing_page?: string | null;
+  warranty_period_months?: number | null;
+  qr_type?: string | null;
+  activation_method?: string | null;
+  sr_number_type?: string | null;
   sku?: string | null;
   description: string;
   item_group_id: string;
@@ -114,6 +128,12 @@ export interface UpdateItemPayload {
   item_name: string;
   brand_id?: string | null;
   gtin?: string | null;
+  industry?: string | null;
+  landing_page?: string | null;
+  warranty_period_months?: number | null;
+  qr_type?: string | null;
+  activation_method?: string | null;
+  sr_number_type?: string | null;
   sku?: string | null;
   description: string;
   item_group_id: string;

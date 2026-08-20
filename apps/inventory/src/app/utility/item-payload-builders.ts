@@ -9,6 +9,12 @@ export interface ItemFormData {
   brandId: string;
   gtin: string;
   sku: string;
+  industry?: string;
+  landingPage?: string;
+  warrantyPeriodMonths?: string;
+  qrType?: string;
+  activationMethod?: string;
+  srNumberType?: string;
   description: string;
   itemGroupId: string;
   itemType: string;
@@ -100,6 +106,12 @@ export function buildCreateItemPayload(formData: ItemFormData): CreateItemPayloa
     gtin: formData.gtin || null,
     item_name: formData.name,
     sku: formData.sku || null,
+    industry: formData.industry ?? null,
+    landing_page: formData.landingPage ?? null,
+    warranty_period_months: formData.warrantyPeriodMonths ? Number(formData.warrantyPeriodMonths) : null,
+    qr_type: formData.qrType ?? null,
+    activation_method: formData.activationMethod ?? null,
+    sr_number_type: formData.srNumberType ?? null,
     description: formData.description,
     item_group_id: formData.itemGroupId,
     item_type: formData.itemType,
@@ -161,6 +173,12 @@ export function buildUpdateItemPayload(formData: ItemFormData, itemGroup: ApiIte
     gtin: formData.gtin || null,
     item_name: formData.name,
     sku: formData.sku || null,
+    industry: formData.industry ?? null,
+    landing_page: formData.landingPage ?? null,
+    warranty_period_months: formData.warrantyPeriodMonths ? Number(formData.warrantyPeriodMonths) : null,
+    qr_type: formData.qrType ?? null,
+    activation_method: formData.activationMethod ?? null,
+    sr_number_type: formData.srNumberType ?? null,
     description: formData.description,
     item_group_id: formData.itemGroupId,
     item_group: {

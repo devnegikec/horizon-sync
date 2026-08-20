@@ -2,8 +2,8 @@ import * as React from 'react';
 
 import { Check } from 'lucide-react';
 
+import { DetailDialog } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@horizon-sync/ui/components/ui/dialog';
 import { cn } from '@horizon-sync/ui/lib';
 
 import type { ApiItemGroup } from '../../../types/item-groups.types';
@@ -75,6 +75,12 @@ const getInitialFormData = (initialData?: Partial<ItemFormData>): ItemFormData =
   name: '',
   brandId: '',
   gtin: '',
+  industry: '',
+  landingPage: '',
+  warrantyPeriodMonths: '',
+  qrType: '',
+  activationMethod: 'pre',
+  srNumberType: '',
   sku: '',
   description: '',
   itemGroupId: '',
@@ -200,7 +206,9 @@ export function ItemMultiStepDialog({
       setFormData(getInitialFormData(initialData));
       setIsSubmitting(false);
     }
-  }, [open, initialData]);
+    // Only reset when the dialog opens, not on every parent re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const updateFormData = React.useCallback((updates: Partial<ItemFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -238,17 +246,28 @@ export function ItemMultiStepDialog({
   const isStepCurrent = (stepId: number) => stepId === currentStep;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-[700px] max-h-[90vh] flex flex-col overflow-hidden"
-        style={{ display: 'flex', flexDirection: 'column', height: 'min(85vh, 820px)' }}
-      >
-        <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Item' : 'Create New Item'}</DialogTitle>
-        </DialogHeader>
-
-        {/* Stepper */}
-        <div className="flex items-center justify-between px-4 py-6 border-b">
+    <DetailDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      contentClassName="max-w-4xl flex flex-col"
+      style={{ height: 'min(85vh, 820px)' }}
+      title={isEditing ? 'Edit Item' : 'Create New Item'}
+      showCloseButton={false}
+      footer={
+        <DialogFooterButtons currentStep={currentStep}
+          isSubmitting={isSubmitting}
+          isValid={validateStep(currentStep, formData)}
+          isEditing={isEditing}
+          onCancel={handleCancel}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+          onSubmit={handleSubmit} />
+      }
+    >
+      <div className="flex h-full min-h-0 flex-col">
+        {/* Stepper (fixed) */}
+        <div className="flex items-center justify-between border-b pb-4 shrink-0">
           {STEPS.map((step, index) => (
             <React.Fragment key={step.id}>
               <div className="flex items-center gap-3">
@@ -275,8 +294,8 @@ export function ItemMultiStepDialog({
           ))}
         </div>
 
-        {/* Form Content */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+        {/* Form Content (scrollable) */}
+        <div className="flex-1 min-h-0 overflow-y-auto py-4">
           {currentStep === 1 && (
             <Step1BasicInfo formData={formData}
               onUpdate={updateFormData}
@@ -295,19 +314,7 @@ export function ItemMultiStepDialog({
               isLoadingTaxTemplates={isLoadingTaxTemplates} />
           )}
         </div>
-
-        {/* Footer */}
-        <DialogFooter className="border-t pt-4">
-          <DialogFooterButtons currentStep={currentStep}
-            isSubmitting={isSubmitting}
-            isValid={validateStep(currentStep, formData)}
-            isEditing={isEditing}
-            onCancel={handleCancel}
-            onPrevious={handlePrevious}
-            onNext={handleNext}
-            onSubmit={handleSubmit} />
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </DetailDialog>
   );
 }

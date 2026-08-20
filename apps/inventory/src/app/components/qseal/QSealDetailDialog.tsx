@@ -61,21 +61,72 @@ function ProductBadges({ product }: { product: QSealProduct }) {
 }
 
 function ProductDetails({ product }: { product: QSealProduct }) {
+  const extra = (product.extra_data as Record<string, unknown> | null | undefined) ?? {};
+  const packaging = (extra.packaging_details as Record<string, unknown> | null | undefined) ?? {};
+
   return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-        Product Details
-      </p>
-      <div className="divide-y">
-        <MetricRow label="Activation Method" value={product.activation_method || '—'} />
-        {product.warranty_period_months != null && (
-          <MetricRow label="Warranty (months)" value={product.warranty_period_months} />
-        )}
-        <MetricRow label="Redirect to Client" value={product.redirect_to_client ? 'Yes' : 'No'} />
-        {product.landing_page && <MetricRow label="Landing Page" value={product.landing_page} />}
-        {product.email && <MetricRow label="Email" value={product.email} />}
-        {product.phone_number && <MetricRow label="Phone" value={product.phone_number} />}
+    <div className="space-y-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+          Product Details
+        </p>
+        <div className="divide-y">
+          {product.generic_name && <MetricRow label="Generic Name" value={product.generic_name} />}
+          {product.sku && <MetricRow label="SKU" value={product.sku} />}
+          <MetricRow label="Activation Method" value={product.activation_method || '—'} />
+          {product.sr_number_type && <MetricRow label="SR Number Type" value={product.sr_number_type} />}
+          {product.warranty_period_months != null && (
+            <MetricRow label="Warranty (months)" value={product.warranty_period_months} />
+          )}
+          <MetricRow label="Redirect to Client" value={product.redirect_to_client ? 'Yes' : 'No'} />
+        </div>
       </div>
+
+      {(product.landing_page || product.client_product_auth_url || product.image_url || product.banner_image_url) && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Links</p>
+          <div className="divide-y">
+            {product.landing_page && <MetricRow label="Landing Page" value={product.landing_page} />}
+            {product.client_product_auth_url && <MetricRow label="Product Auth URL" value={product.client_product_auth_url} />}
+            {product.image_url && <MetricRow label="Image URL" value={product.image_url} />}
+            {product.banner_image_url && <MetricRow label="Banner Image URL" value={product.banner_image_url} />}
+          </div>
+        </div>
+      )}
+
+      {(product.email || product.phone_number) && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Contact</p>
+          <div className="divide-y">
+            {product.email && <MetricRow label="Email" value={product.email} />}
+            {product.phone_number && <MetricRow label="Phone" value={product.phone_number} />}
+          </div>
+        </div>
+      )}
+
+      {(product.items_per_master_pack != null || Object.keys(packaging).length > 0) && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Packaging</p>
+          <div className="divide-y">
+            {product.items_per_master_pack != null && (
+              <MetricRow label="Items per Master Pack" value={product.items_per_master_pack} />
+            )}
+            {packaging.unit_name != null && <MetricRow label="Base Unit" value={String(packaging.unit_name)} />}
+            {packaging.conversion_factor != null && (
+              <MetricRow label="Conversion Factor" value={String(packaging.conversion_factor)} />
+            )}
+            {(packaging.length_mm != null || packaging.width_mm != null || packaging.height_mm != null) && (
+              <MetricRow
+                label="Dimensions (L × W × H)"
+                value={`${packaging.length_mm ?? '—'} × ${packaging.width_mm ?? '—'} × ${packaging.height_mm ?? '—'} mm`}
+              />
+            )}
+            {packaging.weight_grams != null && (
+              <MetricRow label="Weight" value={`${packaging.weight_grams} g`} />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -88,6 +139,8 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
       open={open}
       onOpenChange={onOpenChange}
       size="lg"
+      contentClassName="max-w-4xl flex flex-col"
+      style={{ height: 'min(85vh, 820px)' }}
       title={
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -104,11 +157,6 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
     >
       <div className="space-y-4">
         <ProductBadges product={product} />
-
-        {(product.sku || product.generic_name) && (
-          <p className="text-sm text-muted-foreground">SKU: {product.sku ?? product.generic_name}</p>
-        )}
-
         <Separator />
         <ProductDetails product={product} />
         <Separator />
