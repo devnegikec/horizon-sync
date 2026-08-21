@@ -105,16 +105,36 @@ export function AnalyticsTable({
         },
       },
       {
-        accessorKey: 'country',
+        accessorKey: 'street_address',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Location" />,
         cell: ({ row }) => {
+          const streetAddress = row.original.street_address;
           const city = row.original.city;
+          const state = row.original.state;
           const country = row.original.country;
+          const latitude = row.original.latitude;
+          const longitude = row.original.longitude;
+          if (streetAddress) {
+            return (
+              <span
+                className="block max-w-[320px] whitespace-normal text-sm leading-5"
+                title={streetAddress}
+              >
+                {streetAddress}
+              </span>
+            );
+          }
+          if (!city && !country && latitude != null && longitude != null) {
+            return (
+              <span className="text-sm text-muted-foreground">
+                Location captured
+              </span>
+            );
+          }
           if (!city && !country) return <span className="text-muted-foreground">—</span>;
+          const location = [city, state, country].filter(Boolean).join(', ');
           return (
-            <span className="text-sm">
-              {city && country ? `${city}, ${country}` : city || country}
-            </span>
+            <span className="text-sm">{location}</span>
           );
         },
       },

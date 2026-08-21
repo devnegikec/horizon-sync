@@ -16,19 +16,39 @@ import { AnalyticsTable } from './AnalyticsTable';
 // ── Sub-components for chart sections (reduces parent complexity) ──
 
 function ScansOverTimeChart({ summary }: { summary: AnalyticsSummary }) {
-  const maxDayCount = Math.max(...summary.by_date.map((d) => d.count), 1);
   if (summary.by_date.length === 0) {
     return <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">No time-series data available</div>;
   }
+  const maxDayCount = Math.max(...summary.by_date.map((d) => d.count), 1);
+  const chartWidth = Math.max(summary.by_date.length * 14, 28);
   return (
     <>
-      <div className="flex items-end gap-1 h-32">
-        {summary.by_date.map((day) => (
-          <div key={day.date} className="flex-1 flex flex-col items-center gap-1 group" title={`${day.date}: ${day.count}`}>
-            <div className="w-full bg-primary/80 rounded-t hover:bg-primary transition-colors" style={{ height: `${(day.count / maxDayCount) * 100}%` }} />
-          </div>
-        ))}
-      </div>
+      <svg
+        aria-label="Scans over time"
+        role="img"
+        viewBox={`0 0 ${chartWidth} 100`}
+        preserveAspectRatio="none"
+        className="block w-full text-primary"
+        style={{ height: 128 }}
+      >
+        {summary.by_date.map((day, index) => {
+          const height = Math.max((day.count / maxDayCount) * 96, 2);
+          return (
+            <rect
+              key={day.date}
+              x={index * 14 + 1}
+              y={100 - height}
+              width={12}
+              height={height}
+              rx={1.5}
+              fill="currentColor"
+              opacity={0.85}
+            >
+              <title>{`${day.date}: ${day.count.toLocaleString()} scans`}</title>
+            </rect>
+          );
+        })}
+      </svg>
       <div className="flex justify-between text-xs text-muted-foreground mt-2">
         <span>{summary.by_date[0]?.date?.slice(0, 10)}</span>
         <span>{summary.by_date[summary.by_date.length - 1]?.date?.slice(0, 10)}</span>
@@ -42,16 +62,21 @@ function DeviceTimelineChart({ timeline }: { timeline: AnalyticsDeviceTimeline[]
   if (data.length === 0) {
     return <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">No device timeline data available</div>;
   }
+  const visibleData = data.slice(-30);
+  const maxTotal = Math.max(
+    ...visibleData.map((d) => d.mobile + d.desktop + d.tablet + d.unknown),
+    1,
+  );
   return (
     <>
       <div className="flex items-end gap-1 h-32">
-        {data.slice(-30).map((d) => {
-          const total = d.mobile + d.desktop + d.tablet + d.unknown || 1;
+        {visibleData.map((d) => {
           return (
             <div key={d.date} className="flex-1 flex flex-col justify-end h-full" title={`${d.date}: M:${d.mobile} D:${d.desktop} T:${d.tablet}`}>
-              {d.tablet > 0 && <div className="w-full bg-amber-400" style={{ height: `${(d.tablet / total) * 100}%` }} />}
-              {d.desktop > 0 && <div className="w-full bg-emerald-500" style={{ height: `${(d.desktop / total) * 100}%` }} />}
-              {d.mobile > 0 && <div className="w-full bg-primary rounded-t" style={{ height: `${(d.mobile / total) * 100}%` }} />}
+              {d.unknown > 0 && <div className="w-full bg-slate-400 rounded-t" style={{ height: `${(d.unknown / maxTotal) * 100}%` }} />}
+              {d.tablet > 0 && <div className="w-full bg-amber-400" style={{ height: `${(d.tablet / maxTotal) * 100}%` }} />}
+              {d.desktop > 0 && <div className="w-full bg-emerald-500" style={{ height: `${(d.desktop / maxTotal) * 100}%` }} />}
+              {d.mobile > 0 && <div className="w-full bg-primary" style={{ height: `${(d.mobile / maxTotal) * 100}%` }} />}
             </div>
           );
         })}
@@ -60,6 +85,7 @@ function DeviceTimelineChart({ timeline }: { timeline: AnalyticsDeviceTimeline[]
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-primary inline-block" /> Mobile</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-500 inline-block" /> Desktop</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-400 inline-block" /> Tablet</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-slate-400 inline-block" /> Unknown</span>
       </div>
     </>
   );
@@ -98,9 +124,9 @@ function TopCountriesChart({ summary }: { summary: AnalyticsSummary }) {
   return (
     <>
       {summary.by_country.slice(0, 8).map((c, i) => (
-        <div key={c.country}>
+        <div key={c.country || `unknown-${i}`}>
           <div className="flex justify-between text-sm mb-1">
-            <span><span className="text-muted-foreground mr-2">{i + 1}.</span>{c.country}</span>
+            <span><span className="text-muted-foreground mr-2">{i + 1}.</span>{c.country || 'Unknown'}</span>
             <span className="font-medium">{c.count.toLocaleString()}</span>
           </div>
           <div className="h-2 bg-muted rounded-full overflow-hidden">

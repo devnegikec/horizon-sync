@@ -42,8 +42,11 @@ export const analyticsApi = {
   },
 
   // ── Device Timeline ───────────────────────────────────────
-  getDeviceTimeline(accessToken: string, params?: DateRange): Promise<AnalyticsDeviceTimeline[]> {
-    return apiRequest<AnalyticsDeviceTimeline[]>('/analytics/scans/device-timeline', accessToken, { params: params as Record<string, string | undefined> });
+  async getDeviceTimeline(accessToken: string, params?: DateRange): Promise<AnalyticsDeviceTimeline[]> {
+    const res = await apiRequest<{ timeline: AnalyticsDeviceTimeline[] }>('/analytics/scans/device-timeline', accessToken, {
+      params: params as Record<string, string | undefined>,
+    });
+    return res.timeline || [];
   },
 
   // ── Scan Events Log ───────────────────────────────────────

@@ -189,9 +189,9 @@ export interface AnalyticsInteractionFunnel {
 }
 
 export interface AnalyticsGeoPoint {
-  city: string;
+  city: string | null;
   state: string | null;
-  country: string;
+  country: string | null;
   latitude: number;
   longitude: number;
   count: number;
@@ -217,6 +217,7 @@ export interface AnalyticsScanEvent {
   city: string | null;
   state: string | null;
   country: string | null;
+  street_address: string | null;
   ip_address: string | null;
   referrer_url: string | null;
   language: string | null;

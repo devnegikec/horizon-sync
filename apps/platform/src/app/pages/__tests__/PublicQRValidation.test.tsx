@@ -65,12 +65,16 @@ describe('PublicQRValidation', () => {
     expect(screen.getByText('support@example.com')).toBeInTheDocument();
     expect(screen.getByAltText('Demo Product banner')).toHaveAttribute('src', 'https://images.example/banner.png');
     expect(screen.getByText(/Powered by/i)).toBeInTheDocument();
-    expect(mockedAxios.post).toHaveBeenCalledWith(expect.stringContaining('/api/v1/public/qr/verify'), {
-      gtin: '0123456789012',
-      serial_number: 'PRO-ABC12345',
-      timestamp: '1770000000000',
-      signature: 'signed-value',
-    });
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/public/qr/verify'),
+      {
+        gtin: '0123456789012',
+        serial_number: 'PRO-ABC12345',
+        timestamp: '1770000000000',
+        signature: 'signed-value',
+      },
+      { headers: { 'X-Scan-Event-Id': expect.any(String) } },
+    );
   });
 
   it('shows the protected-layer instruction for a Dual overt QR', async () => {
@@ -91,7 +95,11 @@ describe('PublicQRValidation', () => {
 
     expect(await screen.findByRole('heading', { name: 'Complete Verification' })).toBeInTheDocument();
     expect(screen.getByText('Scan the protected QR')).toBeInTheDocument();
-    expect(mockedAxios.post).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ qr_channel: 'overt' }));
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ qr_channel: 'overt' }),
+      expect.any(Object),
+    );
   });
 
   it('restores plus characters from legacy unencoded Base64 signatures', async () => {
@@ -100,7 +108,11 @@ describe('PublicQRValidation', () => {
     renderPage('/g/0123456789012/s/PRO-ABC12345/1770000000000?c=MEQC+ABC%2FDEF%3D');
 
     await screen.findByRole('heading', { name: 'Authentic Product' });
-    expect(mockedAxios.post).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ signature: 'MEQC+ABC/DEF=' }));
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ signature: 'MEQC+ABC/DEF=' }),
+      expect.any(Object),
+    );
   });
 
   it('submits a protected code and renders the Secure Code result', async () => {
@@ -128,7 +140,11 @@ describe('PublicQRValidation', () => {
     await user.click(screen.getByRole('button', { name: 'Verify code' }));
 
     await waitFor(() => expect(mockedAxios.post).toHaveBeenCalledTimes(2));
-    expect(mockedAxios.post).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ secure_code: 'A1B2C3D4E5F6' }));
+    expect(mockedAxios.post).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.objectContaining({ secure_code: 'A1B2C3D4E5F6' }),
+      expect.any(Object),
+    );
     expect(await screen.findByRole('heading', { name: 'Authentic Product' })).toBeInTheDocument();
   });
 

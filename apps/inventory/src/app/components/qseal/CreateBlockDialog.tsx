@@ -14,7 +14,7 @@ import { cn } from '@horizon-sync/ui/lib/utils';
 import { qrProductApi } from '../../api/qr-products';
 import { useCreateBlock } from '../../features/qr-management/hooks/useCreateBlock';
 import { useQRCredits } from '../../features/qr-management/hooks/useQRCredits';
-import type { QRBlockCreate, QRType, SerialNumberType } from '../../features/qr-management/types/qrBlock.types';
+import type { QRBlockCreate, QRBlockFilterType, SerialNumberType } from '../../features/qr-management/types/qrBlock.types';
 import { getApiErrorMessage } from '../../features/qr-management/utils/apiError';
 import { useQRProductSettings } from '../../hooks/useQRProductSettings';
 import { notificationService } from '../../services/notificationService';
@@ -24,13 +24,11 @@ import type { QSealProductListItem } from '../../types/qseal.types';
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const QR_TYPE_LABELS: Record<QRType, string> = {
+const QR_TYPE_LABELS: Record<QRBlockFilterType, string> = {
   dynamic: 'Dynamic — unique URL per item',
-  static: 'Static — one shared batch QR',
   dual: 'Dual — covert + overt QR per item',
-  secure_code: 'SecureCode — 12-char secret per item',
-  one_time: 'OneTime — deactivates after first scan',
-  post_activation: 'Post-activation — activated after production',
+  one_time: 'One Time — deactivates after first scan',
+  secure_code: 'Secure — 12-char secret per item',
 };
 
 const SR_TYPE_LABELS: Record<SerialNumberType, string> = {
@@ -80,8 +78,13 @@ function ProductSelect({ value, onChange }: ProductSelectProps) {
     if (!accessToken) return;
     setLoading(true);
     try {
-      const res = await qrProductApi.list(accessToken, 1, 30, { search: q || undefined });
-      setProducts(res.products);
+      const res = await qrProductApi.list(accessToken, 1, 30, {
+        search: q || undefined,
+        is_active: true,
+      });
+      // Keep this guard even though the API is filtered, so stale or malformed
+      // responses can never expose an inactive product for block generation.
+      setProducts(res.products.filter((product) => product.is_active));
     } catch {
       setProducts([]);
     } finally {
@@ -196,7 +199,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
     React.useState<QSealProductListItem | null>(null);
   const [batch, setBatch] = React.useState('');
   const [quantity, setQuantity] = React.useState(100);
-  const [qrType, setQrType] = React.useState<QRType>('dynamic');
+  const [qrType, setQrType] = React.useState<QRBlockFilterType>('dynamic');
   const [channelSettingId, setChannelSettingId] = React.useState('');
   const [destinationSettingId, setDestinationSettingId] = React.useState('');
   const [startingSerial, setStartingSerial] = React.useState('');
@@ -238,9 +241,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
         destination_setting_id: destinationSettingId || undefined,
         qr_type: qrType,
         starting_serial:
-          qrType !== 'static' && (srType === 'S8DN' || srType === 'S10DN')
-            ? startingSerial
-            : undefined,
+          srType === 'S8DN' || srType === 'S10DN' ? startingSerial : undefined,
         sr_number_type: srType ?? undefined,
         qr_image: includeQrImage,
         ...(masterPackEnabled && masterPackSize > 0 ? {
@@ -287,13 +288,6 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
   const serialPrefix = selectedProduct?.serial_prefix?.trim() ?? '';
   const isSequential = srType === 'S8DN' || srType === 'S10DN';
   const serialConfigurationReady = Boolean(srType && serialPrefix);
-
-  React.useEffect(() => {
-    if (qrType === 'static') {
-      setQuantity(1);
-      setStartingSerial('');
-    }
-  }, [qrType]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -388,12 +382,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
           )}
           <div className="space-y-1.5">
             <Label htmlFor="quantity">Quantity * (1–5,000)</Label>
-            <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} min={1} max={5000} disabled={qrType === 'static'} required />
-            {qrType === 'static' && (
-              <p className="text-xs text-muted-foreground">
-                Static QR generation always creates one shared item.
-              </p>
-            )}
+            <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} min={1} max={5000} required />
             {!hasEnoughCredits && (
               <p className="text-xs text-destructive">
                 Insufficient credits. You need {quantity.toLocaleString()} but only have {credits?.toLocaleString() || 0}.
@@ -402,18 +391,18 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
           </div>
           <div className="space-y-1.5">
             <Label>QR Type</Label>
-            <Select value={qrType} onValueChange={(v) => setQrType(v as QRType)}>
+            <Select value={qrType} onValueChange={(v) => setQrType(v as QRBlockFilterType)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(QR_TYPE_LABELS) as QRType[]).map((t) => (
-                  <SelectItem key={t} value={t}>{t} — {QR_TYPE_LABELS[t].split(' — ')[1]}</SelectItem>
+                {(Object.keys(QR_TYPE_LABELS) as QRBlockFilterType[]).map((t) => (
+                  <SelectItem key={t} value={t}>{QR_TYPE_LABELS[t]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          {qrType !== 'static' && isSequential && (
+          {isSequential && (
             <div className="space-y-1.5">
               <Label htmlFor="startingSerial">Starting Serial *</Label>
               <Input id="startingSerial"

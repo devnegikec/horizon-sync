@@ -325,6 +325,52 @@
   background: #151327;
 }
 
+.qrv-location-consent {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 18px;
+  align-items: center;
+  margin-top: 16px;
+  padding: 16px 18px;
+  border: 1px solid #ddd6fe;
+  border-radius: 14px;
+  background: #faf8ff;
+  color: #373151;
+}
+.qrv-location-consent strong,
+.qrv-location-consent span {
+  display: block;
+}
+.qrv-location-consent span,
+.qrv-location-consent small {
+  margin-top: 3px;
+  color: #667085;
+  font-size: 12px;
+}
+.qrv-location-consent small {
+  grid-column: 1 / -1;
+}
+.qrv-location-consent .qrv-button {
+  color: #fff;
+  background: #6d28d9;
+}
+.qrv-location-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  color: #067647;
+  background: #ecfdf3;
+  font-size: 13px;
+  font-weight: 700;
+}
+.qrv-location-note svg {
+  width: 17px;
+  height: 17px;
+}
+
 .qrv-banner {
   height: clamp(190px, 34vw, 340px);
   margin: 24px 0 0;
@@ -590,6 +636,12 @@
 }
 
 @media (max-width: 480px) {
+  .qrv-location-consent {
+    grid-template-columns: 1fr;
+  }
+  .qrv-location-consent .qrv-button {
+    width: 100%;
+  }
   .qrv-code-form__controls {
     grid-template-columns: 1fr;
   }

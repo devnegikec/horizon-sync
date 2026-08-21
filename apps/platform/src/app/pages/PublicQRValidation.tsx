@@ -9,6 +9,7 @@ import {
   Globe2,
   LockKeyhole,
   Mail,
+  MapPin,
   PackageCheck,
   Phone,
   RefreshCw,
@@ -53,6 +54,7 @@ interface VerificationResult {
   contact_email: string | null;
   contact_phone: string | null;
   website_url: string | null;
+  scan_event_id?: string | null;
 }
 
 interface VerificationRequest {
@@ -62,6 +64,15 @@ interface VerificationRequest {
   signature: string;
   qr_channel?: QRChannel;
   secure_code?: string;
+}
+
+function createScanEventId(): string {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = character === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
 }
 
 const STATUS_PRESENTATION: Record<VerificationStatus, { tone: string; eyebrow: string; title: string; icon: React.ReactNode }> = {
@@ -265,6 +276,49 @@ function StatusPanel({
   );
 }
 
+function LocationConsent({ scanEventId }: { scanEventId: string }) {
+  const [state, setState] = React.useState<'idle' | 'requesting' | 'shared' | 'denied'>('idle');
+
+  const shareLocation = () => {
+    if (!navigator.geolocation) {
+      setState('denied');
+      return;
+    }
+    setState('requesting');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        void axios.patch(
+          `${API_BASE_URL}/api/v1/public/qr/scans/${scanEventId}/location`,
+          {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy_meters: Math.round(position.coords.accuracy),
+          },
+        ).then(() => setState('shared')).catch(() => setState('denied'));
+      },
+      () => setState('denied'),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
+    );
+  };
+
+  if (state === 'shared') {
+    return <p className="qrv-location-note"><MapPin aria-hidden="true" /> Approximate location shared.</p>;
+  }
+  return (
+    <div className="qrv-location-consent">
+      <div>
+        <strong>Help protect genuine products</strong>
+        <span>Optionally share approximate location to detect counterfeit distribution. Verification works without it.</span>
+      </div>
+      <button className="qrv-button" type="button" onClick={shareLocation} disabled={state === 'requesting'}>
+        <MapPin aria-hidden="true" />
+        {state === 'requesting' ? 'Requesting…' : 'Share location'}
+      </button>
+      {state === 'denied' && <small>Location was not shared. You can continue normally.</small>}
+    </div>
+  );
+}
+
 function ProductDetails({ result }: { result: VerificationResult }) {
   const rows = [
     ['Product', result.product_name],
@@ -389,6 +443,7 @@ function usePublicVerification(input: VerificationRequest | null, requestKey: st
   const [submitting, setSubmitting] = React.useState(false);
   const [networkError, setNetworkError] = React.useState<string | null>(null);
   const startedFor = React.useRef<string | null>(null);
+  const scanEventId = React.useRef<string>(createScanEventId());
 
   const verify = React.useCallback(
     async (secureCode?: string) => {
@@ -403,7 +458,11 @@ function usePublicVerification(input: VerificationRequest | null, requestKey: st
       };
 
       try {
-        const response = await axios.post<VerificationResult>(`${API_BASE_URL}/api/v1/public/qr/verify`, payload);
+        const response = await axios.post<VerificationResult>(
+          `${API_BASE_URL}/api/v1/public/qr/verify`,
+          payload,
+          { headers: { 'X-Scan-Event-Id': scanEventId.current } },
+        );
         setResult(response.data);
       } catch (error: unknown) {
         setNetworkError(errorMessage(error));
@@ -443,6 +502,7 @@ export function PublicQRValidation() {
       <BrandHeader result={result} />
       <main className="qrv-shell qrv-main">
         <StatusPanel result={result} submitting={submitting} onSecureCode={(code) => void verify(code)} />
+        {result.authentic && result.scan_event_id && <LocationConsent scanEventId={result.scan_event_id} />}
         {result.banner_image_url && (
           <figure className="qrv-banner">
             <img src={result.banner_image_url} alt={`${result.product_name || 'Product'} banner`} />
