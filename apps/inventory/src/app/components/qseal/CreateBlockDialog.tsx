@@ -51,7 +51,7 @@ function normalizeSerialNumberType(value: string | null): SerialNumberType | nul
     SEQUENTIAL_10_DIGIT: 'S10DN',
   };
   const canonical = legacyTypes[normalized] ?? normalized;
-  return canonical in SR_TYPE_LABELS ? canonical as SerialNumberType : null;
+  return canonical in SR_TYPE_LABELS ? (canonical as SerialNumberType) : null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -74,26 +74,32 @@ function ProductSelect({ value, onChange }: ProductSelectProps) {
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch products, debounced on search
-  const fetchProducts = React.useCallback(async (q: string) => {
-    if (!accessToken) return;
-    setLoading(true);
-    try {
-      const res = await qrProductApi.list(accessToken, 1, 30, {
-        search: q || undefined,
-        is_active: true,
-      });
-      // Keep this guard even though the API is filtered, so stale or malformed
-      // responses can never expose an inactive product for block generation.
-      setProducts(res.products.filter((product) => product.is_active));
-    } catch {
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken]);
+  const fetchProducts = React.useCallback(
+    async (q: string) => {
+      if (!accessToken) return;
+      setLoading(true);
+      try {
+        const res = await qrProductApi.list(accessToken, 1, 30, {
+          search: q || undefined,
+          is_active: true,
+        });
+        // Keep this guard even though the API is filtered, so stale or malformed
+        // responses can never expose an inactive product for block generation.
+        setProducts(res.products.filter((product) => product.is_active));
+      } catch {
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [accessToken],
+  );
 
   React.useEffect(() => {
-    if (!open) { setSearch(''); return; }
+    if (!open) {
+      setSearch('');
+      return;
+    }
     fetchProducts('');
     setTimeout(() => inputRef.current?.focus(), 0);
   }, [open, fetchProducts]);
@@ -113,25 +119,27 @@ function ProductSelect({ value, onChange }: ProductSelectProps) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button"
+        <button
+          type="button"
           role="combobox"
           aria-expanded={open}
           aria-controls="product-listbox"
-          className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
-          <span className={cn('truncate', !value && 'text-muted-foreground')}>
-            {value ? selectedName || value : 'Search products…'}
-          </span>
+          className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <span className={cn('truncate', !value && 'text-muted-foreground')}>{value ? selectedName || value : 'Search products…'}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="p-0 w-[340px]">
         <div className="flex items-center border-b px-3 py-2">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-          <Input ref={inputRef}
+          <Input
+            ref={inputRef}
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search by name or GTIN…"
-            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0" />
+            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0"
+          />
         </div>
         <div id="product-listbox" className="max-h-60 overflow-y-auto p-1">
           {loading && (
@@ -140,24 +148,25 @@ function ProductSelect({ value, onChange }: ProductSelectProps) {
               Loading…
             </div>
           )}
-          {!loading && products.length === 0 && (
-            <p className="py-4 text-center text-sm text-muted-foreground">No products found.</p>
-          )}
-          {!loading && products.map((p) => (
-            <button key={p.id}
-              type="button"
-              className={cn(
-                'relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
-                value === p.id && 'bg-accent text-accent-foreground',
-              )}
-              onClick={() => handleSelect(p)}>
-              <Check className={cn('mr-2 h-4 w-4 shrink-0', value === p.id ? 'opacity-100' : 'opacity-0')} />
-              <div className="text-left">
-                <p className="font-medium">{p.name}</p>
-                {p.gtin && <p className="text-xs text-muted-foreground font-mono">{p.gtin}</p>}
-              </div>
-            </button>
-          ))}
+          {!loading && products.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No products found.</p>}
+          {!loading &&
+            products.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={cn(
+                  'relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                  value === p.id && 'bg-accent text-accent-foreground',
+                )}
+                onClick={() => handleSelect(p)}
+              >
+                <Check className={cn('mr-2 h-4 w-4 shrink-0', value === p.id ? 'opacity-100' : 'opacity-0')} />
+                <div className="text-left">
+                  <p className="font-medium">{p.name}</p>
+                  {p.gtin && <p className="text-xs text-muted-foreground font-mono">{p.gtin}</p>}
+                </div>
+              </button>
+            ))}
         </div>
       </PopoverContent>
     </Popover>
@@ -178,25 +187,11 @@ export interface CreateBlockDialogProps {
 // eslint-disable-next-line complexity
 export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlockDialogProps) {
   const { createBlock, loading, error } = useCreateBlock();
-  const {
-    credits,
-    loading: creditsLoading,
-    error: creditsError,
-    refetch: refetchCredits,
-  } = useQRCredits();
-  const {
-    settings: channels,
-    loading: channelsLoading,
-    error: channelsError,
-  } = useQRProductSettings('channel');
-  const {
-    settings: destinations,
-    loading: destinationsLoading,
-    error: destinationsError,
-  } = useQRProductSettings('destination');
+  const { credits, loading: creditsLoading, error: creditsError, refetch: refetchCredits } = useQRCredits();
+  const { settings: channels, loading: channelsLoading, error: channelsError } = useQRProductSettings('channel');
+  const { settings: destinations, loading: destinationsLoading, error: destinationsError } = useQRProductSettings('destination');
   const [productId, setProductId] = React.useState('');
-  const [selectedProduct, setSelectedProduct] =
-    React.useState<QSealProductListItem | null>(null);
+  const [selectedProduct, setSelectedProduct] = React.useState<QSealProductListItem | null>(null);
   const [batch, setBatch] = React.useState('');
   const [quantity, setQuantity] = React.useState(100);
   const [qrType, setQrType] = React.useState<QRBlockFilterType>('dynamic');
@@ -240,14 +235,15 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
         channel_setting_id: channelSettingId || undefined,
         destination_setting_id: destinationSettingId || undefined,
         qr_type: qrType,
-        starting_serial:
-          srType === 'S8DN' || srType === 'S10DN' ? startingSerial : undefined,
+        starting_serial: srType === 'S8DN' || srType === 'S10DN' ? startingSerial : undefined,
         sr_number_type: srType ?? undefined,
         qr_image: includeQrImage,
-        ...(masterPackEnabled && masterPackSize > 0 ? {
-          master_pack_enabled: true,
-          master_pack_size: masterPackSize,
-        } : {}),
+        ...(masterPackEnabled && masterPackSize > 0
+          ? {
+              master_pack_enabled: true,
+              master_pack_size: masterPackSize,
+            }
+          : {}),
       } satisfies QRBlockCreate);
 
       notificationService.blockCompleted(block.batch);
@@ -277,9 +273,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
   };
 
   // Master pack calculations
-  const masterPackParentCount = masterPackEnabled && masterPackSize > 0
-    ? Math.ceil(quantity / masterPackSize)
-    : 0;
+  const masterPackParentCount = masterPackEnabled && masterPackSize > 0 ? Math.ceil(quantity / masterPackSize) : 0;
 
   // Determine if user has enough credits
   const hasEnoughCredits = credits === null || credits >= quantity;
@@ -296,8 +290,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
           <DialogTitle className="flex items-center justify-between">
             <span>Generate QR Block</span>
             {!creditsLoading && credits !== null && (
-              <Badge variant={showCreditWarning ? 'destructive' : 'secondary'}
-                className="ml-2">
+              <Badge variant={showCreditWarning ? 'destructive' : 'secondary'} className="ml-2">
                 {credits.toLocaleString()} credits
               </Badge>
             )}
@@ -306,33 +299,30 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Product *</Label>
-            <ProductSelect value={productId}
+            <ProductSelect
+              value={productId}
               onChange={(product) => {
                 setProductId(product.id);
                 setSelectedProduct(product);
                 setStartingSerial('');
-              }}/>
+              }}
+            />
           </div>
           {selectedProduct && (
             <>
               <div className="grid grid-cols-2 gap-4 rounded-md border bg-muted/30 p-3">
                 <div className="space-y-1">
                   <Label>Serial Prefix</Label>
-                  <p className="text-sm font-medium">
-                    {serialPrefix || 'Not configured'}
-                  </p>
+                  <p className="text-sm font-medium">{serialPrefix || 'Not configured'}</p>
                 </div>
                 <div className="space-y-1">
                   <Label>Sr. Number</Label>
-                  <p className="text-sm font-medium">
-                    {srType ? SR_TYPE_LABELS[srType] : 'Not configured'}
-                  </p>
+                  <p className="text-sm font-medium">{srType ? SR_TYPE_LABELS[srType] : 'Not configured'}</p>
                 </div>
               </div>
               {!serialConfigurationReady && (
                 <p className="text-xs text-destructive">
-                  Edit this product and configure its Serial Prefix and Serial Number Type
-                  before generating a block.
+                  Edit this product and configure its Serial Prefix and Serial Number Type before generating a block.
                 </p>
               )}
             </>
@@ -344,42 +334,50 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Distribution Channel</Label>
-              <Select value={channelSettingId || 'none'}
+              <Select
+                value={channelSettingId || 'none'}
                 onValueChange={(value) => setChannelSettingId(value === 'none' ? '' : value)}
-                disabled={channelsLoading}>
+                disabled={channelsLoading}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select channel" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Not specified</SelectItem>
-                  {channels.filter((setting) => setting.is_active).map((setting) => (
-                    <SelectItem key={setting.id} value={setting.id}>{setting.label}</SelectItem>
-                  ))}
+                  {channels
+                    .filter((setting) => setting.is_active)
+                    .map((setting) => (
+                      <SelectItem key={setting.id} value={setting.id}>
+                        {setting.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Destination Market</Label>
-              <Select value={destinationSettingId || 'none'}
+              <Select
+                value={destinationSettingId || 'none'}
                 onValueChange={(value) => setDestinationSettingId(value === 'none' ? '' : value)}
-                disabled={destinationsLoading}>
+                disabled={destinationsLoading}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select destination" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Not specified</SelectItem>
-                  {destinations.filter((setting) => setting.is_active).map((setting) => (
-                    <SelectItem key={setting.id} value={setting.id}>{setting.label}</SelectItem>
-                  ))}
+                  {destinations
+                    .filter((setting) => setting.is_active)
+                    .map((setting) => (
+                      <SelectItem key={setting.id} value={setting.id}>
+                        {setting.label}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
-          {(channelsError || destinationsError) && (
-            <p className="text-xs text-destructive">
-              {channelsError || destinationsError}
-            </p>
-          )}
+          {(channelsError || destinationsError) && <p className="text-xs text-destructive">{channelsError || destinationsError}</p>}
           <div className="space-y-1.5">
             <Label htmlFor="quantity">Quantity * (1–5,000)</Label>
             <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} min={1} max={5000} required />
@@ -397,7 +395,9 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
               </SelectTrigger>
               <SelectContent>
                 {(Object.keys(QR_TYPE_LABELS) as QRBlockFilterType[]).map((t) => (
-                  <SelectItem key={t} value={t}>{QR_TYPE_LABELS[t]}</SelectItem>
+                  <SelectItem key={t} value={t}>
+                    {QR_TYPE_LABELS[t]}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -405,40 +405,42 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
           {isSequential && (
             <div className="space-y-1.5">
               <Label htmlFor="startingSerial">Starting Serial *</Label>
-              <Input id="startingSerial"
+              <Input
+                id="startingSerial"
                 value={startingSerial}
                 onChange={(e) => setStartingSerial(e.target.value)}
                 inputMode="numeric"
                 pattern="[0-9]+"
                 maxLength={srType === 'S8DN' ? 8 : 10}
                 placeholder={srType === 'S8DN' ? 'Up to 8 digits' : 'Up to 10 digits'}
-                required/>
+                required
+              />
             </div>
           )}
           <div className="flex items-center space-x-2">
-            <input type="checkbox"
+            <input
+              type="checkbox"
               id="includeQrImage"
               checked={includeQrImage}
               onChange={(e) => setIncludeQrImage(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
             <Label htmlFor="includeQrImage" className="text-sm font-normal cursor-pointer">
               Include QR code images in Excel
             </Label>
           </div>
-          {includeQrImage && (
-            <p className="text-xs text-muted-foreground">
-              ⚠️ Including QR images will increase generation time and file size
-            </p>
-          )}
+          {includeQrImage && <p className="text-xs text-muted-foreground">⚠️ Including QR images will increase generation time and file size</p>}
 
           {/* Master Pack (Cascade) */}
           <div className="border rounded-lg p-3 space-y-3">
             <div className="flex items-center space-x-2">
-              <input type="checkbox"
+              <input
+                type="checkbox"
                 id="masterPackEnabled"
                 checked={masterPackEnabled}
                 onChange={(e) => setMasterPackEnabled(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
               <Label htmlFor="masterPackEnabled" className="text-sm font-medium cursor-pointer flex items-center gap-1.5">
                 <Layers className="h-4 w-4" />
                 Enable Master Pack (Cascade)
@@ -448,23 +450,25 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
               <div className="pl-6 space-y-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="masterPackSize">Items per Master Pack</Label>
-                  <Input id="masterPackSize"
+                  <Input
+                    id="masterPackSize"
                     type="number"
                     value={masterPackSize}
                     onChange={(e) => setMasterPackSize(Math.max(1, Number(e.target.value)))}
                     min={1}
                     max={quantity}
-                    required/>
-                  <p className="text-xs text-muted-foreground">
-                    Number of child QR codes grouped under each parent master pack
-                  </p>
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">Number of child QR codes grouped under each parent master pack</p>
                 </div>
                 {masterPackSize > 0 && masterPackParentCount > 0 && (
                   <div className="bg-muted/50 rounded-md p-3 text-sm">
                     <p className="font-medium">Master Pack Summary</p>
                     <ul className="mt-1 space-y-0.5 text-muted-foreground">
                       <li>• {quantity.toLocaleString()} child QR codes</li>
-                      <li>• {masterPackParentCount.toLocaleString()} parent master pack QR codes ({quantity} ÷ {masterPackSize})</li>
+                      <li>
+                        • {masterPackParentCount.toLocaleString()} parent master pack QR codes ({quantity} ÷ {masterPackSize})
+                      </li>
                       <li>• Parents will be cascaded (linked) to their children</li>
                     </ul>
                   </div>
@@ -476,18 +480,23 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
           {error && <p className="text-sm text-destructive">{error}</p>}
           {creditsError && <p className="text-sm text-destructive">{creditsError}</p>}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>
-            <Button type="submit"
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
               disabled={
-                loading ||
-                !batch.trim() ||
-                !productId ||
-                !serialConfigurationReady ||
-                !hasEnoughCredits ||
-                creditsLoading ||
-                Boolean(creditsError)
-              }>
-              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting…</> : 'Generate'}
+                loading || !batch.trim() || !productId || !serialConfigurationReady || !hasEnoughCredits || creditsLoading || Boolean(creditsError)
+              }
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Submitting…
+                </>
+              ) : (
+                'Generate'
+              )}
             </Button>
           </DialogFooter>
         </form>

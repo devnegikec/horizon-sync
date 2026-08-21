@@ -287,14 +287,14 @@ function LocationConsent({ scanEventId }: { scanEventId: string }) {
     setState('requesting');
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        void axios.patch(
-          `${API_BASE_URL}/api/v1/public/qr/scans/${scanEventId}/location`,
-          {
+        void axios
+          .patch(`${API_BASE_URL}/api/v1/public/qr/scans/${scanEventId}/location`, {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
             accuracy_meters: Math.round(position.coords.accuracy),
-          },
-        ).then(() => setState('shared')).catch(() => setState('denied'));
+          })
+          .then(() => setState('shared'))
+          .catch(() => setState('denied'));
       },
       () => setState('denied'),
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
@@ -302,7 +302,11 @@ function LocationConsent({ scanEventId }: { scanEventId: string }) {
   };
 
   if (state === 'shared') {
-    return <p className="qrv-location-note"><MapPin aria-hidden="true" /> Approximate location shared.</p>;
+    return (
+      <p className="qrv-location-note">
+        <MapPin aria-hidden="true" /> Approximate location shared.
+      </p>
+    );
   }
   return (
     <div className="qrv-location-consent">
@@ -458,11 +462,9 @@ function usePublicVerification(input: VerificationRequest | null, requestKey: st
       };
 
       try {
-        const response = await axios.post<VerificationResult>(
-          `${API_BASE_URL}/api/v1/public/qr/verify`,
-          payload,
-          { headers: { 'X-Scan-Event-Id': scanEventId.current } },
-        );
+        const response = await axios.post<VerificationResult>(`${API_BASE_URL}/api/v1/public/qr/verify`, payload, {
+          headers: { 'X-Scan-Event-Id': scanEventId.current },
+        });
         setResult(response.data);
       } catch (error: unknown) {
         setNetworkError(errorMessage(error));

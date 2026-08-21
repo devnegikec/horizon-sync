@@ -34,6 +34,8 @@ import type {
   CopyStockRequest,
   StockImportRequest,
   StockImportResult,
+  BinStateResponse,
+  CapacityTreeNode,
   WMSDashboardStats,
 } from '../../types/wms.types';
 
@@ -50,7 +52,8 @@ async function req<T>(url: string, token: string, options: RequestInit = {}): Pr
     const text = await res.text();
     let detail = text;
     try {
-      detail = JSON.parse(text)?.detail ?? text;
+      const parsed = JSON.parse(text);
+      detail = parsed?.message ?? parsed?.detail ?? text;
     } catch {
       // not json
     }
@@ -163,6 +166,12 @@ export const inboundApi = {
       method: 'POST',
       body: JSON.stringify({ flag, notes }),
     }),
+
+  rejectItem: (token: string, slipId: string, itemId: string, reason: string) =>
+    req<unknown>(`${BASE}/inbound/receiving-slips/${slipId}/items/${itemId}/reject`, token, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
 };
 
 // ============================================
@@ -230,6 +239,12 @@ export const outboundApi = {
 
   cancelPickList: (token: string, id: string) =>
     req<PickList>(`${BASE}/outbound/${id}/cancel`, token, { method: 'POST', body: '{}' }),
+
+  assignWorker: (token: string, id: string, workerId: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/assign`, token, {
+      method: 'POST',
+      body: JSON.stringify({ worker_id: workerId }),
+    }),
 
   // Gate Verification
   startGateSession: (token: string, data: GateSessionRequest) =>
@@ -368,4 +383,16 @@ export const wmsDashboardApi = {
     }
     return req<WMSDashboardStats>(`${BASE}/wms-dashboard/stats?${p}`, token);
   },
+};
+
+// ============================================
+// CAPACITY
+// ============================================
+
+export const capacityApi = {
+  getTree: (token: string, warehouseId: string) =>
+    req<CapacityTreeNode>(`${BASE}/capacity/warehouses/${warehouseId}/tree`, token),
+
+  getBinStates: (token: string, warehouseId: string) =>
+    req<BinStateResponse[]>(`${BASE}/capacity/warehouses/${warehouseId}/bin-states`, token),
 };

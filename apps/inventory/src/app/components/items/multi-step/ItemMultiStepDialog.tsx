@@ -73,6 +73,8 @@ function validateStep(step: number, formData: ItemFormData): boolean {
 const getInitialFormData = (initialData?: Partial<ItemFormData>): ItemFormData => ({
   itemCode: '',
   name: '',
+  brandId: '',
+  gtin: '',
   sku: '',
   description: '',
   itemGroupId: '',
@@ -109,6 +111,12 @@ const getInitialFormData = (initialData?: Partial<ItemFormData>): ItemFormData =
   images: [],
   tags: [],
   extraData: {},
+  packagingUnitName: 'Each',
+  packagingConversionFactor: '1',
+  packagingLengthMm: '',
+  packagingWidthMm: '',
+  packagingHeightMm: '',
+  packagingWeightGrams: '',
   ...initialData,
 });
 
@@ -230,7 +238,10 @@ export function ItemMultiStepDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
+      <DialogContent
+        className="sm:max-w-[700px] max-h-[90vh] flex flex-col overflow-hidden"
+        style={{ display: 'flex', flexDirection: 'column', height: 'min(85vh, 820px)' }}
+      >
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit Item' : 'Create New Item'}</DialogTitle>
         </DialogHeader>
@@ -242,7 +253,7 @@ export function ItemMultiStepDialog({
               <div className="flex items-center gap-3">
                 <StepMarker stepId={step.id}
                   isComplete={isStepComplete(step.id)}
-                  isCurrent={isStepCurrent(step.id)}/>
+                  isCurrent={isStepCurrent(step.id)} />
                 <div className="hidden sm:block">
                   <p className={cn(
                     'text-sm font-medium',
@@ -255,32 +266,32 @@ export function ItemMultiStepDialog({
               </div>
               {index < STEPS.length - 1 && (
                 <div className={cn(
-                    'h-[2px] flex-1 mx-2 transition-all',
-                    isStepComplete(step.id + 1) ? 'bg-primary' : 'bg-muted-foreground/30'
-                  )}/>
+                  'h-[2px] flex-1 mx-2 transition-all',
+                  isStepComplete(step.id + 1) ? 'bg-primary' : 'bg-muted-foreground/30'
+                )} />
               )}
             </React.Fragment>
           ))}
         </div>
 
         {/* Form Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
           {currentStep === 1 && (
             <Step1BasicInfo formData={formData}
               onUpdate={updateFormData}
               itemGroups={itemGroups}
-              accessToken={accessToken}/>
+              accessToken={accessToken} />
           )}
           {currentStep === 2 && (
             <Step2PricingStock formData={formData}
-              onUpdate={updateFormData}/>
+              onUpdate={updateFormData} />
           )}
           {currentStep === 3 && (
             <Step3TaxAdditional formData={formData}
               onUpdate={updateFormData}
               salesTaxTemplates={salesTaxTemplates}
               purchaseTaxTemplates={purchaseTaxTemplates}
-              isLoadingTaxTemplates={isLoadingTaxTemplates}/>
+              isLoadingTaxTemplates={isLoadingTaxTemplates} />
           )}
         </div>
 
@@ -293,7 +304,7 @@ export function ItemMultiStepDialog({
             onCancel={handleCancel}
             onPrevious={handlePrevious}
             onNext={handleNext}
-            onSubmit={handleSubmit}/>
+            onSubmit={handleSubmit} />
         </DialogFooter>
       </DialogContent>
     </Dialog>

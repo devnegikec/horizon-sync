@@ -95,11 +95,7 @@ describe('PublicQRValidation', () => {
 
     expect(await screen.findByRole('heading', { name: 'Complete Verification' })).toBeInTheDocument();
     expect(screen.getByText('Scan the protected QR')).toBeInTheDocument();
-    expect(mockedAxios.post).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({ qr_channel: 'overt' }),
-      expect.any(Object),
-    );
+    expect(mockedAxios.post).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ qr_channel: 'overt' }), expect.any(Object));
   });
 
   it('restores plus characters from legacy unencoded Base64 signatures', async () => {
@@ -108,11 +104,7 @@ describe('PublicQRValidation', () => {
     renderPage('/g/0123456789012/s/PRO-ABC12345/1770000000000?c=MEQC+ABC%2FDEF%3D');
 
     await screen.findByRole('heading', { name: 'Authentic Product' });
-    expect(mockedAxios.post).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({ signature: 'MEQC+ABC/DEF=' }),
-      expect.any(Object),
-    );
+    expect(mockedAxios.post).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ signature: 'MEQC+ABC/DEF=' }), expect.any(Object));
   });
 
   it('submits a protected code and renders the Secure Code result', async () => {

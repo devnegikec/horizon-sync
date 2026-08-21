@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Loader2, CheckCircle2, SkipForward, Search, MapPin, PackageOpen } from 'lucide-react';
+import { Loader2, CheckCircle2, SkipForward, Search, MapPin, ChevronDown, ChevronRight } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -10,13 +10,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@horizon-sync/ui/components/ui/dialog';
+import { DetailDialog } from '@horizon-sync/ui/components/ui/detail-dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { usePutAwayList } from '../../hooks/useWMS';
 import type { PutAwayItem, PutAwayList, WarehouseLocation } from '../../types/wms.types';
 import { layoutApi } from '../../utility/api/wms';
-import { DetailDialogContainer } from '../common';
 
 import { WMSStatusBadge } from './WMSStatusBadge';
 
@@ -122,7 +122,7 @@ function CompleteItemDialog({ open, onOpenChange, item, warehouseId, onConfirm }
               <Input className="pl-10"
                 placeholder="Type to search bins..."
                 value={query}
-                onChange={(e) => handleQueryChange(e.target.value)}/>
+                onChange={(e) => handleQueryChange(e.target.value)} />
             </div>
 
             {searching && (
@@ -136,9 +136,8 @@ function CompleteItemDialog({ open, onOpenChange, item, warehouseId, onConfirm }
                 {results.map((loc) => (
                   <button key={loc.id}
                     type="button"
-                    className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${
-                      selectedBin?.id === loc.id ? 'bg-accent text-accent-foreground' : ''
-                    }`}
+                    className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${selectedBin?.id === loc.id ? 'bg-accent text-accent-foreground' : ''
+                      }`}
                     onClick={() => setSelectedBin(loc)}>
                     <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -187,7 +186,77 @@ function CompleteItemDialog({ open, onOpenChange, item, warehouseId, onConfirm }
   );
 }
 
-// ─── Item row with Complete / Skip actions ───────────────────────────────────
+// ─── Item row with Complete / Skip actions (serial sub-row) ──────────────────
+
+interface PutAwayLineGroup {
+  itemId: string;
+  rows: PutAwayItem[];
+}
+
+function groupPutAwayItems(items: PutAwayItem[]): PutAwayLineGroup[] {
+  const groups = new Map<string, PutAwayLineGroup>();
+  for (const it of items) {
+    const g = groups.get(it.item_id) ?? { itemId: it.item_id, rows: [] };
+    g.rows.push(it);
+    groups.set(it.item_id, g);
+  }
+  return Array.from(groups.values());
+}
+
+interface PutAwayGroupRowProps {
+  group: PutAwayLineGroup;
+  warehouseId: string;
+  onComplete: (itemId: string, binId?: string) => Promise<PutAwayItem>;
+  onSkip: (itemId: string, reason: string) => Promise<PutAwayItem>;
+}
+
+function PutAwayGroupRow({ group, warehouseId, onComplete, onSkip }: PutAwayGroupRowProps) {
+  const [expanded, setExpanded] = React.useState(false);
+  const rows = group.rows;
+  const first = rows[0];
+  const totalQty = rows.reduce((s, r) => s + (r.quantity || 0), 0);
+  const doneCount = rows.filter((r) => r.status === 'completed' || r.status === 'skipped').length;
+  const aggStatus = rows.length === 0
+    ? 'pending'
+    : doneCount === 0
+      ? 'pending'
+      : doneCount >= rows.length
+        ? 'completed'
+        : 'in_progress';
+
+  return (
+    <>
+      <tr
+        className="hover:bg-muted/20 cursor-pointer transition-colors"
+        onClick={() => setExpanded((e) => !e)}
+      >
+        <td className="px-4 py-2">
+          <span className="inline-flex items-center gap-1">
+            {expanded
+              ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            }
+            <span className="font-medium">{first.item_name ?? first.sku}</span>
+          </span>
+        </td>
+        <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{first.sku}</td>
+        <td className="px-4 py-2 font-mono text-xs text-muted-foreground">—</td>
+        <td className="px-4 py-2 text-right font-medium">{totalQty}</td>
+        <td className="px-4 py-2"><WMSStatusBadge status={aggStatus} /></td>
+        <td className="px-4 py-2 text-right text-xs text-muted-foreground">
+          {rows.length} serial{rows.length > 1 ? 's' : ''}
+        </td>
+      </tr>
+      {expanded && rows.map((item) => (
+        <PutAwayItemRow key={item.id}
+          item={item}
+          warehouseId={warehouseId}
+          onComplete={onComplete}
+          onSkip={onSkip} />
+      ))}
+    </>
+  );
+}
 
 interface ItemRowProps {
   item: PutAwayItem;
@@ -231,15 +300,29 @@ function PutAwayItemRow({ item, warehouseId, onComplete, onSkip }: ItemRowProps)
 
   return (
     <>
-      <tr className={isDone ? 'opacity-50' : 'hover:bg-muted/20'}>
-        <td className="px-4 py-2 font-mono font-medium">{item.sku}</td>
-        <td className="px-4 py-2 text-muted-foreground text-xs">{item.batch_number ?? '—'}</td>
-        <td className="px-4 py-2 text-right">{item.quantity}</td>
-        <td className="px-4 py-2 font-mono text-xs">{item.suggested_bin_code ?? '—'}</td>
-        <td className="px-4 py-2">
+      <tr className={`${isDone ? 'opacity-50' : ''} bg-muted/20`}>
+        <td className="px-4 py-1.5 pl-10">
+          <span className="font-mono text-xs font-medium">S.N: {item.serial_number ?? item.batch_number ?? item.id}</span>
+        </td>
+        <td className="px-4 py-1.5 text-xs text-muted-foreground" colSpan={2}>
+          <span className="inline-flex gap-3 flex-wrap">
+            <span>SKU: <span className="font-mono">{item.sku}</span></span>
+            {item.manufacturing_date && (
+              <span>Mfg: {new Date(item.manufacturing_date).toLocaleDateString()}</span>
+            )}
+            {item.expiry_date && (
+              <span>Exp: {new Date(item.expiry_date).toLocaleDateString()}</span>
+            )}
+            {item.suggested_bin_code && (
+              <span>Bin: <span className="font-mono">{item.suggested_bin_code}</span></span>
+            )}
+          </span>
+        </td>
+        <td className="px-4 py-1.5 text-right">{item.quantity}</td>
+        <td className="px-4 py-1.5">
           <WMSStatusBadge status={item.status} />
         </td>
-        <td className="px-4 py-2 text-right">
+        <td className="px-4 py-1.5 text-right">
           {!isDone && (
             <div className="flex items-center justify-end gap-1">
               <Button size="sm"
@@ -269,7 +352,7 @@ function PutAwayItemRow({ item, warehouseId, onComplete, onSkip }: ItemRowProps)
               <Input className="flex-1 h-8 text-sm"
                 placeholder="Skip reason..."
                 value={skipReason}
-                onChange={(e) => setSkipReason(e.target.value)}/>
+                onChange={(e) => setSkipReason(e.target.value)} />
               <Button size="sm" variant="destructive" className="h-8" disabled={!skipReason.trim() || busy} onClick={handleSkip}>
                 Confirm Skip
               </Button>
@@ -285,7 +368,7 @@ function PutAwayItemRow({ item, warehouseId, onComplete, onSkip }: ItemRowProps)
         onOpenChange={setCompleteDialogOpen}
         item={item}
         warehouseId={warehouseId}
-        onConfirm={handleCompleteConfirm}/>
+        onConfirm={handleCompleteConfirm} />
     </>
   );
 }
@@ -302,25 +385,21 @@ export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetai
   const { list, loading, error, completeItem, skipItem } = usePutAwayList(listId);
 
   return (
-    <DetailDialogContainer open={open}
+    <DetailDialog
+      open={open}
       onOpenChange={onOpenChange}
-      icon={PackageOpen}
-      title={list ? list.put_away_list_no : 'Loading...'}
-      status={list?.status ?? 'pending'}
-      statusBadge={list ? <WMSStatusBadge status={list.status} /> : undefined}
-      contentClassName="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
-      {loading && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      )}
+      title={list ? `Put-Away — ${list.put_away_list_no}` : 'Loading...'}
+      size="xl"
+      loading={loading}
+      loadingMessage="Loading put-away details..."
+    >
 
       {error && <div className="text-sm text-destructive py-4">{error}</div>}
 
       {!loading && !error && list && (
         <div className="flex flex-col gap-4">
           {/* Summary row */}
-          <div className="grid grid-cols-3 gap-3 text-sm">
+          <div className="grid grid-cols-4 gap-3 text-sm">
             <div className="rounded-lg border p-3">
               <p className="text-xs text-muted-foreground mb-1">Status</p>
               <WMSStatusBadge status={list.status} />
@@ -330,21 +409,29 @@ export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetai
               <p className="font-semibold text-lg">{list.total_items}</p>
             </div>
             <div className="rounded-lg border p-3">
-              <p className="text-xs text-muted-foreground mb-1">Assigned To</p>
-              <p className="font-medium text-sm">{list.assigned_to ?? '—'}</p>
+              <p className="text-xs text-muted-foreground mb-1">Worker</p>
+              <p className="font-medium text-sm">{list.worker_name ?? list.assigned_to ?? '—'}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs text-muted-foreground mb-1">Receiving Slip</p>
+              <p className="font-medium font-mono text-sm">{list.receiving_slip_no ?? '—'}</p>
             </div>
           </div>
-
-          {list.reference_type && (
-            <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Reference: </span>
-              {list.reference_type} — {list.reference_id ?? '—'}
-            </div>
-          )}
 
           {list.remarks && (
             <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
               <span className="font-medium text-foreground">Remarks: </span>{list.remarks}
+            </div>
+          )}
+
+          {list.warnings && list.warnings.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-sm">
+              <span className="font-medium text-amber-700">Warnings: </span>
+              <ul className="list-disc list-inside text-amber-600 text-xs mt-1 space-y-0.5">
+                {list.warnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
             </div>
           )}
 
@@ -356,10 +443,10 @@ export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetai
             <table className="w-full text-sm">
               <thead className="bg-muted/30">
                 <tr>
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Product</th>
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">SKU</th>
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">Batch</th>
                   <th className="text-right px-4 py-2 font-medium text-muted-foreground">Qty</th>
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Suggested Bin</th>
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">Status</th>
                   <th className="text-right px-4 py-2 font-medium text-muted-foreground">Actions</th>
                 </tr>
@@ -370,12 +457,12 @@ export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetai
                     <td colSpan={6} className="px-4 py-4 text-center text-muted-foreground text-xs">No items</td>
                   </tr>
                 )}
-                {list.items.map((item) => (
-                  <PutAwayItemRow key={item.id}
-                    item={item}
+                {groupPutAwayItems(list.items).map((group) => (
+                  <PutAwayGroupRow key={group.itemId}
+                    group={group}
                     warehouseId={list.warehouse_id}
                     onComplete={completeItem}
-                    onSkip={skipItem}/>
+                    onSkip={skipItem} />
                 ))}
               </tbody>
             </table>
@@ -386,6 +473,6 @@ export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetai
           </p>
         </div>
       )}
-    </DetailDialogContainer>
+    </DetailDialog>
   );
 }

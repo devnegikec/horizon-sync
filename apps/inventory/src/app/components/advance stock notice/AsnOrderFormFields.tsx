@@ -2,8 +2,8 @@ import * as React from 'react';
 
 import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, DatePicker } from '@horizon-sync/ui/components';
 
-import { StatusSelect } from '../common';
 import { AsnOrderStatus } from '../../types/asn-order.types';
+import { StatusSelect } from '../common';
 
 interface AsnOrderFormFieldsProps {
   formData: {
@@ -51,7 +51,7 @@ export function AsnOrderFormFields({
               className="cursor-not-allowed opacity-60" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="warehouse_id_from">By *</Label>
+            <Label htmlFor="warehouse_id_from">From Warehouse *</Label>
             <Select value={formData.warehouse_id_from}
               onValueChange={(v) => onFieldChange('warehouse_id_from', v)}
               disabled={readOnly}
@@ -69,7 +69,7 @@ export function AsnOrderFormFields({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="warehouse_id_to">For *</Label>
+            <Label htmlFor="warehouse_id_to">To Warehouse *</Label>
             <Select value={formData.warehouse_id_to}
               onValueChange={(v) => onFieldChange('warehouse_id_to', v)}
               disabled={readOnly}

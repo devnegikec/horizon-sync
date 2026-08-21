@@ -239,7 +239,16 @@ export function useReceivingSlips(params: { warehouse_id?: string; status?: stri
     [accessToken, fetch],
   );
 
-  return { data, loading, error, refetch: fetch, approveSlip, rejectSlip, getSlip, generatePutAway };
+  const rejectItem = React.useCallback(
+    async (slipId: string, itemId: string, reason: string): Promise<void> => {
+      if (!accessToken) throw new Error('Not authenticated');
+      await inboundApi.rejectItem(accessToken, slipId, itemId, reason);
+      await fetch();
+    },
+    [accessToken, fetch],
+  );
+
+  return { data, loading, error, refetch: fetch, approveSlip, rejectSlip, rejectItem, getSlip, generatePutAway };
 }
 
 // ============================================
@@ -424,7 +433,24 @@ export function usePickList(pickListId: string | null) {
     }
   }, [accessToken, pickListId]);
 
-  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel };
+  const assignWorker = React.useCallback(
+    async (workerId: string): Promise<PickList> => {
+      if (!pickListId || !accessToken) throw new Error('No pick list selected');
+      setError(null);
+      try {
+        const result = await outboundApi.assignWorker(accessToken, pickListId, workerId);
+        setPickList(result);
+        return result;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to assign worker';
+        setError(msg);
+        throw new Error(msg);
+      }
+    },
+    [accessToken, pickListId],
+  );
+
+  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker };
 }
 
 // ============================================

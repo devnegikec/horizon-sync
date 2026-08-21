@@ -30,7 +30,9 @@ export const analyticsApi = {
   },
 
   getInteractionFunnel(accessToken: string, params?: DateRange): Promise<AnalyticsInteractionFunnel> {
-    return apiRequest<AnalyticsInteractionFunnel>('/analytics/scans/interaction-funnel', accessToken, { params: params as Record<string, string | undefined> });
+    return apiRequest<AnalyticsInteractionFunnel>('/analytics/scans/interaction-funnel', accessToken, {
+      params: params as Record<string, string | undefined>,
+    });
   },
 
   // ── Geo ───────────────────────────────────────────────────
@@ -50,12 +52,7 @@ export const analyticsApi = {
   },
 
   // ── Scan Events Log ───────────────────────────────────────
-  getScans(
-    accessToken: string,
-    page = 1,
-    pageSize = 50,
-    params?: DateRange & { serial_number?: string },
-  ): Promise<AnalyticsScanListResponse> {
+  getScans(accessToken: string, page = 1, pageSize = 50, params?: DateRange & { serial_number?: string }): Promise<AnalyticsScanListResponse> {
     return apiRequest<AnalyticsScanListResponse>('/analytics/scans', accessToken, {
       params: {
         ...buildPaginationParams(page, pageSize),

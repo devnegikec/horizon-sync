@@ -720,7 +720,7 @@ function useStockEntryActions(refetch: () => void) {
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
-export function StockManagement() {
+export function StockManagement({ warehouseId }: { warehouseId?: string }) {
   const [activeTab, setActiveTab] = React.useState<ActiveTab>('levels');
   const [stockEntryDialogOpen, setStockEntryDialogOpen] = React.useState(false);
   const [stockEntryViewMode, setStockEntryViewMode] = React.useState(false);
@@ -746,6 +746,13 @@ export function StockManagement() {
   const [warehouseSearch, setWarehouseSearch] = useState('');
   const [warehouseOpen, setWarehouseOpen] = useState(false);
 
+  // When a warehouse is selected from the top-level WMS switcher, the filter is
+  // locked to that warehouse. Derive the effective value directly from the prop
+  // so the first fetch already uses the locked warehouse (no "all warehouses"
+  // flash followed by a re-fetch).
+  const isWarehouseLocked = Boolean(warehouseId);
+  const effectiveWarehouseId = isWarehouseLocked ? (warehouseId ?? '') : filters.warehouseId;
+
   const asnManagement = useAsnOrderManagement();
   const setAsnFilters = asnManagement.setFilters;
   const asnRefetch = asnManagement.refetch;
@@ -757,14 +764,14 @@ export function StockManagement() {
     setMovementsFilters(reset);
     setEntriesFilters(reset);
     setReconciliationsFilters(reset);
-  }, [filters.warehouseId, filters.status, filters.search]);
+  }, [effectiveWarehouseId, filters.status, filters.search]);
 
   /* ---------- data hooks with filters ---------- */
   const levelsData = useStockLevels({
     page: levelsFilters.page,
     pageSize: levelsFilters.pageSize,
     filters: {
-      warehouse_id: filters.warehouseId,
+      warehouse_id: effectiveWarehouseId,
       search: filters.search,
     },
   });
@@ -772,7 +779,7 @@ export function StockManagement() {
     page: movementsFilters.page,
     pageSize: movementsFilters.pageSize,
     filters: {
-      warehouse_id: filters.warehouseId,
+      warehouse_id: effectiveWarehouseId,
       search: filters.search,
     },
   });
@@ -780,7 +787,7 @@ export function StockManagement() {
     page: entriesFilters.page,
     pageSize: entriesFilters.pageSize,
     filters: {
-      warehouse_id: filters.warehouseId,
+      warehouse_id: effectiveWarehouseId,
       status: filters.status,
       search: filters.search,
     },
@@ -789,7 +796,7 @@ export function StockManagement() {
     page: reconciliationsFilters.page,
     pageSize: reconciliationsFilters.pageSize,
     filters: {
-      warehouse_id: filters.warehouseId,
+      warehouse_id: effectiveWarehouseId,
       status: filters.status,
       search: filters.search,
     },
@@ -802,25 +809,28 @@ export function StockManagement() {
   /* ---------- warehouse selector ---------- */
   const { warehouses: allWarehouses, loading: warehousesLoading } = useMyWarehouses();
   const filteredWarehouses = React.useMemo(() => {
-    if (!warehouseSearch) return allWarehouses;
+    const base = isWarehouseLocked
+      ? allWarehouses.filter((w) => w.id === warehouseId)
+      : allWarehouses;
+    if (!warehouseSearch) return base;
     const q = warehouseSearch.toLowerCase();
-    return allWarehouses.filter(
+    return base.filter(
       (w) =>
         w.name.toLowerCase().includes(q) ||
         w.code?.toLowerCase().includes(q) ||
         w.city?.toLowerCase().includes(q),
     );
-  }, [allWarehouses, warehouseSearch]);
-  const selectedWarehouse = allWarehouses.find((w) => w.id === filters.warehouseId);
+  }, [allWarehouses, warehouseSearch, isWarehouseLocked, warehouseId]);
+  const selectedWarehouse = allWarehouses.find((w) => w.id === effectiveWarehouseId);
 
   // Sync global filters → ASN management
   React.useEffect(() => {
     setAsnFilters({
       search: filters.search,
       status: filters.status,
-      warehouse_id: filters.warehouseId,
+      warehouse_id: effectiveWarehouseId,
     });
-  }, [filters.search, filters.status, filters.warehouseId, setAsnFilters]);
+  }, [filters.search, filters.status, effectiveWarehouseId, setAsnFilters]);
 
   /* ---------- status options per tab ---------- */
   const statusOptions = React.useMemo(() => {
@@ -1033,6 +1043,7 @@ export function StockManagement() {
                 role="combobox"
                 aria-expanded={warehouseOpen}
                 className="w-[220px] justify-between"
+                disabled={isWarehouseLocked}
               >
                 <span className="flex items-center gap-2 truncate">
                   <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -1043,25 +1054,29 @@ export function StockManagement() {
             </PopoverTrigger>
             <PopoverContent className="w-[220px] p-0">
               <div className="p-2">
-                <Input
-                  placeholder="Search warehouses..."
-                  value={warehouseSearch}
-                  onChange={(e) => setWarehouseSearch(e.target.value)}
-                  className="mb-2"
-                />
+                {!isWarehouseLocked && (
+                  <Input
+                    placeholder="Search warehouses..."
+                    value={warehouseSearch}
+                    onChange={(e) => setWarehouseSearch(e.target.value)}
+                    className="mb-2"
+                  />
+                )}
                 <div className="max-h-60 overflow-auto space-y-1">
-                  <button
-                    className="w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
-                    onClick={() => {
-                      setFilters((prev) => ({ ...prev, warehouseId: '' }));
-                      setWarehouseOpen(false);
-                    }}
-                  >
-                    <span className="h-4 w-4 flex items-center justify-center">
-                      {!filters.warehouseId && <Check className="h-4 w-4" />}
-                    </span>
-                    All Warehouses
-                  </button>
+                  {!isWarehouseLocked && (
+                    <button
+                      className="w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                      onClick={() => {
+                        setFilters((prev) => ({ ...prev, warehouseId: '' }));
+                        setWarehouseOpen(false);
+                      }}
+                    >
+                      <span className="h-4 w-4 flex items-center justify-center">
+                        {!filters.warehouseId && <Check className="h-4 w-4" />}
+                      </span>
+                      All Warehouses
+                    </button>
+                  )}
                   {warehousesLoading && (
                     <div className="px-2 py-1 text-sm text-muted-foreground">Loading...</div>
                   )}
@@ -1105,12 +1120,16 @@ export function StockManagement() {
           )}
 
           {/* Clear all filters */}
-          {(filters.search || filters.warehouseId || filters.status !== 'all') && (
+          {(filters.search || (!isWarehouseLocked && filters.warehouseId) || filters.status !== 'all') && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() =>
-                setFilters({ search: '', warehouseId: '', status: 'all' })
+                setFilters({
+                  search: '',
+                  warehouseId: isWarehouseLocked ? (warehouseId ?? '') : '',
+                  status: 'all',
+                })
               }
               className="gap-1 text-muted-foreground"
             >

@@ -1,4 +1,4 @@
- 
+
 import { useUserStore } from '@horizon-sync/store';
 
 import { useItemSubmission } from '../../hooks/useItemSubmission';
@@ -65,6 +65,22 @@ function itemToFormData(item: Item): Partial<ItemFormData> {
     tags: item.tags ?? [],
     customFields: item.customFields ?? {},
     extraData: item.extraData ?? {},
+    packagingUnitName: item.packagingDetails?.unitName ?? 'Each',
+    packagingConversionFactor: item.packagingDetails?.conversionFactor != null
+      ? String(item.packagingDetails.conversionFactor)
+      : '1',
+    packagingLengthMm: item.packagingDetails?.lengthMm != null
+      ? String(item.packagingDetails.lengthMm)
+      : '',
+    packagingWidthMm: item.packagingDetails?.widthMm != null
+      ? String(item.packagingDetails.widthMm)
+      : '',
+    packagingHeightMm: item.packagingDetails?.heightMm != null
+      ? String(item.packagingDetails.heightMm)
+      : '',
+    packagingWeightGrams: item.packagingDetails?.weightGrams != null
+      ? String(item.packagingDetails.weightGrams)
+      : '',
   };
 }
 
@@ -104,6 +120,6 @@ export function ItemDialogMultiStep({
       isLoadingTaxTemplates={isLoadingTaxTemplates}
       onSave={handleSave}
       initialData={initialData}
-      isEditing={!!item}/>
+      isEditing={!!item} />
   );
 }

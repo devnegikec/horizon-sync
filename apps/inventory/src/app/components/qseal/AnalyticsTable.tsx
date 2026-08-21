@@ -37,13 +37,7 @@ interface AnalyticsTableProps {
   };
 }
 
-export function AnalyticsTable({
-  events,
-  loading,
-  error,
-  hasActiveFilters,
-  serverPagination,
-}: AnalyticsTableProps) {
+export function AnalyticsTable({ events, loading, error, hasActiveFilters, serverPagination }: AnalyticsTableProps) {
   const serverPaginationConfig = React.useMemo(() => {
     if (!serverPagination) return undefined;
     return {
@@ -62,19 +56,13 @@ export function AnalyticsTable({
         accessorKey: 'scan_timestamp',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Time" />,
         cell: ({ row }) => (
-          <span className="text-sm whitespace-nowrap">
-            {formatDate(row.original.scan_timestamp, 'DD-MMM-YY', { includeTime: true })}
-          </span>
+          <span className="text-sm whitespace-nowrap">{formatDate(row.original.scan_timestamp, 'DD-MMM-YY', { includeTime: true })}</span>
         ),
       },
       {
         accessorKey: 'serial_number',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Serial" />,
-        cell: ({ row }) => (
-          <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
-            {row.original.serial_number}
-          </code>
-        ),
+        cell: ({ row }) => <code className="text-xs bg-muted px-2 py-1 rounded font-mono">{row.original.serial_number}</code>,
       },
       {
         accessorKey: 'cta_action',
@@ -116,26 +104,17 @@ export function AnalyticsTable({
           const longitude = row.original.longitude;
           if (streetAddress) {
             return (
-              <span
-                className="block max-w-[320px] whitespace-normal text-sm leading-5"
-                title={streetAddress}
-              >
+              <span className="block max-w-[320px] whitespace-normal text-sm leading-5" title={streetAddress}>
                 {streetAddress}
               </span>
             );
           }
           if (!city && !country && latitude != null && longitude != null) {
-            return (
-              <span className="text-sm text-muted-foreground">
-                Location captured
-              </span>
-            );
+            return <span className="text-sm text-muted-foreground">Location captured</span>;
           }
           if (!city && !country) return <span className="text-muted-foreground">—</span>;
           const location = [city, state, country].filter(Boolean).join(', ');
-          return (
-            <span className="text-sm">{location}</span>
-          );
+          return <span className="text-sm">{location}</span>;
         },
       },
       {
@@ -183,7 +162,15 @@ export function AnalyticsTable({
     return (
       <Card>
         <CardContent className="p-6">
-          <EmptyState icon={<ScanLine className="h-12 w-12" />} title="No scan events yet" description={hasActiveFilters ? 'Try adjusting your date range' : 'QR scan events will appear here once consumers start scanning your product QR codes.'} />
+          <EmptyState
+            icon={<ScanLine className="h-12 w-12" />}
+            title="No scan events yet"
+            description={
+              hasActiveFilters
+                ? 'Try adjusting your date range'
+                : 'QR scan events will appear here once consumers start scanning your product QR codes.'
+            }
+          />
         </CardContent>
       </Card>
     );
@@ -192,7 +179,21 @@ export function AnalyticsTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable columns={columns} data={events} config={{ showSerialNumber: true, showPagination: true, enableRowSelection: false, enableColumnVisibility: true, enableSorting: true, enableFiltering: false, initialPageSize: serverPagination?.pageSize ?? 20, serverPagination: serverPaginationConfig }} maxHeight="auto" />
+        <DataTable
+          columns={columns}
+          data={events}
+          config={{
+            showSerialNumber: true,
+            showPagination: true,
+            enableRowSelection: false,
+            enableColumnVisibility: true,
+            enableSorting: true,
+            enableFiltering: false,
+            initialPageSize: serverPagination?.pageSize ?? 20,
+            serverPagination: serverPaginationConfig,
+          }}
+          maxHeight="auto"
+        />
       </CardContent>
     </Card>
   );

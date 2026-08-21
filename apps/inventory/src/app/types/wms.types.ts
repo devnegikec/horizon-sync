@@ -41,6 +41,7 @@ export interface WarehouseLocation {
   position_y: number;
   is_active: boolean;
   version: number;
+  qr_code: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -176,6 +177,37 @@ export interface SessionSummary {
 
 export type ReceivingSlipStatus = 'pending_review' | 'pending_putaway' | 'putaway_complete' | 'rejected';
 
+/** Individual unit inside a receiving slip group */
+export interface ReceivingSlipGroupItem {
+  id: string;
+  serial_number: string;
+  sku: string;
+  batch_number: string | null;
+  manufacturing_date?: string;
+  expiry_date?: string;
+  quantity: number;
+  box_count: number;
+  flag: string;
+  notes: string | null;
+}
+
+/** QSeal parent summary embedded in a receiving slip group */
+export interface ReceivingSlipParentQSeal {
+  id: string;
+  serial_number: string;
+  name: string;
+  qseal_type: string;
+  capacity: number;
+}
+
+/** A group of items under one QSeal parent (box) */
+export interface ReceivingSlipGroup {
+  parent_qseal: ReceivingSlipParentQSeal | null;
+  product_name: string;
+  items: ReceivingSlipGroupItem[];
+}
+
+// Keep for backward compat with older slips
 export interface ReceivingSlipItem {
   id: string;
   sku: string;
@@ -184,6 +216,7 @@ export interface ReceivingSlipItem {
   box_count: number;
   flag: string;
   notes: string | null;
+  parent_qseal?: ReceivingSlipParentQSeal;
 }
 
 export interface ReceivingSlip {
@@ -192,12 +225,17 @@ export interface ReceivingSlip {
   slip_number: string;
   session_id: string;
   warehouse_id: string;
+  asn_order_id: string | null;
+  asn_order_no: string | null;
   status: ReceivingSlipStatus;
   total_boxes: number;
   total_items: number;
   rejection_reason: string | null;
   notes: string | null;
-  items: ReceivingSlipItem[];
+  /** New grouped format (preferred) */
+  groups?: ReceivingSlipGroup[];
+  /** Legacy flat format */
+  items?: ReceivingSlipItem[];
   created_at: string | null;
   updated_at: string | null;
 }
@@ -215,11 +253,16 @@ export type PutAwayStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled
 
 export interface PutAwayItem {
   id: string;
-  put_away_list_id: string;
+  item_id: string;
   sku: string;
+  item_name?: string | null;
   batch_number: string | null;
+  serial_number?: string | null;
+  manufacturing_date?: string | null;
+  expiry_date?: string | null;
   quantity: number;
-  suggested_bin_id: string | null;
+  bin_location_id: string | null;
+  bin_location_code: string | null;
   suggested_bin_code: string | null;
   status: 'pending' | 'completed' | 'skipped';
   sort_order: number;
@@ -231,6 +274,7 @@ export interface PutAwayList {
   put_away_list_no: string;
   warehouse_id: string;
   receiving_slip_id: string | null;
+  receiving_slip_no: string | null;
   reference_type: string | null;
   reference_id: string | null;
   status: PutAwayStatus;
@@ -238,7 +282,9 @@ export interface PutAwayList {
   completed_items: number;
   pending_items: number;
   remarks: string | null;
+  warnings?: string[] | null;
   assigned_to: string | null;
+  worker_name: string | null;
   items: PutAwayItem[];
   completed_at: string | null;
   created_at: string | null;
@@ -274,6 +320,13 @@ export interface PickListProgress {
   completion_percentage: number;
 }
 
+export interface PickSerialDetail {
+  serial_number: string;
+  sku?: string | null;
+  manufacturing_date?: string | null;
+  expiry_date?: string | null;
+}
+
 export interface PickListItem {
   id: string;
   item_id: string;
@@ -283,10 +336,14 @@ export interface PickListItem {
   qty: number;
   picked_qty: number;
   uom: string;
+  per_case_qty?: number | null;
+  case_qty?: number | null;
+  loose_qty?: number | null;
   batch_no: string | null;
   bin_location_id: string | null;
   bin_location_path?: string | null;
   sort_order: number;
+  serials?: PickSerialDetail[];
 }
 
 export interface PickList {
@@ -297,6 +354,9 @@ export interface PickList {
   status: PickListStatus;
   pick_date: string | null;
   reference_type: string | null;
+  remarks?: string | null;
+  assigned_to?: string | null;
+  worker_name?: string | null;
   invoice_reference: string | null;
   completed_at: string | null;
   created_at: string | null;
@@ -680,6 +740,49 @@ export interface WMSDashboardStats {
   };
   workers_count: number;
   recent_activity: WMSActivityItem[];
+}
+
+// ============================================
+// CAPACITY TYPES
+// ============================================
+
+export type BinState = 'empty' | 'available' | 'almost_full' | 'full';
+
+export interface VolumeCapacity {
+  occupied_m3: number;
+  capacity_m3: number | null;
+  pct: number | null;
+}
+
+export interface WeightCapacity {
+  occupied_kg: number;
+  capacity_kg: number | null;
+  pct: number | null;
+}
+
+export interface CapacityTreeNode {
+  node: string;
+  level: string;
+  code: string;
+  full_path: string | null;
+  volume: VolumeCapacity;
+  weight: WeightCapacity;
+  binding_pct: number | null;
+  bin_state: BinState | null;
+  is_available: boolean | null;
+  children: CapacityTreeNode[];
+}
+
+export interface BinStateResponse {
+  bin_id: string;
+  code: string;
+  position_x: number;
+  position_y: number;
+  position_z: number;
+  qr_code: string | null;
+  bin_state: BinState;
+  binding_pct: number | null;
+  is_available: boolean;
 }
 
 // ============================================

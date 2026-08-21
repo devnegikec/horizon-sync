@@ -51,6 +51,7 @@ export function useQSealManagement() {
           organization_id: '',
           brand_id: null,
           name: product.name,
+          sku: product.sku ?? product.generic_name,
           generic_name: product.generic_name,
           gtin: product.gtin,
           industry: product.industry,

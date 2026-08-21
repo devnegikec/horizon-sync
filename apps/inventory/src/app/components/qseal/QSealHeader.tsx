@@ -11,8 +11,15 @@ interface QSealHeaderProps {
   creditInfo?: QSealCreditInfo;
 }
 
-export function QSealHeader({ onRefresh, onCreateProduct, isLoading = false, creditInfo }: QSealHeaderProps) {
-  const creditPct = creditInfo ? Math.round((creditInfo.used_this_month / creditInfo.monthly_quota) * 100) : null;
+export function QSealHeader({
+  onRefresh,
+  onCreateProduct,
+  isLoading = false,
+  creditInfo,
+}: QSealHeaderProps) {
+  const creditPct = creditInfo
+    ? Math.round((creditInfo.used_this_month / creditInfo.monthly_quota) * 100)
+    : null;
 
   const creditColor =
     creditPct === null
@@ -27,7 +34,9 @@ export function QSealHeader({ onRefresh, onCreateProduct, isLoading = false, cre
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">QSeal Products</h1>
-        <p className="text-muted-foreground mt-1">Manage QR-enabled products, blocks, and activation tracking</p>
+        <p className="text-muted-foreground mt-1">
+          Manage QR-enabled products, blocks, and activation tracking
+        </p>
       </div>
 
       <div className="flex items-center gap-3">
@@ -47,7 +56,8 @@ export function QSealHeader({ onRefresh, onCreateProduct, isLoading = false, cre
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
-        <Button variant="default" onClick={onCreateProduct} className="gap-2 shadow-sm">
+        <Button onClick={onCreateProduct}
+          className="gap-2 text-primary-foreground shadow-lg">
           <Plus className="h-4 w-4" />
           New Product
         </Button>

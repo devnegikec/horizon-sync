@@ -59,12 +59,22 @@ const getInitialFormData = (): ItemFormData & { itemGroupName: string } => ({
   // Tax & Additional
   salesTaxTemplateId: null,
   purchaseTaxTemplateId: null,
+  brandId: '',
+  gtin: '',
   barcode: '',
   imageUrl: '',
   images: [],
   tags: [],
   customFields: {},
   extraData: {},
+
+  // Packaging Details
+  packagingUnitName: 'Each',
+  packagingConversionFactor: '1',
+  packagingLengthMm: '',
+  packagingWidthMm: '',
+  packagingHeightMm: '',
+  packagingWeightGrams: '',
 });
 
 export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult {
@@ -121,12 +131,22 @@ export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult
         // Tax & Additional
         salesTaxTemplateId: item.salesTaxTemplateId || null,
         purchaseTaxTemplateId: item.purchaseTaxTemplateId || null,
+        brandId: (item as Item & { brandId?: string }).brandId || '',
+        gtin: (item as Item & { gtin?: string }).gtin || '',
         barcode: item.barcode || '',
         imageUrl: item.imageUrl || '',
         images: item.images || [],
         tags: item.tags || [],
         customFields: item.customFields || {},
         extraData: item.extraData || {},
+
+        // Packaging Details
+        packagingUnitName: item.packagingDetails?.unitName || 'Each',
+        packagingConversionFactor: item.packagingDetails?.conversionFactor?.toString() || '1',
+        packagingLengthMm: item.packagingDetails?.lengthMm?.toString() || '',
+        packagingWidthMm: item.packagingDetails?.widthMm?.toString() || '',
+        packagingHeightMm: item.packagingDetails?.heightMm?.toString() || '',
+        packagingWeightGrams: item.packagingDetails?.weightGrams?.toString() || '',
       });
     } else {
       resetForm();

@@ -3,6 +3,7 @@ import * as React from 'react';
 import { Package, Warehouse, Boxes, Layers, Forklift } from 'lucide-react';
 import { Routes, Route } from 'react-router-dom';
 
+import { Toaster } from '@horizon-sync/ui/components';
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { cn } from '@horizon-sync/ui/lib';
@@ -63,11 +64,13 @@ export function App() {
   return (
     <ThemeProvider>
       <Routes>
-        {/* Public QR verification route — no auth required */}
+        {/* Public QR verification routes — no auth required */}
         <Route path="/g/:gtin/s/:serial/:timestamp" element={<PublicQRValidation />} />
+        <Route path="/01/:gtin/21/:serial" element={<PublicQRValidation />} />
         {/* Main authenticated app */}
         <Route path="*" element={<MainApp />} />
       </Routes>
+      <Toaster />
     </ThemeProvider>
   );
 }

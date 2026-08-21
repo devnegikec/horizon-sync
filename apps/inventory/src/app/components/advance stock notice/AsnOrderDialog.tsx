@@ -1,30 +1,31 @@
 import * as React from 'react';
 
 import { useQuery } from '@tanstack/react-query';
-
+import { Truck, Trash2, Mail, Eye, Download, Loader2 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Badge, Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
-import { Truck, Trash2, Mail, Eye, Download, Loader2 } from 'lucide-react';
-import { StatusBadge } from '../quotations/StatusBadge';
-import { usePDFGeneration } from '../../hooks/usePDFGeneration';
+
+import { environment } from '../../../environments/environment';
 import { useEmailWithPdfAttachment } from '../../hooks/useEmailWithPdfAttachment';
-import { EmailComposer } from '../common';
-import { convertAsnOrderToPDFData } from '../../utils/pdf/asnOrderToPDF';
-
+import { usePDFGeneration } from '../../hooks/usePDFGeneration';
 import type { AsnOrder, AsnOrderCreate, AsnOrderItemCreate, AsnOrderStatus, AsnOrderUpdate, AsnOrderFormData, AsnOrderDialogProps } from '../../types/asn-order.types';
-import { warehouseApi } from '../../utility/api/warehouses';
 import type { Warehouse } from '../../types/warehouse.types';
-
-import { FulfillmentStatusTable } from './FulfillmentStatusTable';
-import { AsnOrderFormFields } from './AsnOrderFormFields';
 import { WarehousesResponse } from '../../types/warehouse.types';
+import { asnOrderApi } from '../../utility/api/asn-orders';
+import { warehouseApi } from '../../utility/api/warehouses';
+import { parseAsnEntryCsv, ASN_ENTRY_SAMPLE_CSV } from '../../utility/asnEntryCsvParser';
+import { convertAsnOrderToPDFData } from '../../utils/pdf/asnOrderToPDF';
+import { EmailComposer } from '../common';
+import { StatusBadge } from '../quotations/StatusBadge';
+import { CsvImporter } from '../shared/CsvImporter';
+
 import type { AsnEntryLineRow } from './AsnEntryLineItemsTable';
 import { AsnEntryLineItemsTable } from './AsnEntryLineItemsTable';
-import { CsvImporter } from '../shared/CsvImporter';
-import { environment } from '../../../environments/environment';
-import { parseAsnEntryCsv, ASN_ENTRY_SAMPLE_CSV } from '../../utility/asnEntryCsvParser';
+import { AsnOrderFormFields } from './AsnOrderFormFields';
+import { FulfillmentStatusTable } from './FulfillmentStatusTable';
+
 
 
 
@@ -230,6 +231,16 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   const [clearKey, setClearKey] = React.useState(0);
   const { toast } = useToast();
 
+  // Fetch full ASN order detail when dialog opens in view/edit mode
+  const { data: orderDetail } = useQuery<AsnOrder>({
+    queryKey: ['asn-order-detail', asnOrder?.id],
+    queryFn: () => asnOrderApi.get(accessToken || '', asnOrder?.id || '') as Promise<AsnOrder>,
+    enabled: !!accessToken && !!asnOrder?.id && open,
+  });
+
+  // Use API detail if available, otherwise fall back to prop
+  const resolvedOrder = orderDetail || asnOrder;
+
   const { data: allWarehousesData } = useQuery<WarehousesResponse>({
     queryKey: ['warehouses-list', 'asn-all'],
     queryFn: () => warehouseApi.list(accessToken || '', 1, 100, 'all') as Promise<WarehousesResponse>,
@@ -242,35 +253,56 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
     enabled: !!accessToken && open,
   });
 
-  const allWarehouses = allWarehousesData?.warehouses ?? [];
-  const assignedWarehouses = assignedWarehousesData?.warehouses ?? [];
+  const allWarehouses = React.useMemo(() => allWarehousesData?.warehouses ?? [], [allWarehousesData?.warehouses]);
+  const assignedWarehouses = React.useMemo(() => assignedWarehousesData?.warehouses ?? [], [assignedWarehousesData?.warehouses]);
 
-  const warehousesFrom = assignedWarehouses;
-  const warehousesTo = React.useMemo(
-    () => allWarehouses.filter((w) => w.id !== formData.warehouse_id_from),
-    [allWarehouses, formData.warehouse_id_from]
-  );
+  // Merge from_warehouse and to_warehouse from API response into warehouse lists
+  // so they appear correctly in dropdowns even if not in the main warehouse lists
+  const warehousesFrom = React.useMemo(() => {
+    const list = [...assignedWarehouses];
+    if (resolvedOrder?.from_warehouse?.id && resolvedOrder?.from_warehouse?.name) {
+      const fromWh = resolvedOrder.from_warehouse;
+      const alreadyExists = list.some((w) => w.id === fromWh.id);
+      if (!alreadyExists) {
+        list.push({ id: fromWh.id, name: fromWh.name, code: fromWh.code ?? '' } as Warehouse);
+      }
+    }
+    return list;
+  }, [assignedWarehouses, resolvedOrder?.from_warehouse]);
+
+  const warehousesTo = React.useMemo(() => {
+    const list = allWarehouses.filter((w) => w.id !== formData.warehouse_id_from);
+    if (resolvedOrder?.to_warehouse?.id && resolvedOrder?.to_warehouse?.name) {
+      const toWh = resolvedOrder.to_warehouse;
+      const alreadyExists = list.some((w) => w.id === toWh.id);
+      if (!alreadyExists) {
+        list.push({ id: toWh.id, name: toWh.name, code: toWh.code ?? '' } as Warehouse);
+      }
+    }
+    return list;
+  }, [allWarehouses, formData.warehouse_id_from, resolvedOrder?.to_warehouse]);
 
   const targetWarehouse = React.useMemo(() => {
-    if (!asnOrder?.warehouse_id_to) return null;
-    return allWarehouses.find((w) => w.id === asnOrder.warehouse_id_to) || null;
-  }, [asnOrder?.warehouse_id_to, allWarehouses]);
+    const warehouseId = resolvedOrder?.warehouse_id_to;
+    if (!warehouseId) return null;
+    return allWarehouses.find((w) => w.id === warehouseId) || null;
+  }, [resolvedOrder?.warehouse_id_to, allWarehouses]);
 
   const { loading: pdfLoading, handleDownload, handlePreview, handleGenerateBase64 } = useAsnOrderPDFActions(targetWarehouse);
   const { emailDialogOpen, pdfAttachment, openEmailWithPdf, handleEmailClose, handleEmailSuccess } = useEmailWithPdfAttachment();
 
   const handleSendEmail = React.useCallback(() => {
-    if (!asnOrder) return;
-    openEmailWithPdf(() => handleGenerateBase64(asnOrder), `${asnOrder.asn_order_no}.pdf`);
-  }, [asnOrder, handleGenerateBase64, openEmailWithPdf]);
+    if (!resolvedOrder) return;
+    openEmailWithPdf(() => handleGenerateBase64(resolvedOrder), `${resolvedOrder.asn_order_no}.pdf`);
+  }, [resolvedOrder, handleGenerateBase64, openEmailWithPdf]);
 
-  // Initialize form when dialog opens or asnOrder changes
+  // Initialize form when dialog opens or asnOrder changes — use resolvedOrder (API detail or prop fallback)
   React.useEffect(() => {
-    if (open && asnOrder) {
-      setFormData(buildFormFromEntry(asnOrder));
-      if (asnOrder.items && asnOrder.items.length > 0) {
+    if (open && resolvedOrder) {
+      setFormData(buildFormFromEntry(resolvedOrder));
+      if (resolvedOrder.items && resolvedOrder.items.length > 0) {
         setLineItems(
-          asnOrder.items.map((item, i) => ({
+          resolvedOrder.items.map((item, i) => ({
             item_id: item.item_id,
             item_name: item.item_name || '',
             item_code: item.item_sku || '',
@@ -288,7 +320,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
       setImportStatus(null);
       setWarehouseError('');
     }
-  }, [open, asnOrder]);
+  }, [open, resolvedOrder, asnOrder]);
 
   // Auto-populate "By" warehouse from user's assigned warehouses on creation
   React.useEffect(() => {
@@ -386,14 +418,6 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
     setClearKey((k) => k + 1);
   }, []);
 
-  // const handleBulkUpload = React.useCallback(async (file: File): Promise<BulkUploadResult> => {
-  //   if (!accessToken) throw new Error('Not authenticated');
-  //   const result = await asnEntryApi.bulkUpload(accessToken, file) as BulkUploadResult;
-  //   onCreated?.();
-  //   return result;
-  // }, [accessToken, onCreated]);
-
-
   const isReadOnly = viewMode || (isEdit && formData.status !== 'draft');
   const isLineItemEditingDisabled = isReadOnly;
   const availableStatuses = React.useMemo(() => getAvailableStatuses(isEdit, formData.status), [isEdit, formData.status]);
@@ -425,8 +449,8 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
     }
 
     try {
-      if (isEdit && asnOrder) {
-        await onSave(buildUpdatePayload(formData, items), asnOrder.id);
+      if (isEdit && resolvedOrder) {
+        await onSave(buildUpdatePayload(formData, items), resolvedOrder.id);
       } else {
         await onSave(buildCreatePayload(formData, items, grandTotal));
       }
@@ -461,8 +485,14 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <AsnOrderFormFields formData={formData} warehousesFrom={warehousesFrom} warehousesTo={warehousesTo} isEdit={isEdit} readOnly={isReadOnly}
-              availableStatuses={availableStatuses} statusLabels={STATUS_LABELS} onFieldChange={handleChange}
+            <AsnOrderFormFields formData={formData}
+              warehousesFrom={warehousesFrom}
+              warehousesTo={warehousesTo}
+              isEdit={isEdit}
+              readOnly={isReadOnly}
+                            availableStatuses={availableStatuses}
+              statusLabels={STATUS_LABELS}
+              onFieldChange={handleChange}
               warehouseError={warehouseError} />
 
             <Separator />
@@ -470,7 +500,8 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
               <h3 className="text-sm font-medium">Line Items</h3>
               {!isReadOnly && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <CsvImporter<AsnEntryLineRow> key={`csv-${clearKey}`} parseRows={parseAsnEntryCsv}
+                  <CsvImporter<AsnEntryLineRow> key={`csv-${clearKey}`}
+                    parseRows={parseAsnEntryCsv}
                     onImport={handleCsvImport}
                     // onFileSelected={handleBulkUpload}
                     onPreviewChange={setCsvPreviewActive}
@@ -515,12 +546,11 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                       <td className="px-4 py-3"></td>
                       <td className="px-4 py-3"></td>
                     </tr>
-                  )}
-                />
+                  )}/>
               )}
             </div>
 
-            {isEdit && asnOrder?.items && <FulfillmentStatusTable items={asnOrder.items} />}
+            {isEdit && resolvedOrder?.items && <FulfillmentStatusTable items={resolvedOrder.items} />}
 
             <DialogFooter>
               {viewMode ? (
@@ -530,10 +560,10 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                   </Button>
                   {formData.status !== 'draft' && (
                     <>
-                      <Button type="button" variant="outline" onClick={() => asnOrder && handlePreview(asnOrder)} disabled={pdfLoading} className="gap-2">
+                      <Button type="button" variant="outline" onClick={() => resolvedOrder && handlePreview(resolvedOrder)} disabled={pdfLoading} className="gap-2">
                         <Eye className="h-4 w-4" />Preview PDF
                       </Button>
-                      <Button type="button" variant="outline" onClick={() => asnOrder && handleDownload(asnOrder)} disabled={pdfLoading} className="gap-2">
+                      <Button type="button" variant="outline" onClick={() => resolvedOrder && handleDownload(resolvedOrder)} disabled={pdfLoading} className="gap-2">
                         <Download className="h-4 w-4" />Download PDF
                       </Button>
                       <Button type="button" variant="outline" onClick={handleSendEmail} disabled={pdfLoading} className="gap-2">
@@ -559,8 +589,8 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
       </Dialog>
 
       {
-        asnOrder && (
-          <AsnOrderEmailComposer asnOrder={asnOrder!}
+        resolvedOrder && (
+          <AsnOrderEmailComposer asnOrder={resolvedOrder}
             targetWarehouse={targetWarehouse}
             emailDialogOpen={emailDialogOpen}
             pdfAttachment={pdfAttachment}

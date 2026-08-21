@@ -1,142 +1,19 @@
 import * as React from 'react';
 
-import { RefreshCw, Eye, Loader2, PackageOpen } from 'lucide-react';
+import { RefreshCw, Eye, PackageOpen } from 'lucide-react';
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, ConfirmationDialog } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components/ui/dialog';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useReceivingSlips } from '../../hooks/useWMS';
-import type { ReceivingSlip, ReceivingSlipItem } from '../../types/wms.types';
+import type { ReceivingSlip } from '../../types/wms.types';
 
+import { SlipDetailDialog } from './receiving-slips';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
 interface ReceivingSlipListProps {
   warehouseId?: string;
-}
-
-// ─── Flag badge ──────────────────────────────────────────────────────────────
-
-function FlagBadge({ flag }: { flag: string }) {
-  const map: Record<string, string> = {
-    ok: 'bg-green-100 text-green-700',
-    short: 'bg-yellow-100 text-yellow-700',
-    damaged: 'bg-red-100 text-red-700',
-  };
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${map[flag] ?? 'bg-gray-100 text-gray-700'}`}>
-      {flag}
-    </span>
-  );
-}
-
-// ─── Slip detail dialog ───────────────────────────────────────────────────────
-
-interface SlipDetailDialogProps {
-  slip: ReceivingSlip | null;
-  loading: boolean;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-function SlipDetailDialog({ slip, loading, open, onOpenChange }: SlipDetailDialogProps) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>
-            {slip ? `Receiving Slip — ${slip.slip_number}` : 'Loading...'}
-          </DialogTitle>
-        </DialogHeader>
-
-        {loading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        )}
-
-        {!loading && slip && (
-          <div className="flex flex-col gap-4 overflow-y-auto">
-            {/* Summary row */}
-            <div className="grid grid-cols-3 gap-3 text-sm">
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground mb-1">Status</p>
-                <WMSStatusBadge status={slip.status} />
-              </div>
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground mb-1">Total Boxes</p>
-                <p className="font-semibold text-lg">{slip.total_boxes}</p>
-              </div>
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground mb-1">Total Items</p>
-                <p className="font-semibold text-lg">{slip.total_items}</p>
-              </div>
-            </div>
-
-            {slip.rejection_reason && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                <span className="font-medium">Rejection reason: </span>{slip.rejection_reason}
-              </div>
-            )}
-
-            {slip.notes && (
-              <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">Notes: </span>{slip.notes}
-              </div>
-            )}
-
-            {/* Items table */}
-            <div className="border rounded-lg overflow-hidden">
-              <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Line Items ({slip.items.length})
-              </div>
-              <table className="w-full text-sm">
-                <thead className="bg-muted/30">
-                  <tr>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">SKU</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Batch</th>
-                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Qty</th>
-                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Boxes</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Flag</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {slip.items.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground text-xs">
-                        No items
-                      </td>
-                    </tr>
-                  )}
-                  {slip.items.map((item: ReceivingSlipItem) => (
-                    <tr key={item.id} className="hover:bg-muted/20">
-                      <td className="px-4 py-2 font-mono font-medium">{item.sku}</td>
-                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{item.batch_number ?? '—'}</td>
-                      <td className="px-4 py-2 text-right">{item.quantity}</td>
-                      <td className="px-4 py-2 text-right">{item.box_count}</td>
-                      <td className="px-4 py-2"><FlagBadge flag={item.flag} /></td>
-                      <td className="px-4 py-2 text-xs text-muted-foreground">{item.notes ?? '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              Created: {slip.created_at ? new Date(slip.created_at).toLocaleString() : '—'}
-            </p>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -150,8 +27,11 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
   const [viewSlip, setViewSlip] = React.useState<ReceivingSlip | null>(null);
   const [viewLoading, setViewLoading] = React.useState(false);
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [confirmApproveSlip, setConfirmApproveSlip] = React.useState<ReceivingSlip | null>(null);
+  const [confirmPutAwaySlip, setConfirmPutAwaySlip] = React.useState<ReceivingSlip | null>(null);
+  const [actionLoading, setActionLoading] = React.useState(false);
 
-  const { data, loading, error, refetch, approveSlip, rejectSlip, getSlip, generatePutAway } = useReceivingSlips({
+  const { data, loading, error, refetch, approveSlip, rejectSlip, rejectItem, getSlip, generatePutAway } = useReceivingSlips({
     warehouse_id: warehouseId,
     status: statusFilter === 'all' ? undefined : statusFilter,
     page,
@@ -174,12 +54,21 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
   };
 
   const handleApprove = async (slip: ReceivingSlip) => {
-    if (!window.confirm(`Approve receiving slip ${slip.slip_number}?`)) return;
+    setConfirmApproveSlip(slip);
+  };
+
+  const handleConfirmApprove = async () => {
+    const slip = confirmApproveSlip;
+    if (!slip) return;
+    setActionLoading(true);
     try {
       await approveSlip(slip.id);
       toast({ title: 'Slip approved', description: `${slip.slip_number} moved to put-away.` });
+      setConfirmApproveSlip(null);
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to approve', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -195,13 +84,36 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
     }
   };
 
+  const handleRejectItem = async (slipId: string, itemId: string, reason: string) => {
+    try {
+      await rejectItem(slipId, itemId, reason);
+      toast({ title: 'Item rejected', description: 'Item marked as rejected.' });
+      // Refresh detail view
+      if (viewSlip?.id === slipId) {
+        const updated = await getSlip(slipId);
+        setViewSlip(updated);
+      }
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to reject item', variant: 'destructive' });
+    }
+  };
+
   const handleGeneratePutAway = async (slip: ReceivingSlip) => {
-    if (!window.confirm(`Generate put-away list from ${slip.slip_number}?`)) return;
+    setConfirmPutAwaySlip(slip);
+  };
+
+  const handleConfirmPutAway = async () => {
+    const slip = confirmPutAwaySlip;
+    if (!slip) return;
+    setActionLoading(true);
     try {
       await generatePutAway(slip.id);
       toast({ title: 'Put-away generated', description: `Put-away list created from ${slip.slip_number}.` });
+      setConfirmPutAwaySlip(null);
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to generate put-away', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -236,6 +148,7 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Slip #</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">ASN</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Boxes</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Items</th>
@@ -246,7 +159,7 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
               <tbody className="divide-y">
                 {data.receiving_slips.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                       No receiving slips found
                     </td>
                   </tr>
@@ -255,6 +168,13 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
                   <React.Fragment key={slip.id}>
                     <tr className="hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 font-mono font-medium">{slip.slip_number}</td>
+                      <td className="px-4 py-3 font-mono text-sm">
+                        {slip.asn_order_no ? (
+                          <span className="text-blue-600">{slip.asn_order_no}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <WMSStatusBadge status={slip.status} />
                       </td>
@@ -268,10 +188,10 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
 
                           {slip.status === 'pending_review' && (
                             <>
-                              <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:bg-green-50 h-7 px-2 text-xs" onClick={() => handleApprove(slip)}>
+                              <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:!bg-green-600 hover:!text-white h-7 px-2 text-xs" onClick={() => handleApprove(slip)}>
                                 Approve
                               </Button>
-                              <Button size="sm" variant="outline" className="text-destructive border-destructive/20 hover:bg-destructive/10 h-7 px-2 text-xs" onClick={() => setRejectingId(slip.id)}>
+                              <Button size="sm" variant="outline" className="text-destructive border-destructive/20 hover:!bg-destructive hover:!text-white h-7 px-2 text-xs" onClick={() => setRejectingId(slip.id)}>
                                 Reject
                               </Button>
                             </>
@@ -291,12 +211,12 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
                     </tr>
                     {rejectingId === slip.id && (
                       <tr>
-                        <td colSpan={6} className="px-4 py-3 bg-muted/30">
+                        <td colSpan={7} className="px-4 py-3 bg-muted/30">
                           <div className="flex items-center gap-2">
                             <input className="flex-1 border rounded px-3 py-1.5 text-sm bg-background"
                               placeholder="Rejection reason..."
                               value={rejectReason}
-                              onChange={(e) => setRejectReason(e.target.value)}/>
+                              onChange={(e) => setRejectReason(e.target.value)} />
                             <Button size="sm" variant="destructive" onClick={() => handleReject(slip)} disabled={!rejectReason.trim()}>
                               Confirm Reject
                             </Button>
@@ -332,7 +252,28 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
       <SlipDetailDialog slip={viewSlip}
         loading={viewLoading}
         open={dialogOpen}
-        onOpenChange={setDialogOpen}/>
+        onOpenChange={setDialogOpen}
+        onRejectItem={
+          viewSlip?.status === 'pending_review' || viewSlip?.status === 'pending_putaway'
+            ? handleRejectItem
+            : undefined
+        } />
+
+      <ConfirmationDialog open={!!confirmApproveSlip}
+        onOpenChange={(open) => { if (!open) setConfirmApproveSlip(null); }}
+        title="Approve Receiving Slip"
+        description={`Are you sure you want to approve ${confirmApproveSlip?.slip_number}? This will move it to put-away.`}
+        confirmLabel="Approve"
+        loading={actionLoading}
+        onConfirm={handleConfirmApprove} />
+
+      <ConfirmationDialog open={!!confirmPutAwaySlip}
+        onOpenChange={(open) => { if (!open) setConfirmPutAwaySlip(null); }}
+        title="Generate Put-Away List"
+        description={`Generate put-away list from receiving slip ${confirmPutAwaySlip?.slip_number}?`}
+        confirmLabel="Generate"
+        loading={actionLoading}
+        onConfirm={handleConfirmPutAway} />
     </div>
   );
 }
