@@ -22,18 +22,6 @@ const STATUS_COLORS = {
   inactive: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
 };
 
-const QR_TYPE_LABELS: Record<string, string> = {
-  dynamic: 'Dynamic',
-  secure_qr_runtime: 'Secure QR',
-  static_qr: 'Static QR',
-};
-
-const QR_TYPE_COLORS: Record<string, string> = {
-  dynamic: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-  secure_qr_runtime: 'bg-violet-100 text-violet-800 dark:bg-violet-900/20 dark:text-violet-400',
-  static_qr: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300',
-};
-
 export interface QSealTableProps {
   products: QSealProductListItem[];
   loading: boolean;
@@ -76,7 +64,7 @@ export function QSealTable({
       totalItems: serverPagination.totalItems,
       currentPage: serverPagination.currentPage,
       pageSize: serverPagination.pageSize,
-      onPageChange: (page: number, _pageSize: number) => {
+      onPageChange: (page: number) => {
         serverPagination.onPageChange(page);
       },
     };
@@ -96,9 +84,7 @@ export function QSealTable({
               </div>
               <div>
                 <p className="font-medium">{p.name}</p>
-                {p.gtin && (
-                  <p className="text-xs text-muted-foreground font-mono">{p.gtin}</p>
-                )}
+                {p.gtin && <p className="text-xs text-muted-foreground font-mono">{p.gtin}</p>}
               </div>
             </div>
           );
@@ -108,24 +94,7 @@ export function QSealTable({
         accessorKey: 'industry',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Industry" />,
         cell: ({ row }) =>
-          row.original.industry ? (
-            <span className="text-sm">{row.original.industry}</span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          ),
-      },
-      {
-        accessorKey: 'qr_type',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="QR Type" />,
-        cell: ({ row }) => {
-          const t = row.original.qr_type;
-          if (!t) return <span className="text-muted-foreground">—</span>;
-          return (
-            <Badge variant="secondary" className={QR_TYPE_COLORS[t] || ''}>
-              {QR_TYPE_LABELS[t] || t}
-            </Badge>
-          );
-        },
+          row.original.industry ? <span className="text-sm">{row.original.industry}</span> : <span className="text-muted-foreground">—</span>,
       },
       {
         accessorKey: 'is_active',
@@ -143,14 +112,15 @@ export function QSealTable({
       },
       {
         accessorKey: 'activation_method',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Activation" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Activation Method" />,
         cell: ({ row }) => {
           const method = row.original.activation_method;
           if (!method) return <span className="text-muted-foreground">—</span>;
           const label = method === 'pre' ? 'Pre-Activated' : 'Post-Activated';
-          const color = method === 'pre'
-            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400'
-            : 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400';
+          const color =
+            method === 'pre'
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400'
+              : 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400';
           return (
             <Badge variant="secondary" className={color}>
               {label}
@@ -161,11 +131,7 @@ export function QSealTable({
       {
         accessorKey: 'created_at',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Created" />,
-        cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">
-            {formatDate(row.original.created_at, 'DD-MMM-YY')}
-          </span>
-        ),
+        cell: ({ row }) => <span className="text-sm text-muted-foreground">{formatDate(row.original.created_at, 'DD-MMM-YY')}</span>,
       },
       {
         id: 'actions',
@@ -242,14 +208,9 @@ export function QSealTable({
     return (
       <Card>
         <CardContent className="p-6">
-          <EmptyState
-            icon={<QrCode className="h-12 w-12" />}
+          <EmptyState icon={<QrCode className="h-12 w-12" />}
             title="No QSeal products found"
-            description={
-              hasActiveFilters
-                ? 'Try adjusting your search or filters'
-                : 'Get started by adding your first QSeal product'
-            }
+            description={hasActiveFilters ? 'Try adjusting your search or filters' : 'Get started by adding your first QSeal product'}
             action={
               !hasActiveFilters ? (
                 <Button onClick={onCreateProduct} className="gap-2">
@@ -257,8 +218,7 @@ export function QSealTable({
                   New Product
                 </Button>
               ) : undefined
-            }
-          />
+            }/>
         </CardContent>
       </Card>
     );
@@ -267,8 +227,7 @@ export function QSealTable({
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable
-          columns={columns}
+        <DataTable columns={columns}
           data={products}
           config={{
             showSerialNumber: true,
@@ -285,8 +244,7 @@ export function QSealTable({
             return null;
           }}
           fixedHeader
-          maxHeight="auto"
-        />
+          maxHeight="auto"/>
       </CardContent>
     </Card>
   );

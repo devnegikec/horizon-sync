@@ -28,26 +28,18 @@ export function QSealManagement() {
     handleEditProduct,
     handleViewProduct,
     handleSaveProduct,
+    saving,
     handleToggleStatus,
     serverPaginationConfig,
   } = useQSealManagement();
 
-  const hasActiveFilters =
-    !!filters.search ||
-    (!!filters.status && filters.status !== 'all') ||
-    (!!filters.qr_type && filters.qr_type !== 'all');
+  const hasActiveFilters = !!filters.search || (!!filters.status && filters.status !== 'all');
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <QSealHeader onRefresh={refetch}
-        onCreateProduct={handleCreateProduct}
-        isLoading={loading}
-        creditInfo={creditInfo}/>
+      <QSealHeader onRefresh={refetch} onCreateProduct={handleCreateProduct} isLoading={loading} creditInfo={creditInfo} />
 
-      <QSealStats total={stats.total}
-        active={stats.active}
-        totalQRCodes={stats.totalQRCodes}
-        totalScans={stats.totalScans}/>
+      <QSealStats total={stats.total} active={stats.active} totalQRCodes={stats.totalQRCodes} totalScans={stats.totalScans} />
 
       <QSealFilters filters={filters} setFilters={setFilters} />
 
@@ -61,14 +53,13 @@ export function QSealManagement() {
         onCreateProduct={handleCreateProduct}
         serverPagination={serverPaginationConfig}/>
 
-      <QSealDetailDialog open={detailDialogOpen}
-        onOpenChange={setDetailDialogOpen}
-        product={selectedProduct}/>
+      <QSealDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} product={selectedProduct} />
 
       <QSealProductDialog open={productDialogOpen}
         onOpenChange={setProductDialogOpen}
         product={selectedProduct}
-        onSave={handleSaveProduct}/>
+        onSave={handleSaveProduct}
+        saving={saving}/>
     </div>
   );
 }

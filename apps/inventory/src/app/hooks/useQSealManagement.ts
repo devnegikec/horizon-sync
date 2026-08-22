@@ -9,6 +9,7 @@ import type {
   QSealProduct,
   QSealProductListItem,
   CreateQSealProductPayload,
+  QSealProductImageChanges,
 } from '../types/qseal.types';
 
 import { useQSealProducts } from './useQSealProducts';
@@ -19,17 +20,17 @@ export function useQSealManagement() {
   const [productDialogOpen, setProductDialogOpen] = React.useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
   const [selectedProduct, setSelectedProduct] = React.useState<QSealProduct | null>(null);
+  const [saving, setSaving] = React.useState(false);
 
   // Credit info — no dedicated endpoint yet, keep as placeholder
   const [creditInfo] = React.useState<QSealCreditInfo | undefined>(undefined);
 
-  const { products, pagination, loading, error, refetch, currentPage, setPage } =
-    useQSealProducts(1, filters);
+  const { products, pagination, loading, error, refetch, currentPage, setPage } = useQSealProducts(1, filters);
 
   // Reset to page 1 when filters change
   React.useEffect(() => {
     setPage(1);
-  }, [filters.search, filters.status, filters.qr_type, setPage]);
+  }, [filters.search, filters.status, setPage]);
 
   const handleCreateProduct = React.useCallback(() => {
     setSelectedProduct(null);
@@ -48,6 +49,7 @@ export function useQSealManagement() {
         setSelectedProduct({
           id: product.id,
           organization_id: '',
+          brand_id: null,
           name: product.name,
           sku: product.sku ?? product.generic_name,
           generic_name: product.generic_name,
@@ -63,8 +65,11 @@ export function useQSealManagement() {
           client_product_auth_url: null,
           activation_method: 'pre',
           sr_number_type: null,
+          serial_prefix_setting_id: null,
+          serial_prefix: null,
           redirect_to_client: false,
           warranty_period_months: null,
+          shelf_life_setting_id: null,
           extra_data: null,
           created_by: null,
           created_at: product.created_at,
@@ -92,18 +97,40 @@ export function useQSealManagement() {
   );
 
   const handleSaveProduct = React.useCallback(
-    async (data: CreateQSealProductPayload) => {
+    async (data: CreateQSealProductPayload, imageChanges: QSealProductImageChanges) => {
       if (!accessToken) return;
+      setSaving(true);
       try {
+        let savedProduct: QSealProduct;
         if (selectedProduct) {
-          await qrProductApi.update(accessToken, selectedProduct.id, data);
+          const updateData = { ...data };
+          delete updateData.brand_id;
+          savedProduct = await qrProductApi.update(accessToken, selectedProduct.id, updateData);
         } else {
-          await qrProductApi.create(accessToken, data);
+          savedProduct = await qrProductApi.create(accessToken, data);
         }
+
+        setSelectedProduct(savedProduct);
+        const imageOperations: Promise<unknown>[] = [];
+        if (imageChanges.logoFile) {
+          imageOperations.push(qrProductApi.uploadImage(accessToken, savedProduct.id, 'logo', imageChanges.logoFile));
+        } else if (imageChanges.removeLogo) {
+          imageOperations.push(qrProductApi.removeImage(accessToken, savedProduct.id, 'logo'));
+        }
+        if (imageChanges.bannerFile) {
+          imageOperations.push(qrProductApi.uploadImage(accessToken, savedProduct.id, 'banner', imageChanges.bannerFile));
+        } else if (imageChanges.removeBanner) {
+          imageOperations.push(qrProductApi.removeImage(accessToken, savedProduct.id, 'banner'));
+        }
+        await Promise.all(imageOperations);
+
         setProductDialogOpen(false);
         refetch();
       } catch (err) {
         console.error('Failed to save product:', err);
+        refetch();
+      } finally {
+        setSaving(false);
       }
     },
     [accessToken, selectedProduct, refetch],
@@ -167,6 +194,7 @@ export function useQSealManagement() {
     handleEditProduct,
     handleViewProduct,
     handleSaveProduct,
+    saving,
     handleToggleStatus,
     serverPaginationConfig,
   };

@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { qrBlockService } from '../services/qrBlockService';
 import type { QRBlock, QRBlockCreate } from '../types/qrBlock.types';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export const useCreateBlock = () => {
   const [loading, setLoading] = useState(false);
@@ -12,8 +13,8 @@ export const useCreateBlock = () => {
     setError(null);
     try {
       return await qrBlockService.createBlock(productId, data);
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Failed to create block';
+    } catch (err: unknown) {
+      const msg = getApiErrorMessage(err, 'Failed to create block');
       setError(msg);
       throw err;
     } finally {

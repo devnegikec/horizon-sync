@@ -18,6 +18,9 @@ export interface QSealProductListItem {
   qr_type: string | null;
   is_active: boolean;
   activation_method: string | null;
+  sr_number_type: string | null;
+  serial_prefix_setting_id: string | null;
+  serial_prefix: string | null;
   created_at: string;
 }
 
@@ -27,6 +30,7 @@ export interface QSealProductListItem {
 export interface QSealProduct {
   id: string;
   organization_id: string;
+  brand_id: string | null;
   name: string;
   sku: string | null;
   generic_name: string | null;
@@ -42,8 +46,11 @@ export interface QSealProduct {
   client_product_auth_url: string | null;
   activation_method: string;
   sr_number_type: string | null;
+  serial_prefix_setting_id: string | null;
+  serial_prefix: string | null;
   redirect_to_client: boolean;
   warranty_period_months: number | null;
+  shelf_life_setting_id: string | null;
   extra_data: Record<string, unknown> | null;
   created_by: string | null;
   created_at: string;
@@ -96,9 +103,9 @@ export interface QSealPackagingDetailsPayload {
 
 export interface CreateQSealProductPayload {
   name: string;
+  sku?: string | null;
   packaging_details?: QSealPackagingDetailsPayload | null;
   brand_id?: string | null;
-  sku?: string | null;
   generic_name?: string | null;
   gtin?: string | null;
   industry?: string | null;
@@ -111,8 +118,10 @@ export interface CreateQSealProductPayload {
   client_product_auth_url?: string | null;
   activation_method?: string;
   sr_number_type?: string | null;
+  serial_prefix_setting_id: string;
   redirect_to_client?: boolean;
   warranty_period_months?: number | null;
+  shelf_life_setting_id: string;
   extra_data?: Record<string, unknown> | null;
 }
 
@@ -132,14 +141,30 @@ export interface UpdateQSealProductPayload {
   phone_number?: string | null;
   activation_method?: string | null;
   sr_number_type?: string | null;
+  serial_prefix_setting_id?: string | null;
   redirect_to_client?: boolean | null;
   warranty_period_months?: number | null;
+  shelf_life_setting_id?: string;
   extra_data?: Record<string, unknown> | null;
+}
+
+export type QSealProductImageType = 'logo' | 'banner';
+
+export interface QSealProductImageResponse {
+  image_type: QSealProductImageType;
+  url: string | null;
+}
+
+export interface QSealProductImageChanges {
+  logoFile: File | null;
+  bannerFile: File | null;
+  removeLogo: boolean;
+  removeBanner: boolean;
 }
 
 export interface QSealFilters {
   search?: string;
-  status?: string;   // 'all' | 'active' | 'inactive'
+  status?: string; // 'all' | 'active' | 'inactive'
   qr_type?: string;
 }
 
@@ -180,9 +205,9 @@ export interface AnalyticsInteractionFunnel {
 }
 
 export interface AnalyticsGeoPoint {
-  city: string;
+  city: string | null;
   state: string | null;
-  country: string;
+  country: string | null;
   latitude: number;
   longitude: number;
   count: number;
@@ -208,6 +233,7 @@ export interface AnalyticsScanEvent {
   city: string | null;
   state: string | null;
   country: string | null;
+  street_address: string | null;
   ip_address: string | null;
   referrer_url: string | null;
   language: string | null;

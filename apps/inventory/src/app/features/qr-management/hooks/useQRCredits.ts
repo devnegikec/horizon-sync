@@ -1,46 +1,49 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
 import axios from 'axios';
 
 import { useUserStore } from '@horizon-sync/store';
 
 import { environment } from '../../../../environments/environment';
-
-interface QRCreditsResponse {
-  balance_credits: number;
-  organization_id: string;
-  last_updated: string;
-}
+import type { QRCreditBalance } from '../types/qrCredit.types';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export const useQRCredits = () => {
-  const [credits, setCredits] = useState<number | null>(null);
+  const [summary, setSummary] = useState<QRCreditBalance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const accessToken = useUserStore((s) => s.accessToken);
 
-  const fetchCredits = async () => {
+  const fetchCredits = useCallback(async () => {
     if (!accessToken) {
       setLoading(false);
       return;
     }
 
     try {
-      const res = await axios.get<QRCreditsResponse>(
+      const res = await axios.get<QRCreditBalance>(
         `${environment.apiCoreUrl}/api/v1/qr-credits/balance`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
-      setCredits(res.data.balance_credits);
+      setSummary(res.data);
       setError(null);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to fetch credits');
-      setCredits(null);
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to fetch credits'));
+      setSummary(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken]);
 
   useEffect(() => {
     fetchCredits();
-  }, [accessToken]);
+  }, [fetchCredits]);
 
-  return { credits, loading, error, refetch: fetchCredits };
+  return {
+    summary,
+    credits: summary?.balance_credits ?? null,
+    loading,
+    error,
+    refetch: fetchCredits,
+  };
 };

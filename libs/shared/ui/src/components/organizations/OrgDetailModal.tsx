@@ -5,7 +5,7 @@ import {
   Building2, Pencil, Save, X, Mail, Phone, Globe, MapPin, Factory,
   DollarSign, Users, Calendar, Clock,
 } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { type Resolver, useForm } from 'react-hook-form';
 import * as z from 'zod';
 
 import { Badge } from '../ui/badge';
@@ -72,6 +72,7 @@ export interface OrgDetailModalProps {
   org: OrgDetailData | null;
   loading?: boolean;
   onUpdate?: (orgId: string, data: OrgDetailEditData) => Promise<void>;
+  viewContent?: React.ReactNode;
 }
 
 const ORG_TYPE_OPTIONS = [
@@ -193,6 +194,8 @@ function ViewMode({ org, onEdit }: { org: OrgDetailData; onEdit?: () => void }) 
   );
 }
 
+// This shared legacy form coordinates all editable organization fields and mutation state.
+// eslint-disable-next-line complexity
 function EditMode({ org, onSave, onCancel }: {
   org: OrgDetailData;
   onSave: (data: OrgDetailEditData) => Promise<void>;
@@ -202,7 +205,7 @@ function EditMode({ org, onSave, onCancel }: {
   const [errorMessage, setErrorMessage] = React.useState('');
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<OrgDetailEditData>({
-    resolver: zodResolver(editSchema) as any,
+    resolver: zodResolver(editSchema) as Resolver<OrgDetailEditData>,
     defaultValues: {
       name: org.name,
       display_name: org.display_name ?? '',
@@ -328,7 +331,9 @@ function EditMode({ org, onSave, onCancel }: {
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
           <X className="mr-2 h-4 w-4" /> Cancel
         </Button>
-        <Button type="button" disabled={isSubmitting} onClick={() => doSave()}
+        <Button type="button"
+disabled={isSubmitting}
+onClick={() => doSave()}
           className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white">
           {isSubmitting ? 'Saving...' : <><Save className="mr-2 h-4 w-4" /> Save Changes</>}
         </Button>
@@ -337,7 +342,14 @@ function EditMode({ org, onSave, onCancel }: {
   );
 }
 
-export function OrgDetailModal({ open, onOpenChange, org, loading, onUpdate }: OrgDetailModalProps) {
+export function OrgDetailModal({
+  open,
+  onOpenChange,
+  org,
+  loading,
+  onUpdate,
+  viewContent,
+}: OrgDetailModalProps) {
   const [editing, setEditing] = React.useState(false);
 
   React.useEffect(() => { if (!open) setEditing(false); }, [open]);
@@ -378,6 +390,7 @@ export function OrgDetailModal({ open, onOpenChange, org, loading, onUpdate }: O
         ) : (
           <>
             <ViewMode org={org} onEdit={onUpdate ? () => setEditing(true) : undefined} />
+            {viewContent}
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
             </DialogFooter>

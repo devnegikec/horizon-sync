@@ -30,7 +30,9 @@ export const analyticsApi = {
   },
 
   getInteractionFunnel(accessToken: string, params?: DateRange): Promise<AnalyticsInteractionFunnel> {
-    return apiRequest<AnalyticsInteractionFunnel>('/analytics/scans/interaction-funnel', accessToken, { params: params as Record<string, string | undefined> });
+    return apiRequest<AnalyticsInteractionFunnel>('/analytics/scans/interaction-funnel', accessToken, {
+      params: params as Record<string, string | undefined>,
+    });
   },
 
   // ── Geo ───────────────────────────────────────────────────
@@ -42,17 +44,15 @@ export const analyticsApi = {
   },
 
   // ── Device Timeline ───────────────────────────────────────
-  getDeviceTimeline(accessToken: string, params?: DateRange): Promise<AnalyticsDeviceTimeline[]> {
-    return apiRequest<AnalyticsDeviceTimeline[]>('/analytics/scans/device-timeline', accessToken, { params: params as Record<string, string | undefined> });
+  async getDeviceTimeline(accessToken: string, params?: DateRange): Promise<AnalyticsDeviceTimeline[]> {
+    const res = await apiRequest<{ timeline: AnalyticsDeviceTimeline[] }>('/analytics/scans/device-timeline', accessToken, {
+      params: params as Record<string, string | undefined>,
+    });
+    return res.timeline || [];
   },
 
   // ── Scan Events Log ───────────────────────────────────────
-  getScans(
-    accessToken: string,
-    page = 1,
-    pageSize = 50,
-    params?: DateRange & { serial_number?: string },
-  ): Promise<AnalyticsScanListResponse> {
+  getScans(accessToken: string, page = 1, pageSize = 50, params?: DateRange & { serial_number?: string }): Promise<AnalyticsScanListResponse> {
     return apiRequest<AnalyticsScanListResponse>('/analytics/scans', accessToken, {
       params: {
         ...buildPaginationParams(page, pageSize),

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 
 import { qrBlockService } from '../services/qrBlockService';
 import type { QRBlock, BlockStatus } from '../types/qrBlock.types';
@@ -12,43 +12,42 @@ export const useBlockStatus = (blockId: string | null) => {
   const [block, setBlock] = useState<QRBlock | null>(null);
   const [loading, setLoading] = useState(false);
   const [pollInterval, setPollInterval] = useState(INITIAL_POLL_MS);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const stop = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-  };
-
-  const poll = async () => {
-    if (!blockId) return;
-    try {
-      const data = await qrBlockService.getBlock(blockId);
-      setBlock(data);
-      
-      if (TERMINAL.includes(data.status)) {
-        stop();
-      } else {
-        // Exponential backoff: 1s → 1.5s → 2.25s → 3.375s → ... → max 10s
-        const nextInterval = Math.min(pollInterval * BACKOFF_MULTIPLIER, MAX_POLL_MS);
-        setPollInterval(nextInterval);
-        timeoutRef.current = setTimeout(poll, nextInterval);
-      }
-    } catch {
-      // Retry with backoff on error
-      const nextInterval = Math.min(pollInterval * BACKOFF_MULTIPLIER, MAX_POLL_MS);
-      setPollInterval(nextInterval);
-      timeoutRef.current = setTimeout(poll, nextInterval);
-    }
-  };
 
   useEffect(() => {
     if (!blockId) return;
-    setPollInterval(INITIAL_POLL_MS); // Reset interval on new block
+
+    let cancelled = false;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let interval = INITIAL_POLL_MS;
+
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const data = await qrBlockService.getBlock(blockId);
+        if (cancelled) return;
+        setBlock(data);
+        if (TERMINAL.includes(data.status)) return;
+      } catch {
+        if (cancelled) return;
+      }
+
+      interval = Math.min(
+        interval * BACKOFF_MULTIPLIER,
+        MAX_POLL_MS,
+      );
+      setPollInterval(interval);
+      timeout = setTimeout(poll, interval);
+    };
+
+    setBlock(null);
+    setPollInterval(INITIAL_POLL_MS);
     setLoading(true);
     poll().finally(() => setLoading(false));
-    return stop;
+
+    return () => {
+      cancelled = true;
+      if (timeout) clearTimeout(timeout);
+    };
   }, [blockId]);
 
   return { block, loading, pollInterval };

@@ -3,7 +3,13 @@ import axios from 'axios';
 import { useUserStore } from '@horizon-sync/store';
 
 import { environment } from '../../../../environments/environment';
-import type { QRBlock, QRBlockCreate, QRBlockListResponse, ProductItem } from '../types/qrBlock.types';
+import type {
+  ProductItem,
+  QRBlock,
+  QRBlockCreate,
+  QRBlockListParams,
+  QRBlockListResponse,
+} from '../types/qrBlock.types';
 
 const API_BASE_URL = environment.apiCoreUrl;
 
@@ -44,7 +50,16 @@ class QRBlockService {
     return res.data;
   }
 
-  async listAllBlocks(params?: { page?: number; page_size?: number; status?: string }): Promise<QRBlockListResponse> {
+  async retryBlock(blockId: string): Promise<QRBlock> {
+    const res = await axios.post(
+      `${API_BASE_URL}/api/v1/qr-products/blocks/${blockId}/retry`,
+      {},
+      { headers: this.getHeaders() },
+    );
+    return res.data;
+  }
+
+  async listAllBlocks(params?: QRBlockListParams): Promise<QRBlockListResponse> {
     const res = await axios.get(
       `${API_BASE_URL}/api/v1/qr-products/blocks`,
       { headers: this.getHeaders(), params },
@@ -63,7 +78,7 @@ class QRBlockService {
     return res.data;
   }
 
-  async getDownloadUrl(blockId: string): Promise<{ download_url: string }> {
+  async getDownloadUrl(blockId: string): Promise<{ signed_url: string; expires_at: string }> {
     // Always fetch fresh — signed URLs expire
     const res = await axios.get(
       `${API_BASE_URL}/api/v1/qr-products/blocks/${blockId}/download`,

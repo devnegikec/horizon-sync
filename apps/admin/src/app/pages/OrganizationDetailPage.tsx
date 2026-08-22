@@ -46,6 +46,7 @@ import {
 } from '@horizon-sync/ui/components/ui/select';
 import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
 
+import { OrganizationCreditsCard } from '../components/OrganizationCreditsCard';
 import { useOrganization, useUpdateOrganization } from '../hooks/useOrganization';
 import type { AdminOrgDetailResponse, OrgStatus } from '../types';
 
@@ -198,6 +199,8 @@ function DetailSkeleton() {
   );
 }
 
+// This legacy form coordinates validation, mutation errors, and suspension confirmation.
+// eslint-disable-next-line complexity
 function EditForm({
   org,
   onCancel,
@@ -442,12 +445,14 @@ function EditForm({
   );
 }
 
+// This page retains the existing loading, error, view, and edit branches.
+// eslint-disable-next-line complexity
 export function OrganizationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
 
-  const { data: org, isLoading, isError, error } = useOrganization(id!);
+  const { data: org, isLoading, isError, error } = useOrganization(id ?? '');
 
   const is404 =
     isError && (error as Error & { status?: number })?.status === 404;
@@ -489,6 +494,7 @@ export function OrganizationDetailPage() {
       ) : org ? (
         <>
           <SummaryCards org={org} loading={false} />
+          <OrganizationCreditsCard organizationId={org.id} />
           {editing ? (
             <EditForm org={org}
               onCancel={() => setEditing(false)}

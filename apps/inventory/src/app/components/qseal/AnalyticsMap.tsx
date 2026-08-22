@@ -41,13 +41,37 @@ function MapResizeHandler() {
   return null;
 }
 
+function MapBoundsHandler({ points }: { points: AnalyticsGeoPoint[] }) {
+  const map = useMap();
+
+  React.useEffect(() => {
+    const bounds = points
+      .filter(
+        (point) =>
+          Number.isFinite(point.latitude) &&
+          Number.isFinite(point.longitude) &&
+          point.latitude >= -90 &&
+          point.latitude <= 90 &&
+          point.longitude >= -180 &&
+          point.longitude <= 180,
+      )
+      .map((point) => [point.latitude, point.longitude] as [number, number]);
+    if (bounds.length === 1) {
+      map.setView(bounds[0], 11);
+    } else if (bounds.length > 1) {
+      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 12 });
+    }
+  }, [map, points]);
+
+  return null;
+}
+
 interface AnalyticsMapProps {
   points: AnalyticsGeoPoint[];
   loading: boolean;
 }
 
 export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
-  console.log('AnalyticsMap points:', points);
   // ── Loading state ──────────────────────────────────────────────────
   if (loading) {
     return (
@@ -98,14 +122,14 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
         <CardTitle className="text-sm font-medium">Geographic Distribution</CardTitle>
         <span className="text-xs text-muted-foreground ml-auto">{points.length} locations</span>
       </CardHeader>
-      <CardContent className="p-0">
-        <MapContainer center={[20, 0]}
-          zoom={2}
-          scrollWheelZoom={true}
-          className="h-[400px] w-full rounded-b-lg" >
+      <CardContent className="p-0" style={{ minHeight: 400 }}>
+        <MapContainer center={[20, 0]} zoom={2} scrollWheelZoom={true} className="w-full rounded-b-lg" style={{ height: 400, width: '100%' }}>
           <MapResizeHandler />
-          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <MapBoundsHandler points={points} />
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
 
           {points.map((p, i) => {
             if (p.latitude == null || p.longitude == null) return null;
@@ -113,7 +137,8 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
             const label = [p.city, p.state, p.country].filter(Boolean).join(', ') || 'Unknown';
 
             return (
-              <CircleMarker key={i}
+              <CircleMarker
+                key={i}
                 center={[p.latitude, p.longitude]}
                 radius={radius}
                 pathOptions={{
@@ -121,10 +146,12 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
                   fillOpacity: 0.55,
                   color: '#1E40AF',
                   weight: 1.5,
-                }}>
+                }}
+              >
                 <Popup>
                   <div style={{ fontFamily: 'sans-serif', fontSize: 13 }}>
-                    <strong>{label}</strong><br />
+                    <strong>{label}</strong>
+                    <br />
                     <b>{p.count.toLocaleString()} scans</b>
                   </div>
                 </Popup>
