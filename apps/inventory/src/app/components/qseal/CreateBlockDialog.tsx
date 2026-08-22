@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@horizon-sync/ui/compon
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { cn } from '@horizon-sync/ui/lib/utils';
 
+import { batchApi } from '../../api/batches';
 import { qrProductApi } from '../../api/qr-products';
 import { useCreateBlock } from '../../features/qr-management/hooks/useCreateBlock';
 import { useQRCredits } from '../../features/qr-management/hooks/useQRCredits';
@@ -18,6 +19,7 @@ import type { QRBlockCreate, QRBlockFilterType, SerialNumberType } from '../../f
 import { getApiErrorMessage } from '../../features/qr-management/utils/apiError';
 import { useQRProductSettings } from '../../hooks/useQRProductSettings';
 import { notificationService } from '../../services/notificationService';
+import type { BatchListItem } from '../../types/batch.types';
 import type { QSealProductListItem } from '../../types/qseal.types';
 
 /* ------------------------------------------------------------------ */
@@ -119,13 +121,11 @@ function ProductSelect({ value, onChange }: ProductSelectProps) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
+        <button type="button"
           role="combobox"
           aria-expanded={open}
           aria-controls="product-listbox"
-          className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-        >
+          className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
           <span className={cn('truncate', !value && 'text-muted-foreground')}>{value ? selectedName || value : 'Search products…'}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
@@ -133,13 +133,11 @@ function ProductSelect({ value, onChange }: ProductSelectProps) {
       <PopoverContent className="p-0 w-[340px]">
         <div className="flex items-center border-b px-3 py-2">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-          <Input
-            ref={inputRef}
+          <Input ref={inputRef}
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search by name or GTIN…"
-            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0"
-          />
+            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0"/>
         </div>
         <div id="product-listbox" className="max-h-60 overflow-y-auto p-1">
           {loading && (
@@ -151,19 +149,114 @@ function ProductSelect({ value, onChange }: ProductSelectProps) {
           {!loading && products.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No products found.</p>}
           {!loading &&
             products.map((p) => (
-              <button
-                key={p.id}
+              <button key={p.id}
                 type="button"
                 className={cn(
                   'relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
                   value === p.id && 'bg-accent text-accent-foreground',
                 )}
-                onClick={() => handleSelect(p)}
-              >
+                onClick={() => handleSelect(p)}>
                 <Check className={cn('mr-2 h-4 w-4 shrink-0', value === p.id ? 'opacity-100' : 'opacity-0')} />
                 <div className="text-left">
                   <p className="font-medium">{p.name}</p>
                   {p.gtin && <p className="text-xs text-muted-foreground font-mono">{p.gtin}</p>}
+                </div>
+              </button>
+            ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Searchable batch select                                            */
+/* ------------------------------------------------------------------ */
+
+interface BatchSelectProps {
+  value: string;
+  onChange: (batchNo: string) => void;
+}
+
+function BatchSelect({ value, onChange }: BatchSelectProps) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState('');
+  const [batches, setBatches] = React.useState<BatchListItem[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [selectedLabel, setSelectedLabel] = React.useState('');
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchBatches = React.useCallback(
+    async (q: string) => {
+      if (!accessToken) return;
+      setLoading(true);
+      try {
+        const res = await batchApi.list(accessToken, 1, 50, { search: q || undefined });
+        setBatches(res.batches ?? []);
+      } catch {
+        setBatches([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [accessToken],
+  );
+
+  React.useEffect(() => {
+    if (!open) {
+      setSearch('');
+      return;
+    }
+    fetchBatches('');
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }, [open, fetchBatches]);
+
+  const handleSearch = (q: string) => {
+    setSearch(q);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchBatches(q), 300);
+  };
+
+  const handleSelect = (batch: BatchListItem) => {
+    onChange(batch.batch_no);
+    setSelectedLabel(batch.batch_no);
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" role="combobox" aria-expanded={open} aria-controls="batch-listbox" className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
+          <span className={cn('truncate', !value && 'text-muted-foreground')}>{value ? selectedLabel || value : 'Search batches…'}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[340px]">
+        <div className="flex items-center border-b px-3 py-2">
+          <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+          <Input ref={inputRef} value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="Search by batch number…" className="h-7 border-0 p-0 shadow-none focus-visible:ring-0" />
+        </div>
+        <div id="batch-listbox" className="max-h-60 overflow-y-auto p-1">
+          {loading && (
+            <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading…
+            </div>
+          )}
+          {!loading && batches.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No batches found.</p>}
+          {!loading &&
+            batches.map((batch) => (
+              <button key={batch.id} type="button" className={cn('relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground', value === batch.batch_no && 'bg-accent text-accent-foreground')} onClick={() => handleSelect(batch)}>
+                <Check className={cn('mr-2 h-4 w-4 shrink-0', value === batch.batch_no ? 'opacity-100' : 'opacity-0')} />
+                <div className="text-left">
+                  <p className="font-medium">{batch.batch_no}</p>
+                  {(batch.item_name || batch.status || batch.expiry_date) && (
+                    <p className="text-xs text-muted-foreground">
+                      {[batch.item_name, batch.status, batch.expiry_date ? `expiry ${batch.expiry_date.slice(0, 10)}` : null].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
                 </div>
               </button>
             ))}
@@ -299,14 +392,12 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Product *</Label>
-            <ProductSelect
-              value={productId}
+            <ProductSelect value={productId}
               onChange={(product) => {
                 setProductId(product.id);
                 setSelectedProduct(product);
                 setStartingSerial('');
-              }}
-            />
+              }}/>
           </div>
           {selectedProduct && (
             <>
@@ -328,17 +419,15 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
             </>
           )}
           <div className="space-y-1.5">
-            <Label htmlFor="batch">Batch Name *</Label>
-            <Input id="batch" value={batch} onChange={(e) => setBatch(e.target.value)} maxLength={50} placeholder="e.g. Batch-Jan-2025" required />
+            <Label>Batch *</Label>
+            <BatchSelect value={batch} onChange={setBatch} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Distribution Channel</Label>
-              <Select
-                value={channelSettingId || 'none'}
+              <Select value={channelSettingId || 'none'}
                 onValueChange={(value) => setChannelSettingId(value === 'none' ? '' : value)}
-                disabled={channelsLoading}
-              >
+                disabled={channelsLoading}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select channel" />
                 </SelectTrigger>
@@ -356,11 +445,9 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
             </div>
             <div className="space-y-1.5">
               <Label>Destination Market</Label>
-              <Select
-                value={destinationSettingId || 'none'}
+              <Select value={destinationSettingId || 'none'}
                 onValueChange={(value) => setDestinationSettingId(value === 'none' ? '' : value)}
-                disabled={destinationsLoading}
-              >
+                disabled={destinationsLoading}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select destination" />
                 </SelectTrigger>
@@ -405,26 +492,22 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
           {isSequential && (
             <div className="space-y-1.5">
               <Label htmlFor="startingSerial">Starting Serial *</Label>
-              <Input
-                id="startingSerial"
+              <Input id="startingSerial"
                 value={startingSerial}
                 onChange={(e) => setStartingSerial(e.target.value)}
                 inputMode="numeric"
                 pattern="[0-9]+"
                 maxLength={srType === 'S8DN' ? 8 : 10}
                 placeholder={srType === 'S8DN' ? 'Up to 8 digits' : 'Up to 10 digits'}
-                required
-              />
+                required/>
             </div>
           )}
           <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
+            <input type="checkbox"
               id="includeQrImage"
               checked={includeQrImage}
               onChange={(e) => setIncludeQrImage(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-            />
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
             <Label htmlFor="includeQrImage" className="text-sm font-normal cursor-pointer">
               Include QR code images in Excel
             </Label>
@@ -434,13 +517,11 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
           {/* Master Pack (Cascade) */}
           <div className="border rounded-lg p-3 space-y-3">
             <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
+              <input type="checkbox"
                 id="masterPackEnabled"
                 checked={masterPackEnabled}
                 onChange={(e) => setMasterPackEnabled(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-              />
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
               <Label htmlFor="masterPackEnabled" className="text-sm font-medium cursor-pointer flex items-center gap-1.5">
                 <Layers className="h-4 w-4" />
                 Enable Master Pack (Cascade)
@@ -450,15 +531,13 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
               <div className="pl-6 space-y-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="masterPackSize">Items per Master Pack</Label>
-                  <Input
-                    id="masterPackSize"
+                  <Input id="masterPackSize"
                     type="number"
                     value={masterPackSize}
                     onChange={(e) => setMasterPackSize(Math.max(1, Number(e.target.value)))}
                     min={1}
                     max={quantity}
-                    required
-                  />
+                    required/>
                   <p className="text-xs text-muted-foreground">Number of child QR codes grouped under each parent master pack</p>
                 </div>
                 {masterPackSize > 0 && masterPackParentCount > 0 && (
@@ -483,12 +562,10 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button
-              type="submit"
+            <Button type="submit"
               disabled={
                 loading || !batch.trim() || !productId || !serialConfigurationReady || !hasEnoughCredits || creditsLoading || Boolean(creditsError)
-              }
-            >
+              }>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
