@@ -797,3 +797,62 @@ export interface WMSPagination {
   has_next: boolean;
   has_prev: boolean;
 }
+
+// ============================================
+// VEHICLE ARRIVAL TYPES (inbound dock check-in)
+// ============================================
+
+export interface VehicleArrivalCreate {
+  vehicle_no: string;
+  driver_name?: string | null;
+  driver_contact?: string | null;
+  transporter?: string | null;
+  warehouse_id?: string | null;
+  dock?: string | null;
+  asn_order_ids?: string[];
+  notes?: string | null;
+}
+
+export interface VehicleArrivalAsnRef {
+  id: string;
+  asn_order_no: string;
+  status: string | null;
+}
+
+export interface VehicleArrival {
+  id: string;
+  organization_id: string;
+  vehicle: {
+    id: string;
+    vehicle_no: string;
+    driver_name: string | null;
+    driver_contact: string | null;
+    transporter: string | null;
+  } | null;
+  warehouse_id: string | null;
+  dock: string | null;
+  status: string;
+  arrived_at: string;
+  notes: string | null;
+  asn_orders: VehicleArrivalAsnRef[];
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VehicleArrivalListItem {
+  id: string;
+  vehicle_no: string | null;
+  driver_name: string | null;
+  transporter: string | null;
+  warehouse_id: string | null;
+  dock: string | null;
+  status: string;
+  arrived_at: string;
+  asn_order_count: number;
+}
+
+export interface PaginatedVehicleArrivals {
+  vehicle_arrivals: VehicleArrivalListItem[];
+  pagination: WMSPagination;
+}

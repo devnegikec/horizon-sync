@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
 
-import { inboundApi, layoutApi, outboundApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi } from '../utility/api/wms';
+import { inboundApi, layoutApi, outboundApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi, vehicleArrivalApi } from '../utility/api/wms';
 import type {
   DispatchListResponse,
   DispatchRecord,
@@ -24,6 +24,8 @@ import type {
   WMSWorkerListResponse,
   WMSDeviceListResponse,
   WMSDashboardStats,
+  PaginatedVehicleArrivals,
+  VehicleArrival,
 } from '../types/wms.types';
 
 // ============================================
@@ -653,4 +655,74 @@ export function useWMSDashboard(params: { warehouse_id?: string; period?: string
   React.useEffect(() => { fetch(); }, [fetch]);
 
   return { data, loading, error, refetch: fetch };
+}
+
+// ============================================
+// VEHICLE ARRIVALS HOOK
+// ============================================
+
+export function useVehicleArrivals(params: { warehouse_id?: string; status?: string; search?: string; page?: number; page_size?: number }) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [data, setData] = React.useState<PaginatedVehicleArrivals | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const fetch = React.useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await vehicleArrivalApi.list(accessToken, params);
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load vehicle arrivals');
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, params.warehouse_id, params.status, params.search, params.page, params.page_size]);
+
+  React.useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  const register = React.useCallback(
+    async (payload: {
+      vehicle_no: string;
+      driver_name?: string | null;
+      driver_contact?: string | null;
+      transporter?: string | null;
+      warehouse_id?: string | null;
+      dock?: string | null;
+      asn_order_ids?: string[];
+      notes?: string | null;
+    }): Promise<VehicleArrival> => {
+      if (!accessToken) throw new Error('Not authenticated');
+      const result = await vehicleArrivalApi.register(accessToken, payload);
+      await fetch();
+      return result;
+    },
+    [accessToken, fetch],
+  );
+
+  const linkAsns = React.useCallback(
+    async (arrivalId: string, asnOrderIds: string[]): Promise<VehicleArrival> => {
+      if (!accessToken) throw new Error('Not authenticated');
+      const result = await vehicleArrivalApi.linkAsns(accessToken, arrivalId, asnOrderIds);
+      await fetch();
+      return result;
+    },
+    [accessToken, fetch],
+  );
+
+  const unlinkAsn = React.useCallback(
+    async (arrivalId: string, asnOrderId: string): Promise<VehicleArrival> => {
+      if (!accessToken) throw new Error('Not authenticated');
+      const result = await vehicleArrivalApi.unlinkAsn(accessToken, arrivalId, asnOrderId);
+      await fetch();
+      return result;
+    },
+    [accessToken, fetch],
+  );
+
+  return { data, loading, error, refetch: fetch, register, linkAsns, unlinkAsn };
 }

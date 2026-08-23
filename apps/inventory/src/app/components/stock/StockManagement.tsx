@@ -825,11 +825,12 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
 
   // Sync global filters → ASN management
   React.useEffect(() => {
-    setAsnFilters({
+    setAsnFilters((prev) => ({
+      ...prev,
       search: filters.search,
       status: filters.status,
       warehouse_id: effectiveWarehouseId,
-    });
+    }));
   }, [filters.search, filters.status, effectiveWarehouseId, setAsnFilters]);
 
   /* ---------- status options per tab ---------- */
