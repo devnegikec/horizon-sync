@@ -227,6 +227,8 @@ export interface ReceivingSlip {
   warehouse_id: string;
   asn_order_id: string | null;
   asn_order_no: string | null;
+  vehicle_arrival_id: string | null;
+  vehicle_no: string | null;
   status: ReceivingSlipStatus;
   total_boxes: number;
   total_items: number;
@@ -861,6 +863,7 @@ export interface VehicleArrivalListItem {
   status: string;
   arrived_at: string;
   asn_order_count: number;
+  receiving_slip_count: number;
 }
 
 export interface PaginatedVehicleArrivals {
