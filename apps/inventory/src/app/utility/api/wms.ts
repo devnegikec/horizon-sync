@@ -39,6 +39,7 @@ import type {
   WMSDashboardStats,
   VehicleArrival,
   VehicleArrivalCreate,
+  VehicleArrivalUpdate,
   VehicleArrivalListItem,
   PaginatedVehicleArrivals,
 } from '../../types/wms.types';
@@ -199,6 +200,12 @@ export const vehicleArrivalApi = {
 
   get: (token: string, id: string) =>
     req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}`, token),
+
+  update: (token: string, id: string, data: VehicleArrivalUpdate) =>
+    req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}`, token, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 
   linkAsns: (token: string, id: string, asnOrderIds: string[]) =>
     req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}/asns`, token, {

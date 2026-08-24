@@ -714,6 +714,26 @@ export function useVehicleArrivals(params: { warehouse_id?: string; status?: str
     [accessToken, fetch],
   );
 
+  const update = React.useCallback(
+    async (
+      arrivalId: string,
+      payload: {
+        vehicle_no?: string;
+        driver_name?: string | null;
+        driver_contact?: string | null;
+        transporter?: string | null;
+        dock?: string | null;
+        notes?: string | null;
+      },
+    ): Promise<VehicleArrival> => {
+      if (!accessToken) throw new Error('Not authenticated');
+      const result = await vehicleArrivalApi.update(accessToken, arrivalId, payload);
+      await fetch();
+      return result;
+    },
+    [accessToken, fetch],
+  );
+
   const unlinkAsn = React.useCallback(
     async (arrivalId: string, asnOrderId: string): Promise<VehicleArrival> => {
       if (!accessToken) throw new Error('Not authenticated');
@@ -724,5 +744,5 @@ export function useVehicleArrivals(params: { warehouse_id?: string; status?: str
     [accessToken, fetch],
   );
 
-  return { data, loading, error, refetch: fetch, register, linkAsns, unlinkAsn };
+  return { data, loading, error, refetch: fetch, register, linkAsns, unlinkAsn, update };
 }

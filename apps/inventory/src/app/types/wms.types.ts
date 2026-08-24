@@ -813,6 +813,15 @@ export interface VehicleArrivalCreate {
   notes?: string | null;
 }
 
+export interface VehicleArrivalUpdate {
+  vehicle_no?: string;
+  driver_name?: string | null;
+  driver_contact?: string | null;
+  transporter?: string | null;
+  dock?: string | null;
+  notes?: string | null;
+}
+
 export interface VehicleArrivalAsnRef {
   id: string;
   asn_order_no: string;
@@ -844,9 +853,11 @@ export interface VehicleArrivalListItem {
   id: string;
   vehicle_no: string | null;
   driver_name: string | null;
+  driver_contact: string | null;
   transporter: string | null;
   warehouse_id: string | null;
   dock: string | null;
+  notes: string | null;
   status: string;
   arrived_at: string;
   asn_order_count: number;

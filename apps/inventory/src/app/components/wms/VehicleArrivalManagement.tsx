@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Plus, Truck, X, Loader2, Link2 } from 'lucide-react';
+import { Plus, Truck, X, Loader2, Link2, Pencil } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
@@ -51,7 +51,18 @@ export function VehicleArrivalManagement({ warehouseId }: VehicleArrivalManageme
   const [linkingArrivalId, setLinkingArrivalId] = React.useState<string | null>(null);
   const [linkSelectedIds, setLinkSelectedIds] = React.useState<Set<string>>(new Set());
 
-  const { data, loading, error, refetch, register, linkAsns, unlinkAsn } = useVehicleArrivals({
+  // Editing an existing arrival's vehicle details
+  const [editingArrival, setEditingArrival] = React.useState<VehicleArrivalListItem | null>(null);
+  const [editForm, setEditForm] = React.useState({
+    vehicle_no: '',
+    driver_name: '',
+    driver_contact: '',
+    transporter: '',
+    dock: '',
+    notes: '',
+  });
+
+  const { data, loading, error, refetch, register, linkAsns, unlinkAsn, update } = useVehicleArrivals({
     warehouse_id: warehouseId,
     page: 1,
     page_size: 50,
@@ -142,6 +153,46 @@ export function VehicleArrivalManagement({ warehouseId }: VehicleArrivalManageme
       toast({ title: 'ASN unlinked', description: 'Vehicle arrival updated.' });
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to unlink ASN', variant: 'destructive' });
+    }
+  };
+
+  const openEdit = (a: VehicleArrivalListItem) => {
+    setEditingArrival(a);
+    setEditForm({
+      vehicle_no: a.vehicle_no ?? '',
+      driver_name: a.driver_name ?? '',
+      driver_contact: a.driver_contact ?? '',
+      transporter: a.transporter ?? '',
+      dock: a.dock ?? '',
+      notes: a.notes ?? '',
+    });
+  };
+
+  const setEditField = (key: keyof typeof editForm, value: string) =>
+    setEditForm((prev) => ({ ...prev, [key]: value }));
+
+  const handleSaveEdit = async () => {
+    if (!editingArrival) return;
+    if (!editForm.vehicle_no.trim()) {
+      toast({ title: 'Error', description: 'Vehicle number is required', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      await update(editingArrival.id, {
+        vehicle_no: editForm.vehicle_no.trim(),
+        driver_name: editForm.driver_name.trim() || null,
+        driver_contact: editForm.driver_contact.trim() || null,
+        transporter: editForm.transporter.trim() || null,
+        dock: editForm.dock.trim() || null,
+        notes: editForm.notes.trim() || null,
+      });
+      toast({ title: 'Vehicle updated', description: `Vehicle ${editForm.vehicle_no.trim()} updated.` });
+      setEditingArrival(null);
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to update vehicle', variant: 'destructive' });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -264,10 +315,16 @@ export function VehicleArrivalManagement({ warehouseId }: VehicleArrivalManageme
                   <td className="px-3 py-2">{a.asn_order_count}</td>
                   <td className="px-3 py-2">{formatDate(a.arrived_at, 'DD-MMM-YY', { includeTime: true, timeFormat: 'HH:mm' })}</td>
                   <td className="px-3 py-2 text-right">
-                    <Button variant="outline" size="sm" className="gap-1"
-                      onClick={() => { setLinkingArrivalId(a.id); setLinkSelectedIds(new Set()); void fetchAsnOptions(); }}>
-                      <Link2 className="h-3 w-3" /> Link ASN
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button variant="outline" size="sm" className="gap-1"
+                        onClick={() => openEdit(a)}>
+                        <Pencil className="h-3 w-3" /> Edit
+                      </Button>
+                      <Button variant="outline" size="sm" className="gap-1"
+                        onClick={() => { setLinkingArrivalId(a.id); setLinkSelectedIds(new Set()); void fetchAsnOptions(); }}>
+                        <Link2 className="h-3 w-3" /> Link ASN
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -303,6 +360,52 @@ export function VehicleArrivalManagement({ warehouseId }: VehicleArrivalManageme
               <Button onClick={handleLinkAsns} disabled={saving || linkSelectedIds.size === 0}>
                 {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Link ({linkSelectedIds.size})
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit vehicle modal */}
+      {editingArrival && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background rounded-lg shadow-lg p-6 max-w-lg w-full mx-4 max-h-[85vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-2">Edit Vehicle Details</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Update vehicle, driver and dock details for arrival{' '}
+              <span className="font-mono">{editingArrival.vehicle_no ?? '—'}</span>.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="ev-vehicle-no">Vehicle Number *</Label>
+                <Input id="ev-vehicle-no" value={editForm.vehicle_no} onChange={(e) => setEditField('vehicle_no', e.target.value)} placeholder="e.g., KA01AB1234" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ev-driver">Driver Name</Label>
+                <Input id="ev-driver" value={editForm.driver_name} onChange={(e) => setEditField('driver_name', e.target.value)} placeholder="Driver name" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ev-driver-contact">Driver Contact</Label>
+                <Input id="ev-driver-contact" value={editForm.driver_contact} onChange={(e) => setEditField('driver_contact', e.target.value)} placeholder="Phone" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ev-transporter">Transporter</Label>
+                <Input id="ev-transporter" value={editForm.transporter} onChange={(e) => setEditField('transporter', e.target.value)} placeholder="Transporter name" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ev-dock">Dock</Label>
+                <Input id="ev-dock" value={editForm.dock} onChange={(e) => setEditField('dock', e.target.value)} placeholder="e.g., Dock-A" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="ev-notes">Notes</Label>
+                <Input id="ev-notes" value={editForm.notes} onChange={(e) => setEditField('notes', e.target.value)} placeholder="Optional notes" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-4">
+              <Button variant="outline" onClick={() => setEditingArrival(null)}>Cancel</Button>
+              <Button onClick={handleSaveEdit} disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save Changes
               </Button>
             </div>
           </div>
