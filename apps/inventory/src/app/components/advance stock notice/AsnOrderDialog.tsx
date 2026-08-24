@@ -16,6 +16,7 @@ import { WarehousesResponse } from '../../types/warehouse.types';
 import { asnOrderApi } from '../../utility/api/asn-orders';
 import { warehouseApi } from '../../utility/api/warehouses';
 import { parseAsnEntryCsv, ASN_ENTRY_SAMPLE_CSV } from '../../utility/asnEntryCsvParser';
+import { formatDate } from '../../utility';
 import { convertAsnOrderToPDFData } from '../../utils/pdf/asnOrderToPDF';
 import { EmailComposer } from '../common';
 import { StatusBadge } from '../quotations/StatusBadge';
@@ -161,6 +162,68 @@ function getSubmitLabel(saving: boolean, isEdit: boolean): string {
 function getDialogTitle(isEdit: boolean, viewMode?: boolean): string {
   if (viewMode) return 'View ASN Order';
   return isEdit ? 'Edit ASN Order' : 'Create ASN Order';
+}
+
+function formatArrivalStatus(status: string): string {
+  return status.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function VehicleDetails({ asnOrder }: { asnOrder: AsnOrder }) {
+  const arrivals = asnOrder.vehicle_arrivals ?? [];
+
+  return (
+    <>
+      <Separator />
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Truck className="h-4 w-4" />
+          <h3 className="text-sm font-medium">Vehicle Details</h3>
+          {arrivals.length > 0 && <Badge variant="secondary">{arrivals.length}</Badge>}
+        </div>
+
+        {arrivals.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No vehicle arrival has been recorded for this ASN order.</p>
+        ) : (
+          <div className="space-y-3">
+            {arrivals.map((arrival) => (
+              <div key={arrival.id} className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Vehicle Number</p>
+                  <p className="font-mono text-sm font-medium">{arrival.vehicle_no || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Driver</p>
+                  <p className="text-sm">{arrival.driver_name || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Driver Contact</p>
+                  <p className="text-sm">{arrival.driver_contact || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Transporter</p>
+                  <p className="text-sm">{arrival.transporter || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Dock</p>
+                  <p className="text-sm">{arrival.dock || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <Badge variant={arrival.status === 'arrived' ? 'success' : 'secondary'}>
+                    {formatArrivalStatus(arrival.status)}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Arrived At</p>
+                  <p className="text-sm">{formatDate(arrival.arrived_at, 'DD-MMM-YY', { includeTime: true })}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </>
+  );
 }
 
 function useAsnOrderPDFActions(targetWarehouse?: Warehouse | null) {
@@ -551,6 +614,8 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
             </div>
 
             {isEdit && resolvedOrder?.items && <FulfillmentStatusTable items={resolvedOrder.items} />}
+
+            {viewMode && resolvedOrder && <VehicleDetails asnOrder={resolvedOrder} />}
 
             <DialogFooter>
               {viewMode ? (
