@@ -17,6 +17,10 @@ export interface AsnOrderFilters {
   search: string;
   status: string;
   warehouse_id: string;
+  source_warehouse_id: string;
+  delivery_date_from: string;
+  delivery_date_to: string;
+  vehicle_no: string;
 }
 
 const asnOrdersQueryKey = ['asn-orders'] as const;
@@ -24,12 +28,12 @@ const asnOrdersQueryKey = ['asn-orders'] as const;
 function useAsnOrders(
   initialPage: number,
   initialPageSize: number,
-  filters?: { search?: string; status?: string; warehouse_id?: string }
+  filters?: { search?: string; status?: string; warehouse_id?: string; source_warehouse_id?: string; delivery_date_from?: string; delivery_date_to?: string; vehicle_no?: string }
 ) {
   const accessToken = useUserStore((s) => s.accessToken);
   const memoizedFilters = React.useMemo(
     () => filters,
-    [filters?.search, filters?.status, filters?.warehouse_id]
+    [filters?.search, filters?.status, filters?.warehouse_id, filters?.source_warehouse_id, filters?.delivery_date_from, filters?.delivery_date_to, filters?.vehicle_no]
   );
 
   const queryKey = React.useMemo(
@@ -39,9 +43,13 @@ function useAsnOrders(
       initialPageSize,
       memoizedFilters?.status ?? 'all',
       memoizedFilters?.warehouse_id ?? 'all',
+      memoizedFilters?.source_warehouse_id ?? 'all',
+      memoizedFilters?.delivery_date_from ?? 'all',
+      memoizedFilters?.delivery_date_to ?? 'all',
+      memoizedFilters?.vehicle_no ?? 'all',
       memoizedFilters?.search ?? '',
     ] as const,
-    [initialPage, initialPageSize, memoizedFilters?.status, memoizedFilters?.warehouse_id, memoizedFilters?.search]
+    [initialPage, initialPageSize, memoizedFilters?.status, memoizedFilters?.warehouse_id, memoizedFilters?.source_warehouse_id, memoizedFilters?.delivery_date_from, memoizedFilters?.delivery_date_to, memoizedFilters?.vehicle_no, memoizedFilters?.search]
   );
 
   const {
@@ -60,6 +68,10 @@ function useAsnOrders(
         {
           status: memoizedFilters?.status !== 'all' ? memoizedFilters?.status : undefined,
           warehouse_id: memoizedFilters?.warehouse_id || undefined,
+          source_warehouse_id: memoizedFilters?.source_warehouse_id || undefined,
+          delivery_date_from: memoizedFilters?.delivery_date_from || undefined,
+          delivery_date_to: memoizedFilters?.delivery_date_to || undefined,
+          vehicle_no: memoizedFilters?.vehicle_no || undefined,
           search: memoizedFilters?.search || undefined,
         }
       ) as AsnOrderListResponse;
@@ -84,6 +96,10 @@ export function useAsnOrderManagement() {
     search: '',
     status: 'all',
     warehouse_id: '',
+    source_warehouse_id: '',
+    delivery_date_from: '',
+    delivery_date_to: '',
+    vehicle_no: '',
   });
 
   const [page, setPage] = React.useState(1);

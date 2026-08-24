@@ -3,8 +3,10 @@ import * as React from 'react';
 import { Plus, Loader2, Truck } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
+import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 
 import { useAsnOrderManagement } from '../../hooks/useAsnOrderManagement';
+import { useMyWarehouses } from '../../hooks/useMyWarehouses';
 import type { AsnOrder } from '../../types/asn-order.types';
 import { AsnOrderDialog } from '../advance stock notice/AsnOrderDialog';
 import { AsnOrdersTable } from '../advance stock notice/AsnOrdersTable';
@@ -20,6 +22,7 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
   const [confirmDeleteOrder, setConfirmDeleteOrder] = React.useState<AsnOrder | null>(null);
 
   const management = useAsnOrderManagement();
+  const { warehouses } = useMyWarehouses();
 
   // Sync warehouse filter from parent
   React.useEffect(() => {
@@ -71,10 +74,71 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
         </Button>
       </div>
 
+      {/* Work-queue filters: source warehouse, ETA, vehicle */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Source Warehouse</Label>
+          <Select
+            value={management.filters.source_warehouse_id || 'all'}
+            onValueChange={(v) =>
+              management.setFilters((prev) => ({ ...prev, source_warehouse_id: v === 'all' ? '' : v }))
+            }
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All sources" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              {warehouses.map((wh) => (
+                <SelectItem key={wh.id} value={wh.id}>
+                  {wh.name} ({wh.code})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs">ETA From</Label>
+          <Input
+            type="date"
+            className="w-[160px]"
+            value={management.filters.delivery_date_from}
+            onChange={(e) =>
+              management.setFilters((prev) => ({ ...prev, delivery_date_from: e.target.value }))
+            }
+          />
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs">ETA To</Label>
+          <Input
+            type="date"
+            className="w-[160px]"
+            value={management.filters.delivery_date_to}
+            onChange={(e) =>
+              management.setFilters((prev) => ({ ...prev, delivery_date_to: e.target.value }))
+            }
+          />
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs">Vehicle No</Label>
+          <Input
+            className="w-[180px]"
+            placeholder="e.g., KA01AB1234"
+            value={management.filters.vehicle_no}
+            onChange={(e) =>
+              management.setFilters((prev) => ({ ...prev, vehicle_no: e.target.value }))
+            }
+          />
+        </div>
+      </div>
+
       <AsnOrdersTable asnOrders={management.asnOrders}
         loading={management.loading}
         error={management.error}
-        hasActiveFilters={!!management.filters.search || management.filters.status !== 'all'}
+        hasActiveFilters={!!management.filters.search || management.filters.status !== 'all' || !!management.filters.vehicle_no || !!management.filters.source_warehouse_id || !!management.filters.delivery_date_from || !!management.filters.delivery_date_to}
         onView={handleView}
         onEdit={handleEdit}
         onDelete={handleDelete}

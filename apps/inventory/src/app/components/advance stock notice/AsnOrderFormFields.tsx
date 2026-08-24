@@ -106,8 +106,7 @@ export function AsnOrderFormFields({
               value={formData.delivery_date}
               onChange={(v) => onFieldChange('delivery_date', v)}
               disabled={readOnly}
-              min={formData.order_date || undefined}
-              required />
+              min={formData.order_date || undefined} />
           </div>
           {/* <div className="space-y-2">
             <Label htmlFor="currency">Currency *</Label>

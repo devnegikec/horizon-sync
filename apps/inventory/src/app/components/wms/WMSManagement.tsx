@@ -20,13 +20,14 @@ import { LocationTreeView } from './LocationTreeView';
 import { OutboundManagement } from './OutboundManagement';
 import { PutAwayView } from './PutAwayView';
 import { ReceivingSlipList } from './ReceivingSlipList';
+import { VehicleArrivalManagement } from './VehicleArrivalManagement';
 import { Warehouse3DView } from './Warehouse3DView';
 import { WarehouseLayoutDesigner } from './WarehouseLayoutDesigner';
 import { WorkersManagementPanel } from './WorkersManagementPanel';
 
 type WMSView = 'dashboard' | 'asn' | 'inbound' | 'outbound' | 'stock' | 'manage';
 type LayoutTab = 'tree' | 'designer' | '3d';
-type InboundSection = 'receiving' | 'putaway';
+type InboundSection = 'receiving' | 'putaway' | 'vehicle';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -168,6 +169,13 @@ export function WMSManagement() {
                     Put-Away
                   </span>
                 </button>
+                <button className={cn('px-4 py-2 text-sm font-medium', inboundSection === 'vehicle' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+                  onClick={() => setInboundSection('vehicle')}>
+                  <span className="flex items-center gap-2">
+                    <Truck className="h-4 w-4" />
+                    Vehicle Arrivals
+                  </span>
+                </button>
               </div>
               <div className="p-4 space-y-4">
                 {inboundSection === 'receiving' && (
@@ -191,6 +199,9 @@ export function WMSManagement() {
                     </div>
                     <PutAwayView warehouseId={selectedWarehouseId || undefined} />
                   </div>
+                )}
+                {inboundSection === 'vehicle' && (
+                  <VehicleArrivalManagement warehouseId={selectedWarehouseId || undefined} />
                 )}
               </div>
             </div>

@@ -37,6 +37,11 @@ import type {
   BinStateResponse,
   CapacityTreeNode,
   WMSDashboardStats,
+  VehicleArrival,
+  VehicleArrivalCreate,
+  VehicleArrivalUpdate,
+  VehicleArrivalListItem,
+  PaginatedVehicleArrivals,
 } from '../../types/wms.types';
 
 const BASE = `${environment.apiCoreUrl}/api/v1`;
@@ -171,6 +176,46 @@ export const inboundApi = {
     req<unknown>(`${BASE}/inbound/receiving-slips/${slipId}/items/${itemId}/reject`, token, {
       method: 'POST',
       body: JSON.stringify({ reason }),
+    }),
+};
+
+// ============================================
+// VEHICLE ARRIVALS
+// ============================================
+
+export const vehicleArrivalApi = {
+  register: (token: string, data: VehicleArrivalCreate) =>
+    req<VehicleArrival>(`${BASE}/vehicle-arrivals`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  list: (token: string, params: { warehouse_id?: string; status?: string; search?: string; page?: number; page_size?: number }) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
+    });
+    return req<PaginatedVehicleArrivals>(`${BASE}/vehicle-arrivals?${p}`, token);
+  },
+
+  get: (token: string, id: string) =>
+    req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}`, token),
+
+  update: (token: string, id: string, data: VehicleArrivalUpdate) =>
+    req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}`, token, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  linkAsns: (token: string, id: string, asnOrderIds: string[]) =>
+    req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}/asns`, token, {
+      method: 'POST',
+      body: JSON.stringify({ asn_order_ids: asnOrderIds }),
+    }),
+
+  unlinkAsn: (token: string, id: string, asnOrderId: string) =>
+    req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}/asns/${asnOrderId}`, token, {
+      method: 'DELETE',
     }),
 };
 

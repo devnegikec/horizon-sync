@@ -2,12 +2,16 @@ import { apiRequest, buildPaginationParams } from './core';
 
 // ASN Orders API helpers
 export const asnOrderApi = {
-  list: (accessToken: string, page = 1, pageSize = 20, filters?: { status?: string; warehouse_id?: string; search?: string; sort_by?: string; sort_order?: 'asc' | 'desc' }) =>
+  list: (accessToken: string, page = 1, pageSize = 20, filters?: { status?: string; warehouse_id?: string; source_warehouse_id?: string; delivery_date_from?: string; delivery_date_to?: string; vehicle_no?: string; search?: string; sort_by?: string; sort_order?: 'asc' | 'desc' }) =>
     apiRequest('/asn-orders', accessToken, {
       params: {
         ...buildPaginationParams(page, pageSize, filters?.sort_by || 'created_at', filters?.sort_order || 'desc'),
         status: filters?.status,
         warehouse_id: filters?.warehouse_id,
+        source_warehouse_id: filters?.source_warehouse_id,
+        delivery_date_from: filters?.delivery_date_from,
+        delivery_date_to: filters?.delivery_date_to,
+        vehicle_no: filters?.vehicle_no,
         search: filters?.search,
       },
     }),
