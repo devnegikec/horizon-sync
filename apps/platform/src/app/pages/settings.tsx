@@ -5,19 +5,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useUserStore } from '@horizon-sync/store';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
 
-import { OrganizationConfigSettings } from '../features/organization/components/OrganizationConfigSettings';
+import { OrganizationProfileSettings } from '../features/organization/components/OrganizationProfileSettings';
+import { OrganizationSettings } from '../features/organization/components/OrganizationSettings';
+import { FeatureFlagsSettings } from '../features/feature-flags/components/FeatureFlagsSettings';
+import { ItemUomConversionsSettings } from '../features/organization/components/ItemUomConversionsSettings';
+import { UomSettings } from '../features/organization/components/UomSettings';
+import { DEFAULT_ORGANIZATION_SETTINGS } from '../types/organization-settings.types';
 import { hasPermissionFromStore } from '../features/organization/utils/permissions';
 import { useAuth } from '../hooks';
-import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
-import { environment } from '../../environments/environment';
-import { BankingDashboard } from '../features/banking/components/BankingDashboard';
-import { BankAccountManager } from '../features/banking/components/BankAccountManager';
-import { PaymentCenter } from '../features/banking/components/PaymentCenter';
-import { TransferWorkflow } from '../features/banking/components/TransferWorkflow';
-import { BankApiConnector } from '../features/banking/components/BankApiConnector';
-import { CreateBankAccountForm } from '../features/banking/components/forms/CreateBankAccountForm';
-import { PaymentForm } from '../features/banking/components/forms/PaymentForm';
-import {BANKING_MODULE_ENABLED} from '@horizon-sync/ui';
 
 
 /**
@@ -32,82 +27,7 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, accessToken, isAuthenticated } = useAuth();
-  const isBankingRoute = location.pathname.startsWith('/settings/banking');
-
-  // Feature flag visibility with loading state to prevent flash
-  // NOTE: Must be called before any early returns (React hooks rule)
-  const bankingFlagStates = useFeatureVisibilities([BANKING_MODULE_ENABLED], `${environment.apiCoreUrl}/api/v1`, accessToken);
-  const bankingFlag = bankingFlagStates[BANKING_MODULE_ENABLED];
-  const bankingFlagLoading = bankingFlag?.loading ?? true;
-
-  // Banking route handler function
-  const RenderBankingRoute = () => {
-    const pathname = location.pathname;
-    
-    // Default banking dashboard
-    if (pathname === '/settings/banking') {
-      return <BankingDashboard />;
-    }
-    
-    // Bank Account Management
-    if (pathname === '/settings/banking/accounts') {
-      return <BankAccountManager />;
-    }
-    
-    if (pathname === '/settings/banking/accounts/new') {
-      return (
-        <CreateBankAccountForm
-          glAccountId="00000000-0000-0000-0000-000000000000"
-          onSuccess={() => window.history.back()}
-          onCancel={() => window.history.back()}
-        />
-      );
-    }
-    
-    // Payment Center
-    if (pathname === '/settings/banking/payments') {
-      return <PaymentCenter />;
-    }
-    
-    if (pathname === '/settings/banking/payments/new') {
-      return (
-        <PaymentForm
-          onSuccess={() => window.history.back()}
-          onCancel={() => window.history.back()}
-        />
-      );
-    }
-    
-    // Transfer Workflow
-    if (pathname === '/settings/banking/transfers') {
-      return <TransferWorkflow />;
-    }
-    
-    if (pathname === '/settings/banking/transfers/new') {
-      return <TransferWorkflow glAccountId="default-gl-account" />;
-    }
-    
-    // Bank API Integration
-    if (pathname === '/settings/banking/api') {
-      return <BankApiConnector />;
-    }
-    
-    if (pathname.startsWith('/settings/banking/api/')) {
-      return <BankApiConnector />;
-    }
-    
-    // Activity and History
-    if (pathname === '/settings/banking/activity') {
-      return <div>Banking Activity (To be implemented)</div>;
-    }
-    
-    if (pathname === '/settings/banking/analytics') {
-      return <div>Banking Analytics (To be implemented)</div>;
-    }
-    
-    // Default fallback to dashboard
-    return <BankingDashboard />;
-  };
+  const [activeTab, setActiveTab] = React.useState('organization');
 
   // Requirement 6.1, 6.2: Check authentication and redirect to login if not authenticated
   React.useEffect(() => {
@@ -156,28 +76,44 @@ export function SettingsPage() {
 
       {/* Settings Content with Tabs */}
       {/* Requirement 10.1, 10.2, 10.3: Responsive layout */}
-      <Tabs value={isBankingRoute ? 'banking' : 'general'} onValueChange={(value) => {
-        if (value === 'banking') {
-          navigate('/settings/banking');
-        } else {
+      <Tabs value={activeTab} onValueChange={(value) => {
+        setActiveTab(value);
+        if (location.pathname !== '/settings') {
           navigate('/settings');
         }
       }} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
-          {!bankingFlagLoading && bankingFlag?.visible && (
-            <TabsTrigger value="banking">Banking</TabsTrigger>
-          )}
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="organization">Organization</TabsTrigger>
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
+          <TabsTrigger value="items-uom">Items & UOM</TabsTrigger>
+          <TabsTrigger value="feature-flags">Feature Flags</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general" className="space-y-6">
-          {/* Organization Configuration Settings (Currencies, Naming Series, Address) */}
-          <OrganizationConfigSettings organizationId={organizationId} accessToken={accessToken} canEdit={canEdit} />
+        <TabsContent value="organization" className="space-y-6">
+          {/* Organization details + document address */}
+          <OrganizationProfileSettings organizationId={organizationId} accessToken={accessToken} canEdit={canEdit} />
         </TabsContent>
 
-        <TabsContent value="banking" className="space-y-6">
-          {/* Banking Settings - Conditional Component Rendering based on path */}
-          {RenderBankingRoute()}
+        <TabsContent value="preferences" className="space-y-6">
+          {/* Currencies and units of measure */}
+          <OrganizationSettings
+            organizationId={organizationId}
+            accessToken={accessToken}
+            canEdit={canEdit}
+            initialSettings={DEFAULT_ORGANIZATION_SETTINGS}
+            onSettingsChange={() => { }}
+          />
+        </TabsContent>
+
+        <TabsContent value="items-uom" className="space-y-6">
+          {/* Units of measure master + item UOM conversion factors */}
+          <UomSettings accessToken={accessToken} disabled={!canEdit} />
+          <ItemUomConversionsSettings accessToken={accessToken} canEdit={canEdit} />
+        </TabsContent>
+
+        <TabsContent value="feature-flags" className="space-y-6">
+          {/* Tenant-scoped feature flag overrides */}
+          <FeatureFlagsSettings accessToken={accessToken} canEdit={canEdit} />
         </TabsContent>
       </Tabs>
     </div>

@@ -19,6 +19,17 @@ import { formatDate } from '../../utility/formatDate';
 import { useCurrencyStore } from '@horizon-sync/store';
 import { getCurrencySymbol } from '../../types/currency.types';
 
+const ITEM_STATUS_BADGE: Record<
+  string,
+  { variant: 'success' | 'secondary' | 'destructive' | 'outline'; label: string }
+> = {
+  active: { variant: 'success', label: 'Active' },
+  inactive: { variant: 'secondary', label: 'Inactive' },
+  draft: { variant: 'outline', label: 'Draft' },
+  pending_approval: { variant: 'outline', label: 'Pending Approval' },
+  discontinued: { variant: 'destructive', label: 'Discontinued' },
+};
+
 export interface ItemsTableProps {
   items: ApiItem[];
   loading: boolean;
@@ -122,8 +133,8 @@ export function ItemsTable({
         header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => {
           const status = row.original.status ?? '';
-          const isActive = status === 'active';
-          return <Badge variant={isActive ? 'success' : 'secondary'}>{status}</Badge>;
+          const badge = ITEM_STATUS_BADGE[status] ?? { variant: 'secondary' as const, label: status };
+          return <Badge variant={badge.variant}>{badge.label}</Badge>;
         },
       },
       {
