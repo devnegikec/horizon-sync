@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { FileText, MoreHorizontal, Eye, Edit, Trash2, Loader2 } from 'lucide-react';
+import { FileText, MoreHorizontal, Eye, Edit, Trash2, Loader2, Truck } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 
 import type { AsnOrder, AsnOrderStatus } from '../../types/asn-order.types';
 import { formatDate } from '../../utility';
@@ -138,6 +139,55 @@ export function AsnOrdersTable({
             <span className="text-muted-foreground">—</span>
           );
         },
+      },
+      {
+        id: 'vehicle_arrivals',
+        header: () => <span>Vehicle</span>,
+        cell: ({ row }) => {
+          const arrivals = row.original.vehicle_arrivals ?? [];
+          const vehicleNumbers = Array.from(
+            new Set(
+              arrivals
+                .map((arrival) => arrival.vehicle_no)
+                .filter((vehicleNo): vehicleNo is string => Boolean(vehicleNo))
+            )
+          );
+
+          if (vehicleNumbers.length === 0) {
+            return <span className="text-muted-foreground">—</span>;
+          }
+
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1.5 cursor-help">
+                    <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-mono text-sm">{vehicleNumbers[0]}</span>
+                    {vehicleNumbers.length > 1 && (
+                      <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                        +{vehicleNumbers.length - 1}
+                      </Badge>
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-sm space-y-2">
+                  {arrivals.map((arrival) => (
+                    <div key={arrival.id} className="text-xs">
+                      <p className="font-medium">{arrival.vehicle_no ?? 'Vehicle unavailable'}</p>
+                      <p className="text-muted-foreground">
+                        {[arrival.driver_name, arrival.transporter, arrival.dock]
+                          .filter(Boolean)
+                          .join(' · ') || 'No additional arrival details'}
+                      </p>
+                    </div>
+                  ))}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        },
+        enableSorting: false,
       },
       {
         accessorKey: 'grand_total',

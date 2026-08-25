@@ -301,6 +301,7 @@ export function VehicleArrivalManagement({ warehouseId }: VehicleArrivalManageme
                 <th className="px-3 py-2 font-medium">Dock</th>
                 <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2 font-medium">ASNs</th>
+                <th className="px-3 py-2 font-medium">Slips</th>
                 <th className="px-3 py-2 font-medium">Arrived At</th>
                 <th className="px-3 py-2 font-medium text-right">Actions</th>
               </tr>
@@ -313,6 +314,7 @@ export function VehicleArrivalManagement({ warehouseId }: VehicleArrivalManageme
                   <td className="px-3 py-2">{a.dock ?? '—'}</td>
                   <td className="px-3 py-2"><StatusBadge status={a.status} /></td>
                   <td className="px-3 py-2">{a.asn_order_count}</td>
+                  <td className="px-3 py-2">{a.receiving_slip_count}</td>
                   <td className="px-3 py-2">{formatDate(a.arrived_at, 'DD-MMM-YY', { includeTime: true, timeFormat: 'HH:mm' })}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex items-center justify-end gap-2">

@@ -53,6 +53,17 @@ export interface AsnOrderWarehouseInfo {
     code?: string | null;
 }
 
+export interface AsnOrderVehicleArrivalInfo {
+    id: string;
+    vehicle_no?: string | null;
+    driver_name?: string | null;
+    driver_contact?: string | null;
+    transporter?: string | null;
+    dock?: string | null;
+    status: string;
+    arrived_at: string;
+}
+
 export interface AsnOrder {
     id: string;
     organization_id: string;
@@ -78,6 +89,7 @@ export interface AsnOrder {
     warehouse?: WarehouseDetails;
     from_warehouse?: AsnOrderWarehouseInfo | null;
     to_warehouse?: AsnOrderWarehouseInfo | null;
+    vehicle_arrivals: AsnOrderVehicleArrivalInfo[];
 }
 
 export interface AsnOrderListItem {
@@ -90,6 +102,7 @@ export interface AsnOrderListItem {
     grand_total: string | number;
     from_warehouse?: AsnOrderWarehouseInfo | null;
     to_warehouse?: AsnOrderWarehouseInfo | null;
+    vehicle_arrivals: AsnOrderVehicleArrivalInfo[];
     created_at: string;
 }
 
@@ -154,7 +167,6 @@ export interface AsnOrderStatusUpdate {
 }
 
 export type AsnOrderResponse = AsnOrder
-
 
 
 

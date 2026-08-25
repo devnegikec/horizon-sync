@@ -44,6 +44,19 @@ export function SlipDetailDialog({ slip, loading, open, onOpenChange, onRejectIt
             </div>
           </div>
 
+          <div className="flex flex-wrap gap-2">
+            {slip.asn_order_no && (
+              <span className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">
+                ASN: {slip.asn_order_no}
+              </span>
+            )}
+            {slip.vehicle_no && (
+              <span className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">
+                Vehicle: {slip.vehicle_no}
+              </span>
+            )}
+          </div>
+
           {slip.rejection_reason && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               <span className="font-medium">Rejection reason: </span>{slip.rejection_reason}
