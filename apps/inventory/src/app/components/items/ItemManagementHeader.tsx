@@ -46,12 +46,13 @@ const AVAILABLE_COLUMNS = [
   { id: 'status', label: 'Status' },
   { id: 'uom', label: 'UOM' },
   { id: 'standard_rate', label: 'Standard Rate' },
+  { id: 'action', label: 'Action (CREATE/MODIFY/DELETE)' },
 ];
 
 export function ItemManagementHeader({ onCreateItem, onImportSuccess }: ItemManagementHeaderProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const { toast } = useToast();
-  
+
   // Import state
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -73,6 +74,7 @@ export function ItemManagementHeader({ onCreateItem, onImportSuccess }: ItemMana
     'status',
     'uom',
     'standard_rate',
+    'action',
   ]);
 
   const handleExport = () => {
@@ -202,7 +204,7 @@ export function ItemManagementHeader({ onCreateItem, onImportSuccess }: ItemMana
     try {
       setIsImporting(true);
       const result = await bulkImportApi.upload(accessToken, selectedFile) as Record<string, unknown>;
-      
+
       const successCount = Number(result?.successful_rows ?? 0);
       const failCount = Number(result?.failed_rows ?? 0);
       const totalCount = Number(result?.total_rows ?? successCount + failCount);
@@ -311,7 +313,7 @@ export function ItemManagementHeader({ onCreateItem, onImportSuccess }: ItemMana
                 value={exportFileName}
                 onChange={(e) => setExportFileName(e.target.value)}
                 placeholder="stock_items_export"
-                disabled={isExporting}/>
+                disabled={isExporting} />
             </div>
 
             {/* File Format */}
@@ -380,7 +382,7 @@ export function ItemManagementHeader({ onCreateItem, onImportSuccess }: ItemMana
                     <Checkbox id={column.id}
                       checked={selectedColumns.includes(column.id)}
                       onCheckedChange={() => handleColumnToggle(column.id)}
-                      disabled={isExporting}/>
+                      disabled={isExporting} />
                     <Label htmlFor={column.id}
                       className="text-sm font-normal cursor-pointer">
                       {column.label}
@@ -488,7 +490,7 @@ export function ItemManagementHeader({ onCreateItem, onImportSuccess }: ItemMana
                 accept=".csv,.xlsx,.xls"
                 onChange={handleFileChange}
                 disabled={isImporting}
-                className="hidden"/>
+                className="hidden" />
             </div>
 
             {isImporting && (
@@ -502,12 +504,12 @@ export function ItemManagementHeader({ onCreateItem, onImportSuccess }: ItemMana
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" 
+            <Button variant="outline"
               onClick={() => { setIsImportDialogOpen(false); setSelectedFile(null); }}
               disabled={isImporting}>
               Cancel
             </Button>
-            <Button onClick={handleImportSubmit} 
+            <Button onClick={handleImportSubmit}
               disabled={!selectedFile || isImporting}>
               {isImporting ? (
                 <>

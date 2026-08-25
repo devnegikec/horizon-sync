@@ -18,4 +18,16 @@ export const itemApi = {
       method: 'PUT',
       body: payload,
     }),
+
+  submitForApproval: (accessToken: string, id: string) =>
+    apiRequest(`/items/${id}/submit`, accessToken, { method: 'POST' }),
+
+  approve: (accessToken: string, id: string) =>
+    apiRequest(`/items/${id}/approve`, accessToken, { method: 'POST' }),
+
+  reject: (accessToken: string, id: string, reason: string) =>
+    apiRequest(`/items/${id}/reject`, accessToken, {
+      method: 'POST',
+      body: { reason },
+    }),
 };

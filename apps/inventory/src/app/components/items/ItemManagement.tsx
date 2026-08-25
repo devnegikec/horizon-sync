@@ -10,6 +10,7 @@ import { useItemManagement } from '../../hooks/useItemManagement';
 import { apiItemToItem } from '../../utility';
 
 import { ItemDetailDialog } from './ItemDetailDialog';
+import { CatalogImportDialog } from '../catalog-import/CatalogImportDialog';
 // import { ItemDialog } from './ItemDialog';
 // import { ItemDialogSimple as ItemDialog } from './ItemDialog.simple';
 import { ItemDialogMultiStep as ItemDialog } from './ItemDialog.multistep';
@@ -21,6 +22,7 @@ import { ItemStats } from './ItemStats';
 export function ItemManagement() {
   const { user, accessToken, updateUser } = useUserStore();
   const [createOrgModalOpen, setCreateOrgModalOpen] = useState(false);
+  const [catalogImportOpen, setCatalogImportOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearchActive, setIsSearchActive] = useState(false);
 
@@ -67,8 +69,7 @@ export function ItemManagement() {
       setCreateOrgModalOpen(true);
       return;
     }
-    // TODO: Implement bulk upload functionality
-    console.log('Bulk upload functionality to be implemented');
+    setCatalogImportOpen(true);
   };
 
   const handleCreateOrganization = async (data: any) => {
@@ -154,7 +155,7 @@ export function ItemManagement() {
         setFilters={setFilters}
         itemGroups={itemGroups}
         tableInstance={tableInstance}
-        onSearchResults={handleSearchResults}/>
+        onSearchResults={handleSearchResults} />
 
       <ItemsTable items={displayedItems}
         loading={loading}
@@ -167,7 +168,7 @@ export function ItemManagement() {
         onBulkUpload={handleBulkUpload}
         onCreateOrganization={() => setCreateOrgModalOpen(true)}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}/>
+        serverPagination={serverPaginationConfig} />
 
       <ItemDialog open={itemDialogOpen}
         onOpenChange={setItemDialogOpen}
@@ -176,17 +177,22 @@ export function ItemManagement() {
         onSave={handleSaveItem}
         onCreated={refetch}
         onUpdated={refetch}
-        onItemGroupsRefresh={refetchItemGroups}/>
+        onItemGroupsRefresh={refetchItemGroups} />
 
       <ItemDetailDialog open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        item={selectedItemAsItem}/>
+        item={selectedItemAsItem} />
+
+      <CatalogImportDialog
+        open={catalogImportOpen}
+        onOpenChange={setCatalogImportOpen}
+        onSuccess={refetch} />
 
       <CreateOrganizationModal open={createOrgModalOpen}
         onOpenChange={setCreateOrgModalOpen}
         onSubmit={handleCreateOrganization}
         title="Create Organization"
-        description="You need to create an organization before you can manage inventory items."/>
+        description="You need to create an organization before you can manage inventory items." />
 
       {/* Toggle Status Confirmation Dialog */}
       <ConfirmationDialog

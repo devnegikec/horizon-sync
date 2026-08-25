@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/compo
 import type { Item } from '../../types/item.types';
 import { getCurrencySymbol } from '../../types/currency.types';
 import { apiRequest } from '../../utility/api/core';
+import { ItemApprovalActions } from './ItemApprovalActions';
 
 // Full API response type for item detail
 interface ItemDetailResponse {
@@ -374,6 +375,7 @@ export function ItemDetailDialog({ open, onOpenChange, item }: ItemDetailDialogP
   const [detail, setDetail] = React.useState<ItemDetailResponse | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [reloadKey, setReloadKey] = React.useState(0);
 
   React.useEffect(() => {
     if (!open || !item?.id || !accessToken) {
@@ -388,7 +390,7 @@ export function ItemDetailDialog({ open, onOpenChange, item }: ItemDetailDialogP
       .then((data) => setDetail(data))
       .catch((err) => setError(err.message || 'Failed to load item details'))
       .finally(() => setLoading(false));
-  }, [open, item?.id, accessToken]);
+  }, [open, item?.id, accessToken, reloadKey]);
 
   if (!item) return null;
 
@@ -401,6 +403,14 @@ export function ItemDetailDialog({ open, onOpenChange, item }: ItemDetailDialogP
         style={{ display: 'flex', flexDirection: 'column', height: 'min(85vh, 820px)' }}
       >
         <DialogHeaderSection detail={detail} item={item} standardRate={standardRate} currencySymbol={currencySymbol} />
+
+        {detail && !loading && (
+          <ItemApprovalActions
+            item={{ id: detail.id, status: detail.status }}
+            onChanged={() => setReloadKey((k) => k + 1)}
+            className="px-4"
+          />
+        )}
 
         {loading && (
           <div className="flex flex-1 items-center justify-center">

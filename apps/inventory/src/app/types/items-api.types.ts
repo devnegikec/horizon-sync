@@ -37,6 +37,12 @@ export interface ApiItem {
   image_url: string | null;
   created_at: string | null;
   packaging_units?: ApiPackagingUnit[] | null;
+  base_uom_id?: string | null;
+  product_id?: string | null;
+  product_sku_id?: string | null;
+  submitted_at?: string | null;
+  approved_at?: string | null;
+  rejection_reason?: string | null;
 }
 
 export interface ItemsPagination {
@@ -114,6 +120,8 @@ export interface UpdateItemPayload {
   brand_id?: string | null;
   gtin?: string | null;
   sku?: string | null;
+  base_uom_id?: string | null;
+  product_sku_id?: string | null;
   description: string;
   item_group_id: string;
   item_group: UpdateItemGroupRef;
