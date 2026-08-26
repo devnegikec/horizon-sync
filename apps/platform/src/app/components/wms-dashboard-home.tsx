@@ -185,6 +185,27 @@ interface WarehouseOption {
   code: string;
 }
 
+function CapacityCardSkeleton() {
+  return (
+    <div className="rounded-xl border border-border bg-card p-6">
+      <div className="flex items-start justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="h-11 w-11 rounded-xl bg-muted animate-pulse" />
+          <div className="space-y-2">
+            <div className="h-4 w-32 rounded bg-muted animate-pulse" />
+            <div className="h-3 w-24 rounded bg-muted animate-pulse" />
+          </div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="h-3 w-full rounded-full bg-muted animate-pulse" />
+        <div className="h-3 w-2/3 rounded-full bg-muted animate-pulse" />
+        <div className="h-3 w-1/2 rounded-full bg-muted animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
 export function WMSDashboardHome() {
   const accessToken = useUserStore((s) => s.accessToken);
   const [period, setPeriod] = React.useState<'week' | 'month' | 'year'>('week');
@@ -294,6 +315,59 @@ export function WMSDashboardHome() {
   const outboundChart = overview.outbound.chart;
   const maxInbound = Math.max(...inboundChart.map((b) => b.qty), 1);
   const maxOutbound = Math.max(...outboundChart.map((b) => b.qty), 1);
+
+  // Show a loading skeleton until the first real stats response arrives, so
+  // dummy/stale fallback data never flashes before the user's actual data.
+  if (loading && !stats) {
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Warehouse Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Loading your warehouse operations…</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-40 rounded-md bg-muted animate-pulse" />
+            <div className="h-9 w-32 rounded-md bg-muted animate-pulse" />
+          </div>
+        </div>
+
+        {/* Stat card skeletons */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-6">
+              <div className="h-4 w-24 rounded bg-muted animate-pulse" />
+              <div className="mt-3 h-8 w-16 rounded bg-muted animate-pulse" />
+              <div className="mt-3 h-3 w-32 rounded bg-muted animate-pulse" />
+            </div>
+          ))}
+        </div>
+
+        {/* Capacity skeletons */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-3 w-3 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400" />
+            <h2 className="text-lg font-semibold">Warehouse Capacity</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <CapacityCardSkeleton />
+            <CapacityCardSkeleton />
+          </div>
+        </div>
+
+        {/* Chart skeletons */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-6">
+              <div className="h-5 w-32 rounded bg-muted animate-pulse" />
+              <div className="mt-4 h-40 w-full rounded bg-muted animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -429,43 +503,43 @@ export function WMSDashboardHome() {
                   No inbound stock data for this period
                 </div>
               ) : (
-              <div className="h-[180px] flex items-end gap-1.5 border-l border-b border-border/50 pl-2 pb-1">
-                {inboundChart.map((b, i) => {
-                  const pct = maxInbound > 0 ? (b.qty / maxInbound) * 100 : 0;
-                  return (
-                    <div key={i} className="flex-1 group relative flex flex-col items-center justify-end h-full">
-                      {/* Value label on top */}
-                      <span className="text-[10px] font-medium text-emerald-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {b.qty > 0 ? b.qty.toLocaleString() : ''}
-                      </span>
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
-                        <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
-                          <div className="font-semibold">{b.label}</div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-emerald-600 font-medium">{b.qty.toLocaleString()} units</span>
-                            <span className="text-muted-foreground">·</span>
-                            <span>{formatCurrency(b.value)}</span>
+                <div className="h-[180px] flex items-end gap-1.5 border-l border-b border-border/50 pl-2 pb-1">
+                  {inboundChart.map((b, i) => {
+                    const pct = maxInbound > 0 ? (b.qty / maxInbound) * 100 : 0;
+                    return (
+                      <div key={i} className="flex-1 group relative flex flex-col items-center justify-end h-full">
+                        {/* Value label on top */}
+                        <span className="text-[10px] font-medium text-emerald-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {b.qty > 0 ? b.qty.toLocaleString() : ''}
+                        </span>
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                          <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
+                            <div className="font-semibold">{b.label}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-emerald-600 font-medium">{b.qty.toLocaleString()} units</span>
+                              <span className="text-muted-foreground">·</span>
+                              <span>{formatCurrency(b.value)}</span>
+                            </div>
                           </div>
                         </div>
+                        {/* Bar */}
+                        <div
+                          className="w-full bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-105 origin-bottom"
+                          style={{ height: `${Math.max(pct, 2)}%` }}
+                        />
                       </div>
-                      {/* Bar */}
-                      <div
-                        className="w-full bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-105 origin-bottom"
-                        style={{ height: `${Math.max(pct, 2)}%` }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
               )}
               {/* X-axis labels */}
               {inboundChart.length > 0 && (
-              <div className="flex mt-2 pl-2">
-                {inboundChart.map((b) => (
-                  <span key={b.label} className="flex-1 text-center text-[11px] text-muted-foreground font-medium">{b.label}</span>
-                ))}
-              </div>
+                <div className="flex mt-2 pl-2">
+                  {inboundChart.map((b) => (
+                    <span key={b.label} className="flex-1 text-center text-[11px] text-muted-foreground font-medium">{b.label}</span>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -509,43 +583,43 @@ export function WMSDashboardHome() {
                   No outbound stock data for this period
                 </div>
               ) : (
-              <div className="h-[180px] flex items-end gap-1.5 border-l border-b border-border/50 pl-2 pb-1">
-                {outboundChart.map((b, i) => {
-                  const pct = maxOutbound > 0 ? (b.qty / maxOutbound) * 100 : 0;
-                  return (
-                    <div key={i} className="flex-1 group relative flex flex-col items-center justify-end h-full">
-                      {/* Value label on top */}
-                      <span className="text-[10px] font-medium text-rose-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {b.qty > 0 ? b.qty.toLocaleString() : ''}
-                      </span>
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
-                        <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
-                          <div className="font-semibold">{b.label}</div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-rose-600 font-medium">{b.qty.toLocaleString()} units</span>
-                            <span className="text-muted-foreground">·</span>
-                            <span>{formatCurrency(b.value)}</span>
+                <div className="h-[180px] flex items-end gap-1.5 border-l border-b border-border/50 pl-2 pb-1">
+                  {outboundChart.map((b, i) => {
+                    const pct = maxOutbound > 0 ? (b.qty / maxOutbound) * 100 : 0;
+                    return (
+                      <div key={i} className="flex-1 group relative flex flex-col items-center justify-end h-full">
+                        {/* Value label on top */}
+                        <span className="text-[10px] font-medium text-rose-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {b.qty > 0 ? b.qty.toLocaleString() : ''}
+                        </span>
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                          <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
+                            <div className="font-semibold">{b.label}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-rose-600 font-medium">{b.qty.toLocaleString()} units</span>
+                              <span className="text-muted-foreground">·</span>
+                              <span>{formatCurrency(b.value)}</span>
+                            </div>
                           </div>
                         </div>
+                        {/* Bar */}
+                        <div
+                          className="w-full bg-gradient-to-t from-rose-500 to-orange-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-rose-500/20 hover:scale-105 origin-bottom"
+                          style={{ height: `${Math.max(pct, 2)}%` }}
+                        />
                       </div>
-                      {/* Bar */}
-                      <div
-                        className="w-full bg-gradient-to-t from-rose-500 to-orange-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-rose-500/20 hover:scale-105 origin-bottom"
-                        style={{ height: `${Math.max(pct, 2)}%` }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
               )}
               {/* X-axis labels */}
               {outboundChart.length > 0 && (
-              <div className="flex mt-2 pl-2">
-                {outboundChart.map((b) => (
-                  <span key={b.label} className="flex-1 text-center text-[11px] text-muted-foreground font-medium">{b.label}</span>
-                ))}
-              </div>
+                <div className="flex mt-2 pl-2">
+                  {outboundChart.map((b) => (
+                    <span key={b.label} className="flex-1 text-center text-[11px] text-muted-foreground font-medium">{b.label}</span>
+                  ))}
+                </div>
               )}
             </div>
           </div>

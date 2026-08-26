@@ -69,6 +69,9 @@ function itemToFormData(item: Item): Partial<ItemFormData> {
     packagingConversionFactor: item.packagingDetails?.conversionFactor != null
       ? String(item.packagingDetails.conversionFactor)
       : '1',
+    packagingItemsPerMasterPack: item.packagingDetails?.itemsPerMasterPack != null
+      ? String(item.packagingDetails.itemsPerMasterPack)
+      : '',
     packagingLengthMm: item.packagingDetails?.lengthMm != null
       ? String(item.packagingDetails.lengthMm)
       : '',

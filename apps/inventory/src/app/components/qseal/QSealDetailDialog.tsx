@@ -1,13 +1,7 @@
-import { QrCode, Tag } from 'lucide-react';
+import { Box, Calendar, Info, Layers, Link, Mail, QrCode, Tag } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components/ui/dialog';
-import { Separator } from '@horizon-sync/ui/components/ui/separator';
+import { DetailDialog } from '@horizon-sync/ui/components/ui/detail-dialog';
 
 import type { QSealProduct } from '../../types/qseal.types';
 import { formatDate } from '../../utility/formatDate';
@@ -35,14 +29,31 @@ interface QSealDetailDialogProps {
   product: QSealProduct | null;
 }
 
-function MetricRow({ label, value }: { label: string; value: string | number }) {
+function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ className?: string }>; title: string }) {
   return (
-    <div className="flex items-center justify-between py-2">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value}</span>
+    <div className="flex items-center gap-2 text-primary">
+      <Icon className="h-4 w-4" />
+      <h3 className="text-sm font-semibold">{title}</h3>
     </div>
   );
 }
+
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
+  const isEmpty = value === null || value === undefined || value === '';
+  return (
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium break-words">
+        {isEmpty ? <span className="text-muted-foreground">—</span> : value}
+      </p>
+    </div>
+  );
+}
+
+function BooleanField({ label, value }: { label: string; value: boolean | null | undefined }) {
+  return <Field label={label} value={value == null ? undefined : value ? 'Yes' : 'No'} />;
+}
+
 
 function ProductBadges({ product }: { product: QSealProduct }) {
   const statusLabel = product.is_active ? 'Active' : 'Inactive';
@@ -73,14 +84,14 @@ function ProductDetails({ product }: { product: QSealProduct }) {
         Product Details
       </p>
       <div className="divide-y">
-        <MetricRow label="Activation Method" value={product.activation_method || '—'} />
+        <Field label="Activation Method" value={product.activation_method || '—'} />
         {product.warranty_period_months != null && (
-          <MetricRow label="Warranty (months)" value={product.warranty_period_months} />
+          <Field label="Warranty (months)" value={product.warranty_period_months} />
         )}
-        <MetricRow label="Redirect to Client" value={product.redirect_to_client ? 'Yes' : 'No'} />
-        {product.landing_page && <MetricRow label="Landing Page" value={product.landing_page} />}
-        {product.email && <MetricRow label="Email" value={product.email} />}
-        {product.phone_number && <MetricRow label="Phone" value={product.phone_number} />}
+        <Field label="Redirect to Client" value={product.redirect_to_client ? 'Yes' : 'No'} />
+        {product.landing_page && <Field label="Landing Page" value={product.landing_page} />}
+        {product.email && <Field label="Email" value={product.email} />}
+        {product.phone_number && <Field label="Phone" value={product.phone_number} />}
       </div>
     </div>
   );
@@ -90,39 +101,39 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
   if (!product) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <QrCode className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="font-semibold">{product.name}</p>
-              {product.gtin && (
-                <p className="text-xs text-muted-foreground font-mono font-normal">{product.gtin}</p>
-              )}
-            </div>
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <ProductBadges product={product} />
-
-          {(product.sku || product.generic_name) && (
-            <p className="text-sm text-muted-foreground">SKU: {product.sku ?? product.generic_name}</p>
-          )}
-
-          <Separator />
-          <ProductDetails product={product} />
-          <Separator />
-
-          <div className="divide-y">
-            <MetricRow label="Created" value={formatDate(product.created_at, 'DD-MMM-YY')} />
-            <MetricRow label="Last Updated" value={formatDate(product.updated_at, 'DD-MMM-YY')} />
+    <DetailDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      contentClassName="max-w-4xl flex flex-col"
+      style={{ height: 'min(85vh, 820px)' }}
+      title={
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <QrCode className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <p className="font-semibold">{product.name}</p>
+            {product.gtin && (
+              <p className="text-xs text-muted-foreground font-mono font-normal">{product.gtin}</p>
+            )}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      }
+    >
+      <div className="space-y-6">
+        <ProductBadges product={product} />
+
+        {(product.sku || product.generic_name) && (
+          <p className="text-sm text-muted-foreground">SKU: {product.sku ?? product.generic_name}</p>
+        )}
+
+        <ProductDetails product={product} />
+        <div className="divide-y">
+          <Field label="Created" value={formatDate(product.created_at, 'DD-MMM-YY')} />
+          <Field label="Last Updated" value={formatDate(product.updated_at, 'DD-MMM-YY')} />
+        </div>
+      </div>
+    </DetailDialog >
   );
 }
