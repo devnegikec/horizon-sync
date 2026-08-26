@@ -421,7 +421,7 @@ interface PickListDetailDialogProps {
 
 function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDialogProps) {
   const { toast } = useToast();
-  const { pickList, loading, error, recordScan, complete, cancel, assignWorker } = usePickList(listId);
+  const { pickList, loading, error, recordScan, complete, cancel, assignWorker, } = usePickList(listId);
   const workers = useWorkers(open);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
   const [qrInput, setQrInput] = React.useState('');
@@ -430,6 +430,7 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
   const [assignOpen, setAssignOpen] = React.useState(false);
   const [qrOpen, setQrOpen] = React.useState(false);
   const [confirmAction, setConfirmAction] = React.useState<'complete' | 'cancel' | null>(null);
+  const [binDialogOpen, setBinDialogOpen] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const assignedWorker = pickList?.assigned_to ? workerById.get(pickList.assigned_to) : undefined;

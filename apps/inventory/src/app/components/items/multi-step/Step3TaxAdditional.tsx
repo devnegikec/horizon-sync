@@ -1,10 +1,29 @@
 import * as React from 'react';
 
+import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 
 import type { TaxTemplate } from '../../../types/tax-template.types';
 import type { ItemFormData } from '../../../utility/item-payload-builders';
+
+const QR_TYPE_OPTIONS = [
+  { value: 'dynamic', label: 'Dynamic' },
+  { value: 'secure_qr_runtime', label: 'Secure QR Runtime' },
+  { value: 'static_qr', label: 'Static QR' },
+];
+
+const ACTIVATION_METHOD_OPTIONS = [
+  { value: 'pre', label: 'Pre-Activated' },
+  { value: 'post', label: 'Post-Activated' },
+];
+
+const SR_NUMBER_TYPE_OPTIONS = [
+  { value: 'random_6_alpha_numeric', label: 'Random-6 Digit Alpha Numeric' },
+  { value: 'random_8_alpha_numeric', label: 'Random-8 Digit Alpha Numeric' },
+  { value: 'sequential', label: 'Sequential' },
+  { value: 'custom', label: 'Custom' },
+];
 
 interface Step3TaxAdditionalProps {
   formData: ItemFormData;
@@ -32,7 +51,7 @@ export function Step3TaxAdditional({
 
       <div className="space-y-4">
         <h4 className="text-sm font-semibold border-b pb-2">Tax Templates</h4>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Sales Tax Template</Label>

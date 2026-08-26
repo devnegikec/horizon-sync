@@ -71,6 +71,7 @@ const getInitialFormData = (): ItemFormData & { itemGroupName: string } => ({
   // Packaging Details
   packagingUnitName: 'Each',
   packagingConversionFactor: '1',
+  packagingItemsPerMasterPack: '',
   packagingLengthMm: '',
   packagingWidthMm: '',
   packagingHeightMm: '',
@@ -143,6 +144,7 @@ export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult
         // Packaging Details
         packagingUnitName: item.packagingDetails?.unitName || 'Each',
         packagingConversionFactor: item.packagingDetails?.conversionFactor?.toString() || '1',
+        packagingItemsPerMasterPack: item.packagingDetails?.itemsPerMasterPack?.toString() || '',
         packagingLengthMm: item.packagingDetails?.lengthMm?.toString() || '',
         packagingWidthMm: item.packagingDetails?.widthMm?.toString() || '',
         packagingHeightMm: item.packagingDetails?.heightMm?.toString() || '',

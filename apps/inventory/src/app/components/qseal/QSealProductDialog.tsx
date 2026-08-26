@@ -15,7 +15,7 @@ import { useBrands } from '../../features/qr-management/hooks/useBrands';
 import { useQRProductSettings } from '../../hooks/useQRProductSettings';
 import type { QRProductSetting } from '../../types/qr-product-settings.types';
 import type { CreateQSealProductPayload, QSealProduct, QSealProductImageChanges } from '../../types/qseal.types';
-import { FormDialog } from '../containers';
+import { DetailDialog } from '@horizon-sync/ui/components';
 
 interface FormValues {
   brand_id: string;
@@ -728,14 +728,24 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   }, validateImages);
 
   return (
-    <FormDialog
+    <DetailDialog
       open={open}
       onOpenChange={onOpenChange}
       title={isEdit ? 'Edit QSeal Product' : 'Create New Product'}
-      size="md"
-      onSubmit={onSubmit}
-      submitLabel={isEdit ? 'Save Changes' : 'Create Product'}
-      saving={saving}
+      size="lg"
+      contentClassName="max-w-4xl flex flex-col"
+      style={{ height: 'min(85vh, 820px)' }}
+      showCloseButton={false}
+      footer={
+        <div className="flex items-center justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="submit" form="qseal-product-form" disabled={saving}>
+            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Product'}
+          </Button>
+        </div>
+      }
     >
       <BrandSelectSection brandId={brandId} onBrandChange={(v) => setValue('brand_id', v)} disabled={isEdit} />
       <Separator />
@@ -788,6 +798,6 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
         redirectToClient={redirectToClient}
         onRedirectChange={(checked) => setValue('redirect_to_client', checked)}
       />
-    </FormDialog>
+    </DetailDialog>
   );
 }

@@ -24,7 +24,7 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
       </div>
 
       <div className="space-y-4">
-        <h4 className="text-sm font-semibold border-b pb-2">Pricing</h4>
+        <h4 className="text-sm font-semibold text-primary">Pricing</h4>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -86,7 +86,7 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
       </div>
 
       <div className="space-y-4">
-        <h4 className="text-sm font-semibold border-b pb-2">Stock Settings</h4>
+        <h4 className="text-sm font-semibold text-primary">Stock Settings</h4>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="flex items-center space-x-2">
@@ -131,7 +131,7 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
       </div>
 
       <div className="space-y-4">
-        <h4 className="text-sm font-semibold border-b pb-2">Additional Details</h4>
+        <h4 className="text-sm font-semibold text-primary">Additional Details</h4>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -153,7 +153,7 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
       </div>
 
       <div className="space-y-4">
-        <h4 className="text-sm font-semibold border-b pb-2">Packaging Details</h4>
+        <h4 className="text-sm font-semibold text-primary">Packaging Details</h4>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="packagingUnitName">Base Unit Name</Label>
@@ -171,6 +171,16 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
               value={formData.packagingConversionFactor}
               onChange={(e) => onUpdate({ packagingConversionFactor: e.target.value })}
               placeholder="1" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="packagingItemsPerMasterPack">Items per Master Pack</Label>
+            <Input id="packagingItemsPerMasterPack"
+              type="number"
+              step="1"
+              min="1"
+              value={formData.packagingItemsPerMasterPack}
+              onChange={(e) => onUpdate({ packagingItemsPerMasterPack: e.target.value })}
+              placeholder="10" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="packagingLengthMm">Length (mm)</Label>

@@ -14,6 +14,7 @@ export interface ApiPackagingUnit {
 export interface PackagingDetailsPayload {
   unit_name: string;
   conversion_factor: number;
+  items_per_master_pack?: number | null;
   length_mm: number | null;
   width_mm: number | null;
   height_mm: number | null;
