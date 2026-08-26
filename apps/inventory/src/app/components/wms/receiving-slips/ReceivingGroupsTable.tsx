@@ -6,10 +6,11 @@ import { ReceivingGroupRow } from './ReceivingGroupRow';
 /*  Groups table                                                      */
 /* ------------------------------------------------------------------ */
 
-export function ReceivingGroupsTable({ groups, slipId, onRejectItem }: {
+export function ReceivingGroupsTable({ groups, slipId, onRejectItem, onExceptionCreated }: {
   groups: ReceivingSlipGroup[];
   slipId: string;
   onRejectItem?: (slipId: string, itemId: string, reason: string) => Promise<void>;
+  onExceptionCreated?: () => void;
 }) {
   if (groups.length === 0) {
     return <p className="px-4 py-6 text-center text-muted-foreground text-xs">No items</p>;
@@ -35,7 +36,8 @@ export function ReceivingGroupsTable({ groups, slipId, onRejectItem }: {
             boxIndex={idx + 1}
             totalBoxes={groups.length}
             slipId={slipId}
-            onRejectItem={onRejectItem} />
+            onRejectItem={onRejectItem}
+            onExceptionCreated={onExceptionCreated} />
         ))}
       </tbody>
     </table>

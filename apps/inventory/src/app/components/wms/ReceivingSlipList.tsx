@@ -257,7 +257,12 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
           viewSlip?.status === 'pending_review' || viewSlip?.status === 'pending_putaway'
             ? handleRejectItem
             : undefined
-        } />
+        }
+        onExceptionCreated={async () => {
+          if (viewSlip) setViewSlip(await getSlip(viewSlip.id));
+          await refetch();
+          toast({ title: 'Inbound exception created', description: 'Item is blocked from normal put-away.' });
+        }} />
 
       <ConfirmationDialog open={!!confirmApproveSlip}
         onOpenChange={(open) => { if (!open) setConfirmApproveSlip(null); }}

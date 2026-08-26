@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { ChevronDown, ChevronRight, XCircle } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, XCircle } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { useToast } from '@horizon-sync/ui/hooks';
@@ -8,21 +8,24 @@ import { useToast } from '@horizon-sync/ui/hooks';
 import type { ReceivingSlipGroup } from '../../../types/wms.types';
 
 import { FlagBadge } from './FlagBadge';
+import { InboundExceptionDialog } from './InboundExceptionDialog';
 
 /* ------------------------------------------------------------------ */
 /*  Expandable group row (parent_qseal + items)                       */
 /* ------------------------------------------------------------------ */
 
-export function ReceivingGroupRow({ group, boxIndex, totalBoxes, slipId, onRejectItem }: {
+export function ReceivingGroupRow({ group, boxIndex, totalBoxes, slipId, onRejectItem, onExceptionCreated }: {
   group: ReceivingSlipGroup;
   boxIndex: number;
   totalBoxes: number;
   slipId: string;
   onRejectItem?: (slipId: string, itemId: string, reason: string) => Promise<void>;
+  onExceptionCreated?: () => void;
 }) {
   const { toast } = useToast();
   const [expanded, setExpanded] = React.useState(false);
   const [rejectingId, setRejectingId] = React.useState<string | null>(null);
+  const [exceptionItem, setExceptionItem] = React.useState<any | null>(null);
   const sku = group.items[0]?.sku ?? '—';
   const qty = group.items.length;
 
@@ -92,24 +95,43 @@ export function ReceivingGroupRow({ group, boxIndex, totalBoxes, slipId, onRejec
             </span>
           </td>
           <td className="px-2 py-1.5 text-right">
-            {onRejectItem && item.flag !== 'rejected' && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-destructive border-destructive/20 hover:!bg-destructive hover:!text-white h-7 px-2 text-xs"
-                disabled={rejectingId === item.id}
-                onClick={(e) => { e.stopPropagation(); handleReject(item); }}
-              >
-                <XCircle className="h-3.5 w-3.5 mr-1" />
-                {rejectingId === item.id ? '...' : 'Reject'}
-              </Button>
-            )}
+            <span className="inline-flex gap-2">
+              {item.flag !== 'rejected' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs"
+                  onClick={(e) => { e.stopPropagation(); setExceptionItem(item); }}
+                >
+                  <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Exception
+                </Button>
+              )}
+              {onRejectItem && item.flag !== 'rejected' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-destructive border-destructive/20 hover:!bg-destructive hover:!text-white h-7 px-2 text-xs"
+                  disabled={rejectingId === item.id}
+                  onClick={(e) => { e.stopPropagation(); handleReject(item); }}
+                >
+                  <XCircle className="h-3.5 w-3.5 mr-1" />
+                  {rejectingId === item.id ? '...' : 'Reject'}
+                </Button>
+              )}
+            </span>
             {item.flag === 'rejected' && (
               <span className="text-xs text-destructive font-medium">Rejected</span>
             )}
           </td>
         </tr>
       ))}
+      <InboundExceptionDialog
+        open={Boolean(exceptionItem)}
+        onOpenChange={(open) => { if (!open) setExceptionItem(null); }}
+        slipId={slipId}
+        item={exceptionItem}
+        onCompleted={() => onExceptionCreated?.()}
+      />
     </>
   );
 }
