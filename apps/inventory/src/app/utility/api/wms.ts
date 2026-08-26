@@ -42,6 +42,8 @@ import type {
   VehicleArrivalUpdate,
   VehicleArrivalListItem,
   PaginatedVehicleArrivals,
+  InboundException,
+  InboundExceptionReason,
 } from '../../types/wms.types';
 
 const BASE = `${environment.apiCoreUrl}/api/v1`;
@@ -177,6 +179,42 @@ export const inboundApi = {
       method: 'POST',
       body: JSON.stringify({ reason }),
     }),
+
+  listExceptionReasons: (token: string) =>
+    req<InboundExceptionReason[]>(`${BASE}/inbound/exception-reasons`, token),
+
+  classifyException: (token: string, slipId: string, itemId: string, data: {
+    classification: 'short' | 'damaged' | 'excess' | 'hold' | 'quarantine';
+    reason_code: string;
+    destination?: 'HOLD' | 'QUARANTINE';
+    note?: string;
+  }) => req<InboundException>(`${BASE}/inbound/receiving-slips/${slipId}/items/${itemId}/exception`, token, {
+    method: 'POST', body: JSON.stringify(data),
+  }),
+
+  listExceptions: (token: string, params: { warehouse_id?: string; destination?: string; status?: string } = {}) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => { if (value) p.append(key, value); });
+    return req<InboundException[]>(`${BASE}/inbound/exceptions?${p}`, token);
+  },
+
+  disposeException: (token: string, exceptionId: string, data: {
+    action: 'release_to_receiving' | 'move_to_hold' | 'move_to_quarantine' | 'return_to_sender' | 'dispose';
+    note?: string;
+    item_id?: string;
+  }) => req<InboundException>(`${BASE}/inbound/exceptions/${exceptionId}/disposition`, token, {
+    method: 'POST', body: JSON.stringify(data),
+  }),
+
+  uploadExceptionEvidence: async (token: string, exceptionId: string, file: File): Promise<InboundException> => {
+    const body = new FormData();
+    body.append('file', file);
+    const res = await fetch(`${BASE}/inbound/exceptions/${exceptionId}/evidence`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }, body,
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => null))?.detail || 'Evidence upload failed');
+    return res.json();
+  },
 };
 
 // ============================================

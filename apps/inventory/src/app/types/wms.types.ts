@@ -188,6 +188,9 @@ export interface ReceivingSlipGroupItem {
   quantity: number;
   box_count: number;
   flag: string;
+  condition_code?: string | null;
+  exception_status?: string | null;
+  exception_destination_location_id?: string | null;
   notes: string | null;
 }
 
@@ -215,6 +218,8 @@ export interface ReceivingSlipItem {
   quantity: number;
   box_count: number;
   flag: string;
+  condition_code?: string | null;
+  exception_status?: string | null;
   notes: string | null;
   parent_qseal?: ReceivingSlipParentQSeal;
 }
@@ -245,6 +250,49 @@ export interface ReceivingSlip {
 export interface PaginatedReceivingSlips {
   receiving_slips: ReceivingSlip[];
   pagination: WMSPagination;
+}
+
+// ============================================
+// INBOUND EXCEPTIONS / HOLD / QUARANTINE
+// ============================================
+
+export interface InboundExceptionReason {
+  code: string;
+  name: string;
+  category: string;
+  default_destination: 'HOLD' | 'QUARANTINE' | null;
+  requires_approval: boolean;
+}
+
+export interface InboundExceptionEvidence {
+  id: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+}
+
+export interface InboundException {
+  id: string;
+  warehouse_id: string;
+  slip_id: string | null;
+  slip_item_id: string | null;
+  exception_type: string;
+  reason_code: string;
+  status: string;
+  condition_code: string;
+  destination: string | null;
+  destination_location_id: string | null;
+  qr_identifier: string | null;
+  sku: string | null;
+  batch_number: string | null;
+  quantity: number;
+  note: string | null;
+  disposition: string | null;
+  disposition_note: string | null;
+  created_at: string | null;
+  approved_at: string | null;
+  disposed_at: string | null;
+  evidence: InboundExceptionEvidence[];
 }
 
 // ============================================

@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Warehouse, ArrowDownToLine, ArrowUpFromLine, Box, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers, QrCode, Truck, LayoutDashboard } from 'lucide-react';
+import { Warehouse, ArrowDownToLine, ArrowUpFromLine, Box, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers, QrCode, Truck, LayoutDashboard, AlertTriangle } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
@@ -14,6 +14,7 @@ import { StockManagement } from '../stock';
 import { AsnManagement } from './AsnManagement';
 import { DashboardPanel } from './DashboardPanel';
 import { DeviceManagementPanel } from './DeviceManagementPanel';
+import { InboundExceptionQueue } from './InboundExceptionQueue';
 import { WarehouseCapacityCard } from './WarehouseCapacityCard';
 import { LocationQRPanel } from './LocationQRPanel';
 import { LocationTreeView } from './LocationTreeView';
@@ -27,7 +28,7 @@ import { WorkersManagementPanel } from './WorkersManagementPanel';
 
 type WMSView = 'dashboard' | 'asn' | 'inbound' | 'outbound' | 'stock' | 'manage';
 type LayoutTab = 'tree' | 'designer' | '3d';
-type InboundSection = 'receiving' | 'putaway' | 'vehicle';
+type InboundSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -176,6 +177,13 @@ export function WMSManagement() {
                     Vehicle Arrivals
                   </span>
                 </button>
+                <button className={cn('px-4 py-2 text-sm font-medium', inboundSection === 'exceptions' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+                  onClick={() => setInboundSection('exceptions')}>
+                  <span className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    Holds & Quarantine
+                  </span>
+                </button>
               </div>
               <div className="p-4 space-y-4">
                 {inboundSection === 'receiving' && (
@@ -202,6 +210,9 @@ export function WMSManagement() {
                 )}
                 {inboundSection === 'vehicle' && (
                   <VehicleArrivalManagement warehouseId={selectedWarehouseId || undefined} />
+                )}
+                {inboundSection === 'exceptions' && (
+                  <InboundExceptionQueue warehouseId={selectedWarehouseId || undefined} />
                 )}
               </div>
             </div>
