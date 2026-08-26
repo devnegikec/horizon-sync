@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 import { AlertTriangle, Coins, History } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components';
@@ -7,19 +5,10 @@ import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
 
 import { useQRCreditLedger } from '../../features/qr-management/hooks/useQRCreditLedger';
 import { useQRCredits } from '../../features/qr-management/hooks/useQRCredits';
-import type {
-  QRCreditBalance,
-  QRCreditLedgerResponse,
-} from '../../features/qr-management/types/qrCredit.types';
+import type { QRCreditBalance, QRCreditLedgerResponse } from '../../features/qr-management/types/qrCredit.types';
 import { formatDate } from '../../utility/formatDate';
 
-function CreditCards({
-  summary,
-  loading,
-}: {
-  summary: QRCreditBalance | null;
-  loading: boolean;
-}) {
+function CreditCards({ summary, loading }: { summary: QRCreditBalance | null; loading: boolean }) {
   const values = {
     'Total Credits': summary?.total_credits ?? 0,
     Consumed: summary?.used_credits ?? 0,
@@ -36,9 +25,7 @@ function CreditCards({
             <Coins className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading
-              ? <Skeleton className="h-8 w-24" />
-              : <div className="text-2xl font-bold">{value.toLocaleString()}</div>}
+            {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{value.toLocaleString()}</div>}
           </CardContent>
         </Card>
       ))}
@@ -46,15 +33,7 @@ function CreditCards({
   );
 }
 
-function CreditActivity({
-  ledger,
-  loading,
-  error,
-}: {
-  ledger: QRCreditLedgerResponse | null;
-  loading: boolean;
-  error: string | null;
-}) {
+function CreditActivity({ ledger, loading, error }: { ledger: QRCreditLedgerResponse | null; loading: boolean; error: string | null }) {
   let content;
   if (loading) {
     content = (
@@ -73,20 +52,15 @@ function CreditActivity({
         {ledger.transactions.map((item) => (
           <div key={item.id} className="flex items-center justify-between py-2 text-sm">
             <div>
-              <p className="font-medium">
-                {item.transaction_type === 'credit_addition' ? 'Credits added' : 'QR block generated'}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {item.reason || formatDate(item.created_at, 'DD-MMM-YY', { includeTime: true })}
-              </p>
+              <p className="font-medium">{item.transaction_type === 'credit_addition' ? 'Credits added' : 'QR block generated'}</p>
+              <p className="text-xs text-muted-foreground">{item.reason || formatDate(item.created_at, 'DD-MMM-YY', { includeTime: true })}</p>
             </div>
             <div className="text-right">
               <p className={item.amount > 0 ? 'font-medium text-green-600' : 'font-medium text-destructive'}>
-                {item.amount > 0 ? '+' : ''}{item.amount.toLocaleString()}
+                {item.amount > 0 ? '+' : ''}
+                {item.amount.toLocaleString()}
               </p>
-              <p className="text-xs text-muted-foreground">
-                Balance {item.balance_after.toLocaleString()}
-              </p>
+              <p className="text-xs text-muted-foreground">Balance {item.balance_after.toLocaleString()}</p>
             </div>
           </div>
         ))}
@@ -107,21 +81,10 @@ function CreditActivity({
   );
 }
 
-export function QRCreditSummary({ refreshKey = 0 }: { refreshKey?: number }) {
-  const { summary, loading, error, refetch: refetchBalance } = useQRCredits();
-  const {
-    data: ledger,
-    loading: ledgerLoading,
-    error: ledgerError,
-    refetch: refetchLedger,
-  } = useQRCreditLedger();
+export function QRCreditSummary() {
+  const { summary, loading, error } = useQRCredits();
+  const { data: ledger, loading: ledgerLoading, error: ledgerError } = useQRCreditLedger();
   const lowBalance = summary !== null && summary.balance_credits < 500;
-
-  React.useEffect(() => {
-    if (refreshKey === 0) return;
-    refetchBalance();
-    refetchLedger();
-  }, [refreshKey, refetchBalance, refetchLedger]);
 
   return (
     <div className="space-y-4">

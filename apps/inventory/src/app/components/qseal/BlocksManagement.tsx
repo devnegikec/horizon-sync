@@ -20,7 +20,6 @@ import { formatDate } from '../../utility/formatDate';
 import { BlockDetailDialog } from './BlockDetailDialog';
 import { BlockFilters } from './BlockFilters';
 import { CreateBlockDialog } from './CreateBlockDialog';
-import { QRCreditSummary } from './QRCreditSummary';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -358,8 +357,7 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
     return (
       <Card>
         <CardContent className="p-6">
-          <EmptyState
-            icon={<QrCode className="h-12 w-12" />}
+          <EmptyState icon={<QrCode className="h-12 w-12" />}
             title={hasActiveFilters ? 'No Blocks match your filters' : 'No QR blocks found'}
             description={hasActiveFilters ? 'Change or reset the filters to see more Blocks.' : 'Generate a Block to create QR codes for a Product'}
             action={
@@ -369,8 +367,7 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
                   New Block
                 </Button>
               ) : undefined
-            }
-          />
+            }/>
         </CardContent>
       </Card>
     );
@@ -379,8 +376,7 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable
-          columns={columns}
+        <DataTable columns={columns}
           data={blocks}
           config={{
             showSerialNumber: true,
@@ -397,8 +393,7 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
             return null;
           }}
           fixedHeader
-          maxHeight="auto"
-        />
+          maxHeight="auto"/>
       </CardContent>
     </Card>
   );
@@ -412,7 +407,6 @@ export function BlocksManagement() {
   const [createOpen, setCreateOpen] = React.useState(false);
   const [trackedBlockId, setTrackedBlockId] = React.useState<string | null>(null);
   const [detailBlockId, setDetailBlockId] = React.useState<string | null>(null);
-  const [creditRefreshKey, setCreditRefreshKey] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const [search, setSearch] = React.useState('');
   const [filters, setFilters] = React.useState<QRBlockFilterValues>({});
@@ -472,46 +466,35 @@ export function BlocksManagement() {
         </div>
       </div>
 
-      <QRCreditSummary refreshKey={creditRefreshKey} />
-
       <BlockFilters filters={filters} search={search} onSearchChange={setSearch} onChange={updateFilters} onReset={resetFilters} />
 
       {trackedBlockId && (
-        <BlockStatusTracker
-          blockId={trackedBlockId}
+        <BlockStatusTracker blockId={trackedBlockId}
           onTerminal={() => {
-            setCreditRefreshKey((value) => value + 1);
             refetch();
           }}
           onDone={() => {
             setTrackedBlockId(null);
             refetch();
-          }}
-        />
+          }}/>
       )}
 
-      <BlocksTable
-        blocks={blocks}
+      <BlocksTable blocks={blocks}
         loading={loading}
         error={error}
         hasActiveFilters={hasActiveFilters}
         onCreateBlock={() => setCreateOpen(true)}
         onViewBlock={(b) => setDetailBlockId(b.id)}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
-      <CreateBlockDialog
-        open={createOpen}
+      <CreateBlockDialog open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={(id) => {
           setTrackedBlockId(id);
-          setCreditRefreshKey((value) => value + 1);
           refetch();
-        }}
-      />
+        }}/>
 
-      <BlockDetailDialog
-        blockId={detailBlockId}
+      <BlockDetailDialog blockId={detailBlockId}
         open={!!detailBlockId}
         onOpenChange={(open) => {
           if (!open) setDetailBlockId(null);
@@ -520,10 +503,8 @@ export function BlocksManagement() {
           const retried = await qrBlockService.retryBlock(block.id);
           setDetailBlockId(null);
           setTrackedBlockId(retried.id);
-          setCreditRefreshKey((value) => value + 1);
           await refetch();
-        }}
-      />
+        }}/>
     </div>
   );
 }

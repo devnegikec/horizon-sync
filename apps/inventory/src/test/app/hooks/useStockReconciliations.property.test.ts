@@ -4,21 +4,25 @@ import type { StockReconciliationStats } from '../../../app/types/stock.types';
 
 /**
  * Property-Based Tests for useStockReconciliations Hook
- * 
+ *
  * These tests validate universal properties that should hold for any valid input.
  * Each test runs 100 iterations with randomly generated data.
  */
 
 // Helper to generate valid ISO date strings
-const validDateArbitrary = () => fc.date().filter((d) => !isNaN(d.getTime())).map((d) => d.toISOString());
+const validDateArbitrary = () =>
+  fc
+    .date()
+    .filter((d) => !isNaN(d.getTime()))
+    .map((d) => d.toISOString());
 
 describe('useStockReconciliations - Property-Based Tests', () => {
   /**
    * Property 1: Server-side pagination consistency
-   * 
+   *
    * For any page number and page size, requesting that page should return
    * a non-overlapping subset of data with correct pagination metadata.
-   * 
+   *
    * **Validates: Requirements 4.2, 4.7**
    */
   describe('Property 1: Server-side pagination consistency', () => {
@@ -35,7 +39,7 @@ describe('useStockReconciliations - Property-Based Tests', () => {
               posting_date: validDateArbitrary(),
               created_at: validDateArbitrary(),
             }),
-            { minLength: 0, maxLength: 200 }
+            { minLength: 0, maxLength: 200 },
           ),
           (page, pageSize, allReconciliations) => {
             // Simulate pagination
@@ -60,26 +64,26 @@ describe('useStockReconciliations - Property-Based Tests', () => {
               const prevPageStart = (page - 2) * pageSize;
               const prevPageEnd = prevPageStart + pageSize;
               const prevPageData = allReconciliations.slice(prevPageStart, prevPageEnd);
-              
+
               // No item from current page should be in previous page
               const currentIds = new Set(pageData.map((r) => r.id));
               const prevIds = new Set(prevPageData.map((r) => r.id));
               const overlap = [...currentIds].filter((id) => prevIds.has(id));
               expect(overlap.length).toBe(0);
             }
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
 
   /**
    * Property 2: Filter application correctness
-   * 
+   *
    * For any combination of valid filter criteria, all returned results
    * should match every applied filter criterion using AND logic.
-   * 
+   *
    * **Validates: Requirements 4.4, 8.1, 8.7**
    */
   describe('Property 2: Filter application correctness', () => {
@@ -94,7 +98,7 @@ describe('useStockReconciliations - Property-Based Tests', () => {
               posting_date: validDateArbitrary(),
               created_at: validDateArbitrary(),
             }),
-            { minLength: 10, maxLength: 100 }
+            { minLength: 10, maxLength: 100 },
           ),
           fc.option(fc.constantFrom('draft', 'submitted'), { nil: null }), // status filter
           (allReconciliations, statusFilter) => {
@@ -114,19 +118,19 @@ describe('useStockReconciliations - Property-Based Tests', () => {
 
             // Property: Filter count should be <= original count
             expect(filteredReconciliations.length).toBeLessThanOrEqual(allReconciliations.length);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
 
   /**
    * Property 3: Search result relevance
-   * 
+   *
    * For any search query string, all returned results should contain
    * the search term in at least one searchable field.
-   * 
+   *
    * **Validates: Requirements 4.5**
    */
   describe('Property 3: Search result relevance', () => {
@@ -143,7 +147,7 @@ describe('useStockReconciliations - Property-Based Tests', () => {
               posting_date: validDateArbitrary(),
               created_at: validDateArbitrary(),
             }),
-            { minLength: 10, maxLength: 50 }
+            { minLength: 10, maxLength: 50 },
           ),
           fc.string({ minLength: 2, maxLength: 10 }),
           (allReconciliations, searchTerm) => {
@@ -154,11 +158,7 @@ describe('useStockReconciliations - Property-Based Tests', () => {
               const purpose = reconciliation.purpose?.toLowerCase() || '';
               const remarks = reconciliation.remarks?.toLowerCase() || '';
 
-              return (
-                reconciliationNo.includes(searchLower) ||
-                purpose.includes(searchLower) ||
-                remarks.includes(searchLower)
-              );
+              return reconciliationNo.includes(searchLower) || purpose.includes(searchLower) || remarks.includes(searchLower);
             });
 
             // Property: All search results must contain the search term
@@ -167,29 +167,26 @@ describe('useStockReconciliations - Property-Based Tests', () => {
               const purpose = reconciliation.purpose?.toLowerCase() || '';
               const remarks = reconciliation.remarks?.toLowerCase() || '';
 
-              const containsSearchTerm =
-                reconciliationNo.includes(searchLower) ||
-                purpose.includes(searchLower) ||
-                remarks.includes(searchLower);
+              const containsSearchTerm = reconciliationNo.includes(searchLower) || purpose.includes(searchLower) || remarks.includes(searchLower);
 
               expect(containsSearchTerm).toBe(true);
             });
 
             // Property: Search results should be subset of original data
             expect(searchResults.length).toBeLessThanOrEqual(allReconciliations.length);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
 
   /**
    * Property 12: Stats calculation accuracy
-   * 
+   *
    * For any dataset, the displayed stats should exactly match
    * the aggregated values from the actual dataset.
-   * 
+   *
    * **Validates: Requirements 9.4, 9.5**
    */
   describe('Property 12: Stats calculation accuracy', () => {
@@ -201,11 +198,11 @@ describe('useStockReconciliations - Property-Based Tests', () => {
               id: fc.uuid(),
               reconciliation_no: fc.string({ minLength: 5, maxLength: 20 }),
               status: fc.constantFrom('draft', 'submitted'),
-              total_difference: fc.oneof(fc.constant(null), fc.float({ min: -1000, max: 1000 })),
+              total_difference: fc.oneof(fc.constant(null), fc.float({ min: -1000, max: 1000, noNaN: true })),
               posting_date: validDateArbitrary(),
               created_at: validDateArbitrary(),
             }),
-            { minLength: 0, maxLength: 100 }
+            { minLength: 0, maxLength: 100 },
           ),
           (reconciliations) => {
             // Calculate stats
@@ -239,9 +236,9 @@ describe('useStockReconciliations - Property-Based Tests', () => {
             // Property: Stats should match manual count
             const manualPendingCount = reconciliations.filter((r) => r.status === 'draft').length;
             expect(stats.pending_count).toBe(manualPendingCount);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
