@@ -21,6 +21,7 @@ jest.mock('react-router-dom', () => ({
 describe('ForgotPasswordForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    sessionStorage.clear();
   });
 
   const renderForm = () => {

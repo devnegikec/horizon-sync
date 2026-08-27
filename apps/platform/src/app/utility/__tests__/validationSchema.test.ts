@@ -38,6 +38,8 @@ describe('registerSchema', () => {
     first_name: 'John',
     last_name: 'Doe',
     email: 'john@example.com',
+    country: 'IN',
+    phone_country_code: '+91',
     phone: '1234567890',
     password: 'StrongPass1!',
     confirm_password: 'StrongPass1!',

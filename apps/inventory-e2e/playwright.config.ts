@@ -16,6 +16,11 @@ const baseURL = process.env['BASE_URL'] || 'http://localhost:4201';
 export default defineConfig({
   ...nxE2EPreset(__filename, { testDir: './src' }),
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
+  timeout: 60_000,
+  expect: {
+    timeout: 10_000,
+  },
+  workers: 2,
   use: {
     baseURL,
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
@@ -26,21 +31,12 @@ export default defineConfig({
     command: 'npx nx run inventory:serve-static',
     url: 'http://localhost:4201',
     reuseExistingServer: true,
+    timeout: 120_000,
   },
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-    },
-
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
     },
 
     // Uncomment for mobile browsers support

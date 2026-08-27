@@ -52,4 +52,5 @@ vitest.config.*.timestamp*
 *.prompt.md
 .vercel
 .env*
+test-results
 

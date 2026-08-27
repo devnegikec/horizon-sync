@@ -4,19 +4,27 @@ import { useQuery } from '@tanstack/react-query';
 import { Truck, Trash2, Mail, Eye, Download, Loader2 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Badge, Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
+import { Badge, Button, DetailDialog, Separator } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { environment } from '../../../environments/environment';
 import { useEmailWithPdfAttachment } from '../../hooks/useEmailWithPdfAttachment';
 import { usePDFGeneration } from '../../hooks/usePDFGeneration';
-import type { AsnOrder, AsnOrderCreate, AsnOrderItemCreate, AsnOrderStatus, AsnOrderUpdate, AsnOrderFormData, AsnOrderDialogProps } from '../../types/asn-order.types';
+import type {
+  AsnOrder,
+  AsnOrderCreate,
+  AsnOrderItemCreate,
+  AsnOrderStatus,
+  AsnOrderUpdate,
+  AsnOrderFormData,
+  AsnOrderDialogProps,
+} from '../../types/asn-order.types';
 import type { Warehouse } from '../../types/warehouse.types';
 import { WarehousesResponse } from '../../types/warehouse.types';
+import { formatDate } from '../../utility';
 import { asnOrderApi } from '../../utility/api/asn-orders';
 import { warehouseApi } from '../../utility/api/warehouses';
 import { parseAsnEntryCsv, ASN_ENTRY_SAMPLE_CSV } from '../../utility/asnEntryCsvParser';
-import { formatDate } from '../../utility';
 import { convertAsnOrderToPDFData } from '../../utils/pdf/asnOrderToPDF';
 import { EmailComposer } from '../common';
 import { StatusBadge } from '../quotations/StatusBadge';
@@ -26,10 +34,6 @@ import type { AsnEntryLineRow } from './AsnEntryLineItemsTable';
 import { AsnEntryLineItemsTable } from './AsnEntryLineItemsTable';
 import { AsnOrderFormFields } from './AsnOrderFormFields';
 import { FulfillmentStatusTable } from './FulfillmentStatusTable';
-
-
-
-
 
 const EMPTY_LINE: AsnEntryLineRow = {
   item_id: '',
@@ -64,10 +68,9 @@ function buildFormFromEntry(entry: AsnOrder): AsnOrderFormData {
 
 function computeDocumentDiscount(subtotal: number, discountType: string, discountValue: number): number {
   if (!discountValue || discountValue <= 0) return 0;
-  if (discountType === 'percentage') return Number((subtotal * discountValue / 100).toFixed(2));
+  if (discountType === 'percentage') return Number(((subtotal * discountValue) / 100).toFixed(2));
   return Math.min(discountValue, subtotal);
 }
-
 
 function getAvailableStatuses(isEdit: boolean, currentStatus: AsnOrderStatus): AsnOrderStatus[] {
   if (!isEdit) return ['draft'];
@@ -100,10 +103,7 @@ function mapItemsToCreate(rows: AsnEntryLineRow[]): AsnOrderItemCreate[] {
     }));
 }
 
-function buildUpdatePayload(
-  formData: AsnOrderFormData,
-  items: AsnOrderItemCreate[],
-): AsnOrderUpdate {
+function buildUpdatePayload(formData: AsnOrderFormData, items: AsnOrderItemCreate[]): AsnOrderUpdate {
   return {
     warehouse_id_from: formData.warehouse_id_from || null,
     warehouse_id_to: formData.warehouse_id_to || null,
@@ -115,11 +115,7 @@ function buildUpdatePayload(
   };
 }
 
-function buildCreatePayload(
-  formData: AsnOrderFormData,
-  items: AsnOrderItemCreate[],
-  grandTotal: number,
-): AsnOrderCreate {
+function buildCreatePayload(formData: AsnOrderFormData, items: AsnOrderItemCreate[], grandTotal: number): AsnOrderCreate {
   return {
     asn_order_no: formData.asn_order_no || undefined,
     warehouse_id_from: formData.warehouse_id_from,
@@ -142,7 +138,6 @@ const STATUS_LABELS: Record<AsnOrderStatus, string> = {
   cancelled: 'Cancelled',
 };
 
-
 const DEFAULT_FORM: AsnOrderFormData = {
   asn_order_no: '',
   warehouse_id_from: '',
@@ -152,7 +147,6 @@ const DEFAULT_FORM: AsnOrderFormData = {
   status: 'draft',
   remarks: '',
 };
-
 
 function getSubmitLabel(saving: boolean, isEdit: boolean): string {
   if (saving) return 'Saving...';
@@ -209,9 +203,7 @@ function VehicleDetails({ asnOrder }: { asnOrder: AsnOrder }) {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Status</p>
-                  <Badge variant={arrival.status === 'arrived' ? 'success' : 'secondary'}>
-                    {formatArrivalStatus(arrival.status)}
-                  </Badge>
+                  <Badge variant={arrival.status === 'arrived' ? 'success' : 'secondary'}>{formatArrivalStatus(arrival.status)}</Badge>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Arrived At</p>
@@ -257,7 +249,14 @@ function useAsnOrderPDFActions(targetWarehouse?: Warehouse | null) {
   return { loading, handleDownload, handlePreview, handleGenerateBase64 };
 }
 
-function AsnOrderEmailComposer({ asnOrder, targetWarehouse, emailDialogOpen, pdfAttachment, onOpenChange, onSuccess }: {
+function AsnOrderEmailComposer({
+  asnOrder,
+  targetWarehouse,
+  emailDialogOpen,
+  pdfAttachment,
+  onOpenChange,
+  onSuccess,
+}: {
   asnOrder: AsnOrder;
   targetWarehouse?: Warehouse | null;
   emailDialogOpen: boolean;
@@ -275,12 +274,13 @@ function AsnOrderEmailComposer({ asnOrder, targetWarehouse, emailDialogOpen, pdf
       defaultSubject={`Advance Stock Notice ${asnOrder.asn_order_no}`}
       defaultMessage={`Dear Team,\n\nPlease find attached Advance Stock Notice ${asnOrder.asn_order_no} for your reference.\n\nBest regards`}
       defaultAttachments={pdfAttachment ? [pdfAttachment] : undefined}
-      onSuccess={onSuccess} />
+      onSuccess={onSuccess}/>
   );
 }
 
 // ---------- component ----------
 
+// eslint-disable-next-line complexity
 export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpenChange }: AsnOrderDialogProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [csvPreviewActive, setCsvPreviewActive] = React.useState(false);
@@ -372,7 +372,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
             qty: typeof item.qty === 'object' ? item.qty.qty : Number(item.qty) || 0,
             uom: item.uom || 'pcs',
             sort_order: item.sort_order || i + 1,
-          }))
+          })),
         );
       } else {
         setLineItems([{ ...EMPTY_LINE }]);
@@ -409,70 +409,73 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   };
 
   /* CSV import handler — validates warehouses, auto-resolves items by code */
-  const handleCsvImport = React.useCallback(async (rows: AsnEntryLineRow[]) => {
-    if (!formData.warehouse_id_from) {
-      toast({ title: 'Warehouse Required', description: 'Please select a source warehouse before importing items', variant: 'destructive' });
-      return;
-    }
-    if (!formData.warehouse_id_to) {
-      toast({ title: 'Warehouse Required', description: 'Please select a target warehouse before importing items', variant: 'destructive' });
-      return;
-    }
-    if (formData.warehouse_id_from === formData.warehouse_id_to) {
-      toast({ title: 'Invalid Warehouses', description: 'Source and target warehouse must be different', variant: 'destructive' });
-      return;
-    }
-
-    setImporting(true);
-    try {
-      const resolveItem = async (row: AsnEntryLineRow): Promise<AsnEntryLineRow> => {
-        if (!row.item_code || !accessToken) return row;
-        try {
-          const url = `${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(row.item_code)}&warehouse_id=${encodeURIComponent(formData.warehouse_id_from)}`;
-          const response = await fetch(url, {
-            headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-          });
-          if (!response.ok) return row;
-          const data = await response.json();
-          const match = data.items?.find((item: { item_code?: string }) =>
-            item.item_code?.toLowerCase() === row.item_code?.toLowerCase()
-          ) || data.items?.[0];
-          if (match) {
-            return {
-              ...row,
-              item_id: match.id,
-              item_name: match.item_name,
-              item_code: match.item_code || row.item_code,
-              uom: match.uom || row.uom || 'pcs',
-            };
-          }
-        } catch {
-          // ignore resolution failures, keep unresolved row
-        }
-        return row;
-      };
-
-      const resolvedRows = await Promise.all(rows.map(resolveItem));
-
-      const resolvedCount = resolvedRows.filter((r) => !!r.item_id).length;
-      const unresolvedCount = resolvedRows.length - resolvedCount;
-
-      setLineItems((prev) => {
-        const existing = prev.filter((r) => !!r.item_id);
-        const offset = existing.length;
-        const imported = resolvedRows.map((r, i) => ({ ...r, sort_order: offset + i + 1 }));
-        return existing.length > 0 ? [...existing, ...imported] : imported;
-      });
-
-      if (unresolvedCount > 0) {
-        setImportStatus({ type: 'error', message: `${unresolvedCount} item(s) could not be auto-resolved — please select them manually` });
-      } else if (resolvedCount > 0) {
-        setImportStatus({ type: 'success', message: `${resolvedCount} item(s) imported successfully` });
+  const handleCsvImport = React.useCallback(
+    async (rows: AsnEntryLineRow[]) => {
+      if (!formData.warehouse_id_from) {
+        toast({ title: 'Warehouse Required', description: 'Please select a source warehouse before importing items', variant: 'destructive' });
+        return;
       }
-    } finally {
-      setImporting(false);
-    }
-  }, [accessToken, formData.warehouse_id_from, formData.warehouse_id_to]);
+      if (!formData.warehouse_id_to) {
+        toast({ title: 'Warehouse Required', description: 'Please select a target warehouse before importing items', variant: 'destructive' });
+        return;
+      }
+      if (formData.warehouse_id_from === formData.warehouse_id_to) {
+        toast({ title: 'Invalid Warehouses', description: 'Source and target warehouse must be different', variant: 'destructive' });
+        return;
+      }
+
+      setImporting(true);
+      try {
+        // eslint-disable-next-line complexity
+        const resolveItem = async (row: AsnEntryLineRow): Promise<AsnEntryLineRow> => {
+          if (!row.item_code || !accessToken) return row;
+          try {
+            const url = `${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(row.item_code)}&warehouse_id=${encodeURIComponent(formData.warehouse_id_from)}`;
+            const response = await fetch(url, {
+              headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+            });
+            if (!response.ok) return row;
+            const data = await response.json();
+            const match =
+              data.items?.find((item: { item_code?: string }) => item.item_code?.toLowerCase() === row.item_code?.toLowerCase()) || data.items?.[0];
+            if (match) {
+              return {
+                ...row,
+                item_id: match.id,
+                item_name: match.item_name,
+                item_code: match.item_code || row.item_code,
+                uom: match.uom || row.uom || 'pcs',
+              };
+            }
+          } catch {
+            // ignore resolution failures, keep unresolved row
+          }
+          return row;
+        };
+
+        const resolvedRows = await Promise.all(rows.map(resolveItem));
+
+        const resolvedCount = resolvedRows.filter((r) => !!r.item_id).length;
+        const unresolvedCount = resolvedRows.length - resolvedCount;
+
+        setLineItems((prev) => {
+          const existing = prev.filter((r) => !!r.item_id);
+          const offset = existing.length;
+          const imported = resolvedRows.map((r, i) => ({ ...r, sort_order: offset + i + 1 }));
+          return existing.length > 0 ? [...existing, ...imported] : imported;
+        });
+
+        if (unresolvedCount > 0) {
+          setImportStatus({ type: 'error', message: `${unresolvedCount} item(s) could not be auto-resolved — please select them manually` });
+        } else if (resolvedCount > 0) {
+          setImportStatus({ type: 'success', message: `${resolvedCount} item(s) imported successfully` });
+        }
+      } finally {
+        setImporting(false);
+      }
+    },
+    [accessToken, formData.warehouse_id_from, formData.warehouse_id_to],
+  );
 
   const handleClearAllItems = React.useCallback(() => {
     setLineItems([{ ...EMPTY_LINE }]);
@@ -485,6 +488,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   const isLineItemEditingDisabled = isReadOnly;
   const availableStatuses = React.useMemo(() => getAvailableStatuses(isEdit, formData.status), [isEdit, formData.status]);
 
+  // eslint-disable-next-line complexity
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -524,144 +528,154 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
     }
   };
 
-  const grandTotal = React.useMemo(
-    () => lineItems.reduce((sum, r) => sum + (r.qty || 0), 0),
-    [lineItems],
-  );
+  const grandTotal = React.useMemo(() => lineItems.reduce((sum, r) => sum + (r.qty || 0), 0), [lineItems]);
 
-  const summary = React.useMemo(() => ({
-    documentDiscount: {
-      disabled: isLineItemEditingDisabled,
-    },
-  }), [isLineItemEditingDisabled]);
+  const summary = React.useMemo(
+    () => ({
+      documentDiscount: {
+        disabled: isLineItemEditingDisabled,
+      },
+    }),
+    [isLineItemEditingDisabled],
+  );
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <Truck className="h-5 w-5" />
-              {getDialogTitle(isEdit, viewMode)}
-              <StatusBadge status={formData.status} />
-            </DialogTitle>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <AsnOrderFormFields formData={formData}
-              warehousesFrom={warehousesFrom}
-              warehousesTo={warehousesTo}
-              isEdit={isEdit}
-              readOnly={isReadOnly}
-                            availableStatuses={availableStatuses}
-              statusLabels={STATUS_LABELS}
-              onFieldChange={handleChange}
-              warehouseError={warehouseError} />
-
-            <Separator />
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium">Line Items</h3>
-              {!isReadOnly && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <CsvImporter<AsnEntryLineRow> key={`csv-${clearKey}`}
-                    parseRows={parseAsnEntryCsv}
-                    onImport={handleCsvImport}
-                    // onFileSelected={handleBulkUpload}
-                    onPreviewChange={setCsvPreviewActive}
-                    disabled={importing || !formData.warehouse_id_from || !formData.warehouse_id_to}
-                    sampleCsv={ASN_ENTRY_SAMPLE_CSV}
-                    sampleFileName="asn-order-sample.csv"
-                    previewColumns={[
-                      { key: 'item_id', label: 'Item Code' },
-                      { key: 'qty', label: 'Qty' },
-                      { key: 'uom', label: 'UOM' },
-                    ]} />
-                  {(lineItems.length > 1 || (lineItems.length === 1 && lineItems[0].item_id)) && (
-                    <Button type="button" variant="ghost" size="sm" onClick={handleClearAllItems} className="text-destructive hover:text-destructive">
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Clear All
+      <DetailDialog open={open}
+        onOpenChange={onOpenChange}
+        size="lg"
+        contentClassName="max-w-4xl flex flex-col"
+        style={{ height: 'min(85vh, 820px)' }}
+        showCloseButton={false}
+        title={
+          <div className="flex items-center gap-3">
+            <Truck className="h-5 w-5" />
+            <span>{getDialogTitle(isEdit, viewMode)}</span>
+            <StatusBadge status={formData.status} />
+          </div>
+        }
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            {viewMode ? (
+              <>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Close
+                </Button>
+                {formData.status !== 'draft' && (
+                  <>
+                    <Button type="button"
+                      variant="outline"
+                      onClick={() => resolvedOrder && handlePreview(resolvedOrder)}
+                      disabled={pdfLoading}
+                      className="gap-2">
+                      <Eye className="h-4 w-4" />
+                      Preview PDF
                     </Button>
-                  )}
-                  {importing && (
-                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Importing...
-                    </span>
-                  )}
-                  {importStatus && !importing && (
-                    <Badge variant={importStatus.type === 'success' ? 'success' : 'destructive'}>
-                      {importStatus.message}
-                    </Badge>
-                  )}
-                </div>
-              )}
-              {!csvPreviewActive && (
-                <AsnEntryLineItemsTable key={`table-${clearKey}`}
-                  items={lineItems}
-                  onItemsChange={setLineItems}
-                  disabled={isReadOnly}
-                  warehouseIdFrom={formData.warehouse_id_from}
-                  warehouseIdTo={formData.warehouse_id_to}
-                  renderFooter={() => (
-                    <tr>
-                      <td className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Total Quantity:</td>
-                      <td className="px-4 py-3 text-lg font-semibold">{grandTotal}</td>
-                      <td className="px-4 py-3"></td>
-                      <td className="px-4 py-3"></td>
-                    </tr>
-                  )}/>
-              )}
-            </div>
+                    <Button type="button"
+                      variant="outline"
+                      onClick={() => resolvedOrder && handleDownload(resolvedOrder)}
+                      disabled={pdfLoading}
+                      className="gap-2">
+                      <Download className="h-4 w-4" />
+                      Download PDF
+                    </Button>
+                    <Button type="button" variant="outline" onClick={handleSendEmail} disabled={pdfLoading} className="gap-2">
+                      <Mail className="h-4 w-4" />
+                      Send Email
+                    </Button>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+                  Cancel
+                </Button>
+                <Button type="submit" form="asn-form" disabled={saving}>
+                  {getSubmitLabel(saving, isEdit)}
+                </Button>
+              </>
+            )}
+          </div>
+        }>
+        <form id="asn-form" onSubmit={handleSubmit} noValidate className="space-y-6">
+          <AsnOrderFormFields formData={formData}
+            warehousesFrom={warehousesFrom}
+            warehousesTo={warehousesTo}
+            isEdit={isEdit}
+            readOnly={isReadOnly}
+            availableStatuses={availableStatuses}
+            statusLabels={STATUS_LABELS}
+            onFieldChange={handleChange}
+            warehouseError={warehouseError}/>
 
-            {isEdit && resolvedOrder?.items && <FulfillmentStatusTable items={resolvedOrder.items} />}
-
-            {viewMode && resolvedOrder && <VehicleDetails asnOrder={resolvedOrder} />}
-
-            <DialogFooter>
-              {viewMode ? (
-                <>
-                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                    Close
+          <Separator />
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">Line Items</h3>
+            {!isReadOnly && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <CsvImporter key={`csv-${clearKey}`}
+                  parseRows={parseAsnEntryCsv}
+                  onImport={handleCsvImport}
+                  // onFileSelected={handleBulkUpload}
+                  onPreviewChange={setCsvPreviewActive}
+                  disabled={importing || !formData.warehouse_id_from || !formData.warehouse_id_to}
+                  sampleCsv={ASN_ENTRY_SAMPLE_CSV}
+                  sampleFileName="asn-order-sample.csv"
+                  previewColumns={[
+                    { key: 'item_id', label: 'Item Code' },
+                    { key: 'qty', label: 'Qty' },
+                    { key: 'uom', label: 'UOM' },
+                  ]}/>
+                {(lineItems.length > 1 || (lineItems.length === 1 && lineItems[0].item_id)) && (
+                  <Button type="button" variant="ghost" size="sm" onClick={handleClearAllItems} className="text-destructive hover:text-destructive">
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Clear All
                   </Button>
-                  {formData.status !== 'draft' && (
-                    <>
-                      <Button type="button" variant="outline" onClick={() => resolvedOrder && handlePreview(resolvedOrder)} disabled={pdfLoading} className="gap-2">
-                        <Eye className="h-4 w-4" />Preview PDF
-                      </Button>
-                      <Button type="button" variant="outline" onClick={() => resolvedOrder && handleDownload(resolvedOrder)} disabled={pdfLoading} className="gap-2">
-                        <Download className="h-4 w-4" />Download PDF
-                      </Button>
-                      <Button type="button" variant="outline" onClick={handleSendEmail} disabled={pdfLoading} className="gap-2">
-                        <Mail className="h-4 w-4" />Send Email
-                      </Button>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={saving}>
-                    {getSubmitLabel(saving, isEdit)}
-                  </Button>
-                </>
-              )}
-            </DialogFooter>
+                )}
+                {importing && (
+                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Importing...
+                  </span>
+                )}
+                {importStatus && !importing && (
+                  <Badge variant={importStatus.type === 'success' ? 'success' : 'destructive'}>{importStatus.message}</Badge>
+                )}
+              </div>
+            )}
+            {!csvPreviewActive && (
+              <AsnEntryLineItemsTable key={`table-${clearKey}`}
+                items={lineItems}
+                onItemsChange={setLineItems}
+                disabled={isReadOnly}
+                warehouseIdFrom={formData.warehouse_id_from}
+                warehouseIdTo={formData.warehouse_id_to}
+                renderFooter={() => (
+                  <tr>
+                    <td className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Total Quantity:</td>
+                    <td className="px-4 py-3 text-lg font-semibold">{grandTotal}</td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3"></td>
+                  </tr>
+                )}/>
+            )}
+          </div>
 
-          </form>
-        </DialogContent>
-      </Dialog>
+          {isEdit && resolvedOrder?.items && <FulfillmentStatusTable items={resolvedOrder.items} />}
 
-      {
-        resolvedOrder && (
-          <AsnOrderEmailComposer asnOrder={resolvedOrder}
-            targetWarehouse={targetWarehouse}
-            emailDialogOpen={emailDialogOpen}
-            pdfAttachment={pdfAttachment}
-            onOpenChange={handleEmailClose}
-            onSuccess={handleEmailSuccess} />
-        )
-      }
-    </>);
+          {viewMode && resolvedOrder && <VehicleDetails asnOrder={resolvedOrder} />}
+        </form>
+      </DetailDialog>
+
+      {resolvedOrder && (
+        <AsnOrderEmailComposer asnOrder={resolvedOrder}
+          targetWarehouse={targetWarehouse}
+          emailDialogOpen={emailDialogOpen}
+          pdfAttachment={pdfAttachment}
+          onOpenChange={handleEmailClose}
+          onSuccess={handleEmailSuccess}/>
+      )}
+    </>
+  );
 }
