@@ -1,3 +1,4 @@
+import { workspaceRoot } from '@nx/devkit';
 import { nxE2EPreset } from '@nx/playwright/preset';
 import { defineConfig, devices } from '@playwright/test';
 
@@ -31,7 +32,8 @@ export default defineConfig({
     command: 'npx nx run inventory:serve-static',
     url: 'http://localhost:4201',
     reuseExistingServer: true,
-    timeout: 120_000,
+    timeout: 600_000,
+    cwd: workspaceRoot,
   },
   projects: [
     {
