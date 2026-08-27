@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unknown-property -- react-three-fiber uses custom JSX props (position, args, intensity, etc.) */
 /**
  * Warehouse 3D View — React Three Fiber implementation
  *
@@ -14,35 +15,22 @@
  */
 import * as React from 'react';
 
-import { Canvas, useFrame } from '@react-three/fiber';
 import { Html, OrbitControls, Grid } from '@react-three/drei';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { AlertTriangle, Clock, Flame, Info, Loader2, Lock, RefreshCw, Sparkles, Target, X } from 'lucide-react';
 import * as THREE from 'three';
 
-import {
-  AlertTriangle,
-  Clock,
-  Flame,
-  Info,
-  Loader2,
-  Lock,
-  RefreshCw,
-  Sparkles,
-  Target,
-  X,
-} from 'lucide-react';
-
+import { useUserStore } from '@horizon-sync/store';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { useUserStore } from '@horizon-sync/store';
-
 import { environment } from '../../../environments/environment';
 import { useWarehouse3D } from '../../hooks/useWarehouse3D';
-import { wms3dApi } from '../../utility/api/wms3d';
 import type { BinStockItem, FlatBin, Suggestion } from '../../types/wms3d.types';
+import { wms3dApi } from '../../utility/api/wms3d';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
@@ -85,9 +73,9 @@ interface RackFrameProps {
 function RackFrame({ bins }: RackFrameProps) {
   if (bins.length === 0) return null;
 
-  const xs = bins.map(b => b.position.x);
-  const ys = bins.map(b => b.position.y);
-  const zs = bins.map(b => b.position.z);
+  const xs = bins.map((b) => b.position.x);
+  const ys = bins.map((b) => b.position.y);
+  const zs = bins.map((b) => b.position.z);
 
   const minX = Math.min(...xs) - 0.8;
   const maxX = Math.max(...xs) + 0.8;
@@ -119,7 +107,7 @@ function RackFrame({ bins }: RackFrameProps) {
         <mesh key={`up-${x}-${y}`} position={[x, uprightHeight / 2, y]}>
           <boxGeometry args={[0.08, uprightHeight, 0.08]} />
           <meshStandardMaterial color="#64748b" roughness={0.7} metalness={0.5} />
-        </mesh>
+        </mesh>,
       );
     }
   }
@@ -135,7 +123,7 @@ function RackFrame({ bins }: RackFrameProps) {
         <mesh key={`bx-${z}-${y}`} position={[midX, z, y]}>
           <boxGeometry args={[spanX, 0.06, 0.06]} />
           <meshStandardMaterial color="#475569" roughness={0.8} metalness={0.4} />
-        </mesh>
+        </mesh>,
       );
     }
     // Beams along Y direction
@@ -146,12 +134,17 @@ function RackFrame({ bins }: RackFrameProps) {
         <mesh key={`by-${z}-${x}`} position={[x, z, midY]}>
           <boxGeometry args={[0.06, 0.06, spanY]} />
           <meshStandardMaterial color="#475569" roughness={0.8} metalness={0.4} />
-        </mesh>
+        </mesh>,
       );
     }
   }
 
-  return <group>{uprights}{beams}</group>;
+  return (
+    <group>
+      {uprights}
+      {beams}
+    </group>
+  );
 }
 
 // ─── Instanced Bins (GPU performance) ─────────────────────────────────────────
@@ -198,8 +191,7 @@ function InstancedBins({ bins, suggestedIds, selectedBinId, hoveredBinId, active
 
   return (
     <>
-      <instancedMesh
-        ref={meshRef}
+      <instancedMesh ref={meshRef}
         args={[undefined, undefined, bins.length]}
         onClick={(e) => {
           e.stopPropagation();
@@ -221,21 +213,18 @@ function InstancedBins({ bins, suggestedIds, selectedBinId, hoveredBinId, active
         onPointerOut={() => {
           onHover(null);
           document.body.style.cursor = 'auto';
-        }}
-      >
+        }}>
         <boxGeometry args={[0.8, 0.85, 0.8]} />
         <meshStandardMaterial roughness={0.45} metalness={0.15} />
       </instancedMesh>
 
       {/* Hover highlight */}
       {hoveredBinId && hoveredBinId !== selectedBinId && (
-        <HighlightBin bin={bins.find(b => b.id === hoveredBinId)!} color="#3b82f6" pulse={false} />
+        <HighlightBin bin={bins.find((b) => b.id === hoveredBinId)!} color="#3b82f6" pulse={false} />
       )}
 
       {/* Selected highlight */}
-      {selectedBinId && (
-        <HighlightBin bin={bins.find(b => b.id === selectedBinId)!} color="#f59e0b" pulse={true} />
-      )}
+      {selectedBinId && <HighlightBin bin={bins.find((b) => b.id === selectedBinId)!} color="#f59e0b" pulse={true} />}
     </>
   );
 }
@@ -256,15 +245,7 @@ function HighlightBin({ bin, color, pulse }: { bin: FlatBin | undefined; color: 
   return (
     <mesh ref={meshRef} position={[bin.position.x, bin.position.z + 0.5, bin.position.y]}>
       <boxGeometry args={[0.9, 0.95, 0.9]} />
-      <meshStandardMaterial
-        color={color}
-        emissive={color}
-        emissiveIntensity={0.5}
-        roughness={0.3}
-        metalness={0.2}
-        transparent
-        opacity={0.92}
-      />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} roughness={0.3} metalness={0.2} transparent opacity={0.92} />
     </mesh>
   );
 }
@@ -277,43 +258,41 @@ function BinTooltip({ bin, suggestedIds }: { bin: FlatBin; suggestedIds: Set<str
   const statusColor = STATUS_COLORS[status as keyof typeof STATUS_COLORS] || '#94a3b8';
 
   return (
-    <Html
-      center
-      distanceFactor={18}
-      style={{ pointerEvents: 'none' }}
-      zIndexRange={[100, 0]}
-    >
+    <Html center distanceFactor={18} style={{ pointerEvents: 'none' }} zIndexRange={[100, 0]}>
       <div style={{
-        background: 'rgba(15, 23, 42, 0.95)',
-        border: `1px solid ${statusColor}`,
-        borderRadius: 6,
-        padding: '8px 12px',
-        minWidth: 160,
-        boxShadow: `0 0 12px ${statusColor}55`,
-        color: '#f8fafc',
-        fontSize: 12,
-        lineHeight: 1.6,
-        whiteSpace: 'nowrap',
-      }}>
+          background: 'rgba(15, 23, 42, 0.95)',
+          border: `1px solid ${statusColor}`,
+          borderRadius: 6,
+          padding: '8px 12px',
+          minWidth: 160,
+          boxShadow: `0 0 12px ${statusColor}55`,
+          color: '#f8fafc',
+          fontSize: 12,
+          lineHeight: 1.6,
+          whiteSpace: 'nowrap',
+        }}>
         <div style={{ fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>{bin.code}</div>
         <div>
           <span style={{ color: '#94a3b8' }}>Fill: </span>
           <span style={{ color: statusColor, fontWeight: 600 }}>{fillPct.toFixed(0)}%</span>
         </div>
         <div>
-          <span style={{ color: '#94a3b8' }}>Items: </span>{bin.items_count}
+          <span style={{ color: '#94a3b8' }}>Items: </span>
+          {bin.items_count}
         </div>
         <div>
-          <span style={{ color: '#94a3b8' }}>Zone: </span>{bin.zone_name ?? bin.zone_code}
+          <span style={{ color: '#94a3b8' }}>Zone: </span>
+          {bin.zone_name ?? bin.zone_code}
         </div>
         <div>
-          <span style={{ color: '#94a3b8' }}>Aisle: </span>{bin.aisle_code}
-          <span style={{ color: '#94a3b8', marginLeft: 8 }}>Bay: </span>{bin.bay_code}
-          <span style={{ color: '#94a3b8', marginLeft: 8 }}>Level: </span>{bin.level_code}
+          <span style={{ color: '#94a3b8' }}>Aisle: </span>
+          {bin.aisle_code}
+          <span style={{ color: '#94a3b8', marginLeft: 8 }}>Bay: </span>
+          {bin.bay_code}
+          <span style={{ color: '#94a3b8', marginLeft: 8 }}>Level: </span>
+          {bin.level_code}
         </div>
-        {(bin.live_is_reserved ?? bin.is_reserved) && (
-          <div style={{ color: '#3b82f6', fontWeight: 600, marginTop: 2 }}>Reserved</div>
-        )}
+        {(bin.live_is_reserved ?? bin.is_reserved) && <div style={{ color: '#3b82f6', fontWeight: 600, marginTop: 2 }}>Reserved</div>}
         <div style={{ marginTop: 4, fontSize: 10, color: '#64748b' }}>Click to inspect</div>
       </div>
     </Html>
@@ -324,8 +303,8 @@ function BinTooltip({ bin, suggestedIds }: { bin: FlatBin; suggestedIds: Set<str
 
 function WarehouseFloor({ bins }: { bins: FlatBin[] }) {
   if (bins.length === 0) return null;
-  const xs = bins.map(b => b.position.x);
-  const ys = bins.map(b => b.position.y);
+  const xs = bins.map((b) => b.position.x);
+  const ys = bins.map((b) => b.position.y);
   const minX = Math.min(...xs) - 3;
   const maxX = Math.max(...xs) + 3;
   const minY = Math.min(...ys) - 3;
@@ -346,8 +325,7 @@ function WarehouseFloor({ bins }: { bins: FlatBin[] }) {
       </mesh>
 
       {/* Grid */}
-      <Grid
-        position={[cx, 0, cy]}
+      <Grid position={[cx, 0, cy]}
         args={[w, d]}
         cellSize={1.5}
         cellThickness={0.4}
@@ -357,8 +335,7 @@ function WarehouseFloor({ bins }: { bins: FlatBin[] }) {
         sectionColor="#1e40af"
         fadeDistance={80}
         fadeStrength={1}
-        infiniteGrid={false}
-      />
+        infiniteGrid={false}/>
 
       {/* Walls — thin colored strips along boundaries */}
       {/* Front wall (Z-min, facing viewer) — Blue */}
@@ -423,17 +400,13 @@ function Scene({ bins, suggestedIds, selectedBinId, hoveredBinId, activeFilter, 
   // Compute center for orbit target
   const center = React.useMemo<[number, number, number]>(() => {
     if (bins.length === 0) return [0, 0, 0];
-    const xs = bins.map(b => b.position.x);
-    const ys = bins.map(b => b.position.y);
-    const zs = bins.map(b => b.position.z);
-    return [
-      (Math.min(...xs) + Math.max(...xs)) / 2,
-      (Math.min(...zs) + Math.max(...zs)) / 2,
-      (Math.min(...ys) + Math.max(...ys)) / 2,
-    ];
+    const xs = bins.map((b) => b.position.x);
+    const ys = bins.map((b) => b.position.y);
+    const zs = bins.map((b) => b.position.z);
+    return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...zs) + Math.max(...zs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
   }, [bins]);
 
-  const hoveredBin = hoveredBinId ? bins.find(b => b.id === hoveredBinId) : null;
+  const hoveredBin = hoveredBinId ? bins.find((b) => b.id === hoveredBinId) : null;
 
   // Group bins by aisle for rack frame generation
   const aisleGroups = React.useMemo(() => {
@@ -503,7 +476,16 @@ function Scene({ bins, suggestedIds, selectedBinId, hoveredBinId, activeFilter, 
       {/* Zone labels */}
       {zoneLabels.map((zl) => (
         <Html key={`zone-${zl.code}`} position={[zl.x, zl.z + 2.5, zl.y]} center distanceFactor={25} style={{ pointerEvents: 'none' }}>
-          <div style={{ background: 'rgba(99, 102, 241, 0.9)', color: '#fff', padding: '3px 12px', borderRadius: 5, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '0.05em' }}>
+          <div style={{
+              background: 'rgba(99, 102, 241, 0.9)',
+              color: '#fff',
+              padding: '3px 12px',
+              borderRadius: 5,
+              fontSize: 13,
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              letterSpacing: '0.05em',
+            }}>
             {zl.name || zl.code}
           </div>
         </Html>
@@ -512,22 +494,29 @@ function Scene({ bins, suggestedIds, selectedBinId, hoveredBinId, activeFilter, 
       {/* Aisle labels */}
       {aisleLabels.map((al) => (
         <Html key={`aisle-${al.code}`} position={[al.x, al.z + 1.5, al.y]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
-          <div style={{ background: 'rgba(30, 41, 59, 0.9)', color: '#94a3b8', padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap', border: '1px solid #334155' }}>
+          <div style={{
+              background: 'rgba(30, 41, 59, 0.9)',
+              color: '#94a3b8',
+              padding: '2px 8px',
+              borderRadius: 4,
+              fontSize: 10,
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              border: '1px solid #334155',
+            }}>
             {al.name || al.code}
           </div>
         </Html>
       ))}
 
       {/* Instanced bins */}
-      <InstancedBins
-        bins={bins}
+      <InstancedBins bins={bins}
         suggestedIds={suggestedIds}
         selectedBinId={selectedBinId}
         hoveredBinId={hoveredBinId}
         activeFilter={activeFilter}
         onSelect={onSelect}
-        onHover={onHover}
-      />
+        onHover={onHover}/>
 
       {/* Hover tooltip */}
       {hoveredBin && (
@@ -537,21 +526,14 @@ function Scene({ bins, suggestedIds, selectedBinId, hoveredBinId, activeFilter, 
       )}
 
       {/* Camera controls */}
-      <OrbitControls
-        makeDefault
-        target={center}
-        minDistance={3}
-        maxDistance={80}
-        maxPolarAngle={Math.PI / 2.1}
-        enableDamping
-        dampingFactor={0.1}
-      />
+      <OrbitControls makeDefault target={center} minDistance={3} maxDistance={80} maxPolarAngle={Math.PI / 2.1} enableDamping dampingFactor={0.1} />
     </>
   );
 }
 
 // ─── BinDetailPanel ───────────────────────────────────────────────────────────
 
+// eslint-disable-next-line complexity
 function BinDetailPanel({ bin, onClose }: { bin: FlatBin; onClose: () => void }) {
   const accessToken = useUserStore((s) => s.accessToken);
   const fillPct = bin.live_fill_pct ?? bin.fill_percentage;
@@ -563,11 +545,18 @@ function BinDetailPanel({ bin, onClose }: { bin: FlatBin; onClose: () => void })
     if (!accessToken || !bin.id) return;
     let cancelled = false;
     setStockLoading(true);
-    wms3dApi.getBinStock(accessToken, bin.id)
-      .then((res) => { if (!cancelled) setStockItems(res.items); })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setStockLoading(false); });
-    return () => { cancelled = true; };
+    wms3dApi
+      .getBinStock(accessToken, bin.id)
+      .then((res) => {
+        if (!cancelled) setStockItems(res.items);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setStockLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [accessToken, bin.id]);
 
   const isExpiringSoon = (expiry: string | null) => {
@@ -582,42 +571,99 @@ function BinDetailPanel({ bin, onClose }: { bin: FlatBin; onClose: () => void })
           <p className="font-semibold text-sm">{bin.code}</p>
           <p className="text-xs text-muted-foreground">{bin.full_path ?? '\u2014'}</p>
         </div>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}><X className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
       </div>
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded-md bg-muted/50 p-2"><p className="text-muted-foreground">Fill</p><p className="font-semibold text-sm">{fillPct.toFixed(1)}%</p></div>
-        <div className="rounded-md bg-muted/50 p-2"><p className="text-muted-foreground">Available</p><p className="font-semibold text-sm">{bin.available_capacity.toFixed(1)}</p></div>
-        <div className="rounded-md bg-muted/50 p-2"><p className="text-muted-foreground">Items</p><p className="font-semibold text-sm">{bin.items_count}</p></div>
-        <div className="rounded-md bg-muted/50 p-2"><p className="text-muted-foreground">Capacity</p><p className="font-semibold text-sm">{bin.capacity.toFixed(1)}</p></div>
+        <div className="rounded-md bg-muted/50 p-2">
+          <p className="text-muted-foreground">Fill</p>
+          <p className="font-semibold text-sm">{fillPct.toFixed(1)}%</p>
+        </div>
+        <div className="rounded-md bg-muted/50 p-2">
+          <p className="text-muted-foreground">Available</p>
+          <p className="font-semibold text-sm">{bin.available_capacity.toFixed(1)}</p>
+        </div>
+        <div className="rounded-md bg-muted/50 p-2">
+          <p className="text-muted-foreground">Items</p>
+          <p className="font-semibold text-sm">{bin.items_count}</p>
+        </div>
+        <div className="rounded-md bg-muted/50 p-2">
+          <p className="text-muted-foreground">Capacity</p>
+          <p className="font-semibold text-sm">{bin.capacity.toFixed(1)}</p>
+        </div>
       </div>
       <div className="space-y-1.5 text-xs">
-        <div className="flex justify-between"><span className="text-muted-foreground">Zone</span><span className="font-medium">{bin.zone_name ?? bin.zone_code}</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Aisle</span><span className="font-medium">{bin.aisle_name ?? bin.aisle_code}</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Bay / Level</span><span className="font-medium">{bin.bay_code} / {bin.level_code}</span></div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Zone</span>
+          <span className="font-medium">{bin.zone_name ?? bin.zone_code}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Aisle</span>
+          <span className="font-medium">{bin.aisle_name ?? bin.aisle_code}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Bay / Level</span>
+          <span className="font-medium">
+            {bin.bay_code} / {bin.level_code}
+          </span>
+        </div>
       </div>
       <div className="flex flex-wrap gap-1">
-        {isReserved && <Badge variant="secondary" className="gap-1 text-blue-700 bg-blue-100"><Lock className="h-3 w-3" />Reserved</Badge>}
-        {bin.has_expiring_items && <Badge variant="secondary" className="gap-1 text-orange-700 bg-orange-100"><AlertTriangle className="h-3 w-3" />Expiring</Badge>}
+        {isReserved && (
+          <Badge variant="secondary" className="gap-1 text-blue-700 bg-blue-100">
+            <Lock className="h-3 w-3" />
+            Reserved
+          </Badge>
+        )}
+        {bin.has_expiring_items && (
+          <Badge variant="secondary" className="gap-1 text-orange-700 bg-orange-100">
+            <AlertTriangle className="h-3 w-3" />
+            Expiring
+          </Badge>
+        )}
       </div>
       {/* Stock Items */}
       <div className="border-t pt-3 space-y-2">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Stock Items</p>
-        {stockLoading && <div className="flex items-center gap-2 text-xs text-muted-foreground py-2"><Loader2 className="h-3 w-3 animate-spin" />Loading…</div>}
-        {!stockLoading && stockItems.length === 0 && <p className="text-xs text-muted-foreground italic">No stock</p>}
-        {!stockLoading && stockItems.map((item, idx) => (
-          <div key={`${item.item_id}-${idx}`} className={cn('rounded-md border p-2 text-xs space-y-1', isExpiringSoon(item.expiry_date) && 'border-orange-300 bg-orange-50')}>
-            <div className="flex justify-between gap-2">
-              <div className="min-w-0"><p className="font-medium truncate">{item.item_name}</p><p className="text-muted-foreground font-mono text-[10px]">{item.item_code}</p></div>
-              <span className="font-semibold whitespace-nowrap">{item.quantity_on_hand}{item.uom ? ` ${item.uom}` : ''}</span>
-            </div>
-            {(item.batch_number || item.expiry_date) && (
-              <div className="flex gap-3 text-[10px] text-muted-foreground">
-                {item.batch_number && <span>Batch: {item.batch_number}</span>}
-                {item.expiry_date && <span className={cn(isExpiringSoon(item.expiry_date) && 'text-orange-700 font-medium')}>Exp: {item.expiry_date}</span>}
-              </div>
-            )}
+        {stockLoading && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Loading…
           </div>
-        ))}
+        )}
+        {!stockLoading && stockItems.length === 0 && <p className="text-xs text-muted-foreground italic">No stock</p>}
+        {!stockLoading &&
+          stockItems.map((item, idx) => (
+            <div key={`${item.item_id}-${idx}`}
+              className={cn('rounded-md border p-2 text-xs space-y-1', isExpiringSoon(item.expiry_date) && 'border-orange-300 bg-orange-50')}>
+              <div className="flex justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{item.item_name}</p>
+                  <p className="text-muted-foreground font-mono text-[10px]">{item.item_code}</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {item.inventory_status && item.inventory_status !== 'available' && (
+                    <Badge variant="secondary" className="text-[10px] capitalize">
+                      {item.inventory_status}
+                    </Badge>
+                  )}
+                  <span className="font-semibold whitespace-nowrap">
+                    {item.quantity_on_hand}
+                    {item.uom ? ` ${item.uom}` : ''}
+                  </span>
+                </div>
+              </div>
+              {(item.batch_number || item.expiry_date) && (
+                <div className="flex gap-3 text-[10px] text-muted-foreground">
+                  {item.batch_number && <span>Batch: {item.batch_number}</span>}
+                  {item.expiry_date && (
+                    <span className={cn(isExpiringSoon(item.expiry_date) && 'text-orange-700 font-medium')}>Exp: {item.expiry_date}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
       </div>
     </div>
   );
@@ -634,45 +680,99 @@ function BinSuggestionPanel({ warehouseId, onResults, onClose }: { warehouseId: 
   const [error, setError] = React.useState<string | null>(null);
   const [results, setResults] = React.useState<Suggestion[]>([]);
 
-  const searchItems = React.useCallback(async (query: string) => {
-    if (!accessToken) return [];
-    const res = await fetch(`${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(query)}`, { headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' } });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return (data.items ?? []) as Array<{ id: string; item_code: string; item_name: string }>;
-  }, [accessToken]);
+  const searchItems = React.useCallback(
+    async (query: string) => {
+      if (!accessToken) return [];
+      const res = await fetch(`${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(query)}`, {
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.items ?? []) as Array<{ id: string; item_code: string; item_name: string }>;
+    },
+    [accessToken],
+  );
 
   const handleFind = async () => {
     if (!accessToken || !itemId) return;
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
-      const resp = await wms3dApi.suggest(accessToken, { task_type: taskType, item_id: itemId, quantity, warehouse_id: warehouseId, worker_id: NIL_UUID, limit: 10 });
-      setResults(resp.suggestions); onResults(resp.suggestions);
-    } catch (err) { setError(err instanceof Error ? err.message : 'Failed'); setResults([]); onResults([]); }
-    finally { setLoading(false); }
+      const resp = await wms3dApi.suggest(accessToken, {
+        task_type: taskType,
+        item_id: itemId,
+        quantity,
+        warehouse_id: warehouseId,
+        worker_id: NIL_UUID,
+        limit: 10,
+      });
+      setResults(resp.suggestions);
+      onResults(resp.suggestions);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+      setResults([]);
+      onResults([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="w-80 shrink-0 rounded-lg border bg-card shadow-lg p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="font-semibold text-sm flex items-center gap-1.5"><Target className="h-4 w-4 text-amber-600" />Find Optimal Bins</p>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}><X className="h-4 w-4" /></Button>
+        <p className="font-semibold text-sm flex items-center gap-1.5">
+          <Target className="h-4 w-4 text-amber-600" />
+          Find Optimal Bins
+        </p>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
       </div>
       <div className="flex gap-1.5">
-        <Button variant={taskType === 'put_away' ? 'default' : 'outline'} size="sm" className="flex-1 text-xs h-8" onClick={() => setTaskType('put_away')}>Put-away</Button>
-        <Button variant={taskType === 'pick' ? 'default' : 'outline'} size="sm" className="flex-1 text-xs h-8" onClick={() => setTaskType('pick')}>Pick</Button>
+        <Button variant={taskType === 'put_away' ? 'default' : 'outline'}
+          size="sm"
+          className="flex-1 text-xs h-8"
+          onClick={() => setTaskType('put_away')}>
+          Put-away
+        </Button>
+        <Button variant={taskType === 'pick' ? 'default' : 'outline'} size="sm" className="flex-1 text-xs h-8" onClick={() => setTaskType('pick')}>
+          Pick
+        </Button>
       </div>
-      <div className="space-y-1"><Label className="text-xs">Item</Label>
-        <ItemPickerSelect value={itemId} onValueChange={setItemId} searchItems={searchItems} labelFormatter={(i: { item_name: string; item_code: string }) => `${i.item_name} (${i.item_code})`} valueKey="id" placeholder="Select item…" searchPlaceholder="Search…" minSearchLength={2} selectedItemData={null} />
+      <div className="space-y-1">
+        <Label className="text-xs">Item</Label>
+        <ItemPickerSelect value={itemId}
+          onValueChange={setItemId}
+          searchItems={searchItems}
+          labelFormatter={(i: { item_name: string; item_code: string }) => `${i.item_name} (${i.item_code})`}
+          valueKey="id"
+          placeholder="Select item…"
+          searchPlaceholder="Search…"
+          minSearchLength={2}
+          selectedItemData={null}/>
       </div>
-      <div className="space-y-1"><Label className="text-xs">Quantity</Label><Input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, parseFloat(e.target.value) || 1))} className="h-8 text-xs" /></div>
-      <Button size="sm" className="w-full gap-1.5" onClick={handleFind} disabled={loading || !itemId}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Suggest bins</Button>
+      <div className="space-y-1">
+        <Label className="text-xs">Quantity</Label>
+        <Input type="number"
+          min={1}
+          value={quantity}
+          onChange={(e) => setQuantity(Math.max(1, parseFloat(e.target.value) || 1))}
+          className="h-8 text-xs"/>
+      </div>
+      <Button size="sm" className="w-full gap-1.5" onClick={handleFind} disabled={loading || !itemId}>
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Suggest bins
+      </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}
       {results.length > 0 && (
         <div className="space-y-1.5 max-h-60 overflow-y-auto">
           {results.map((s) => (
             <div key={s.bin_id} className="rounded-md border p-2 text-xs space-y-1">
-              <div className="flex justify-between"><span className="font-mono font-medium">#{s.rank} {s.bin_code ?? s.bin_id.slice(0, 8)}</span><span className="text-amber-700 font-semibold">{s.score.toFixed(0)}pts</span></div>
+              <div className="flex justify-between">
+                <span className="font-mono font-medium">
+                  #{s.rank} {s.bin_code ?? s.bin_id.slice(0, 8)}
+                </span>
+                <span className="text-amber-700 font-semibold">{s.score.toFixed(0)}pts</span>
+              </div>
               {s.reasons.length > 0 && <p className="text-[10px] text-muted-foreground line-clamp-2">{s.reasons.join(' · ')}</p>}
             </div>
           ))}
@@ -695,6 +795,7 @@ const FILTER_OPTIONS = [
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+// eslint-disable-next-line complexity
 export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
   const [selectedBinId, setSelectedBinId] = React.useState<string | null>(null);
   const [hoveredBinId, setHoveredBinId] = React.useState<string | null>(null);
@@ -702,16 +803,15 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
   const [showSuggest, setShowSuggest] = React.useState(false);
   const [activeFilter, setActiveFilter] = React.useState('all');
 
-  const { activeBins, layout, loading, error, statusLoading, wsConnected, refetch, refetchStatus } =
-    useWarehouse3D(warehouseId);
+  const { activeBins, layout, loading, error, statusLoading, wsConnected, refetch, refetchStatus } = useWarehouse3D(warehouseId);
 
-  const selectedBin = selectedBinId ? activeBins.find(b => b.id === selectedBinId) ?? null : null;
+  const selectedBin = selectedBinId ? (activeBins.find((b) => b.id === selectedBinId) ?? null) : null;
 
   // Camera position based on warehouse extent
   const cameraPosition = React.useMemo<[number, number, number]>(() => {
     if (activeBins.length === 0) return [15, 15, 25];
-    const xs = activeBins.map(b => b.position.x);
-    const ys = activeBins.map(b => b.position.y);
+    const xs = activeBins.map((b) => b.position.x);
+    const ys = activeBins.map((b) => b.position.y);
     const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 5);
     const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
     const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
@@ -721,7 +821,8 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
-        <Loader2 className="h-5 w-5 animate-spin" /><span>Loading 3D warehouse…</span>
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span>Loading 3D warehouse…</span>
       </div>
     );
   }
@@ -732,7 +833,10 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
         <Info className="h-8 w-8 text-muted-foreground" />
         <p className="font-medium">Could not load 3D layout</p>
         <p className="text-sm text-muted-foreground max-w-sm">{error}</p>
-        <Button variant="outline" size="sm" onClick={refetch} className="gap-2"><RefreshCw className="h-4 w-4" />Retry</Button>
+        <Button variant="outline" size="sm" onClick={refetch} className="gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </Button>
       </div>
     );
   }
@@ -742,8 +846,9 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
-          <Button variant={showSuggest ? 'default' : 'outline'} size="sm" className="gap-1.5" onClick={() => setShowSuggest(s => !s)}>
-            <Target className="h-4 w-4" />Suggest
+          <Button variant={showSuggest ? 'default' : 'outline'} size="sm" className="gap-1.5" onClick={() => setShowSuggest((s) => !s)}>
+            <Target className="h-4 w-4" />
+            Suggest
           </Button>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -751,13 +856,18 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
           <span>{activeBins.length} bins</span>
           {wsConnected ? (
             <Badge variant="secondary" className="gap-1 text-emerald-700 bg-emerald-100 px-1.5 py-0">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />Live
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+              Live
             </Badge>
           ) : (
-            <Badge variant="secondary" className="text-muted-foreground px-1.5 py-0">Polling</Badge>
+            <Badge variant="secondary" className="text-muted-foreground px-1.5 py-0">
+              Polling
+            </Badge>
           )}
           {layout && <span className="font-medium">{layout.warehouse.name}</span>}
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={refetchStatus}><RefreshCw className="h-3.5 w-3.5" /></Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={refetchStatus}>
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </div>
 
@@ -766,29 +876,32 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
         {/* 3D Canvas with dark background */}
         <div className="flex-1 min-w-0 rounded-lg border overflow-hidden relative" style={{ height: 580, backgroundColor: '#0f172a' }}>
           <Canvas camera={{ position: cameraPosition, fov: 50 }} shadows onPointerMissed={() => setSelectedBinId(null)}>
-            <Scene
-              bins={activeBins}
+            <Scene bins={activeBins}
               suggestedIds={suggestedIds}
               selectedBinId={selectedBinId}
               hoveredBinId={hoveredBinId}
               activeFilter={activeFilter}
               onSelect={(bin) => setSelectedBinId(bin.id)}
-              onHover={setHoveredBinId}
-            />
+              onHover={setHoveredBinId}/>
           </Canvas>
 
           {/* Filter overlay (top-left) */}
-          <div className="absolute top-4 left-4 rounded-lg border border-blue-900 bg-slate-900/90 backdrop-blur-sm p-3 space-y-1.5" style={{ minWidth: 160 }}>
+          <div className="absolute top-4 left-4 rounded-lg border border-blue-900 bg-slate-900/90 backdrop-blur-sm p-3 space-y-1.5"
+            style={{ minWidth: 160 }}>
             <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-2">Inventory Filter</p>
-            {FILTER_OPTIONS.map(opt => (
-              <button
-                key={opt.key}
+            {FILTER_OPTIONS.map((opt) => (
+              <button key={opt.key}
                 onClick={() => setActiveFilter(opt.key)}
                 className={cn(
                   'flex items-center gap-2 w-full px-2.5 py-1.5 rounded text-xs text-left transition-all',
-                  activeFilter === opt.key ? 'bg-slate-800 text-white border border-slate-600' : 'text-slate-400 hover:text-slate-200 border border-transparent',
+                  activeFilter === opt.key
+                    ? 'bg-slate-800 text-white border border-slate-600'
+                    : 'text-slate-400 hover:text-slate-200 border border-transparent',
                 )}>
-                {opt.color && <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: opt.color, boxShadow: activeFilter === opt.key ? `0 0 6px ${opt.color}` : 'none' }} />}
+                {opt.color && (
+                  <span className="w-2.5 h-2.5 rounded-sm shrink-0"
+                    style={{ background: opt.color, boxShadow: activeFilter === opt.key ? `0 0 6px ${opt.color}` : 'none' }}/>
+                )}
                 {opt.icon && <span className="text-sm">{opt.icon}</span>}
                 <span>{opt.label}</span>
               </button>
@@ -803,11 +916,12 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
 
         {/* Side panels */}
         {showSuggest && (
-          <BinSuggestionPanel
-            warehouseId={warehouseId}
-            onResults={(s) => setSuggestedIds(new Set(s.map(x => x.bin_id)))}
-            onClose={() => { setShowSuggest(false); setSuggestedIds(new Set()); }}
-          />
+          <BinSuggestionPanel warehouseId={warehouseId}
+            onResults={(s) => setSuggestedIds(new Set(s.map((x) => x.bin_id)))}
+            onClose={() => {
+              setShowSuggest(false);
+              setSuggestedIds(new Set());
+            }}/>
         )}
         {selectedBin && <BinDetailPanel bin={selectedBin} onClose={() => setSelectedBinId(null)} />}
       </div>

@@ -192,6 +192,7 @@ export interface BinStockItem {
   item_code: string;
   sku: string | null;
   quantity_on_hand: number;
+  inventory_status: string;
   batch_number: string | null;
   expiry_date: string | null;
   uom: string | null;

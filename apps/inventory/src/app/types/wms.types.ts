@@ -46,8 +46,7 @@ export interface WarehouseLocation {
   updated_at: string;
 }
 
-export interface LocationTree
-  extends Omit<WarehouseLocation, 'organization_id' | 'version' | 'created_at' | 'updated_at'> {
+export interface LocationTree extends Omit<WarehouseLocation, 'organization_id' | 'version' | 'created_at' | 'updated_at'> {
   children: LocationTree[];
 }
 
@@ -89,6 +88,7 @@ export interface BinStockLevel {
   bin_location_id: string;
   item_id: string;
   quantity_on_hand: number;
+  inventory_status: string;
   batch_number: string | null;
   created_at: string;
   updated_at: string;
@@ -101,6 +101,7 @@ export interface BinStockInfo {
   warehouse_id: string;
   item_id: string;
   quantity_on_hand: number;
+  inventory_status: string;
   batch_number: string | null;
   bin_capacity: number;
   available_capacity: number;
