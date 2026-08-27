@@ -37,10 +37,10 @@ import type {
   BinStateResponse,
   CapacityTreeNode,
   WMSDashboardStats,
+  AsnReceivingSummary,
   VehicleArrival,
   VehicleArrivalCreate,
   VehicleArrivalUpdate,
-  VehicleArrivalListItem,
   PaginatedVehicleArrivals,
   InboundException,
   InboundExceptionReason,
@@ -81,8 +81,7 @@ export const layoutApi = {
       body: JSON.stringify(data),
     }),
 
-  getTree: (token: string, warehouseId: string) =>
-    req<LocationTree[]>(`${BASE}/warehouse-locations/tree/${warehouseId}`, token),
+  getTree: (token: string, warehouseId: string) => req<LocationTree[]>(`${BASE}/warehouse-locations/tree/${warehouseId}`, token),
 
   listLocations: (
     token: string,
@@ -103,8 +102,7 @@ export const layoutApi = {
     return req<PaginatedLocations>(`${BASE}/warehouse-locations?${p}`, token);
   },
 
-  getLocation: (token: string, id: string) =>
-    req<WarehouseLocation>(`${BASE}/warehouse-locations/${id}`, token),
+  getLocation: (token: string, id: string) => req<WarehouseLocation>(`${BASE}/warehouse-locations/${id}`, token),
 
   updateLocation: (token: string, id: string, data: UpdateLocationRequest) =>
     req<WarehouseLocation>(`${BASE}/warehouse-locations/${id}`, token, {
@@ -115,14 +113,10 @@ export const layoutApi = {
   deactivateLocation: (token: string, id: string) =>
     req<WarehouseLocation>(`${BASE}/warehouse-locations/${id}/deactivate`, token, { method: 'POST', body: '{}' }),
 
-  getLocationSummary: (token: string, id: string) =>
-    req<LocationSummary>(`${BASE}/warehouse-locations/${id}/summary`, token),
+  getLocationSummary: (token: string, id: string) => req<LocationSummary>(`${BASE}/warehouse-locations/${id}/summary`, token),
 
   searchLocations: (token: string, warehouseId: string, query: string, limit = 20) =>
-    req<WarehouseLocation[]>(
-      `${BASE}/warehouse-locations/search?warehouse_id=${warehouseId}&q=${encodeURIComponent(query)}&limit=${limit}`,
-      token,
-    ),
+    req<WarehouseLocation[]>(`${BASE}/warehouse-locations/search?warehouse_id=${warehouseId}&q=${encodeURIComponent(query)}&limit=${limit}`, token),
 };
 
 // ============================================
@@ -130,7 +124,7 @@ export const layoutApi = {
 // ============================================
 
 export const inboundApi = {
-  startSession: (token: string, data: { warehouse_id: string; dock_location?: string | null }) =>
+  startSession: (token: string, data: { warehouse_id: string; dock_location?: string | null; asn_order_id?: string | null }) =>
     req<ScanSession>(`${BASE}/inbound/sessions`, token, { method: 'POST', body: JSON.stringify(data) }),
 
   recordScan: (token: string, sessionId: string, data: { qr_data: string }) =>
@@ -142,8 +136,12 @@ export const inboundApi = {
   endSession: (token: string, sessionId: string) =>
     req<ReceivingSlip>(`${BASE}/inbound/sessions/${sessionId}/end`, token, { method: 'POST', body: '{}' }),
 
-  getSessionSummary: (token: string, sessionId: string) =>
-    req<SessionSummary>(`${BASE}/inbound/sessions/${sessionId}/summary`, token),
+  getSessionSummary: (token: string, sessionId: string) => req<SessionSummary>(`${BASE}/inbound/sessions/${sessionId}/summary`, token),
+
+  getAsnReceivingSummary: (token: string, asnOrderId: string, sessionId?: string) => {
+    const query = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : '';
+    return req<AsnReceivingSummary>(`${BASE}/asn-orders/${asnOrderId}/receiving-summary${query}`, token);
+  },
 
   listReceivingSlips: (token: string, params: { warehouse_id?: string; status?: string; page?: number; page_size?: number }) => {
     const p = new URLSearchParams();
@@ -153,8 +151,7 @@ export const inboundApi = {
     return req<PaginatedReceivingSlips>(`${BASE}/inbound/receiving-slips?${p}`, token);
   },
 
-  getReceivingSlip: (token: string, slipId: string) =>
-    req<ReceivingSlip>(`${BASE}/inbound/receiving-slips/${slipId}`, token),
+  getReceivingSlip: (token: string, slipId: string) => req<ReceivingSlip>(`${BASE}/inbound/receiving-slips/${slipId}`, token),
 
   approveSlip: (token: string, slipId: string, workerId?: string) =>
     req<ReceivingSlip>(`${BASE}/inbound/receiving-slips/${slipId}/approve`, token, {
@@ -180,37 +177,53 @@ export const inboundApi = {
       body: JSON.stringify({ reason }),
     }),
 
-  listExceptionReasons: (token: string) =>
-    req<InboundExceptionReason[]>(`${BASE}/inbound/exception-reasons`, token),
+  listExceptionReasons: (token: string) => req<InboundExceptionReason[]>(`${BASE}/inbound/exception-reasons`, token),
 
-  classifyException: (token: string, slipId: string, itemId: string, data: {
-    classification: 'short' | 'damaged' | 'excess' | 'hold' | 'quarantine';
-    reason_code: string;
-    destination?: 'HOLD' | 'QUARANTINE';
-    note?: string;
-  }) => req<InboundException>(`${BASE}/inbound/receiving-slips/${slipId}/items/${itemId}/exception`, token, {
-    method: 'POST', body: JSON.stringify(data),
-  }),
+  classifyException: (
+    token: string,
+    slipId: string,
+    itemId: string,
+    data: {
+      classification: 'short' | 'damaged' | 'excess' | 'hold' | 'quarantine';
+      reason_code: string;
+      destination?: 'HOLD' | 'QUARANTINE';
+      note?: string;
+    },
+  ) =>
+    req<InboundException>(`${BASE}/inbound/receiving-slips/${slipId}/items/${itemId}/exception`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   listExceptions: (token: string, params: { warehouse_id?: string; destination?: string; status?: string } = {}) => {
     const p = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => { if (value) p.append(key, value); });
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) p.append(key, value);
+    });
     return req<InboundException[]>(`${BASE}/inbound/exceptions?${p}`, token);
   },
 
-  disposeException: (token: string, exceptionId: string, data: {
-    action: 'release_to_receiving' | 'move_to_hold' | 'move_to_quarantine' | 'return_to_sender' | 'dispose';
-    note?: string;
-    item_id?: string;
-  }) => req<InboundException>(`${BASE}/inbound/exceptions/${exceptionId}/disposition`, token, {
-    method: 'POST', body: JSON.stringify(data),
-  }),
+  disposeException: (
+    token: string,
+    exceptionId: string,
+    data: {
+      action: 'release_to_receiving' | 'move_to_hold' | 'move_to_quarantine' | 'return_to_sender' | 'dispose';
+      note?: string;
+      item_id?: string;
+    },
+  ) =>
+    req<InboundException>(`${BASE}/inbound/exceptions/${exceptionId}/disposition`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   uploadExceptionEvidence: async (token: string, exceptionId: string, file: File): Promise<InboundException> => {
     const body = new FormData();
     body.append('file', file);
     const res = await fetch(`${BASE}/inbound/exceptions/${exceptionId}/evidence`, {
-      method: 'POST', headers: { Authorization: `Bearer ${token}` }, body,
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body,
     });
     if (!res.ok) throw new Error((await res.json().catch(() => null))?.detail || 'Evidence upload failed');
     return res.json();
@@ -236,8 +249,7 @@ export const vehicleArrivalApi = {
     return req<PaginatedVehicleArrivals>(`${BASE}/vehicle-arrivals?${p}`, token);
   },
 
-  get: (token: string, id: string) =>
-    req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}`, token),
+  get: (token: string, id: string) => req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}`, token),
 
   update: (token: string, id: string, data: VehicleArrivalUpdate) =>
     req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}`, token, {
@@ -270,8 +282,7 @@ export const putAwayApi = {
     return req<{ put_away_lists: PutAwayList[]; pagination: unknown }>(`${BASE}/put-away?${p}`, token);
   },
 
-  getPutAwayList: (token: string, id: string) =>
-    req<PutAwayList>(`${BASE}/put-away/${id}`, token),
+  getPutAwayList: (token: string, id: string) => req<PutAwayList>(`${BASE}/put-away/${id}`, token),
 
   completeItem: (token: string, listId: string, itemId: string, binId?: string) =>
     req<PutAwayItem>(`${BASE}/put-away/${listId}/items/${itemId}/complete`, token, {
@@ -308,8 +319,7 @@ export const outboundApi = {
     return req<PaginatedPickLists>(`${BASE}/outbound?${p}`, token);
   },
 
-  getPickList: (token: string, id: string) =>
-    req<PickList>(`${BASE}/outbound/${id}`, token),
+  getPickList: (token: string, id: string) => req<PickList>(`${BASE}/outbound/${id}`, token),
 
   recordPickScan: (token: string, pickListId: string, qrData: string) =>
     req<PickScanResult>(`${BASE}/outbound/${pickListId}/scan`, token, {
@@ -317,11 +327,9 @@ export const outboundApi = {
       body: JSON.stringify({ qr_data: qrData }),
     }),
 
-  completePickList: (token: string, id: string) =>
-    req<PickList>(`${BASE}/outbound/${id}/complete`, token, { method: 'POST', body: '{}' }),
+  completePickList: (token: string, id: string) => req<PickList>(`${BASE}/outbound/${id}/complete`, token, { method: 'POST', body: '{}' }),
 
-  cancelPickList: (token: string, id: string) =>
-    req<PickList>(`${BASE}/outbound/${id}/cancel`, token, { method: 'POST', body: '{}' }),
+  cancelPickList: (token: string, id: string) => req<PickList>(`${BASE}/outbound/${id}/cancel`, token, { method: 'POST', body: '{}' }),
 
   assignWorker: (token: string, id: string, workerId: string) =>
     req<PickList>(`${BASE}/outbound/${id}/assign`, token, {
@@ -363,8 +371,7 @@ export const outboundApi = {
     return req<DispatchListResponse>(`${BASE}/outbound/dispatches?${p}`, token);
   },
 
-  getDispatch: (token: string, id: string) =>
-    req<DispatchRecord>(`${BASE}/outbound/dispatches/${id}`, token),
+  getDispatch: (token: string, id: string) => req<DispatchRecord>(`${BASE}/outbound/dispatches/${id}`, token),
 };
 
 // ============================================
@@ -384,14 +391,12 @@ export const wmsWorkerApi = {
     return req<WMSWorkerListResponse>(`${IDENTITY_BASE}/identity/workers?${p}`, token);
   },
 
-  get: (token: string, id: string) =>
-    req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}`, token),
+  get: (token: string, id: string) => req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}`, token),
 
   update: (token: string, id: string, data: WMSWorkerUpdate) =>
     req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}`, token, { method: 'PATCH', body: JSON.stringify(data) }),
 
-  delete: (token: string, id: string) =>
-    req<void>(`${IDENTITY_BASE}/identity/workers/${id}`, token, { method: 'DELETE' }),
+  delete: (token: string, id: string) => req<void>(`${IDENTITY_BASE}/identity/workers/${id}`, token, { method: 'DELETE' }),
 
   regenerateBarcode: (token: string, id: string) =>
     req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}/regenerate-qr`, token, { method: 'POST', body: '{}' }),
@@ -409,8 +414,7 @@ export const wmsWorkerApi = {
 // ============================================
 
 export const wmsDeviceApi = {
-  create: (token: string, data: WMSDeviceCreate) =>
-    req<WMSDevice>(`${BASE}/wms-devices`, token, { method: 'POST', body: JSON.stringify(data) }),
+  create: (token: string, data: WMSDeviceCreate) => req<WMSDevice>(`${BASE}/wms-devices`, token, { method: 'POST', body: JSON.stringify(data) }),
 
   list: (token: string, params: { warehouse_id?: string; status?: string; search?: string; page?: number; page_size?: number }) => {
     const p = new URLSearchParams();
@@ -420,14 +424,12 @@ export const wmsDeviceApi = {
     return req<WMSDeviceListResponse>(`${BASE}/wms-devices?${p}`, token);
   },
 
-  get: (token: string, id: string) =>
-    req<WMSDevice>(`${BASE}/wms-devices/${id}`, token),
+  get: (token: string, id: string) => req<WMSDevice>(`${BASE}/wms-devices/${id}`, token),
 
   update: (token: string, id: string, data: WMSDeviceUpdate) =>
     req<WMSDevice>(`${BASE}/wms-devices/${id}`, token, { method: 'PATCH', body: JSON.stringify(data) }),
 
-  delete: (token: string, id: string) =>
-    req<void>(`${BASE}/wms-devices/${id}`, token, { method: 'DELETE' }),
+  delete: (token: string, id: string) => req<void>(`${BASE}/wms-devices/${id}`, token, { method: 'DELETE' }),
 };
 
 // ============================================
@@ -435,8 +437,7 @@ export const wmsDeviceApi = {
 // ============================================
 
 export const binStockApi = {
-  copy: (token: string, data: CopyStockRequest) =>
-    req<unknown>(`${BASE}/bin-stock/copy`, token, { method: 'POST', body: JSON.stringify(data) }),
+  copy: (token: string, data: CopyStockRequest) => req<unknown>(`${BASE}/bin-stock/copy`, token, { method: 'POST', body: JSON.stringify(data) }),
 
   exportCsv: (token: string, params?: { warehouse_id?: string; item_id?: string; bin_id?: string }) => {
     const p = new URLSearchParams();
@@ -473,9 +474,7 @@ export const wmsDashboardApi = {
 // ============================================
 
 export const capacityApi = {
-  getTree: (token: string, warehouseId: string) =>
-    req<CapacityTreeNode>(`${BASE}/capacity/warehouses/${warehouseId}/tree`, token),
+  getTree: (token: string, warehouseId: string) => req<CapacityTreeNode>(`${BASE}/capacity/warehouses/${warehouseId}/tree`, token),
 
-  getBinStates: (token: string, warehouseId: string) =>
-    req<BinStateResponse[]>(`${BASE}/capacity/warehouses/${warehouseId}/bin-states`, token),
+  getBinStates: (token: string, warehouseId: string) => req<BinStateResponse[]>(`${BASE}/capacity/warehouses/${warehouseId}/bin-states`, token),
 };
