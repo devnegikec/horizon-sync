@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { qrBlockService } from '../services/qrBlockService';
 import type { QRBlock, BlockStatus } from '../types/qrBlock.types';
@@ -50,5 +50,18 @@ export const useBlockStatus = (blockId: string | null) => {
     };
   }, [blockId]);
 
-  return { block, loading, pollInterval };
+  const refetch = useCallback(async () => {
+    if (!blockId) return;
+    setLoading(true);
+    try {
+      const data = await qrBlockService.getBlock(blockId);
+      setBlock(data);
+    } catch {
+      // Keep the existing block on failure.
+    } finally {
+      setLoading(false);
+    }
+  }, [blockId]);
+
+  return { block, loading, pollInterval, refetch };
 };

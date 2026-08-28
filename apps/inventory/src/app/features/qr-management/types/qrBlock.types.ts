@@ -105,3 +105,41 @@ export interface ProductItem {
   secret_code: string | null;
   created_at: string;
 }
+
+export interface QSealAutoLinkResponse {
+  block_id: string;
+  batch: string;
+  master_pack_size: number;
+  parent_count: number;
+  linked_item_count: number;
+  message: string;
+}
+
+export interface QSealAggregationItem {
+  id: string;
+  block_id: string | null;
+  batch: string | null;
+  child_serial: string | null;
+  activated: boolean | null;
+  scan_count: number;
+  linked: boolean;
+  parent_id: string | null;
+  parent_serial: string | null;
+  parent_name: string | null;
+  parent_type: string | null;
+  parent_capacity: number | null;
+  parent_linked_count: number | null;
+  created_at: string;
+}
+
+export interface QSealAggregationResponse {
+  items: QSealAggregationItem[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total_items: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+}

@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Package, QrCode, Palette, BarChart3, Zap, Settings } from 'lucide-react';
+import { Package, QrCode, Palette, BarChart3, Zap, Settings, Layers } from 'lucide-react';
 
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -10,6 +10,7 @@ import { cn } from '@horizon-sync/ui/lib';
 import {
   QSealManagement,
   BlocksManagement,
+  AggregationManagement,
   SkuCustomizationManagement,
   AnalyticsManagement,
   ActivationManagement,
@@ -20,7 +21,7 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 });
 
-type ActiveView = 'products' | 'blocks' | 'sku_customization' | 'analytics' | 'activation' | 'product_settings';
+type ActiveView = 'products' | 'blocks' | 'sku_customization' | 'analytics' | 'activation' | 'aggregation' | 'product_settings';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -58,6 +59,7 @@ export function QSealPage() {
                   onClick={() => setActiveView('sku_customization')}/>
                 <NavItem icon={BarChart3} label="Analytics" isActive={activeView === 'analytics'} onClick={() => setActiveView('analytics')} />
                 <NavItem icon={Zap} label="Activation" isActive={activeView === 'activation'} onClick={() => setActiveView('activation')} />
+                <NavItem icon={Layers} label="Aggregation" isActive={activeView === 'aggregation'} onClick={() => setActiveView('aggregation')} />
                 <NavItem icon={Settings}
                   label="Settings"
                   isActive={activeView === 'product_settings'}
@@ -72,6 +74,7 @@ export function QSealPage() {
             {activeView === 'sku_customization' && <SkuCustomizationManagement />}
             {activeView === 'analytics' && <AnalyticsManagement />}
             {activeView === 'activation' && <ActivationManagement />}
+            {activeView === 'aggregation' && <AggregationManagement />}
             {activeView === 'product_settings' && <ProductSettingsManagement />}
           </main>
         </div>

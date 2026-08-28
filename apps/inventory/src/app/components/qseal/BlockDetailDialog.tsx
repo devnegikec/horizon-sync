@@ -7,6 +7,7 @@ import { useUserStore } from '@horizon-sync/store';
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
+import { Input } from '@horizon-sync/ui/components/ui/input';
 
 import { environment } from '../../../environments/environment';
 import { useBlockDownload } from '../../features/qr-management/hooks/useBlockDownload';
@@ -431,6 +432,60 @@ function BlockItemsTable({ blockId }: { blockId: string }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Auto-link (automatic cascade / aggregation)                        */
+/* ------------------------------------------------------------------ */
+
+function MasterPackAutoLink({ block, onLinked }: { block: QRBlock; onLinked: () => Promise<void> | void }) {
+  const [linking, setLinking] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [packSize, setPackSize] = React.useState<string>(
+    block.master_pack_size ? String(block.master_pack_size) : '',
+  );
+
+  const handleAutoLink = async () => {
+    const size = Number(packSize);
+    if (!Number.isInteger(size) || size <= 0) {
+      setError('Enter a valid master pack size (number of units per pack).');
+      return;
+    }
+    setLinking(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await qrBlockService.autoLinkBlock(block.id, size);
+      setMessage(result.message);
+      await onLinked();
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to auto-link block'));
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 text-sm font-medium">
+          <Layers className="h-4 w-4" />
+          Master Pack Aggregation
+        </div>
+        <Button variant="outline" size="sm" onClick={handleAutoLink} disabled={linking}>
+          {linking ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Layers className="h-4 w-4 mr-2" />}
+          {linking ? 'Linking…' : block.master_pack_enabled ? 'Re-run Auto-link' : 'Auto-link (Cascade)'}
+        </Button>
+      </div>
+      <div className="flex items-center gap-2">
+        <Input type="number" min={1} value={packSize} onChange={(e) => setPackSize(e.target.value)} placeholder="Pack size (units per parent)" className="h-8 max-w-[200px]" />
+        <p className="text-xs text-muted-foreground">units per master pack</p>
+      </div>
+      {message && <p className="text-xs text-green-600">{message}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main dialog                                                        */
 /* ------------------------------------------------------------------ */
 
@@ -443,7 +498,7 @@ export interface BlockDetailDialogProps {
 
 export function BlockDetailDialog({ blockId, open, onOpenChange, onRetry }: BlockDetailDialogProps) {
   // Use polling hook so status updates live while dialog is open
-  const { block, loading } = useBlockStatus(open ? blockId : null);
+  const { block, loading, refetch } = useBlockStatus(open ? blockId : null);
   const [retrying, setRetrying] = React.useState(false);
   const [retryError, setRetryError] = React.useState<string | null>(null);
 
@@ -482,6 +537,10 @@ export function BlockDetailDialog({ blockId, open, onOpenChange, onRetry }: Bloc
         {block && (
           <div className="space-y-6">
             <BlockInfoPanel block={block} onRetry={onRetry ? retry : undefined} retrying={retrying} retryError={retryError} />
+
+            {block.status === 'completed' && (
+              <MasterPackAutoLink block={block} onLinked={refetch} />
+            )}
 
             {block.status === 'completed' && (
               <div className="space-y-2">
