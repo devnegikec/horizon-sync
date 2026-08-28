@@ -6,6 +6,7 @@ import { Download, Loader2, AlertCircle, CheckCircle2, RefreshCw, Layers } from 
 import { useUserStore } from '@horizon-sync/store';
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 
@@ -439,16 +440,25 @@ function MasterPackAutoLink({ block, onLinked }: { block: QRBlock; onLinked: () 
   const [linking, setLinking] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [packSize, setPackSize] = React.useState<string>(
     block.master_pack_size ? String(block.master_pack_size) : '',
   );
 
-  const handleAutoLink = async () => {
+  const requestAutoLink = () => {
     const size = Number(packSize);
     if (!Number.isInteger(size) || size <= 0) {
       setError('Enter a valid master pack size (number of units per pack).');
       return;
     }
+    setError(null);
+    setMessage(null);
+    setConfirmOpen(true);
+  };
+
+  const performAutoLink = async () => {
+    setConfirmOpen(false);
+    const size = Number(packSize);
     setLinking(true);
     setError(null);
     setMessage(null);
@@ -470,7 +480,7 @@ function MasterPackAutoLink({ block, onLinked }: { block: QRBlock; onLinked: () 
           <Layers className="h-4 w-4" />
           Master Pack Aggregation
         </div>
-        <Button variant="outline" size="sm" onClick={handleAutoLink} disabled={linking}>
+        <Button variant="outline" size="sm" onClick={requestAutoLink} disabled={linking}>
           {linking ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Layers className="h-4 w-4 mr-2" />}
           {linking ? 'Linking…' : block.master_pack_enabled ? 'Re-run Auto-link' : 'Auto-link (Cascade)'}
         </Button>
@@ -481,6 +491,17 @@ function MasterPackAutoLink({ block, onLinked }: { block: QRBlock; onLinked: () 
       </div>
       {message && <p className="text-xs text-green-600">{message}</p>}
       {error && <p className="text-xs text-destructive">{error}</p>}
+
+      <ConfirmationDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Re-run master pack aggregation?"
+        description={`This will remove this block's existing parent links and re-aggregate its units into packs of ${Number(packSize) || '—'} items each.`}
+        confirmLabel="Aggregate"
+        variant="destructive"
+        loading={linking}
+        onConfirm={performAutoLink}
+      />
     </div>
   );
 }
