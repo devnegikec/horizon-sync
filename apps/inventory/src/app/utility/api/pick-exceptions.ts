@@ -47,4 +47,16 @@ export const pickExceptionApi = {
 
     getAudit: (accessToken: string, id: string) =>
         apiRequest<PickExceptionAuditResponse>(`/pick-exceptions/${id}/audit`, accessToken),
+
+    resolve: (accessToken: string, id: string, resolution: string) =>
+        apiRequest<PickException>(`/pick-exceptions/${id}/resolve`, accessToken, {
+            method: 'POST',
+            body: { resolution },
+        }),
+
+    approve: (accessToken: string, id: string, decision: 'approved' | 'rejected') =>
+        apiRequest<PickException>(`/pick-exceptions/${id}/approve`, accessToken, {
+            method: 'POST',
+            body: { decision },
+        }),
 };

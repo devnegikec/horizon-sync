@@ -12,6 +12,7 @@ import {
     Plus,
     ChevronDown,
     Trash2,
+    AlertTriangle,
 } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -28,6 +29,7 @@ import {
 import { environment } from '../../../environments/environment';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 import { PickListView } from './PickListView';
+import { PickExceptionQueue } from './PickExceptionQueue';
 import { GateVerificationPanel } from './GateVerificationPanel';
 import { DispatchList } from './DispatchList';
 import { outboundApi } from '../../utility/api/wms';
@@ -37,7 +39,7 @@ import type { PickList, SAPInvoicePayload } from '../../types/wms.types';
 // TYPES
 // ============================================
 
-type OutboundTab = 'pick' | 'gate' | 'dispatch';
+type OutboundTab = 'pick' | 'gate' | 'dispatch' | 'exceptions';
 
 interface OutboundManagementProps {
     warehouseId: string | null;
@@ -599,6 +601,20 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
                             Dispatches
                         </span>
                     </button>
+                    <button
+                        className={cn(
+                            'px-4 py-2 text-sm font-medium',
+                            activeTab === 'exceptions'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted/50 hover:bg-muted',
+                        )}
+                        onClick={() => setActiveTab('exceptions')}
+                    >
+                        <span className="flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            Exceptions
+                        </span>
+                    </button>
                 </div>
 
                 {/* Tab content */}
@@ -646,6 +662,10 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
                             </div>
                             <DispatchList />
                         </div>
+                    )}
+
+                    {activeTab === 'exceptions' && (
+                        <PickExceptionQueue warehouseId={warehouseId ?? undefined} />
                     )}
                 </div>
             </div>
