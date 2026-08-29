@@ -425,6 +425,9 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
   const workers = useWorkers(open);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
   const [qrInput, setQrInput] = React.useState('');
+  const [binInput, setBinInput] = React.useState('');
+  const [scannedBinId, setScannedBinId] = React.useState<string | null>(null);
+  const [scannedBinLabel, setScannedBinLabel] = React.useState<string | null>(null);
   const [scanError, setScanError] = React.useState<string | null>(null);
   const [scanning, setScanning] = React.useState(false);
   const [assignOpen, setAssignOpen] = React.useState(false);
@@ -452,7 +455,7 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
     setScanError(null);
     setScanning(true);
     try {
-      const result = await recordScan(qrInput.trim());
+      const result = await recordScan(qrInput.trim(), scannedBinId);
       setQrInput('');
       toast({ title: 'Item scanned', description: `${result.sku} — ${result.scanned_qty} units` });
       inputRef.current?.focus();
@@ -460,6 +463,24 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
       setScanError(err instanceof Error ? err.message : 'Scan failed');
     } finally {
       setScanning(false);
+    }
+  };
+
+  const handleBinScan = () => {
+    const raw = binInput.trim();
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      const locationId = parsed.location_id ?? null;
+      if (!locationId) throw new Error('Bin QR is missing a location id');
+      setScannedBinId(String(locationId));
+      setScannedBinLabel(parsed.full_path ?? String(locationId));
+      setBinInput('');
+      setScanError(null);
+      toast({ title: 'Bin scanned', description: parsed.full_path ?? String(locationId) });
+      inputRef.current?.focus();
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Invalid bin QR');
     }
   };
 
@@ -584,6 +605,24 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
             {/* Scan input */}
             {canScan && (
               <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    value={binInput}
+                    onChange={(e) => setBinInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleBinScan()}
+                    placeholder="Scan source bin QR first..."
+                    className="font-mono text-sm"
+                  />
+                  <Button onClick={handleBinScan} variant="outline" className="gap-2 shrink-0">
+                    <ScanLine className="h-4 w-4" />
+                    Bin
+                  </Button>
+                </div>
+                {scannedBinId && (
+                  <div className="text-xs text-muted-foreground font-mono">
+                    Active bin: {scannedBinLabel ?? scannedBinId}
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Input
                     ref={inputRef}
