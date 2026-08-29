@@ -11,6 +11,7 @@ import { OrganizationProfileSettings } from '../features/organization/components
 import { OrganizationSettings } from '../features/organization/components/OrganizationSettings';
 import { UomSettings } from '../features/organization/components/UomSettings';
 import { hasPermissionFromStore } from '../features/organization/utils/permissions';
+import { PickSettingsEditor } from '../features/pick-settings/components/PickSettingsEditor';
 import { useAuth } from '../hooks';
 import { DEFAULT_ORGANIZATION_SETTINGS } from '../types/organization-settings.types';
 
@@ -84,6 +85,7 @@ export function SettingsPage() {
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="items-uom">Items & UOM</TabsTrigger>
           <TabsTrigger value="feature-flags">Feature Flags</TabsTrigger>
+          <TabsTrigger value="pick-settings">Pick Settings</TabsTrigger>
           <TabsTrigger value="data-sync">Data Sync</TabsTrigger>
         </TabsList>
 
@@ -110,6 +112,11 @@ export function SettingsPage() {
         <TabsContent value="feature-flags" className="space-y-6">
           {/* Tenant-scoped feature flag overrides */}
           <FeatureFlagsSettings accessToken={accessToken} canEdit={canEdit} />
+        </TabsContent>
+
+        <TabsContent value="pick-settings" className="space-y-6">
+          {/* WMS pick configuration (PR-02 / T-17) */}
+          <PickSettingsEditor accessToken={accessToken} canEdit={canEdit} />
         </TabsContent>
 
         <TabsContent value="data-sync" className="space-y-6">
