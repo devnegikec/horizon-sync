@@ -427,6 +427,7 @@ export interface PickScanResult {
   pick_list_item_id: string;
   item_id: string;
   sku: string;
+  serial_no?: string | null;
   scanned_qty: number;
   picked_qty: number;
   required_qty: number;

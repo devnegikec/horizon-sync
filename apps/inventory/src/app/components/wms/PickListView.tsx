@@ -457,7 +457,8 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
     try {
       const result = await recordScan(qrInput.trim(), scannedBinId);
       setQrInput('');
-      toast({ title: 'Item scanned', description: `${result.sku} — ${result.scanned_qty} units` });
+      const serialPart = result.serial_no ? ` [${result.serial_no}]` : '';
+      toast({ title: 'Item scanned', description: `${result.sku}${serialPart} — ${result.scanned_qty} units` });
       inputRef.current?.focus();
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'Scan failed');
