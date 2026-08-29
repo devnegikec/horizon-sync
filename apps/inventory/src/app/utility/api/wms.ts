@@ -53,8 +53,30 @@ function headers(token: string) {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
+/** Small deterministic string hash (djb2) for stable idempotency keys. */
+function hashString(input: string): string {
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) + hash) ^ input.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+/**
+ * Build a deterministic idempotency key for an idempotent pick mutation.
+ * Stable across retries of the same payload, distinct across payloads.
+ */
+function idempotencyKey(operation: 'scan' | 'complete' | 'cancel', pickListId: string, payload?: string): string {
+  const base = `${operation}:${pickListId}`;
+  return payload ? `${base}:${hashString(payload)}` : base;
+}
+
 async function req<T>(url: string, token: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(url, { headers: headers(token), ...options });
+  const { headers: extraHeaders, ...rest } = options;
+  const res = await fetch(url, {
+    ...rest,
+    headers: { ...headers(token), ...(extraHeaders as Record<string, string> | undefined) },
+  });
   if (!res.ok) {
     const text = await res.text();
     let detail = text;
@@ -315,13 +337,22 @@ export const outboundApi = {
     req<PickScanResult>(`${BASE}/outbound/${pickListId}/scan`, token, {
       method: 'POST',
       body: JSON.stringify({ qr_data: qrData }),
+      headers: { 'Idempotency-Key': idempotencyKey('scan', pickListId, qrData) },
     }),
 
   completePickList: (token: string, id: string) =>
-    req<PickList>(`${BASE}/outbound/${id}/complete`, token, { method: 'POST', body: '{}' }),
+    req<PickList>(`${BASE}/outbound/${id}/complete`, token, {
+      method: 'POST',
+      body: '{}',
+      headers: { 'Idempotency-Key': idempotencyKey('complete', id) },
+    }),
 
   cancelPickList: (token: string, id: string) =>
-    req<PickList>(`${BASE}/outbound/${id}/cancel`, token, { method: 'POST', body: '{}' }),
+    req<PickList>(`${BASE}/outbound/${id}/cancel`, token, {
+      method: 'POST',
+      body: '{}',
+      headers: { 'Idempotency-Key': idempotencyKey('cancel', id) },
+    }),
 
   assignWorker: (token: string, id: string, workerId: string) =>
     req<PickList>(`${BASE}/outbound/${id}/assign`, token, {

@@ -1,10 +1,13 @@
 import * as React from 'react';
 
-import { Package, FileText, Warehouse, Calendar, Hash, Link2 } from 'lucide-react';
+import { Package, FileText, Warehouse, Calendar, Hash, Link2, AlertTriangle } from 'lucide-react';
 
-import { Badge, Separator } from '@horizon-sync/ui/components';
+import { Badge, Button, Separator } from '@horizon-sync/ui/components';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import type { PickList, PickListItem } from '../../types/pick-list.types';
+
+import { RaiseExceptionDialog } from './RaiseExceptionDialog';
 
 function formatDateTime(dateStr: string | null | undefined) {
   if (!dateStr) return '—';
@@ -55,7 +58,7 @@ function WarehouseCell({ item }: { item: PickListItem }) {
   );
 }
 
-function ItemRow({ item, index }: { item: PickListItem; index: number }) {
+function ItemRow({ item, index, onReport }: { item: PickListItem; index: number; onReport: (item: PickListItem) => void }) {
   return (
     <tr className="hover:bg-muted/30">
       <td className="px-4 py-3 text-sm text-muted-foreground">{index + 1}</td>
@@ -65,11 +68,21 @@ function ItemRow({ item, index }: { item: PickListItem; index: number }) {
       <td className="px-4 py-3 text-right text-sm">{Number(item.picked_qty).toFixed(3)}</td>
       <td className="px-4 py-3"><Badge variant="outline" className="text-xs">{item.uom}</Badge></td>
       <td className="px-4 py-3 text-xs text-muted-foreground">{item.batch_no ?? '—'}</td>
+      <td className="px-4 py-3 text-right">
+        <Button type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onReport(item)}
+          title="Raise exception for this line">
+          <AlertTriangle className="h-3.5 w-3.5" />
+          Report
+        </Button>
+      </td>
     </tr>
   );
 }
 
-function ItemsTable({ items }: { items: PickListItem[] }) {
+function ItemsTable({ items, onReport }: { items: PickListItem[]; onReport: (item: PickListItem) => void }) {
   if (!items || items.length === 0) {
     return (
       <div className="rounded-lg border">
@@ -90,11 +103,12 @@ function ItemsTable({ items }: { items: PickListItem[] }) {
             <th className="px-4 py-3 text-right text-sm font-medium">Picked</th>
             <th className="px-4 py-3 text-left text-sm font-medium">UOM</th>
             <th className="px-4 py-3 text-left text-sm font-medium">Batch</th>
+            <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {items.map((item, index) => (
-            <ItemRow key={item.id} item={item} index={index} />
+            <ItemRow key={item.id} item={item} index={index} onReport={onReport} />
           ))}
         </tbody>
       </table>
@@ -141,6 +155,22 @@ function InfoPanel({ pickList }: { pickList: PickList }) {
 }
 
 export function PickListDetailContent({ pickList }: { pickList: PickList }) {
+  const { toast } = useToast();
+  const [raiseItem, setRaiseItem] = React.useState<PickListItem | null>(null);
+  const [raiseOpen, setRaiseOpen] = React.useState(false);
+
+  const handleReport = React.useCallback((item: PickListItem) => {
+    setRaiseItem(item);
+    setRaiseOpen(true);
+  }, []);
+
+  const handleRaiseSaved = React.useCallback(() => {
+    toast({
+      title: 'Exception reported',
+      description: 'The pick exception was recorded against the audit trail.',
+    });
+  }, [toast]);
+
   return (
     <div className="p-2 space-y-4">
       <InfoPanel pickList={pickList} />
@@ -149,7 +179,7 @@ export function PickListDetailContent({ pickList }: { pickList: PickList }) {
 
       <div className="space-y-4">
         <h3 className="text-lg font-bold">Items to Pick ({pickList.items?.length ?? 0})</h3>
-        <ItemsTable items={pickList.items ?? []} />
+        <ItemsTable items={pickList.items ?? []} onReport={handleReport} />
       </div>
 
       {pickList.remarks && (
@@ -168,6 +198,11 @@ export function PickListDetailContent({ pickList }: { pickList: PickList }) {
         <div><span className="font-medium">Created:</span> {formatDateTime(pickList.created_at)}</div>
         <div><span className="font-medium">Updated:</span> {formatDateTime(pickList.updated_at)}</div>
       </div>
+
+      <RaiseExceptionDialog open={raiseOpen}
+        onOpenChange={setRaiseOpen}
+        item={raiseItem}
+        onSaved={handleRaiseSaved} />
     </div>
   );
 }
