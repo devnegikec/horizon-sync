@@ -452,7 +452,41 @@ export function usePickList(pickListId: string | null) {
     [accessToken, pickListId],
   );
 
-  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker };
+  const stageTransfer = React.useCallback(
+    async (stagingLocationId: string): Promise<PickList> => {
+      if (!pickListId || !accessToken) throw new Error('No pick list selected');
+      setError(null);
+      try {
+        const result = await outboundApi.stageTransfer(accessToken, pickListId, stagingLocationId);
+        setPickList(result);
+        return result;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to transfer to staging';
+        setError(msg);
+        throw new Error(msg);
+      }
+    },
+    [accessToken, pickListId],
+  );
+
+  const stageScan = React.useCallback(
+    async (stagingLocationId: string): Promise<PickList> => {
+      if (!pickListId || !accessToken) throw new Error('No pick list selected');
+      setError(null);
+      try {
+        const result = await outboundApi.stageScan(accessToken, pickListId, stagingLocationId);
+        setPickList(result);
+        return result;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to validate staging lane';
+        setError(msg);
+        throw new Error(msg);
+      }
+    },
+    [accessToken, pickListId],
+  );
+
+  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker, stageTransfer, stageScan };
 }
 
 // ============================================

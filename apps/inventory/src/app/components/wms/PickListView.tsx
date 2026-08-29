@@ -421,11 +421,13 @@ interface PickListDetailDialogProps {
 
 function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDialogProps) {
   const { toast } = useToast();
-  const { pickList, loading, error, recordScan, complete, cancel, assignWorker, } = usePickList(listId);
+  const { pickList, loading, error, recordScan, complete, cancel, assignWorker, stageTransfer, stageScan } = usePickList(listId);
   const workers = useWorkers(open);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
   const [qrInput, setQrInput] = React.useState('');
   const [binInput, setBinInput] = React.useState('');
+  const [stageInput, setStageInput] = React.useState('');
+  const [staging, setStaging] = React.useState(false);
   const [scannedBinId, setScannedBinId] = React.useState<string | null>(null);
   const [scannedBinLabel, setScannedBinLabel] = React.useState<string | null>(null);
   const [scanError, setScanError] = React.useState<string | null>(null);
@@ -482,6 +484,26 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
       inputRef.current?.focus();
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'Invalid bin QR');
+    }
+  };
+
+  const handleStage = async () => {
+    const raw = stageInput.trim();
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      const locationId = parsed.location_id ?? null;
+      if (!locationId) throw new Error('Staging lane QR is missing a location id');
+      setStaging(true);
+      setScanError(null);
+      await stageTransfer(String(locationId));
+      await stageScan(String(locationId));
+      setStageInput('');
+      toast({ title: 'Staged', description: parsed.full_path ?? String(locationId) });
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Staging failed');
+    } finally {
+      setStaging(false);
     }
   };
 
@@ -645,6 +667,23 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
                     {scanError}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Staging lane scan */}
+            {canScan && (
+              <div className="flex gap-2">
+                <Input
+                  value={stageInput}
+                  onChange={(e) => setStageInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleStage()}
+                  placeholder="Scan staging lane QR..."
+                  className="font-mono text-sm"
+                />
+                <Button onClick={handleStage} variant="outline" disabled={staging} className="gap-2 shrink-0">
+                  <ScanLine className="h-4 w-4" />
+                  {staging ? 'Staging...' : 'Stage'}
+                </Button>
               </div>
             )}
 

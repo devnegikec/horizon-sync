@@ -360,6 +360,18 @@ export const outboundApi = {
       body: JSON.stringify({ worker_id: workerId }),
     }),
 
+  stageTransfer: (token: string, id: string, stagingLocationId: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/stage-transfer`, token, {
+      method: 'POST',
+      body: JSON.stringify({ staging_location_id: stagingLocationId }),
+    }),
+
+  stageScan: (token: string, id: string, stagingLocationId: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/stage-scan`, token, {
+      method: 'POST',
+      body: JSON.stringify({ staging_location_id: stagingLocationId }),
+    }),
+
   // Gate Verification
   startGateSession: (token: string, data: GateSessionRequest) =>
     req<GateSession>(`${BASE}/outbound/gate-sessions`, token, { method: 'POST', body: JSON.stringify(data) }),
