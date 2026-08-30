@@ -363,6 +363,12 @@ export const outboundApi = {
       body: JSON.stringify({ worker_id: workerId }),
     }),
 
+  acceptTask: (token: string, id: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/accept`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
   stageTransfer: (token: string, id: string, stagingLocationId: string) =>
     req<PickList>(`${BASE}/outbound/${id}/stage-transfer`, token, {
       method: 'POST',

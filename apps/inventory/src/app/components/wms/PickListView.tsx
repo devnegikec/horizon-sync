@@ -427,7 +427,7 @@ interface PickListDetailDialogProps {
 
 function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDialogProps) {
   const { toast } = useToast();
-  const { pickList, loading, error, recordScan, complete, cancel, assignWorker, stageTransfer, stageScan, assignHandlingUnit } = usePickList(listId);
+  const { pickList, loading, error, recordScan, complete, cancel, assignWorker, accept, stageTransfer, stageScan, assignHandlingUnit } = usePickList(listId);
   const workers = useWorkers(open);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
   const [qrInput, setQrInput] = React.useState('');
@@ -538,6 +538,15 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
     }
   };
 
+  const handleAccept = async () => {
+    try {
+      await accept();
+      toast({ title: 'Task accepted', description: 'Timer started' });
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to accept', variant: 'destructive' });
+    }
+  };
+
   const handleCancel = async () => {
     try {
       await cancel();
@@ -551,9 +560,16 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
   const canComplete = pickList?.status === 'in_progress' && (progress?.remaining_items ?? 0) === 0;
   const canScan = pickList?.status === 'draft' || pickList?.status === 'in_progress';
   const canCancel = !!pickList && pickList.status !== 'completed' && pickList.status !== 'cancelled';
+  const canAccept = pickList?.status === 'draft';
 
   const footer = (
     <div className="flex items-center gap-2">
+      {canAccept && (
+        <Button size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleAccept}>
+          <CheckCircle2 className="h-4 w-4" />
+          Accept Task
+        </Button>
+      )}
       {canComplete && (
         <Button size="sm" className="gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => setConfirmAction('complete')}>
           <CheckCircle2 className="h-4 w-4" />
@@ -595,6 +611,11 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Status</p>
                 <WMSStatusBadge status={pickList.status} />
+                {pickList.accepted_at && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Accepted {new Date(pickList.accepted_at).toLocaleTimeString()}
+                  </p>
+                )}
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Progress</p>

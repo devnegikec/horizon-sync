@@ -454,6 +454,20 @@ export function usePickList(pickListId: string | null) {
     [accessToken, pickListId],
   );
 
+  const accept = React.useCallback(async (): Promise<PickList> => {
+    if (!pickListId || !accessToken) throw new Error('No pick list selected');
+    setError(null);
+    try {
+      const result = await outboundApi.acceptTask(accessToken, pickListId);
+      setPickList(result);
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to accept task';
+      setError(msg);
+      throw new Error(msg);
+    }
+  }, [accessToken, pickListId]);
+
   const stageTransfer = React.useCallback(
     async (stagingLocationId: string): Promise<PickList> => {
       if (!pickListId || !accessToken) throw new Error('No pick list selected');
@@ -504,7 +518,7 @@ export function usePickList(pickListId: string | null) {
     [accessToken, pickListId, fetchPickList],
   );
 
-  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker, stageTransfer, stageScan, assignHandlingUnit };
+  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker, accept, stageTransfer, stageScan, assignHandlingUnit };
 }
 
 // ============================================

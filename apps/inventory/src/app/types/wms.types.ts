@@ -411,6 +411,8 @@ export interface PickList {
   worker_name?: string | null;
   invoice_reference: string | null;
   completed_at: string | null;
+  accepted_at?: string | null;
+  accepted_by?: string | null;
   created_at: string | null;
   updated_at: string | null;
   priority: number;
