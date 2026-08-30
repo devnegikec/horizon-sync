@@ -3,6 +3,7 @@ import * as React from 'react';
 import { Upload, Image, Link, Clock, MoreHorizontal, Info, Trash2 } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 
+import { DetailDialog } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
 import { Input } from '@horizon-sync/ui/components/ui/input';
@@ -15,7 +16,6 @@ import { useBrands } from '../../features/qr-management/hooks/useBrands';
 import { useQRProductSettings } from '../../hooks/useQRProductSettings';
 import type { QRProductSetting } from '../../types/qr-product-settings.types';
 import type { CreateQSealProductPayload, QSealProduct, QSealProductImageChanges } from '../../types/qseal.types';
-import { FormDialog } from '../containers';
 
 interface FormValues {
   brand_id: string;
@@ -112,11 +112,9 @@ function BrandSelectSection({ brandId, onBrandChange, disabled = false }: BrandS
     <div className="space-y-3">
       <SectionHeader icon={Info} title="Brand" />
       <div className="space-y-1">
-        <LabelWithTooltip
-          label="Brand"
+        <LabelWithTooltip label="Brand"
           required
-          hint="Select the brand this product belongs to. The brand's ECDSA key pair will be used to sign QR codes."
-        />
+          hint="Select the brand this product belongs to. The brand's ECDSA key pair will be used to sign QR codes."/>
         <Select value={brandId} onValueChange={onBrandChange} disabled={loading || disabled}>
           <SelectTrigger aria-label="Brand">
             <SelectValue placeholder={loading ? 'Loading brands…' : 'Select a brand'} />
@@ -202,15 +200,13 @@ function ImageDropZone({ label, required, hint, sizeHint, value, error, onFileSe
           </div>
         </div>
       ) : (
-        <div
-          className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer hover:border-primary/50 transition-colors ${error ? 'border-destructive' : ''}`}
+        <div className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer hover:border-primary/50 transition-colors ${error ? 'border-destructive' : ''}`}
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
           onClick={() => inputRef.current?.click()}
           role="button"
           tabIndex={0}
-          onKeyDown={handleKeyDown}
-        >
+          onKeyDown={handleKeyDown}>
           <Upload className="h-6 w-6 text-primary" />
           <span className="text-sm text-muted-foreground">Drag &amp; drop {label.toLowerCase()} here or</span>
           <Button type="button" variant="default" size="sm">
@@ -219,16 +215,14 @@ function ImageDropZone({ label, required, hint, sizeHint, value, error, onFileSe
           <span className="text-xs text-muted-foreground">{sizeHint}</span>
         </div>
       )}
-      <input
-        ref={inputRef}
+      <input ref={inputRef}
         type="file"
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) handleFile(f);
-        }}
-      />
+        }}/>
       {error && (
         <p className="text-xs text-destructive" role="alert">
           {error}
@@ -265,26 +259,22 @@ function ProductImagesSection({
     <div className="space-y-3">
       <SectionHeader icon={Image} title="Product Images" />
       <div className="grid grid-cols-2 gap-4">
-        <ImageDropZone
-          label="Logo"
+        <ImageDropZone label="Logo"
           required
           hint="The logo will be displayed on authentication pages and certificates"
           sizeHint="Recommended size: 300x300px (PNG, JPG, WebP)"
           value={imageUrl}
           error={logoError}
           onFileSelect={onImageSelect}
-          onRemove={onImageRemove}
-        />
-        <ImageDropZone
-          label="Banner Image"
+          onRemove={onImageRemove}/>
+        <ImageDropZone label="Banner Image"
           required
           hint="The banner image will be displayed above product content"
           sizeHint="Recommended size: 1200x400px (PNG, JPG, WebP)"
           value={bannerImageUrl}
           error={bannerError}
           onFileSelect={onBannerSelect}
-          onRemove={onBannerRemove}
-        />
+          onRemove={onBannerRemove}/>
       </div>
     </div>
   );
@@ -324,12 +314,11 @@ function ProductInfoSection({ register, control, errors, shelfLifeSettings, shel
         </div>
         <div className="space-y-1">
           <LabelWithTooltip htmlFor="shelf_life_setting_id" label="Shelf Life" required hint="Select a Shelf Life value configured in Settings" />
-          <Controller
-            name="shelf_life_setting_id"
+          <Controller name="shelf_life_setting_id"
             control={control}
             rules={{ required: 'Shelf life is required' }}
             render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange} disabled={shelfLifeLoading || shelfLifeSettings.length === 0}>
+              <Select value={field.value} onValueChange={field.onChange} disabled={shelfLifeLoading}>
                 <SelectTrigger id="shelf_life_setting_id" aria-label="Shelf Life">
                   <SelectValue placeholder={shelfLifeLoading ? 'Loading shelf life values…' : 'Select shelf life'} />
                 </SelectTrigger>
@@ -342,8 +331,7 @@ function ProductInfoSection({ register, control, errors, shelfLifeSettings, shel
                   ))}
                 </SelectContent>
               </Select>
-            )}
-          />
+            )}/>
           {!shelfLifeLoading && !shelfLifeError && shelfLifeSettings.length === 0 && (
             <p className="text-xs text-muted-foreground">No active Shelf Life values are configured.</p>
           )}
@@ -368,28 +356,22 @@ function ProductUrlsSection({ register, errors }: ProductUrlsSectionProps) {
       <SectionHeader icon={Link} title="Product URLs" />
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <LabelWithTooltip
-            htmlFor="landing_page"
+          <LabelWithTooltip htmlFor="landing_page"
             label="Landing Page"
             required
-            hint="Main product page URL where customers can learn about this product"
-          />
+            hint="Main product page URL where customers can learn about this product"/>
           <Input id="landing_page" type="url" placeholder="https://..." {...register('landing_page', { required: 'Landing page is required' })} />
           {errors.landing_page && <p className="text-xs text-destructive">{errors.landing_page.message}</p>}
         </div>
         <div className="space-y-1">
-          <LabelWithTooltip
-            htmlFor="client_product_auth_url"
+          <LabelWithTooltip htmlFor="client_product_auth_url"
             label="Product Auth URL"
             required
-            hint="URL where customers will be sent after QR scan"
-          />
-          <Input
-            id="client_product_auth_url"
+            hint="URL where customers will be sent after QR scan"/>
+          <Input id="client_product_auth_url"
             type="url"
             placeholder="https://..."
-            {...register('client_product_auth_url', { required: 'Product auth URL is required' })}
-          />
+            {...register('client_product_auth_url', { required: 'Product auth URL is required' })}/>
           {errors.client_product_auth_url && <p className="text-xs text-destructive">{errors.client_product_auth_url.message}</p>}
         </div>
       </div>
@@ -429,11 +411,9 @@ function ActivationDetailsSection({
       <SectionHeader icon={Clock} title="Activation Details" />
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <LabelWithTooltip
-            label="Activation Method"
+          <LabelWithTooltip label="Activation Method"
             required
-            hint="Choose how customers will activate this product (pre-activated or post-activation)"
-          />
+            hint="Choose how customers will activate this product (pre-activated or post-activation)"/>
           <Select value={activationMethod} onValueChange={onActivationChange}>
             <SelectTrigger>
               <SelectValue />
@@ -728,66 +708,68 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   }, validateImages);
 
   return (
-    <FormDialog
-      open={open}
+    <DetailDialog open={open}
       onOpenChange={onOpenChange}
       title={isEdit ? 'Edit QSeal Product' : 'Create New Product'}
-      size="md"
-      onSubmit={onSubmit}
-      submitLabel={isEdit ? 'Save Changes' : 'Create Product'}
-      saving={saving}
-    >
-      <BrandSelectSection brandId={brandId} onBrandChange={(v) => setValue('brand_id', v)} disabled={isEdit} />
-      <Separator />
-      <ProductImagesSection
-        imageUrl={getDisplayedImageUrl(logoPreview, imageUrl, removeLogo)}
-        bannerImageUrl={getDisplayedImageUrl(bannerPreview, bannerImageUrl, removeBanner)}
-        onImageSelect={handleLogoSelect}
-        onBannerSelect={handleBannerSelect}
-        logoError={logoError}
-        bannerError={bannerError}
-        onImageRemove={() => {
-          setLogoFile(null);
-          setLogoPreview('');
-          setRemoveLogo(true);
-        }}
-        onBannerRemove={() => {
-          setBannerFile(null);
-          setBannerPreview('');
-          setRemoveBanner(true);
-        }}
-      />
-      <Separator />
-      <ProductInfoSection
-        register={register}
-        control={control}
-        errors={errors}
-        shelfLifeSettings={shelfLifeSettings}
-        shelfLifeLoading={shelfLifeLoading}
-        shelfLifeError={shelfLifeError}
-      />
-      <Separator />
-      <ProductUrlsSection register={register} errors={errors} />
-      <Separator />
-      <input type="hidden" {...register('serial_prefix_setting_id', { required: 'Serial prefix is required' })} />
-      <ActivationDetailsSection
-        activationMethod={activationMethod}
-        srNumberType={srNumberType}
-        serialPrefixSettingId={serialPrefixSettingId}
-        serialPrefixSettings={serialPrefixSettings}
-        serialPrefixLoading={serialPrefixLoading}
-        serialPrefixError={serialPrefixError}
-        serialPrefixValidationError={errors.serial_prefix_setting_id?.message}
-        onActivationChange={(v) => setValue('activation_method', v)}
-        onSrNumberChange={(v) => setValue('sr_number_type', v)}
-        onSerialPrefixChange={(v) => setValue('serial_prefix_setting_id', v, { shouldValidate: true })}
-      />
-      <Separator />
-      <AdditionalDetailsSection
-        register={register}
-        redirectToClient={redirectToClient}
-        onRedirectChange={(checked) => setValue('redirect_to_client', checked)}
-      />
-    </FormDialog>
+      size="lg"
+      contentClassName="max-w-4xl flex flex-col"
+      style={{ height: 'min(85vh, 820px)' }}
+      showCloseButton={false}
+      footer={
+        <div className="flex items-center justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="submit" form="qseal-product-form" disabled={saving}>
+            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Product'}
+          </Button>
+        </div>
+      }>
+      <form id="qseal-product-form" onSubmit={onSubmit} noValidate>
+        <BrandSelectSection brandId={brandId} onBrandChange={(v) => setValue('brand_id', v)} disabled={isEdit} />
+        <Separator />
+        <ProductImagesSection imageUrl={getDisplayedImageUrl(logoPreview, imageUrl, removeLogo)}
+          bannerImageUrl={getDisplayedImageUrl(bannerPreview, bannerImageUrl, removeBanner)}
+          onImageSelect={handleLogoSelect}
+          onBannerSelect={handleBannerSelect}
+          logoError={logoError}
+          bannerError={bannerError}
+          onImageRemove={() => {
+            setLogoFile(null);
+            setLogoPreview('');
+            setRemoveLogo(true);
+          }}
+          onBannerRemove={() => {
+            setBannerFile(null);
+            setBannerPreview('');
+            setRemoveBanner(true);
+          }}/>
+        <Separator />
+        <ProductInfoSection register={register}
+          control={control}
+          errors={errors}
+          shelfLifeSettings={shelfLifeSettings}
+          shelfLifeLoading={shelfLifeLoading}
+          shelfLifeError={shelfLifeError}/>
+        <Separator />
+        <ProductUrlsSection register={register} errors={errors} />
+        <Separator />
+        <input type="hidden" {...register('serial_prefix_setting_id', { required: 'Serial prefix is required' })} />
+        <ActivationDetailsSection activationMethod={activationMethod}
+          srNumberType={srNumberType}
+          serialPrefixSettingId={serialPrefixSettingId}
+          serialPrefixSettings={serialPrefixSettings}
+          serialPrefixLoading={serialPrefixLoading}
+          serialPrefixError={serialPrefixError}
+          serialPrefixValidationError={errors.serial_prefix_setting_id?.message}
+          onActivationChange={(v) => setValue('activation_method', v)}
+          onSrNumberChange={(v) => setValue('sr_number_type', v)}
+          onSerialPrefixChange={(v) => setValue('serial_prefix_setting_id', v, { shouldValidate: true })}/>
+        <Separator />
+        <AdditionalDetailsSection register={register}
+          redirectToClient={redirectToClient}
+          onRedirectChange={(checked) => setValue('redirect_to_client', checked)}/>
+      </form>
+    </DetailDialog>
   );
 }

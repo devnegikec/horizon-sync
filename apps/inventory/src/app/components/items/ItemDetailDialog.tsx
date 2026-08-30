@@ -2,12 +2,13 @@ import * as React from 'react';
 
 import {
   Package, Hash, Ruler, DollarSign, Layers, Archive, Calendar,
-  BarChart3, Weight, ShieldCheck, Tag, Box, Settings2, Loader2,
+  BarChart3, Weight, ShieldCheck, Tag, Box, Settings2,
 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { useCurrencyStore } from '@horizon-sync/store';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
+import { DetailDialog } from '@horizon-sync/ui/components';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
 
@@ -63,6 +64,7 @@ interface ItemDetailResponse {
     id: string;
     unit_name: string;
     conversion_factor: number;
+    items_per_master_pack: number | null;
     length_mm: number | null;
     width_mm: number | null;
     height_mm: number | null;
@@ -122,7 +124,7 @@ function BooleanRow({ icon: Icon, label, value, trueLabel = 'Yes', falseLabel = 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-lg border p-4">
-      <h4 className="text-sm font-semibold mb-3">{title}</h4>
+      <h4 className="text-sm font-semibold mb-3 text-primary">{title}</h4>
       {children}
     </div>
   );
@@ -273,8 +275,7 @@ function AdditionalTab({ detail }: { detail: ItemDetailResponse }) {
 
   if (!hasContent) {
     return (
-      <div className="flex min-h-[320px] flex-col items-center justify-center text-muted-foreground">
-        <Settings2 className="h-8 w-8 mb-2 opacity-50" />
+      <div className="flex h-full min-h-[320px] flex-col items-center justify-center text-muted-foreground">        <Settings2 className="h-8 w-8 mb-2 opacity-50" />
         <p className="text-sm">No additional data configured</p>
       </div>
     );
@@ -317,34 +318,9 @@ function AdditionalTab({ detail }: { detail: ItemDetailResponse }) {
 
 // --- Main dialog ---
 
-function DialogHeaderSection({ detail, item, standardRate, currencySymbol }: { detail: ItemDetailResponse | null; item: Item; standardRate: number; currencySymbol: string }) {
-  return (
-    <DialogHeader>
-      <div className="flex items-center gap-4">
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
-          <Package className="h-7 w-7 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <DialogTitle className="text-xl truncate">{detail?.item_name || item.name}</DialogTitle>
-            <Badge variant={(detail?.status || item.status) === 'active' ? 'success' : 'secondary'}>
-              {detail?.status || item.status}
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">{detail?.item_code || item.itemCode}</p>
-        </div>
-        <div className="text-right shrink-0">
-          <p className="text-2xl font-bold">{currencySymbol}{standardRate.toFixed(2)}</p>
-          <p className="text-xs text-muted-foreground">Standard Rate</p>
-        </div>
-      </div>
-    </DialogHeader>
-  );
-}
-
 function DetailTabs({ detail, currencySymbol }: { detail: ItemDetailResponse; currencySymbol: string }) {
   return (
-    <Tabs defaultValue="overview" className="mt-4 flex min-h-0 flex-1 flex-col">
+    <Tabs defaultValue="overview" className="flex min-h-0 flex-1 flex-col">
       <TabsList className="w-full shrink-0">
         <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
         <TabsTrigger value="stock" className="flex-1">Stock & Pricing</TabsTrigger>
@@ -397,36 +373,39 @@ export function ItemDetailDialog({ open, onOpenChange, item }: ItemDetailDialogP
   const standardRate = detail?.standard_rate ? parseFloat(detail.standard_rate) : item.defaultPrice;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-[750px] max-h-[85vh] flex flex-col overflow-hidden"
-        style={{ display: 'flex', flexDirection: 'column', height: 'min(85vh, 820px)' }}
-      >
-        <DialogHeaderSection detail={detail} item={item} standardRate={standardRate} currencySymbol={currencySymbol} />
+    <DetailDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      contentClassName="max-w-4xl flex flex-col"
+      style={{ height: 'min(85vh, 820px)' }}
+      title={detail?.item_name || item.name}
+      loading={loading}
+      loadingMessage="Loading details..."
+    >
+      {error && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive mb-4">
+          {error}
+        </div>
+      )}
 
-        {detail && !loading && (
-          <ItemApprovalActions
-            item={{ id: detail.id, status: detail.status }}
-            onChanged={() => setReloadKey((k) => k + 1)}
-            className="px-4"
-          />
-        )}
-
-        {loading && (
-          <div className="flex flex-1 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-sm text-muted-foreground">Loading details...</span>
+      {detail && !loading && (
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="flex items-center justify-between gap-4 mb-4 shrink-0">
+            <div className="min-w-0">
+              <p className="text-sm text-muted-foreground font-mono">{detail.item_code}</p>
+              <Badge variant={detail.status === 'active' ? 'success' : 'secondary'} className="mt-1">
+                {detail.status}
+              </Badge>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-2xl font-bold">{currencySymbol}{standardRate.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">Standard Rate</p>
+            </div>
           </div>
-        )}
-
-        {error && (
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
-            {error}
-          </div>
-        )}
-
-        {detail && !loading && <DetailTabs detail={detail} currencySymbol={currencySymbol} />}
-      </DialogContent>
-    </Dialog>
+          <DetailTabs detail={detail} currencySymbol={currencySymbol} />
+        </div>
+      )}
+    </DetailDialog>
   );
 }

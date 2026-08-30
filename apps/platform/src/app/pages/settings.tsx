@@ -2,25 +2,25 @@ import * as React from 'react';
 
 import { useNavigate, useLocation } from 'react-router-dom';
 
-import { useUserStore } from '@horizon-sync/store';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
 
-import { OrganizationProfileSettings } from '../features/organization/components/OrganizationProfileSettings';
-import { OrganizationSettings } from '../features/organization/components/OrganizationSettings';
+import { DataSyncSettings } from '../features/data-sync/components/DataSyncSettings';
 import { FeatureFlagsSettings } from '../features/feature-flags/components/FeatureFlagsSettings';
 import { ItemUomConversionsSettings } from '../features/organization/components/ItemUomConversionsSettings';
+import { OrganizationProfileSettings } from '../features/organization/components/OrganizationProfileSettings';
+import { OrganizationSettings } from '../features/organization/components/OrganizationSettings';
 import { UomSettings } from '../features/organization/components/UomSettings';
-import { DEFAULT_ORGANIZATION_SETTINGS } from '../types/organization-settings.types';
 import { hasPermissionFromStore } from '../features/organization/utils/permissions';
+import { PickSettingsEditor } from '../features/pick-settings/components/PickSettingsEditor';
 import { useAuth } from '../hooks';
-
+import { DEFAULT_ORGANIZATION_SETTINGS } from '../types/organization-settings.types';
 
 /**
  * SettingsPage Component
- * 
+ *
  * Main container for organization settings page.
  * Displays organization information, currency configuration, and banking settings.
- * 
+ *
  * Requirements: 7.1, 6.1, 6.2, 10.1, 10.2, 10.3
  */
 export function SettingsPage() {
@@ -50,9 +50,7 @@ export function SettingsPage() {
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground mt-1">
-            Configure your organization settings and preferences
-          </p>
+          <p className="text-muted-foreground mt-1">Configure your organization settings and preferences</p>
         </div>
         <div className="text-center py-12">
           <p className="text-muted-foreground">No organization found for your account.</p>
@@ -69,24 +67,26 @@ export function SettingsPage() {
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1">
-          Configure your organization settings and preferences
-        </p>
+        <p className="text-muted-foreground mt-1">Configure your organization settings and preferences</p>
       </div>
 
       {/* Settings Content with Tabs */}
       {/* Requirement 10.1, 10.2, 10.3: Responsive layout */}
-      <Tabs value={activeTab} onValueChange={(value) => {
-        setActiveTab(value);
-        if (location.pathname !== '/settings') {
-          navigate('/settings');
-        }
-      }} className="space-y-6">
+      <Tabs value={activeTab}
+        onValueChange={(value) => {
+          setActiveTab(value);
+          if (location.pathname !== '/settings') {
+            navigate('/settings');
+          }
+        }}
+        className="space-y-6">
         <TabsList className="flex-wrap">
           <TabsTrigger value="organization">Organization</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="items-uom">Items & UOM</TabsTrigger>
           <TabsTrigger value="feature-flags">Feature Flags</TabsTrigger>
+          <TabsTrigger value="pick-settings">Pick Settings</TabsTrigger>
+          <TabsTrigger value="data-sync">Data Sync</TabsTrigger>
         </TabsList>
 
         <TabsContent value="organization" className="space-y-6">
@@ -96,13 +96,11 @@ export function SettingsPage() {
 
         <TabsContent value="preferences" className="space-y-6">
           {/* Currencies and units of measure */}
-          <OrganizationSettings
-            organizationId={organizationId}
+          <OrganizationSettings organizationId={organizationId}
             accessToken={accessToken}
             canEdit={canEdit}
             initialSettings={DEFAULT_ORGANIZATION_SETTINGS}
-            onSettingsChange={() => { }}
-          />
+            onSettingsChange={() => undefined}/>
         </TabsContent>
 
         <TabsContent value="items-uom" className="space-y-6">
@@ -115,8 +113,17 @@ export function SettingsPage() {
           {/* Tenant-scoped feature flag overrides */}
           <FeatureFlagsSettings accessToken={accessToken} canEdit={canEdit} />
         </TabsContent>
+
+        <TabsContent value="pick-settings" className="space-y-6">
+          {/* WMS pick configuration (PR-02 / T-17) */}
+          <PickSettingsEditor accessToken={accessToken} canEdit={canEdit} />
+        </TabsContent>
+
+        <TabsContent value="data-sync" className="space-y-6">
+          {/* On-demand per-feature master data seeding */}
+          <DataSyncSettings accessToken={accessToken} canEdit={canEdit} />
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
-

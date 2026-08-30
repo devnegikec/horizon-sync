@@ -88,6 +88,7 @@ export interface BinStockLevel {
   bin_location_id: string;
   item_id: string;
   quantity_on_hand: number;
+  inventory_status: string;
   batch_number: string | null;
   created_at: string;
   updated_at: string;
@@ -100,6 +101,7 @@ export interface BinStockInfo {
   warehouse_id: string;
   item_id: string;
   quantity_on_hand: number;
+  inventory_status: string;
   batch_number: string | null;
   bin_capacity: number;
   available_capacity: number;

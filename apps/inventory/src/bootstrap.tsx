@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 
 import App from './app/app';
 import { installNgrokHeaders } from './ngrok-headers';
@@ -9,11 +11,17 @@ import { installNgrokHeaders } from './ngrok-headers';
 // so ngrok doesn't return its interstitial HTML page instead of JSON.
 installNgrokHeaders();
 
-const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement,
-);
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+});
+
+const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
   <StrictMode>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </QueryClientProvider>
   </StrictMode>,
 );

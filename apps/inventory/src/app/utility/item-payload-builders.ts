@@ -58,6 +58,7 @@ export interface ItemFormData {
   // Packaging Details (base packaging unit)
   packagingUnitName: string;
   packagingConversionFactor: string;
+  packagingItemsPerMasterPack: string;
   packagingLengthMm: string;
   packagingWidthMm: string;
   packagingHeightMm: string;
@@ -69,6 +70,7 @@ function buildPackagingDetailsPayload(formData: ItemFormData): PackagingDetailsP
   return {
     unit_name: formData.packagingUnitName || 'Each',
     conversion_factor: parseFloat(formData.packagingConversionFactor) || 1,
+    items_per_master_pack: parseFloat(formData.packagingItemsPerMasterPack) || null,
     length_mm: parseFloat(formData.packagingLengthMm) || null,
     width_mm: parseFloat(formData.packagingWidthMm) || null,
     height_mm: parseFloat(formData.packagingHeightMm) || null,
@@ -82,6 +84,7 @@ function hasPackagingDetails(formData: ItemFormData): boolean {
     formData.packagingHeightMm ||
     formData.packagingWeightGrams ||
     formData.packagingConversionFactor !== '1' ||
+    formData.packagingItemsPerMasterPack ||
     (formData.packagingUnitName && formData.packagingUnitName !== 'Each'));
 }
 

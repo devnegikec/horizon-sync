@@ -52,7 +52,8 @@
       "options": {
         "buildTarget": "inventory:build",
         "hmr": true,
-        "port": 4201
+        "port": 4201,
+        "staticRemotesPort": 4203
       },
       "configurations": {
         "development": {
