@@ -17,12 +17,15 @@ import type {
   PaginatedPickLists,
   PickScanResult,
   SAPInvoicePayload,
+  UpdatePriorityRequest,
   GateSession,
   GateScanResult,
   GateSessionProgress,
   GateSessionRequest,
   DispatchRecord,
   DispatchListResponse,
+  ErpSyncListResponse,
+  ErpSyncFlushResponse,
   WMSWorker,
   WMSWorkerListResponse,
   WMSWorkerCreate,
@@ -53,22 +56,31 @@ function headers(token: string) {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
-/** Small deterministic string hash (djb2) for stable idempotency keys. */
-function hashString(input: string): string {
-  let hash = 5381;
-  for (let i = 0; i < input.length; i++) {
-    hash = ((hash << 5) + hash) ^ input.charCodeAt(i);
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0');
+/**
+ * Build a deterministic idempotency key for an idempotent pick mutation
+ * (complete/cancel). Stable across retries of the same action.
+ */
+function idempotencyKey(operation: 'complete' | 'cancel', pickListId: string): string {
+  return `${operation}:${pickListId}`;
 }
 
+let scanNonceCounter = 0;
+
 /**
- * Build a deterministic idempotency key for an idempotent pick mutation.
- * Stable across retries of the same payload, distinct across payloads.
+ * Generate a unique idempotency key for a single scan *action*.
+ *
+ * Unlike the payload-derived key, this is distinct per scan so legitimate
+ * repeated scans of the same QR code in the same bin are NOT treated as
+ * duplicate retries. Callers must reuse the returned key for retries of the
+ * *same* scan (e.g. after a network failure).
  */
-function idempotencyKey(operation: 'scan' | 'complete' | 'cancel', pickListId: string, payload?: string): string {
-  const base = `${operation}:${pickListId}`;
-  return payload ? `${base}:${hashString(payload)}` : base;
+export function scanIdempotencyKey(pickListId: string): string {
+  scanNonceCounter += 1;
+  const nonce =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${scanNonceCounter}`;
+  return `scan:${pickListId}:${nonce}`;
 }
 
 async function req<T>(url: string, token: string, options: RequestInit = {}): Promise<T> {
@@ -332,7 +344,7 @@ export const outboundApi = {
 
   listPickLists: (
     token: string,
-    params: { status?: string; warehouse_id?: string; invoice_reference?: string; page?: number; page_size?: number },
+    params: { status?: string; warehouse_id?: string; invoice_reference?: string; sort_by?: string; page?: number; page_size?: number },
   ) => {
     const p = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
@@ -343,11 +355,13 @@ export const outboundApi = {
 
   getPickList: (token: string, id: string) => req<PickList>(`${BASE}/outbound/${id}`, token),
 
-  recordPickScan: (token: string, pickListId: string, qrData: string) =>
+  recordPickScan: (token: string, pickListId: string, qrData: string, binLocationId?: string | null, idempotencyKeyOverride?: string) =>
     req<PickScanResult>(`${BASE}/outbound/${pickListId}/scan`, token, {
       method: 'POST',
-      body: JSON.stringify({ qr_data: qrData }),
-      headers: { 'Idempotency-Key': idempotencyKey('scan', pickListId, qrData) },
+      body: JSON.stringify({ qr_data: qrData, bin_location_id: binLocationId ?? null }),
+      headers: {
+        'Idempotency-Key': idempotencyKeyOverride ?? scanIdempotencyKey(pickListId),
+      },
     }),
 
   completePickList: (token: string, id: string) =>
@@ -368,6 +382,40 @@ export const outboundApi = {
     req<PickList>(`${BASE}/outbound/${id}/assign`, token, {
       method: 'POST',
       body: JSON.stringify({ worker_id: workerId }),
+    }),
+
+  acceptTask: (token: string, id: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/accept`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  stageTransfer: (token: string, id: string, stagingLocationId: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/stage-transfer`, token, {
+      method: 'POST',
+      body: JSON.stringify({ staging_location_id: stagingLocationId }),
+    }),
+
+  stageScan: (token: string, id: string, stagingLocationId: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/stage-scan`, token, {
+      method: 'POST',
+      body: JSON.stringify({ staging_location_id: stagingLocationId }),
+    }),
+
+  assignHandlingUnit: (token: string, pickListId: string, pickListItemId: string, handlingUnitId: string) =>
+    req<{ pick_list_item_id: string; handling_unit_id: string }>(
+      `${BASE}/outbound/${pickListId}/items/${pickListItemId}/handling-unit`,
+      token,
+      {
+        method: 'POST',
+        body: JSON.stringify({ handling_unit_id: handlingUnitId }),
+      },
+    ),
+
+  updatePriority: (token: string, id: string, data: UpdatePriorityRequest) =>
+    req<PickList>(`${BASE}/outbound/${id}/priority`, token, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     }),
 
   // Gate Verification
@@ -405,6 +453,29 @@ export const outboundApi = {
   },
 
   getDispatch: (token: string, id: string) => req<DispatchRecord>(`${BASE}/outbound/dispatches/${id}`, token),
+};
+
+// ============================================
+// ERP SYNC QUEUE (WF-022 / ALT-009)
+// ============================================
+
+export const erpSyncApi = {
+  listMessages: (
+    token: string,
+    params: { status?: string; page?: number; page_size?: number },
+  ) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
+    });
+    return req<ErpSyncListResponse>(`${BASE}/outbound/erp-sync?${p}`, token);
+  },
+
+  flush: (token: string) =>
+    req<ErpSyncFlushResponse>(`${BASE}/outbound/erp-sync/flush`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
 };
 
 // ============================================

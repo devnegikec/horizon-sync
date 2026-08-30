@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { RefreshCw, ScanLine, CheckCircle2, X, Eye, UserRound, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { RefreshCw, ScanLine, CheckCircle2, X, Eye, UserRound, Loader2, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -16,9 +16,9 @@ import {
 import { useToast } from '@horizon-sync/ui/hooks';
 import { useUserStore } from '@horizon-sync/store';
 
-import { usePickList, usePickLists } from '../../hooks/useWMS';
-import type { PickList, PickListItem, PickSerialDetail, WMSWorker } from '../../types/wms.types';
-import { wmsWorkerApi } from '../../utility/api/wms';
+import { usePickList, usePickLists, useErpSyncQueue, usePickSettings } from '../../hooks/useWMS';
+import type { PickList, PickListItem, PickSerialDetail, WMSWorker, ErpSyncMessage } from '../../types/wms.types';
+import { wmsWorkerApi, scanIdempotencyKey } from '../../utility/api/wms';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
 function workerDisplayName(w: WMSWorker | undefined): string | null {
@@ -156,6 +156,7 @@ function PickLineRow({ group }: { group: PickLineGroup }) {
   const requiredQty = rows.reduce((s, r) => s + (r.qty || 0), 0);
   const pickedQty = rows.reduce((s, r) => s + (r.picked_qty || 0), 0);
   const batch = rows.map((r) => r.batch_no).find((b) => !!b) ?? null;
+  const hu = rows.map((r) => r.handling_unit_id).find((v) => !!v) ?? null;
   const bins = Array.from(
     new Set(rows.map((r) => r.bin_location_path || r.bin_location_id || '').filter(Boolean)),
   );
@@ -196,6 +197,11 @@ function PickLineRow({ group }: { group: PickLineGroup }) {
             <span className="font-mono font-medium">{first.sku ?? first.item_id}</span>
             {first.item_name && (
               <span className="text-xs text-muted-foreground ml-2">{first.item_name}</span>
+            )}
+            {hu && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-mono text-blue-600">
+                HU {hu.slice(0, 8)}
+              </span>
             )}
           </span>
         </td>
@@ -421,12 +427,21 @@ interface PickListDetailDialogProps {
 
 function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDialogProps) {
   const { toast } = useToast();
-  const { pickList, loading, error, recordScan, complete, cancel, assignWorker, } = usePickList(listId);
+  const { pickList, loading, error, recordScan, complete, cancel, assignWorker, accept, stageTransfer, stageScan, assignHandlingUnit } = usePickList(listId);
+  const { enableHandlingUnit } = usePickSettings();
   const workers = useWorkers(open);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
   const [qrInput, setQrInput] = React.useState('');
+  const [binInput, setBinInput] = React.useState('');
+  const [stageInput, setStageInput] = React.useState('');
+  const [huInput, setHuInput] = React.useState('');
+  const [huItemId, setHuItemId] = React.useState('');
+  const [staging, setStaging] = React.useState(false);
+  const [scannedBinId, setScannedBinId] = React.useState<string | null>(null);
+  const [scannedBinLabel, setScannedBinLabel] = React.useState<string | null>(null);
   const [scanError, setScanError] = React.useState<string | null>(null);
   const [scanning, setScanning] = React.useState(false);
+  const [scanKey, setScanKey] = React.useState<string | null>(null);
   const [assignOpen, setAssignOpen] = React.useState(false);
   const [qrOpen, setQrOpen] = React.useState(false);
   const [confirmAction, setConfirmAction] = React.useState<'complete' | 'cancel' | null>(null);
@@ -440,6 +455,15 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
   const assignedEmployeeId = assignedWorker?.employee_id ?? null;
   const assignedWorkerQr = workerQrValue(assignedWorker);
 
+  const openLines = React.useMemo(
+    () =>
+      (pickList?.items ?? []).filter(
+        (i) => (i.qty - (i.picked_qty ?? 0)) > 0,
+      ),
+    [pickList],
+  );
+  const effectiveHuItemId = huItemId || openLines[0]?.id || '';
+
   const handleAssign = React.useCallback(
     async (workerId: string) => {
       await assignWorker(workerId);
@@ -451,15 +475,79 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
     if (!qrInput.trim()) return;
     setScanError(null);
     setScanning(true);
+    const key = scanKey ?? scanIdempotencyKey(listId ?? '');
     try {
-      const result = await recordScan(qrInput.trim());
+      const result = await recordScan(qrInput.trim(), scannedBinId, key);
       setQrInput('');
-      toast({ title: 'Item scanned', description: `${result.sku} — ${result.scanned_qty} units` });
+      setScanKey(null);
+      const serialPart = result.serial_no ? ` [${result.serial_no}]` : '';
+      toast({ title: 'Item scanned', description: `${result.sku}${serialPart} — ${result.scanned_qty} units` });
       inputRef.current?.focus();
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'Scan failed');
     } finally {
       setScanning(false);
+    }
+  };
+
+  const handleBinScan = () => {
+    const raw = binInput.trim();
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      const locationId = parsed.location_id ?? null;
+      if (!locationId) throw new Error('Bin QR is missing a location id');
+      setScannedBinId(String(locationId));
+      setScannedBinLabel(parsed.full_path ?? String(locationId));
+      setBinInput('');
+      setScanError(null);
+      toast({ title: 'Bin scanned', description: parsed.full_path ?? String(locationId) });
+      inputRef.current?.focus();
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Invalid bin QR');
+    }
+  };
+
+  const handleStage = async () => {
+    const raw = stageInput.trim();
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      const locationId = parsed.location_id ?? null;
+      if (!locationId) throw new Error('Staging lane QR is missing a location id');
+      setStaging(true);
+      setScanError(null);
+      await stageTransfer(String(locationId));
+      try {
+        await stageScan(String(locationId));
+      } catch (err) {
+        setScanError(err instanceof Error ? err.message : 'Stage scan failed');
+        toast({
+          title: 'Transferred, but stage scan failed',
+          description: 'The lane was assigned — scan the lane again to confirm.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setStageInput('');
+      toast({ title: 'Staged', description: parsed.full_path ?? String(locationId) });
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Staging failed');
+    } finally {
+      setStaging(false);
+    }
+  };
+
+  const handleAssignHu = async () => {
+    const huId = huInput.trim();
+    if (!huId || !effectiveHuItemId) return;
+    try {
+      setScanError(null);
+      await assignHandlingUnit(effectiveHuItemId, huId);
+      setHuInput('');
+      toast({ title: 'Handling unit assigned' });
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Failed to assign handling unit');
     }
   };
 
@@ -469,6 +557,15 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
       toast({ title: 'Pick list completed' });
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
+    }
+  };
+
+  const handleAccept = async () => {
+    try {
+      await accept();
+      toast({ title: 'Task accepted', description: 'Timer started' });
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to accept', variant: 'destructive' });
     }
   };
 
@@ -485,9 +582,16 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
   const canComplete = pickList?.status === 'in_progress' && (progress?.remaining_items ?? 0) === 0;
   const canScan = pickList?.status === 'draft' || pickList?.status === 'in_progress';
   const canCancel = !!pickList && pickList.status !== 'completed' && pickList.status !== 'cancelled';
+  const canAccept = pickList?.status === 'draft';
 
   const footer = (
     <div className="flex items-center gap-2">
+      {canAccept && (
+        <Button size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleAccept}>
+          <CheckCircle2 className="h-4 w-4" />
+          Accept Task
+        </Button>
+      )}
       {canComplete && (
         <Button size="sm" className="gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => setConfirmAction('complete')}>
           <CheckCircle2 className="h-4 w-4" />
@@ -529,6 +633,11 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Status</p>
                 <WMSStatusBadge status={pickList.status} />
+                {pickList.accepted_at && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Accepted {new Date(pickList.accepted_at).toLocaleTimeString()}
+                  </p>
+                )}
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Progress</p>
@@ -586,9 +695,27 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Input
+                    value={binInput}
+                    onChange={(e) => setBinInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleBinScan()}
+                    placeholder="Scan source bin QR first..."
+                    className="font-mono text-sm"
+                  />
+                  <Button onClick={handleBinScan} variant="outline" className="gap-2 shrink-0">
+                    <ScanLine className="h-4 w-4" />
+                    Bin
+                  </Button>
+                </div>
+                {scannedBinId && (
+                  <div className="text-xs text-muted-foreground font-mono">
+                    Active bin: {scannedBinLabel ?? scannedBinId}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input
                     ref={inputRef}
                     value={qrInput}
-                    onChange={(e) => setQrInput(e.target.value)}
+                    onChange={(e) => { setQrInput(e.target.value); setScanKey(null); }}
                     onKeyDown={(e) => e.key === 'Enter' && handleScan()}
                     placeholder="Scan item QR code..."
                     className="font-mono text-sm"
@@ -605,6 +732,58 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
                     {scanError}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Staging lane scan */}
+            {canScan && (
+              <div className="flex gap-2">
+                <Input
+                  value={stageInput}
+                  onChange={(e) => setStageInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleStage()}
+                  placeholder="Scan staging lane QR..."
+                  className="font-mono text-sm"
+                />
+                <Button onClick={handleStage} variant="outline" disabled={staging} className="gap-2 shrink-0">
+                  <ScanLine className="h-4 w-4" />
+                  {staging ? 'Staging...' : 'Stage'}
+                </Button>
+              </div>
+            )}
+
+            {/* Handling unit association (gated on pick.enable_handling_unit) */}
+            {canScan && enableHandlingUnit && openLines.length > 0 && (
+              <div className="border rounded-lg p-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Handling unit</p>
+                <div className="flex gap-2">
+                  <Select value={effectiveHuItemId} onValueChange={setHuItemId}>
+                    <SelectTrigger className="w-[260px] shrink-0">
+                      <SelectValue placeholder="Select line" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {openLines.map((line) => {
+                        const remaining = (line.qty ?? 0) - (line.picked_qty ?? 0);
+                        const label = `${line.sku ?? line.item_id} — ${remaining} remaining`;
+                        return (
+                          <SelectItem key={line.id} value={line.id}>
+                            {label}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={huInput}
+                    onChange={(e) => setHuInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAssignHu()}
+                    placeholder="Handling unit ID (trolley/carton/pallet)..."
+                    className="font-mono text-sm"
+                  />
+                  <Button onClick={handleAssignHu} variant="outline" className="gap-2 shrink-0">
+                    Assign HU
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -680,8 +859,128 @@ interface PickListViewProps {
   warehouseId?: string;
 }
 
+function syncStatusBadge(status: ErpSyncMessage['status']) {
+  if (status === 'sent') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">
+        <CheckCircle2 className="h-3 w-3" /> Sent
+      </span>
+    );
+  }
+  if (status === 'failed') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600">
+        <AlertTriangle className="h-3 w-3" /> Failed
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600">
+      <Loader2 className="h-3 w-3 animate-spin" /> Pending
+    </span>
+  );
+}
+
+function ErpSyncPanel() {
+  const { data, loading, error, refetch, flush } = useErpSyncQueue({ page: 1, page_size: 10 });
+  const { toast } = useToast();
+  const [flushing, setFlushing] = React.useState(false);
+  const [expanded, setExpanded] = React.useState(false);
+
+  const messages = data?.messages ?? [];
+  const failedCount = messages.filter((m) => m.status === 'failed').length;
+
+  const handleFlush = async () => {
+    setFlushing(true);
+    try {
+      const res = await flush();
+      toast({
+        title: 'ERP sync flushed',
+        description: `${res.sent} sent, ${res.retried} retried, ${res.failed} failed`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Flush failed',
+        description: err instanceof Error ? err.message : 'Failed to flush ERP sync queue',
+        variant: 'destructive',
+      });
+    } finally {
+      setFlushing(false);
+    }
+  };
+
+  return (
+    <div className="border rounded-lg p-4">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          className="flex items-center gap-2 text-sm font-medium"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          ERP Sync Queue
+          {failedCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600">
+              <AlertTriangle className="h-3 w-3" /> {failedCount} failed
+            </span>
+          )}
+        </button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={refetch} className="gap-2">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleFlush} disabled={flushing} className="gap-2">
+            <RefreshCw className={`h-3.5 w-3.5 ${flushing ? 'animate-spin' : ''}`} />
+            {flushing ? 'Flushing…' : 'Flush retries'}
+          </Button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mt-3">
+          {loading && <div className="text-sm text-muted-foreground animate-pulse">Loading sync queue…</div>}
+          {error && <div className="text-sm text-destructive">{error}</div>}
+          {!loading && messages.length === 0 && (
+            <p className="text-sm text-muted-foreground">No ERP sync messages yet.</p>
+          )}
+          {!loading && messages.length > 0 && (
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">Entity</th>
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">Operation</th>
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">Status</th>
+                  <th className="text-right px-3 py-2 font-medium text-muted-foreground">Attempts</th>
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">Last error</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {messages.map((m) => (
+                  <tr key={m.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-3 py-2 font-mono text-xs">{m.entity_type}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{m.operation}</td>
+                    <td className="px-3 py-2">{syncStatusBadge(m.status)}</td>
+                    <td className="px-3 py-2 text-right text-muted-foreground">
+                      {m.attempt_count}/{m.max_attempts}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground max-w-[280px] truncate">
+                      {m.last_error ?? '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PickListView({ warehouseId }: PickListViewProps) {
   const [statusFilter, setStatusFilter] = React.useState('all');
+  const [sortBy, setSortBy] = React.useState('created_at');
   const [page, setPage] = React.useState(1);
   const [viewListId, setViewListId] = React.useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -691,6 +990,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
   const { data, loading, error, refetch } = usePickLists({
     status: statusFilter === 'all' ? undefined : statusFilter,
     warehouse_id: warehouseId,
+    sort_by: sortBy,
     page,
     page_size: 20,
   });
@@ -698,7 +998,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
@@ -708,6 +1008,15 @@ export function PickListView({ warehouseId }: PickListViewProps) {
             <SelectItem value="in_progress">In Progress</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1); }}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="created_at">Newest first</SelectItem>
+            <SelectItem value="priority">Priority</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" size="sm" onClick={refetch} className="gap-2">
@@ -731,6 +1040,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Pick List #</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Invoice Ref</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Priority</th>
                 <th className="text-right px-4 py-3 font-medium text-muted-foreground">Qty</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Worker</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Created</th>
@@ -740,7 +1050,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
             <tbody className="divide-y">
               {(!data || data.pick_lists.length === 0) && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                     No pick lists found. Import an incoming order to create one.
                   </td>
                 </tr>
@@ -749,7 +1059,21 @@ export function PickListView({ warehouseId }: PickListViewProps) {
                 <tr key={pl.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-mono font-medium">{pl.pick_list_no}</td>
                   <td className="px-4 py-3 text-muted-foreground">{pl.invoice_reference ?? '—'}</td>
-                  <td className="px-4 py-3"><WMSStatusBadge status={pl.status} /></td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <WMSStatusBadge status={pl.status} />
+                      {pl.is_aging && (
+                        <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600">
+                          Aged
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <span className={pl.priority > 0 ? 'font-mono font-semibold text-foreground' : 'text-muted-foreground'}>
+                      {pl.priority > 0 ? `P${pl.priority}` : '—'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-right">{pl.progress?.total_qty ?? '—'}</td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">
                     {pl.assigned_to
@@ -786,6 +1110,8 @@ export function PickListView({ warehouseId }: PickListViewProps) {
           </div>
         </div>
       )}
+
+      <ErpSyncPanel />
 
       <PickListDetailDialog listId={viewListId} open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>

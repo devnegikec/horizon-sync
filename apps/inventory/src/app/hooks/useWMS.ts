@@ -2,9 +2,13 @@ import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
 
+import { inboundApi, layoutApi, outboundApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi, vehicleArrivalApi, erpSyncApi } from '../utility/api/wms';
+import { pickSettingsApi } from '../utility/api/pick-settings';
 import type {
   DispatchListResponse,
   DispatchRecord,
+  ErpSyncFlushResponse,
+  ErpSyncListResponse,
   GateSession,
   GateScanResult,
   GateSessionProgress,
@@ -26,7 +30,41 @@ import type {
   PaginatedVehicleArrivals,
   VehicleArrival,
 } from '../types/wms.types';
-import { inboundApi, layoutApi, outboundApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi, vehicleArrivalApi } from '../utility/api/wms';
+
+// ============================================
+// PICK SETTINGS HOOK (runtime config gating)
+// ============================================
+
+export function usePickSettings() {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [settings, setSettings] = React.useState<Record<string, unknown>>({});
+  const [loading, setLoading] = React.useState(false);
+
+  const fetch = React.useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    try {
+      const res = await pickSettingsApi.getRuntime(accessToken);
+      setSettings(res.settings ?? {});
+    } catch {
+      // Deny-by-default: leave settings empty on failure.
+      setSettings({});
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken]);
+
+  React.useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return {
+    settings,
+    loading,
+    refetch: fetch,
+    enableHandlingUnit: Boolean(settings['enable_handling_unit']),
+  };
+}
 
 // ============================================
 // LOCATION TREE HOOK
@@ -362,17 +400,7 @@ export function usePutAwayList(listId: string | null) {
 // PICK LIST HOOK
 // ============================================
 
-export function usePickLists({
-  status,
-  warehouse_id,
-  page,
-  page_size,
-}: {
-  status?: string;
-  warehouse_id?: string;
-  page?: number;
-  page_size?: number;
-}) {
+export function usePickLists(params: { status?: string; warehouse_id?: string; sort_by?: string; page?: number; page_size?: number }) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [data, setData] = React.useState<PaginatedPickLists | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -383,14 +411,14 @@ export function usePickLists({
     setLoading(true);
     setError(null);
     try {
-      const result = await outboundApi.listPickLists(accessToken, { status, warehouse_id, page, page_size });
+      const result = await outboundApi.listPickLists(accessToken, params);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load pick lists');
     } finally {
       setLoading(false);
     }
-  }, [accessToken, status, warehouse_id, page, page_size]);
+  }, [accessToken, params.status, params.warehouse_id, params.sort_by, params.page, params.page_size]);
 
   React.useEffect(() => {
     fetch();
@@ -423,11 +451,11 @@ export function usePickList(pickListId: string | null) {
   }, [fetchPickList]);
 
   const recordScan = React.useCallback(
-    async (qrData: string): Promise<PickScanResult> => {
+    async (qrData: string, binLocationId?: string | null, idempotencyKey?: string): Promise<PickScanResult> => {
       if (!pickListId || !accessToken) throw new Error('No pick list selected');
       setError(null);
       try {
-        const result = await outboundApi.recordPickScan(accessToken, pickListId, qrData);
+        const result = await outboundApi.recordPickScan(accessToken, pickListId, qrData, binLocationId, idempotencyKey);
         await fetchPickList();
         return result;
       } catch (err) {
@@ -489,7 +517,115 @@ export function usePickList(pickListId: string | null) {
     [accessToken, pickListId],
   );
 
-  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker };
+  const accept = React.useCallback(async (): Promise<PickList> => {
+    if (!pickListId || !accessToken) throw new Error('No pick list selected');
+    setError(null);
+    try {
+      const result = await outboundApi.acceptTask(accessToken, pickListId);
+      setPickList(result);
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to accept task';
+      setError(msg);
+      throw new Error(msg);
+    }
+  }, [accessToken, pickListId]);
+
+  const stageTransfer = React.useCallback(
+    async (stagingLocationId: string): Promise<PickList> => {
+      if (!pickListId || !accessToken) throw new Error('No pick list selected');
+      setError(null);
+      try {
+        const result = await outboundApi.stageTransfer(accessToken, pickListId, stagingLocationId);
+        setPickList(result);
+        return result;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to transfer to staging';
+        setError(msg);
+        throw new Error(msg);
+      }
+    },
+    [accessToken, pickListId],
+  );
+
+  const stageScan = React.useCallback(
+    async (stagingLocationId: string): Promise<PickList> => {
+      if (!pickListId || !accessToken) throw new Error('No pick list selected');
+      setError(null);
+      try {
+        const result = await outboundApi.stageScan(accessToken, pickListId, stagingLocationId);
+        setPickList(result);
+        return result;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to validate staging lane';
+        setError(msg);
+        throw new Error(msg);
+      }
+    },
+    [accessToken, pickListId],
+  );
+
+  const assignHandlingUnit = React.useCallback(
+    async (pickListItemId: string, handlingUnitId: string): Promise<void> => {
+      if (!pickListId || !accessToken) throw new Error('No pick list selected');
+      setError(null);
+      try {
+        await outboundApi.assignHandlingUnit(accessToken, pickListId, pickListItemId, handlingUnitId);
+        await fetchPickList();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to assign handling unit';
+        setError(msg);
+        throw new Error(msg);
+      }
+    },
+    [accessToken, pickListId, fetchPickList],
+  );
+
+  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker, accept, stageTransfer, stageScan, assignHandlingUnit };
+}
+
+// ============================================
+// ERP SYNC QUEUE HOOK (WF-022 / ALT-009)
+// ============================================
+
+export function useErpSyncQueue(params: { status?: string; page?: number; page_size?: number } = {}) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [data, setData] = React.useState<ErpSyncListResponse | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const fetchQueue = React.useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await erpSyncApi.listMessages(accessToken, params);
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load ERP sync queue');
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, params.status, params.page, params.page_size]);
+
+  React.useEffect(() => {
+    fetchQueue();
+  }, [fetchQueue]);
+
+  const flush = React.useCallback(async (): Promise<ErpSyncFlushResponse> => {
+    if (!accessToken) throw new Error('Not authenticated');
+    setError(null);
+    try {
+      const result = await erpSyncApi.flush(accessToken);
+      await fetchQueue();
+      return result;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to flush ERP sync queue');
+      throw err;
+    }
+  }, [accessToken, fetchQueue]);
+
+  return { data, loading, error, refetch: fetchQueue, flush };
 }
 
 // ============================================

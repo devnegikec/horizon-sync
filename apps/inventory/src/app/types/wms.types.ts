@@ -452,6 +452,7 @@ export interface PickListItem {
   batch_no: string | null;
   bin_location_id: string | null;
   bin_location_path?: string | null;
+  handling_unit_id?: string | null;
   sort_order: number;
   serials?: PickSerialDetail[];
 }
@@ -469,8 +470,17 @@ export interface PickList {
   worker_name?: string | null;
   invoice_reference: string | null;
   completed_at: string | null;
+  accepted_at?: string | null;
+  accepted_by?: string | null;
   created_at: string | null;
   updated_at: string | null;
+  priority: number;
+  dispatch_cutoff?: string | null;
+  wave?: string | null;
+  route?: string | null;
+  sla_minutes?: number | null;
+  age_minutes?: number;
+  is_aging?: boolean;
   items: PickListItem[];
   progress: PickListProgress | null;
 }
@@ -480,17 +490,61 @@ export interface PaginatedPickLists {
   pagination: WMSPagination;
 }
 
+export interface UpdatePriorityRequest {
+  priority?: number | null;
+  dispatch_cutoff?: string | null;
+  wave?: string | null;
+  route?: string | null;
+  sla_minutes?: number | null;
+}
+
 export interface PickScanResult {
   pick_list_id: string;
   pick_list_status: string;
   pick_list_item_id: string;
   item_id: string;
   sku: string;
+  serial_no?: string | null;
   scanned_qty: number;
   picked_qty: number;
   required_qty: number;
   remaining_qty: number;
   batch: string | null;
+}
+
+// ============================================
+// ERP SYNC QUEUE TYPES (WF-022 / ALT-009)
+// ============================================
+
+export type ErpSyncStatus = 'pending' | 'sent' | 'failed';
+
+export interface ErpSyncMessage {
+  id: string;
+  organization_id: string;
+  entity_type: string;
+  entity_id: string;
+  operation: string;
+  status: ErpSyncStatus;
+  pick_list_id?: string | null;
+  dispatch_record_id?: string | null;
+  attempt_count: number;
+  max_attempts: number;
+  last_error?: string | null;
+  next_attempt_at?: string | null;
+  sent_at?: string | null;
+  created_at?: string | null;
+}
+
+export interface ErpSyncListResponse {
+  messages: ErpSyncMessage[];
+  pagination: WMSPagination;
+}
+
+export interface ErpSyncFlushResponse {
+  processed: number;
+  sent: number;
+  retried: number;
+  failed: number;
 }
 
 // ============================================

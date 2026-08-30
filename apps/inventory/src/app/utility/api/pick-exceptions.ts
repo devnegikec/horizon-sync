@@ -29,6 +29,7 @@ export const pickExceptionApi = {
             reason_code?: string;
             severity?: string;
             status?: string;
+            warehouse_id?: string;
         },
     ) =>
         apiRequest<PickExceptionListResponse>('/pick-exceptions', accessToken, {
@@ -39,6 +40,7 @@ export const pickExceptionApi = {
                 reason_code: filters?.reason_code,
                 severity: filters?.severity,
                 status: filters?.status,
+                warehouse_id: filters?.warehouse_id,
             },
         }),
 
@@ -47,4 +49,16 @@ export const pickExceptionApi = {
 
     getAudit: (accessToken: string, id: string) =>
         apiRequest<PickExceptionAuditResponse>(`/pick-exceptions/${id}/audit`, accessToken),
+
+    resolve: (accessToken: string, id: string, resolution: string) =>
+        apiRequest<PickException>(`/pick-exceptions/${id}/resolve`, accessToken, {
+            method: 'POST',
+            body: { resolution },
+        }),
+
+    approve: (accessToken: string, id: string, decision: 'approved' | 'rejected') =>
+        apiRequest<PickException>(`/pick-exceptions/${id}/approve`, accessToken, {
+            method: 'POST',
+            body: { decision },
+        }),
 };
