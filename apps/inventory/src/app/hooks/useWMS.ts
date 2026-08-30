@@ -486,7 +486,23 @@ export function usePickList(pickListId: string | null) {
     [accessToken, pickListId],
   );
 
-  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker, stageTransfer, stageScan };
+  const assignHandlingUnit = React.useCallback(
+    async (pickListItemId: string, handlingUnitId: string): Promise<void> => {
+      if (!pickListId || !accessToken) throw new Error('No pick list selected');
+      setError(null);
+      try {
+        await outboundApi.assignHandlingUnit(accessToken, pickListId, pickListItemId, handlingUnitId);
+        await fetchPickList();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to assign handling unit';
+        setError(msg);
+        throw new Error(msg);
+      }
+    },
+    [accessToken, pickListId, fetchPickList],
+  );
+
+  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker, stageTransfer, stageScan, assignHandlingUnit };
 }
 
 // ============================================

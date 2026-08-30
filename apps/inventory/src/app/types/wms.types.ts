@@ -393,6 +393,7 @@ export interface PickListItem {
   batch_no: string | null;
   bin_location_id: string | null;
   bin_location_path?: string | null;
+  handling_unit_id?: string | null;
   sort_order: number;
   serials?: PickSerialDetail[];
 }

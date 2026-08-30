@@ -156,6 +156,7 @@ function PickLineRow({ group }: { group: PickLineGroup }) {
   const requiredQty = rows.reduce((s, r) => s + (r.qty || 0), 0);
   const pickedQty = rows.reduce((s, r) => s + (r.picked_qty || 0), 0);
   const batch = rows.map((r) => r.batch_no).find((b) => !!b) ?? null;
+  const hu = rows.map((r) => r.handling_unit_id).find((v) => !!v) ?? null;
   const bins = Array.from(
     new Set(rows.map((r) => r.bin_location_path || r.bin_location_id || '').filter(Boolean)),
   );
@@ -196,6 +197,11 @@ function PickLineRow({ group }: { group: PickLineGroup }) {
             <span className="font-mono font-medium">{first.sku ?? first.item_id}</span>
             {first.item_name && (
               <span className="text-xs text-muted-foreground ml-2">{first.item_name}</span>
+            )}
+            {hu && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-mono text-blue-600">
+                HU {hu.slice(0, 8)}
+              </span>
             )}
           </span>
         </td>
@@ -421,12 +427,13 @@ interface PickListDetailDialogProps {
 
 function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDialogProps) {
   const { toast } = useToast();
-  const { pickList, loading, error, recordScan, complete, cancel, assignWorker, stageTransfer, stageScan } = usePickList(listId);
+  const { pickList, loading, error, recordScan, complete, cancel, assignWorker, stageTransfer, stageScan, assignHandlingUnit } = usePickList(listId);
   const workers = useWorkers(open);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
   const [qrInput, setQrInput] = React.useState('');
   const [binInput, setBinInput] = React.useState('');
   const [stageInput, setStageInput] = React.useState('');
+  const [huInput, setHuInput] = React.useState('');
   const [staging, setStaging] = React.useState(false);
   const [scannedBinId, setScannedBinId] = React.useState<string | null>(null);
   const [scannedBinLabel, setScannedBinLabel] = React.useState<string | null>(null);
@@ -504,6 +511,21 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
       setScanError(err instanceof Error ? err.message : 'Staging failed');
     } finally {
       setStaging(false);
+    }
+  };
+
+  const handleAssignHu = async () => {
+    const huId = huInput.trim();
+    if (!huId || !pickList) return;
+    const item = pickList.items.find((i) => (i.qty - (i.picked_qty ?? 0)) > 0);
+    if (!item) return;
+    try {
+      setScanError(null);
+      await assignHandlingUnit(item.id, huId);
+      setHuInput('');
+      toast({ title: 'Handling unit assigned' });
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Failed to assign handling unit');
     }
   };
 
@@ -683,6 +705,22 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
                 <Button onClick={handleStage} variant="outline" disabled={staging} className="gap-2 shrink-0">
                   <ScanLine className="h-4 w-4" />
                   {staging ? 'Staging...' : 'Stage'}
+                </Button>
+              </div>
+            )}
+
+            {/* Handling unit association */}
+            {canScan && (
+              <div className="flex gap-2">
+                <Input
+                  value={huInput}
+                  onChange={(e) => setHuInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAssignHu()}
+                  placeholder="Handling unit ID (trolley/carton/pallet)..."
+                  className="font-mono text-sm"
+                />
+                <Button onClick={handleAssignHu} variant="outline" className="gap-2 shrink-0">
+                  Assign HU
                 </Button>
               </div>
             )}

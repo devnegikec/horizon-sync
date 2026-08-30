@@ -372,6 +372,16 @@ export const outboundApi = {
       body: JSON.stringify({ staging_location_id: stagingLocationId }),
     }),
 
+  assignHandlingUnit: (token: string, pickListId: string, pickListItemId: string, handlingUnitId: string) =>
+    req<{ pick_list_item_id: string; handling_unit_id: string }>(
+      `${BASE}/outbound/${pickListId}/items/${pickListItemId}/handling-unit`,
+      token,
+      {
+        method: 'POST',
+        body: JSON.stringify({ handling_unit_id: handlingUnitId }),
+      },
+    ),
+
   // Gate Verification
   startGateSession: (token: string, data: GateSessionRequest) =>
     req<GateSession>(`${BASE}/outbound/gate-sessions`, token, { method: 'POST', body: JSON.stringify(data) }),
