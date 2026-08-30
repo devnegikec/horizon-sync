@@ -18,7 +18,7 @@ import { useUserStore } from '@horizon-sync/store';
 
 import { usePickList, usePickLists, useErpSyncQueue, usePickSettings } from '../../hooks/useWMS';
 import type { PickList, PickListItem, PickSerialDetail, WMSWorker, ErpSyncMessage } from '../../types/wms.types';
-import { wmsWorkerApi } from '../../utility/api/wms';
+import { wmsWorkerApi, scanIdempotencyKey } from '../../utility/api/wms';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
 function workerDisplayName(w: WMSWorker | undefined): string | null {
@@ -441,6 +441,7 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
   const [scannedBinLabel, setScannedBinLabel] = React.useState<string | null>(null);
   const [scanError, setScanError] = React.useState<string | null>(null);
   const [scanning, setScanning] = React.useState(false);
+  const [scanKey, setScanKey] = React.useState<string | null>(null);
   const [assignOpen, setAssignOpen] = React.useState(false);
   const [qrOpen, setQrOpen] = React.useState(false);
   const [confirmAction, setConfirmAction] = React.useState<'complete' | 'cancel' | null>(null);
@@ -474,9 +475,11 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
     if (!qrInput.trim()) return;
     setScanError(null);
     setScanning(true);
+    const key = scanKey ?? scanIdempotencyKey(listId ?? '');
     try {
-      const result = await recordScan(qrInput.trim(), scannedBinId);
+      const result = await recordScan(qrInput.trim(), scannedBinId, key);
       setQrInput('');
+      setScanKey(null);
       const serialPart = result.serial_no ? ` [${result.serial_no}]` : '';
       toast({ title: 'Item scanned', description: `${result.sku}${serialPart} — ${result.scanned_qty} units` });
       inputRef.current?.focus();
@@ -712,7 +715,7 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
                   <Input
                     ref={inputRef}
                     value={qrInput}
-                    onChange={(e) => setQrInput(e.target.value)}
+                    onChange={(e) => { setQrInput(e.target.value); setScanKey(null); }}
                     onKeyDown={(e) => e.key === 'Enter' && handleScan()}
                     placeholder="Scan item QR code..."
                     className="font-mono text-sm"
