@@ -413,6 +413,13 @@ export interface PickList {
   completed_at: string | null;
   created_at: string | null;
   updated_at: string | null;
+  priority: number;
+  dispatch_cutoff?: string | null;
+  wave?: string | null;
+  route?: string | null;
+  sla_minutes?: number | null;
+  age_minutes?: number;
+  is_aging?: boolean;
   items: PickListItem[];
   progress: PickListProgress | null;
 }
@@ -420,6 +427,14 @@ export interface PickList {
 export interface PaginatedPickLists {
   pick_lists: PickList[];
   pagination: WMSPagination;
+}
+
+export interface UpdatePriorityRequest {
+  priority?: number | null;
+  dispatch_cutoff?: string | null;
+  wave?: string | null;
+  route?: string | null;
+  sla_minutes?: number | null;
 }
 
 export interface PickScanResult {

@@ -335,7 +335,7 @@ export function usePutAwayList(listId: string | null) {
 // PICK LIST HOOK
 // ============================================
 
-export function usePickLists(params: { status?: string; warehouse_id?: string; page?: number; page_size?: number }) {
+export function usePickLists(params: { status?: string; warehouse_id?: string; sort_by?: string; page?: number; page_size?: number }) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [data, setData] = React.useState<PaginatedPickLists | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -353,7 +353,7 @@ export function usePickLists(params: { status?: string; warehouse_id?: string; p
     } finally {
       setLoading(false);
     }
-  }, [accessToken, params.status, params.warehouse_id, params.page, params.page_size]);
+  }, [accessToken, params.status, params.warehouse_id, params.sort_by, params.page, params.page_size]);
 
   React.useEffect(() => {
     fetch();

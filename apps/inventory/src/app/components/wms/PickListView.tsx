@@ -799,6 +799,7 @@ interface PickListViewProps {
 
 export function PickListView({ warehouseId }: PickListViewProps) {
   const [statusFilter, setStatusFilter] = React.useState('all');
+  const [sortBy, setSortBy] = React.useState('created_at');
   const [page, setPage] = React.useState(1);
   const [viewListId, setViewListId] = React.useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
@@ -808,6 +809,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
   const { data, loading, error, refetch } = usePickLists({
     status: statusFilter === 'all' ? undefined : statusFilter,
     warehouse_id: warehouseId,
+    sort_by: sortBy,
     page,
     page_size: 20,
   });
@@ -825,6 +827,15 @@ export function PickListView({ warehouseId }: PickListViewProps) {
             <SelectItem value="in_progress">In Progress</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="created_at">Newest first</SelectItem>
+            <SelectItem value="priority">Priority</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" size="sm" onClick={refetch} className="gap-2">
@@ -848,6 +859,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Pick List #</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Invoice Ref</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Priority</th>
                 <th className="text-right px-4 py-3 font-medium text-muted-foreground">Qty</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Worker</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Created</th>
@@ -857,7 +869,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
             <tbody className="divide-y">
               {(!data || data.pick_lists.length === 0) && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                     No pick lists found. Import an incoming order to create one.
                   </td>
                 </tr>
@@ -866,7 +878,21 @@ export function PickListView({ warehouseId }: PickListViewProps) {
                 <tr key={pl.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-mono font-medium">{pl.pick_list_no}</td>
                   <td className="px-4 py-3 text-muted-foreground">{pl.invoice_reference ?? '—'}</td>
-                  <td className="px-4 py-3"><WMSStatusBadge status={pl.status} /></td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <WMSStatusBadge status={pl.status} />
+                      {pl.is_aging && (
+                        <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600">
+                          Aged
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <span className={pl.priority > 0 ? 'font-mono font-semibold text-foreground' : 'text-muted-foreground'}>
+                      {pl.priority > 0 ? `P${pl.priority}` : '—'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-right">{pl.progress?.total_qty ?? '—'}</td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">
                     {pl.assigned_to

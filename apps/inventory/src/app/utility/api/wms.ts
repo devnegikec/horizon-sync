@@ -17,6 +17,7 @@ import type {
   PaginatedPickLists,
   PickScanResult,
   SAPInvoicePayload,
+  UpdatePriorityRequest,
   GateSession,
   GateScanResult,
   GateSessionProgress,
@@ -321,7 +322,7 @@ export const outboundApi = {
 
   listPickLists: (
     token: string,
-    params: { status?: string; warehouse_id?: string; invoice_reference?: string; page?: number; page_size?: number },
+    params: { status?: string; warehouse_id?: string; invoice_reference?: string; sort_by?: string; page?: number; page_size?: number },
   ) => {
     const p = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
@@ -381,6 +382,12 @@ export const outboundApi = {
         body: JSON.stringify({ handling_unit_id: handlingUnitId }),
       },
     ),
+
+  updatePriority: (token: string, id: string, data: UpdatePriorityRequest) =>
+    req<PickList>(`${BASE}/outbound/${id}/priority`, token, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 
   // Gate Verification
   startGateSession: (token: string, data: GateSessionRequest) =>
