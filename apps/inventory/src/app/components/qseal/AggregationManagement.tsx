@@ -24,18 +24,22 @@ export function AggregationManagement() {
   const [error, setError] = React.useState<string | null>(null);
   const [page, setPage] = React.useState(1);
   const [totalItems, setTotalItems] = React.useState(0);
+  const latestRequestRef = React.useRef(0);
 
   const fetch = React.useCallback(async (p: number) => {
+    const requestId = ++latestRequestRef.current;
     setLoading(true);
     setError(null);
     try {
       const res = await qrBlockService.getAggregation({ page: p, page_size: PAGE_SIZE });
+      if (requestId !== latestRequestRef.current) return;
       setItems(res.items);
       setTotalItems(res.pagination.total_items);
     } catch (err: unknown) {
+      if (requestId !== latestRequestRef.current) return;
       setError(getApiErrorMessage(err, 'Failed to load aggregation log'));
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestRef.current) setLoading(false);
     }
   }, []);
 
@@ -155,8 +159,7 @@ export function AggregationManagement() {
               </p>
             </div>
           ) : (
-            <DataTable
-              columns={columns}
+            <DataTable columns={columns}
               data={items}
               config={{
                 showSerialNumber: true,
@@ -174,8 +177,7 @@ export function AggregationManagement() {
                 },
               }}
               fixedHeader
-              maxHeight="auto"
-            />
+              maxHeight="auto"/>
           )}
         </CardContent>
       </Card>

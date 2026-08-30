@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { qrBlockService } from '../services/qrBlockService';
 import type { QRBlock, BlockStatus } from '../types/qrBlock.types';
@@ -12,6 +12,7 @@ export const useBlockStatus = (blockId: string | null) => {
   const [block, setBlock] = useState<QRBlock | null>(null);
   const [loading, setLoading] = useState(false);
   const [pollInterval, setPollInterval] = useState(INITIAL_POLL_MS);
+  const latestRequestRef = useRef(0);
 
   useEffect(() => {
     if (!blockId) return;
@@ -19,16 +20,19 @@ export const useBlockStatus = (blockId: string | null) => {
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let interval = INITIAL_POLL_MS;
+    // Invalidate any in-flight request from a previous blockId.
+    latestRequestRef.current += 1;
 
     const poll = async () => {
       if (cancelled) return;
+      const requestId = ++latestRequestRef.current;
       try {
         const data = await qrBlockService.getBlock(blockId);
-        if (cancelled) return;
+        if (cancelled || requestId !== latestRequestRef.current) return;
         setBlock(data);
         if (TERMINAL.includes(data.status)) return;
       } catch {
-        if (cancelled) return;
+        if (cancelled || requestId !== latestRequestRef.current) return;
       }
 
       interval = Math.min(
@@ -52,14 +56,16 @@ export const useBlockStatus = (blockId: string | null) => {
 
   const refetch = useCallback(async () => {
     if (!blockId) return;
+    const requestId = ++latestRequestRef.current;
     setLoading(true);
     try {
       const data = await qrBlockService.getBlock(blockId);
+      if (requestId !== latestRequestRef.current) return;
       setBlock(data);
     } catch {
       // Keep the existing block on failure.
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestRef.current) setLoading(false);
     }
   }, [blockId]);
 

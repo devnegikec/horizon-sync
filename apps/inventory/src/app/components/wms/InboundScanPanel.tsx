@@ -18,6 +18,28 @@ interface InboundScanPanelProps {
   onSlipGenerated?: (slipId: string) => void;
 }
 
+async function fetchAllAsns(
+  accessToken: string,
+  warehouseId: string,
+  isCancelled: () => boolean,
+): Promise<AsnOrderListItem[]> {
+  const pageSize = 100;
+  const allAsns: AsnOrderListItem[] = [];
+  let page = 1;
+  let hasNext = true;
+
+  while (hasNext && !isCancelled()) {
+    const response = (await asnOrderApi.list(accessToken, page, pageSize, { warehouse_id: warehouseId })) as AsnOrderListResponse;
+    allAsns.push(...response.asn_orders);
+
+    const pagination = response.pagination;
+    hasNext = pagination?.has_next ?? page < (pagination?.total_pages ?? 1);
+    page += 1;
+  }
+
+  return allAsns;
+}
+
 function useAvailableAsns(accessToken: string | null, warehouseId: string, enabled: boolean) {
   const [asnOptions, setAsnOptions] = React.useState<AsnOrderListItem[]>([]);
   const [loadingAsns, setLoadingAsns] = React.useState(false);
@@ -31,9 +53,9 @@ function useAvailableAsns(accessToken: string | null, warehouseId: string, enabl
       setLoadingAsns(true);
       setAsnError(null);
       try {
-        const response = (await asnOrderApi.list(accessToken, 1, 100, { warehouse_id: warehouseId })) as AsnOrderListResponse;
+        const allAsns = await fetchAllAsns(accessToken, warehouseId, () => cancelled);
         if (!cancelled) {
-          setAsnOptions(response.asn_orders.filter((asn) => asn.status === 'confirmed' || asn.status === 'partially_delivered'));
+          setAsnOptions(allAsns.filter((asn) => asn.status === 'confirmed' || asn.status === 'partially_delivered'));
         }
       } catch (err) {
         if (!cancelled) setAsnError(err instanceof Error ? err.message : 'Failed to load available ASNs');
@@ -55,22 +77,27 @@ function useLiveReconciliation(accessToken: string | null, session: ScanSession 
   const [summary, setSummary] = React.useState<AsnReceivingSummary | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const latestRequestRef = React.useRef(0);
 
   const refresh = React.useCallback(async () => {
     if (!accessToken || !session?.asn_order_id) {
+      latestRequestRef.current += 1;
       setSummary(null);
       return;
     }
 
+    const requestId = ++latestRequestRef.current;
     setLoading(true);
     setError(null);
     try {
       const next = (await asnOrderApi.getReceivingSummary(accessToken, session.asn_order_id, session.id)) as AsnReceivingSummary;
+      if (requestId !== latestRequestRef.current) return;
       setSummary(next);
     } catch (err) {
+      if (requestId !== latestRequestRef.current) return;
       setError(err instanceof Error ? err.message : 'Failed to refresh live reconciliation');
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestRef.current) setLoading(false);
     }
   }, [accessToken, session?.asn_order_id, session?.id]);
 
