@@ -24,6 +24,8 @@ import type {
   GateSessionRequest,
   DispatchRecord,
   DispatchListResponse,
+  ErpSyncListResponse,
+  ErpSyncFlushResponse,
   WMSWorker,
   WMSWorkerListResponse,
   WMSWorkerCreate,
@@ -425,6 +427,29 @@ export const outboundApi = {
 
   getDispatch: (token: string, id: string) =>
     req<DispatchRecord>(`${BASE}/outbound/dispatches/${id}`, token),
+};
+
+// ============================================
+// ERP SYNC QUEUE (WF-022 / ALT-009)
+// ============================================
+
+export const erpSyncApi = {
+  listMessages: (
+    token: string,
+    params: { status?: string; page?: number; page_size?: number },
+  ) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
+    });
+    return req<ErpSyncListResponse>(`${BASE}/outbound/erp-sync?${p}`, token);
+  },
+
+  flush: (token: string) =>
+    req<ErpSyncFlushResponse>(`${BASE}/outbound/erp-sync/flush`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
 };
 
 // ============================================

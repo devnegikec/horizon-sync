@@ -452,6 +452,41 @@ export interface PickScanResult {
 }
 
 // ============================================
+// ERP SYNC QUEUE TYPES (WF-022 / ALT-009)
+// ============================================
+
+export type ErpSyncStatus = 'pending' | 'sent' | 'failed';
+
+export interface ErpSyncMessage {
+  id: string;
+  organization_id: string;
+  entity_type: string;
+  entity_id: string;
+  operation: string;
+  status: ErpSyncStatus;
+  pick_list_id?: string | null;
+  dispatch_record_id?: string | null;
+  attempt_count: number;
+  max_attempts: number;
+  last_error?: string | null;
+  next_attempt_at?: string | null;
+  sent_at?: string | null;
+  created_at?: string | null;
+}
+
+export interface ErpSyncListResponse {
+  messages: ErpSyncMessage[];
+  pagination: WMSPagination;
+}
+
+export interface ErpSyncFlushResponse {
+  processed: number;
+  sent: number;
+  retried: number;
+  failed: number;
+}
+
+// ============================================
 // GATE VERIFICATION TYPES
 // ============================================
 

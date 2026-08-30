@@ -2,10 +2,12 @@ import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
 
-import { inboundApi, layoutApi, outboundApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi, vehicleArrivalApi } from '../utility/api/wms';
+import { inboundApi, layoutApi, outboundApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi, vehicleArrivalApi, erpSyncApi } from '../utility/api/wms';
 import type {
   DispatchListResponse,
   DispatchRecord,
+  ErpSyncFlushResponse,
+  ErpSyncListResponse,
   GateSession,
   GateScanResult,
   GateSessionProgress,
@@ -503,6 +505,50 @@ export function usePickList(pickListId: string | null) {
   );
 
   return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker, stageTransfer, stageScan, assignHandlingUnit };
+}
+
+// ============================================
+// ERP SYNC QUEUE HOOK (WF-022 / ALT-009)
+// ============================================
+
+export function useErpSyncQueue(params: { status?: string; page?: number; page_size?: number } = {}) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [data, setData] = React.useState<ErpSyncListResponse | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const fetchQueue = React.useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await erpSyncApi.listMessages(accessToken, params);
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load ERP sync queue');
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, params.status, params.page, params.page_size]);
+
+  React.useEffect(() => {
+    fetchQueue();
+  }, [fetchQueue]);
+
+  const flush = React.useCallback(async (): Promise<ErpSyncFlushResponse> => {
+    if (!accessToken) throw new Error('Not authenticated');
+    setError(null);
+    try {
+      const result = await erpSyncApi.flush(accessToken);
+      await fetchQueue();
+      return result;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to flush ERP sync queue');
+      throw err;
+    }
+  }, [accessToken, fetchQueue]);
+
+  return { data, loading, error, refetch: fetchQueue, flush };
 }
 
 // ============================================

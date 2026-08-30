@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { RefreshCw, ScanLine, CheckCircle2, X, Eye, UserRound, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { RefreshCw, ScanLine, CheckCircle2, X, Eye, UserRound, Loader2, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -16,8 +16,8 @@ import {
 import { useToast } from '@horizon-sync/ui/hooks';
 import { useUserStore } from '@horizon-sync/store';
 
-import { usePickList, usePickLists } from '../../hooks/useWMS';
-import type { PickList, PickListItem, PickSerialDetail, WMSWorker } from '../../types/wms.types';
+import { usePickList, usePickLists, useErpSyncQueue } from '../../hooks/useWMS';
+import type { PickList, PickListItem, PickSerialDetail, WMSWorker, ErpSyncMessage } from '../../types/wms.types';
 import { wmsWorkerApi } from '../../utility/api/wms';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
@@ -797,6 +797,125 @@ interface PickListViewProps {
   warehouseId?: string;
 }
 
+function syncStatusBadge(status: ErpSyncMessage['status']) {
+  if (status === 'sent') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">
+        <CheckCircle2 className="h-3 w-3" /> Sent
+      </span>
+    );
+  }
+  if (status === 'failed') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600">
+        <AlertTriangle className="h-3 w-3" /> Failed
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600">
+      <Loader2 className="h-3 w-3 animate-spin" /> Pending
+    </span>
+  );
+}
+
+function ErpSyncPanel() {
+  const { data, loading, error, refetch, flush } = useErpSyncQueue({ page: 1, page_size: 10 });
+  const { toast } = useToast();
+  const [flushing, setFlushing] = React.useState(false);
+  const [expanded, setExpanded] = React.useState(false);
+
+  const messages = data?.messages ?? [];
+  const failedCount = messages.filter((m) => m.status === 'failed').length;
+
+  const handleFlush = async () => {
+    setFlushing(true);
+    try {
+      const res = await flush();
+      toast({
+        title: 'ERP sync flushed',
+        description: `${res.sent} sent, ${res.retried} retried, ${res.failed} failed`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Flush failed',
+        description: err instanceof Error ? err.message : 'Failed to flush ERP sync queue',
+        variant: 'destructive',
+      });
+    } finally {
+      setFlushing(false);
+    }
+  };
+
+  return (
+    <div className="border rounded-lg p-4">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          className="flex items-center gap-2 text-sm font-medium"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          ERP Sync Queue
+          {failedCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600">
+              <AlertTriangle className="h-3 w-3" /> {failedCount} failed
+            </span>
+          )}
+        </button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={refetch} className="gap-2">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleFlush} disabled={flushing} className="gap-2">
+            <RefreshCw className={`h-3.5 w-3.5 ${flushing ? 'animate-spin' : ''}`} />
+            {flushing ? 'Flushing…' : 'Flush retries'}
+          </Button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mt-3">
+          {loading && <div className="text-sm text-muted-foreground animate-pulse">Loading sync queue…</div>}
+          {error && <div className="text-sm text-destructive">{error}</div>}
+          {!loading && messages.length === 0 && (
+            <p className="text-sm text-muted-foreground">No ERP sync messages yet.</p>
+          )}
+          {!loading && messages.length > 0 && (
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">Entity</th>
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">Operation</th>
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">Status</th>
+                  <th className="text-right px-3 py-2 font-medium text-muted-foreground">Attempts</th>
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">Last error</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {messages.map((m) => (
+                  <tr key={m.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-3 py-2 font-mono text-xs">{m.entity_type}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{m.operation}</td>
+                    <td className="px-3 py-2">{syncStatusBadge(m.status)}</td>
+                    <td className="px-3 py-2 text-right text-muted-foreground">
+                      {m.attempt_count}/{m.max_attempts}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground max-w-[280px] truncate">
+                      {m.last_error ?? '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PickListView({ warehouseId }: PickListViewProps) {
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [sortBy, setSortBy] = React.useState('created_at');
@@ -929,6 +1048,8 @@ export function PickListView({ warehouseId }: PickListViewProps) {
           </div>
         </div>
       )}
+
+      <ErpSyncPanel />
 
       <PickListDetailDialog listId={viewListId} open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>
