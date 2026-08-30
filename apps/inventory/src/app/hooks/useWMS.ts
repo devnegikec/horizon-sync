@@ -3,6 +3,7 @@ import * as React from 'react';
 import { useUserStore } from '@horizon-sync/store';
 
 import { inboundApi, layoutApi, outboundApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi, vehicleArrivalApi, erpSyncApi } from '../utility/api/wms';
+import { pickSettingsApi } from '../utility/api/pick-settings';
 import type {
   DispatchListResponse,
   DispatchRecord,
@@ -29,6 +30,41 @@ import type {
   PaginatedVehicleArrivals,
   VehicleArrival,
 } from '../types/wms.types';
+
+// ============================================
+// PICK SETTINGS HOOK (runtime config gating)
+// ============================================
+
+export function usePickSettings() {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [settings, setSettings] = React.useState<Record<string, unknown>>({});
+  const [loading, setLoading] = React.useState(false);
+
+  const fetch = React.useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    try {
+      const res = await pickSettingsApi.getRuntime(accessToken);
+      setSettings(res.settings ?? {});
+    } catch {
+      // Deny-by-default: leave settings empty on failure.
+      setSettings({});
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken]);
+
+  React.useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return {
+    settings,
+    loading,
+    refetch: fetch,
+    enableHandlingUnit: Boolean(settings['enable_handling_unit']),
+  };
+}
 
 // ============================================
 // LOCATION TREE HOOK
@@ -375,7 +411,7 @@ export function usePickLists(params: { status?: string; warehouse_id?: string; s
     setLoading(true);
     setError(null);
     try {
-      const result = await outboundApi.listPickLists(accessToken, { status, warehouse_id, page, page_size });
+      const result = await outboundApi.listPickLists(accessToken, params);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load pick lists');

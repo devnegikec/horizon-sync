@@ -45,23 +45,28 @@ export function PickExceptionQueue({ warehouseId }: { warehouseId?: string }) {
     const [status, setStatus] = React.useState<string>('all');
     const [resolution, setResolution] = React.useState('');
     const [activeId, setActiveId] = React.useState<string | null>(null);
+    const requestIdRef = React.useRef(0);
 
     const load = React.useCallback(async () => {
         if (!token) return;
+        const requestId = ++requestIdRef.current;
         setLoading(true);
         setError(null);
         try {
             const res = await pickExceptionApi.list(token, 1, 100, {
                 severity: severity === 'all' ? undefined : severity,
                 status: status === 'all' ? undefined : status,
+                warehouse_id: warehouseId || undefined,
             });
+            if (requestId !== requestIdRef.current) return;
             setExceptions(res.exceptions ?? []);
         } catch (err) {
+            if (requestId !== requestIdRef.current) return;
             setError(err instanceof Error ? err.message : 'Failed to load exceptions');
         } finally {
-            setLoading(false);
+            if (requestId === requestIdRef.current) setLoading(false);
         }
-    }, [token, severity, status]);
+    }, [token, severity, status, warehouseId]);
 
     React.useEffect(() => { load(); }, [load]);
 

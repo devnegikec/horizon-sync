@@ -29,6 +29,7 @@ export const pickExceptionApi = {
             reason_code?: string;
             severity?: string;
             status?: string;
+            warehouse_id?: string;
         },
     ) =>
         apiRequest<PickExceptionListResponse>('/pick-exceptions', accessToken, {
@@ -39,6 +40,7 @@ export const pickExceptionApi = {
                 reason_code: filters?.reason_code,
                 severity: filters?.severity,
                 status: filters?.status,
+                warehouse_id: filters?.warehouse_id,
             },
         }),
 

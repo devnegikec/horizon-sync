@@ -16,7 +16,7 @@ import {
 import { useToast } from '@horizon-sync/ui/hooks';
 import { useUserStore } from '@horizon-sync/store';
 
-import { usePickList, usePickLists, useErpSyncQueue } from '../../hooks/useWMS';
+import { usePickList, usePickLists, useErpSyncQueue, usePickSettings } from '../../hooks/useWMS';
 import type { PickList, PickListItem, PickSerialDetail, WMSWorker, ErpSyncMessage } from '../../types/wms.types';
 import { wmsWorkerApi } from '../../utility/api/wms';
 import { WMSStatusBadge } from './WMSStatusBadge';
@@ -428,12 +428,14 @@ interface PickListDetailDialogProps {
 function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDialogProps) {
   const { toast } = useToast();
   const { pickList, loading, error, recordScan, complete, cancel, assignWorker, accept, stageTransfer, stageScan, assignHandlingUnit } = usePickList(listId);
+  const { enableHandlingUnit } = usePickSettings();
   const workers = useWorkers(open);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
   const [qrInput, setQrInput] = React.useState('');
   const [binInput, setBinInput] = React.useState('');
   const [stageInput, setStageInput] = React.useState('');
   const [huInput, setHuInput] = React.useState('');
+  const [huItemId, setHuItemId] = React.useState('');
   const [staging, setStaging] = React.useState(false);
   const [scannedBinId, setScannedBinId] = React.useState<string | null>(null);
   const [scannedBinLabel, setScannedBinLabel] = React.useState<string | null>(null);
@@ -451,6 +453,15 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
     : null;
   const assignedEmployeeId = assignedWorker?.employee_id ?? null;
   const assignedWorkerQr = workerQrValue(assignedWorker);
+
+  const openLines = React.useMemo(
+    () =>
+      (pickList?.items ?? []).filter(
+        (i) => (i.qty - (i.picked_qty ?? 0)) > 0,
+      ),
+    [pickList],
+  );
+  const effectiveHuItemId = huItemId || openLines[0]?.id || '';
 
   const handleAssign = React.useCallback(
     async (workerId: string) => {
@@ -504,7 +515,17 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
       setStaging(true);
       setScanError(null);
       await stageTransfer(String(locationId));
-      await stageScan(String(locationId));
+      try {
+        await stageScan(String(locationId));
+      } catch (err) {
+        setScanError(err instanceof Error ? err.message : 'Stage scan failed');
+        toast({
+          title: 'Transferred, but stage scan failed',
+          description: 'The lane was assigned — scan the lane again to confirm.',
+          variant: 'destructive',
+        });
+        return;
+      }
       setStageInput('');
       toast({ title: 'Staged', description: parsed.full_path ?? String(locationId) });
     } catch (err) {
@@ -516,12 +537,10 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
 
   const handleAssignHu = async () => {
     const huId = huInput.trim();
-    if (!huId || !pickList) return;
-    const item = pickList.items.find((i) => (i.qty - (i.picked_qty ?? 0)) > 0);
-    if (!item) return;
+    if (!huId || !effectiveHuItemId) return;
     try {
       setScanError(null);
-      await assignHandlingUnit(item.id, huId);
+      await assignHandlingUnit(effectiveHuItemId, huId);
       setHuInput('');
       toast({ title: 'Handling unit assigned' });
     } catch (err) {
@@ -730,19 +749,38 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
               </div>
             )}
 
-            {/* Handling unit association */}
-            {canScan && (
-              <div className="flex gap-2">
-                <Input
-                  value={huInput}
-                  onChange={(e) => setHuInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAssignHu()}
-                  placeholder="Handling unit ID (trolley/carton/pallet)..."
-                  className="font-mono text-sm"
-                />
-                <Button onClick={handleAssignHu} variant="outline" className="gap-2 shrink-0">
-                  Assign HU
-                </Button>
+            {/* Handling unit association (gated on pick.enable_handling_unit) */}
+            {canScan && enableHandlingUnit && openLines.length > 0 && (
+              <div className="border rounded-lg p-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Handling unit</p>
+                <div className="flex gap-2">
+                  <Select value={effectiveHuItemId} onValueChange={setHuItemId}>
+                    <SelectTrigger className="w-[260px] shrink-0">
+                      <SelectValue placeholder="Select line" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {openLines.map((line) => {
+                        const remaining = (line.qty ?? 0) - (line.picked_qty ?? 0);
+                        const label = `${line.sku ?? line.item_id} — ${remaining} remaining`;
+                        return (
+                          <SelectItem key={line.id} value={line.id}>
+                            {label}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={huInput}
+                    onChange={(e) => setHuInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAssignHu()}
+                    placeholder="Handling unit ID (trolley/carton/pallet)..."
+                    className="font-mono text-sm"
+                  />
+                  <Button onClick={handleAssignHu} variant="outline" className="gap-2 shrink-0">
+                    Assign HU
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -957,7 +995,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
@@ -969,7 +1007,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={sortBy} onValueChange={setSortBy}>
+        <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1); }}>
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
