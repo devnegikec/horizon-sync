@@ -200,11 +200,11 @@ describe('useStockReconciliations - Property-Based Tests', () => {
               id: fc.uuid(),
               reconciliation_no: fc.string({ minLength: 5, maxLength: 20 }),
               status: fc.constantFrom('draft', 'submitted'),
-              total_difference: fc.oneof(fc.constant(null), fc.float({ min: -1000, max: 1000 })),
+              total_difference: fc.oneof(fc.constant(null), fc.float({ min: -1000, max: 1000, noNaN: true })),
               posting_date: validDateArbitrary(),
               created_at: validDateArbitrary(),
             }),
-            { minLength: 0, maxLength: 100 }
+            { minLength: 0, maxLength: 100 },
           ),
           (reconciliations) => {
             // Calculate stats
@@ -238,9 +238,9 @@ describe('useStockReconciliations - Property-Based Tests', () => {
             // Property: Stats should match manual count
             const manualPendingCount = reconciliations.filter((r) => r.status === 'draft').length;
             expect(stats.pending_count).toBe(manualPendingCount);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
     */

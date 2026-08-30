@@ -116,6 +116,7 @@ export interface BinStockInfo {
 export interface StartSessionRequest {
   warehouse_id: string;
   dock_location?: string | null;
+  asn_order_id?: string | null;
 }
 
 export interface RecordScanRequest {
@@ -131,6 +132,8 @@ export interface ScanSession {
   worker_id: string;
   warehouse_id: string;
   dock_location: string | null;
+  asn_order_id?: string | null;
+  asn_order_no?: string | null;
   status: 'open' | 'closed';
   total_boxes_scanned: number;
   started_at: string | null;
@@ -174,6 +177,62 @@ export interface SessionSummary {
   total_boxes: number;
   total_quantity: number;
   items: SKUBreakdown[];
+}
+
+export type ReconciliationStatus = 'pending' | 'partial' | 'exception' | 'reconciled';
+
+export interface AsnReconciliationLineItem {
+  asn_item_id: string;
+  item_id: string;
+  sku: string | null;
+  item_name: string | null;
+  expected_qty: number;
+  scanned_qty: number;
+  accepted_qty: number;
+  rejected_qty: number;
+  short_qty: number;
+  excess_qty: number;
+  damaged_qty: number;
+  hold_qty: number;
+  pending_qty: number;
+  over_qty: number;
+  status: 'matched' | 'partial' | 'over' | 'exception' | 'not_received' | 'not_applicable';
+}
+
+export interface AsnReceivingSummary {
+  asn_order_id: string;
+  asn_order_no: string;
+  asn_status: string;
+  expected_total_qty: number;
+  scanned_total_qty: number;
+  accepted_total_qty: number;
+  rejected_total_qty: number;
+  short_total_qty: number;
+  excess_total_qty: number;
+  damaged_total_qty: number;
+  hold_total_qty: number;
+  pending_total_qty: number;
+  over_total_qty: number;
+  total_line_items: number;
+  matched_items: number;
+  partial_items: number;
+  not_received_items: number;
+  over_items: number;
+  reconciliation_status: ReconciliationStatus;
+  ready_for_receipt_note: boolean;
+  is_partial_receipt: boolean;
+  unresolved_exception_count: number;
+  active_session_id: string | null;
+  linked_slips: Array<{
+    slip_id: string;
+    slip_number: string;
+    status: string;
+    created_at: string | null;
+    total_accepted_qty: number;
+    total_rejected_qty: number;
+    total_items: number;
+  }>;
+  line_items: AsnReconciliationLineItem[];
 }
 
 export type ReceivingSlipStatus = 'pending_review' | 'pending_putaway' | 'putaway_complete' | 'rejected';

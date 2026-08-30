@@ -65,7 +65,13 @@ export function useLocationTree(warehouseId: string | null) {
 // WAREHOUSE LOCATIONS HOOK
 // ============================================
 
-export function useWarehouseLocations(params: {
+export function useWarehouseLocations({
+  warehouse_id,
+  location_type,
+  is_active,
+  page,
+  page_size,
+}: {
   warehouse_id: string;
   location_type?: string;
   is_active?: boolean;
@@ -78,18 +84,18 @@ export function useWarehouseLocations(params: {
   const [error, setError] = React.useState<string | null>(null);
 
   const fetch = React.useCallback(async () => {
-    if (!accessToken || !params.warehouse_id) return;
+    if (!accessToken || !warehouse_id) return;
     setLoading(true);
     setError(null);
     try {
-      const result = await layoutApi.listLocations(accessToken, params);
+      const result = await layoutApi.listLocations(accessToken, { warehouse_id, location_type, is_active, page, page_size });
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load locations');
     } finally {
       setLoading(false);
     }
-  }, [accessToken, params.warehouse_id, params.location_type, params.is_active, params.page, params.page_size]);
+  }, [accessToken, warehouse_id, location_type, is_active, page, page_size]);
 
   React.useEffect(() => {
     fetch();
@@ -109,7 +115,7 @@ export function useInboundSession() {
   const [error, setError] = React.useState<string | null>(null);
 
   const startSession = React.useCallback(
-    async (warehouseId: string, dockLocation?: string): Promise<ScanSession> => {
+    async (warehouseId: string, dockLocation?: string, asnOrderId?: string): Promise<ScanSession> => {
       if (!accessToken) throw new Error('Not authenticated');
       setLoading(true);
       setError(null);
@@ -117,6 +123,7 @@ export function useInboundSession() {
         const result = await inboundApi.startSession(accessToken, {
           warehouse_id: warehouseId,
           dock_location: dockLocation ?? null,
+          asn_order_id: asnOrderId ?? null,
         });
         setSession(result);
         return result;
@@ -181,7 +188,17 @@ export function useInboundSession() {
 // RECEIVING SLIPS HOOK
 // ============================================
 
-export function useReceivingSlips(params: { warehouse_id?: string; status?: string; page?: number; page_size?: number }) {
+export function useReceivingSlips({
+  warehouse_id,
+  status,
+  page,
+  page_size,
+}: {
+  warehouse_id?: string;
+  status?: string;
+  page?: number;
+  page_size?: number;
+}) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [data, setData] = React.useState<PaginatedReceivingSlips | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -192,14 +209,14 @@ export function useReceivingSlips(params: { warehouse_id?: string; status?: stri
     setLoading(true);
     setError(null);
     try {
-      const result = await inboundApi.listReceivingSlips(accessToken, params);
+      const result = await inboundApi.listReceivingSlips(accessToken, { warehouse_id, status, page, page_size });
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load receiving slips');
     } finally {
       setLoading(false);
     }
-  }, [accessToken, params.warehouse_id, params.status, params.page, params.page_size]);
+  }, [accessToken, warehouse_id, status, page, page_size]);
 
   React.useEffect(() => {
     fetch();
@@ -259,7 +276,17 @@ export function useReceivingSlips(params: { warehouse_id?: string; status?: stri
 // PUT-AWAY LISTS HOOK
 // ============================================
 
-export function usePutAwayLists(params: { warehouse_id?: string; status?: string; page?: number; page_size?: number }) {
+export function usePutAwayLists({
+  warehouse_id,
+  status,
+  page,
+  page_size,
+}: {
+  warehouse_id?: string;
+  status?: string;
+  page?: number;
+  page_size?: number;
+}) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [data, setData] = React.useState<{ put_away_lists: PutAwayList[]; pagination: unknown } | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -270,14 +297,14 @@ export function usePutAwayLists(params: { warehouse_id?: string; status?: string
     setLoading(true);
     setError(null);
     try {
-      const result = await putAwayApi.listPutAwayLists(accessToken, params);
+      const result = await putAwayApi.listPutAwayLists(accessToken, { warehouse_id, status, page, page_size });
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load put-away lists');
     } finally {
       setLoading(false);
     }
-  }, [accessToken, params.warehouse_id, params.status, params.page, params.page_size]);
+  }, [accessToken, warehouse_id, status, page, page_size]);
 
   React.useEffect(() => {
     fetch();
@@ -348,7 +375,7 @@ export function usePickLists(params: { status?: string; warehouse_id?: string; s
     setLoading(true);
     setError(null);
     try {
-      const result = await outboundApi.listPickLists(accessToken, params);
+      const result = await outboundApi.listPickLists(accessToken, { status, warehouse_id, page, page_size });
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load pick lists');
@@ -643,7 +670,7 @@ export function useGateVerification() {
 // DISPATCHES HOOK
 // ============================================
 
-export function useDispatches(params: { page?: number; page_size?: number; vehicle_number?: string }) {
+export function useDispatches({ page, page_size, vehicle_number }: { page?: number; page_size?: number; vehicle_number?: string }) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [data, setData] = React.useState<DispatchListResponse | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -654,14 +681,14 @@ export function useDispatches(params: { page?: number; page_size?: number; vehic
     setLoading(true);
     setError(null);
     try {
-      const result = await outboundApi.listDispatches(accessToken, params);
+      const result = await outboundApi.listDispatches(accessToken, { page, page_size, vehicle_number });
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dispatches');
     } finally {
       setLoading(false);
     }
-  }, [accessToken, params.page, params.page_size, params.vehicle_number]);
+  }, [accessToken, page, page_size, vehicle_number]);
 
   React.useEffect(() => {
     fetch();
@@ -684,7 +711,19 @@ export function useDispatches(params: { page?: number; page_size?: number; vehic
 // WMS WORKERS HOOK
 // ============================================
 
-export function useWMSWorkers(params: { warehouse_id?: string; status?: string; search?: string; page?: number; page_size?: number }) {
+export function useWMSWorkers({
+  warehouse_id,
+  status,
+  search,
+  page,
+  page_size,
+}: {
+  warehouse_id?: string;
+  status?: string;
+  search?: string;
+  page?: number;
+  page_size?: number;
+}) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [data, setData] = React.useState<WMSWorkerListResponse | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -695,16 +734,18 @@ export function useWMSWorkers(params: { warehouse_id?: string; status?: string; 
     setLoading(true);
     setError(null);
     try {
-      const result = await wmsWorkerApi.list(accessToken, params);
+      const result = await wmsWorkerApi.list(accessToken, { warehouse_id, status, search, page, page_size });
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load workers');
     } finally {
       setLoading(false);
     }
-  }, [accessToken, params.warehouse_id, params.status, params.search, params.page, params.page_size]);
+  }, [accessToken, warehouse_id, status, search, page, page_size]);
 
-  React.useEffect(() => { fetch(); }, [fetch]);
+  React.useEffect(() => {
+    fetch();
+  }, [fetch]);
 
   return { data, loading, error, refetch: fetch };
 }
@@ -713,7 +754,19 @@ export function useWMSWorkers(params: { warehouse_id?: string; status?: string; 
 // WMS DEVICES HOOK
 // ============================================
 
-export function useWMSDevices(params: { warehouse_id?: string; status?: string; search?: string; page?: number; page_size?: number }) {
+export function useWMSDevices({
+  warehouse_id,
+  status,
+  search,
+  page,
+  page_size,
+}: {
+  warehouse_id?: string;
+  status?: string;
+  search?: string;
+  page?: number;
+  page_size?: number;
+}) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [data, setData] = React.useState<WMSDeviceListResponse | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -724,16 +777,18 @@ export function useWMSDevices(params: { warehouse_id?: string; status?: string; 
     setLoading(true);
     setError(null);
     try {
-      const result = await wmsDeviceApi.list(accessToken, params);
+      const result = await wmsDeviceApi.list(accessToken, { warehouse_id, status, search, page, page_size });
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load devices');
     } finally {
       setLoading(false);
     }
-  }, [accessToken, params.warehouse_id, params.status, params.search, params.page, params.page_size]);
+  }, [accessToken, warehouse_id, status, search, page, page_size]);
 
-  React.useEffect(() => { fetch(); }, [fetch]);
+  React.useEffect(() => {
+    fetch();
+  }, [fetch]);
 
   return { data, loading, error, refetch: fetch };
 }
@@ -742,7 +797,7 @@ export function useWMSDevices(params: { warehouse_id?: string; status?: string; 
 // WMS DASHBOARD HOOK
 // ============================================
 
-export function useWMSDashboard(params: { warehouse_id?: string; period?: string; date?: string }) {
+export function useWMSDashboard({ warehouse_id, period, date }: { warehouse_id?: string; period?: string; date?: string }) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [data, setData] = React.useState<WMSDashboardStats | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -753,16 +808,18 @@ export function useWMSDashboard(params: { warehouse_id?: string; period?: string
     setLoading(true);
     setError(null);
     try {
-      const result = await wmsDashboardApi.getStats(accessToken, params);
+      const result = await wmsDashboardApi.getStats(accessToken, { warehouse_id, period, date });
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard stats');
     } finally {
       setLoading(false);
     }
-  }, [accessToken, params.warehouse_id, params.period, params.date]);
+  }, [accessToken, warehouse_id, period, date]);
 
-  React.useEffect(() => { fetch(); }, [fetch]);
+  React.useEffect(() => {
+    fetch();
+  }, [fetch]);
 
   return { data, loading, error, refetch: fetch };
 }
@@ -771,7 +828,19 @@ export function useWMSDashboard(params: { warehouse_id?: string; period?: string
 // VEHICLE ARRIVALS HOOK
 // ============================================
 
-export function useVehicleArrivals(params: { warehouse_id?: string; status?: string; search?: string; page?: number; page_size?: number }) {
+export function useVehicleArrivals({
+  warehouse_id,
+  status,
+  search,
+  page,
+  page_size,
+}: {
+  warehouse_id?: string;
+  status?: string;
+  search?: string;
+  page?: number;
+  page_size?: number;
+}) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [data, setData] = React.useState<PaginatedVehicleArrivals | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -782,14 +851,14 @@ export function useVehicleArrivals(params: { warehouse_id?: string; status?: str
     setLoading(true);
     setError(null);
     try {
-      const result = await vehicleArrivalApi.list(accessToken, params);
+      const result = await vehicleArrivalApi.list(accessToken, { warehouse_id, status, search, page, page_size });
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load vehicle arrivals');
     } finally {
       setLoading(false);
     }
-  }, [accessToken, params.warehouse_id, params.status, params.search, params.page, params.page_size]);
+  }, [accessToken, warehouse_id, status, search, page, page_size]);
 
   React.useEffect(() => {
     fetch();

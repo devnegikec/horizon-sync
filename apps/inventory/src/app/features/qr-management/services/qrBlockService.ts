@@ -9,6 +9,8 @@ import type {
   QRBlockCreate,
   QRBlockListParams,
   QRBlockListResponse,
+  QSealAggregationResponse,
+  QSealAutoLinkResponse,
 } from '../types/qrBlock.types';
 
 const API_BASE_URL = environment.apiCoreUrl;
@@ -83,6 +85,27 @@ class QRBlockService {
     const res = await axios.get(
       `${API_BASE_URL}/api/v1/qr-products/blocks/${blockId}/download`,
       { headers: this.getHeaders() },
+    );
+    return res.data;
+  }
+
+  async autoLinkBlock(blockId: string, masterPackSize?: number): Promise<QSealAutoLinkResponse> {
+    const res = await axios.post(
+      `${API_BASE_URL}/api/v1/qseal/blocks/${blockId}/auto-link`,
+      { master_pack_size: masterPackSize ?? null },
+      { headers: this.getHeaders() },
+    );
+    return res.data;
+  }
+
+  async getAggregation(params?: {
+    block_id?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<QSealAggregationResponse> {
+    const res = await axios.get(
+      `${API_BASE_URL}/api/v1/qseal/aggregation`,
+      { headers: this.getHeaders(), params },
     );
     return res.data;
   }
