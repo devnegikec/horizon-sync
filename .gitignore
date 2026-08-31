@@ -41,6 +41,8 @@ testem.log
 .DS_Store
 Thumbs.db
 .env
+.env.local
+.env.mobile
 
 .nx/cache
 .nx/workspace-data

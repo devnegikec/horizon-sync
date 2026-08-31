@@ -805,6 +805,7 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   };
 
   const onSubmit = handleSubmit((data: FormValues) => {
+    if (logoError || bannerError) return;
     return onSave(buildPayload(data), {
       logoFile,
       bannerFile,
