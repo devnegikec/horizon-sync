@@ -5,7 +5,7 @@ import { Trash2 } from 'lucide-react';
 
 
 import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
-import { Button, EditableDataTable, EditableNumberCell } from '@horizon-sync/ui/components';
+import { Button, EditableDataTable } from '@horizon-sync/ui/components';
 
 import { environment } from '../../../environments/environment';
 import { getCurrencySymbol } from '../../types/currency.types';
@@ -18,6 +18,7 @@ interface PickerItem {
   item_name: string;
   uom: string | null;
   qty: number;
+  sku?: string | null;
 }
 
 interface PickerResponse {
@@ -42,6 +43,7 @@ export interface AsnEntryLineRow {
   item_id: string;
   item_name?: string;
   item_code?: string;
+  sku?: string;
   qty: number;
   uom: string;
   sort_order: number;
@@ -66,7 +68,9 @@ function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId: strin
   if (selectedItem) {
     setTimeout(() => {
       meta.updateData?.(rowIndex, 'uom', selectedItem.uom || 'pcs');
-      // meta.updateData?.(rowIndex, 'basic_rate', parseFloat(selectedItem.standard_rate || '0') || 0);
+      meta.updateData?.(rowIndex, 'item_name', selectedItem.item_name || '');
+      meta.updateData?.(rowIndex, 'item_code', selectedItem.item_code || '');
+      meta.updateData?.(rowIndex, 'sku', selectedItem.sku || '');
     }, 0);
   }
 }
@@ -81,23 +85,56 @@ function DisabledItemCell({ itemId, meta }: { itemId: string; meta: TableMeta })
   return <div className="px-2 py-1 text-muted-foreground">{itemId ? '—' : ''}</div>;
 }
 
-function QtyCellComponent({ getValue, row, table, ...rest }: CellContext<AsnEntryLineRow, unknown>) {
+function QtyCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow, unknown>) {
   const meta = table.options.meta as TableMeta | undefined;
-  const itemId = row.original.item_id;
-  // const stockLevels = itemId ? meta?.getItemData?.(itemId)?.stock_levels : undefined;
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState('');
+
+  const intValue = Math.trunc(Number(getValue()) || 0);
+
+  React.useEffect(() => {
+    setDraft(String(intValue));
+  }, [intValue]);
+
+  const commit = () => {
+    setIsEditing(false);
+    const parsed = parseInt(draft, 10);
+    meta?.updateData?.(row.index, 'qty', Number.isNaN(parsed) ? 0 : parsed);
+  };
+
+  if (meta?.disabled) {
+    return <div className="px-2 py-1 text-right">{String(intValue)}</div>;
+  }
+
+  if (isEditing) {
+    return (
+      <input
+        type="number"
+        value={draft}
+        autoFocus
+        step="1"
+        min="0"
+        className="h-8 w-full rounded-md border bg-background px-2 py-1 text-right text-sm"
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.currentTarget.blur();
+          } else if (e.key === 'Escape') {
+            setDraft(String(intValue));
+            setIsEditing(false);
+          }
+        }}
+      />
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-0.5">
-      {meta?.disabled ? (
-        <div className="px-2 py-1">{String(getValue() ?? '')}</div>
-      ) : (
-        <EditableNumberCell getValue={getValue} row={row} table={table} {...rest} />
-      )}
-      {/* {stockLevels !== undefined && (
-        <span className="px-2 text-[10px] text-muted-foreground leading-tight">
-          Avail: {stockLevels.quantity_available}
-        </span>
-      )} */}
+    <div
+      onClick={() => setIsEditing(true)}
+      className="cursor-pointer hover:bg-muted/50 rounded px-2 py-1 min-h-[32px] flex items-center justify-end text-right"
+    >
+      {String(intValue)}
     </div>
   );
 }
@@ -109,7 +146,7 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<AsnEntryL
   if (!meta || meta.disabled) {
     // In disabled/view mode, show item_name from row data directly
     const rowItemName = row.original.item_name;
-    const rowItemCode = row.original.item_code;
+    const rowItemCode = row.original.sku || row.original.item_code;
     if (rowItemName) {
       const label = rowItemCode ? `${rowItemName} (${rowItemCode})` : rowItemName;
       return <div className="px-2 py-1">{label}</div>;
@@ -145,6 +182,7 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<AsnEntryL
         item_name: row.original.item_name || row.original.item_code || '',
         uom: row.original.uom || null,
         qty: row.original.qty || 0,
+        sku: row.original.sku || null,
       }
       : null;
 
@@ -207,7 +245,7 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
 
   const itemLabelFormatter = React.useCallback(
     (item: PickerItem) => {
-      const code = item.item_code?.trim();
+      const code = (item.sku || item.item_code)?.trim();
       return code ? `${item.item_name} (${code})` : item.item_name;
     },
     []
@@ -233,7 +271,20 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
   const columns = React.useMemo<ColumnDef<AsnEntryLineRow, unknown>[]>(
     () => [
       { accessorKey: 'item_id', header: 'Item Name', cell: ItemPickerCellComponent, size: 250 },
-      { accessorKey: 'qty', header: 'Quantity', cell: QtyCellComponent, size: 100 },
+      {
+        accessorKey: 'sku', header: 'SKU', size: 130,
+        cell: ({ row }: CellContext<AsnEntryLineRow, unknown>) => (
+          <div className="px-2 py-1 text-sm font-mono text-muted-foreground">
+            {row.original.sku || row.original.item_code || '—'}
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'qty',
+        header: () => <div className="px-2 text-right">Quantity</div>,
+        cell: QtyCellComponent,
+        size: 100,
+      },
       {
         accessorKey: 'uom', header: 'UOM', size: 80,
         cell: ({ getValue }: CellContext<AsnEntryLineRow, unknown>) => (
@@ -258,7 +309,7 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
   );
 
   const newRowTemplate: AsnEntryLineRow = React.useMemo(
-    () => ({ item_id: '', qty: 1, uom: 'pcs', sort_order: items.length + 1 }),
+    () => ({ item_id: '', qty: 1, uom: 'pcs', sort_order: items.length + 1, sku: '' }),
     [items.length]
   );
 

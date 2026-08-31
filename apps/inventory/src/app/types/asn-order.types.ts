@@ -20,6 +20,8 @@ export interface AsnOrderLineItem {
     item_id: string;
     item_name?: string;
     item_sku?: string;
+    item_code?: string | null;
+    sku?: string | null;
     qty: number | Box;
     uom: string;
     sort_order: number;
@@ -82,6 +84,13 @@ export interface AsnOrder {
     reference_id?: string | null;
     reference_no?: string | null;
     asn_type?: string | null;
+    linked_pick_list_id?: string | null;
+    linked_pick_list_no?: string | null;
+    transfer_progress?: {
+        total_serials: number;
+        received_serials: number;
+        in_transit_serials: number;
+    } | null;
     remarks?: string | null;
     items: AsnOrderLineItem[];
     submitted_at?: string | null;
@@ -105,6 +114,7 @@ export interface AsnOrderListItem {
     delivery_date?: string | null;
     grand_total: string | number;
     asn_type?: string | null;
+    linked_pick_list_id?: string | null;
     from_warehouse?: AsnOrderWarehouseInfo | null;
     to_warehouse?: AsnOrderWarehouseInfo | null;
     vehicle_arrivals: AsnOrderVehicleArrivalInfo[];
@@ -168,6 +178,7 @@ export interface AsnOrderDialogProps {
     onSave: (data: AsnOrderCreate | AsnOrderUpdate, id?: string) => Promise<void>;
     onCreated?: () => void;
     onUpdated?: () => void;
+    defaultAsnType?: 'purchase' | 'internal_transfer';
 }
 
 export interface AsnOrderStatusUpdate {

@@ -3,7 +3,7 @@ import * as React from 'react';
 import { Plus, Loader2, Truck } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
+import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsList, TabsTrigger } from '@horizon-sync/ui/components';
 
 import { useAsnOrderManagement } from '../../hooks/useAsnOrderManagement';
 import { useMyWarehouses } from '../../hooks/useMyWarehouses';
@@ -20,6 +20,7 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
   const [viewMode, setViewMode] = React.useState(false);
   const [selectedOrder, setSelectedOrder] = React.useState<AsnOrder | null>(null);
   const [confirmDeleteOrder, setConfirmDeleteOrder] = React.useState<AsnOrder | null>(null);
+  const [activeTab, setActiveTab] = React.useState<'purchase' | 'internal_transfer'>('purchase');
 
   const management = useAsnOrderManagement();
   const { warehouses } = useMyWarehouses();
@@ -30,6 +31,11 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
       management.setFilters((prev) => ({ ...prev, warehouse_id: warehouseId }));
     }
   }, [warehouseId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync the ASN type filter from the active tab
+  React.useEffect(() => {
+    management.setFilters((prev) => ({ ...prev, asn_type: activeTab }));
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreate = () => {
     setSelectedOrder(null);
@@ -65,14 +71,23 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
         <div>
           <h2 className="text-lg font-semibold">Advance Stock Notice</h2>
           <p className="text-sm text-muted-foreground">
-            Create and manage advance stock notice (ASN) orders to notify warehouses of incoming shipments.
+            {activeTab === 'internal_transfer'
+              ? 'Create internal stock transfers between your warehouses and track unit-level serials in transit.'
+              : 'Create and manage advance stock notice (ASN) orders to notify warehouses of incoming shipments.'}
           </p>
         </div>
         <Button onClick={handleCreate} className="gap-2">
           <Plus className="h-4 w-4" />
-          New ASN Order
+          {activeTab === 'internal_transfer' ? 'New Internal Transfer' : 'New ASN Order'}
         </Button>
       </div>
+
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'purchase' | 'internal_transfer')} className="w-full">
+        <TabsList>
+          <TabsTrigger value="purchase">Purchase ASN</TabsTrigger>
+          <TabsTrigger value="internal_transfer">Internal Transfer</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Work-queue filters: source warehouse, ETA, vehicle */}
       <div className="flex flex-wrap items-end gap-3">
@@ -144,7 +159,7 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
         onDelete={handleDelete}
         onCreateOrder={handleCreate}
         serverPagination={management.serverPaginationConfig}
-        recentlyCreatedId={management.recentlyCreatedId}/>
+        recentlyCreatedId={management.recentlyCreatedId} />
 
       <AsnOrderDialog open={dialogOpen}
         onOpenChange={(open) => {
@@ -154,7 +169,8 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
         viewMode={viewMode}
         onSave={management.handleSave}
         saving={management.saving}
-        asnOrder={selectedOrder}/>
+        asnOrder={selectedOrder}
+        defaultAsnType={activeTab} />
 
       {/* Delete confirmation */}
       {confirmDeleteOrder && (
@@ -166,7 +182,7 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
               management.refetch();
             }
             setConfirmDeleteOrder(null);
-          }}/>
+          }} />
       )}
     </div>
   );

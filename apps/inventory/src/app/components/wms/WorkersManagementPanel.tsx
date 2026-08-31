@@ -100,7 +100,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
   const [isRegenerating, setIsRegenerating] = React.useState(false);
 
   const [form, setForm] = React.useState<Partial<WMSWorkerCreate>>({
-    first_name: '', last_name: '', email: '', phone: '0000000000', login_username: '', employee_id: '', password: '', role: 'warehouse_worker', status: 'active',
+    first_name: '', last_name: '', email: '', phone: '', login_username: '', employee_id: '', password: '', role: 'warehouse_work_user', status: 'active',
   });
 
   const [formErrors, setFormErrors] = React.useState<Record<string, string>>({});
@@ -183,7 +183,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
 
   const openCreate = () => {
     setEditingWorker(null);
-    setForm({ first_name: '', last_name: '', email: '', phone: '0000000000', login_username: '', employee_id: '', password: '', role: 'warehouse_worker', status: 'active' });
+    setForm({ first_name: '', last_name: '', email: '', phone: '', login_username: '', employee_id: '', password: '', role: 'warehouse_work_user', status: 'active' });
     setFormErrors({});
     setDialogOpen(true);
   };
@@ -245,16 +245,16 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
           first_name: form.first_name || '',
           last_name: form.last_name || '',
           email: form.email || undefined,
-          phone: form.phone || '0000000000',
+          phone: form.phone || undefined,
           qr_code: qrCode,
           organization_id: organizationId,
           warehouse_id: warehouseId,
           warehouse_ids: [warehouseId],
-          warehouse_role: 'operator',
+          warehouse_role: form.role || 'warehouse_work_user',
           login_username: form.login_username || `${(form.first_name || 'w').toLowerCase()}.${(form.last_name || 'worker').toLowerCase()}`,
           employee_id: form.employee_id || dummyId,
           password: form.password || undefined,
-          role: form.role || 'warehouse_worker',
+          role: form.role || 'warehouse_work_user',
           status: form.status || 'active',
         } as WMSWorkerCreate;
         console.log('[Workers] Creating worker', create);
@@ -661,6 +661,14 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
             </div>
             {/* Phone, Login Username, Employee ID — auto-filled with dummy data */}
             <div className="space-y-2">
+              <Label>Contact Number</Label>
+              <Input type="tel"
+                value={form.phone || ''}
+                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                placeholder="e.g. 9876543210"
+                maxLength={20} />
+            </div>
+            <div className="space-y-2">
               <Label>Password {editingWorker ? '(leave blank to keep current)' : '(optional)'}</Label>
               <div className="flex gap-2">
                 <Input type={showPassword ? 'text' : 'password'}
@@ -679,9 +687,9 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 <Select value={form.role} onValueChange={(v) => setForm((p) => ({ ...p, role: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="warehouse_worker">Warehouse Worker</SelectItem>
-                    <SelectItem value="receiver">Receiver (Inbound)</SelectItem>
-                    <SelectItem value="picker">Picker (Outbound)</SelectItem>
+                    <SelectItem value="warehouse_work_user">Warehouse Work User</SelectItem>
+                    <SelectItem value="wms_operator">WMS Operator</SelectItem>
+                    <SelectItem value="asn_coordinator">ASN Coordinator</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

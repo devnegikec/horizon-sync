@@ -21,6 +21,7 @@ export interface AsnOrderFilters {
   delivery_date_from: string;
   delivery_date_to: string;
   vehicle_no: string;
+  asn_type: string;
 }
 
 const asnOrdersQueryKey = ['asn-orders'] as const;
@@ -28,12 +29,12 @@ const asnOrdersQueryKey = ['asn-orders'] as const;
 function useAsnOrders(
   initialPage: number,
   initialPageSize: number,
-  filters?: { search?: string; status?: string; warehouse_id?: string; source_warehouse_id?: string; delivery_date_from?: string; delivery_date_to?: string; vehicle_no?: string }
+  filters?: { search?: string; status?: string; warehouse_id?: string; source_warehouse_id?: string; delivery_date_from?: string; delivery_date_to?: string; vehicle_no?: string; asn_type?: string }
 ) {
   const accessToken = useUserStore((s) => s.accessToken);
   const memoizedFilters = React.useMemo(
     () => filters,
-    [filters?.search, filters?.status, filters?.warehouse_id, filters?.source_warehouse_id, filters?.delivery_date_from, filters?.delivery_date_to, filters?.vehicle_no]
+    [filters?.search, filters?.status, filters?.warehouse_id, filters?.source_warehouse_id, filters?.delivery_date_from, filters?.delivery_date_to, filters?.vehicle_no, filters?.asn_type]
   );
 
   const queryKey = React.useMemo(
@@ -47,9 +48,10 @@ function useAsnOrders(
       memoizedFilters?.delivery_date_from ?? 'all',
       memoizedFilters?.delivery_date_to ?? 'all',
       memoizedFilters?.vehicle_no ?? 'all',
+      memoizedFilters?.asn_type ?? 'all',
       memoizedFilters?.search ?? '',
     ] as const,
-    [initialPage, initialPageSize, memoizedFilters?.status, memoizedFilters?.warehouse_id, memoizedFilters?.source_warehouse_id, memoizedFilters?.delivery_date_from, memoizedFilters?.delivery_date_to, memoizedFilters?.vehicle_no, memoizedFilters?.search]
+    [initialPage, initialPageSize, memoizedFilters?.status, memoizedFilters?.warehouse_id, memoizedFilters?.source_warehouse_id, memoizedFilters?.delivery_date_from, memoizedFilters?.delivery_date_to, memoizedFilters?.vehicle_no, memoizedFilters?.asn_type, memoizedFilters?.search]
   );
 
   const {
@@ -73,6 +75,7 @@ function useAsnOrders(
           delivery_date_to: memoizedFilters?.delivery_date_to || undefined,
           vehicle_no: memoizedFilters?.vehicle_no || undefined,
           search: memoizedFilters?.search || undefined,
+          asn_type: memoizedFilters?.asn_type || undefined,
         }
       ) as AsnOrderListResponse;
       return data;
@@ -100,6 +103,7 @@ export function useAsnOrderManagement() {
     delivery_date_from: '',
     delivery_date_to: '',
     vehicle_no: '',
+    asn_type: '',
   });
 
   const [page, setPage] = React.useState(1);

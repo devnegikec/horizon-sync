@@ -66,7 +66,7 @@ export function AsnOrderFormFields({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="warehouse_id_from">From Warehouse *</Label>
+            <Label htmlFor="warehouse_id_from">Source Warehouse *</Label>
             <Select value={formData.warehouse_id_from}
               onValueChange={(v) => onFieldChange('warehouse_id_from', v)}
               disabled={readOnly}
@@ -84,7 +84,7 @@ export function AsnOrderFormFields({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="warehouse_id_to">To Warehouse *</Label>
+            <Label htmlFor="warehouse_id_to">Target Warehouse *</Label>
             <Select value={formData.warehouse_id_to}
               onValueChange={(v) => onFieldChange('warehouse_id_to', v)}
               disabled={readOnly}

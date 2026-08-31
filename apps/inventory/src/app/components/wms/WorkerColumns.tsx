@@ -40,12 +40,12 @@ function getStatusBadge(status: string) {
 
 function getRoleBadge(role: string) {
   switch (role) {
-    case 'warehouse_manager':
-      return { variant: 'default' as const, label: 'Manager' };
-    case 'warehouse_worker':
-      return { variant: 'outline' as const, label: 'Worker' };
-    case 'supervisor':
-      return { variant: 'secondary' as const, label: 'Supervisor' };
+    case 'warehouse_work_user':
+      return { variant: 'outline' as const, label: 'Warehouse Work User' };
+    case 'wms_operator':
+      return { variant: 'secondary' as const, label: 'WMS Operator' };
+    case 'asn_coordinator':
+      return { variant: 'default' as const, label: 'ASN Coordinator' };
     default:
       return { variant: 'outline' as const, label: role };
   }
