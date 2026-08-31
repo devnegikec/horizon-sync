@@ -68,6 +68,7 @@ export function useQSealManagement() {
           serial_prefix_setting_id: null,
           serial_prefix: null,
           redirect_to_client: false,
+          packaging_details: null,
           warranty_period_months: null,
           shelf_life_setting_id: null,
           extra_data: null,
