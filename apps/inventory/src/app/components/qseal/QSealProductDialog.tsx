@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Upload, Image, Link, Clock, MoreHorizontal, Info, Trash2 } from 'lucide-react';
+import { Upload, Image, Link, Clock, MoreHorizontal, Info, Trash2, Package } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 
 import { DetailDialog } from '@horizon-sync/ui/components';
@@ -20,8 +20,15 @@ import type { CreateQSealProductPayload, QSealProduct, QSealProductImageChanges 
 interface FormValues {
   brand_id: string;
   name: string;
+  sku: string;
   gtin: string;
   industry: string;
+  unit_name: string;
+  conversion_factor: string;
+  length_mm: string;
+  width_mm: string;
+  height_mm: string;
+  weight_grams: string;
   landing_page: string;
   client_product_auth_url: string;
   activation_method: string;
@@ -51,8 +58,15 @@ const SR_NUMBER_OPTIONS = [
 const DEFAULT_VALUES: FormValues = {
   brand_id: '',
   name: '',
+  sku: '',
   gtin: '',
   industry: '',
+  unit_name: 'Each',
+  conversion_factor: '1',
+  length_mm: '',
+  width_mm: '',
+  height_mm: '',
+  weight_grams: '',
   landing_page: '',
   client_product_auth_url: '',
   activation_method: 'pre',
@@ -258,9 +272,8 @@ function ProductImagesSection({
   return (
     <div className="space-y-3">
       <SectionHeader icon={Image} title="Product Images" />
-      <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
         <ImageDropZone label="Logo"
-          required
           hint="The logo will be displayed on authentication pages and certificates"
           sizeHint="Recommended size: 300x300px (PNG, JPG, WebP)"
           value={imageUrl}
@@ -268,7 +281,6 @@ function ProductImagesSection({
           onFileSelect={onImageSelect}
           onRemove={onImageRemove}/>
         <ImageDropZone label="Banner Image"
-          required
           hint="The banner image will be displayed above product content"
           sizeHint="Recommended size: 1200x400px (PNG, JPG, WebP)"
           value={bannerImageUrl}
@@ -295,7 +307,7 @@ function ProductInfoSection({ register, control, errors, shelfLifeSettings, shel
   return (
     <div className="space-y-3">
       <SectionHeader icon={Info} title="Product Information" />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="space-y-1">
           <LabelWithTooltip htmlFor="name" label="Product Name" required hint="The official name of your product as it should appear to customers" />
           <Input id="name" placeholder="Product name" {...register('name', { required: 'Product name is required' })} />
@@ -305,6 +317,11 @@ function ProductInfoSection({ register, control, errors, shelfLifeSettings, shel
           <LabelWithTooltip htmlFor="gtin" label="GTIN" required hint="Global Trade Item Number (UPC, EAN, ISBN, etc.) - 12-14 digits" />
           <Input id="gtin" placeholder="e.g. 012345678901" {...register('gtin', { required: 'GTIN is required' })} />
           {errors.gtin && <p className="text-xs text-destructive">{errors.gtin.message}</p>}
+        </div>
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="sku" label="SKU" hint="Stock Keeping Unit — a unique identifier for this product variant" />
+          <Input id="sku" placeholder="e.g. PROD-001-BLK" {...register('sku')} />
+          {errors.sku && <p className="text-xs text-destructive">{errors.sku.message}</p>}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -337,6 +354,74 @@ function ProductInfoSection({ register, control, errors, shelfLifeSettings, shel
           )}
           {shelfLifeError && <p className="text-xs text-destructive">{shelfLifeError}</p>}
           {errors.shelf_life_setting_id && <p className="text-xs text-destructive">{errors.shelf_life_setting_id.message}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Packaging Details ───────────────────────────────────────────────────────
+
+interface PackagingDetailsSectionProps {
+  register: ReturnType<typeof useForm<FormValues>>['register'];
+  errors: ReturnType<typeof useForm<FormValues>>['formState']['errors'];
+}
+
+function PackagingDetailsSection({ register, errors }: PackagingDetailsSectionProps) {
+  return (
+    <div className="space-y-3">
+      <SectionHeader icon={Package} title="Packaging Details" />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="unit_name"
+            label="Unit of Measure (UMO)"
+            required
+            hint="The unit in which the product is sold, e.g. Each, Box, Bottle"/>
+          <Input id="unit_name" placeholder="e.g. Each" {...register('unit_name', { required: 'Unit of measure is required' })} />
+          {errors.unit_name && <p className="text-xs text-destructive">{errors.unit_name.message}</p>}
+        </div>
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="conversion_factor"
+            label="Conversion Factor"
+            required
+            hint="Number of base units that make up this packaging unit (e.g. 12 for a case of 12 bottles)"/>
+          <Input id="conversion_factor"
+            type="number"
+            min={0}
+            placeholder="e.g. 1"
+            {...register('conversion_factor', {
+              required: 'Conversion factor is required',
+              min: { value: 0, message: 'Must be greater than or equal to 0' },
+            })} />
+          {errors.conversion_factor && <p className="text-xs text-destructive">{errors.conversion_factor.message}</p>}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="length_mm"
+            label="Length (mm)"
+            hint="Length of the product/package in millimeters"/>
+          <Input id="length_mm" type="number" min={0} placeholder="e.g. 100" {...register('length_mm')} />
+        </div>
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="width_mm"
+            label="Width (mm)"
+            hint="Width of the product/package in millimeters"/>
+          <Input id="width_mm" type="number" min={0} placeholder="e.g. 50" {...register('width_mm')} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="height_mm"
+            label="Height (mm)"
+            hint="Height of the product/package in millimeters"/>
+          <Input id="height_mm" type="number" min={0} placeholder="e.g. 30" {...register('height_mm')} />
+        </div>
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor="weight_grams"
+            label="Weight (g)"
+            hint="Net weight of the product in grams"/>
+          <Input id="weight_grams" type="number" min={0} placeholder="e.g. 250" {...register('weight_grams')} />
         </div>
       </div>
     </div>
@@ -534,8 +619,17 @@ function normalizeSerialNumberType(value: string | null | undefined): string {
 function buildPayload(data: FormValues): CreateQSealProductPayload {
   const n = emptyToNull;
   return {
-    brand_id: n(data.brand_id),
     name: data.name,
+    sku: n(data.sku),
+    packaging_details: {
+      unit_name: data.unit_name,
+      conversion_factor: Number(data.conversion_factor) || 0,
+      length_mm: data.length_mm ? Number(data.length_mm) : null,
+      width_mm: data.width_mm ? Number(data.width_mm) : null,
+      height_mm: data.height_mm ? Number(data.height_mm) : null,
+      weight_grams: data.weight_grams ? Number(data.weight_grams) : null,
+    },
+    brand_id: n(data.brand_id),
     gtin: n(data.gtin),
     industry: n(data.industry),
     landing_page: n(data.landing_page),
@@ -550,24 +644,39 @@ function buildPayload(data: FormValues): CreateQSealProductPayload {
   };
 }
 
+function optionalString(value: string | null | undefined, fallback: string): string {
+  return value ?? fallback;
+}
+
+function optionalNumber(value: number | null | undefined, fallback: string): string {
+  return value != null ? String(value) : fallback;
+}
+
 function getInitialValues(product: QSealProduct): FormValues {
-  const e = nullToEmpty;
+  const pd = product.packaging_details;
   return {
-    brand_id: product.brand_id ?? '',
+    brand_id: optionalString(product.brand_id, ''),
     name: product.name,
-    gtin: e(product.gtin),
-    industry: e(product.industry),
-    landing_page: e(product.landing_page),
-    client_product_auth_url: e(product.client_product_auth_url),
-    activation_method: product.activation_method || 'pre',
+    sku: nullToEmpty(product.sku),
+    gtin: nullToEmpty(product.gtin),
+    industry: nullToEmpty(product.industry),
+    unit_name: optionalString(pd?.unit_name, 'Each'),
+    conversion_factor: optionalNumber(pd?.conversion_factor, '1'),
+    length_mm: optionalNumber(pd?.length_mm, ''),
+    width_mm: optionalNumber(pd?.width_mm, ''),
+    height_mm: optionalNumber(pd?.height_mm, ''),
+    weight_grams: optionalNumber(pd?.weight_grams, ''),
+    landing_page: nullToEmpty(product.landing_page),
+    client_product_auth_url: nullToEmpty(product.client_product_auth_url),
+    activation_method: optionalString(product.activation_method, 'pre'),
     sr_number_type: normalizeSerialNumberType(product.sr_number_type),
-    serial_prefix_setting_id: product.serial_prefix_setting_id ?? '',
-    shelf_life_setting_id: product.shelf_life_setting_id ?? '',
-    email: e(product.email),
-    phone_number: e(product.phone_number),
-    redirect_to_client: product.redirect_to_client ?? false,
-    image_url: e(product.image_url),
-    banner_image_url: e(product.banner_image_url),
+    serial_prefix_setting_id: optionalString(product.serial_prefix_setting_id, ''),
+    shelf_life_setting_id: optionalString(product.shelf_life_setting_id, ''),
+    email: nullToEmpty(product.email),
+    phone_number: nullToEmpty(product.phone_number),
+    redirect_to_client: product.redirect_to_client,
+    image_url: nullToEmpty(product.image_url),
+    banner_image_url: nullToEmpty(product.banner_image_url),
   };
 }
 
@@ -581,21 +690,17 @@ function getDisplayedImageUrl(preview: string, persistedUrl: string, removed: bo
   return isPersistedImageUrl(persistedUrl) ? persistedUrl : '';
 }
 
-function getImageValidation(
-  logoFile: File | null,
-  bannerFile: File | null,
-  imageUrl: string,
-  bannerImageUrl: string,
-  removeLogo: boolean,
-  removeBanner: boolean,
-) {
-  const hasLogo = Boolean(logoFile) || (!removeLogo && isPersistedImageUrl(imageUrl));
-  const hasBanner = Boolean(bannerFile) || (!removeBanner && isPersistedImageUrl(bannerImageUrl));
-  return {
-    valid: hasLogo && hasBanner,
-    logoError: hasLogo ? '' : 'Logo is required. Please upload an image.',
-    bannerError: hasBanner ? '' : 'Banner image is required. Please upload an image.',
-  };
+const MAX_IMAGE_SIZE_MB = 5;
+const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+
+function validateImageFile(file: File): string | undefined {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return 'Only PNG, JPG, or WebP images are allowed.';
+  }
+  if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+    return `Image must be smaller than ${MAX_IMAGE_SIZE_MB}MB.`;
+  }
+  return undefined;
 }
 
 // ─── Dialog ───────────────────────────────────────────────────────────────────
@@ -623,14 +728,14 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   } = useForm<FormValues>({
     defaultValues: getFormDefaultValues(product),
   });
-  const [logoFile, setLogoFile] = React.useState<File | null>(null);
+    const [logoFile, setLogoFile] = React.useState<File | null>(null);
   const [bannerFile, setBannerFile] = React.useState<File | null>(null);
   const [removeLogo, setRemoveLogo] = React.useState(false);
   const [removeBanner, setRemoveBanner] = React.useState(false);
   const [logoPreview, setLogoPreview] = React.useState('');
   const [bannerPreview, setBannerPreview] = React.useState('');
-  const [logoError, setLogoError] = React.useState('');
-  const [bannerError, setBannerError] = React.useState('');
+  const [logoError, setLogoError] = React.useState<string | undefined>(undefined);
+  const [bannerError, setBannerError] = React.useState<string | undefined>(undefined);
 
   const brandId = watch('brand_id');
   const activationMethod = watch('activation_method');
@@ -649,7 +754,7 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
     [serialPrefixSettingsData, serialPrefixSettingId],
   );
 
-  React.useEffect(() => {
+    React.useEffect(() => {
     if (open) {
       reset(product ? getInitialValues(product) : DEFAULT_VALUES);
       setLogoFile(null);
@@ -658,8 +763,8 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
       setRemoveBanner(false);
       setLogoPreview('');
       setBannerPreview('');
-      setLogoError('');
-      setBannerError('');
+      setLogoError(undefined);
+      setBannerError(undefined);
     }
   }, [open, product, reset]);
 
@@ -675,37 +780,39 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
     };
   }, [bannerPreview]);
 
-  const handleLogoSelect = (file: File) => {
+    const handleLogoSelect = (file: File) => {
+    const fileError = validateImageFile(file);
+    if (fileError) {
+      setLogoError(fileError);
+      return;
+    }
+    setLogoError(undefined);
     setLogoFile(file);
     setRemoveLogo(false);
     setLogoPreview(URL.createObjectURL(file));
-    setLogoError('');
   };
 
   const handleBannerSelect = (file: File) => {
+    const fileError = validateImageFile(file);
+    if (fileError) {
+      setBannerError(fileError);
+      return;
+    }
+    setBannerError(undefined);
     setBannerFile(file);
     setRemoveBanner(false);
     setBannerPreview(URL.createObjectURL(file));
-    setBannerError('');
-  };
-
-  const validateImages = () => {
-    const validation = getImageValidation(logoFile, bannerFile, imageUrl, bannerImageUrl, removeLogo, removeBanner);
-    setLogoError(validation.logoError);
-    setBannerError(validation.bannerError);
-    return validation.valid;
   };
 
   const onSubmit = handleSubmit((data: FormValues) => {
-    if (!validateImages()) return;
-
+    if (logoError || bannerError) return;
     return onSave(buildPayload(data), {
       logoFile,
       bannerFile,
       removeLogo,
       removeBanner,
     });
-  }, validateImages);
+  });
 
   return (
     <DetailDialog open={open}
@@ -738,11 +845,13 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
             setLogoFile(null);
             setLogoPreview('');
             setRemoveLogo(true);
+            setLogoError(undefined);
           }}
           onBannerRemove={() => {
             setBannerFile(null);
             setBannerPreview('');
             setRemoveBanner(true);
+            setBannerError(undefined);
           }}/>
         <Separator />
         <ProductInfoSection register={register}
@@ -751,6 +860,8 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
           shelfLifeSettings={shelfLifeSettings}
           shelfLifeLoading={shelfLifeLoading}
           shelfLifeError={shelfLifeError}/>
+        <Separator />
+        <PackagingDetailsSection register={register} errors={errors} />
         <Separator />
         <ProductUrlsSection register={register} errors={errors} />
         <Separator />
