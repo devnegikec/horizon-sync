@@ -57,6 +57,7 @@ function toDateInputValue(isoDate: string | null | undefined): string {
 function buildFormFromEntry(entry: AsnOrder): AsnOrderFormData {
   return {
     asn_order_no: entry.asn_order_no,
+    asn_type: (entry.asn_type === 'internal_transfer' ? 'internal_transfer' : 'purchase') as 'purchase' | 'internal_transfer',
     warehouse_id_from: entry.warehouse_id_from || '',
     warehouse_id_to: entry.warehouse_id_to || '',
     order_date: toDateInputValue(entry.order_date),
@@ -105,6 +106,7 @@ function mapItemsToCreate(rows: AsnEntryLineRow[]): AsnOrderItemCreate[] {
 
 function buildUpdatePayload(formData: AsnOrderFormData, items: AsnOrderItemCreate[]): AsnOrderUpdate {
   return {
+    asn_type: formData.asn_type,
     warehouse_id_from: formData.warehouse_id_from || null,
     warehouse_id_to: formData.warehouse_id_to || null,
     order_date: new Date(formData.order_date).toISOString(),
@@ -118,6 +120,7 @@ function buildUpdatePayload(formData: AsnOrderFormData, items: AsnOrderItemCreat
 function buildCreatePayload(formData: AsnOrderFormData, items: AsnOrderItemCreate[], grandTotal: number): AsnOrderCreate {
   return {
     asn_order_no: formData.asn_order_no || undefined,
+    asn_type: formData.asn_type,
     warehouse_id_from: formData.warehouse_id_from,
     warehouse_id_to: formData.warehouse_id_to,
     order_date: new Date(formData.order_date).toISOString(),
@@ -140,6 +143,7 @@ const STATUS_LABELS: Record<AsnOrderStatus, string> = {
 
 const DEFAULT_FORM: AsnOrderFormData = {
   asn_order_no: '',
+  asn_type: 'purchase',
   warehouse_id_from: '',
   warehouse_id_to: '',
   order_date: new Date().toISOString().slice(0, 10),
@@ -274,7 +278,7 @@ function AsnOrderEmailComposer({
       defaultSubject={`Advance Stock Notice ${asnOrder.asn_order_no}`}
       defaultMessage={`Dear Team,\n\nPlease find attached Advance Stock Notice ${asnOrder.asn_order_no} for your reference.\n\nBest regards`}
       defaultAttachments={pdfAttachment ? [pdfAttachment] : undefined}
-      onSuccess={onSuccess}/>
+      onSuccess={onSuccess} />
   );
 }
 
@@ -358,6 +362,38 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
     if (!resolvedOrder) return;
     openEmailWithPdf(() => handleGenerateBase64(resolvedOrder), `${resolvedOrder.asn_order_no}.pdf`);
   }, [resolvedOrder, handleGenerateBase64, openEmailWithPdf]);
+
+  const downloadJson = (filename: string, data: unknown) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExport856 = React.useCallback(async () => {
+    if (!resolvedOrder) return;
+    try {
+      const data = await asnOrderApi.export856(accessToken || '', resolvedOrder.id);
+      downloadJson(`${resolvedOrder.asn_order_no}-856.json`, data);
+      toast({ title: 'Exported 856', description: `${resolvedOrder.asn_order_no}-856.json downloaded` });
+    } catch (error) {
+      toast({ title: 'Export Failed', description: error instanceof Error ? error.message : 'Failed to export 856', variant: 'destructive' });
+    }
+  }, [accessToken, resolvedOrder]);
+
+  const handleExportEpcis = React.useCallback(async () => {
+    if (!resolvedOrder) return;
+    try {
+      const data = await asnOrderApi.exportEpcis(accessToken || '', resolvedOrder.id);
+      downloadJson(`${resolvedOrder.asn_order_no}-epcis.json`, data);
+      toast({ title: 'Exported EPCIS', description: `${resolvedOrder.asn_order_no}-epcis.json downloaded` });
+    } catch (error) {
+      toast({ title: 'Export Failed', description: error instanceof Error ? error.message : 'Failed to export EPCIS', variant: 'destructive' });
+    }
+  }, [accessToken, resolvedOrder]);
 
   // Initialize form when dialog opens or asnOrder changes — use resolvedOrder (API detail or prop fallback)
   React.useEffect(() => {
@@ -583,6 +619,18 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                       <Mail className="h-4 w-4" />
                       Send Email
                     </Button>
+                    {formData.asn_type === 'internal_transfer' && (
+                      <>
+                        <Button type="button" variant="outline" onClick={handleExport856} className="gap-2">
+                          <Download className="h-4 w-4" />
+                          Export 856
+                        </Button>
+                        <Button type="button" variant="outline" onClick={handleExportEpcis} className="gap-2">
+                          <Download className="h-4 w-4" />
+                          Export EPCIS
+                        </Button>
+                      </>
+                    )}
                   </>
                 )}
               </>
@@ -607,7 +655,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
             availableStatuses={availableStatuses}
             statusLabels={STATUS_LABELS}
             onFieldChange={handleChange}
-            warehouseError={warehouseError}/>
+            warehouseError={warehouseError} />
 
           <Separator />
           <div className="space-y-2">
@@ -626,7 +674,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                     { key: 'item_id', label: 'Item Code' },
                     { key: 'qty', label: 'Qty' },
                     { key: 'uom', label: 'UOM' },
-                  ]}/>
+                  ]} />
                 {(lineItems.length > 1 || (lineItems.length === 1 && lineItems[0].item_id)) && (
                   <Button type="button" variant="ghost" size="sm" onClick={handleClearAllItems} className="text-destructive hover:text-destructive">
                     <Trash2 className="h-4 w-4 mr-1" />
@@ -658,7 +706,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3"></td>
                   </tr>
-                )}/>
+                )} />
             )}
           </div>
 
@@ -674,7 +722,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
           emailDialogOpen={emailDialogOpen}
           pdfAttachment={pdfAttachment}
           onOpenChange={handleEmailClose}
-          onSuccess={handleEmailSuccess}/>
+          onSuccess={handleEmailSuccess} />
       )}
     </>
   );
