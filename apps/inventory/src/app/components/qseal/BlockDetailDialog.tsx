@@ -276,22 +276,24 @@ function BlockInfoPanel({
             <CheckCircle2 className="h-4 w-4" />
             Generation complete
           </div>
-          <DownloadButton blockId={block.id} batch={block.batch} />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <DownloadButton blockId={block.id} batch={block.batch} />
 
-          {/* Parent (Master Pack) download — shown when cascade was enabled */}
-          {block.master_pack_enabled && (
-            <div className="border rounded-md p-3 space-y-2 bg-muted/30">
-              <div className="flex items-center gap-1.5 text-sm font-medium">
-                <Layers className="h-4 w-4" />
-                Master Pack Parent Block
+            {/* Parent (Master Pack) download — shown when cascade was enabled */}
+            {block.master_pack_enabled && (
+              <div className="border rounded-md p-3 space-y-2 bg-muted/30">
+                <div className="flex items-center gap-1.5 text-sm font-medium">
+                  <Layers className="h-4 w-4" />
+                  Master Pack Parent Block
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {block.qseal_parent_count?.toLocaleString() ?? '—'} parent QR codes
+                  {block.master_pack_size ? ` (${block.master_pack_size} items per pack)` : ''}
+                </p>
+                <ParentBlockDownloadButton blockId={block.id} block={block} />
               </div>
-              <p className="text-xs text-muted-foreground">
-                {block.qseal_parent_count?.toLocaleString() ?? '—'} parent QR codes
-                {block.master_pack_size ? ` (${block.master_pack_size} items per pack)` : ''}
-              </p>
-              <ParentBlockDownloadButton blockId={block.id} block={block} />
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
