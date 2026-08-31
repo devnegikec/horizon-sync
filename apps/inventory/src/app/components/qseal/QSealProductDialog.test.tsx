@@ -1,7 +1,7 @@
 import type React from 'react';
 
 import { describe, expect, it, jest } from '@jest/globals';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { QSealProduct } from '../../types/qseal.types';
@@ -231,15 +231,14 @@ describe('QSealProductDialog Shelf Life', () => {
   }, 10000);
   */
 
-  it('removes Generic Name and requires both Product images on create', async () => {
+  it('removes Generic Name and requires both Product images on create', () => {
     const onSave = jest.fn();
-    const user = userEvent.setup();
     render(<QSealProductDialog open onOpenChange={jest.fn()} onSave={onSave} />);
 
     expect(screen.queryByLabelText(/Generic Name/i)).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Create Product' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Product' }));
 
-    expect(await screen.findByText('Logo is required. Please upload an image.')).toBeInTheDocument();
+    expect(screen.getByText('Logo is required. Please upload an image.')).toBeInTheDocument();
     expect(screen.getByText('Banner image is required. Please upload an image.')).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
   });
