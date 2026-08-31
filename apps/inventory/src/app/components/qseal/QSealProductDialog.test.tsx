@@ -258,7 +258,7 @@ describe('QSealProductDialog Shelf Life', () => {
     );
   });
 
-  it('rejects an expired blob URL as an existing image during update', async () => {
+  it('does not require re-uploading images when editing a product with an expired image URL', async () => {
     const onSave = jest.fn();
     const user = userEvent.setup();
     render(
@@ -268,9 +268,14 @@ describe('QSealProductDialog Shelf Life', () => {
         onSave={onSave}/>,
     );
 
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Brand' })).toHaveTextContent('Saved Brand'));
     await user.click(screen.getByRole('button', { name: 'Save Changes' }));
 
-    expect(await screen.findByText('Logo is required. Please upload an image.')).toBeInTheDocument();
-    expect(onSave).not.toHaveBeenCalled();
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.not.objectContaining({ generic_name: expect.anything() }),
+      expect.objectContaining({ logoFile: null, bannerFile: null }),
+    );
+    expect(screen.queryByText('Logo is required. Please upload an image.')).not.toBeInTheDocument();
   });
 });

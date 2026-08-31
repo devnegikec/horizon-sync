@@ -819,13 +819,17 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   const handleSubmitForm = (event: React.FormEvent) => {
     event.preventDefault();
 
-    const logoRequired = getRequiredImageError(logoFile, removeLogo, imageUrl, 'Logo');
-    const bannerRequired = getRequiredImageError(bannerFile, removeBanner, bannerImageUrl, 'Banner image');
+    if (logoError || bannerError) return;
 
-    setLogoRequiredError(logoRequired);
-    setBannerRequiredError(bannerRequired);
+    if (!isEdit) {
+      const logoRequired = getRequiredImageError(logoFile, removeLogo, imageUrl, 'Logo');
+      const bannerRequired = getRequiredImageError(bannerFile, removeBanner, bannerImageUrl, 'Banner image');
 
-    if (logoError || bannerError || logoRequired || bannerRequired) return;
+      setLogoRequiredError(logoRequired);
+      setBannerRequiredError(bannerRequired);
+
+      if (logoRequired || bannerRequired) return;
+    }
 
     return submitValidForm(event);
   };

@@ -55,12 +55,24 @@ function normalizeSerialNumberType(value: string | null): SerialNumberType | nul
   return canonical in SR_TYPE_LABELS ? (canonical as SerialNumberType) : null;
 }
 
+function isExpiredDate(value: string | null): boolean {
+  if (!value) return false;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  return date < today;
+}
+
 function getBatchError(batch: BatchListItem | null, product: QSealProductListItem | null): string | null {
   if (!batch) return null;
   if (product?.item_id && batch.item_id && product.item_id !== batch.item_id) {
     return `This batch belongs to a different item${batch.item_name ? ` (${batch.item_name})` : ''}. Select the batch matching this product.`;
   }
-  if (batch.status === 'expired') return 'This batch has expired. Select an active batch.';
+  if (batch.status === 'expired' || isExpiredDate(batch.expiry_date)) {
+    return 'This batch has expired. Select an active batch.';
+  }
   if (batch.status === 'consumed') return 'This batch has already been consumed. Select an active batch.';
   return null;
 }
