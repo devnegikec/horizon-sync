@@ -272,7 +272,7 @@ function ProductImagesSection({
   return (
     <div className="space-y-3">
       <SectionHeader icon={Image} title="Product Images" />
-            <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <ImageDropZone label="Logo"
           hint="The logo will be displayed on authentication pages and certificates"
           sizeHint="Recommended size: 300x300px (PNG, JPG, WebP)"
@@ -392,35 +392,27 @@ function PackagingDetailsSection({ register, errors }: PackagingDetailsSectionPr
             {...register('conversion_factor', {
               required: 'Conversion factor is required',
               min: { value: 0, message: 'Must be greater than or equal to 0' },
-            })} />
+            })}/>
           {errors.conversion_factor && <p className="text-xs text-destructive">{errors.conversion_factor.message}</p>}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <LabelWithTooltip htmlFor="length_mm"
-            label="Length (mm)"
-            hint="Length of the product/package in millimeters"/>
+          <LabelWithTooltip htmlFor="length_mm" label="Length (mm)" hint="Length of the product/package in millimeters" />
           <Input id="length_mm" type="number" min={0} placeholder="e.g. 100" {...register('length_mm')} />
         </div>
         <div className="space-y-1">
-          <LabelWithTooltip htmlFor="width_mm"
-            label="Width (mm)"
-            hint="Width of the product/package in millimeters"/>
+          <LabelWithTooltip htmlFor="width_mm" label="Width (mm)" hint="Width of the product/package in millimeters" />
           <Input id="width_mm" type="number" min={0} placeholder="e.g. 50" {...register('width_mm')} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <LabelWithTooltip htmlFor="height_mm"
-            label="Height (mm)"
-            hint="Height of the product/package in millimeters"/>
+          <LabelWithTooltip htmlFor="height_mm" label="Height (mm)" hint="Height of the product/package in millimeters" />
           <Input id="height_mm" type="number" min={0} placeholder="e.g. 30" {...register('height_mm')} />
         </div>
         <div className="space-y-1">
-          <LabelWithTooltip htmlFor="weight_grams"
-            label="Weight (g)"
-            hint="Net weight of the product in grams"/>
+          <LabelWithTooltip htmlFor="weight_grams" label="Weight (g)" hint="Net weight of the product in grams" />
           <Input id="weight_grams" type="number" min={0} placeholder="e.g. 250" {...register('weight_grams')} />
         </div>
       </div>
@@ -703,6 +695,11 @@ function validateImageFile(file: File): string | undefined {
   return undefined;
 }
 
+function getRequiredImageError(file: File | null, removed: boolean, persistedUrl: string, label: string): string | undefined {
+  const missing = !file && (removed || !isPersistedImageUrl(persistedUrl));
+  return missing ? `${label} is required. Please upload an image.` : undefined;
+}
+
 // ─── Dialog ───────────────────────────────────────────────────────────────────
 
 interface QSealProductDialogProps {
@@ -728,7 +725,7 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   } = useForm<FormValues>({
     defaultValues: getFormDefaultValues(product),
   });
-    const [logoFile, setLogoFile] = React.useState<File | null>(null);
+  const [logoFile, setLogoFile] = React.useState<File | null>(null);
   const [bannerFile, setBannerFile] = React.useState<File | null>(null);
   const [removeLogo, setRemoveLogo] = React.useState(false);
   const [removeBanner, setRemoveBanner] = React.useState(false);
@@ -736,6 +733,8 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   const [bannerPreview, setBannerPreview] = React.useState('');
   const [logoError, setLogoError] = React.useState<string | undefined>(undefined);
   const [bannerError, setBannerError] = React.useState<string | undefined>(undefined);
+  const [logoRequiredError, setLogoRequiredError] = React.useState<string | undefined>(undefined);
+  const [bannerRequiredError, setBannerRequiredError] = React.useState<string | undefined>(undefined);
 
   const brandId = watch('brand_id');
   const activationMethod = watch('activation_method');
@@ -754,7 +753,7 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
     [serialPrefixSettingsData, serialPrefixSettingId],
   );
 
-    React.useEffect(() => {
+  React.useEffect(() => {
     if (open) {
       reset(product ? getInitialValues(product) : DEFAULT_VALUES);
       setLogoFile(null);
@@ -765,6 +764,8 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
       setBannerPreview('');
       setLogoError(undefined);
       setBannerError(undefined);
+      setLogoRequiredError(undefined);
+      setBannerRequiredError(undefined);
     }
   }, [open, product, reset]);
 
@@ -780,13 +781,14 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
     };
   }, [bannerPreview]);
 
-    const handleLogoSelect = (file: File) => {
+  const handleLogoSelect = (file: File) => {
     const fileError = validateImageFile(file);
     if (fileError) {
       setLogoError(fileError);
       return;
     }
     setLogoError(undefined);
+    setLogoRequiredError(undefined);
     setLogoFile(file);
     setRemoveLogo(false);
     setLogoPreview(URL.createObjectURL(file));
@@ -799,13 +801,13 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
       return;
     }
     setBannerError(undefined);
+    setBannerRequiredError(undefined);
     setBannerFile(file);
     setRemoveBanner(false);
     setBannerPreview(URL.createObjectURL(file));
   };
 
-  const onSubmit = handleSubmit((data: FormValues) => {
-    if (logoError || bannerError) return;
+  const submitValidForm = handleSubmit((data: FormValues) => {
     return onSave(buildPayload(data), {
       logoFile,
       bannerFile,
@@ -813,6 +815,24 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
       removeBanner,
     });
   });
+
+  const handleSubmitForm = (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (logoError || bannerError) return;
+
+    if (!isEdit) {
+      const logoRequired = getRequiredImageError(logoFile, removeLogo, imageUrl, 'Logo');
+      const bannerRequired = getRequiredImageError(bannerFile, removeBanner, bannerImageUrl, 'Banner image');
+
+      setLogoRequiredError(logoRequired);
+      setBannerRequiredError(bannerRequired);
+
+      if (logoRequired || bannerRequired) return;
+    }
+
+    return submitValidForm(event);
+  };
 
   return (
     <DetailDialog open={open}
@@ -832,15 +852,15 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
           </Button>
         </div>
       }>
-      <form id="qseal-product-form" onSubmit={onSubmit} noValidate>
+      <form id="qseal-product-form" onSubmit={handleSubmitForm} noValidate>
         <BrandSelectSection brandId={brandId} onBrandChange={(v) => setValue('brand_id', v)} disabled={isEdit} />
         <Separator />
         <ProductImagesSection imageUrl={getDisplayedImageUrl(logoPreview, imageUrl, removeLogo)}
           bannerImageUrl={getDisplayedImageUrl(bannerPreview, bannerImageUrl, removeBanner)}
           onImageSelect={handleLogoSelect}
           onBannerSelect={handleBannerSelect}
-          logoError={logoError}
-          bannerError={bannerError}
+          logoError={logoError ?? logoRequiredError}
+          bannerError={bannerError ?? bannerRequiredError}
           onImageRemove={() => {
             setLogoFile(null);
             setLogoPreview('');

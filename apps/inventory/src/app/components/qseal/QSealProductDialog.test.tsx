@@ -1,7 +1,7 @@
 import type React from 'react';
 
 import { describe, expect, it, jest } from '@jest/globals';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { QSealProduct } from '../../types/qseal.types';
@@ -231,15 +231,14 @@ describe('QSealProductDialog Shelf Life', () => {
   }, 10000);
   */
 
-  it('removes Generic Name and requires both Product images on create', async () => {
+  it('removes Generic Name and requires both Product images on create', () => {
     const onSave = jest.fn();
-    const user = userEvent.setup();
     render(<QSealProductDialog open onOpenChange={jest.fn()} onSave={onSave} />);
 
     expect(screen.queryByLabelText(/Generic Name/i)).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Create Product' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Product' }));
 
-    expect(await screen.findByText('Logo is required. Please upload an image.')).toBeInTheDocument();
+    expect(screen.getByText('Logo is required. Please upload an image.')).toBeInTheDocument();
     expect(screen.getByText('Banner image is required. Please upload an image.')).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
   });
@@ -259,7 +258,7 @@ describe('QSealProductDialog Shelf Life', () => {
     );
   });
 
-  it('rejects an expired blob URL as an existing image during update', async () => {
+  it('does not require re-uploading images when editing a product with an expired image URL', async () => {
     const onSave = jest.fn();
     const user = userEvent.setup();
     render(
@@ -269,9 +268,14 @@ describe('QSealProductDialog Shelf Life', () => {
         onSave={onSave}/>,
     );
 
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Brand' })).toHaveTextContent('Saved Brand'));
     await user.click(screen.getByRole('button', { name: 'Save Changes' }));
 
-    expect(await screen.findByText('Logo is required. Please upload an image.')).toBeInTheDocument();
-    expect(onSave).not.toHaveBeenCalled();
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.not.objectContaining({ generic_name: expect.anything() }),
+      expect.objectContaining({ logoFile: null, bannerFile: null }),
+    );
+    expect(screen.queryByText('Logo is required. Please upload an image.')).not.toBeInTheDocument();
   });
 });

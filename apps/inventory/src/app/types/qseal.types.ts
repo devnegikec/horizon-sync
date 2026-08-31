@@ -10,6 +10,7 @@ export type QSealProductStatus = 'active' | 'inactive';
  */
 export interface QSealProductListItem {
   id: string;
+  item_id?: string | null;
   name: string;
   sku: string | null;
   generic_name: string | null;
