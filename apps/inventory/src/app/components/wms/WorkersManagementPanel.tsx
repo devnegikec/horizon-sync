@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Plus, Printer, QrCode, RefreshCw, Trash2, UserCog, Download, Upload, ChevronDown, FileDown, Loader2 } from 'lucide-react';
+import { Plus, Printer, QrCode, RefreshCw, Trash2, UserCog, Download, Upload, ChevronDown, FileDown, Loader2, Eye } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { useUserStore } from '@horizon-sync/store';
@@ -104,6 +104,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
   });
 
   const [formErrors, setFormErrors] = React.useState<Record<string, string>>({});
+  const [showPassword, setShowPassword] = React.useState(false);
 
   const fetchWorkers = React.useCallback(async () => {
     if (!accessToken) return;
@@ -196,10 +197,11 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
       phone: worker.phone,
       login_username: worker.login_username,
       employee_id: worker.employee_id ?? '',
-      password: '',
+      password: worker.login_password || '',
       role: worker.role,
       status: worker.status,
     });
+    setShowPassword(false);
     setFormErrors({});
     setDialogOpen(true);
   };
@@ -461,9 +463,9 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
         return obj;
       };
 
-      let created = 0;
       let failed = 0;
       const errors: string[] = [];
+      const batch: WMSWorkerCreate[] = [];
 
       for (let i = 1; i < lines.length; i++) {
         const row = parseRow(lines[i]);
@@ -481,28 +483,31 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
           errors.push(`Row ${i + 1}: missing required field(s)`);
           continue;
         }
-        try {
-          const payload: WMSWorkerCreate = {
-            warehouse_id: warehouseId,
-            first_name: firstName,
-            last_name: lastName,
-            display_name: row.display_name?.trim() || null,
-            email,
-            phone,
-            login_username: login,
-            employee_id: employeeId,
-            password,
-            role,
-            status,
-          };
-          console.log('[Workers Import] Creating worker row', i, payload);
-          await wmsWorkerApi.create(accessToken, payload);
-          console.log('[Workers Import] Worker created row', i);
-          created++;
-        } catch (err) {
-          failed++;
-          const msg = err instanceof Error ? err.message : 'Unknown error';
-          errors.push(`Row ${i + 1}: ${msg}`);
+        batch.push({
+          warehouse_id: warehouseId,
+          first_name: firstName,
+          last_name: lastName,
+          display_name: row.display_name?.trim() || null,
+          email,
+          phone,
+          login_username: login,
+          employee_id: employeeId,
+          password,
+          role,
+          status,
+        });
+      }
+
+      let created = 0;
+      if (batch.length > 0) {
+        const result = await wmsWorkerApi.importWorkers(accessToken, {
+          organization_id: organizationId,
+          workers: batch,
+        });
+        created = result.created ?? 0;
+        failed += result.failed ?? 0;
+        for (const e of result.errors ?? []) {
+          errors.push(`Row ${e.row}: ${e.error}`);
         }
       }
 
@@ -656,12 +661,17 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
             </div>
             {/* Phone, Login Username, Employee ID — auto-filled with dummy data */}
             <div className="space-y-2">
-              <Label>Password {editingWorker ? '(optional)' : '(optional)'}</Label>
-              <Input type="password"
-                value={form.password || ''}
-                onChange={(e) => { setForm((p) => ({ ...p, password: e.target.value })); if (formErrors.password) setFormErrors((prev) => { const n = { ...prev }; delete n.password; return n; }); }}
-                className={formErrors.password ? 'border-destructive focus-visible:ring-destructive' : ''}
-                maxLength={100} />
+              <Label>Password {editingWorker ? '(leave blank to keep current)' : '(optional)'}</Label>
+              <div className="flex gap-2">
+                <Input type={showPassword ? 'text' : 'password'}
+                  value={form.password || ''}
+                  onChange={(e) => { setForm((p) => ({ ...p, password: e.target.value })); if (formErrors.password) setFormErrors((prev) => { const n = { ...prev }; delete n.password; return n; }); }}
+                  className={formErrors.password ? 'border-destructive focus-visible:ring-destructive' : ''}
+                  maxLength={100} />
+                <Button type="button" variant="outline" size="icon" className="shrink-0" onClick={() => setShowPassword((v) => !v)} title={showPassword ? 'Hide password' : 'Show password'}>
+                  <Eye className="h-4 w-4" />
+                </Button>
+              </div>
               {formErrors.password && <p className="text-xs text-destructive">{formErrors.password}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
