@@ -502,6 +502,13 @@ export const wmsWorkerApi = {
 
   delete: (token: string, id: string) => req<void>(`${IDENTITY_BASE}/identity/workers/${id}`, token, { method: 'DELETE' }),
 
+  importWorkers: (token: string, data: { organization_id?: string; workers: WMSWorkerCreate[] }) =>
+    req<{ created: number; failed: number; total: number; errors: { row: number; error: string }[] }>(
+      `${IDENTITY_BASE}/identity/workers/import`,
+      token,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
+
   regenerateBarcode: (token: string, id: string) =>
     req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}/regenerate-qr`, token, { method: 'POST', body: '{}' }),
 

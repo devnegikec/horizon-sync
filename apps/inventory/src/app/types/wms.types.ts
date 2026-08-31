@@ -696,6 +696,7 @@ export interface WMSWorker {
   email: string | null;
   phone: string | null;
   login_username: string | null;
+  login_password?: string | null;
   barcode: string | null;
   qr_code?: string | null;
   employee_id: string | null;
