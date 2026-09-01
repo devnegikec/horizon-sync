@@ -85,7 +85,7 @@ export function DataTable<TData, TValue>({
               )}
             </TableBody>
             {renderFooter ? (
-              <TableFooter className="border-t bg-muted/30">
+              <TableFooter className="border-t bg-transparent">
                 {renderFooter()}
               </TableFooter>
             ) : null}

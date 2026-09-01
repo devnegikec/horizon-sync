@@ -2,11 +2,12 @@ import * as React from 'react';
 
 import { AlertCircle, Database, RefreshCw } from 'lucide-react';
 
-import { Badge, Button, Checkbox, Label } from '@horizon-sync/ui/components';
+import { Badge, Button, Checkbox, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
+import { environment } from '../../../../environments/environment';
 import { dataSyncService, type FeatureSummary, type SyncableFeature } from '../services/dataSyncService';
 
 export interface DataSyncSettingsProps {
@@ -36,7 +37,7 @@ function FeatureRow({ feature, checked, disabled, onToggle }: FeatureRowProps) {
         checked={checked}
         disabled={disabled}
         onCheckedChange={(value) => onToggle(feature.key, value === true)}
-        className="mt-0.5"/>
+        className="mt-0.5" />
       <Label htmlFor={inputId} className="flex cursor-pointer flex-col gap-0.5">
         <span className="text-sm font-medium">{feature.label}</span>
         <span className="text-xs font-normal text-muted-foreground">{feature.description}</span>
@@ -70,6 +71,8 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   const [error, setError] = React.useState<string | null>(null);
   const [syncing, setSyncing] = React.useState(false);
   const [results, setResults] = React.useState<FeatureResult[] | null>(null);
+  const [warehouses, setWarehouses] = React.useState<Array<{ id: string; name: string; code?: string }>>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = React.useState('');
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -88,6 +91,29 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   React.useEffect(() => {
     void load();
   }, [load]);
+
+  React.useEffect(() => {
+    const fetchWarehouses = async () => {
+      if (!accessToken) return;
+      try {
+        const url = `${environment.apiCoreUrl}/api/v1/warehouses?page=1&page_size=100&is_active=true&scope=all`;
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const list: Array<{ id: string; name: string; code?: string }> = data.warehouses || [];
+          setWarehouses(list);
+          if (!selectedWarehouseId && list.length > 0) {
+            setSelectedWarehouseId(list[0].id);
+          }
+        }
+      } catch {
+        // warehouse selector is best-effort
+      }
+    };
+    void fetchWarehouses();
+  }, [accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedKeys = features.filter((feature) => selected[feature.key]).map((feature) => feature.key);
 
@@ -108,7 +134,12 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
     setSyncing(true);
     setResults(null);
     try {
-      const result = await dataSyncService.sync(accessToken, selectedKeys);
+      const result = await dataSyncService.sync(
+        accessToken,
+        selectedKeys,
+        'USD',
+        selected['stock'] ? selectedWarehouseId : undefined
+      );
       const perFeature: FeatureResult[] = features
         .filter((feature) => selected[feature.key])
         .map((feature) => {
@@ -174,9 +205,29 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                   feature={feature}
                   checked={Boolean(selected[feature.key])}
                   disabled={!canEdit || syncing}
-                  onToggle={toggleFeature}/>
+                  onToggle={toggleFeature} />
               ))}
             </div>
+
+            {selected['stock'] && (
+              <div className="space-y-2 rounded-md border border-border p-3">
+                <Label htmlFor="sync-warehouse">Stock warehouse</Label>
+                <Select value={selectedWarehouseId}
+                  onValueChange={setSelectedWarehouseId}
+                  disabled={!canEdit || syncing}>
+                  <SelectTrigger id="sync-warehouse" className="w-full">
+                    <SelectValue placeholder="Select warehouse" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {warehouses.map((wh) => (
+                      <SelectItem key={wh.id} value={wh.id}>
+                        {wh.name} ({wh.code ?? wh.id.slice(0, 8)})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {results && <SyncResults results={results} />}
 

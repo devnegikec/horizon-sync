@@ -107,7 +107,7 @@ function WorkerQrDialog({
   );
 }
 
-function useWorkers(enabled: boolean): WMSWorker[] {
+function useWorkers(enabled: boolean, warehouseId?: string): WMSWorker[] {
   const accessToken = useUserStore((s) => s.accessToken);
   const [workers, setWorkers] = React.useState<WMSWorker[]>([]);
 
@@ -115,7 +115,7 @@ function useWorkers(enabled: boolean): WMSWorker[] {
     if (!enabled || !accessToken) return;
     let cancelled = false;
     wmsWorkerApi
-      .list(accessToken, { page: 1, page_size: 100 })
+      .list(accessToken, { page: 1, page_size: 100, warehouse_id: warehouseId })
       .then((data) => {
         if (!cancelled) setWorkers(data.workers ?? []);
       })
@@ -125,7 +125,7 @@ function useWorkers(enabled: boolean): WMSWorker[] {
     return () => {
       cancelled = true;
     };
-  }, [enabled, accessToken]);
+  }, [enabled, accessToken, warehouseId]);
 
   return workers;
 }
@@ -264,10 +264,11 @@ interface AssignWorkerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentWorkerId: string | null;
+  warehouseId?: string;
   onAssign: (workerId: string) => Promise<void>;
 }
 
-function AssignWorkerDialog({ open, onOpenChange, currentWorkerId, onAssign }: AssignWorkerDialogProps) {
+function AssignWorkerDialog({ open, onOpenChange, currentWorkerId, warehouseId, onAssign }: AssignWorkerDialogProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const { toast } = useToast();
   const [workers, setWorkers] = React.useState<WMSWorker[]>([]);
@@ -280,11 +281,11 @@ function AssignWorkerDialog({ open, onOpenChange, currentWorkerId, onAssign }: A
     if (!open || !accessToken) return;
     setLoading(true);
     wmsWorkerApi
-      .list(accessToken, { page: 1, page_size: 100 })
+      .list(accessToken, { page: 1, page_size: 100, warehouse_id: warehouseId })
       .then((data) => setWorkers(data.workers ?? []))
       .catch(() => setWorkers([]))
       .finally(() => setLoading(false));
-  }, [open, accessToken]);
+  }, [open, accessToken, warehouseId]);
 
   React.useEffect(() => {
     if (open) setSelectedId(currentWorkerId ?? '');
@@ -423,13 +424,14 @@ interface PickListDetailDialogProps {
   listId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  warehouseId?: string;
 }
 
-function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDialogProps) {
+function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickListDetailDialogProps) {
   const { toast } = useToast();
   const { pickList, loading, error, recordScan, complete, cancel, assignWorker, accept, stageTransfer, stageScan, assignHandlingUnit } = usePickList(listId);
   const { enableHandlingUnit } = usePickSettings();
-  const workers = useWorkers(open);
+  const workers = useWorkers(open, pickList?.warehouse_id ?? warehouseId);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
   const [qrInput, setQrInput] = React.useState('');
   const [binInput, setBinInput] = React.useState('');
@@ -829,6 +831,7 @@ function PickListDetailDialog({ listId, open, onOpenChange }: PickListDetailDial
         open={assignOpen}
         onOpenChange={setAssignOpen}
         currentWorkerId={pickList?.assigned_to ?? null}
+        warehouseId={pickList?.warehouse_id ?? warehouseId}
         onAssign={handleAssign}
       />
       <WorkerQrDialog open={qrOpen} onOpenChange={setQrOpen} worker={assignedWorker} />
@@ -984,7 +987,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
   const [page, setPage] = React.useState(1);
   const [viewListId, setViewListId] = React.useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const workers = useWorkers(true);
+  const workers = useWorkers(true, warehouseId);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
 
   const { data, loading, error, refetch } = usePickLists({
@@ -1113,7 +1116,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
 
       <ErpSyncPanel />
 
-      <PickListDetailDialog listId={viewListId} open={dialogOpen} onOpenChange={setDialogOpen} />
+      <PickListDetailDialog listId={viewListId} open={dialogOpen} onOpenChange={setDialogOpen} warehouseId={warehouseId} />
     </div>
   );
 }

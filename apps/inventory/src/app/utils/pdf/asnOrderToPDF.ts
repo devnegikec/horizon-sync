@@ -12,7 +12,7 @@ export const convertAsnOrderToPDFData = (asnOrder: AsnOrder, targetWarehouse?: W
     return {
       index: index + 1,
       itemName: item.item_name || '',
-      itemCode: item.item_sku || '',
+      itemCode: item.sku || item.item_code || item.item_sku || '',
       quantity: qty,
       uom: item.uom || 'pcs',
       rate: 0,

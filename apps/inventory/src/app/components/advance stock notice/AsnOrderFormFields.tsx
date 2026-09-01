@@ -8,6 +8,7 @@ import { StatusSelect } from '../common';
 interface AsnOrderFormFieldsProps {
   formData: {
     asn_order_no: string;
+    asn_type: 'purchase' | 'internal_transfer';
     warehouse_id_from: string;
     warehouse_id_to: string;
     order_date: string;
@@ -51,7 +52,21 @@ export function AsnOrderFormFields({
               className="cursor-not-allowed opacity-60" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="warehouse_id_from">From Warehouse *</Label>
+            <Label htmlFor="asn_type">ASN Type *</Label>
+            <Select value={formData.asn_type}
+              onValueChange={(v) => onFieldChange('asn_type', v)}
+              disabled={readOnly || isEdit}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="purchase">Purchase</SelectItem>
+                <SelectItem value="internal_transfer">Internal Transfer</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="warehouse_id_from">Source Warehouse *</Label>
             <Select value={formData.warehouse_id_from}
               onValueChange={(v) => onFieldChange('warehouse_id_from', v)}
               disabled={readOnly}
@@ -69,7 +84,7 @@ export function AsnOrderFormFields({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="warehouse_id_to">To Warehouse *</Label>
+            <Label htmlFor="warehouse_id_to">Target Warehouse *</Label>
             <Select value={formData.warehouse_id_to}
               onValueChange={(v) => onFieldChange('warehouse_id_to', v)}
               disabled={readOnly}

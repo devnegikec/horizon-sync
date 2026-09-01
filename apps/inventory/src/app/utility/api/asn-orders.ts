@@ -1,4 +1,9 @@
 import type { AsnReceivingSummary } from '../../types/wms.types';
+import type {
+  AsnOrderSerialsResponse,
+  AsnOrder856Response,
+  AsnOrderEpcisResponse,
+} from '../../types/asn-order.types';
 
 import { apiRequest, buildPaginationParams } from './core';
 
@@ -10,6 +15,7 @@ type AsnOrderFilters = {
   delivery_date_to?: string;
   vehicle_no?: string;
   search?: string;
+  asn_type?: string;
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
 };
@@ -35,6 +41,15 @@ export const asnOrderApi = {
     apiRequest<AsnReceivingSummary>(`/asn-orders/${id}/receiving-summary`, accessToken, {
       params: sessionId ? { session_id: sessionId } : undefined,
     }),
+
+  getSerials: (accessToken: string, id: string) =>
+    apiRequest<AsnOrderSerialsResponse>(`/asn-orders/${id}/serials`, accessToken),
+
+  export856: (accessToken: string, id: string) =>
+    apiRequest<AsnOrder856Response>(`/asn-orders/${id}/asn-856`, accessToken),
+
+  exportEpcis: (accessToken: string, id: string) =>
+    apiRequest<AsnOrderEpcisResponse>(`/asn-orders/${id}/epcis`, accessToken),
 
   create: (accessToken: string, data: unknown) =>
     apiRequest('/asn-orders', accessToken, {

@@ -238,7 +238,7 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
         {/* Company Header */}
         <View style={styles.companySection}>
           <Text style={styles.companyName}>
-            {isAsn ? `Sender: ${data.companyName || 'N/A'}` : (data.companyName || 'Your Company Name')}
+            {isAsn ? `Source Warehouse: ${data.companyName || 'N/A'}` : (data.companyName || 'Your Company Name')}
           </Text>
           {data.companyAddress && <Text style={styles.companyDetails}>{data.companyAddress}</Text>}
           {data.companyPhone && <Text style={styles.companyDetails}>Phone: {data.companyPhone}</Text>}
@@ -283,7 +283,7 @@ export const DocumentPDF: React.FC<DocumentPDFProps> = ({ data }) => {
           </View>
 
           <View style={styles.infoBlock}>
-            <Text style={styles.infoLabel}>{isAsn ? 'For' : 'Customer'}</Text>
+            <Text style={styles.infoLabel}>{isAsn ? 'Target Warehouse' : 'Customer'}</Text>
             <Text style={styles.infoValue}>{data.customerName}</Text>
 
             {!isAsn && data.customerCode && (

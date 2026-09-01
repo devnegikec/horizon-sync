@@ -42,14 +42,14 @@ export const dataSyncService = {
   },
 
   /** Seed the selected data categories for the current user's organization. */
-  async sync(token: string, features: string[], baseCurrency = 'USD'): Promise<DataSyncResult> {
+  async sync(token: string, features: string[], baseCurrency = 'USD', warehouseId?: string): Promise<DataSyncResult> {
     const res = await fetch(`${DATA_SYNC_URL}/sync`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ features, base_currency: baseCurrency }),
+      body: JSON.stringify({ features, base_currency: baseCurrency, warehouse_id: warehouseId || null }),
     });
     if (!res.ok) {
       throw await parseError(res, `Failed to sync data (HTTP ${res.status})`);

@@ -39,6 +39,7 @@ const EMPTY_LINE: AsnEntryLineRow = {
   item_id: '',
   item_name: '',
   item_code: '',
+  sku: '',
   qty: 0,
   uom: 'pcs',
   sort_order: 1,
@@ -57,6 +58,7 @@ function toDateInputValue(isoDate: string | null | undefined): string {
 function buildFormFromEntry(entry: AsnOrder): AsnOrderFormData {
   return {
     asn_order_no: entry.asn_order_no,
+    asn_type: (entry.asn_type === 'internal_transfer' ? 'internal_transfer' : 'purchase') as 'purchase' | 'internal_transfer',
     warehouse_id_from: entry.warehouse_id_from || '',
     warehouse_id_to: entry.warehouse_id_to || '',
     order_date: toDateInputValue(entry.order_date),
@@ -105,6 +107,7 @@ function mapItemsToCreate(rows: AsnEntryLineRow[]): AsnOrderItemCreate[] {
 
 function buildUpdatePayload(formData: AsnOrderFormData, items: AsnOrderItemCreate[]): AsnOrderUpdate {
   return {
+    asn_type: formData.asn_type,
     warehouse_id_from: formData.warehouse_id_from || null,
     warehouse_id_to: formData.warehouse_id_to || null,
     order_date: new Date(formData.order_date).toISOString(),
@@ -118,6 +121,7 @@ function buildUpdatePayload(formData: AsnOrderFormData, items: AsnOrderItemCreat
 function buildCreatePayload(formData: AsnOrderFormData, items: AsnOrderItemCreate[], grandTotal: number): AsnOrderCreate {
   return {
     asn_order_no: formData.asn_order_no || undefined,
+    asn_type: formData.asn_type,
     warehouse_id_from: formData.warehouse_id_from,
     warehouse_id_to: formData.warehouse_id_to,
     order_date: new Date(formData.order_date).toISOString(),
@@ -140,6 +144,7 @@ const STATUS_LABELS: Record<AsnOrderStatus, string> = {
 
 const DEFAULT_FORM: AsnOrderFormData = {
   asn_order_no: '',
+  asn_type: 'purchase',
   warehouse_id_from: '',
   warehouse_id_to: '',
   order_date: new Date().toISOString().slice(0, 10),
@@ -274,14 +279,14 @@ function AsnOrderEmailComposer({
       defaultSubject={`Advance Stock Notice ${asnOrder.asn_order_no}`}
       defaultMessage={`Dear Team,\n\nPlease find attached Advance Stock Notice ${asnOrder.asn_order_no} for your reference.\n\nBest regards`}
       defaultAttachments={pdfAttachment ? [pdfAttachment] : undefined}
-      onSuccess={onSuccess}/>
+      onSuccess={onSuccess} />
   );
 }
 
 // ---------- component ----------
 
 // eslint-disable-next-line complexity
-export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpenChange }: AsnOrderDialogProps) {
+export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpenChange, defaultAsnType }: AsnOrderDialogProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [csvPreviewActive, setCsvPreviewActive] = React.useState(false);
   const [lineItems, setLineItems] = React.useState<AsnEntryLineRow[]>([{ ...EMPTY_LINE }]);
@@ -322,7 +327,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   // Merge from_warehouse and to_warehouse from API response into warehouse lists
   // so they appear correctly in dropdowns even if not in the main warehouse lists
   const warehousesFrom = React.useMemo(() => {
-    const list = [...assignedWarehouses];
+    const list = allWarehouses.filter((w) => w.id !== formData.warehouse_id_to);
     if (resolvedOrder?.from_warehouse?.id && resolvedOrder?.from_warehouse?.name) {
       const fromWh = resolvedOrder.from_warehouse;
       const alreadyExists = list.some((w) => w.id === fromWh.id);
@@ -331,10 +336,10 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
       }
     }
     return list;
-  }, [assignedWarehouses, resolvedOrder?.from_warehouse]);
+  }, [allWarehouses, formData.warehouse_id_to, resolvedOrder?.from_warehouse]);
 
   const warehousesTo = React.useMemo(() => {
-    const list = allWarehouses.filter((w) => w.id !== formData.warehouse_id_from);
+    const list = [...assignedWarehouses];
     if (resolvedOrder?.to_warehouse?.id && resolvedOrder?.to_warehouse?.name) {
       const toWh = resolvedOrder.to_warehouse;
       const alreadyExists = list.some((w) => w.id === toWh.id);
@@ -343,7 +348,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
       }
     }
     return list;
-  }, [allWarehouses, formData.warehouse_id_from, resolvedOrder?.to_warehouse]);
+  }, [assignedWarehouses, resolvedOrder?.to_warehouse]);
 
   const targetWarehouse = React.useMemo(() => {
     const warehouseId = resolvedOrder?.warehouse_id_to;
@@ -359,6 +364,38 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
     openEmailWithPdf(() => handleGenerateBase64(resolvedOrder), `${resolvedOrder.asn_order_no}.pdf`);
   }, [resolvedOrder, handleGenerateBase64, openEmailWithPdf]);
 
+  const downloadJson = (filename: string, data: unknown) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExport856 = React.useCallback(async () => {
+    if (!resolvedOrder) return;
+    try {
+      const data = await asnOrderApi.export856(accessToken || '', resolvedOrder.id);
+      downloadJson(`${resolvedOrder.asn_order_no}-856.json`, data);
+      toast({ title: 'Exported 856', description: `${resolvedOrder.asn_order_no}-856.json downloaded` });
+    } catch (error) {
+      toast({ title: 'Export Failed', description: error instanceof Error ? error.message : 'Failed to export 856', variant: 'destructive' });
+    }
+  }, [accessToken, resolvedOrder]);
+
+  const handleExportEpcis = React.useCallback(async () => {
+    if (!resolvedOrder) return;
+    try {
+      const data = await asnOrderApi.exportEpcis(accessToken || '', resolvedOrder.id);
+      downloadJson(`${resolvedOrder.asn_order_no}-epcis.json`, data);
+      toast({ title: 'Exported EPCIS', description: `${resolvedOrder.asn_order_no}-epcis.json downloaded` });
+    } catch (error) {
+      toast({ title: 'Export Failed', description: error instanceof Error ? error.message : 'Failed to export EPCIS', variant: 'destructive' });
+    }
+  }, [accessToken, resolvedOrder]);
+
   // Initialize form when dialog opens or asnOrder changes — use resolvedOrder (API detail or prop fallback)
   React.useEffect(() => {
     if (open && resolvedOrder) {
@@ -368,7 +405,8 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
           resolvedOrder.items.map((item, i) => ({
             item_id: item.item_id,
             item_name: item.item_name || '',
-            item_code: item.item_sku || '',
+            item_code: item.item_code || item.item_sku || '',
+            sku: item.sku || item.item_sku || '',
             qty: typeof item.qty === 'object' ? item.qty.qty : Number(item.qty) || 0,
             uom: item.uom || 'pcs',
             sort_order: item.sort_order || i + 1,
@@ -378,22 +416,27 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
         setLineItems([{ ...EMPTY_LINE }]);
       }
     } else if (open && !asnOrder) {
-      setFormData({ ...DEFAULT_FORM });
+      setFormData({ ...DEFAULT_FORM, asn_type: defaultAsnType || 'purchase' });
       setLineItems([{ ...EMPTY_LINE }]);
       setImportStatus(null);
       setWarehouseError('');
     }
-  }, [open, resolvedOrder, asnOrder]);
+  }, [open, resolvedOrder, asnOrder, defaultAsnType]);
 
-  // Auto-populate "By" warehouse from user's assigned warehouses on creation
+  // Auto-populate target = user's own warehouse and source = its parent on creation
   React.useEffect(() => {
-    if (open && !asnOrder && assignedWarehouses.length > 0 && !formData.warehouse_id_from) {
+    if (open && !asnOrder && assignedWarehouses.length > 0 && !formData.warehouse_id_to) {
       const defaultWh = assignedWarehouses.find((w) => w.is_default) || assignedWarehouses[0];
       if (defaultWh) {
-        setFormData((prev) => ({ ...prev, warehouse_id_from: defaultWh.id }));
+        const parentId = defaultWh.parent_warehouse_id || defaultWh.parent?.id || '';
+        setFormData((prev) => ({
+          ...prev,
+          warehouse_id_to: defaultWh.id,
+          warehouse_id_from: parentId || prev.warehouse_id_from,
+        }));
       }
     }
-  }, [open, asnOrder, assignedWarehouses, formData.warehouse_id_from]);
+  }, [open, asnOrder, assignedWarehouses, formData.warehouse_id_to]);
 
   // Real-time warehouse equality validation
   React.useEffect(() => {
@@ -405,6 +448,16 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   }, [formData.warehouse_id_from, formData.warehouse_id_to]);
 
   const handleChange = (field: string, value: string) => {
+    if (field === 'warehouse_id_to' && value) {
+      const target = assignedWarehouses.find((w) => w.id === value);
+      const parentId = target?.parent_warehouse_id || target?.parent?.id || '';
+      setFormData((prev) => ({
+        ...prev,
+        warehouse_id_to: value,
+        ...(parentId ? { warehouse_id_from: parentId } : {}),
+      }));
+      return;
+    }
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -583,6 +636,18 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                       <Mail className="h-4 w-4" />
                       Send Email
                     </Button>
+                    {formData.asn_type === 'internal_transfer' && (
+                      <>
+                        <Button type="button" variant="outline" onClick={handleExport856} className="gap-2">
+                          <Download className="h-4 w-4" />
+                          Export 856
+                        </Button>
+                        <Button type="button" variant="outline" onClick={handleExportEpcis} className="gap-2">
+                          <Download className="h-4 w-4" />
+                          Export EPCIS
+                        </Button>
+                      </>
+                    )}
                   </>
                 )}
               </>
@@ -607,7 +672,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
             availableStatuses={availableStatuses}
             statusLabels={STATUS_LABELS}
             onFieldChange={handleChange}
-            warehouseError={warehouseError}/>
+            warehouseError={warehouseError} />
 
           <Separator />
           <div className="space-y-2">
@@ -626,7 +691,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                     { key: 'item_id', label: 'Item Code' },
                     { key: 'qty', label: 'Qty' },
                     { key: 'uom', label: 'UOM' },
-                  ]}/>
+                  ]} />
                 {(lineItems.length > 1 || (lineItems.length === 1 && lineItems[0].item_id)) && (
                   <Button type="button" variant="ghost" size="sm" onClick={handleClearAllItems} className="text-destructive hover:text-destructive">
                     <Trash2 className="h-4 w-4 mr-1" />
@@ -653,12 +718,12 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                 warehouseIdTo={formData.warehouse_id_to}
                 renderFooter={() => (
                   <tr>
-                    <td className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Total Quantity:</td>
-                    <td className="px-4 py-3 text-lg font-semibold">{grandTotal}</td>
+                    <td colSpan={2} className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Total Quantity:</td>
+                    <td className="px-4 py-3 text-right text-sm font-semibold">{grandTotal}</td>
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3"></td>
                   </tr>
-                )}/>
+                )} />
             )}
           </div>
 
@@ -674,7 +739,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
           emailDialogOpen={emailDialogOpen}
           pdfAttachment={pdfAttachment}
           onOpenChange={handleEmailClose}
-          onSuccess={handleEmailSuccess}/>
+          onSuccess={handleEmailSuccess} />
       )}
     </>
   );
