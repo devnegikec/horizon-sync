@@ -433,17 +433,9 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
   const { enableHandlingUnit } = usePickSettings();
   const workers = useWorkers(open, pickList?.warehouse_id ?? warehouseId);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
-  const [qrInput, setQrInput] = React.useState('');
-  const [binInput, setBinInput] = React.useState('');
-  const [stageInput, setStageInput] = React.useState('');
   const [huInput, setHuInput] = React.useState('');
   const [huItemId, setHuItemId] = React.useState('');
-  const [staging, setStaging] = React.useState(false);
-  const [scannedBinId, setScannedBinId] = React.useState<string | null>(null);
-  const [scannedBinLabel, setScannedBinLabel] = React.useState<string | null>(null);
   const [scanError, setScanError] = React.useState<string | null>(null);
-  const [scanning, setScanning] = React.useState(false);
-  const [scanKey, setScanKey] = React.useState<string | null>(null);
   const [assignOpen, setAssignOpen] = React.useState(false);
   const [qrOpen, setQrOpen] = React.useState(false);
   const [confirmAction, setConfirmAction] = React.useState<'complete' | 'cancel' | null>(null);
@@ -472,73 +464,6 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
     },
     [assignWorker],
   );
-
-  const handleScan = async () => {
-    if (!qrInput.trim()) return;
-    setScanError(null);
-    setScanning(true);
-    const key = scanKey ?? scanIdempotencyKey(listId ?? '');
-    try {
-      const result = await recordScan(qrInput.trim(), scannedBinId, key);
-      setQrInput('');
-      setScanKey(null);
-      const serialPart = result.serial_no ? ` [${result.serial_no}]` : '';
-      toast({ title: 'Item scanned', description: `${result.sku}${serialPart} — ${result.scanned_qty} units` });
-      inputRef.current?.focus();
-    } catch (err) {
-      setScanError(err instanceof Error ? err.message : 'Scan failed');
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  const handleBinScan = () => {
-    const raw = binInput.trim();
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw);
-      const locationId = parsed.location_id ?? null;
-      if (!locationId) throw new Error('Bin QR is missing a location id');
-      setScannedBinId(String(locationId));
-      setScannedBinLabel(parsed.full_path ?? String(locationId));
-      setBinInput('');
-      setScanError(null);
-      toast({ title: 'Bin scanned', description: parsed.full_path ?? String(locationId) });
-      inputRef.current?.focus();
-    } catch (err) {
-      setScanError(err instanceof Error ? err.message : 'Invalid bin QR');
-    }
-  };
-
-  const handleStage = async () => {
-    const raw = stageInput.trim();
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw);
-      const locationId = parsed.location_id ?? null;
-      if (!locationId) throw new Error('Staging lane QR is missing a location id');
-      setStaging(true);
-      setScanError(null);
-      await stageTransfer(String(locationId));
-      try {
-        await stageScan(String(locationId));
-      } catch (err) {
-        setScanError(err instanceof Error ? err.message : 'Stage scan failed');
-        toast({
-          title: 'Transferred, but stage scan failed',
-          description: 'The lane was assigned — scan the lane again to confirm.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      setStageInput('');
-      toast({ title: 'Staged', description: parsed.full_path ?? String(locationId) });
-    } catch (err) {
-      setScanError(err instanceof Error ? err.message : 'Staging failed');
-    } finally {
-      setStaging(false);
-    }
-  };
 
   const handleAssignHu = async () => {
     const huId = huInput.trim();
@@ -689,68 +614,6 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
                   <span>Qty: {progress.picked_qty} / {progress.total_qty}</span>
                   <span>Remaining: {progress.remaining_qty}</span>
                 </div>
-              </div>
-            )}
-
-            {/* Scan input */}
-            {canScan && (
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    value={binInput}
-                    onChange={(e) => setBinInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleBinScan()}
-                    placeholder="Scan source bin QR first..."
-                    className="font-mono text-sm"
-                  />
-                  <Button onClick={handleBinScan} variant="outline" className="gap-2 shrink-0">
-                    <ScanLine className="h-4 w-4" />
-                    Bin
-                  </Button>
-                </div>
-                {scannedBinId && (
-                  <div className="text-xs text-muted-foreground font-mono">
-                    Active bin: {scannedBinLabel ?? scannedBinId}
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <Input
-                    ref={inputRef}
-                    value={qrInput}
-                    onChange={(e) => { setQrInput(e.target.value); setScanKey(null); }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleScan()}
-                    placeholder="Scan item QR code..."
-                    className="font-mono text-sm"
-                    autoFocus
-                  />
-                  <Button onClick={handleScan} disabled={scanning} className="gap-2 shrink-0">
-                    <ScanLine className="h-4 w-4" />
-                    {scanning ? 'Scanning...' : 'Scan'}
-                  </Button>
-                </div>
-                {scanError && (
-                  <div className="flex items-start gap-2 p-2.5 bg-destructive/10 text-destructive rounded-md text-sm">
-                    <X className="h-4 w-4 mt-0.5 shrink-0" />
-                    {scanError}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Staging lane scan */}
-            {canScan && (
-              <div className="flex gap-2">
-                <Input
-                  value={stageInput}
-                  onChange={(e) => setStageInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleStage()}
-                  placeholder="Scan staging lane QR..."
-                  className="font-mono text-sm"
-                />
-                <Button onClick={handleStage} variant="outline" disabled={staging} className="gap-2 shrink-0">
-                  <ScanLine className="h-4 w-4" />
-                  {staging ? 'Staging...' : 'Stage'}
-                </Button>
               </div>
             )}
 
