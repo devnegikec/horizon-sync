@@ -70,6 +70,19 @@ interface DashboardStats {
   activity_pagination?: { page: number; page_size: number; total: number; total_pages: number; has_next: boolean; has_prev: boolean };
 }
 
+interface CapacityNode {
+  node: string;
+  level: string;
+  code: string;
+  full_path: string | null;
+  volume: { occupied_m3: number | string; capacity_m3: number | string | null; pct: number | string | null };
+  weight: { occupied_kg: number | string; capacity_kg: number | string | null; pct: number | string | null };
+  binding_pct: number | string | null;
+  bin_state: string | null;
+  is_available: boolean | null;
+  children: CapacityNode[];
+}
+
 // ─── Dummy data (matches owner dashboard style) ──────────────────────────────
 
 const DUMMY_INBOUND_CHART: ChartBucket[] = [
@@ -126,6 +139,26 @@ function relativeTime(iso: string | null): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h} hour${h > 1 ? 's' : ''} ago`;
   return `${Math.floor(h / 24)}d ago`;
+}
+
+/** Coerce a backend value to a number (Decimal fields are serialized as strings). */
+function toNumber(value: unknown): number | null {
+  if (value == null) return null;
+  const n = typeof value === 'number' ? value : Number.parseFloat(String(value));
+  return Number.isFinite(n) ? n : null;
+}
+
+function fmtNum(value: unknown, digits = 2): string {
+  const n = toNumber(value);
+  return n == null ? '—' : n.toFixed(digits);
+}
+
+function capacityStateForPct(pct: number | null): { label: string; badgeClass: string } {
+  if (pct == null) return { label: 'Not configured', badgeClass: 'bg-muted text-muted-foreground' };
+  if (pct >= 90) return { label: 'Full', badgeClass: 'bg-red-500/15 text-red-500' };
+  if (pct >= 70) return { label: 'Almost full', badgeClass: 'bg-amber-500/15 text-amber-500' };
+  if (pct > 0) return { label: 'Available', badgeClass: 'bg-emerald-500/15 text-emerald-500' };
+  return { label: 'Empty', badgeClass: 'bg-muted text-muted-foreground' };
 }
 
 // ─── Stat Card (mirrors Owner/Admin style) ────────────────────────────────────
@@ -206,6 +239,80 @@ function CapacityCardSkeleton() {
   );
 }
 
+interface CapacityCardProps {
+  warehouseName: string;
+  node: CapacityNode | null;
+}
+
+function CapacityCard({ warehouseName, node }: CapacityCardProps) {
+  const binding = toNumber(node?.binding_pct);
+  const state = capacityStateForPct(binding);
+  const volPct = toNumber(node?.volume?.pct);
+  const hasVolume = toNumber(node?.volume?.capacity_m3) != null;
+  const wtPct = toNumber(node?.weight?.pct);
+  const hasWeight = toNumber(node?.weight?.capacity_kg) != null;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-6">
+      <div className="flex items-start justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400">
+            <Warehouse className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">{warehouseName}</p>
+            <p className="text-xs text-muted-foreground">Warehouse Capacity</p>
+          </div>
+        </div>
+        <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', state.badgeClass)}>{state.label}</span>
+      </div>
+
+      {!node ? (
+        <p className="text-sm text-muted-foreground">No capacity data available.</p>
+      ) : !hasVolume && !hasWeight ? (
+        <p className="text-sm text-muted-foreground">Capacity not configured for this warehouse.</p>
+      ) : (
+        <div className="space-y-4">
+          {hasVolume && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Volume</span>
+                <span className="font-medium">
+                  {fmtNum(node.volume?.occupied_m3, 2)} / {fmtNum(node.volume?.capacity_m3, 2)} m³
+                  {volPct != null && <span className="ml-2 text-muted-foreground">{volPct.toFixed(1)}%</span>}
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                  style={{ width: `${Math.max(0, Math.min(100, volPct ?? 0))}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {hasWeight && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Weight</span>
+                <span className="font-medium">
+                  {fmtNum(node.weight?.occupied_kg, 2)} / {fmtNum(node.weight?.capacity_kg, 2)} kg
+                  {wtPct != null && <span className="ml-2 text-muted-foreground">{wtPct.toFixed(1)}%</span>}
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400"
+                  style={{ width: `${Math.max(0, Math.min(100, wtPct ?? 0))}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function WMSDashboardHome() {
   const accessToken = useUserStore((s) => s.accessToken);
   const [period, setPeriod] = React.useState<'week' | 'month' | 'year'>('week');
@@ -221,6 +328,10 @@ export function WMSDashboardHome() {
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('all');
   const [warehousesLoading, setWarehousesLoading] = React.useState(false);
 
+  // Warehouse capacity (per-warehouse rollup trees)
+  const [capacityByWarehouse, setCapacityByWarehouse] = React.useState<Record<string, CapacityNode>>({});
+  const [capacityLoading, setCapacityLoading] = React.useState(false);
+
   // Fetch user's accessible warehouses
   React.useEffect(() => {
     if (!accessToken) return;
@@ -233,6 +344,44 @@ export function WMSDashboardHome() {
       .catch(() => setWarehouses([]))
       .finally(() => setWarehousesLoading(false));
   }, [accessToken]);
+
+  // Fetch capacity trees for the selected warehouse scope
+  React.useEffect(() => {
+    if (!accessToken) return;
+    const targets = selectedWarehouseId === 'all'
+      ? warehouses
+      : warehouses.filter((w) => w.id === selectedWarehouseId);
+    if (targets.length === 0) {
+      setCapacityByWarehouse({});
+      return;
+    }
+    let cancelled = false;
+    setCapacityLoading(true);
+    Promise.all(
+      targets.map((wh) =>
+        fetch(`${environment.apiCoreUrl}/api/v1/capacity/warehouses/${wh.id}/tree`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        })
+          .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+          .then((data: CapacityNode) => ({ id: wh.id, data }))
+          .catch(() => ({ id: wh.id, data: null }))
+      )
+    )
+      .then((results) => {
+        if (cancelled) return;
+        const map: Record<string, CapacityNode> = {};
+        for (const r of results) {
+          if (r.data) map[r.id] = r.data;
+        }
+        setCapacityByWarehouse(map);
+      })
+      .finally(() => {
+        if (!cancelled) setCapacityLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, selectedWarehouseId, warehouses]);
 
   const fetchStats = React.useCallback(async () => {
     if (!accessToken) return;
@@ -315,6 +464,13 @@ export function WMSDashboardHome() {
   const outboundChart = overview.outbound.chart;
   const maxInbound = Math.max(...inboundChart.map((b) => b.qty), 1);
   const maxOutbound = Math.max(...outboundChart.map((b) => b.qty), 1);
+
+  const capacityWarehouses = selectedWarehouseId === 'all'
+    ? warehouses
+    : warehouses.filter((w) => w.id === selectedWarehouseId);
+  const capacityCols = capacityWarehouses.length === 1
+    ? 'grid gap-4'
+    : 'grid gap-4 md:grid-cols-2';
 
   // Show a loading skeleton until the first real stats response arrives, so
   // dummy/stale fallback data never flashes before the user's actual data.
@@ -460,6 +616,29 @@ export function WMSDashboardHome() {
           icon={Users}
           iconBg="bg-gradient-to-br from-orange-500 to-amber-500"
         />
+      </div>
+
+      {/* Warehouse Capacity — per-warehouse volume/weight rollups */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-3 w-3 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400" />
+          <h2 className="text-lg font-semibold">Warehouse Capacity</h2>
+        </div>
+        {capacityLoading && Object.keys(capacityByWarehouse).length === 0 ? (
+          <div className={capacityCols}>
+            {capacityWarehouses.length > 0
+              ? capacityWarehouses.map((wh) => <CapacityCardSkeleton key={wh.id} />)
+              : [0, 1].map((i) => <CapacityCardSkeleton key={i} />)}
+          </div>
+        ) : capacityWarehouses.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No warehouses available.</p>
+        ) : (
+          <div className={capacityCols}>
+            {capacityWarehouses.map((wh) => (
+              <CapacityCard key={wh.id} warehouseName={wh.name} node={capacityByWarehouse[wh.id] ?? null} />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Charts — modern interactive layout */}

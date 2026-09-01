@@ -44,7 +44,7 @@ import { WarehouseCapacityCard } from './WarehouseCapacityCard';
 import { WarehouseLayoutDesigner } from './WarehouseLayoutDesigner';
 import { WorkersManagementPanel } from './WorkersManagementPanel';
 
-type WMSView = 'dashboard' | 'asn' | 'inbound' | 'outbound' | 'stock' | 'manage';
+type WMSView = 'asn' | 'inbound' | 'outbound' | 'stock' | 'manage';
 type LayoutTab = 'tree' | 'designer' | '3d';
 type InboundSection = 'scan' | 'receiving' | 'putaway' | 'vehicle' | 'exceptions';
 
@@ -67,7 +67,7 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 }
 
 export function WMSManagement() {
-  const [activeView, setActiveView] = React.useState<WMSView>('dashboard');
+  const [activeView, setActiveView] = React.useState<WMSView>('asn');
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('');
   const [manageSection, setManageSection] = React.useState<'workers' | 'devices' | 'layout' | 'location-qr'>('workers');
   const [inboundSection, setInboundSection] = React.useState<InboundSection>('receiving');
@@ -115,7 +115,7 @@ export function WMSManagement() {
       <WMSHeader warehouses={warehouses}
         warehousesLoading={warehousesLoading}
         selectedWarehouseId={selectedWarehouseId}
-        onWarehouseChange={setSelectedWarehouseId}/>
+        onWarehouseChange={setSelectedWarehouseId} />
       <WMSNavigation activeView={activeView} canManage={canManage} onViewChange={setActiveView} />
       <WMSContent activeView={activeView}
         canManage={canManage}
@@ -123,7 +123,7 @@ export function WMSManagement() {
         manageSection={manageSection}
         selectedWarehouseId={selectedWarehouseId}
         onInboundSectionChange={setInboundSection}
-        onManageSectionChange={setManageSection}/>
+        onManageSectionChange={setManageSection} />
     </div>
   );
 }
@@ -165,7 +165,6 @@ function WMSNavigation({ activeView, canManage, onViewChange }: { activeView: WM
   return (
     <div className="border-b">
       <nav className="flex items-center gap-1 pb-0 overflow-x-auto">
-        <NavItem icon={LayoutDashboard} label="Dashboard" isActive={activeView === 'dashboard'} onClick={() => onViewChange('dashboard')} />
         <NavItem icon={Truck} label="Advance Stock Notice" isActive={activeView === 'asn'} onClick={() => onViewChange('asn')} />
         <NavItem icon={ArrowDownToLine} label="Inbound" isActive={activeView === 'inbound'} onClick={() => onViewChange('inbound')} />
         <NavItem icon={ArrowUpFromLine} label="Outbound" isActive={activeView === 'outbound'} onClick={() => onViewChange('outbound')} />
@@ -187,7 +186,6 @@ interface WMSContentProps {
 }
 
 const wmsViewComponents: Record<WMSView, React.ComponentType<WMSContentProps>> = {
-  dashboard: DashboardContent,
   asn: AsnContent,
   inbound: InboundManagement,
   outbound: OutboundContent,
@@ -198,14 +196,6 @@ const wmsViewComponents: Record<WMSView, React.ComponentType<WMSContentProps>> =
 function WMSContent({ activeView, ...props }: WMSContentProps) {
   const Content = wmsViewComponents[activeView];
   return <Content activeView={activeView} {...props} />;
-}
-
-function DashboardContent({ selectedWarehouseId }: WMSContentProps) {
-  return selectedWarehouseId ? (
-    <DashboardView warehouseId={selectedWarehouseId} />
-  ) : (
-    <p className="text-sm text-muted-foreground">Select a warehouse to view its capacity.</p>
-  );
 }
 
 function AsnContent({ selectedWarehouseId }: WMSContentProps) {
@@ -222,15 +212,6 @@ function StockContent({ selectedWarehouseId }: WMSContentProps) {
 
 function ManageContent({ canManage, ...props }: WMSContentProps) {
   return canManage ? <ManageManagement canManage={canManage} {...props} /> : null;
-}
-
-function DashboardView({ warehouseId }: { warehouseId: string }) {
-  return (
-    <div className="space-y-6">
-      <WarehouseCapacityCard warehouseId={warehouseId} />
-      <DashboardPanel warehouseId={warehouseId} />
-    </div>
-  );
 }
 
 function SectionTab({
@@ -264,18 +245,18 @@ function InboundManagement({ inboundSection, selectedWarehouseId, onInboundSecti
           <SectionTab active={inboundSection === 'receiving'}
             icon={Warehouse}
             label="Receiving Slips"
-            onClick={() => onInboundSectionChange('receiving')}/>
+            onClick={() => onInboundSectionChange('receiving')} />
           <SectionTab active={inboundSection === 'putaway'} icon={PackageCheck} label="Put-Away" onClick={() => onInboundSectionChange('putaway')} />
           <SectionTab active={inboundSection === 'vehicle'} icon={Truck} label="Vehicle Arrivals" onClick={() => onInboundSectionChange('vehicle')} />
           <SectionTab active={inboundSection === 'exceptions'}
             icon={AlertTriangle}
             label="Holds & Quarantine"
-            onClick={() => onInboundSectionChange('exceptions')}/>
+            onClick={() => onInboundSectionChange('exceptions')} />
         </div>
         <div className="p-4 space-y-4">
           <InboundSectionContent section={inboundSection}
             warehouseId={selectedWarehouseId}
-            onSlipGenerated={() => onInboundSectionChange('receiving')}/>
+            onSlipGenerated={() => onInboundSectionChange('receiving')} />
         </div>
       </div>
     </div>
@@ -362,7 +343,7 @@ function ManageManagement({ manageSection, selectedWarehouseId, onManageSectionC
           <SectionTab active={manageSection === 'location-qr'}
             icon={QrCode}
             label="Location QR"
-            onClick={() => onManageSectionChange('location-qr')}/>
+            onClick={() => onManageSectionChange('location-qr')} />
         </div>
         <div className="p-4">
           <ManageSectionContent section={manageSection} warehouseId={selectedWarehouseId} />
@@ -419,7 +400,7 @@ function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | nul
             layoutTab={layoutTab}
             selectedWarehouseId={selectedWarehouseId}
             treeKey={treeKey}
-            onLayoutChanged={handleLayoutChanged}/>
+            onLayoutChanged={handleLayoutChanged} />
         </div>
       </div>
     </div>
