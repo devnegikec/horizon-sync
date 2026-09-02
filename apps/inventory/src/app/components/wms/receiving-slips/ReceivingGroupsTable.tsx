@@ -26,6 +26,7 @@ export function ReceivingGroupsTable({ groups, slipId, onRejectItem, onException
           <th className="text-center px-4 py-2 font-medium text-muted-foreground">Box</th>
           <th className="text-center px-4 py-2 font-medium text-muted-foreground">Qty</th>
           <th className="text-left px-4 py-2 font-medium text-muted-foreground">Flag</th>
+          <th className="text-left px-4 py-2 font-medium text-muted-foreground">Condition</th>
           <th className="text-right px-4 py-2 font-medium text-muted-foreground">Actions</th>
         </tr>
       </thead>

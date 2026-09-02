@@ -47,6 +47,9 @@ import type {
   PaginatedVehicleArrivals,
   InboundException,
   InboundExceptionReason,
+  BulkDispositionAction,
+  BulkDispositionResponse,
+  PaginatedInboundExceptions,
 } from '../../types/wms.types';
 
 const BASE = `${environment.apiCoreUrl}/api/v1`;
@@ -229,13 +232,22 @@ export const inboundApi = {
       body: JSON.stringify(data),
     }),
 
-  listExceptions: (token: string, params: { warehouse_id?: string; destination?: string; status?: string } = {}) => {
+  listExceptions: (
+    token: string,
+    params: { warehouse_id?: string; destination?: string; status?: string; page?: number; page_size?: number } = {},
+  ) => {
     const p = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
-      if (value) p.append(key, value);
+      if (value !== undefined && value !== null && value !== '') p.append(key, String(value));
     });
-    return req<InboundException[]>(`${BASE}/inbound/exceptions?${p}`, token);
+    return req<PaginatedInboundExceptions>(`${BASE}/inbound/exceptions?${p}`, token);
   },
+
+  bulkDisposeExceptions: (token: string, data: { exception_ids: string[]; action: BulkDispositionAction; note?: string }) =>
+    req<BulkDispositionResponse>(`${BASE}/inbound/exceptions/bulk-disposition`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   disposeException: (
     token: string,
