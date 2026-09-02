@@ -43,6 +43,7 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 
 export function QSealPage() {
   const [activeView, setActiveView] = React.useState<ActiveView>('products');
+  const [createOpen, setCreateOpen] = React.useState(true);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -56,14 +57,14 @@ export function QSealPage() {
                 <NavItem icon={Palette}
                   label="SKU Customization"
                   isActive={activeView === 'sku_customization'}
-                  onClick={() => setActiveView('sku_customization')}/>
+                  onClick={() => setActiveView('sku_customization')} />
                 <NavItem icon={BarChart3} label="Analytics" isActive={activeView === 'analytics'} onClick={() => setActiveView('analytics')} />
                 <NavItem icon={Zap} label="Activation" isActive={activeView === 'activation'} onClick={() => setActiveView('activation')} />
                 <NavItem icon={Layers} label="Aggregation" isActive={activeView === 'aggregation'} onClick={() => setActiveView('aggregation')} />
                 <NavItem icon={Settings}
                   label="Settings"
                   isActive={activeView === 'product_settings'}
-                  onClick={() => setActiveView('product_settings')}/>
+                  onClick={() => setActiveView('product_settings')} />
               </nav>
             </div>
           </header>

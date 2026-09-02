@@ -74,7 +74,9 @@ export function WMSManagement() {
 
   const { warehouses, loading: warehousesLoading, refetch: refetchWarehouses } = useMyWarehouses();
   const userPermissions = useUserStore((s) => s.permissions.permissions);
-  const canManage = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
+  const userType = useUserStore((s) => s.user?.user_type);
+  const isAdmin = userType === 'system_admin' || userType === 'organization_admin';
+  const canManage = isAdmin || userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
 
   // Redirect away from manage view if user lacks permission
   React.useEffect(() => {

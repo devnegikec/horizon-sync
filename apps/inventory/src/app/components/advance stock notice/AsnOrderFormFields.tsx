@@ -8,7 +8,7 @@ import { StatusSelect } from '../common';
 interface AsnOrderFormFieldsProps {
   formData: {
     asn_order_no: string;
-    asn_type: 'purchase' | 'internal_transfer';
+    asn_type: 'purchase' | 'internal_transfer' | 'stock_receipt';
     warehouse_id_from: string;
     warehouse_id_to: string;
     order_date: string;
@@ -62,27 +62,30 @@ export function AsnOrderFormFields({
               <SelectContent>
                 <SelectItem value="purchase">Purchase</SelectItem>
                 <SelectItem value="internal_transfer">Internal Transfer</SelectItem>
+                <SelectItem value="stock_receipt">Stock Receipt</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="warehouse_id_from">Source Warehouse *</Label>
-            <Select value={formData.warehouse_id_from}
-              onValueChange={(v) => onFieldChange('warehouse_id_from', v)}
-              disabled={readOnly}
-              required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select warehouse" />
-              </SelectTrigger>
-              <SelectContent>
-                {warehousesFrom.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {formData.asn_type !== 'stock_receipt' && (
+            <div className="space-y-2">
+              <Label htmlFor="warehouse_id_from">Source Warehouse *</Label>
+              <Select value={formData.warehouse_id_from}
+                onValueChange={(v) => onFieldChange('warehouse_id_from', v)}
+                disabled={readOnly}
+                required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select warehouse" />
+                </SelectTrigger>
+                <SelectContent>
+                  {warehousesFrom.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="warehouse_id_to">Target Warehouse *</Label>
             <Select value={formData.warehouse_id_to}

@@ -193,7 +193,7 @@ function ProductSelect({ value, onChange }: ProductSelectProps) {
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search by name or GTIN…"
-            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0"/>
+            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0" />
         </div>
         <div id="product-listbox" className="max-h-60 overflow-y-auto p-1">
           {loading && (
@@ -300,7 +300,7 @@ function BatchSelect({ value, onChange }: BatchSelectProps) {
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search by batch number…"
-            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0"/>
+            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0" />
         </div>
         <div id="batch-listbox" className="max-h-60 overflow-y-auto p-1">
           {loading && (
@@ -407,9 +407,9 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
         qr_image: includeQrImage,
         ...(masterPackEnabled && masterPackSize > 0
           ? {
-              master_pack_enabled: true,
-              master_pack_size: masterPackSize,
-            }
+            master_pack_enabled: true,
+            master_pack_size: masterPackSize,
+          }
           : {}),
       } satisfies QRBlockCreate);
 
@@ -452,8 +452,11 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
   const batchError = getBatchError(selectedBatch, selectedProduct);
 
   return (
-    <DetailDialog open={open}
+    <DetailDialog
+      open={open}
       onOpenChange={onOpenChange}
+      size="lg"
+      contentClassName="max-w-4xl flex flex-col"
       title={
         <div className="flex items-center justify-between">
           <span>Generate QR Block</span>
@@ -464,7 +467,8 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
           )}
         </div>
       }
-      contentClassName="sm:max-w-md max-h-[90vh] flex flex-col"
+      loading={loading}
+      loadingMessage="Loading Generate QR Block..."
       showCloseButton={false}
       footer={
         <div className="flex items-center justify-end gap-2">
@@ -502,7 +506,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
               setProductId(product.id);
               setSelectedProduct(product);
               setStartingSerial('');
-            }}/>
+            }} />
         </div>
         {selectedProduct && (
           <>
@@ -529,7 +533,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
             onChange={(selected) => {
               setBatch(selected.batch_no);
               setSelectedBatch(selected);
-            }}/>
+            }} />
           {batchError && <p className="text-xs text-destructive">{batchError}</p>}
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -609,7 +613,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
               pattern="[0-9]+"
               maxLength={srType === 'S8DN' ? 8 : 10}
               placeholder={srType === 'S8DN' ? 'Up to 8 digits' : 'Up to 10 digits'}
-              required/>
+              required />
           </div>
         )}
         <div className="flex items-center space-x-2">
@@ -617,7 +621,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
             id="includeQrImage"
             checked={includeQrImage}
             onChange={(e) => setIncludeQrImage(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
+            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
           <Label htmlFor="includeQrImage" className="text-sm font-normal cursor-pointer">
             Include QR code images in Excel
           </Label>
@@ -638,7 +642,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
               id="masterPackEnabled"
               checked={masterPackEnabled}
               onChange={(e) => setMasterPackEnabled(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"/>
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
             <Label htmlFor="masterPackEnabled" className="text-sm font-medium cursor-pointer flex items-center gap-1.5">
               <Layers className="h-4 w-4" />
               Enable Master Pack (Cascade)
@@ -654,7 +658,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
                   onChange={(e) => setMasterPackSize(Math.max(1, Number(e.target.value)))}
                   min={1}
                   max={quantity}
-                  required/>
+                  required />
                 <p className="text-xs text-muted-foreground">Number of child QR codes grouped under each parent master pack</p>
               </div>
               {masterPackSize > 0 && masterPackParentCount > 0 && (

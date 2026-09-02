@@ -12,6 +12,7 @@ import { useEmailWithPdfAttachment } from '../../hooks/useEmailWithPdfAttachment
 import { usePDFGeneration } from '../../hooks/usePDFGeneration';
 import type {
   AsnOrder,
+  AsnOrderType,
   AsnOrderCreate,
   AsnOrderItemCreate,
   AsnOrderStatus,
@@ -58,7 +59,9 @@ function toDateInputValue(isoDate: string | null | undefined): string {
 function buildFormFromEntry(entry: AsnOrder): AsnOrderFormData {
   return {
     asn_order_no: entry.asn_order_no,
-    asn_type: (entry.asn_type === 'internal_transfer' ? 'internal_transfer' : 'purchase') as 'purchase' | 'internal_transfer',
+    asn_type: (entry.asn_type === 'internal_transfer' || entry.asn_type === 'stock_receipt'
+      ? entry.asn_type
+      : 'purchase') as AsnOrderType,
     warehouse_id_from: entry.warehouse_id_from || '',
     warehouse_id_to: entry.warehouse_id_to || '',
     order_date: toDateInputValue(entry.order_date),
@@ -108,7 +111,7 @@ function mapItemsToCreate(rows: AsnEntryLineRow[]): AsnOrderItemCreate[] {
 function buildUpdatePayload(formData: AsnOrderFormData, items: AsnOrderItemCreate[]): AsnOrderUpdate {
   return {
     asn_type: formData.asn_type,
-    warehouse_id_from: formData.warehouse_id_from || null,
+    warehouse_id_from: formData.asn_type === 'stock_receipt' ? null : formData.warehouse_id_from || null,
     warehouse_id_to: formData.warehouse_id_to || null,
     order_date: new Date(formData.order_date).toISOString(),
     delivery_date: formData.delivery_date ? new Date(formData.delivery_date).toISOString() : null,
@@ -122,7 +125,7 @@ function buildCreatePayload(formData: AsnOrderFormData, items: AsnOrderItemCreat
   return {
     asn_order_no: formData.asn_order_no || undefined,
     asn_type: formData.asn_type,
-    warehouse_id_from: formData.warehouse_id_from,
+    warehouse_id_from: formData.asn_type === 'stock_receipt' ? null : formData.warehouse_id_from || null,
     warehouse_id_to: formData.warehouse_id_to,
     order_date: new Date(formData.order_date).toISOString(),
     delivery_date: formData.delivery_date ? new Date(formData.delivery_date).toISOString() : null,
@@ -327,7 +330,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   // Merge from_warehouse and to_warehouse from API response into warehouse lists
   // so they appear correctly in dropdowns even if not in the main warehouse lists
   const warehousesFrom = React.useMemo(() => {
-    const list = allWarehouses.filter((w) => w.id !== formData.warehouse_id_to);
+    const list = [...allWarehouses];
     if (resolvedOrder?.from_warehouse?.id && resolvedOrder?.from_warehouse?.name) {
       const fromWh = resolvedOrder.from_warehouse;
       const alreadyExists = list.some((w) => w.id === fromWh.id);
@@ -336,10 +339,10 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
       }
     }
     return list;
-  }, [allWarehouses, formData.warehouse_id_to, resolvedOrder?.from_warehouse]);
+  }, [allWarehouses, resolvedOrder?.from_warehouse]);
 
   const warehousesTo = React.useMemo(() => {
-    const list = [...assignedWarehouses];
+    const list = [...allWarehouses];
     if (resolvedOrder?.to_warehouse?.id && resolvedOrder?.to_warehouse?.name) {
       const toWh = resolvedOrder.to_warehouse;
       const alreadyExists = list.some((w) => w.id === toWh.id);
@@ -348,7 +351,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
       }
     }
     return list;
-  }, [assignedWarehouses, resolvedOrder?.to_warehouse]);
+  }, [allWarehouses, resolvedOrder?.to_warehouse]);
 
   const targetWarehouse = React.useMemo(() => {
     const warehouseId = resolvedOrder?.warehouse_id_to;
@@ -423,16 +426,15 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
     }
   }, [open, resolvedOrder, asnOrder, defaultAsnType]);
 
-  // Auto-populate target = user's own warehouse and source = its parent on creation
+  // Auto-populate target = user's own warehouse on creation. Source stays
+  // user-selectable (stock receipts carry no source warehouse at all).
   React.useEffect(() => {
     if (open && !asnOrder && assignedWarehouses.length > 0 && !formData.warehouse_id_to) {
       const defaultWh = assignedWarehouses.find((w) => w.is_default) || assignedWarehouses[0];
       if (defaultWh) {
-        const parentId = defaultWh.parent_warehouse_id || defaultWh.parent?.id || '';
         setFormData((prev) => ({
           ...prev,
           warehouse_id_to: defaultWh.id,
-          warehouse_id_from: parentId || prev.warehouse_id_from,
         }));
       }
     }
@@ -448,14 +450,10 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   }, [formData.warehouse_id_from, formData.warehouse_id_to]);
 
   const handleChange = (field: string, value: string) => {
-    if (field === 'warehouse_id_to' && value) {
-      const target = assignedWarehouses.find((w) => w.id === value);
-      const parentId = target?.parent_warehouse_id || target?.parent?.id || '';
-      setFormData((prev) => ({
-        ...prev,
-        warehouse_id_to: value,
-        ...(parentId ? { warehouse_id_from: parentId } : {}),
-      }));
+    if (field === 'asn_type' && value === 'stock_receipt') {
+      // Stock receipts have no source warehouse (stock arrives from
+      // manufacturing units, not another warehouse).
+      setFormData((prev) => ({ ...prev, asn_type: value, warehouse_id_from: '' }));
       return;
     }
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -464,18 +462,22 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   /* CSV import handler — validates warehouses, auto-resolves items by code */
   const handleCsvImport = React.useCallback(
     async (rows: AsnEntryLineRow[]) => {
-      if (!formData.warehouse_id_from) {
-        toast({ title: 'Warehouse Required', description: 'Please select a source warehouse before importing items', variant: 'destructive' });
-        return;
-      }
       if (!formData.warehouse_id_to) {
         toast({ title: 'Warehouse Required', description: 'Please select a target warehouse before importing items', variant: 'destructive' });
         return;
       }
-      if (formData.warehouse_id_from === formData.warehouse_id_to) {
+      if (formData.asn_type !== 'stock_receipt' && !formData.warehouse_id_from) {
+        toast({ title: 'Warehouse Required', description: 'Please select a source warehouse before importing items', variant: 'destructive' });
+        return;
+      }
+      if (formData.asn_type !== 'stock_receipt' && formData.warehouse_id_from === formData.warehouse_id_to) {
         toast({ title: 'Invalid Warehouses', description: 'Source and target warehouse must be different', variant: 'destructive' });
         return;
       }
+
+      // Stock Receipt ASNs resolve items against the target (mother) warehouse.
+      const pickerWarehouseId =
+        formData.asn_type === 'stock_receipt' ? formData.warehouse_id_to : formData.warehouse_id_from;
 
       setImporting(true);
       try {
@@ -483,7 +485,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
         const resolveItem = async (row: AsnEntryLineRow): Promise<AsnEntryLineRow> => {
           if (!row.item_code || !accessToken) return row;
           try {
-            const url = `${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(row.item_code)}&warehouse_id=${encodeURIComponent(formData.warehouse_id_from)}`;
+            const url = `${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(row.item_code)}&warehouse_id=${encodeURIComponent(pickerWarehouseId)}`;
             const response = await fetch(url, {
               headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
             });
@@ -527,7 +529,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
         setImporting(false);
       }
     },
-    [accessToken, formData.warehouse_id_from, formData.warehouse_id_to],
+    [accessToken, formData.asn_type, formData.warehouse_id_from, formData.warehouse_id_to],
   );
 
   const handleClearAllItems = React.useCallback(() => {
@@ -551,15 +553,15 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
       return;
     }
 
-    if (!formData.warehouse_id_from) {
-      toast({ title: 'Warehouse Required', description: 'Please select a source warehouse', variant: 'destructive' });
-      return;
-    }
     if (!formData.warehouse_id_to) {
       toast({ title: 'Warehouse Required', description: 'Please select a target warehouse', variant: 'destructive' });
       return;
     }
-    if (formData.warehouse_id_from === formData.warehouse_id_to) {
+    if (formData.asn_type !== 'stock_receipt' && !formData.warehouse_id_from) {
+      toast({ title: 'Warehouse Required', description: 'Please select a source warehouse', variant: 'destructive' });
+      return;
+    }
+    if (formData.asn_type !== 'stock_receipt' && formData.warehouse_id_from === formData.warehouse_id_to) {
       toast({ title: 'Invalid Warehouses', description: 'Source and target warehouse must be different', variant: 'destructive' });
       return;
     }
@@ -684,7 +686,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                   onImport={handleCsvImport}
                   // onFileSelected={handleBulkUpload}
                   onPreviewChange={setCsvPreviewActive}
-                  disabled={importing || !formData.warehouse_id_from || !formData.warehouse_id_to}
+                  disabled={importing || !formData.warehouse_id_to || (formData.asn_type !== 'stock_receipt' && !formData.warehouse_id_from)}
                   sampleCsv={ASN_ENTRY_SAMPLE_CSV}
                   sampleFileName="asn-order-sample.csv"
                   previewColumns={[
@@ -714,7 +716,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                 items={lineItems}
                 onItemsChange={setLineItems}
                 disabled={isReadOnly}
-                warehouseIdFrom={formData.warehouse_id_from}
+                warehouseIdFrom={formData.asn_type === 'stock_receipt' ? formData.warehouse_id_to : formData.warehouse_id_from}
                 warehouseIdTo={formData.warehouse_id_to}
                 renderFooter={() => (
                   <tr>

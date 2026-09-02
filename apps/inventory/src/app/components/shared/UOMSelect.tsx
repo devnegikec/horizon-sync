@@ -18,6 +18,8 @@ interface UOMSelectProps {
   className?: string;
   /** Max height of the dropdown list in px. Defaults to 100. */
   listHeight?: number;
+  /** Restrict options to these UOM types (e.g. ['volume', 'area']). */
+  uomTypes?: string[];
 }
 
 interface UOMListProps {
@@ -67,9 +69,10 @@ export function UOMSelect({
   disabled = false,
   className,
   listHeight = 100,
+  uomTypes,
 }: UOMSelectProps) {
   const { accessToken } = useUserStore();
-  const { options, loading } = useUOMOptions(accessToken ?? '');
+  const { options, loading } = useUOMOptions(accessToken ?? '', uomTypes);
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
