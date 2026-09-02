@@ -115,7 +115,11 @@ function ItemSelect({ value, onChange }: ItemSelectProps) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button" role="combobox" aria-expanded={open} aria-controls="item-listbox" className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
+        <button type="button"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls="item-listbox"
+          className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
           <span className={cn('truncate', !value && 'text-muted-foreground')}>{value ? selectedName || 'Item selected' : 'Search items…'}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
@@ -123,7 +127,11 @@ function ItemSelect({ value, onChange }: ItemSelectProps) {
       <PopoverContent className="p-0 w-[340px]">
         <div className="flex items-center border-b px-3 py-2">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-          <Input ref={inputRef} value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="Search by name or code…" className="h-7 border-0 p-0 shadow-none focus-visible:ring-0" />
+          <Input ref={inputRef}
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Search by name or code…"
+            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0"/>
         </div>
         <div id="item-listbox" className="max-h-60 overflow-y-auto p-1">
           {loading && (
@@ -135,7 +143,13 @@ function ItemSelect({ value, onChange }: ItemSelectProps) {
           {!loading && items.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No items found.</p>}
           {!loading &&
             items.map((item) => (
-              <button key={item.id} type="button" className={cn('relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground', value === item.id && 'bg-accent text-accent-foreground')} onClick={() => handleSelect(item)}>
+              <button key={item.id}
+                type="button"
+                className={cn(
+                  'relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                  value === item.id && 'bg-accent text-accent-foreground',
+                )}
+                onClick={() => handleSelect(item)}>
                 <Check className={cn('mr-2 h-4 w-4 shrink-0', value === item.id ? 'opacity-100' : 'opacity-0')} />
                 <div className="text-left">
                   <p className="font-medium">{item.item_name}</p>
@@ -205,12 +219,15 @@ export function ActivationManagement() {
     }
   };
 
-  const stats = React.useMemo(() => ({
-    total: batches.length,
-    active: batches.filter((b) => b.status === 'active').length,
-    expired: batches.filter((b) => b.status === 'expired').length,
-    consumed: batches.filter((b) => b.status === 'consumed').length,
-  }), [batches]);
+  const stats = React.useMemo(
+    () => ({
+      total: batches.length,
+      active: batches.filter((b) => b.status === 'active').length,
+      expired: batches.filter((b) => b.status === 'expired').length,
+      consumed: batches.filter((b) => b.status === 'consumed').length,
+    }),
+    [batches],
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -232,12 +249,14 @@ export function ActivationManagement() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        {([
-          { label: 'Total Batches', value: stats.total },
-          { label: 'Active', value: stats.active },
-          { label: 'Expired', value: stats.expired },
-          { label: 'Consumed', value: stats.consumed },
-        ] as const).map(({ label, value }) => (
+        {(
+          [
+            { label: 'Total Batches', value: stats.total },
+            { label: 'Active', value: stats.active },
+            { label: 'Expired', value: stats.expired },
+            { label: 'Consumed', value: stats.consumed },
+          ] as const
+        ).map(({ label, value }) => (
           <Card key={label}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
@@ -257,7 +276,10 @@ export function ActivationManagement() {
             <Zap className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium">No batches</p>
             <p className="text-muted-foreground mb-4">Create a batch to track a manufacturing lot</p>
-            <Button size="sm" onClick={openDialog}><Plus className="h-4 w-4 mr-2" />New Batch</Button>
+            <Button size="sm" onClick={openDialog}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Batch
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -288,10 +310,12 @@ export function ActivationManagement() {
                     return (
                       <TableRow key={batch.id}>
                         <TableCell className="font-medium">{batch.batch_no}</TableCell>
-                        <TableCell>{batch.item_name || (batch.item_id ? batch.item_id.slice(0, 8) : '—')}</TableCell>
+                        <TableCell>{batch.product_name || batch.item_name || (batch.item_id ? batch.item_id.slice(0, 8) : '—')}</TableCell>
                         <TableCell>{batch.expiry_date ? batch.expiry_date.slice(0, 10) : '—'}</TableCell>
                         <TableCell>{batch.created_at ? new Date(batch.created_at).toLocaleDateString() : '—'}</TableCell>
-                        <TableCell><Badge variant={cfg.variant}>{cfg.label}</Badge></TableCell>
+                        <TableCell>
+                          <Badge variant={cfg.variant}>{cfg.label}</Badge>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -314,12 +338,19 @@ export function ActivationManagement() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="batch_no">Batch No *</Label>
-              <Input id="batch_no" value={form.batch_no} onChange={(e) => updateField('batch_no', e.target.value)} maxLength={100} placeholder="e.g. LOT-2026-00042" />
+              <Input id="batch_no"
+                value={form.batch_no}
+                onChange={(e) => updateField('batch_no', e.target.value)}
+                maxLength={100}
+                placeholder="e.g. LOT-2026-00042"/>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="manufacturing_date">Mfg. Date</Label>
-                <Input id="manufacturing_date" type="date" value={form.manufacturing_date} onChange={(e) => updateField('manufacturing_date', e.target.value)} />
+                <Input id="manufacturing_date"
+                  type="date"
+                  value={form.manufacturing_date}
+                  onChange={(e) => updateField('manufacturing_date', e.target.value)}/>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="expiry_date">Expiry Date</Label>
@@ -328,7 +359,11 @@ export function ActivationManagement() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="supplier_batch_no">Supplier Batch No</Label>
-              <Input id="supplier_batch_no" value={form.supplier_batch_no} onChange={(e) => updateField('supplier_batch_no', e.target.value)} maxLength={100} placeholder="Optional" />
+              <Input id="supplier_batch_no"
+                value={form.supplier_batch_no}
+                onChange={(e) => updateField('supplier_batch_no', e.target.value)}
+                maxLength={100}
+                placeholder="Optional"/>
             </div>
             <div className="space-y-1.5">
               <Label>Status</Label>
@@ -349,7 +384,9 @@ export function ActivationManagement() {
             </div>
             {formError && <p className="text-sm text-destructive">{formError}</p>}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={creating}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={creating}>
+                Cancel
+              </Button>
               <Button type="submit" disabled={creating || !form.item_id || !form.batch_no.trim()}>
                 {creating ? (
                   <>
