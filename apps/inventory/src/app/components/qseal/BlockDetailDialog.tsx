@@ -1,13 +1,14 @@
 import * as React from 'react';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { Download, Loader2, AlertCircle, CheckCircle2, RefreshCw, Layers } from 'lucide-react';
+import { Download, Loader2, AlertCircle, CheckCircle2, RefreshCw, Layers, QrCode } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
+import { DetailDialog } from '@horizon-sync/ui/components';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 
 import { environment } from '../../../environments/environment';
@@ -17,6 +18,8 @@ import { qrBlockService } from '../../features/qr-management/services/qrBlockSer
 import type { BlockStatus, ProductItem, QRBlock, QRType } from '../../features/qr-management/types/qrBlock.types';
 import { getApiErrorMessage } from '../../features/qr-management/utils/apiError';
 import { formatDate } from '../../utility/formatDate';
+import { useState } from 'react';
+
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -76,11 +79,11 @@ function ActivationSummary({ block }: { block: QRBlock }) {
 /*  Download button — always fetches fresh signed URL                 */
 /* ------------------------------------------------------------------ */
 
-function DownloadButton({ blockId, batch }: { blockId: string; batch: string }) {
+function DownloadButton({ blockId, batch, disabled }: { blockId: string; batch: string; disabled?: boolean }) {
   const { download, loading, error } = useBlockDownload();
   return (
     <div className="space-y-1">
-      <Button variant="outline" size="sm" onClick={() => download(blockId, `qr_${batch}.xlsx`)} disabled={loading}>
+      <Button variant="outline" size="sm" onClick={() => download(blockId, `qr_${batch}.xlsx`)} disabled={disabled}>
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -103,10 +106,11 @@ function DownloadButton({ blockId, batch }: { blockId: string; batch: string }) 
 /*  Parent (Master Pack) download — calls new /qseal/blocks API      */
 /* ------------------------------------------------------------------ */
 
-function ParentBlockDownloadButton({ blockId, block }: { blockId: string; block: QRBlock }) {
+function ParentBlockDownloadButton({ blockId, block, disabled }: { blockId: string; block: QRBlock; disabled?: boolean }) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  // const [isDisabled, setIsDisabled] = useState<boolean>(false);
 
   const handleDownload = async () => {
     setLoading(true);
@@ -140,7 +144,7 @@ function ParentBlockDownloadButton({ blockId, block }: { blockId: string; block:
 
   return (
     <div className="space-y-1">
-      <Button variant="outline" size="sm" onClick={handleDownload} disabled={loading}>
+      <Button variant="outline" size="sm" onClick={handleDownload} disabled={disabled}>
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -297,7 +301,38 @@ function BlockInfoPanel({
         </div>
       )}
 
-      {block.status === 'failed' && <FailedBlockActions block={block} onRetry={onRetry} retrying={retrying} retryError={retryError} />}
+      {block.status === 'failed' && (
+        <div className="col-span-2 space-y-2">
+          <div className="flex items-center gap-2 text-sm text-red-600">
+            <AlertCircle className="h-4 w-4" />
+            Generation failed. Reserved credits were returned.
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <DownloadButton blockId={block.id} batch={block.batch} disabled={true} />
+
+            {block.master_pack_enabled && (
+              <div className="border rounded-md p-3 space-y-2 bg-muted/30">
+                <div className="flex items-center gap-1.5 text-sm font-medium">
+                  <Layers className="h-4 w-4" />
+                  Master Pack Parent Block
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {block.qseal_parent_count?.toLocaleString() ?? '—'} parent QR codes
+                  {block.master_pack_size ? ` (${block.master_pack_size} items per pack)` : ` (0 items per pack)`}
+                </p>
+                <ParentBlockDownloadButton blockId={block.id} block={block} disabled={true} />
+              </div>
+            )}
+            {onRetry && (
+              <Button variant="outline" size="sm" disabled={retrying} onClick={() => onRetry(block)}>
+                {retrying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                {retrying ? 'Queueing retry…' : 'Retry with same settings'}
+              </Button>
+            )}
+            {retryError && <p className="text-xs text-destructive">{retryError}</p>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -544,36 +579,45 @@ export function BlockDetailDialog({ blockId, open, onOpenChange, onRetry }: Bloc
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+    <DetailDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      contentClassName="max-w-4xl flex flex-col"
+      style={{ height: 'min(85vh, 820px)' }}
+      title={'Block Details'}
+      loading={loading}
+      loadingMessage="Loading details..."
+    >
+      {/* <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Block Details</DialogTitle>
-        </DialogHeader>
+        </DialogHeader> */}
 
-        {loading && !block && (
-          <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading block…
-          </div>
-        )}
+      {loading && !block && (
+        <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading block…
+        </div>
+      )}
 
-        {block && (
-          <div className="space-y-6">
-            <BlockInfoPanel block={block} onRetry={onRetry ? retry : undefined} retrying={retrying} retryError={retryError} />
+      {block && (
+        <div className="space-y-6">
+          <BlockInfoPanel block={block} onRetry={onRetry ? retry : undefined} retrying={retrying} retryError={retryError} />
 
-            {block.status === 'completed' && (
-              <MasterPackAutoLink block={block} onLinked={refetch} />
-            )}
+          {block.status === 'completed' && (
+            <MasterPackAutoLink block={block} onLinked={refetch} />
+          )}
 
-            {block.status === 'completed' && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold">Generated Items ({block.quantity.toLocaleString()})</h3>
-                <BlockItemsTable blockId={block.id} />
-              </div>
-            )}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          {block.status === 'completed' && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold">Generated Items ({block.quantity.toLocaleString()})</h3>
+              <BlockItemsTable blockId={block.id} />
+            </div>
+          )}
+        </div>
+      )}
+      {/* </DialogContent> */}
+    </DetailDialog>
   );
 }
