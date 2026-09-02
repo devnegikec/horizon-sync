@@ -360,6 +360,31 @@ export interface InboundException {
   evidence: InboundExceptionEvidence[];
 }
 
+export type BulkDispositionAction =
+  | 'release_to_receiving'
+  | 'move_to_hold'
+  | 'move_to_quarantine'
+  | 'return_to_sender'
+  | 'dispose';
+
+export interface PaginatedInboundExceptions {
+  exceptions: InboundException[];
+  pagination: WMSPagination;
+}
+
+export interface BulkDispositionItemResult {
+  id: string;
+  status: string;
+  error: string | null;
+  exception: InboundException | null;
+}
+
+export interface BulkDispositionResponse {
+  results: BulkDispositionItemResult[];
+  disposed_count: number;
+  failed_count: number;
+}
+
 // ============================================
 // PUT-AWAY TYPES
 // ============================================

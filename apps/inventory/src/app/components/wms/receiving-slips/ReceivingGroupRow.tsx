@@ -7,6 +7,7 @@ import { useToast } from '@horizon-sync/ui/hooks';
 
 import type { ReceivingSlipGroup, ReceivingSlipGroupItem } from '../../../types/wms.types';
 
+import { ConditionBadge } from './ConditionBadge';
 import { FlagBadge } from './FlagBadge';
 import { InboundExceptionDialog } from './InboundExceptionDialog';
 
@@ -21,6 +22,16 @@ function getGroupFlag(group: ReceivingSlipGroup): string {
   if (allRejected) return 'rejected';
   const anyRejected = flags.some((flag) => flag === 'rejected');
   return anyRejected ? 'mixed' : (group.items[0]?.flag ?? 'ok');
+}
+
+/** Aggregate a group-level condition code from its child items. */
+function getGroupCondition(group: ReceivingSlipGroup): string | null {
+  const codes = group.items
+    .map((item) => item.condition_code?.trim().toUpperCase() ?? null)
+    .filter((code): code is string => Boolean(code));
+  if (codes.length === 0) return null;
+  const unique = [...new Set(codes)];
+  return unique.length === 1 ? unique[0] : 'MIXED';
 }
 
 function ReceivingItemRow({
@@ -66,6 +77,12 @@ function ReceivingItemRow({
           {item.manufacturing_date && <span>Mfg: {new Date(item.manufacturing_date).toLocaleDateString()}</span>}
           {item.expiry_date && <span>Exp: {new Date(item.expiry_date).toLocaleDateString()}</span>}
         </span>
+      </td>
+      <td className="px-4 py-1.5">
+        <FlagBadge flag={item.flag} />
+      </td>
+      <td className="px-4 py-1.5">
+        <ConditionBadge code={item.condition_code} />
       </td>
       <td className="px-2 py-1.5 text-right">
         <span className="inline-flex gap-2">
@@ -122,6 +139,7 @@ export function ReceivingGroupRow({
   const sku = group.items[0]?.sku ?? '—';
   const qty = group.items.length;
   const groupFlag = getGroupFlag(group);
+  const groupCondition = getGroupCondition(group);
 
   return (
     <>
@@ -147,6 +165,9 @@ export function ReceivingGroupRow({
         <td className="px-4 py-2 text-center font-medium">{qty}</td>
         <td className="px-4 py-2">
           <FlagBadge flag={groupFlag} />
+        </td>
+        <td className="px-4 py-2">
+          <ConditionBadge code={groupCondition} />
         </td>
         <td className="px-4 py-2" />
         {/* Actions placeholder */}
