@@ -17,7 +17,7 @@ import { cn } from '@horizon-sync/ui/lib/utils';
 import { useBatches } from '../../hooks/useBatches';
 import { useCreateBatch } from '../../hooks/useCreateBatch';
 import { notificationService } from '../../services/notificationService';
-import type { BatchStatus } from '../../types/batch.types';
+import type { BatchListItem, BatchStatus } from '../../types/batch.types';
 import { apiRequest } from '../../utility/api/core';
 
 interface ItemPickerItem {
@@ -57,6 +57,23 @@ const STATUS_CONFIG: Record<BatchStatus, { label: string; variant: 'default' | '
   expired: { label: 'Expired', variant: 'warning' },
   consumed: { label: 'Consumed', variant: 'secondary' },
 };
+
+/** True when an expiry date is in the past (date-only comparison). */
+function isExpiredDate(value: string | null): boolean {
+  if (!value) return false;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  return date < today;
+}
+
+/** Derive the effective status, treating an active batch with a past expiry as expired. */
+function getEffectiveStatus(batch: BatchListItem): BatchStatus {
+  if (batch.status === 'expired' || isExpiredDate(batch.expiry_date)) return 'expired';
+  return batch.status ?? 'active';
+}
 
 interface ItemSelectProps {
   value: string;
@@ -222,9 +239,9 @@ export function ActivationManagement() {
   const stats = React.useMemo(
     () => ({
       total: batches.length,
-      active: batches.filter((b) => b.status === 'active').length,
-      expired: batches.filter((b) => b.status === 'expired').length,
-      consumed: batches.filter((b) => b.status === 'consumed').length,
+      active: batches.filter((b) => getEffectiveStatus(b) === 'active').length,
+      expired: batches.filter((b) => getEffectiveStatus(b) === 'expired').length,
+      consumed: batches.filter((b) => getEffectiveStatus(b) === 'consumed').length,
     }),
     [batches],
   );
@@ -306,7 +323,7 @@ export function ActivationManagement() {
                 )}
                 {!loading &&
                   batches.map((batch) => {
-                    const cfg = STATUS_CONFIG[batch.status ?? 'active'];
+                    const cfg = STATUS_CONFIG[getEffectiveStatus(batch)];
                     return (
                       <TableRow key={batch.id}>
                         <TableCell className="font-medium">{batch.batch_no}</TableCell>

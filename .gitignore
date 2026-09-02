@@ -9,7 +9,7 @@ out-tsc
 node_modules
 
 .deploy
-
+.codeant-pr-comments.json
 # IDEs and editors
 /.idea
 .project

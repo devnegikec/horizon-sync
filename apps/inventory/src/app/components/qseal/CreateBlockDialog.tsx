@@ -75,6 +75,10 @@ function normalizeKey(value: string | null | undefined): string | null {
 function batchProductMismatch(batch: BatchListItem, product: QSealProductListItem | null): boolean {
   if (!product) return false;
 
+  const batchItemId = normalizeKey(batch.item_id);
+  const productItemId = normalizeKey(product.item_id);
+  if (batchItemId && productItemId) return batchItemId !== productItemId;
+
   const productSku = normalizeKey(product.sku);
   const batchSku = normalizeKey(batch.sku);
   if (productSku && batchSku) return productSku !== batchSku;
