@@ -1,9 +1,9 @@
 import * as React from 'react';
 
-import { Upload, Image, Link, Clock, MoreHorizontal, Info, Trash2, Package } from 'lucide-react';
+import { Upload, Image, Link, Clock, MoreHorizontal, Info, Trash2, Package, QrCode, Tag } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 
-import { DetailDialog } from '@horizon-sync/ui/components';
+import { DetailDialog, Badge } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
 import { Input } from '@horizon-sync/ui/components/ui/input';
@@ -41,6 +41,23 @@ interface FormValues {
   image_url: string;
   banner_image_url: string;
 }
+
+const STATUS_COLORS = {
+  active: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+  inactive: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+};
+
+const QR_TYPE_COLORS: Record<string, string> = {
+  dynamic: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+  secure_qr_runtime: 'bg-violet-100 text-violet-800 dark:bg-violet-900/20 dark:text-violet-400',
+  static_qr: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300',
+};
+
+const QR_TYPE_LABELS: Record<string, string> = {
+  dynamic: 'Dynamic',
+  secure_qr_runtime: 'Secure QR Runtime',
+  static_qr: 'Static QR',
+};
 
 const ACTIVATION_OPTIONS = [
   { value: 'pre', label: 'Pre-Activated' },
@@ -128,7 +145,7 @@ function BrandSelectSection({ brandId, onBrandChange, disabled = false }: BrandS
       <div className="space-y-1">
         <LabelWithTooltip label="Brand"
           required
-          hint="Select the brand this product belongs to. The brand's ECDSA key pair will be used to sign QR codes."/>
+          hint="Select the brand this product belongs to. The brand's ECDSA key pair will be used to sign QR codes." />
         <Select value={brandId} onValueChange={onBrandChange} disabled={loading || disabled}>
           <SelectTrigger aria-label="Brand">
             <SelectValue placeholder={loading ? 'Loading brands…' : 'Select a brand'} />
@@ -236,7 +253,7 @@ function ImageDropZone({ label, required, hint, sizeHint, value, error, onFileSe
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) handleFile(f);
-        }}/>
+        }} />
       {error && (
         <p className="text-xs text-destructive" role="alert">
           {error}
@@ -279,14 +296,14 @@ function ProductImagesSection({
           value={imageUrl}
           error={logoError}
           onFileSelect={onImageSelect}
-          onRemove={onImageRemove}/>
+          onRemove={onImageRemove} />
         <ImageDropZone label="Banner Image"
           hint="The banner image will be displayed above product content"
           sizeHint="Recommended size: 1200x400px (PNG, JPG, WebP)"
           value={bannerImageUrl}
           error={bannerError}
           onFileSelect={onBannerSelect}
-          onRemove={onBannerRemove}/>
+          onRemove={onBannerRemove} />
       </div>
     </div>
   );
@@ -348,7 +365,7 @@ function ProductInfoSection({ register, control, errors, shelfLifeSettings, shel
                   ))}
                 </SelectContent>
               </Select>
-            )}/>
+            )} />
           {!shelfLifeLoading && !shelfLifeError && shelfLifeSettings.length === 0 && (
             <p className="text-xs text-muted-foreground">No active Shelf Life values are configured.</p>
           )}
@@ -376,7 +393,7 @@ function PackagingDetailsSection({ register, errors }: PackagingDetailsSectionPr
           <LabelWithTooltip htmlFor="unit_name"
             label="Unit of Measure (UMO)"
             required
-            hint="The unit in which the product is sold, e.g. Each, Box, Bottle"/>
+            hint="The unit in which the product is sold, e.g. Each, Box, Bottle" />
           <Input id="unit_name" placeholder="e.g. Each" {...register('unit_name', { required: 'Unit of measure is required' })} />
           {errors.unit_name && <p className="text-xs text-destructive">{errors.unit_name.message}</p>}
         </div>
@@ -384,7 +401,7 @@ function PackagingDetailsSection({ register, errors }: PackagingDetailsSectionPr
           <LabelWithTooltip htmlFor="conversion_factor"
             label="Conversion Factor"
             required
-            hint="Number of base units that make up this packaging unit (e.g. 12 for a case of 12 bottles)"/>
+            hint="Number of base units that make up this packaging unit (e.g. 12 for a case of 12 bottles)" />
           <Input id="conversion_factor"
             type="number"
             min={0}
@@ -392,7 +409,7 @@ function PackagingDetailsSection({ register, errors }: PackagingDetailsSectionPr
             {...register('conversion_factor', {
               required: 'Conversion factor is required',
               min: { value: 0, message: 'Must be greater than or equal to 0' },
-            })}/>
+            })} />
           {errors.conversion_factor && <p className="text-xs text-destructive">{errors.conversion_factor.message}</p>}
         </div>
       </div>
@@ -436,7 +453,7 @@ function ProductUrlsSection({ register, errors }: ProductUrlsSectionProps) {
           <LabelWithTooltip htmlFor="landing_page"
             label="Landing Page"
             required
-            hint="Main product page URL where customers can learn about this product"/>
+            hint="Main product page URL where customers can learn about this product" />
           <Input id="landing_page" type="url" placeholder="https://..." {...register('landing_page', { required: 'Landing page is required' })} />
           {errors.landing_page && <p className="text-xs text-destructive">{errors.landing_page.message}</p>}
         </div>
@@ -444,11 +461,11 @@ function ProductUrlsSection({ register, errors }: ProductUrlsSectionProps) {
           <LabelWithTooltip htmlFor="client_product_auth_url"
             label="Product Auth URL"
             required
-            hint="URL where customers will be sent after QR scan"/>
+            hint="URL where customers will be sent after QR scan" />
           <Input id="client_product_auth_url"
             type="url"
             placeholder="https://..."
-            {...register('client_product_auth_url', { required: 'Product auth URL is required' })}/>
+            {...register('client_product_auth_url', { required: 'Product auth URL is required' })} />
           {errors.client_product_auth_url && <p className="text-xs text-destructive">{errors.client_product_auth_url.message}</p>}
         </div>
       </div>
@@ -490,7 +507,7 @@ function ActivationDetailsSection({
         <div className="space-y-1">
           <LabelWithTooltip label="Activation Method"
             required
-            hint="Choose how customers will activate this product (pre-activated or post-activation)"/>
+            hint="Choose how customers will activate this product (pre-activated or post-activation)" />
           <Select value={activationMethod} onValueChange={onActivationChange}>
             <SelectTrigger>
               <SelectValue />
@@ -834,10 +851,52 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
     return submitValidForm(event);
   };
 
+  function ProductBadges({ product }: { product: QSealProduct | null }) {
+    const statusLabel = product?.is_active ? 'Active' : 'Inactive';
+    const statusColor = product?.is_active ? STATUS_COLORS.active : STATUS_COLORS.inactive;
+
+    return (
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge variant="secondary" className={statusColor}>
+          {statusLabel}
+        </Badge>
+        {product?.qr_type && (
+          <Badge variant="secondary" className={QR_TYPE_COLORS[product.qr_type] || ''}>
+            {QR_TYPE_LABELS[product.qr_type] || product.qr_type}
+          </Badge>
+        )}
+        {product?.industry && (
+          <Badge variant="outline" className="gap-1">
+            <Tag className="h-3 w-3" />
+            {product.industry}
+          </Badge>
+        )}
+      </div>
+    );
+  }
+
   return (
     <DetailDialog open={open}
       onOpenChange={onOpenChange}
-      title={isEdit ? 'Edit QSeal Product' : 'Create New Product'}
+      // title={isEdit ? 'Edit QSeal Product' : 'Create New Product'}
+      title={
+
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <QrCode className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold">{isEdit ? `Edit QSeal Product: ` : 'Create New Product'}</p>
+              <div className="space-y-3">
+                {isEdit && product?.name && <p className="text-xs text-muted-foreground font-mono font-normal">{product.name}</p>}
+              </div>
+              {product?.gtin && <p className="text-xs text-muted-foreground font-mono font-normal">{product.gtin}</p>}
+            </div>
+          </div>
+          <ProductBadges product={product ?? null} />
+        </div>
+      }
       size="lg"
       contentClassName="max-w-4xl flex flex-col"
       style={{ height: 'min(85vh, 820px)' }}
@@ -872,14 +931,14 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
             setBannerPreview('');
             setRemoveBanner(true);
             setBannerError(undefined);
-          }}/>
+          }} />
         <Separator />
         <ProductInfoSection register={register}
           control={control}
           errors={errors}
           shelfLifeSettings={shelfLifeSettings}
           shelfLifeLoading={shelfLifeLoading}
-          shelfLifeError={shelfLifeError}/>
+          shelfLifeError={shelfLifeError} />
         <Separator />
         <PackagingDetailsSection register={register} errors={errors} />
         <Separator />
@@ -895,11 +954,11 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
           serialPrefixValidationError={errors.serial_prefix_setting_id?.message}
           onActivationChange={(v) => setValue('activation_method', v)}
           onSrNumberChange={(v) => setValue('sr_number_type', v)}
-          onSerialPrefixChange={(v) => setValue('serial_prefix_setting_id', v, { shouldValidate: true })}/>
+          onSerialPrefixChange={(v) => setValue('serial_prefix_setting_id', v, { shouldValidate: true })} />
         <Separator />
         <AdditionalDetailsSection register={register}
           redirectToClient={redirectToClient}
-          onRedirectChange={(checked) => setValue('redirect_to_client', checked)}/>
+          onRedirectChange={(checked) => setValue('redirect_to_client', checked)} />
       </form>
     </DetailDialog>
   );
