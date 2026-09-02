@@ -114,7 +114,7 @@ function ExceptionsTable({
   canDispose,
   selected,
   loading,
-  activeId,
+  busy,
   onToggleAll,
   onToggle,
   onDispose,
@@ -123,12 +123,13 @@ function ExceptionsTable({
   canDispose: boolean;
   selected: Set<string>;
   loading: boolean;
-  activeId: string | null;
+  busy: boolean;
   onToggleAll: () => void;
   onToggle: (id: string) => void;
   onDispose: (exception: InboundException, action: BulkDispositionAction) => void;
 }) {
-  const allVisibleSelected = exceptions.length > 0 && exceptions.every((e) => selected.has(e.id));
+  const selectable = exceptions.filter((e) => !isResolvedStatus(e.status));
+  const allVisibleSelected = selectable.length > 0 && selectable.every((e) => selected.has(e.id));
 
   return (
     <div className="overflow-x-auto rounded-lg border">
@@ -137,7 +138,7 @@ function ExceptionsTable({
           <tr>
             {canDispose && (
               <th className="w-10 px-3 py-2">
-                <input type="checkbox" aria-label="Select all" checked={allVisibleSelected} onChange={onToggleAll} disabled={loading} />
+                <input type="checkbox" aria-label="Select all" checked={allVisibleSelected} onChange={onToggleAll} disabled={loading || selectable.length === 0} />
               </th>
             )}
             <th className="text-left px-4 py-2 font-medium text-muted-foreground">Item</th>
@@ -154,7 +155,7 @@ function ExceptionsTable({
               exception={exception}
               canDispose={canDispose}
               isSelected={selected.has(exception.id)}
-              busy={activeId === exception.id}
+              busy={busy}
               onToggle={onToggle}
               onDispose={onDispose}/>
           ))}
@@ -246,9 +247,18 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
   const [activeId, setActiveId] = React.useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = React.useState(false);
 
+  const requestSeqRef = React.useRef(0);
+  const selectableIds = React.useMemo(
+    () => exceptions.filter((e) => !isResolvedStatus(e.status)).map((e) => e.id),
+    [exceptions],
+  );
+
   const load = React.useCallback(
     async (targetPage: number) => {
       if (!token) return;
+      const seq = requestSeqRef.current + 1;
+      requestSeqRef.current = seq;
+      setSelected(new Set());
       setLoading(true);
       setError(null);
       setNotice(null);
@@ -260,13 +270,15 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
           page: targetPage,
           page_size: PAGE_SIZE,
         });
+        if (seq !== requestSeqRef.current) return;
         setExceptions(res.exceptions ?? []);
         setPagination(res.pagination ?? null);
         setPage(res.pagination?.page ?? targetPage);
       } catch (err) {
+        if (seq !== requestSeqRef.current) return;
         setError(err instanceof Error ? err.message : 'Failed to load exceptions');
       } finally {
-        setLoading(false);
+        if (seq === requestSeqRef.current) setLoading(false);
       }
     },
     [token, warehouseId, destination, status],
@@ -280,11 +292,11 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
   const toggleAll = () => {
     setSelected((prev) => {
       const next = new Set(prev);
-      const allSelected = exceptions.length > 0 && exceptions.every((e) => next.has(e.id));
+      const allSelected = selectableIds.length > 0 && selectableIds.every((id) => next.has(id));
       if (allSelected) {
-        exceptions.forEach((e) => next.delete(e.id));
+        selectableIds.forEach((id) => next.delete(id));
       } else {
-        exceptions.forEach((e) => next.add(e.id));
+        selectableIds.forEach((id) => next.add(id));
       }
       return next;
     });
@@ -352,6 +364,8 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
     }
   };
 
+  const anyBusy = bulkBusy || activeId !== null;
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
@@ -408,7 +422,7 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
       {notice && <p className="text-sm text-emerald-600">{notice}</p>}
 
       {canDispose && selected.size > 0 && (
-        <BulkActionBar count={selected.size} busy={bulkBusy} onAction={disposeBulk} onClear={() => setSelected(new Set())} />
+        <BulkActionBar count={selected.size} busy={anyBusy} onAction={disposeBulk} onClear={() => setSelected(new Set())} />
       )}
 
       {loading && <p className="text-sm text-muted-foreground">Loading exception queue…</p>}
@@ -421,7 +435,7 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
           canDispose={canDispose}
           selected={selected}
           loading={loading}
-          activeId={activeId}
+          busy={anyBusy}
           onToggleAll={toggleAll}
           onToggle={toggleOne}
           onDispose={disposeOne}/>
