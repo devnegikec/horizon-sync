@@ -36,6 +36,11 @@ export interface BatchListItem {
   id: string;
   batch_no: string;
   item_id: string;
+  /** ERP item / product SKU (returned by the /batches list endpoint) */
+  sku?: string | null;
+  /** Product display name (returned by the /batches list endpoint) */
+  product_name?: string | null;
+  /** @deprecated older field name — prefer product_name */
   item_name?: string | null;
   expiry_date: string | null;
   status: BatchStatus | null;

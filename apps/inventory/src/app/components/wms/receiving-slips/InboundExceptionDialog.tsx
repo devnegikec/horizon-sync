@@ -1,7 +1,7 @@
 import * as React from 'react';
 
-import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Textarea } from '@horizon-sync/ui/components';
 import { useUserStore } from '@horizon-sync/store';
+import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Textarea } from '@horizon-sync/ui/components';
 
 import type { InboundExceptionReason, ReceivingSlipGroupItem } from '../../../types/wms.types';
 import { inboundApi } from '../../../utility/api/wms';
@@ -41,7 +41,10 @@ export function InboundExceptionDialog({
 
   React.useEffect(() => {
     if (!open || !token) return;
-    inboundApi.listExceptionReasons(token).then(setReasons).catch((err: Error) => setError(err.message));
+    inboundApi
+      .listExceptionReasons(token)
+      .then(setReasons)
+      .catch((err: Error) => setError(err.message));
   }, [open, token]);
 
   const requiresDestination = classification !== 'short';
@@ -74,10 +77,14 @@ export function InboundExceptionDialog({
           <DialogTitle>Classify inbound exception</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 text-sm">
-          <p className="rounded-md bg-muted p-3 font-mono">{item?.sku} · {item?.serial_number}</p>
+          <p className="rounded-md bg-muted p-3 font-mono">
+            {item?.sku} · {item?.serial_number}
+          </p>
           <div className="space-y-1">
             <Label htmlFor="inbound-classification">Classification</Label>
-            <select id="inbound-classification" className="w-full rounded-md border bg-background px-3 py-2" value={classification}
+            <select id="inbound-classification"
+              className="w-full rounded-md border bg-background px-3 py-2"
+              value={classification}
               onChange={(event) => {
                 const value = event.target.value as Classification;
                 setClassification(value);
@@ -93,17 +100,32 @@ export function InboundExceptionDialog({
           </div>
           <div className="space-y-1">
             <Label htmlFor="inbound-reason">Reason code</Label>
-            <select id="inbound-reason" className="w-full rounded-md border bg-background px-3 py-2" value={reasonCode}
-              onChange={(event) => setReasonCode(event.target.value)}>
-              {reasons.map((reason) => <option key={reason.code} value={reason.code}>{reason.code} — {reason.name}</option>)}
+            <select id="inbound-reason"
+              className="w-full rounded-md border bg-background px-3 py-2"
+              value={reasonCode}
+              onChange={(event) => {
+                const code = event.target.value;
+                setReasonCode(code);
+                const reason = reasons.find((r) => r.code === code);
+                if (reason?.default_destination) setDestination(reason.default_destination);
+              }}>
+              {reasons.map((reason) => (
+                <option key={reason.code} value={reason.code}>
+                  {reason.code} — {reason.name}
+                </option>
+              ))}
             </select>
           </div>
           {requiresDestination && (
             <div className="space-y-1">
               <Label htmlFor="inbound-destination">Physical destination</Label>
-              <select id="inbound-destination" className="w-full rounded-md border bg-background px-3 py-2" value={destination}
+              <select id="inbound-destination"
+                className="w-full rounded-md border bg-background px-3 py-2"
+                value={destination}
                 onChange={(event) => setDestination(event.target.value as 'HOLD' | 'QUARANTINE' | '')}>
-                <option value="" disabled>Select a physical destination</option>
+                <option value="" disabled>
+                  Select a physical destination
+                </option>
                 <option value="HOLD">HOLD</option>
                 <option value="QUARANTINE">QUARANTINE</option>
               </select>
@@ -115,14 +137,20 @@ export function InboundExceptionDialog({
           </div>
           <div className="space-y-1">
             <Label htmlFor="inbound-evidence">Photo or evidence (optional)</Label>
-            <Input id="inbound-evidence" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"
-              onChange={(event) => setEvidence(event.target.files?.[0] ?? null)} />
+            <Input id="inbound-evidence"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              onChange={(event) => setEvidence(event.target.files?.[0] ?? null)}/>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
-          <Button onClick={submit} disabled={submitting || !reasonCode || (requiresDestination && !destination)}>{submitting ? 'Saving…' : 'Create exception'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={submitting || !reasonCode || (requiresDestination && !destination)}>
+            {submitting ? 'Saving…' : 'Create exception'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

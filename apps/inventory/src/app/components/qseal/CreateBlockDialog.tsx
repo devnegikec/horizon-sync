@@ -65,16 +65,51 @@ function isExpiredDate(value: string | null): boolean {
   return date < today;
 }
 
-function getBatchError(batch: BatchListItem | null, product: QSealProductListItem | null): string | null {
-  if (!batch) return null;
-  if (product?.item_id && batch.item_id && product.item_id !== batch.item_id) {
-    return `This batch belongs to a different item${batch.item_name ? ` (${batch.item_name})` : ''}. Select the batch matching this product.`;
-  }
+/** Normalize an optional string key for case-insensitive comparison. */
+function normalizeKey(value: string | null | undefined): string | null {
+  const trimmed = value?.trim().toLowerCase();
+  return trimmed || null;
+}
+
+/** True when the batch's product does not match the selected QR product. */
+function batchProductMismatch(batch: BatchListItem, product: QSealProductListItem | null): boolean {
+  if (!product) return false;
+
+  const batchItemId = normalizeKey(batch.item_id);
+  const productItemId = normalizeKey(product.item_id);
+  if (batchItemId && productItemId) return batchItemId !== productItemId;
+
+  const productSku = normalizeKey(product.sku);
+  const batchSku = normalizeKey(batch.sku);
+  if (productSku && batchSku) return productSku !== batchSku;
+
+  const productName = normalizeKey(product.name);
+  const batchName = normalizeKey(batch.product_name ?? batch.item_name);
+  if (productName && batchName) return productName !== batchName;
+
+  return false;
+}
+
+/** Returns an error message when a batch is expired or consumed, else null. */
+function batchAvailabilityError(batch: BatchListItem): string | null {
   if (batch.status === 'expired' || isExpiredDate(batch.expiry_date)) {
     return 'This batch has expired. Select an active batch.';
   }
-  if (batch.status === 'consumed') return 'This batch has already been consumed. Select an active batch.';
+  if (batch.status === 'consumed') {
+    return 'This batch has already been consumed. Select an active batch.';
+  }
   return null;
+}
+
+function getBatchError(batch: BatchListItem | null, product: QSealProductListItem | null): string | null {
+  if (!batch) return null;
+
+  if (batchProductMismatch(batch, product)) {
+    const label = batch.product_name ?? batch.item_name ?? batch.sku ?? 'a different product';
+    return `This batch belongs to ${label}. Select the batch matching this product.`;
+  }
+
+  return batchAvailabilityError(batch);
 }
 
 /* ------------------------------------------------------------------ */
@@ -287,9 +322,9 @@ function BatchSelect({ value, onChange }: BatchSelectProps) {
                 <Check className={cn('mr-2 h-4 w-4 shrink-0', value === batch.batch_no ? 'opacity-100' : 'opacity-0')} />
                 <div className="min-w-0 text-left">
                   <p className="font-medium break-words">{batch.batch_no}</p>
-                  {(batch.item_name || batch.status || batch.expiry_date) && (
+                  {(batch.product_name || batch.item_name || batch.status || batch.expiry_date) && (
                     <p className="text-xs text-muted-foreground">
-                      {[batch.item_name, batch.status, batch.expiry_date ? `expiry ${batch.expiry_date.slice(0, 10)}` : null]
+                      {[batch.product_name ?? batch.item_name, batch.status, batch.expiry_date ? `expiry ${batch.expiry_date.slice(0, 10)}` : null]
                         .filter(Boolean)
                         .join(' · ')}
                     </p>

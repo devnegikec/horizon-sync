@@ -240,6 +240,7 @@ export type ReceivingSlipStatus = 'pending_review' | 'pending_putaway' | 'putawa
 /** Individual unit inside a receiving slip group */
 export interface ReceivingSlipGroupItem {
   id: string;
+  name?: string | null;
   serial_number: string;
   sku: string;
   batch_number: string | null;
@@ -251,6 +252,8 @@ export interface ReceivingSlipGroupItem {
   condition_code?: string | null;
   exception_status?: string | null;
   exception_destination_location_id?: string | null;
+  rejection_reason?: string | null;
+  reason_code?: string | null;
   notes: string | null;
 }
 
@@ -343,7 +346,9 @@ export interface InboundException {
   destination: string | null;
   destination_location_id: string | null;
   qr_identifier: string | null;
+  serial_number: string | null;
   sku: string | null;
+  item_name: string | null;
   batch_number: string | null;
   quantity: number;
   note: string | null;
