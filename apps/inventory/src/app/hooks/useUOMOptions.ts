@@ -31,6 +31,8 @@ export function useUOMOptions(accessToken: string, uomTypes?: string[]) {
   useEffect(() => {
     if (!accessToken) return;
 
+    let cancelled = false;
+
     setLoading(true);
     setError(null);
 
@@ -44,6 +46,7 @@ export function useUOMOptions(accessToken: string, uomTypes?: string[]) {
       },
     })
       .then((data) => {
+        if (cancelled) return;
         setOptions(
           (data.uoms || []).map((u) => ({
             label: `${u.name} (${u.abbreviation})`,
@@ -51,8 +54,17 @@ export function useUOMOptions(accessToken: string, uomTypes?: string[]) {
           }))
         );
       })
-      .catch((err) => setError(getFriendlyErrorMessage(err)))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (cancelled) return;
+        setError(getFriendlyErrorMessage(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [accessToken, uomTypeParam]);
 
   return { options, loading, error };

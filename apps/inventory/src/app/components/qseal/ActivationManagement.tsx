@@ -370,7 +370,7 @@ export function ActivationManagement() {
             <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={creating}>
               Cancel
             </Button>
-            <Button type="submit" disabled={creating || !form.item_id || !form.batch_no.trim()}>
+            <Button type="submit" form="create-batch-form" disabled={creating || !form.item_id || !form.batch_no.trim()}>
               {creating ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -382,7 +382,7 @@ export function ActivationManagement() {
             </Button>
           </div>
         }>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="create-batch-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Item *</Label>
             <ItemSelect value={form.item_id} onChange={(item) => updateField('item_id', item.id)} />
