@@ -1,12 +1,12 @@
 import * as React from 'react';
 
-import { Check, ChevronsUpDown, Loader2, Plus, RefreshCw, Search, Zap } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Plus, RefreshCw, Search, Zap, QrCode } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DetailDialog } from '@horizon-sync/ui/components';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@horizon-sync/ui/components/ui/popover';
@@ -148,7 +148,7 @@ function ItemSelect({ value, onChange }: ItemSelectProps) {
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search by name or code…"
-            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0"/>
+            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0" />
         </div>
         <div id="item-listbox" className="max-h-60 overflow-y-auto p-1">
           {loading && (
@@ -179,6 +179,7 @@ function ItemSelect({ value, onChange }: ItemSelectProps) {
     </Popover>
   );
 }
+
 
 export function ActivationManagement() {
   const { batches, loading, error: listError, refetch } = useBatches();
@@ -342,82 +343,99 @@ export function ActivationManagement() {
         </Card>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New Batch</DialogTitle>
-            <DialogDescription>Create a manufacturing batch tied to an item</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Item *</Label>
-              <ItemSelect value={form.item_id} onChange={(item) => updateField('item_id', item.id)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="batch_no">Batch No *</Label>
-              <Input id="batch_no"
-                value={form.batch_no}
-                onChange={(e) => updateField('batch_no', e.target.value)}
-                maxLength={100}
-                placeholder="e.g. LOT-2026-00042"/>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="manufacturing_date">Mfg. Date</Label>
-                <Input id="manufacturing_date"
-                  type="date"
-                  value={form.manufacturing_date}
-                  onChange={(e) => updateField('manufacturing_date', e.target.value)}/>
+      <DetailDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        size="lg"
+        contentClassName="max-w-4xl flex flex-col"
+        style={{ height: 'min(85vh, 820px)' }}
+        title={
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <QrCode className="h-5 w-5 text-primary" />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="expiry_date">Expiry Date</Label>
-                <Input id="expiry_date" type="date" value={form.expiry_date} onChange={(e) => updateField('expiry_date', e.target.value)} />
+              <div>
+                <p className="font-semibold">'New Batch'</p>
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground font-mono font-normal">'Create a manufacturing batch tied to an item'</p>
+                </div>
               </div>
             </div>
+          </div>
+        }
+        showCloseButton={false}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={creating}>
+              Cancel
+            </Button>
+            <Button type="submit" form="create-batch-form" disabled={creating || !form.item_id || !form.batch_no.trim()}>
+              {creating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating…
+                </>
+              ) : (
+                'Create Batch'
+              )}
+            </Button>
+          </div>
+        }>
+        <form id="create-batch-form" onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Item *</Label>
+            <ItemSelect value={form.item_id} onChange={(item) => updateField('item_id', item.id)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="batch_no">Batch No *</Label>
+            <Input id="batch_no"
+              value={form.batch_no}
+              onChange={(e) => updateField('batch_no', e.target.value)}
+              maxLength={100}
+              placeholder="e.g. LOT-2026-00042" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="supplier_batch_no">Supplier Batch No</Label>
-              <Input id="supplier_batch_no"
-                value={form.supplier_batch_no}
-                onChange={(e) => updateField('supplier_batch_no', e.target.value)}
-                maxLength={100}
-                placeholder="Optional"/>
+              <Label htmlFor="manufacturing_date">Mfg. Date</Label>
+              <Input id="manufacturing_date"
+                type="date"
+                value={form.manufacturing_date}
+                onChange={(e) => updateField('manufacturing_date', e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={(value) => updateField('status', value as BatchStatus)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                  <SelectItem value="consumed">Consumed</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="expiry_date">Expiry Date</Label>
+              <Input id="expiry_date" type="date" value={form.expiry_date} onChange={(e) => updateField('expiry_date', e.target.value)} />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="description">Description</Label>
-              <Input id="description" value={form.description} onChange={(e) => updateField('description', e.target.value)} placeholder="Optional" />
-            </div>
-            {formError && <p className="text-sm text-destructive">{formError}</p>}
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={creating}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={creating || !form.item_id || !form.batch_no.trim()}>
-                {creating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating…
-                  </>
-                ) : (
-                  'Create Batch'
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="supplier_batch_no">Supplier Batch No</Label>
+            <Input id="supplier_batch_no"
+              value={form.supplier_batch_no}
+              onChange={(e) => updateField('supplier_batch_no', e.target.value)}
+              maxLength={100}
+              placeholder="Optional" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Status</Label>
+            <Select value={form.status} onValueChange={(value) => updateField('status', value as BatchStatus)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="expired">Expired</SelectItem>
+                <SelectItem value="consumed">Consumed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="description">Description</Label>
+            <Input id="description" value={form.description} onChange={(e) => updateField('description', e.target.value)} placeholder="Optional" />
+          </div>
+          {formError && <p className="text-sm text-destructive">{formError}</p>}
+        </form>
+      </DetailDialog >
+    </div >
   );
 }

@@ -63,7 +63,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
     });
   }, [organizationId]);
 
-  const canCreateWorkers = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
+  const canCreateWorkers = user?.user_type === 'system_admin' || user?.user_type === 'organization_admin' || userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
   const canPrintQR = canCreateWorkers || userPermissions.includes('warehouse.read');
   const { toast } = useToast();
 

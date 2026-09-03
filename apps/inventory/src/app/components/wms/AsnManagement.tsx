@@ -20,7 +20,7 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
   const [viewMode, setViewMode] = React.useState(false);
   const [selectedOrder, setSelectedOrder] = React.useState<AsnOrder | null>(null);
   const [confirmDeleteOrder, setConfirmDeleteOrder] = React.useState<AsnOrder | null>(null);
-  const [activeTab, setActiveTab] = React.useState<'purchase' | 'internal_transfer'>('purchase');
+  const [activeTab, setActiveTab] = React.useState<'purchase' | 'internal_transfer' | 'stock_receipt'>('purchase');
 
   const management = useAsnOrderManagement();
   const { warehouses } = useMyWarehouses();
@@ -73,19 +73,26 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
           <p className="text-sm text-muted-foreground">
             {activeTab === 'internal_transfer'
               ? 'Create internal stock transfers between your warehouses and track unit-level serials in transit.'
-              : 'Create and manage advance stock notice (ASN) orders to notify warehouses of incoming shipments.'}
+              : activeTab === 'stock_receipt'
+                ? 'Create stock receipt ASNs for stock transferred from manufacturing units into the mother warehouse.'
+                : 'Create and manage advance stock notice (ASN) orders to notify warehouses of incoming shipments.'}
           </p>
         </div>
         <Button onClick={handleCreate} className="gap-2">
           <Plus className="h-4 w-4" />
-          {activeTab === 'internal_transfer' ? 'New Internal Transfer' : 'New ASN Order'}
+          {activeTab === 'internal_transfer'
+            ? 'New Internal Transfer'
+            : activeTab === 'stock_receipt'
+              ? 'New Stock Receipt'
+              : 'New ASN Order'}
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'purchase' | 'internal_transfer')} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'purchase' | 'internal_transfer' | 'stock_receipt')} className="w-full">
         <TabsList>
           <TabsTrigger value="purchase">Purchase ASN</TabsTrigger>
           <TabsTrigger value="internal_transfer">Internal Transfer</TabsTrigger>
+          <TabsTrigger value="stock_receipt">Stock Receipt</TabsTrigger>
         </TabsList>
       </Tabs>
 

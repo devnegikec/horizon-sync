@@ -1,5 +1,7 @@
 import type { PaginationInfo } from './quotation.types';
 
+export type AsnOrderType = 'purchase' | 'internal_transfer' | 'stock_receipt';
+
 export type AsnOrderStatus =
     | 'draft'
     | 'confirmed'
@@ -136,9 +138,9 @@ export interface AsnOrderItemCreate {
 
 export interface AsnOrderCreate {
     asn_order_no?: string;
-    asn_type?: 'purchase' | 'internal_transfer';
-    warehouse_id_from: string;
-    warehouse_id_to: string;
+    asn_type?: AsnOrderType;
+    warehouse_id_from: string | null;
+    warehouse_id_to: string | null;
     order_date: string;
     delivery_date?: string | null;
     status?: AsnOrderStatus;
@@ -148,7 +150,7 @@ export interface AsnOrderCreate {
 }
 
 export interface AsnOrderUpdate {
-    asn_type?: 'purchase' | 'internal_transfer' | null;
+    asn_type?: AsnOrderType | null;
     warehouse_id_from?: string | null;
     warehouse_id_to?: string | null;
     order_date?: string | null;
@@ -160,7 +162,7 @@ export interface AsnOrderUpdate {
 
 export interface AsnOrderFormData {
     asn_order_no: string;
-    asn_type: 'purchase' | 'internal_transfer';
+    asn_type: AsnOrderType;
     warehouse_id_from: string;
     warehouse_id_to: string;
     order_date: string;
@@ -178,7 +180,7 @@ export interface AsnOrderDialogProps {
     onSave: (data: AsnOrderCreate | AsnOrderUpdate, id?: string) => Promise<void>;
     onCreated?: () => void;
     onUpdated?: () => void;
-    defaultAsnType?: 'purchase' | 'internal_transfer';
+    defaultAsnType?: AsnOrderType;
 }
 
 export interface AsnOrderStatusUpdate {

@@ -13,6 +13,7 @@ import { cn } from '@horizon-sync/ui/lib';
 import { useWarehouseMutations } from '../../hooks/useWarehouses';
 import type { Warehouse, CreateWarehousePayload, WarehouseType } from '../../types/warehouse.types';
 import { warehouseFormSchema, isAtMaxLength } from '../../utility/validation-schemas';
+import { UOMSelect } from '../shared/UOMSelect';
 
 interface WarehouseDialogProps {
   open: boolean;
@@ -381,10 +382,10 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
               </div>
               <div className="space-y-2">
                 <Label htmlFor="capacity_uom">Unit of Measure</Label>
-                <Input id="capacity_uom"
-                  value={formData.capacity_uom}
-                  onChange={(e) => setFormData({ ...formData, capacity_uom: e.target.value })}
-                  placeholder="e.g., sqft, pallets"/>
+                <UOMSelect value={formData.capacity_uom}
+                  onValueChange={(v) => setFormData({ ...formData, capacity_uom: v })}
+                  placeholder="Select volume/area UOM"
+                  uomTypes={['volume', 'area']} />
               </div>
             </div>
           </div>
