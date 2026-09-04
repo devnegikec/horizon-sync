@@ -9,6 +9,7 @@ import { useToast } from '@horizon-sync/ui/hooks';
 import { useReceivingSlips } from '../../hooks/useWMS';
 import type { ReceivingSlip } from '../../types/wms.types';
 
+import { GeneratePutAwayDialog } from './GeneratePutAwayDialog';
 import { SlipDetailDialog } from './receiving-slips';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
@@ -98,25 +99,6 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
     }
   };
 
-  const handleGeneratePutAway = async (slip: ReceivingSlip) => {
-    setConfirmPutAwaySlip(slip);
-  };
-
-  const handleConfirmPutAway = async () => {
-    const slip = confirmPutAwaySlip;
-    if (!slip) return;
-    setActionLoading(true);
-    try {
-      await generatePutAway(slip.id);
-      toast({ title: 'Put-away generated', description: `Put-away list created from ${slip.slip_number}.` });
-      setConfirmPutAwaySlip(null);
-    } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to generate put-away', variant: 'destructive' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -201,7 +183,7 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
                             View
                           </Button>
                           {slip.status === 'pending_putaway' && (
-                            <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50 h-7 px-2 text-xs" onClick={() => handleGeneratePutAway(slip)}>
+                            <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50 h-7 px-2 text-xs" onClick={() => setConfirmPutAwaySlip(slip)}>
                               <PackageOpen className="h-3.5 w-3.5 mr-1" />
                               Put-Away
                             </Button>
@@ -272,13 +254,10 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
         loading={actionLoading}
         onConfirm={handleConfirmApprove} />
 
-      <ConfirmationDialog open={!!confirmPutAwaySlip}
+      <GeneratePutAwayDialog slip={confirmPutAwaySlip}
+        open={!!confirmPutAwaySlip}
         onOpenChange={(open) => { if (!open) setConfirmPutAwaySlip(null); }}
-        title="Generate Put-Away List"
-        description={`Generate put-away list from receiving slip ${confirmPutAwaySlip?.slip_number}?`}
-        confirmLabel="Generate"
-        loading={actionLoading}
-        onConfirm={handleConfirmPutAway} />
+        onGenerate={generatePutAway} />
     </div>
   );
 }

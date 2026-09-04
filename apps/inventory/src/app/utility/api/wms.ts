@@ -12,6 +12,7 @@ import type {
   ReceivingSlip,
   PaginatedReceivingSlips,
   PutAwayList,
+  PutAwayListBatchResponse,
   PutAwayItem,
   PickList,
   PaginatedPickLists,
@@ -342,8 +343,15 @@ export const putAwayApi = {
       body: JSON.stringify({ reason }),
     }),
 
-  generateFromSlip: (token: string, slipId: string) =>
-    req<PutAwayList>(`${BASE}/put-away/generate-from-slip/${slipId}`, token, { method: 'POST', body: '{}' }),
+  generateFromSlip: (
+    token: string,
+    slipId: string,
+    data?: { mode?: 'auto' | 'manual'; worker_id?: string; worker_ids?: string[] },
+  ) =>
+    req<PutAwayList | PutAwayListBatchResponse>(`${BASE}/put-away/generate-from-slip/${slipId}`, token, {
+      method: 'POST',
+      body: JSON.stringify(data ?? {}),
+    }),
 };
 
 // ============================================

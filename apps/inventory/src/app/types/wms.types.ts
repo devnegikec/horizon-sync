@@ -431,6 +431,10 @@ export interface PutAwayList {
   updated_at: string | null;
 }
 
+export interface PutAwayListBatchResponse {
+  put_away_lists: PutAwayList[];
+}
+
 // ============================================
 // OUTBOUND / PICK LIST TYPES
 // ============================================
