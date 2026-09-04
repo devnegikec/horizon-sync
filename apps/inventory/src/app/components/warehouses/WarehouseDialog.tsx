@@ -377,11 +377,14 @@ export function WarehouseDialog({ open, onOpenChange, warehouse, warehouses, onC
                 <Input id="total_capacity"
                   type="number"
                   value={formData.total_capacity}
-                  readOnly
-                  className="bg-muted/50 cursor-not-allowed"
-                  placeholder="Auto-calculated" />
+                  readOnly={isEditing}
+                  onChange={(e) => setFormData({ ...formData, total_capacity: e.target.value })}
+                  className={cn(isEditing && 'bg-muted/50 cursor-not-allowed')}
+                  placeholder={isEditing ? 'Auto-calculated' : 'Enter total capacity'} />
                 <p className="text-xs text-muted-foreground">
-                  Derived from the warehouse layout — not editable here.
+                  {isEditing
+                    ? 'Derived from the warehouse layout — not editable here.'
+                    : 'Optional — set it now or derive it from the warehouse layout later.'}
                 </p>
               </div>
               <div className="space-y-2">

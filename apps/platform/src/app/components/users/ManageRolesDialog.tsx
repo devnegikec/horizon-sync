@@ -42,8 +42,11 @@ export function ManageRolesDialog({
   React.useEffect(() => {
     if (!isOpen || !user || !accessToken || !organizationId) return;
 
+    let cancelled = false;
+
     setLoading(true);
     setShowPermissions(false);
+    setSelectedRoleIds(new Set());
     setSelectedPermissionCodes(new Set());
 
     Promise.all([
@@ -55,6 +58,8 @@ export function ManageRolesDialog({
       UserService.getUserPermissions(user.id, organizationId, accessToken),
     ])
       .then(([rolesRes, groupedRes, userPerms]) => {
+        if (cancelled) return;
+
         const activeRoles = (rolesRes.data ?? []).filter((r) => r.is_active);
         setRoles(activeRoles);
 
@@ -76,13 +81,20 @@ export function ManageRolesDialog({
         setSelectedPermissionCodes(new Set(userPerms.custom_permissions ?? []));
       })
       .catch(() => {
+        if (cancelled) return;
         toast({
           variant: 'destructive',
           title: 'Failed to load',
           description: 'Could not load roles and permissions.',
         });
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, user, accessToken, organizationId, toast]);
 
   const toggleRole = (roleId: string) => {
