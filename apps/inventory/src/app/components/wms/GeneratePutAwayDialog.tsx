@@ -65,7 +65,7 @@ async function fetchAllWorkers(
       warehouse_id: warehouseId,
     });
     all.push(...(data.workers ?? []));
-    page = data.pagination.has_next ? page + 1 : 0;
+    page = data.page < data.total_pages ? page + 1 : 0;
   }
   return all;
 }
