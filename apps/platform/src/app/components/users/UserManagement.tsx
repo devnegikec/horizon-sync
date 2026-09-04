@@ -20,11 +20,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
+  DetailDialog,
   Input,
   Label,
   UsersTable,
@@ -142,32 +138,38 @@ function EditUserDialog({
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Edit User Details</DialogTitle>
-          <DialogDescription>Update the user's first and last name.</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit_first_name">First Name</Label>
-            <Input id="edit_first_name" {...form.register('first_name')} className={form.formState.errors.first_name ? 'border-destructive' : ''} />
-            {form.formState.errors.first_name && <p className="text-sm text-destructive">{form.formState.errors.first_name.message}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit_last_name">Last Name</Label>
-            <Input id="edit_last_name" {...form.register('last_name')} className={form.formState.errors.last_name ? 'border-destructive' : ''} />
-            {form.formState.errors.last_name && <p className="text-sm text-destructive">{form.formState.errors.last_name.message}</p>}
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <DetailDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      size="sm"
+      title={
+        <div className="space-y-1">
+          <span>Edit User Details</span>
+          <p className="text-sm font-normal text-muted-foreground">Update the user's first and last name.</p>
+        </div>
+      }
+      footer={
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
+          <Button type="submit" form="edit-user-form" disabled={isSubmitting}>
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </div>
+      }
+    >
+      <form id="edit-user-form" onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="edit_first_name">First Name</Label>
+          <Input id="edit_first_name" {...form.register('first_name')} className={form.formState.errors.first_name ? 'border-destructive' : ''} />
+          {form.formState.errors.first_name && <p className="text-sm text-destructive">{form.formState.errors.first_name.message}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit_last_name">Last Name</Label>
+          <Input id="edit_last_name" {...form.register('last_name')} className={form.formState.errors.last_name ? 'border-destructive' : ''} />
+          {form.formState.errors.last_name && <p className="text-sm text-destructive">{form.formState.errors.last_name.message}</p>}
+        </div>
+      </form>
+    </DetailDialog>
   );
 }
 

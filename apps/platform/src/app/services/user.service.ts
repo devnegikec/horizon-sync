@@ -319,10 +319,45 @@ export class UserService {
     }
   }
 
+  static async getUserPermissions(
+    userId: string,
+    organizationId: string,
+    token: string
+  ): Promise<{ permissions: string[]; roles: string[]; custom_permissions: string[]; has_access: boolean }> {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/v1/identity/users/${userId}/permissions?organization_id=${organizationId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Failed to load user permissions',
+        }));
+        throw new Error(errorData.message || errorData.detail || getFriendlyMessage(response.status));
+      }
+
+      return (await response.json()) as {
+        permissions: string[];
+        roles: string[];
+        custom_permissions: string[];
+        has_access: boolean;
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred while loading user permissions');
+    }
+  }
+
   static async updateUserRoles(
     userId: string,
     organizationId: string,
     roleIds: string[],
+    customPermissionIds: string[],
     token: string
   ): Promise<{ user_id: string; organization_id: string; roles: string[] }> {
     try {
@@ -335,6 +370,7 @@ export class UserService {
         body: JSON.stringify({
           organization_id: organizationId,
           role_ids: roleIds,
+          custom_permission_ids: customPermissionIds,
         }),
       });
 
