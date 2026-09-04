@@ -20,6 +20,7 @@ import type {
   PickScanResult,
   PutAwayItem,
   PutAwayList,
+  PutAwayListBatchResponse,
   ReceivingSlip,
   ScanResult,
   ScanSession,
@@ -287,9 +288,17 @@ export function useReceivingSlips({
   );
 
   const generatePutAway = React.useCallback(
-    async (slipId: string): Promise<PutAwayList> => {
+    async (
+      slipId: string,
+      options?: { mode?: 'auto' | 'manual'; workerIds?: string[] },
+    ): Promise<PutAwayList | PutAwayListBatchResponse> => {
       if (!accessToken) throw new Error('Not authenticated');
-      const result = await putAwayApi.generateFromSlip(accessToken, slipId);
+      const ids = (options?.workerIds ?? []).filter(Boolean);
+      const result = await putAwayApi.generateFromSlip(accessToken, slipId, {
+        mode: options?.mode,
+        ...(ids.length === 1 ? { worker_id: ids[0] } : {}),
+        ...(ids.length > 1 ? { worker_ids: ids } : {}),
+      });
       await fetch();
       return result;
     },
