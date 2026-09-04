@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+  DetailDialog,
   Button, Input, Label, Textarea,
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@horizon-sync/ui/components';
@@ -205,18 +205,32 @@ export function RoleDialog({ mode, role, isOpen, onClose, onSuccess }: RoleDialo
   const hasModules = modules.length > 0;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{getDialogTitle()}</DialogTitle>
-          <DialogDescription>
+    <DetailDialog
+      open={isOpen}
+      onOpenChange={onClose}
+      size="lg"
+      title={
+        <div className="space-y-1">
+          <span>{getDialogTitle()}</span>
+          <p className="text-sm font-normal text-muted-foreground">
             {mode === 'create' && 'Create a new role with specific permissions'}
             {mode === 'edit' && 'Update role details and permissions'}
             {mode === 'clone' && 'Create a new role based on an existing one'}
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
+          </p>
+        </div>
+      }
+      footer={
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="submit" form="role-form" disabled={loading}>
+            {loading ? 'Saving...' : mode === 'edit' ? 'Update Role' : 'Create Role'}
+          </Button>
+        </div>
+      }
+    >
+      <form id="role-form" onSubmit={handleSubmit} className="space-y-6">
           {/* Name Field */}
           <div className="space-y-2">
             <Label htmlFor="name">
@@ -318,17 +332,7 @@ export function RoleDialog({ mode, role, isOpen, onClose, onSuccess }: RoleDialo
             )}
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : mode === 'edit' ? 'Update Role' : 'Create Role'}
-            </Button>
-          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </DetailDialog>
   );
 }

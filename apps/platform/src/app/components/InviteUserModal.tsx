@@ -7,7 +7,7 @@ import * as z from 'zod';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
+import { DetailDialog } from '@horizon-sync/ui/components';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
@@ -309,24 +309,45 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl flex flex-col max-h-[90vh] p-0 gap-0">
-        {/* Fixed header */}
-        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#3058EE] to-[#7D97F6]">
-              <UserPlus className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <DialogTitle className="text-xl">Invite New User</DialogTitle>
-              <DialogDescription>Send invitation with role and permissions</DialogDescription>
-            </div>
+    <DetailDialog
+      open={open}
+      onOpenChange={handleClose}
+      size="md"
+      title={
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#3058EE] to-[#7D97F6]">
+            <UserPlus className="h-5 w-5 text-white" />
           </div>
-        </DialogHeader>
-
-        {/* Scrollable form body */}
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col flex-1 min-h-0">
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          <div className="space-y-0.5">
+            <span>Invite New User</span>
+            <p className="text-sm font-normal text-muted-foreground">Send invitation with role and permissions</p>
+          </div>
+        </div>
+      }
+      footer={
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="invite-form"
+            disabled={isSubmitting}
+            className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white"
+          >
+            {isSubmitting ? (
+              'Sending...'
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Send Invitation
+              </>
+            )}
+          </Button>
+        </div>
+      }
+    >
+      <form id="invite-form" onSubmit={handleSubmit(handleFormSubmit)} noValidate className="space-y-6">
             {/* Email */}
             <div className="space-y-2">
               <Label htmlFor="email">
@@ -490,30 +511,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
               </div>
             )}
 
-          </div>{/* end scrollable body */}
-
-          {/* Fixed footer */}
-          <div className="px-6 py-4 border-t shrink-0 flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white"
-            >
-              {isSubmitting ? (
-                'Sending...'
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Send Invitation
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+      </form>
+    </DetailDialog>
   );
 }
