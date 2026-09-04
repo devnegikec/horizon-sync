@@ -47,6 +47,29 @@ function workerLabel(worker: WMSWorker): string {
   return worker.employee_id ? `${name} (${worker.employee_id})` : name;
 }
 
+/**
+ * Fetch every assignable worker for a warehouse, following pagination so
+ * warehouses with more than one page of workers are fully covered.
+ */
+async function fetchAllWorkers(
+  accessToken: string,
+  warehouseId?: string,
+  pageSize = 100,
+): Promise<WMSWorker[]> {
+  const all: WMSWorker[] = [];
+  let page = 1;
+  while (page > 0) {
+    const data = await wmsWorkerApi.list(accessToken, {
+      page,
+      page_size: pageSize,
+      warehouse_id: warehouseId,
+    });
+    all.push(...(data.workers ?? []));
+    page = data.pagination.has_next ? page + 1 : 0;
+  }
+  return all;
+}
+
 function WorkerMultiSelect({
   workers,
   selected,
@@ -133,18 +156,14 @@ export function GeneratePutAwayDialog({ slip, open, onOpenChange, onGenerate }: 
   const [workers, setWorkers] = React.useState<WMSWorker[]>([]);
   const [busy, setBusy] = React.useState(false);
 
-  // Load assignable workers while the dialog is open.
+  // Load all assignable workers while the dialog is open, paginating past the
+  // first page so workers beyond the first 100 can still be assigned.
   React.useEffect(() => {
     if (!open || !accessToken) return;
     let cancelled = false;
-    wmsWorkerApi
-      .list(accessToken, {
-        page: 1,
-        page_size: 100,
-        warehouse_id: slip?.warehouse_id,
-      })
+    fetchAllWorkers(accessToken, slip?.warehouse_id)
       .then((data) => {
-        if (!cancelled) setWorkers(data.workers ?? []);
+        if (!cancelled) setWorkers(data);
       })
       .catch(() => {
         if (!cancelled) setWorkers([]);
