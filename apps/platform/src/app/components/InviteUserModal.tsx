@@ -348,168 +348,168 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
       }
     >
       <form id="invite-form" onSubmit={handleSubmit(handleFormSubmit)} noValidate className="space-y-6">
-            {/* Email */}
-            <div className="space-y-2">
-              <Label htmlFor="email">
-                Email Address <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="user@example.com"
-                {...register('email')}
-                className={errors.email ? 'border-destructive' : ''}
-              />
-              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-              <p className="text-xs text-muted-foreground">Invitation will be sent to this email</p>
-            </div>
+        {/* Email */}
+        <div className="space-y-2">
+          <Label htmlFor="email">
+            Email Address <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="user@example.com"
+            {...register('email')}
+            className={errors.email ? 'border-destructive' : ''}
+          />
+          {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+          <p className="text-xs text-muted-foreground">Invitation will be sent to this email</p>
+        </div>
 
-            {/* Name */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="first_name">
-                  First Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="first_name"
-                  placeholder="John"
-                  {...register('first_name')}
-                  className={errors.first_name ? 'border-destructive' : ''}
-                />
-                {errors.first_name && <p className="text-sm text-destructive">{errors.first_name.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="last_name">
-                  Last Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="last_name"
-                  placeholder="Doe"
-                  {...register('last_name')}
-                  className={errors.last_name ? 'border-destructive' : ''}
-                />
-                {errors.last_name && <p className="text-sm text-destructive">{errors.last_name.message}</p>}
-              </div>
-            </div>
+        {/* Name */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="first_name">
+              First Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="first_name"
+              placeholder="John"
+              {...register('first_name')}
+              className={errors.first_name ? 'border-destructive' : ''}
+            />
+            {errors.first_name && <p className="text-sm text-destructive">{errors.first_name.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="last_name">
+              Last Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="last_name"
+              placeholder="Doe"
+              {...register('last_name')}
+              className={errors.last_name ? 'border-destructive' : ''}
+            />
+            {errors.last_name && <p className="text-sm text-destructive">{errors.last_name.message}</p>}
+          </div>
+        </div>
 
-            {/* Role selector */}
-            <div className="space-y-2">
-              <Label htmlFor="role_id">Assign Role</Label>
-              <Select onValueChange={handleRoleChange} value={selectedRoleId} disabled={rolesLoading}>
-                <SelectTrigger>
-                  <SelectValue placeholder={rolesLoading ? 'Loading roles...' : 'Choose a role'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.length === 0 && !rolesLoading && (
-                    <SelectItem value="" disabled>No roles available</SelectItem>
-                  )}
-                  {roles.map((role) => (
-                    <SelectItem key={role.id} value={role.id}>
-                      <div className="flex flex-col">
-                        <span>{role.name}</span>
-                        {role.description && (
-                          <span className="text-xs text-muted-foreground">{role.description}</span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">Select the primary role for this user</p>
-            </div>
-
-            {/* Warehouse assignment for scoped WMS roles */}
-            {selectedRoleId && isGlobalWmsRole && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-700">
-                <Info className="h-4 w-4 shrink-0" />
-                <p className="text-sm">
-                  WMS Admin has access to <strong>all warehouses</strong> by default. No warehouse selection needed.
-                </p>
-              </div>
-            )}
-            {selectedRoleId && isScopedWmsRole && (
-              <div className="space-y-3">
-                <div>
-                  <Label className="font-semibold">Assign Warehouses <span className="text-destructive">*</span></Label>
-                  <p className="text-xs text-muted-foreground">
-                    {warehousesLoading
-                      ? 'Loading warehouses...'
-                      : 'Select the warehouses this user will have access to'}
-                  </p>
-                </div>
-
-                {warehousesLoading ? (
-                  <p className="text-sm text-muted-foreground">Loading warehouses...</p>
-                ) : warehouseError ? (
-                  <p className="text-sm text-destructive">{warehouseError}</p>
-                ) : warehouses.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No warehouses available</p>
-                ) : (
-                  <div className="max-h-[200px] overflow-y-auto rounded-lg border p-2 space-y-1">
-                    {warehouses.map((wh) => (
-                      <label
-                        key={wh.id}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={selectedWarehouseIds.has(wh.id)}
-                          onCheckedChange={() => toggleWarehouse(wh.id)}
-                        />
-                        <span className="text-sm">
-                          {wh.name} {wh.code ? `(${wh.code})` : ''}
-                        </span>
-                      </label>
-                    ))}
+        {/* Role selector */}
+        <div className="space-y-2">
+          <Label htmlFor="role_id">Assign Role</Label>
+          <Select onValueChange={handleRoleChange} value={selectedRoleId} disabled={rolesLoading}>
+            <SelectTrigger>
+              <SelectValue placeholder={rolesLoading ? 'Loading roles...' : 'Choose a role'} />
+            </SelectTrigger>
+            <SelectContent>
+              {roles.length === 0 && !rolesLoading && (
+                <SelectItem value="" disabled>No roles available</SelectItem>
+              )}
+              {roles.map((role) => (
+                <SelectItem key={role.id} value={role.id}>
+                  <div className="flex flex-col">
+                    <span>{role.name}</span>
+                    {role.description && (
+                      <span className="text-xs text-muted-foreground">{role.description}</span>
+                    )}
                   </div>
-                )}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">Select the primary role for this user</p>
+        </div>
 
-                {showWarehouseValidation && selectedWarehouseIds.size === 0 && isScopedWmsRole && (
-                  <p className="text-xs text-destructive">At least one warehouse must be selected</p>
-                )}
-              </div>
-            )}
+        {/* Warehouse assignment for scoped WMS roles */}
+        {selectedRoleId && isGlobalWmsRole && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-700">
+            <Info className="h-4 w-4 shrink-0" />
+            <p className="text-sm">
+              WMS Admin has access to <strong>all warehouses</strong> by default. No warehouse selection needed.
+            </p>
+          </div>
+        )}
+        {selectedRoleId && isScopedWmsRole && (
+          <div className="space-y-3">
+            <div>
+              <Label className="font-semibold">Assign Warehouses <span className="text-destructive">*</span></Label>
+              <p className="text-xs text-muted-foreground">
+                {warehousesLoading
+                  ? 'Loading warehouses...'
+                  : 'Select the warehouses this user will have access to'}
+              </p>
+            </div>
 
-            {/* Role permissions preview — read-only module view */}
-            {selectedRoleId && (
-              <div className="space-y-3">
-                <div>
-                  <h3 className="font-semibold text-sm">
-                    Permissions granted by{' '}
-                    <span className="text-[#3058EE]">{selectedRole?.name ?? 'this role'}</span>
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {permissionsLoading
-                      ? 'Loading permissions...'
-                      : roleModules.length === 0
-                        ? 'This role has no specific module permissions'
-                        : 'The user will have access to the following features'}
-                  </p>
-                </div>
-
-                {permissionsLoading ? (
-                  <div className="flex items-center justify-center p-8">
-                    <p className="text-sm text-muted-foreground">Loading permissions...</p>
-                  </div>
-                ) : roleModules.length > 0 ? (
-                  <div className="max-h-[320px] overflow-y-auto rounded-lg border p-1">
-                    <ModulePermissionMatrix
-                      modules={roleModules}
-                      selectedPermissions={rolePermissionCodes}
-                      onPermissionToggle={() => { /* read-only */ }}
-                      onBulkSelect={() => { /* read-only */ }}
-                      readOnly
+            {warehousesLoading ? (
+              <p className="text-sm text-muted-foreground">Loading warehouses...</p>
+            ) : warehouseError ? (
+              <p className="text-sm text-destructive">{warehouseError}</p>
+            ) : warehouses.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No warehouses available</p>
+            ) : (
+              <div className="max-h-[200px] overflow-y-auto rounded-lg border p-2 space-y-1">
+                {warehouses.map((wh) => (
+                  <label
+                    key={wh.id}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={selectedWarehouseIds.has(wh.id)}
+                      onCheckedChange={() => toggleWarehouse(wh.id)}
                     />
-                  </div>
-                ) : null}
+                    <span className="text-sm">
+                      {wh.name} {wh.code ? `(${wh.code})` : ''}
+                    </span>
+                  </label>
+                ))}
               </div>
             )}
 
-            {/* Error */}
-            {errorMessage && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
-                <p className="text-sm">{errorMessage}</p>
-              </div>
+            {showWarehouseValidation && selectedWarehouseIds.size === 0 && isScopedWmsRole && (
+              <p className="text-xs text-destructive">At least one warehouse must be selected</p>
             )}
+          </div>
+        )}
+
+        {/* Role permissions preview — read-only module view */}
+        {selectedRoleId && (
+          <div className="space-y-3">
+            <div>
+              <h3 className="font-semibold text-sm">
+                Permissions granted by{' '}
+                <span className="text-[#3058EE]">{selectedRole?.name ?? 'this role'}</span>
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {permissionsLoading
+                  ? 'Loading permissions...'
+                  : roleModules.length === 0
+                    ? 'This role has no specific module permissions'
+                    : 'The user will have access to the following features'}
+              </p>
+            </div>
+
+            {permissionsLoading ? (
+              <div className="flex items-center justify-center p-8">
+                <p className="text-sm text-muted-foreground">Loading permissions...</p>
+              </div>
+            ) : roleModules.length > 0 ? (
+              <div className="max-h-[320px] overflow-y-auto rounded-lg border p-1">
+                <ModulePermissionMatrix
+                  modules={roleModules}
+                  selectedPermissions={rolePermissionCodes}
+                  onPermissionToggle={() => { /* read-only */ }}
+                  onBulkSelect={() => { /* read-only */ }}
+                  readOnly
+                />
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {/* Error */}
+        {errorMessage && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive">
+            <p className="text-sm">{errorMessage}</p>
+          </div>
+        )}
 
       </form>
     </DetailDialog>
