@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { ChevronsUpDown, Loader2, PackageOpen, TriangleAlert } from 'lucide-react';
+import { ChevronsUpDown, Loader2, PackageOpen, TriangleAlert, X } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import {
@@ -15,18 +15,12 @@ import {
   SelectValue,
 } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components/ui/dialog';
+import { DialogFooter } from '@horizon-sync/ui/components/ui/dialog';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import type { PutAwayList, PutAwayListBatchResponse, ReceivingSlip, WMSWorker } from '../../types/wms.types';
 import { wmsWorkerApi } from '../../utility/api/wms';
+import { DetailDialogContainer } from '../common';
 
 export type PutAwayGenerationMode = 'default' | 'auto' | 'manual';
 
@@ -65,7 +59,7 @@ async function fetchAllWorkers(
       warehouse_id: warehouseId,
     });
     all.push(...(data.workers ?? []));
-    page = data.pagination.has_next ? page + 1 : 0;
+    page = data.page < data.total_pages ? page + 1 : 0;
   }
   return all;
 }
@@ -86,38 +80,60 @@ function WorkerMultiSelect({
     onChange(selected.includes(id) ? selected.filter((w) => w !== id) : [...selected, id]);
   };
 
+  const remove = (id: string) => {
+    onChange(selected.filter((w) => w !== id));
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button type="button"
-          className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
-          <span className={selectedWorkers.length === 0 ? 'truncate text-muted-foreground' : 'truncate'}>
-            {selectedWorkers.length === 0
-              ? 'No worker (unassigned)'
-              : selectedWorkers.map(workerLabel).join(', ')}
-          </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="p-1" align="start">
-        <label htmlFor="pa-worker-none"
-          className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground">
-          <Checkbox id="pa-worker-none" checked={selected.length === 0} onCheckedChange={() => onChange([])} className="mr-2" />
-          No worker (unassigned)
-        </label>
-        {workers.map((w) => {
-          const checked = selected.includes(w.id);
-          return (
-            <label key={w.id}
-              htmlFor={`pa-worker-${w.id}`}
-              className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground">
-              <Checkbox id={`pa-worker-${w.id}`} checked={checked} onCheckedChange={() => toggle(w.id)} className="mr-2" />
+    <div className="space-y-2">
+      {selectedWorkers.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedWorkers.map((w) => (
+            <span key={w.id}
+              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
               {workerLabel(w)}
-            </label>
-          );
-        })}
-      </PopoverContent>
-    </Popover>
+              <button type="button"
+                onClick={() => remove(w.id)}
+                aria-label={`Remove ${workerLabel(w)}`}
+                className="rounded-full p-0.5 hover:bg-primary/20 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button type="button"
+            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
+            <span className={selectedWorkers.length === 0 ? 'truncate text-muted-foreground' : 'truncate'}>
+              {selectedWorkers.length === 0
+                ? 'No worker (unassigned)'
+                : `${selectedWorkers.length} worker${selectedWorkers.length > 1 ? 's' : ''} selected`}
+            </span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="p-1" align="start">
+          <label htmlFor="pa-worker-none"
+            className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground">
+            <Checkbox id="pa-worker-none" checked={selected.length === 0} onCheckedChange={() => onChange([])} className="mr-2" />
+            No worker (unassigned)
+          </label>
+          {workers.map((w) => {
+            const checked = selected.includes(w.id);
+            return (
+              <label key={w.id}
+                htmlFor={`pa-worker-${w.id}`}
+                className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground">
+                <Checkbox id={`pa-worker-${w.id}`} checked={checked} onCheckedChange={() => toggle(w.id)} className="mr-2" />
+                {workerLabel(w)}
+              </label>
+            );
+          })}
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
 
@@ -204,67 +220,69 @@ export function GeneratePutAwayDialog({ slip, open, onOpenChange, onGenerate }: 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[460px]">
-        <DialogHeader>
-          <DialogTitle>Generate Put-Away List</DialogTitle>
-          <DialogDescription>
-            Generate a put-away list from receiving slip{' '}
-            <span className="font-mono font-medium text-foreground">{slip?.slip_number ?? ''}</span>.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Generation Mode</p>
-            <Select value={mode} onValueChange={(v) => setMode(v as PutAwayGenerationMode)}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select mode" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">Default (org setting)</SelectItem>
-                <SelectItem value="auto">Automatic — server assigns bins</SelectItem>
-                <SelectItem value="manual">Manual — worker assigns bins</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              {mode === 'manual'
-                ? 'Items are grouped by SKU/batch without bin assignment; workers choose bins when completing each item.'
-                : mode === 'auto'
-                  ? 'The server assigns bins and sorts items along the optimal walking route.'
-                  : 'Uses the organisation default put-away mode (auto unless overridden in settings).'}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">
-              Assign Workers (optional — select multiple to split the work)
-            </p>
-            <WorkerMultiSelect workers={workers} selected={workerIds} onChange={setWorkerIds} />
-            <p className="text-xs text-muted-foreground">
-              Selecting more than one worker splits the slip&apos;s items across separate put-away lists.
-              Leave empty to keep the list unassigned.
-            </p>
-          </div>
-
-          <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-xs text-amber-700 flex items-start gap-2">
-            <TriangleAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            <span>
-              Damaged, rejected, held, quarantined and excess lines are skipped automatically and reported as warnings.
-            </span>
-          </div>
+    <DetailDialogContainer open={open}
+      onOpenChange={onOpenChange}
+      icon={PackageOpen}
+      title="Generate Put-Away List"
+      status={slip?.status ?? ''}
+      statusBadge={false}
+      contentClassName="sm:max-w-[460px]"
+      subtitle={
+        <p className="text-sm text-muted-foreground mt-1.5">
+          Generate a put-away list from receiving slip{' '}
+          <span className="font-mono font-medium text-foreground">{slip?.slip_number ?? ''}</span>.
+        </p>
+      }>
+      <div className="space-y-4 py-2">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Generation Mode</p>
+          <Select value={mode} onValueChange={(v) => setMode(v as PutAwayGenerationMode)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Default (org setting)</SelectItem>
+              <SelectItem value="auto">Automatic — server assigns bins</SelectItem>
+              <SelectItem value="manual">Manual — worker assigns bins</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {mode === 'manual'
+              ? 'Items are grouped by SKU/batch without bin assignment; workers choose bins when completing each item.'
+              : mode === 'auto'
+                ? 'The server assigns bins and sorts items along the optimal walking route.'
+                : 'Uses the organisation default put-away mode (auto unless overridden in settings).'}
+          </p>
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={busy}>
-            Cancel
-          </Button>
-          <Button size="sm" onClick={handleGenerate} disabled={busy || !slip}>
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <PackageOpen className="h-3.5 w-3.5 mr-1" />}
-            Generate
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            Assign Workers (optional — select multiple to split the work)
+          </p>
+          <WorkerMultiSelect workers={workers} selected={workerIds} onChange={setWorkerIds} />
+          <p className="text-xs text-muted-foreground">
+            Selecting more than one worker splits the slip&apos;s items across separate put-away lists.
+            Leave empty to keep the list unassigned.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-xs text-amber-700 flex items-start gap-2">
+          <TriangleAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <span>
+            Damaged, rejected, held, quarantined and excess lines are skipped automatically and reported as warnings.
+          </span>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={busy}>
+          Cancel
+        </Button>
+        <Button size="sm" onClick={handleGenerate} disabled={busy || !slip}>
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <PackageOpen className="h-3.5 w-3.5 mr-1" />}
+          Generate
+        </Button>
+      </DialogFooter>
+    </DetailDialogContainer>
   );
 }

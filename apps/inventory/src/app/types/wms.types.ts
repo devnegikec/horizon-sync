@@ -745,7 +745,10 @@ export interface WMSWorker {
 
 export interface WMSWorkerListResponse {
   workers: WMSWorker[];
-  pagination: WMSPagination;
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
 }
 
 export interface WMSWorkerCreate {
