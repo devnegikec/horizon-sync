@@ -108,6 +108,101 @@ function printHTML(html: string): Promise<void> {
   });
 }
 
+// ── QR image that only renders once the row is near the viewport ──
+// Generating a QR PNG is CPU-heavy. Eagerly generating one for every bin in
+// the table floods the main thread (and shows up as hundreds of
+// `data:image/png;base64` entries in the Network tab), which hangs the UI.
+// IntersectionObserver defers generation to the rows actually on screen.
+// Declared at module scope (and memoized) so a parent re-render never changes
+// its identity and remounts the row, restarting observers and QR generation.
+const LazyQrCode = React.memo(function LazyQrCode({ value, size }: { value: string; size: number }) {
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const [inView, setInView] = React.useState(false);
+  const [img, setImg] = React.useState<string>('');
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setInView(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  React.useEffect(() => {
+    if (!inView) return;
+    let cancelled = false;
+    generateQRDataUrl(value, size)
+      .then((url) => {
+        if (!cancelled) setImg(url);
+      })
+      .catch(() => { });
+    return () => {
+      cancelled = true;
+    };
+  }, [inView, value, size]);
+
+  return (
+    <div ref={ref} className="inline-flex items-center justify-center w-[80px] h-[80px]">
+      {img ? (
+        <img src={img} alt="QR" className="w-[80px] h-[80px] rounded border" />
+      ) : (
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      )}
+    </div>
+  );
+});
+
+// ── QR Row sub-component ──
+function QRRow({ loc, qrValue, selected, onToggle, onPrint, printing }: {
+  loc: WarehouseLocation;
+  qrValue: string;
+  selected: boolean;
+  onToggle: () => void;
+  onPrint: () => void;
+  printing: boolean;
+}) {
+  // The QR image encodes the resolvable JSON payload; `qrValue` is only the
+  // human-readable short code shown in the table.
+  const qrPayload = React.useMemo(() => buildQrPayload(loc), [loc]);
+  return (
+    <tr className="border-t hover:bg-muted/30">
+      <td className="p-3">
+        <Checkbox checked={selected} onCheckedChange={onToggle} />
+      </td>
+      <td className="p-3 font-mono text-xs">{loc.full_path || loc.code}</td>
+      <td className="p-3">
+        <span className="font-mono text-sm font-bold text-blue-600 tracking-wider">{qrValue}</span>
+      </td>
+      <td className="p-3 text-xs text-muted-foreground">
+        {loc.available_capacity}/{loc.total_capacity} {loc.capacity_uom || 'units'}
+      </td>
+      <td className="p-3 text-center">
+        <div className="inline-flex flex-col items-center gap-1">
+          <LazyQrCode value={qrPayload} size={120} />
+          <span className="font-mono text-[10px] text-muted-foreground">{loc.code}</span>
+        </div>
+      </td>
+      <td className="p-3 text-center">
+        <Button variant="ghost" size="sm" onClick={onPrint} disabled={printing}>
+          <Printer className="h-4 w-4" />
+        </Button>
+      </td>
+    </tr>
+  );
+}
+
 export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const { toast } = useToast();
@@ -231,99 +326,6 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
       setPrinting(false);
     }
   };
-
-  // ── QR image that only renders once the row is near the viewport ──
-  // Generating a QR PNG is CPU-heavy. Eagerly generating one for every bin in
-  // the table floods the main thread (and shows up as hundreds of
-  // `data:image/png;base64` entries in the Network tab), which hangs the UI.
-  // IntersectionObserver defers generation to the rows actually on screen.
-  function LazyQrCode({ value, size }: { value: string; size: number }) {
-    const ref = React.useRef<HTMLDivElement | null>(null);
-    const [inView, setInView] = React.useState(false);
-    const [img, setImg] = React.useState<string>('');
-
-    React.useEffect(() => {
-      const el = ref.current;
-      if (!el) return;
-      if (typeof IntersectionObserver === 'undefined') {
-        setInView(true);
-        return;
-      }
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (entries.some((e) => e.isIntersecting)) {
-            setInView(true);
-            observer.disconnect();
-          }
-        },
-        { rootMargin: '200px' }
-      );
-      observer.observe(el);
-      return () => observer.disconnect();
-    }, []);
-
-    React.useEffect(() => {
-      if (!inView) return;
-      let cancelled = false;
-      generateQRDataUrl(value, size)
-        .then((url) => {
-          if (!cancelled) setImg(url);
-        })
-        .catch(() => { });
-      return () => {
-        cancelled = true;
-      };
-    }, [inView, value, size]);
-
-    return (
-      <div ref={ref} className="inline-flex items-center justify-center w-[80px] h-[80px]">
-        {img ? (
-          <img src={img} alt="QR" className="w-[80px] h-[80px] rounded border" />
-        ) : (
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        )}
-      </div>
-    );
-  }
-
-  // ── QR Row sub-component ──
-  function QRRow({ loc, qrValue, selected, onToggle, onPrint, printing }: {
-    loc: WarehouseLocation;
-    qrValue: string;
-    selected: boolean;
-    onToggle: () => void;
-    onPrint: () => void;
-    printing: boolean;
-  }) {
-    // The QR image encodes the resolvable JSON payload; `qrValue` is only the
-    // human-readable short code shown in the table.
-    const qrPayload = React.useMemo(() => buildQrPayload(loc), [loc]);
-    return (
-      <tr className="border-t hover:bg-muted/30">
-        <td className="p-3">
-          <Checkbox checked={selected} onCheckedChange={onToggle} />
-        </td>
-        <td className="p-3 font-mono text-xs">{loc.full_path || loc.code}</td>
-        <td className="p-3">
-          <span className="font-mono text-sm font-bold text-blue-600 tracking-wider">{qrValue}</span>
-        </td>
-        <td className="p-3 text-xs text-muted-foreground">
-          {loc.available_capacity}/{loc.total_capacity} {loc.capacity_uom || 'units'}
-        </td>
-        <td className="p-3 text-center">
-          <div className="inline-flex flex-col items-center gap-1">
-            <LazyQrCode value={qrPayload} size={120} />
-            <span className="font-mono text-[10px] text-muted-foreground">{loc.code}</span>
-          </div>
-        </td>
-        <td className="p-3 text-center">
-          <Button variant="ghost" size="sm" onClick={onPrint} disabled={printing}>
-            <Printer className="h-4 w-4" />
-          </Button>
-        </td>
-      </tr>
-    );
-  }
 
   return (
     <div className="space-y-4">
