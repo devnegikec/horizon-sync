@@ -184,6 +184,7 @@ function PackagingDetailsCard({ detail }: { detail: ItemDetailResponse }) {
       <div className="grid grid-cols-2 gap-4">
         <InfoRow icon={Box} label="Base Unit" value={base.unit_name} />
         <InfoRow icon={Layers} label="Conversion Factor" value={base.conversion_factor} />
+        <InfoRow icon={Package} label="Items per Master Pack" value={base.items_per_master_pack} />
         <InfoRow
           icon={Ruler}
           label="Dimensions (L × W × H)"

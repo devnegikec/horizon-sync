@@ -20,6 +20,189 @@ async function generateQRDataUrl(data: string, size = 200): Promise<string> {
   return QRCode.toDataURL(data, { width: size, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
 }
 
+/**
+ * Build the JSON payload encoded inside each bin QR.
+ *
+ * The mobile app (BWmobile) accepts either a 5-char short code or a JSON
+ * payload of shape `{ type: "location", location_id, ... }`. Floor-plan
+ * generated bins have no 5-char `qr_code` (their `code` is a dashed path like
+ * "L01-BN01"), so the QR must carry the JSON payload with the location UUID —
+ * otherwise scanning fails with "Invalid Code".
+ */
+function buildQrPayload(loc: WarehouseLocation): string {
+  return JSON.stringify({
+    type: 'location',
+    location_id: loc.id,
+    warehouse_id: loc.warehouse_id,
+    full_path: loc.full_path || loc.code,
+    location_code: loc.code,
+    qr_code: loc.qr_code || loc.code,
+  });
+}
+
+/**
+ * Print a standalone HTML document using a hidden iframe.
+ *
+ * Using `window.open()` + `document.write()` + `print()` is fragile: popup
+ * blockers can return null, and calling `print()` on a fixed 250ms timer can
+ * race the document load, which freezes the tab while Chrome builds the print
+ * preview. The iframe avoids popup blockers and waits for the document (and
+ * embedded images) to be ready before invoking print.
+ */
+function printHTML(html: string): Promise<void> {
+  return new Promise((resolve) => {
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const cleanup = () => {
+      // Let the print dialog take over before removing the document.
+      setTimeout(() => {
+        iframe.remove();
+        resolve();
+      }, 500);
+    };
+
+    const contentWindow = iframe.contentWindow;
+    const contentDocument = iframe.contentDocument;
+    if (!contentWindow || !contentDocument) {
+      iframe.remove();
+      resolve();
+      return;
+    }
+
+    contentDocument.open();
+    contentDocument.write(html);
+    contentDocument.close();
+
+    const doPrint = () => {
+      try {
+        contentWindow.focus();
+        contentWindow.print();
+      } catch {
+        // ignore — cleanup still runs
+      }
+      cleanup();
+    };
+
+    if (contentDocument.readyState === 'complete') {
+      // Give the browser a tick to paint embedded images before printing.
+      setTimeout(doPrint, 50);
+    } else {
+      let fired = false;
+      const trigger = () => {
+        if (fired) return;
+        fired = true;
+        setTimeout(doPrint, 50);
+      };
+      contentWindow.addEventListener('load', trigger);
+      // Fallback in case `load` never fires.
+      setTimeout(trigger, 800);
+    }
+  });
+}
+
+// ── QR image that only renders once the row is near the viewport ──
+// Generating a QR PNG is CPU-heavy. Eagerly generating one for every bin in
+// the table floods the main thread (and shows up as hundreds of
+// `data:image/png;base64` entries in the Network tab), which hangs the UI.
+// IntersectionObserver defers generation to the rows actually on screen.
+// Declared at module scope (and memoized) so a parent re-render never changes
+// its identity and remounts the row, restarting observers and QR generation.
+const LazyQrCode = React.memo(function LazyQrCode({ value, size }: { value: string; size: number }) {
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const [inView, setInView] = React.useState(false);
+  const [img, setImg] = React.useState<string>('');
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setInView(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  React.useEffect(() => {
+    if (!inView) return;
+    let cancelled = false;
+    generateQRDataUrl(value, size)
+      .then((url) => {
+        if (!cancelled) setImg(url);
+      })
+      .catch(() => { });
+    return () => {
+      cancelled = true;
+    };
+  }, [inView, value, size]);
+
+  return (
+    <div ref={ref} className="inline-flex items-center justify-center w-[80px] h-[80px]">
+      {img ? (
+        <img src={img} alt="QR" className="w-[80px] h-[80px] rounded border" />
+      ) : (
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      )}
+    </div>
+  );
+});
+
+// ── QR Row sub-component ──
+function QRRow({ loc, qrValue, selected, onToggle, onPrint, printing }: {
+  loc: WarehouseLocation;
+  qrValue: string;
+  selected: boolean;
+  onToggle: () => void;
+  onPrint: () => void;
+  printing: boolean;
+}) {
+  // The QR image encodes the resolvable JSON payload; `qrValue` is only the
+  // human-readable short code shown in the table.
+  const qrPayload = React.useMemo(() => buildQrPayload(loc), [loc]);
+  return (
+    <tr className="border-t hover:bg-muted/30">
+      <td className="p-3">
+        <Checkbox checked={selected} onCheckedChange={onToggle} />
+      </td>
+      <td className="p-3 font-mono text-xs">{loc.full_path || loc.code}</td>
+      <td className="p-3">
+        <span className="font-mono text-sm font-bold text-blue-600 tracking-wider">{qrValue}</span>
+      </td>
+      <td className="p-3 text-xs text-muted-foreground">
+        {loc.available_capacity}/{loc.total_capacity} {loc.capacity_uom || 'units'}
+      </td>
+      <td className="p-3 text-center">
+        <div className="inline-flex flex-col items-center gap-1">
+          <LazyQrCode value={qrPayload} size={120} />
+          <span className="font-mono text-[10px] text-muted-foreground">{loc.code}</span>
+        </div>
+      </td>
+      <td className="p-3 text-center">
+        <Button variant="ghost" size="sm" onClick={onPrint} disabled={printing}>
+          <Printer className="h-4 w-4" />
+        </Button>
+      </td>
+    </tr>
+  );
+}
+
 export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const { toast } = useToast();
@@ -86,14 +269,9 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
     setPrinting(true);
     try {
       const qrDataUrls = await Promise.all(
-        selectedLocations.map((loc) => {
-          const qrCode = loc.qr_code || loc.code;
-          return generateQRDataUrl(qrCode);
-        })
+        selectedLocations.map((loc) => generateQRDataUrl(buildQrPayload(loc)))
       );
 
-      const win = window.open('', '_blank');
-      if (!win) return;
       const pages = selectedLocations.map((loc, idx) => {
         const breakStyle = idx < selectedLocations.length - 1 ? 'page-break-after:always;' : '';
         const label = loc.full_path || loc.code;
@@ -109,14 +287,11 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
         </div>`;
       });
 
-      win.document.write(`
+      await printHTML(`
         <html><head><title>Bin Location QR Codes</title><style>
           @media print { body { margin: 0; } }
         </style></head><body>${pages.join('')}</body></html>
       `);
-      win.document.close();
-      win.focus();
-      setTimeout(() => { win.print(); win.close(); }, 300);
       toast({ title: 'Print Ready', description: `${selectedLocations.length} QR code(s) sent to printer.` });
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to generate QR codes', variant: 'destructive' });
@@ -128,13 +303,11 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
   const handlePrintSingle = async (loc: WarehouseLocation) => {
     setPrinting(true);
     try {
-      const qrCode = (loc as any).qr_code || loc.code;
-      const qrDataUrl = await generateQRDataUrl(qrCode);
+      const qrCode = loc.qr_code || loc.code;
+      const qrDataUrl = await generateQRDataUrl(buildQrPayload(loc));
       const label = loc.full_path || loc.code;
 
-      const win = window.open('', '_blank', 'width=400,height=400');
-      if (!win) return;
-      win.document.write(`
+      await printHTML(`
         <html><head><title>Bin QR Code</title><style>
           body { display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif; }
           .label { text-align:center;border:1px dashed #ccc;padding:24px;max-width:300px; }
@@ -147,60 +320,12 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
         </style></head>
         <body><div class="label"><div class="name">${label}</div><div class="code">${qrCode}</div><div class="type">Bin Location</div><div class="qrcode"><img src="${qrDataUrl}" alt="QR" width="200" height="200" /></div><div class="hint">Scan for put-away / picking</div></div></body></html>
       `);
-      win.document.close();
-      win.focus();
-      setTimeout(() => { win.print(); win.close(); }, 250);
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to generate QR code', variant: 'destructive' });
     } finally {
       setPrinting(false);
     }
   };
-
-  // ── QR Row sub-component ──
-  function QRRow({ loc, qrValue, selected, onToggle, onPrint, printing }: {
-    loc: WarehouseLocation;
-    qrValue: string;
-    selected: boolean;
-    onToggle: () => void;
-    onPrint: () => void;
-    printing: boolean;
-  }) {
-    const [qrImg, setQrImg] = React.useState<string>('');
-    React.useEffect(() => {
-      generateQRDataUrl(qrValue, 120).then(setQrImg).catch(() => {});
-    }, [qrValue]);
-
-    return (
-      <tr className="border-t hover:bg-muted/30">
-        <td className="p-3">
-          <Checkbox checked={selected} onCheckedChange={onToggle} />
-        </td>
-        <td className="p-3 font-mono text-xs">{loc.full_path || loc.code}</td>
-        <td className="p-3">
-          <span className="font-mono text-sm font-bold text-blue-600 tracking-wider">{qrValue}</span>
-        </td>
-        <td className="p-3 text-xs text-muted-foreground">
-          {loc.available_capacity}/{loc.total_capacity} {loc.capacity_uom || 'units'}
-        </td>
-        <td className="p-3 text-center">
-          {qrImg ? (
-            <div className="inline-flex flex-col items-center gap-1">
-              <img src={qrImg} alt="QR" className="w-[80px] h-[80px] rounded border" />
-              <span className="font-mono text-[10px] text-muted-foreground">{loc.full_path || loc.code}</span>
-            </div>
-          ) : (
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
-          )}
-        </td>
-        <td className="p-3 text-center">
-          <Button variant="ghost" size="sm" onClick={onPrint} disabled={printing}>
-            <Printer className="h-4 w-4" />
-          </Button>
-        </td>
-      </tr>
-    );
-  }
 
   return (
     <div className="space-y-4">
@@ -233,7 +358,7 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
                 <tr>
                   <th className="w-10 p-3 text-left">
                     <Checkbox checked={selectedIds.size === filteredLocations.length && filteredLocations.length > 0}
-                      onCheckedChange={(c) => c ? selectAll() : deselectAll()}/>
+                      onCheckedChange={(c) => c ? selectAll() : deselectAll()} />
                   </th>
                   <th className="p-3 text-left font-medium">Path</th>
                   <th className="p-3 text-left font-medium">Bin Code</th>

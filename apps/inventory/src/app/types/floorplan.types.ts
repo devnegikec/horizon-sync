@@ -169,7 +169,7 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
   {
     id: 'medium-warehouse',
     name: 'Medium Warehouse',
-    description: '2 zones, 4 aisles, 5 levels, 400 bins — standard distribution',
+    description: '2 zones, 4 aisles, 315 bins — standard distribution',
     config: {
       grid_unit: 1.0, zones: [
         {
@@ -190,7 +190,7 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
   {
     id: 'large-warehouse',
     name: 'Large Warehouse',
-    description: '3 zones, 6 aisles, 5 levels, 900 bins — high-density racking',
+    description: '3 zones, 6 aisles, 676 bins — high-density racking',
     config: {
       grid_unit: 1.0, zones: [
         {
@@ -217,7 +217,7 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
   {
     id: 'cross-dock',
     name: 'Cross-Dock Facility',
-    description: '2 zones (inbound/outbound), 4 aisles, 3 levels, 240 bins — transit hub',
+    description: '2 zones (inbound/outbound), 4 aisles, 3 levels, 144 bins — transit hub',
     config: {
       grid_unit: 1.0, zones: [
         {
