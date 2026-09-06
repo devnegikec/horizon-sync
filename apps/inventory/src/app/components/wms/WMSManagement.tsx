@@ -14,7 +14,6 @@ import {
   Layers,
   QrCode,
   Truck,
-  LayoutDashboard,
   AlertTriangle,
   ScanLine,
 } from 'lucide-react';
@@ -30,7 +29,6 @@ import { hasPermission } from '../../utils/permissions';
 import { StockManagement } from '../stock';
 
 import { AsnManagement } from './AsnManagement';
-import { DashboardPanel } from './DashboardPanel';
 import { DeviceManagementPanel } from './DeviceManagementPanel';
 import { InboundExceptionQueue } from './InboundExceptionQueue';
 import { InboundScanPanel } from './InboundScanPanel';
@@ -41,12 +39,11 @@ import { PutAwayView } from './PutAwayView';
 import { ReceivingSlipList } from './ReceivingSlipList';
 import { VehicleArrivalManagement } from './VehicleArrivalManagement';
 import { Warehouse3DView } from './Warehouse3DView';
-import { WarehouseCapacityCard } from './WarehouseCapacityCard';
 import { WarehouseLayoutDesigner } from './WarehouseLayoutDesigner';
 import { WorkersManagementPanel } from './WorkersManagementPanel';
 
 type WMSView = 'asn' | 'inbound' | 'outbound' | 'stock' | 'manage';
-type LayoutTab = 'tree' | 'designer' | '3d';
+type ManageSection = 'workers' | 'devices' | 'designer' | 'tree' | '3d' | 'location-qr';
 type InboundSection = 'scan' | 'receiving' | 'putaway' | 'vehicle' | 'exceptions';
 
 interface NavItemProps {
@@ -70,7 +67,7 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 export function WMSManagement() {
   const [activeView, setActiveView] = React.useState<WMSView>('asn');
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('');
-  const [manageSection, setManageSection] = React.useState<'workers' | 'devices' | 'layout' | 'location-qr'>('workers');
+  const [manageSection, setManageSection] = React.useState<ManageSection>('workers');
   const [inboundSection, setInboundSection] = React.useState<InboundSection>('receiving');
 
   const { warehouses, loading: warehousesLoading, refetch: refetchWarehouses } = useMyWarehouses();
@@ -182,10 +179,10 @@ interface WMSContentProps {
   activeView: WMSView;
   canManage: boolean;
   inboundSection: InboundSection;
-  manageSection: 'workers' | 'devices' | 'layout' | 'location-qr';
+  manageSection: ManageSection;
   selectedWarehouseId: string;
   onInboundSectionChange: (section: InboundSection) => void;
-  onManageSectionChange: (section: 'workers' | 'devices' | 'layout' | 'location-qr') => void;
+  onManageSectionChange: (section: ManageSection) => void;
 }
 
 const wmsViewComponents: Record<WMSView, React.ComponentType<WMSContentProps>> = {
@@ -331,7 +328,15 @@ function PutAwaySection({ warehouseId }: { warehouseId: string }) {
   );
 }
 
-function ManageManagement({ manageSection, selectedWarehouseId, onManageSectionChange }: WMSContentProps) {
+function ManageManagement({ manageSection, selectedWarehouseId, onManageSectionChange, canManage }: WMSContentProps) {
+  const [treeKey, setTreeKey] = React.useState(0);
+
+  /** Refresh the location tree after a layout is applied/updated/deleted. */
+  const handleLayoutChanged = React.useCallback(() => {
+    setTreeKey((k) => k + 1);
+    onManageSectionChange('tree');
+  }, [onManageSectionChange]);
+
   return (
     <div className="space-y-4">
       <div>
@@ -342,66 +347,20 @@ function ManageManagement({ manageSection, selectedWarehouseId, onManageSectionC
         <div className="flex border-b">
           <SectionTab active={manageSection === 'workers'} icon={Users} label="Workers" onClick={() => onManageSectionChange('workers')} />
           <SectionTab active={manageSection === 'devices'} icon={Monitor} label="Devices" onClick={() => onManageSectionChange('devices')} />
-          <SectionTab active={manageSection === 'layout'} icon={MapPin} label="Layout" onClick={() => onManageSectionChange('layout')} />
+          {canManage && (
+            <SectionTab active={manageSection === 'designer'} icon={MapPin} label="Layout Designer" onClick={() => onManageSectionChange('designer')} />
+          )}
+          <SectionTab active={manageSection === 'tree'} icon={Layers} label="Location Tree" onClick={() => onManageSectionChange('tree')} />
+          <SectionTab active={manageSection === '3d'} icon={Box} label="3D View" onClick={() => onManageSectionChange('3d')} />
           <SectionTab active={manageSection === 'location-qr'}
             icon={QrCode}
             label="Location QR"
             onClick={() => onManageSectionChange('location-qr')} />
         </div>
         <div className="p-4">
-          <ManageSectionContent section={manageSection} warehouseId={selectedWarehouseId} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ManageSectionContent({ section, warehouseId }: { section: WMSContentProps['manageSection']; warehouseId: string }) {
-  switch (section) {
-    case 'workers':
-      return <WorkersManagementPanel warehouseId={warehouseId || undefined} />;
-    case 'devices':
-      return <DeviceManagementPanel warehouseId={warehouseId || undefined} />;
-    case 'layout':
-      return <LayoutView selectedWarehouseId={warehouseId} />;
-    case 'location-qr':
-      return <LocationQRPanel warehouseId={warehouseId || undefined} />;
-  }
-}
-
-function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | null }) {
-  const userPermissions = useUserStore((s) => s.permissions.permissions);
-  const canDesignLayout = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
-  const [layoutTab, setLayoutTab] = React.useState<LayoutTab>(canDesignLayout ? 'designer' : 'tree');
-  const [treeKey, setTreeKey] = React.useState(0);
-
-  /** Refresh the location tree after a layout is applied/updated/deleted. */
-  const handleLayoutChanged = React.useCallback(() => {
-    setTreeKey((k) => k + 1);
-    setLayoutTab('tree');
-  }, []);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">Warehouse Layout</h2>
-          <p className="text-sm text-muted-foreground">View the location hierarchy or design a new layout from scratch.</p>
-        </div>
-      </div>
-
-      <div className="border rounded-lg overflow-hidden">
-        <div className="flex border-b">
-          {canDesignLayout && (
-            <SectionTab active={layoutTab === 'designer'} icon={MapPin} label="Layout Designer" onClick={() => setLayoutTab('designer')} />
-          )}
-          <SectionTab active={layoutTab === 'tree'} icon={Layers} label="Location Tree" onClick={() => setLayoutTab('tree')} />
-          <SectionTab active={layoutTab === '3d'} icon={Box} label="3D View" onClick={() => setLayoutTab('3d')} />
-        </div>
-        <div className="p-4">
-          <LayoutTabContent canDesignLayout={canDesignLayout}
-            layoutTab={layoutTab}
-            selectedWarehouseId={selectedWarehouseId}
+          <ManageSectionContent section={manageSection}
+            warehouseId={selectedWarehouseId}
+            canDesignLayout={canManage}
             treeKey={treeKey}
             onLayoutChanged={handleLayoutChanged} />
         </div>
@@ -410,25 +369,52 @@ function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | nul
   );
 }
 
-interface LayoutTabContentProps {
+function ManageSectionContent({
+  section,
+  warehouseId,
+  canDesignLayout,
+  treeKey,
+  onLayoutChanged,
+}: {
+  section: ManageSection;
+  warehouseId: string;
   canDesignLayout: boolean;
-  layoutTab: LayoutTab;
-  selectedWarehouseId: string | null;
   treeKey: number;
   onLayoutChanged: () => void;
+}) {
+  switch (section) {
+    case 'workers':
+      return <WorkersManagementPanel warehouseId={warehouseId || undefined} />;
+    case 'devices':
+      return <DeviceManagementPanel warehouseId={warehouseId || undefined} />;
+    case 'location-qr':
+      return <LocationQRPanel warehouseId={warehouseId || undefined} />;
+    case 'designer':
+      return <DesignerContent warehouseId={warehouseId} canDesignLayout={canDesignLayout} onLayoutChanged={onLayoutChanged} />;
+    case 'tree':
+      return <TreeContent warehouseId={warehouseId} treeKey={treeKey} />;
+    case '3d':
+      return <Warehouse3DContent warehouseId={warehouseId} />;
+  }
 }
 
-function LayoutTabContent({ canDesignLayout, layoutTab, selectedWarehouseId, treeKey, onLayoutChanged }: LayoutTabContentProps) {
-  if (!selectedWarehouseId) {
-    return <p className="text-sm text-muted-foreground">Select a warehouse to view its layout.</p>;
+function DesignerContent({ warehouseId, canDesignLayout, onLayoutChanged }: { warehouseId: string; canDesignLayout: boolean; onLayoutChanged: () => void }) {
+  if (!warehouseId || !canDesignLayout) {
+    return <p className="text-sm text-muted-foreground">Select a warehouse to design its layout.</p>;
   }
+  return <WarehouseLayoutDesigner key={warehouseId} warehouseId={warehouseId} onApplied={onLayoutChanged} />;
+}
 
-  switch (layoutTab) {
-    case 'designer':
-      return canDesignLayout ? <WarehouseLayoutDesigner warehouseId={selectedWarehouseId} onApplied={onLayoutChanged} /> : null;
-    case 'tree':
-      return <LocationTreeView key={treeKey} warehouseId={selectedWarehouseId} />;
-    case '3d':
-      return <Warehouse3DView warehouseId={selectedWarehouseId} />;
+function TreeContent({ warehouseId, treeKey }: { warehouseId: string; treeKey: number }) {
+  if (!warehouseId) {
+    return <p className="text-sm text-muted-foreground">Select a warehouse to view its location tree.</p>;
   }
+  return <LocationTreeView key={treeKey} warehouseId={warehouseId} />;
+}
+
+function Warehouse3DContent({ warehouseId }: { warehouseId: string }) {
+  if (!warehouseId) {
+    return <p className="text-sm text-muted-foreground">Select a warehouse to view its 3D layout.</p>;
+  }
+  return <Warehouse3DView warehouseId={warehouseId} />;
 }

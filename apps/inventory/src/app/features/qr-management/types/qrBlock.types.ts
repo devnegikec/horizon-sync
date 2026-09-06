@@ -143,3 +143,30 @@ export interface QSealAggregationResponse {
     has_prev: boolean;
   };
 }
+
+export interface QSealAggregationChild {
+  child_serial: string;
+  activated: boolean | null;
+  scan_count: number;
+  id?: string;
+  batch?: string | null;
+  linked?: boolean;
+  block_id?: string | null;
+  created_at?: string | null;
+}
+
+export interface QSealAggregationGroup {
+  parent_id: string;
+  parent_serial: string;
+  parent_name: string;
+  parent_type: string;
+  parent_capacity: number;
+  linked_count: number;
+  children: QSealAggregationChild[];
+}
+
+export interface QSealAggregationGroupedResponse {
+  groups: QSealAggregationGroup[];
+  unlinked: QSealAggregationChild[];
+  pagination: QSealAggregationResponse['pagination'];
+}

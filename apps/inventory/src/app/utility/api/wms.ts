@@ -39,6 +39,8 @@ import type {
   StockImportRequest,
   StockImportResult,
   BinStateResponse,
+  BinStockLevelsResponse,
+  BinStockParentsResponse,
   CapacityTreeNode,
   WMSDashboardStats,
   AsnReceivingSummary,
@@ -568,6 +570,12 @@ export const wmsDeviceApi = {
 // ============================================
 
 export const binStockApi = {
+  getLevels: (token: string, binId: string) =>
+    req<BinStockLevelsResponse>(`${BASE}/bin-stock/${binId}`, token),
+
+  getParents: (token: string, binId: string) =>
+    req<BinStockParentsResponse>(`${BASE}/bin-stock/${binId}/parents`, token),
+
   copy: (token: string, data: CopyStockRequest) => req<unknown>(`${BASE}/bin-stock/copy`, token, { method: 'POST', body: JSON.stringify(data) }),
 
   exportCsv: (token: string, params?: { warehouse_id?: string; item_id?: string; bin_id?: string }) => {

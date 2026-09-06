@@ -87,11 +87,44 @@ export interface BinStockLevel {
   organization_id: string;
   bin_location_id: string;
   item_id: string;
+  item_name: string | null;
+  sku: string | null;
   quantity_on_hand: number;
   inventory_status: string;
   batch_number: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface BinStockLevelsResponse {
+  bin_stock_levels: BinStockLevel[];
+}
+
+export interface BinStockParentChild {
+  serial_number: string;
+  batch_number: string | null;
+  item_id: string;
+  quantity_on_hand: number;
+  inventory_status: string;
+  manufacturing_date: string | null;
+  expiry_date: string | null;
+  dispatch_batch: string | null;
+}
+
+export interface BinStockParent {
+  parent_id: string;
+  parent_serial: string;
+  parent_name: string;
+  capacity: number;
+  child_units_in_bin: number;
+  quantity_on_hand: number;
+  children: BinStockParentChild[];
+}
+
+export interface BinStockParentsResponse {
+  bin_id: string;
+  total_parent_boxes: number;
+  parents: BinStockParent[];
 }
 
 export interface BinStockInfo {

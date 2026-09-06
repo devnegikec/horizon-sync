@@ -10,6 +10,7 @@ import type {
   QRBlockListParams,
   QRBlockListResponse,
   QSealAggregationResponse,
+  QSealAggregationGroupedResponse,
   QSealAutoLinkResponse,
 } from '../types/qrBlock.types';
 
@@ -106,6 +107,18 @@ class QRBlockService {
     const res = await axios.get(
       `${API_BASE_URL}/api/v1/qseal/aggregation`,
       { headers: this.getHeaders(), params },
+    );
+    return res.data;
+  }
+
+  async getAggregationGrouped(params?: {
+    block_id?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<QSealAggregationGroupedResponse> {
+    const res = await axios.get(
+      `${API_BASE_URL}/api/v1/qseal/aggregation`,
+      { headers: this.getHeaders(), params: { ...params, grouped: true } },
     );
     return res.data;
   }
