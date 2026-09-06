@@ -1,8 +1,8 @@
 import { DetailDialog } from '@horizon-sync/ui/components';
 
 import type { ReceivingSlip } from '../../../types/wms.types';
-
 import { WMSStatusBadge } from '../WMSStatusBadge';
+
 import { ReceivingGroupsTable } from './ReceivingGroupsTable';
 
 // ─── Slip detail dialog ───────────────────────────────────────────────────────
@@ -18,13 +18,11 @@ interface SlipDetailDialogProps {
 
 export function SlipDetailDialog({ slip, loading, open, onOpenChange, onRejectItem, onExceptionCreated }: SlipDetailDialogProps) {
   return (
-    <DetailDialog
-      open={open}
+    <DetailDialog open={open}
       onOpenChange={onOpenChange}
       title={slip ? `Receiving Slip — ${slip.slip_number}` : 'Loading...'}
       loading={loading}
-      loadingMessage="Loading slip details..."
-    >
+      loadingMessage="Loading slip details...">
       {slip && (
         <div className="flex flex-col gap-4">
           {/* Summary row */}
