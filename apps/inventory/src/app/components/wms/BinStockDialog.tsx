@@ -96,7 +96,10 @@ export function BinStockDialog({ bin, open, onOpenChange }: BinStockDialogProps)
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!open || !bin || !accessToken) return;
+    if (!open || !bin || !accessToken) {
+      setData(null);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);

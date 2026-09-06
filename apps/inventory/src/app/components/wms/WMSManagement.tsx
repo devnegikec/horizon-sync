@@ -328,9 +328,7 @@ function PutAwaySection({ warehouseId }: { warehouseId: string }) {
   );
 }
 
-function ManageManagement({ manageSection, selectedWarehouseId, onManageSectionChange }: WMSContentProps) {
-  const userPermissions = useUserStore((s) => s.permissions.permissions);
-  const canDesignLayout = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
+function ManageManagement({ manageSection, selectedWarehouseId, onManageSectionChange, canManage }: WMSContentProps) {
   const [treeKey, setTreeKey] = React.useState(0);
 
   /** Refresh the location tree after a layout is applied/updated/deleted. */
@@ -349,7 +347,7 @@ function ManageManagement({ manageSection, selectedWarehouseId, onManageSectionC
         <div className="flex border-b">
           <SectionTab active={manageSection === 'workers'} icon={Users} label="Workers" onClick={() => onManageSectionChange('workers')} />
           <SectionTab active={manageSection === 'devices'} icon={Monitor} label="Devices" onClick={() => onManageSectionChange('devices')} />
-          {canDesignLayout && (
+          {canManage && (
             <SectionTab active={manageSection === 'designer'} icon={MapPin} label="Layout Designer" onClick={() => onManageSectionChange('designer')} />
           )}
           <SectionTab active={manageSection === 'tree'} icon={Layers} label="Location Tree" onClick={() => onManageSectionChange('tree')} />
@@ -362,7 +360,7 @@ function ManageManagement({ manageSection, selectedWarehouseId, onManageSectionC
         <div className="p-4">
           <ManageSectionContent section={manageSection}
             warehouseId={selectedWarehouseId}
-            canDesignLayout={canDesignLayout}
+            canDesignLayout={canManage}
             treeKey={treeKey}
             onLayoutChanged={handleLayoutChanged} />
         </div>
@@ -404,7 +402,7 @@ function DesignerContent({ warehouseId, canDesignLayout, onLayoutChanged }: { wa
   if (!warehouseId || !canDesignLayout) {
     return <p className="text-sm text-muted-foreground">Select a warehouse to design its layout.</p>;
   }
-  return <WarehouseLayoutDesigner warehouseId={warehouseId} onApplied={onLayoutChanged} />;
+  return <WarehouseLayoutDesigner key={warehouseId} warehouseId={warehouseId} onApplied={onLayoutChanged} />;
 }
 
 function TreeContent({ warehouseId, treeKey }: { warehouseId: string; treeKey: number }) {
