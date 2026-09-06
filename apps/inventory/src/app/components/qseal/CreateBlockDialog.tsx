@@ -367,6 +367,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
   const [includeQrImage, setIncludeQrImage] = React.useState(true);
   const [masterPackEnabled, setMasterPackEnabled] = React.useState(false);
   const [masterPackSize, setMasterPackSize] = React.useState(10);
+  const masterPackWarnedFor = React.useRef<number | null>(null);
 
   const reset = () => {
     setProductId('');
@@ -381,7 +382,17 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
     setIncludeQrImage(true);
     setMasterPackEnabled(false);
     setMasterPackSize(10);
+    masterPackWarnedFor.current = null;
   };
+
+  // Reset the form every time the dialog opens so values left over from a
+  // previous (or cancelled) session never leak into a new one.
+  React.useEffect(() => {
+    if (open) {
+      reset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Submission maps credit and backend conflict errors to Product-facing notifications.
   // eslint-disable-next-line complexity
@@ -441,6 +452,24 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
 
   // Master pack calculations
   const masterPackParentCount = masterPackEnabled && masterPackSize > 0 ? Math.ceil(quantity / masterPackSize) : 0;
+
+  // Warn when the user overrides a product-configured master pack size. The
+  // ref tracks the last configured value we warned about, so selecting a
+  // different product (with a different configured value) re-arms the warning.
+  const handleMasterPackSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const next = Math.max(1, Number(e.target.value));
+    const configured = selectedProduct?.items_per_master_pack;
+    if (
+      configured != null &&
+      configured > 0 &&
+      next !== configured &&
+      masterPackWarnedFor.current !== configured
+    ) {
+      masterPackWarnedFor.current = configured;
+      notificationService.masterPackOverridden();
+    }
+    setMasterPackSize(next);
+  };
 
   // Determine if user has enough credits
   const hasEnoughCredits = credits === null || credits >= quantity;
@@ -506,6 +535,12 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
               setProductId(product.id);
               setSelectedProduct(product);
               setStartingSerial('');
+              // Auto-populate Items per Master Pack from the product's base
+              // packaging unit so master pack (cascade) generation is prefilled.
+              const itemsPerMasterPack = product.items_per_master_pack;
+              setMasterPackSize(
+                itemsPerMasterPack && itemsPerMasterPack > 0 ? itemsPerMasterPack : 10
+              );
             }} />
         </div>
         {selectedProduct && (
@@ -641,9 +676,10 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
             <input type="checkbox"
               id="masterPackEnabled"
               checked={masterPackEnabled}
+              disabled={!selectedProduct}
               onChange={(e) => setMasterPackEnabled(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-            <Label htmlFor="masterPackEnabled" className="text-sm font-medium cursor-pointer flex items-center gap-1.5">
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50" />
+            <Label htmlFor="masterPackEnabled" className={cn('text-sm font-medium cursor-pointer flex items-center gap-1.5', !selectedProduct && 'cursor-not-allowed opacity-50')}>
               <Layers className="h-4 w-4" />
               Enable Master Pack (Cascade)
             </Label>
@@ -655,7 +691,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
                 <Input id="masterPackSize"
                   type="number"
                   value={masterPackSize}
-                  onChange={(e) => setMasterPackSize(Math.max(1, Number(e.target.value)))}
+                  onChange={handleMasterPackSizeChange}
                   min={1}
                   max={quantity}
                   required />

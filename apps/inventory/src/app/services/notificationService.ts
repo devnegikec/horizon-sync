@@ -25,7 +25,7 @@ class NotificationService {
 
   private initContainer() {
     if (this.toastContainer) return;
-    
+
     this.toastContainer = document.createElement('div');
     this.toastContainer.id = 'toast-container';
     this.toastContainer.style.cssText = `
@@ -113,6 +113,13 @@ class NotificationService {
 
   blockFailed() {
     this.error('Block generation failed. No credits were deducted. Please try again.');
+  }
+
+  masterPackOverridden() {
+    this.warning(
+      'Items per Master Pack is configured on this product and has been auto-populated. Changing it overrides the product default and may affect master pack grouping.',
+      { duration: 6000 }
+    );
   }
 
   networkError() {

@@ -22,6 +22,7 @@ export interface QSealProductListItem {
   sr_number_type: string | null;
   serial_prefix_setting_id: string | null;
   serial_prefix: string | null;
+  items_per_master_pack?: number | null;
   created_at: string;
 }
 
@@ -50,7 +51,7 @@ export interface QSealProduct {
   serial_prefix_setting_id: string | null;
   serial_prefix: string | null;
   redirect_to_client: boolean;
-     warranty_period_months: number | null;
+  warranty_period_months: number | null;
   shelf_life_setting_id: string | null;
   packaging_details?: QSealPackagingDetailsPayload | null;
   extra_data: Record<string, unknown> | null;
