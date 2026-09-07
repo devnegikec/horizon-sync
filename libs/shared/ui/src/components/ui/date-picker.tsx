@@ -4,8 +4,6 @@ import { CalendarIcon } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
 
-import { Button } from './button';
-
 export interface DatePickerProps {
   value?: string; // ISO date string: YYYY-MM-DD
   onChange?: (value: string) => void;
@@ -50,7 +48,7 @@ const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
       });
     }, [value]);
 
-    const handleButtonClick = () => {
+    const handleOpenPicker = () => {
       inputRef.current?.showPicker?.();
       inputRef.current?.focus();
     };
@@ -71,19 +69,18 @@ const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
           tabIndex={-1}
           aria-hidden="true"/>
 
-        {/* Styled trigger button */}
-        <Button type="button"
-          variant="outline"
+        {/* Input-styled trigger */}
+        <button type="button"
           disabled={disabled}
-          onClick={handleButtonClick}
+          onClick={handleOpenPicker}
           className={cn(
-            'w-full justify-start text-left font-normal',
-            !value && 'text-muted-foreground',
+            'flex h-9 w-full cursor-pointer items-center gap-2 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+            !value && 'text-muted-foreground/60',
           )}
           aria-label={formattedDisplay ?? placeholder}>
-          <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-          {formattedDisplay ?? <span>{placeholder}</span>}
-        </Button>
+          <span className="truncate text-left">{formattedDisplay ?? placeholder}</span>
+          <CalendarIcon className="ml-auto h-4 w-4 shrink-0 text-primary" />
+        </button>
       </div>
     );
   },

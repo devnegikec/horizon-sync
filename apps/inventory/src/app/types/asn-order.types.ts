@@ -126,9 +126,20 @@ export interface AsnOrderListItem {
     created_at: string;
 }
 
+export interface AsnOrderStatusCounts {
+    total: number;
+    draft: number;
+    confirmed: number;
+    partially_delivered: number;
+    delivered: number;
+    closed: number;
+    cancelled: number;
+}
+
 export interface AsnOrderListResponse {
     asn_orders: AsnOrderListItem[];
     pagination: PaginationInfo;
+    status_counts?: AsnOrderStatusCounts;
 }
 
 export interface AsnOrderItemCreate {

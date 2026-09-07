@@ -9,6 +9,7 @@ import type {
   AsnOrderCreate,
   AsnOrderUpdate,
   AsnOrderListResponse,
+  AsnOrderStatusCounts,
 } from '../types/asn-order.types';
 import { asnOrderApi } from '../utility/api/asn-orders';
 import { getFriendlyErrorMessage } from '../utility/api/core';
@@ -85,9 +86,10 @@ function useAsnOrders(
 
   const asnOrders = (data?.asn_orders ?? []) as unknown as AsnOrder[];
   const pagination = data?.pagination ?? null;
+  const statusCounts: AsnOrderStatusCounts | null = (data as AsnOrderListResponse | undefined)?.status_counts ?? null;
   const error = queryError ? getFriendlyErrorMessage(queryError) : null;
 
-  return { asnOrders, pagination, loading, error, refetch };
+  return { asnOrders, pagination, statusCounts, loading, error, refetch };
 }
 
 export function useAsnOrderManagement() {
@@ -115,7 +117,7 @@ export function useAsnOrderManagement() {
     setPage(1);
   }, [filters]);
 
-  const { asnOrders, pagination, loading, error, refetch } = useAsnOrders(page, pageSize, filters);
+  const { asnOrders, pagination, statusCounts, loading, error, refetch } = useAsnOrders(page, pageSize, filters);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => asnOrderApi.delete(accessToken || '', id),
@@ -182,6 +184,7 @@ export function useAsnOrderManagement() {
     setFilters,
     asnOrders,
     pagination,
+    statusCounts,
     loading,
     error,
     refetch,
