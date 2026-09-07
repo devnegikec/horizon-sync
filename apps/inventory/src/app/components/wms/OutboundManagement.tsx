@@ -32,14 +32,15 @@ import { PickListView } from './PickListView';
 import { PickExceptionQueue } from './PickExceptionQueue';
 import { GateVerificationPanel } from './GateVerificationPanel';
 import { DispatchList } from './DispatchList';
-import { outboundApi } from '../../utility/api/wms';
-import type { PickList, SAPInvoicePayload } from '../../types/wms.types';
+import { OutboundOrderList } from './OutboundOrderList';
+import { outboundOrderApi } from '../../utility/api/wms';
+import type { SAPInvoicePayload, OutboundOrder } from '../../types/wms.types';
 
 // ============================================
 // TYPES
 // ============================================
 
-type OutboundTab = 'pick' | 'gate' | 'dispatch' | 'exceptions';
+type OutboundTab = 'orders' | 'pick' | 'gate' | 'dispatch' | 'exceptions';
 
 interface OutboundManagementProps {
     warehouseId: string | null;
@@ -78,16 +79,13 @@ function ImportDialog({ open, onClose, onSuccess, accessToken, warehouseId }: Im
     const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
     const [importing, setImporting] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
-    const [mode, setMode] = React.useState<'csv' | 'pdf'>('csv');
+    const [orderType, setOrderType] = React.useState<'asn' | 'sap'>('sap');
 
     const handleFileChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             setSelectedFile(file);
             setError(null);
-            // Auto-detect mode from extension
-            if (file.name.endsWith('.pdf')) setMode('pdf');
-            else setMode('csv');
         }
     }, []);
 
@@ -97,27 +95,11 @@ function ImportDialog({ open, onClose, onSuccess, accessToken, warehouseId }: Im
         setError(null);
 
         try {
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-
-            const { buildUrl } = await import('../../utility/api/core');
-            const url = buildUrl(`/outbound/import?warehouse_id=${warehouseId}`);
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${accessToken}` },
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                throw new Error(err.detail || `Import failed (${response.status})`);
-            }
-
-            const result = await response.json();
-            const created = result?.pick_lists_created ?? result?.created ?? 0;
+            const result = await outboundOrderApi.importOrders(accessToken, selectedFile, warehouseId, orderType);
+            const created = result?.orders_created ?? 0;
             const errors: string[] = result?.errors ?? [];
 
-            let description = `${created} pick list(s) created from ${selectedFile.name}`;
+            let description = `${created} order(s) created from ${selectedFile.name}`;
             if (errors.length > 0) {
                 description += `. ${errors.length} issue(s): ${errors.slice(0, 3).join('; ')}`;
                 if (errors.length > 3) description += `...`;
@@ -138,7 +120,7 @@ function ImportDialog({ open, onClose, onSuccess, accessToken, warehouseId }: Im
         } finally {
             setImporting(false);
         }
-    }, [selectedFile, accessToken, warehouseId, onClose, onSuccess]);
+    }, [selectedFile, accessToken, warehouseId, orderType, onClose, onSuccess]);
 
     if (!open) return null;
 
@@ -147,8 +129,35 @@ function ImportDialog({ open, onClose, onSuccess, accessToken, warehouseId }: Im
             <div className="bg-background rounded-xl shadow-xl border w-full max-w-md p-6 space-y-4">
                 <h2 className="text-lg font-semibold">Import Incoming Order</h2>
                 <p className="text-sm text-muted-foreground">
-                    Upload a PDF packing slip or CSV order file to generate a pick list.
+                    Upload a PDF packing slip or CSV order file to create an outbound order.
                 </p>
+
+                <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Order Type</label>
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setOrderType('sap')}
+                            className={cn(
+                                'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
+                                orderType === 'sap' ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-muted/50',
+                            )}
+                        >
+                            SAP Order
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setOrderType('asn')}
+                            className={cn(
+                                'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
+                                orderType === 'asn' ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-muted/50',
+                            )}
+                        >
+                            ASN Order
+                        </button>
+                    </div>
+                </div>
+
                 <Button variant="ghost" size="sm" className="gap-2 w-fit" onClick={downloadSampleCsv}>
                     <FileDown className="h-4 w-4" />
                     Download sample CSV
@@ -231,7 +240,7 @@ interface CreateLineRow {
     uom: string;
 }
 
-interface CreatePickListDialogProps {
+interface CreateOrderDialogProps {
     open: boolean;
     onClose: () => void;
     onSuccess: () => void;
@@ -243,8 +252,9 @@ function makeKey() {
     return Math.random().toString(36).slice(2);
 }
 
-function CreatePickListDialog({ open, onClose, onSuccess, accessToken, warehouseId }: CreatePickListDialogProps) {
+function CreateOrderDialog({ open, onClose, onSuccess, accessToken, warehouseId }: CreateOrderDialogProps) {
     const [invoiceRef, setInvoiceRef] = React.useState('');
+    const [orderType, setOrderType] = React.useState<'asn' | 'sap'>('sap');
     const [lines, setLines] = React.useState<CreateLineRow[]>([
         { key: makeKey(), item_id: '', sku: '', quantity: 1, uom: 'pcs' },
     ]);
@@ -311,16 +321,16 @@ function CreatePickListDialog({ open, onClose, onSuccess, accessToken, warehouse
                     uom: l.uom || 'pcs',
                 })),
             };
-            await outboundApi.createFromInvoice(accessToken, payload);
+            await outboundOrderApi.createOrder(accessToken, payload, orderType);
             window.dispatchEvent(new CustomEvent('app:toast', {
-                detail: { title: 'Pick List Created', description: `Pick list created for invoice ${invoiceRef.trim()}` },
+                detail: { title: 'Order Created', description: `${orderType.toUpperCase()} order created for ${invoiceRef.trim()}` },
             }));
             setInvoiceRef('');
             setLines([{ key: makeKey(), item_id: '', sku: '', quantity: 1, uom: 'pcs' }]);
             onClose();
             onSuccess();
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to create pick list');
+            setError(err instanceof Error ? err.message : 'Failed to create order');
         } finally {
             setSaving(false);
         }
@@ -331,10 +341,36 @@ function CreatePickListDialog({ open, onClose, onSuccess, accessToken, warehouse
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div className="bg-background rounded-xl shadow-xl border w-full max-w-2xl p-6 space-y-4">
-                <h2 className="text-lg font-semibold">Create Pick List</h2>
+                <h2 className="text-lg font-semibold">Create Order</h2>
                 <p className="text-sm text-muted-foreground">
-                    Create a pick list from an incoming order (invoice).
+                    Create an outbound order (ASN or SAP) from an invoice.
                 </p>
+
+                <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Order Type</label>
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setOrderType('sap')}
+                            className={cn(
+                                'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
+                                orderType === 'sap' ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-muted/50',
+                            )}
+                        >
+                            SAP Order
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setOrderType('asn')}
+                            className={cn(
+                                'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
+                                orderType === 'asn' ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-muted/50',
+                            )}
+                        >
+                            ASN Order
+                        </button>
+                    </div>
+                </div>
 
                 <div className="space-y-2">
                     <label className="text-sm font-medium">Invoice Reference</label>
@@ -400,7 +436,7 @@ function CreatePickListDialog({ open, onClose, onSuccess, accessToken, warehouse
                     <Button variant="outline" onClick={onClose}>Cancel</Button>
                     <Button onClick={handleSubmit} disabled={saving}>
                         {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-                        Create Pick List
+                        Create Order
                     </Button>
                 </div>
             </div>
@@ -424,31 +460,29 @@ function OutboundHeader({ activeTab, warehouseId, onImportSuccess }: HeaderProps
     const [importOpen, setImportOpen] = React.useState(false);
     const [createOpen, setCreateOpen] = React.useState(false);
 
-    const showActions = activeTab === 'pick';
+    const showActions = activeTab === 'orders';
 
     const handleExport = React.useCallback(async () => {
-        if (!accessToken) return;
+        if (!accessToken || !warehouseId) return;
         setExporting(true);
         try {
-            // Fetch all pages of pick lists
-            const firstPage = await outboundApi.listPickLists(accessToken, { page: 1, page_size: 100 });
-            let allPickLists: PickList[] = firstPage.pick_lists ?? [];
+            // Fetch all pages of orders
+            const firstPage = await outboundOrderApi.listOrders(accessToken, { warehouse_id: warehouseId, page: 1, page_size: 100 });
+            let allOrders: OutboundOrder[] = firstPage.orders ?? [];
             const totalPages = (firstPage.pagination as { total_pages?: number })?.total_pages ?? 1;
             for (let p = 2; p <= totalPages; p++) {
-                const page = await outboundApi.listPickLists(accessToken, { page: p, page_size: 100 });
-                allPickLists = allPickLists.concat(page.pick_lists ?? []);
+                const page = await outboundOrderApi.listOrders(accessToken, { warehouse_id: warehouseId, page: p, page_size: 100 });
+                allOrders = allOrders.concat(page.orders ?? []);
             }
 
-            const headers = ['Pick List No', 'Status', 'Invoice Ref', 'Total Items', 'Picked Items', 'Warehouse', 'Created At', 'Completed At'];
-            const rows = allPickLists.map((pl) => [
-                pl.pick_list_no,
-                pl.status,
-                pl.invoice_reference ?? '',
-                String(pl.progress?.total_items ?? pl.items?.length ?? 0),
-                String(pl.progress?.picked_items ?? 0),
-                pl.warehouse_id,
-                pl.created_at ?? '',
-                pl.completed_at ?? '',
+            const headers = ['Order No', 'Type', 'Status', 'Invoice Ref', 'Total Items', 'Created At'];
+            const rows = allOrders.map((o) => [
+                o.order_no,
+                o.order_type,
+                o.status,
+                o.invoice_reference ?? '',
+                String(o.items?.length ?? 0),
+                o.created_at ?? '',
             ]);
 
             const csvContent = [
@@ -460,14 +494,14 @@ function OutboundHeader({ activeTab, warehouseId, onImportSuccess }: HeaderProps
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `pick-lists-export.csv`;
+            link.download = `outbound-orders-export.csv`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
 
             window.dispatchEvent(new CustomEvent('app:toast', {
-                detail: { title: 'Export Complete', description: `${allPickLists.length} pick lists exported` },
+                detail: { title: 'Export Complete', description: `${allOrders.length} orders exported` },
             }));
         } catch (err) {
             window.dispatchEvent(new CustomEvent('app:toast', {
@@ -476,7 +510,7 @@ function OutboundHeader({ activeTab, warehouseId, onImportSuccess }: HeaderProps
         } finally {
             setExporting(false);
         }
-    }, [accessToken]);
+    }, [accessToken, warehouseId]);
 
     return (
         <>
@@ -508,13 +542,13 @@ function OutboundHeader({ activeTab, warehouseId, onImportSuccess }: HeaderProps
                                     ) : (
                                         <Download className="h-4 w-4 mr-2" />
                                     )}
-                                    Export Pick Lists
+                                    Export Orders
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <Button className="gap-2" onClick={() => setCreateOpen(true)}>
                             <Plus className="h-4 w-4" />
-                            New
+                            New Order
                         </Button>
                     </div>
                 )}
@@ -528,7 +562,7 @@ function OutboundHeader({ activeTab, warehouseId, onImportSuccess }: HeaderProps
                 warehouseId={warehouseId}
             />
 
-            <CreatePickListDialog
+            <CreateOrderDialog
                 open={createOpen}
                 onClose={() => setCreateOpen(false)}
                 onSuccess={onImportSuccess}
@@ -544,21 +578,40 @@ function OutboundHeader({ activeTab, warehouseId, onImportSuccess }: HeaderProps
 // ============================================
 
 export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
-    const [activeTab, setActiveTab] = React.useState<OutboundTab>('pick');
+    const [activeTab, setActiveTab] = React.useState<OutboundTab>('orders');
     const [gatePickListId, setGatePickListId] = React.useState('');
-    const [refreshKey, setRefreshKey] = React.useState(0);
+    const [ordersRefreshKey, setOrdersRefreshKey] = React.useState(0);
+    const [pickRefreshKey, setPickRefreshKey] = React.useState(0);
 
-    const handleImportSuccess = React.useCallback(() => {
-        setRefreshKey((k) => k + 1);
+    const handleOrdersRefresh = React.useCallback(() => {
+        setOrdersRefreshKey((k) => k + 1);
+    }, []);
+
+    const handlePickRefresh = React.useCallback(() => {
+        setPickRefreshKey((k) => k + 1);
     }, []);
 
     return (
         <div className="space-y-4">
-            <OutboundHeader activeTab={activeTab} warehouseId={warehouseId} onImportSuccess={handleImportSuccess} />
+            <OutboundHeader activeTab={activeTab} warehouseId={warehouseId} onImportSuccess={handleOrdersRefresh} />
 
             <div className="border rounded-lg overflow-hidden">
                 {/* Sub-tabs */}
                 <div className="flex border-b">
+                    <button
+                        className={cn(
+                            'px-4 py-2 text-sm font-medium',
+                            activeTab === 'orders'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted/50 hover:bg-muted',
+                        )}
+                        onClick={() => setActiveTab('orders')}
+                    >
+                        <span className="flex items-center gap-2">
+                            <FileUp className="h-4 w-4" />
+                            Orders
+                        </span>
+                    </button>
                     <button
                         className={cn(
                             'px-4 py-2 text-sm font-medium',
@@ -619,8 +672,16 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
 
                 {/* Tab content */}
                 <div className="p-4">
+                    {activeTab === 'orders' && (
+                        <OutboundOrderList
+                            key={ordersRefreshKey}
+                            warehouseId={warehouseId ?? undefined}
+                            onPickListsGenerated={handlePickRefresh}
+                        />
+                    )}
+
                     {activeTab === 'pick' && (
-                        <PickListView key={refreshKey} warehouseId={warehouseId ?? undefined} />
+                        <PickListView key={pickRefreshKey} warehouseId={warehouseId ?? undefined} />
                     )}
 
                     {activeTab === 'gate' && (

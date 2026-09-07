@@ -11,9 +11,18 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-white' },
   // Pick list / put-away
   draft: { label: 'Draft', className: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white' },
+  confirmed: { label: 'Confirm', className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-700 dark:text-white' },
+  pending_picking: { label: 'Pending Picking', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-white' },
   in_progress: { label: 'In Progress', className: 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-white' },
+  pick_complete: { label: 'Pick-complete', className: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-700 dark:text-white' },
   completed: { label: 'Completed', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },
+  ready_for_dispatch: { label: 'Ready for dispatch', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-white' },
+  in_transit: { label: 'In Transit', className: 'bg-purple-100 text-purple-800 dark:bg-purple-700 dark:text-white' },
+  delivered: { label: 'Delivered', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },
   cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-white' },
+  // Outbound order item stock status
+  in_stock: { label: 'In Stock', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },
+  out_of_stock: { label: 'Out of Stock', className: 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-white' },
   // Gate
   open: { label: 'Open', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-white' },
   verified: { label: 'Verified', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },

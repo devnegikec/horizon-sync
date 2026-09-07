@@ -472,7 +472,17 @@ export interface PutAwayListBatchResponse {
 // OUTBOUND / PICK LIST TYPES
 // ============================================
 
-export type PickListStatus = 'draft' | 'in_progress' | 'completed' | 'cancelled';
+export type PickListStatus =
+  | 'draft'
+  | 'confirmed'
+  | 'pending_picking'
+  | 'in_progress'
+  | 'pick_complete'
+  | 'completed'
+  | 'ready_for_dispatch'
+  | 'in_transit'
+  | 'delivered'
+  | 'cancelled';
 
 export interface SAPInvoiceItem {
   item_id: string;
@@ -532,6 +542,7 @@ export interface PickList {
   status: PickListStatus;
   pick_date: string | null;
   reference_type: string | null;
+  reference_id?: string | null;
   remarks?: string | null;
   assigned_to?: string | null;
   worker_name?: string | null;
@@ -554,6 +565,60 @@ export interface PickList {
 
 export interface PaginatedPickLists {
   pick_lists: PickList[];
+  pagination: WMSPagination;
+}
+
+// ============================================
+// OUTBOUND ORDER TYPES
+// ============================================
+
+export type OutboundOrderType = 'asn' | 'sap';
+
+export type OutboundOrderStatus =
+  | 'draft'
+  | 'confirmed'
+  | 'pending_picking'
+  | 'completed'
+  | 'cancelled';
+
+export type OutboundOrderItemStockStatus = 'in_stock' | 'out_of_stock';
+
+export interface OutboundOrderItem {
+  id: string;
+  item_id: string;
+  item_name?: string | null;
+  sku?: string | null;
+  qty: number;
+  uom: string;
+  per_case_qty?: number | null;
+  case_qty?: number | null;
+  loose_qty?: number | null;
+  batch_no?: string | null;
+  stock_status: OutboundOrderItemStockStatus;
+  available_qty?: number | null;
+}
+
+export interface OutboundOrder {
+  id: string;
+  organization_id: string;
+  order_no: string;
+  order_type: OutboundOrderType;
+  warehouse_id: string;
+  status: OutboundOrderStatus;
+  invoice_reference: string | null;
+  source_filename?: string | null;
+  remarks?: string | null;
+  reference_type?: string | null;
+  reference_id?: string | null;
+  reference_no?: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  pick_list_ids: string[];
+  items: OutboundOrderItem[];
+}
+
+export interface PaginatedOutboundOrders {
+  orders: OutboundOrder[];
   pagination: WMSPagination;
 }
 

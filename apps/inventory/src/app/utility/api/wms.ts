@@ -19,6 +19,8 @@ import type {
   PickScanResult,
   SAPInvoicePayload,
   UpdatePriorityRequest,
+  OutboundOrder,
+  PaginatedOutboundOrders,
   GateSession,
   GateScanResult,
   GateSessionProgress,
@@ -90,10 +92,18 @@ export function scanIdempotencyKey(pickListId: string): string {
 }
 
 async function req<T>(url: string, token: string, options: RequestInit = {}): Promise<T> {
-  const { headers: extraHeaders, ...rest } = options;
+  const { headers: extraHeaders, body, ...rest } = options;
+  // Let the browser set the multipart boundary for file uploads; only JSON
+  // bodies get an explicit Content-Type.
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+  const baseHeaders: Record<string, string> = { Authorization: `Bearer ${token}` };
+  if (!isFormData) {
+    baseHeaders['Content-Type'] = 'application/json';
+  }
   const res = await fetch(url, {
     ...rest,
-    headers: { ...headers(token), ...(extraHeaders as Record<string, string> | undefined) },
+    body,
+    headers: { ...baseHeaders, ...(extraHeaders as Record<string, string> | undefined) },
   });
   if (!res.ok) {
     const text = await res.text();
@@ -412,6 +422,30 @@ export const outboundApi = {
       body: '{}',
     }),
 
+  confirm: (token: string, id: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/confirm`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  markReady: (token: string, id: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/mark-ready`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  markInTransit: (token: string, id: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/mark-in-transit`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  markDelivered: (token: string, id: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/mark-delivered`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
   stageTransfer: (token: string, id: string, stagingLocationId: string) =>
     req<PickList>(`${BASE}/outbound/${id}/stage-transfer`, token, {
       method: 'POST',
@@ -475,6 +509,58 @@ export const outboundApi = {
   },
 
   getDispatch: (token: string, id: string) => req<DispatchRecord>(`${BASE}/outbound/dispatches/${id}`, token),
+};
+
+// ============================================
+// OUTBOUND ORDERS (order-driven outbound flow)
+// ============================================
+
+export const outboundOrderApi = {
+  importOrders: (
+    token: string,
+    file: File,
+    warehouseId: string,
+    orderType: 'asn' | 'sap' = 'sap',
+  ) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return req<{ orders_created: number; total_items: number; errors: string[]; orders_parsed: number }>(
+      `${BASE}/outbound/import?warehouse_id=${encodeURIComponent(warehouseId)}&order_type=${orderType}`,
+      token,
+      { method: 'POST', body: formData },
+    );
+  },
+
+  listOrders: (
+    token: string,
+    params: { status?: string; order_type?: string; warehouse_id?: string; page?: number; page_size?: number },
+  ) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
+    });
+    return req<PaginatedOutboundOrders>(`${BASE}/outbound/orders?${p}`, token);
+  },
+
+  getOrder: (token: string, id: string) => req<OutboundOrder>(`${BASE}/outbound/orders/${id}`, token),
+
+  createOrder: (token: string, data: SAPInvoicePayload, orderType: 'asn' | 'sap' = 'sap') =>
+    req<OutboundOrder>(`${BASE}/outbound/orders?order_type=${orderType}`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  confirmOrder: (token: string, id: string) =>
+    req<OutboundOrder>(`${BASE}/outbound/orders/${id}/confirm`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  generatePickLists: (token: string, id: string, workerIds: string[]) =>
+    req<PickList[]>(`${BASE}/outbound/orders/${id}/generate-pick-lists`, token, {
+      method: 'POST',
+      body: JSON.stringify({ worker_ids: workerIds }),
+    }),
 };
 
 // ============================================

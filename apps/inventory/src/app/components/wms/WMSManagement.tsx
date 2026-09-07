@@ -241,7 +241,6 @@ function InboundManagement({ inboundSection, selectedWarehouseId, onInboundSecti
     <div className="space-y-4">
       <div className="border rounded-lg overflow-hidden">
         <div className="flex border-b">
-          <SectionTab active={inboundSection === 'scan'} icon={ScanLine} label="Scan & Reconcile" onClick={() => onInboundSectionChange('scan')} />
           <SectionTab active={inboundSection === 'receiving'}
             icon={Warehouse}
             label="Receiving Slips"
@@ -273,12 +272,6 @@ function InboundSectionContent({
   onSlipGenerated: () => void;
 }) {
   switch (section) {
-    case 'scan':
-      return warehouseId ? (
-        <InboundScanView warehouseId={warehouseId} onSlipGenerated={onSlipGenerated} />
-      ) : (
-        <p className="text-sm text-muted-foreground">Select a warehouse to start an inbound session.</p>
-      );
     case 'receiving':
       return <ReceivingSlipSection warehouseId={warehouseId} />;
     case 'putaway':

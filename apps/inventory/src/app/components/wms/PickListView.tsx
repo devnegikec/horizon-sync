@@ -506,10 +506,16 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
   };
 
   const progress = pickList?.progress ?? null;
-  const canComplete = pickList?.status === 'in_progress' && (progress?.remaining_items ?? 0) === 0;
-  const canScan = pickList?.status === 'draft' || pickList?.status === 'in_progress';
-  const canCancel = !!pickList && pickList.status !== 'completed' && pickList.status !== 'cancelled';
-  const canAccept = pickList?.status === 'draft';
+  const preComplete = pickList
+    ? ['draft', 'confirmed', 'pending_picking', 'in_progress'].includes(pickList.status)
+    : false;
+  const canComplete = !!pickList && preComplete && (progress?.remaining_items ?? 0) === 0;
+  const canCancel = !!pickList &&
+    !['pick_complete', 'completed', 'ready_for_dispatch', 'in_transit', 'delivered', 'cancelled'].includes(pickList.status);
+  const canAccept = !!pickList && ['draft', 'confirmed', 'pending_picking'].includes(pickList.status);
+  // Handling-unit association is only available after the task has been
+  // accepted (Accept Task → in_progress), not on draft/pending tasks.
+  const canAssignHu = !!pickList?.accepted_at;
 
   const footer = (
     <div className="flex items-center gap-2">
@@ -617,8 +623,8 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
               </div>
             )}
 
-            {/* Handling unit association (gated on pick.enable_handling_unit) */}
-            {canScan && enableHandlingUnit && openLines.length > 0 && (
+            {/* Handling unit association (gated on pick.enable_handling_unit + accepted task) */}
+            {canAssignHu && enableHandlingUnit && openLines.length > 0 && (
               <div className="border rounded-lg p-3 space-y-2">
                 <p className="text-xs font-medium text-muted-foreground">Handling unit</p>
                 <div className="flex gap-2">
@@ -871,8 +877,13 @@ export function PickListView({ warehouseId }: PickListViewProps) {
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="confirmed">Confirm</SelectItem>
+            <SelectItem value="pending_picking">Pending Picking</SelectItem>
             <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="pick_complete">Pick-complete</SelectItem>
+            <SelectItem value="ready_for_dispatch">Ready for dispatch</SelectItem>
+            <SelectItem value="in_transit">In Transit</SelectItem>
+            <SelectItem value="delivered">Delivered</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
@@ -892,7 +903,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Pick lists are created from imported incoming orders (packing slip PDF/CSV) or invoices. Click View to see items and manage picking.
+        Pick lists are generated from confirmed orders (Orders tab). Click View to see items and manage picking.
       </p>
 
       {loading && <div className="text-sm text-muted-foreground animate-pulse">Loading pick lists...</div>}
@@ -917,7 +928,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
               {(!data || data.pick_lists.length === 0) && (
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                    No pick lists found. Import an incoming order to create one.
+                    No pick lists found. Generate one from a confirmed order in the Orders tab.
                   </td>
                 </tr>
               )}
@@ -942,9 +953,11 @@ export function PickListView({ warehouseId }: PickListViewProps) {
                   </td>
                   <td className="px-4 py-3 text-right">{pl.progress?.total_qty ?? '—'}</td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">
-                    {pl.assigned_to
-                      ? workerDisplayName(workerById.get(pl.assigned_to)) ?? pl.assigned_to
-                      : '—'}
+                    {pl.worker_name && pl.worker_name !== pl.assigned_to
+                      ? pl.worker_name
+                      : pl.assigned_to
+                        ? workerDisplayName(workerById.get(pl.assigned_to)) ?? pl.assigned_to
+                        : '—'}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {pl.created_at ? new Date(pl.created_at).toLocaleDateString() : '—'}

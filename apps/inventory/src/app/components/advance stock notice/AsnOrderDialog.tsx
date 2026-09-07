@@ -483,22 +483,30 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
       try {
         // eslint-disable-next-line complexity
         const resolveItem = async (row: AsnEntryLineRow): Promise<AsnEntryLineRow> => {
-          if (!row.item_code || !accessToken) return row;
+          // Resolve strictly by SKU — item IDs are internal and must not be
+          // part of the external import contract.
+          const key = (row.sku || '').trim();
+          if (!key || !accessToken) return row;
           try {
-            const url = `${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(row.item_code)}&warehouse_id=${encodeURIComponent(pickerWarehouseId)}`;
+            const url = `${environment.apiCoreUrl}/api/v1/items/picker?search=${encodeURIComponent(key)}&warehouse_id=${encodeURIComponent(pickerWarehouseId)}`;
             const response = await fetch(url, {
               headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
             });
             if (!response.ok) return row;
             const data = await response.json();
-            const match =
-              data.items?.find((item: { item_code?: string }) => item.item_code?.toLowerCase() === row.item_code?.toLowerCase()) || data.items?.[0];
+            const lower = key.toLowerCase();
+            // Require an exact SKU match; do not silently fall back to the
+            // first search result (that would assign the wrong item).
+            const match = data.items?.find(
+              (item: { sku?: string | null }) => item.sku?.toLowerCase() === lower,
+            );
             if (match) {
               return {
                 ...row,
                 item_id: match.id,
                 item_name: match.item_name,
-                item_code: match.item_code || row.item_code,
+                item_code: match.item_code || '',
+                sku: match.sku || row.sku,
                 uom: match.uom || row.uom || 'pcs',
               };
             }
@@ -690,7 +698,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                   sampleCsv={ASN_ENTRY_SAMPLE_CSV}
                   sampleFileName="asn-order-sample.csv"
                   previewColumns={[
-                    { key: 'item_id', label: 'Item Code' },
+                    { key: 'sku', label: 'SKU' },
                     { key: 'qty', label: 'Qty' },
                     { key: 'uom', label: 'UOM' },
                   ]} />

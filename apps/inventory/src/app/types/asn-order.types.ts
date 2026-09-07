@@ -88,6 +88,8 @@ export interface AsnOrder {
     asn_type?: string | null;
     linked_pick_list_id?: string | null;
     linked_pick_list_no?: string | null;
+    linked_order_id?: string | null;
+    linked_order_no?: string | null;
     transfer_progress?: {
         total_serials: number;
         received_serials: number;
@@ -117,6 +119,7 @@ export interface AsnOrderListItem {
     grand_total: string | number;
     asn_type?: string | null;
     linked_pick_list_id?: string | null;
+    linked_order_id?: string | null;
     from_warehouse?: AsnOrderWarehouseInfo | null;
     to_warehouse?: AsnOrderWarehouseInfo | null;
     vehicle_arrivals: AsnOrderVehicleArrivalInfo[];
