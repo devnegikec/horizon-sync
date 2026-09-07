@@ -510,10 +510,12 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
     ? ['draft', 'confirmed', 'pending_picking', 'in_progress'].includes(pickList.status)
     : false;
   const canComplete = !!pickList && preComplete && (progress?.remaining_items ?? 0) === 0;
-  const canScan = !!pickList && preComplete;
   const canCancel = !!pickList &&
     !['pick_complete', 'completed', 'ready_for_dispatch', 'in_transit', 'delivered', 'cancelled'].includes(pickList.status);
   const canAccept = !!pickList && ['draft', 'confirmed', 'pending_picking'].includes(pickList.status);
+  // Handling-unit association is only available after the task has been
+  // accepted (Accept Task → in_progress), not on draft/pending tasks.
+  const canAssignHu = !!pickList?.accepted_at;
 
   const footer = (
     <div className="flex items-center gap-2">
@@ -621,8 +623,8 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
               </div>
             )}
 
-            {/* Handling unit association (gated on pick.enable_handling_unit) */}
-            {canScan && enableHandlingUnit && openLines.length > 0 && (
+            {/* Handling unit association (gated on pick.enable_handling_unit + accepted task) */}
+            {canAssignHu && enableHandlingUnit && openLines.length > 0 && (
               <div className="border rounded-lg p-3 space-y-2">
                 <p className="text-xs font-medium text-muted-foreground">Handling unit</p>
                 <div className="flex gap-2">

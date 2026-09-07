@@ -415,18 +415,22 @@ export function usePickLists(params: { status?: string; warehouse_id?: string; s
   const [data, setData] = React.useState<PaginatedPickLists | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const latestRequestRef = React.useRef(0);
 
   const fetch = React.useCallback(async () => {
     if (!accessToken) return;
+    const requestId = ++latestRequestRef.current;
     setLoading(true);
     setError(null);
     try {
       const result = await outboundApi.listPickLists(accessToken, params);
-      setData(result);
+      if (requestId === latestRequestRef.current) setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load pick lists');
+      if (requestId === latestRequestRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load pick lists');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestRef.current) setLoading(false);
     }
   }, [accessToken, params.status, params.warehouse_id, params.sort_by, params.page, params.page_size]);
 
@@ -448,18 +452,22 @@ export function useOutboundOrders(params: {
   const [data, setData] = React.useState<PaginatedOutboundOrders | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const latestRequestRef = React.useRef(0);
 
   const fetch = React.useCallback(async () => {
     if (!accessToken) return;
+    const requestId = ++latestRequestRef.current;
     setLoading(true);
     setError(null);
     try {
       const result = await outboundOrderApi.listOrders(accessToken, params);
-      setData(result);
+      if (requestId === latestRequestRef.current) setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load orders');
+      if (requestId === latestRequestRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load orders');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestRef.current) setLoading(false);
     }
   }, [accessToken, params.status, params.order_type, params.warehouse_id, params.page, params.page_size]);
 

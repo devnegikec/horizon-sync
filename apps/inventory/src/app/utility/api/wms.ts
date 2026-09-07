@@ -92,10 +92,18 @@ export function scanIdempotencyKey(pickListId: string): string {
 }
 
 async function req<T>(url: string, token: string, options: RequestInit = {}): Promise<T> {
-  const { headers: extraHeaders, ...rest } = options;
+  const { headers: extraHeaders, body, ...rest } = options;
+  // Let the browser set the multipart boundary for file uploads; only JSON
+  // bodies get an explicit Content-Type.
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+  const baseHeaders: Record<string, string> = { Authorization: `Bearer ${token}` };
+  if (!isFormData) {
+    baseHeaders['Content-Type'] = 'application/json';
+  }
   const res = await fetch(url, {
     ...rest,
-    headers: { ...headers(token), ...(extraHeaders as Record<string, string> | undefined) },
+    body,
+    headers: { ...baseHeaders, ...(extraHeaders as Record<string, string> | undefined) },
   });
   if (!res.ok) {
     const text = await res.text();

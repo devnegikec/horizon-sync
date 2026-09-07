@@ -495,10 +495,11 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
             if (!response.ok) return row;
             const data = await response.json();
             const lower = key.toLowerCase();
-            const match =
-              data.items?.find(
-                (item: { sku?: string | null }) => item.sku?.toLowerCase() === lower,
-              ) || data.items?.[0];
+            // Require an exact SKU match; do not silently fall back to the
+            // first search result (that would assign the wrong item).
+            const match = data.items?.find(
+              (item: { sku?: string | null }) => item.sku?.toLowerCase() === lower,
+            );
             if (match) {
               return {
                 ...row,
