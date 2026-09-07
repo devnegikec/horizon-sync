@@ -1,10 +1,11 @@
 import * as React from 'react';
 
-import { AlertCircle, RotateCcw, Save, SlidersHorizontal } from 'lucide-react';
+import { AlertCircle, Info, RotateCcw, Save, SlidersHorizontal } from 'lucide-react';
 
-import { Badge, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@horizon-sync/ui/components';
+import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@horizon-sync/ui/components';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { pickSettingsService, type PickConfigCatalogItem } from '../services/pickSettingsService';
@@ -25,6 +26,27 @@ function fromListText(text: string): string[] {
     .filter((item) => item.length > 0);
 }
 
+function enumLabel(option: string): string {
+  switch (option) {
+    case 'fefo_fifo':
+      return 'FEFO, then FIFO';
+    case 'fifo':
+      return 'FIFO (first in, first out)';
+    case 'fixed_bin':
+      return 'Fixed bin';
+    case 'zone':
+      return 'Zone';
+    case 'per_item':
+      return 'Per item';
+    case 'always':
+      return 'Always';
+    case 'never':
+      return 'Never';
+    default:
+      return option;
+  }
+}
+
 interface SettingControlProps {
   item: PickConfigCatalogItem;
   value: unknown;
@@ -40,6 +62,7 @@ function SettingControl({ item, value, disabled, onChange }: SettingControlProps
   if (item.type === 'int' || item.type === 'numeric') {
     return (
       <Input type="number"
+        inputMode="decimal"
         value={value === undefined || value === null ? '' : String(value)}
         disabled={disabled}
         onChange={(e) => {
@@ -53,7 +76,7 @@ function SettingControl({ item, value, disabled, onChange }: SettingControlProps
             onChange(item.key, parsed);
           }
         }}
-        className="w-40"/>
+        className="w-32" />
     );
   }
 
@@ -61,13 +84,13 @@ function SettingControl({ item, value, disabled, onChange }: SettingControlProps
     const current = String(value);
     return (
       <Select value={current} disabled={disabled} onValueChange={(next) => onChange(item.key, next)}>
-        <SelectTrigger className="w-48">
+        <SelectTrigger className="w-52">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           {(item.allowed ?? []).map((option) => (
             <SelectItem key={option} value={option}>
-              {option}
+              {enumLabel(option)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -81,7 +104,7 @@ function SettingControl({ item, value, disabled, onChange }: SettingControlProps
       disabled={disabled}
       placeholder="Comma-separated values"
       onChange={(e) => onChange(item.key, fromListText(e.target.value))}
-      className="w-full max-w-md"/>
+      className="w-full max-w-sm" />
   );
 }
 
@@ -192,17 +215,34 @@ export function PickSettingsEditor({ accessToken, canEdit }: PickSettingsEditorP
           <>
             <div className="space-y-1">
               {catalog.map((item) => (
-                <div key={item.key} className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-1">
-                    <span className="text-sm font-medium">{item.label}</span>
-                    <p className="text-xs text-muted-foreground">{item.description}</p>
-                    <div className="flex items-center gap-2 text-xs">
-                      <code className="text-muted-foreground">pick.{item.key}</code>
-                      <Badge variant="outline">{item.type}</Badge>
-                      <span className="text-muted-foreground">default: {JSON.stringify(item.default)}</span>
+                <div key={item.key} className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium">{item.label}</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label={`More info about ${item.label}`}
+                              className="inline-flex items-center rounded text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            >
+                              <Info className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" align="start" className="max-w-xs">
+                            <p className="text-xs">{item.description}</p>
+                            <p className="mt-1.5 text-xs font-mono text-muted-foreground">pick.{item.key} · {item.type}</p>
+                            <p className="text-xs font-mono text-muted-foreground">default: {JSON.stringify(item.default)}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
+                    <p className="text-xs text-muted-foreground">{item.description}</p>
                   </div>
-                  <SettingControl item={item} value={values[item.key]} disabled={!canEdit || saving} onChange={handleChange} />
+                  <div className="shrink-0">
+                    <SettingControl item={item} value={values[item.key]} disabled={!canEdit || saving} onChange={handleChange} />
+                  </div>
                 </div>
               ))}
             </div>

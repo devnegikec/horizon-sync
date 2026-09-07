@@ -556,10 +556,15 @@ export const outboundOrderApi = {
       body: '{}',
     }),
 
-  generatePickLists: (token: string, id: string, workerIds: string[]) =>
+  generatePickLists: (
+    token: string,
+    id: string,
+    workerIds: string[],
+    mode?: 'auto' | 'manual',
+  ) =>
     req<PickList[]>(`${BASE}/outbound/orders/${id}/generate-pick-lists`, token, {
       method: 'POST',
-      body: JSON.stringify({ worker_ids: workerIds }),
+      body: JSON.stringify({ worker_ids: workerIds, mode: mode ?? null }),
     }),
 };
 

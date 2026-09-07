@@ -9,7 +9,7 @@ import {
     ChevronsUpDown,
     X,
     ClipboardList,
-    ArrowRight,
+    TriangleAlert,
 } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -142,6 +142,7 @@ function GeneratePickListsDialog({
 }) {
     const accessToken = useUserStore((s) => s.accessToken);
     const { toast } = useToast();
+    const [mode, setMode] = React.useState<'default' | 'auto' | 'manual'>('default');
     const [workerIds, setWorkerIds] = React.useState<string[]>([]);
     const [workers, setWorkers] = React.useState<WMSWorker[]>([]);
     const [busy, setBusy] = React.useState(false);
@@ -157,6 +158,7 @@ function GeneratePickListsDialog({
 
     React.useEffect(() => {
         if (order) {
+            setMode('default');
             setWorkerIds([]);
             setWorkers([]);
         }
@@ -168,7 +170,12 @@ function GeneratePickListsDialog({
         if (!accessToken) return;
         setBusy(true);
         try {
-            const lists = await outboundOrderApi.generatePickLists(accessToken, order.id, workerIds);
+            const lists = await outboundOrderApi.generatePickLists(
+                accessToken,
+                order.id,
+                workerIds,
+                mode === 'default' ? undefined : mode,
+            );
             const summary = lists.length > 1
                 ? `${lists.length} pick lists created: ${lists.map((l) => l.pick_list_no).join(', ')}`
                 : `Pick list ${lists[0]?.pick_list_no ?? ''} created`;
@@ -200,6 +207,27 @@ function GeneratePickListsDialog({
                 </p>
 
                 <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Generation Mode</p>
+                    <Select value={mode} onValueChange={(v) => setMode(v as 'default' | 'auto' | 'manual')}>
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="default">Default (org setting)</SelectItem>
+                            <SelectItem value="auto">Automatic — server assigns bins</SelectItem>
+                            <SelectItem value="manual">Manual — worker assigns bins</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                        {mode === 'manual'
+                            ? 'Items are grouped by SKU without bin assignment; workers choose bins when picking each item.'
+                            : mode === 'auto'
+                                ? 'The server assigns bin locations (FIFO/FEFO) and sorts items along the optimal walking route.'
+                                : 'Uses the organisation default pick mode (auto unless overridden in settings).'}
+                    </p>
+                </div>
+
+                <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground">
                         Assign Workers (optional — select multiple to split the work)
                     </p>
@@ -208,6 +236,13 @@ function GeneratePickListsDialog({
                         Selecting more than one worker splits the order lines across separate pick lists.
                         Leave empty to create a single unassigned pick list.
                     </p>
+                </div>
+
+                <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-xs text-amber-700 flex items-start gap-2">
+                    <TriangleAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>
+                        Items flagged Out of Stock may short-pick during fulfillment and are recorded as pick exceptions.
+                    </span>
                 </div>
 
                 <div className="flex justify-end gap-2">
@@ -442,12 +477,6 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
                                                         <ClipboardList className="h-3.5 w-3.5" />
                                                         Create Pick List
                                                     </Button>
-                                                )}
-                                                {order.status === 'pending_picking' && (
-                                                    <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2 py-0.5 text-xs font-medium text-yellow-700">
-                                                        <ArrowRight className="h-3 w-3" />
-                                                        Pending Picking
-                                                    </span>
                                                 )}
                                                 <Button
                                                     size="sm"
