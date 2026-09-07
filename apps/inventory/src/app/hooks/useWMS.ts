@@ -632,7 +632,63 @@ export function usePickList(pickListId: string | null) {
     [accessToken, pickListId, fetchPickList],
   );
 
-  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker, accept, stageTransfer, stageScan, assignHandlingUnit };
+  const confirm = React.useCallback(async (): Promise<PickList> => {
+    if (!pickListId || !accessToken) throw new Error('No pick list selected');
+    setError(null);
+    try {
+      const result = await outboundApi.confirm(accessToken, pickListId);
+      setPickList(result);
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to confirm pick list';
+      setError(msg);
+      throw new Error(msg);
+    }
+  }, [accessToken, pickListId]);
+
+  const markReady = React.useCallback(async (): Promise<PickList> => {
+    if (!pickListId || !accessToken) throw new Error('No pick list selected');
+    setError(null);
+    try {
+      const result = await outboundApi.markReady(accessToken, pickListId);
+      setPickList(result);
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to mark ready for dispatch';
+      setError(msg);
+      throw new Error(msg);
+    }
+  }, [accessToken, pickListId]);
+
+  const markInTransit = React.useCallback(async (): Promise<PickList> => {
+    if (!pickListId || !accessToken) throw new Error('No pick list selected');
+    setError(null);
+    try {
+      const result = await outboundApi.markInTransit(accessToken, pickListId);
+      setPickList(result);
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to mark in transit';
+      setError(msg);
+      throw new Error(msg);
+    }
+  }, [accessToken, pickListId]);
+
+  const markDelivered = React.useCallback(async (): Promise<PickList> => {
+    if (!pickListId || !accessToken) throw new Error('No pick list selected');
+    setError(null);
+    try {
+      const result = await outboundApi.markDelivered(accessToken, pickListId);
+      setPickList(result);
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to mark delivered';
+      setError(msg);
+      throw new Error(msg);
+    }
+  }, [accessToken, pickListId]);
+
+  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker, accept, confirm, markReady, markInTransit, markDelivered, stageTransfer, stageScan, assignHandlingUnit };
 }
 
 // ============================================

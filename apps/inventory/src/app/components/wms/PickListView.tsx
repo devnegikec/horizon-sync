@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { RefreshCw, ScanLine, CheckCircle2, X, Eye, UserRound, Loader2, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { RefreshCw, ScanLine, CheckCircle2, X, Eye, UserRound, Loader2, ChevronDown, ChevronRight, AlertTriangle, Truck, PackageCheck } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -429,7 +429,7 @@ interface PickListDetailDialogProps {
 
 function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickListDetailDialogProps) {
   const { toast } = useToast();
-  const { pickList, loading, error, recordScan, complete, cancel, assignWorker, accept, stageTransfer, stageScan, assignHandlingUnit } = usePickList(listId);
+  const { pickList, loading, error, recordScan, complete, cancel, assignWorker, accept, confirm, markReady, markInTransit, markDelivered, stageTransfer, stageScan, assignHandlingUnit } = usePickList(listId);
   const { enableHandlingUnit } = usePickSettings();
   const workers = useWorkers(open, pickList?.warehouse_id ?? warehouseId);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
@@ -505,6 +505,42 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
     }
   };
 
+  const handleConfirm = async () => {
+    try {
+      await confirm();
+      toast({ title: 'Pick list confirmed' });
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
+    }
+  };
+
+  const handleMarkReady = async () => {
+    try {
+      await markReady();
+      toast({ title: 'Ready for dispatch' });
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
+    }
+  };
+
+  const handleMarkInTransit = async () => {
+    try {
+      await markInTransit();
+      toast({ title: 'Marked in transit' });
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
+    }
+  };
+
+  const handleMarkDelivered = async () => {
+    try {
+      await markDelivered();
+      toast({ title: 'Marked delivered' });
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
+    }
+  };
+
   const progress = pickList?.progress ?? null;
   const preComplete = pickList
     ? ['draft', 'confirmed', 'pending_picking', 'in_progress'].includes(pickList.status)
@@ -513,22 +549,51 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
   const canCancel = !!pickList &&
     !['pick_complete', 'completed', 'ready_for_dispatch', 'in_transit', 'delivered', 'cancelled'].includes(pickList.status);
   const canAccept = !!pickList && ['draft', 'confirmed', 'pending_picking'].includes(pickList.status);
+  // Lifecycle-advance transitions (order-driven flow).
+  const canConfirm = pickList?.status === 'draft';
+  const canMarkReady = !!pickList && ['pick_complete', 'completed'].includes(pickList.status);
+  const canMarkInTransit = pickList?.status === 'ready_for_dispatch';
+  const canMarkDelivered = pickList?.status === 'in_transit';
   // Handling-unit association is only available after the task has been
   // accepted (Accept Task → in_progress), not on draft/pending tasks.
   const canAssignHu = !!pickList?.accepted_at;
 
   const footer = (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-wrap">
+      {canConfirm && (
+        <Button size="sm" className="gap-2" onClick={handleConfirm}>
+          <CheckCircle2 className="h-4 w-4" />
+          Confirm
+        </Button>
+      )}
       {canAccept && (
-        <Button size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleAccept}>
+        <Button size="sm" variant="outline" className="gap-2" onClick={handleAccept}>
           <CheckCircle2 className="h-4 w-4" />
           Accept Task
         </Button>
       )}
       {canComplete && (
-        <Button size="sm" className="gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => setConfirmAction('complete')}>
+        <Button size="sm" className="gap-2" onClick={() => setConfirmAction('complete')}>
           <CheckCircle2 className="h-4 w-4" />
           Mark Complete
+        </Button>
+      )}
+      {canMarkReady && (
+        <Button size="sm" variant="outline" className="gap-2" onClick={handleMarkReady}>
+          <PackageCheck className="h-4 w-4" />
+          Ready for Dispatch
+        </Button>
+      )}
+      {canMarkInTransit && (
+        <Button size="sm" variant="outline" className="gap-2" onClick={handleMarkInTransit}>
+          <Truck className="h-4 w-4" />
+          Mark In Transit
+        </Button>
+      )}
+      {canMarkDelivered && (
+        <Button size="sm" variant="outline" className="gap-2" onClick={handleMarkDelivered}>
+          <PackageCheck className="h-4 w-4" />
+          Mark Delivered
         </Button>
       )}
       {canCancel && (
