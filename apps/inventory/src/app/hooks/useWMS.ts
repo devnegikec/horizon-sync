@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
 
-import { inboundApi, layoutApi, outboundApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi, vehicleArrivalApi, erpSyncApi } from '../utility/api/wms';
+import { inboundApi, layoutApi, outboundApi, outboundOrderApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi, vehicleArrivalApi, erpSyncApi } from '../utility/api/wms';
 import { pickSettingsApi } from '../utility/api/pick-settings';
 import type {
   DispatchListResponse,
@@ -14,6 +14,7 @@ import type {
   GateSessionProgress,
   LocationTree,
   PaginatedLocations,
+  PaginatedOutboundOrders,
   PaginatedPickLists,
   PaginatedReceivingSlips,
   PickList,
@@ -428,6 +429,39 @@ export function usePickLists(params: { status?: string; warehouse_id?: string; s
       setLoading(false);
     }
   }, [accessToken, params.status, params.warehouse_id, params.sort_by, params.page, params.page_size]);
+
+  React.useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { data, loading, error, refetch: fetch };
+}
+
+export function useOutboundOrders(params: {
+  status?: string;
+  order_type?: string;
+  warehouse_id?: string;
+  page?: number;
+  page_size?: number;
+}) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [data, setData] = React.useState<PaginatedOutboundOrders | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const fetch = React.useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await outboundOrderApi.listOrders(accessToken, params);
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load orders');
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, params.status, params.order_type, params.warehouse_id, params.page, params.page_size]);
 
   React.useEffect(() => {
     fetch();
