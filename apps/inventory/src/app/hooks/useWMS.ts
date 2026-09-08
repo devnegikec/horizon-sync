@@ -315,7 +315,20 @@ export function useReceivingSlips({
     [accessToken, fetch],
   );
 
-  return { data, loading, error, refetch: fetch, approveSlip, rejectSlip, rejectItem, getSlip, generatePutAway };
+  const statusCounts = data?.status_counts ?? null;
+
+  return {
+    data,
+    statusCounts,
+    loading,
+    error,
+    refetch: fetch,
+    approveSlip,
+    rejectSlip,
+    rejectItem,
+    getSlip,
+    generatePutAway,
+  };
 }
 
 // ============================================

@@ -268,7 +268,12 @@ export interface AsnReceivingSummary {
   line_items: AsnReconciliationLineItem[];
 }
 
-export type ReceivingSlipStatus = 'pending_review' | 'pending_putaway' | 'putaway_complete' | 'rejected';
+export type ReceivingSlipStatus =
+  | 'pending_review'
+  | 'pending_putaway'
+  | 'putaway_in_progress'
+  | 'putaway_complete'
+  | 'rejected';
 
 /** Individual unit inside a receiving slip group */
 export interface ReceivingSlipGroupItem {
@@ -343,9 +348,19 @@ export interface ReceivingSlip {
   updated_at: string | null;
 }
 
+export interface ReceivingSlipStatusCounts {
+  total: number;
+  pending_review: number;
+  pending_putaway: number;
+  putaway_in_progress: number;
+  putaway_complete: number;
+  rejected: number;
+}
+
 export interface PaginatedReceivingSlips {
   receiving_slips: ReceivingSlip[];
   pagination: WMSPagination;
+  status_counts?: ReceivingSlipStatusCounts;
 }
 
 // ============================================

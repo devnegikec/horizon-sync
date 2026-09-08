@@ -32,6 +32,7 @@ import { AsnManagement } from './AsnManagement';
 import { DeviceManagementPanel } from './DeviceManagementPanel';
 import { InboundExceptionQueue } from './InboundExceptionQueue';
 import { InboundScanPanel } from './InboundScanPanel';
+import { InboundStats } from './InboundStats';
 import { LocationQRPanel } from './LocationQRPanel';
 import { LocationTreeView } from './LocationTreeView';
 import { OutboundManagement } from './OutboundManagement';
@@ -44,7 +45,7 @@ import { WorkersManagementPanel } from './WorkersManagementPanel';
 
 type WMSView = 'asn' | 'inbound' | 'outbound' | 'stock' | 'manage';
 type ManageSection = 'workers' | 'devices' | 'designer' | 'tree' | '3d' | 'location-qr';
-type InboundSection = 'scan' | 'receiving' | 'putaway' | 'vehicle' | 'exceptions';
+type InboundSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -69,6 +70,7 @@ export function WMSManagement() {
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('');
   const [manageSection, setManageSection] = React.useState<ManageSection>('workers');
   const [inboundSection, setInboundSection] = React.useState<InboundSection>('receiving');
+  const [receivingStatusFilter, setReceivingStatusFilter] = React.useState<string>('all');
 
   const { warehouses, loading: warehousesLoading, refetch: refetchWarehouses } = useMyWarehouses();
   const userPermissions = useUserStore((s) => s.permissions.permissions);
@@ -121,9 +123,11 @@ export function WMSManagement() {
         canManage={canManage}
         inboundSection={inboundSection}
         manageSection={manageSection}
+        receivingStatusFilter={receivingStatusFilter}
         selectedWarehouseId={selectedWarehouseId}
         onInboundSectionChange={setInboundSection}
-        onManageSectionChange={setManageSection} />
+        onManageSectionChange={setManageSection}
+        onReceivingStatusFilterChange={setReceivingStatusFilter} />
     </div>
   );
 }
@@ -180,9 +184,11 @@ interface WMSContentProps {
   canManage: boolean;
   inboundSection: InboundSection;
   manageSection: ManageSection;
+  receivingStatusFilter: string;
   selectedWarehouseId: string;
   onInboundSectionChange: (section: InboundSection) => void;
   onManageSectionChange: (section: ManageSection) => void;
+  onReceivingStatusFilterChange: (status: string) => void;
 }
 
 const wmsViewComponents: Record<WMSView, React.ComponentType<WMSContentProps>> = {
@@ -236,15 +242,27 @@ function SectionTab({
   );
 }
 
-function InboundManagement({ inboundSection, selectedWarehouseId, onInboundSectionChange }: WMSContentProps) {
+function InboundManagement({
+  inboundSection,
+  selectedWarehouseId,
+  receivingStatusFilter,
+  onInboundSectionChange,
+  onReceivingStatusFilterChange,
+}: WMSContentProps) {
+  const openReceiving = (status: string) => {
+    onReceivingStatusFilterChange(status);
+    onInboundSectionChange('receiving');
+  };
+
   return (
     <div className="space-y-4">
+      <InboundStats warehouseId={selectedWarehouseId || undefined} onSelectStatus={openReceiving} />
       <div className="border rounded-lg overflow-hidden">
         <div className="flex border-b">
           <SectionTab active={inboundSection === 'receiving'}
             icon={Warehouse}
             label="Receiving Slips"
-            onClick={() => onInboundSectionChange('receiving')} />
+            onClick={() => openReceiving('all')} />
           <SectionTab active={inboundSection === 'putaway'} icon={PackageCheck} label="Put-Away" onClick={() => onInboundSectionChange('putaway')} />
           <SectionTab active={inboundSection === 'vehicle'} icon={Truck} label="Vehicle Arrivals" onClick={() => onInboundSectionChange('vehicle')} />
           <SectionTab active={inboundSection === 'exceptions'}
@@ -255,6 +273,7 @@ function InboundManagement({ inboundSection, selectedWarehouseId, onInboundSecti
         <div className="p-4 space-y-4">
           <InboundSectionContent section={inboundSection}
             warehouseId={selectedWarehouseId}
+            receivingStatusFilter={receivingStatusFilter}
             onSlipGenerated={() => onInboundSectionChange('receiving')} />
         </div>
       </div>
@@ -265,15 +284,17 @@ function InboundManagement({ inboundSection, selectedWarehouseId, onInboundSecti
 function InboundSectionContent({
   section,
   warehouseId,
+  receivingStatusFilter,
   onSlipGenerated,
 }: {
   section: InboundSection;
   warehouseId: string;
+  receivingStatusFilter: string;
   onSlipGenerated: () => void;
 }) {
   switch (section) {
     case 'receiving':
-      return <ReceivingSlipSection warehouseId={warehouseId} />;
+      return <ReceivingSlipSection warehouseId={warehouseId} initialStatus={receivingStatusFilter} />;
     case 'putaway':
       return <PutAwaySection warehouseId={warehouseId} />;
     case 'vehicle':
@@ -295,14 +316,14 @@ function InboundScanView({ warehouseId, onSlipGenerated }: { warehouseId: string
   );
 }
 
-function ReceivingSlipSection({ warehouseId }: { warehouseId: string }) {
+function ReceivingSlipSection({ warehouseId, initialStatus }: { warehouseId: string; initialStatus?: string }) {
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold">Receiving Slips</h2>
         <p className="text-sm text-muted-foreground">Review and approve or reject receiving slips generated from inbound scan sessions.</p>
       </div>
-      <ReceivingSlipList warehouseId={warehouseId || undefined} />
+      <ReceivingSlipList warehouseId={warehouseId || undefined} initialStatus={initialStatus} />
     </div>
   );
 }
