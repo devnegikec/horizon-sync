@@ -19,6 +19,9 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   ready_for_dispatch: { label: 'Ready for dispatch', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-white' },
   in_transit: { label: 'In Transit', className: 'bg-purple-100 text-purple-800 dark:bg-purple-700 dark:text-white' },
   delivered: { label: 'Delivered', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },
+  // Packing slip
+  loading: { label: 'Loading', className: 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-white' },
+  dispatched: { label: 'Dispatched', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },
   cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-white' },
   // Outbound order item stock status
   in_stock: { label: 'In Stock', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },

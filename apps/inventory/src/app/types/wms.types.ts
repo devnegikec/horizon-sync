@@ -622,6 +622,58 @@ export interface PaginatedOutboundOrders {
   pagination: WMSPagination;
 }
 
+// ============================================
+// PACKING SLIP TYPES
+// ============================================
+
+export type PackingSlipStatus = 'draft' | 'loading' | 'dispatched' | 'cancelled';
+
+export interface PackingSlipItem {
+  id: string;
+  order_id: string | null;
+  pick_list_id: string | null;
+  item_id: string;
+  item_name?: string | null;
+  sku?: string | null;
+  qty: number;
+  uom: string;
+  per_case_qty?: number | null;
+  case_qty?: number | null;
+  loose_qty?: number | null;
+  batch_no: string | null;
+  bin_location_id: string | null;
+  handling_unit_id: string | null;
+  sort_order: number;
+}
+
+export interface PackingSlip {
+  id: string;
+  organization_id: string;
+  packing_slip_no: string;
+  warehouse_id: string;
+  status: PackingSlipStatus;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  order_ids: string[];
+  items: PackingSlipItem[];
+}
+
+export interface PackingSlipListItem {
+  id: string;
+  packing_slip_no: string;
+  warehouse_id: string;
+  status: PackingSlipStatus;
+  item_count: number;
+  order_ids: string[];
+  created_at: string | null;
+}
+
+export interface PaginatedPackingSlips {
+  packing_slips: PackingSlipListItem[];
+  pagination: WMSPagination;
+}
+
 export interface UpdatePriorityRequest {
   priority?: number | null;
   dispatch_cutoff?: string | null;

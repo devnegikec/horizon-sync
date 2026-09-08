@@ -21,6 +21,8 @@ import type {
   UpdatePriorityRequest,
   OutboundOrder,
   PaginatedOutboundOrders,
+  PackingSlip,
+  PaginatedPackingSlips,
   GateSession,
   GateScanResult,
   GateSessionProgress,
@@ -565,6 +567,44 @@ export const outboundOrderApi = {
     req<PickList[]>(`${BASE}/outbound/orders/${id}/generate-pick-lists`, token, {
       method: 'POST',
       body: JSON.stringify({ worker_ids: workerIds, mode: mode ?? null }),
+    }),
+};
+
+// ============================================
+// PACKING SLIPS (internal staging of picked goods)
+// ============================================
+
+export const packingSlipApi = {
+  createFromOrders: (token: string, orderIds: string[]) =>
+    req<PackingSlip>(`${BASE}/outbound/packing-slips`, token, {
+      method: 'POST',
+      body: JSON.stringify({ order_ids: orderIds }),
+    }),
+
+  list: (
+    token: string,
+    params: { warehouse_id?: string; status?: string; page?: number; page_size?: number },
+  ) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
+    });
+    return req<PaginatedPackingSlips>(`${BASE}/outbound/packing-slips?${p}`, token);
+  },
+
+  get: (token: string, id: string) =>
+    req<PackingSlip>(`${BASE}/outbound/packing-slips/${id}`, token),
+
+  markLoading: (token: string, id: string) =>
+    req<PackingSlip>(`${BASE}/outbound/packing-slips/${id}/mark-loading`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  dispatch: (token: string, id: string) =>
+    req<DispatchRecord>(`${BASE}/outbound/packing-slips/${id}/dispatch`, token, {
+      method: 'POST',
+      body: '{}',
     }),
 };
 
