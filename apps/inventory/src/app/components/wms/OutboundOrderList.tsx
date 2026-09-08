@@ -9,6 +9,7 @@ import {
     ChevronsUpDown,
     X,
     ClipboardList,
+    PackageCheck,
     TriangleAlert,
 } from 'lucide-react';
 
@@ -30,7 +31,7 @@ import { useToast } from '@horizon-sync/ui/hooks';
 import { useUserStore } from '@horizon-sync/store';
 
 import { useOutboundOrders } from '../../hooks/useWMS';
-import { outboundOrderApi, wmsWorkerApi } from '../../utility/api/wms';
+import { outboundOrderApi, packingSlipApi, wmsWorkerApi } from '../../utility/api/wms';
 import type { OutboundOrder, WMSWorker } from '../../types/wms.types';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
@@ -340,6 +341,7 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
     const [viewOrder, setViewOrder] = React.useState<OutboundOrder | null>(null);
     const [generateOrder, setGenerateOrder] = React.useState<OutboundOrder | null>(null);
     const [confirmingId, setConfirmingId] = React.useState<string | null>(null);
+    const [packingId, setPackingId] = React.useState<string | null>(null);
 
     const { data, loading, error, refetch } = useOutboundOrders({
         status: statusFilter === 'all' ? undefined : statusFilter,
@@ -364,6 +366,23 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
             });
         } finally {
             setConfirmingId(null);
+        }
+    };
+
+    const handlePack = async (order: OutboundOrder) => {
+        if (!accessToken) return;
+        setPackingId(order.id);
+        try {
+            await packingSlipApi.createFromOrders(accessToken, [order.id]);
+            toast({ title: 'Packing slip created', description: `Packing slip created for ${order.order_no}` });
+        } catch (err) {
+            toast({
+                title: 'Error',
+                description: err instanceof Error ? err.message : 'Failed to pack order',
+                variant: 'destructive',
+            });
+        } finally {
+            setPackingId(null);
         }
     };
 
@@ -476,6 +495,20 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
                                                     >
                                                         <ClipboardList className="h-3.5 w-3.5" />
                                                         Create Pick List
+                                                    </Button>
+                                                )}
+                                                {order.status === 'completed' && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="gap-1 h-7 px-2 text-xs"
+                                                        disabled={packingId === order.id}
+                                                        onClick={() => handlePack(order)}
+                                                    >
+                                                        {packingId === order.id
+                                                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                            : <PackageCheck className="h-3.5 w-3.5" />}
+                                                        Pack
                                                     </Button>
                                                 )}
                                                 <Button

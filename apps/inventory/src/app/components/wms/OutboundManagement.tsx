@@ -13,6 +13,7 @@ import {
     ChevronDown,
     Trash2,
     AlertTriangle,
+    PackageCheck,
 } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -33,6 +34,7 @@ import { PickExceptionQueue } from './PickExceptionQueue';
 import { GateVerificationPanel } from './GateVerificationPanel';
 import { DispatchList } from './DispatchList';
 import { OutboundOrderList } from './OutboundOrderList';
+import { PackingSlipList } from './PackingSlipList';
 import { outboundOrderApi } from '../../utility/api/wms';
 import type { SAPInvoicePayload, OutboundOrder } from '../../types/wms.types';
 
@@ -40,7 +42,7 @@ import type { SAPInvoicePayload, OutboundOrder } from '../../types/wms.types';
 // TYPES
 // ============================================
 
-type OutboundTab = 'orders' | 'pick' | 'gate' | 'dispatch' | 'exceptions';
+type OutboundTab = 'orders' | 'pick' | 'packing' | 'gate' | 'dispatch' | 'exceptions';
 
 interface OutboundManagementProps {
     warehouseId: string | null;
@@ -629,6 +631,20 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
                     <button
                         className={cn(
                             'px-4 py-2 text-sm font-medium',
+                            activeTab === 'packing'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted/50 hover:bg-muted',
+                        )}
+                        onClick={() => setActiveTab('packing')}
+                    >
+                        <span className="flex items-center gap-2">
+                            <PackageCheck className="h-4 w-4" />
+                            Packing Slips
+                        </span>
+                    </button>
+                    <button
+                        className={cn(
+                            'px-4 py-2 text-sm font-medium',
                             activeTab === 'gate'
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-muted/50 hover:bg-muted',
@@ -682,6 +698,10 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
 
                     {activeTab === 'pick' && (
                         <PickListView key={pickRefreshKey} warehouseId={warehouseId ?? undefined} />
+                    )}
+
+                    {activeTab === 'packing' && (
+                        <PackingSlipList warehouseId={warehouseId ?? undefined} />
                     )}
 
                     {activeTab === 'gate' && (

@@ -545,7 +545,10 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
   const preComplete = pickList
     ? ['draft', 'confirmed', 'pending_picking', 'in_progress'].includes(pickList.status)
     : false;
-  const canComplete = !!pickList && preComplete && (progress?.remaining_items ?? 0) === 0;
+  // Completion is allowed in any pre-complete state: lines that are not fully
+  // picked are validated against the short-pick policy on the backend (the
+  // worker can "continue" by skipping a short line and finalising).
+  const canComplete = !!pickList && preComplete;
   const canCancel = !!pickList &&
     !['pick_complete', 'completed', 'ready_for_dispatch', 'in_transit', 'delivered', 'cancelled'].includes(pickList.status);
   const canAccept = !!pickList && ['draft', 'confirmed', 'pending_picking'].includes(pickList.status);
@@ -777,7 +780,7 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
         title={confirmAction === 'complete' ? 'Mark pick list complete?' : 'Cancel pick list?'}
         description={
           confirmAction === 'complete'
-            ? 'All items must be fully picked before the pick list can be completed.'
+            ? 'Any lines that are not fully picked will be validated against the short-pick policy.'
             : 'Cancelling will release any reserved stock. This action cannot be undone.'
         }
         confirmLabel={confirmAction === 'complete' ? 'Mark Complete' : 'Cancel Pick List'}
