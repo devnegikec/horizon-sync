@@ -37,6 +37,19 @@ function getStatusBadge(status: AsnOrderStatus) {
   }
 }
 
+function getAsnTypeLabel(type?: string | null): string {
+  switch (type) {
+    case 'purchase':
+      return 'Purchase';
+    case 'internal_transfer':
+      return 'Internal Transfer';
+    case 'stock_receipt':
+      return 'Stock Receipt';
+    default:
+      return type || '—';
+  }
+}
+
 export interface AsnOrdersTableProps {
   asnOrders: AsnOrder[];
   loading: boolean;
@@ -119,6 +132,15 @@ export function AsnOrdersTable({
           const statusBadge = getStatusBadge(status);
           return <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>;
         },
+      },
+      {
+        accessorKey: 'asn_type',
+        header: () => <span>Type</span>,
+        cell: ({ row }) => {
+          const asnType = row.original.asn_type;
+          return <Badge variant="outline">{getAsnTypeLabel(asnType)}</Badge>;
+        },
+        enableSorting: false,
       },
       {
         accessorKey: 'order_date',

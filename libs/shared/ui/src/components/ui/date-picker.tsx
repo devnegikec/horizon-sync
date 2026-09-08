@@ -4,8 +4,6 @@ import { CalendarIcon } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
 
-import { Button } from './button';
-
 export interface DatePickerProps {
   value?: string; // ISO date string: YYYY-MM-DD
   onChange?: (value: string) => void;
@@ -50,14 +48,9 @@ const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
       });
     }, [value]);
 
-    const handleButtonClick = () => {
-      inputRef.current?.showPicker?.();
-      inputRef.current?.focus();
-    };
-
     return (
       <div className={cn('relative', className)}>
-        {/* Hidden native date input — handles the actual picker */}
+        {/* Native date input — transparent overlay; opens the native picker in all browsers */}
         <input ref={inputRef}
           id={id}
           type="date"
@@ -67,23 +60,20 @@ const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
           required={required}
           disabled={disabled}
           onChange={(e) => onChange?.(e.target.value)}
-          className="sr-only absolute inset-0 h-full w-full opacity-0"
-          tabIndex={-1}
-          aria-hidden="true"/>
+          className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+          aria-label={formattedDisplay ?? placeholder} />
 
-        {/* Styled trigger button */}
-        <Button type="button"
-          variant="outline"
-          disabled={disabled}
-          onClick={handleButtonClick}
+        {/* Input-styled display (clicks pass through to the native input) */}
+        <div aria-hidden="true"
           className={cn(
-            'w-full justify-start text-left font-normal',
-            !value && 'text-muted-foreground',
-          )}
-          aria-label={formattedDisplay ?? placeholder}>
-          <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-          {formattedDisplay ?? <span>{placeholder}</span>}
-        </Button>
+            'pointer-events-none flex h-9 w-full items-center gap-2 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm',
+            !value && 'text-muted-foreground/60',
+            disabled && 'cursor-not-allowed opacity-50',
+            'peer-focus-visible:ring-1 peer-focus-visible:ring-ring',
+          )}>
+          <span className="truncate text-left">{formattedDisplay ?? placeholder}</span>
+          <CalendarIcon className="ml-auto h-4 w-4 shrink-0 text-primary" />
+        </div>
       </div>
     );
   },
