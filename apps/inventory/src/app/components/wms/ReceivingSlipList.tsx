@@ -15,13 +15,14 @@ import { WMSStatusBadge } from './WMSStatusBadge';
 
 interface ReceivingSlipListProps {
   warehouseId?: string;
+  statusFilter: string;
+  onStatusFilterChange: (status: string) => void;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
+export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterChange }: ReceivingSlipListProps) {
   const { toast } = useToast();
-  const [statusFilter, setStatusFilter] = React.useState('all');
   const [page, setPage] = React.useState(1);
   const [rejectingId, setRejectingId] = React.useState<string | null>(null);
   const [rejectReason, setRejectReason] = React.useState('');
@@ -32,7 +33,7 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
   const [confirmPutAwaySlip, setConfirmPutAwaySlip] = React.useState<ReceivingSlip | null>(null);
   const [actionLoading, setActionLoading] = React.useState(false);
 
-  const { data, loading, error, refetch, approveSlip, rejectSlip, rejectItem, getSlip, generatePutAway } = useReceivingSlips({
+  const { data, statusCounts, loading, error, refetch, approveSlip, rejectSlip, rejectItem, getSlip, generatePutAway } = useReceivingSlips({
     warehouse_id: warehouseId,
     status: statusFilter === 'all' ? undefined : statusFilter,
     page,
@@ -102,16 +103,17 @@ export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={onStatusFilterChange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="pending_review">Pending Review</SelectItem>
-            <SelectItem value="pending_putaway">Pending Put-Away</SelectItem>
-            <SelectItem value="putaway_complete">Put-Away Complete</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="all">All Statuses ({statusCounts?.total ?? 0})</SelectItem>
+            <SelectItem value="pending_review">Pending Review ({statusCounts?.pending_review ?? 0})</SelectItem>
+            <SelectItem value="pending_putaway">Pending Put-Away ({statusCounts?.pending_putaway ?? 0})</SelectItem>
+            <SelectItem value="putaway_in_progress">Put-Away In Progress ({statusCounts?.putaway_in_progress ?? 0})</SelectItem>
+            <SelectItem value="putaway_complete">Put-Away Complete ({statusCounts?.putaway_complete ?? 0})</SelectItem>
+            <SelectItem value="rejected">Rejected ({statusCounts?.rejected ?? 0})</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" size="sm" onClick={refetch} className="gap-2">

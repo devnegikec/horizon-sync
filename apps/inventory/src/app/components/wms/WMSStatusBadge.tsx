@@ -7,6 +7,7 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   // Receiving slip
   pending_review: { label: 'Pending Review', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-white' },
   pending_putaway: { label: 'Pending Put-Away', className: 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-white' },
+  putaway_in_progress: { label: 'Put-Away In Progress', className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-700 dark:text-white' },
   putaway_complete: { label: 'Put-Away Complete', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },
   rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-white' },
   // Pick list / put-away
