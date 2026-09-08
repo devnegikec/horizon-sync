@@ -138,24 +138,34 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
     const fetchItems = async () => {
       if (!accessToken) return;
       try {
-        const url = `${environment.apiCoreUrl}/api/v1/items?page=1&page_size=100`;
-        const response = await fetch(url, {
-          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const list: Array<{ id: string; item_name: string; sku?: string | null; item_code?: string }> = data.items || [];
-          setItems(list);
-          // Pre-populate the two known test items (resolved by SKU).
-          const defaults = [
-            { sku: 'PRE-COOK-5', batch: 'Batch-SEP-08-09-2026', quantity: '110', master_pack_size: '5' },
-            { sku: 'PRE-COOK-10', batch: 'Batch-SEP-09-09-2026', quantity: '10', master_pack_size: '2' },
-          ];
-          setReceiveAsnItems(defaults.map((d) => {
-            const match = list.find((i) => (i.sku ?? i.item_code ?? '') === d.sku);
-            return { item_id: match?.id ?? '', batch: d.batch, quantity: d.quantity, master_pack_size: d.master_pack_size };
-          }));
+        const fetchPage = async (page: number) => {
+          const url = `${environment.apiCoreUrl}/api/v1/items?page=${page}&page_size=100`;
+          const response = await fetch(url, {
+            headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          });
+          if (!response.ok) return null;
+          return await response.json();
+        };
+
+        const firstPage = await fetchPage(1);
+        if (!firstPage) return;
+        let list: Array<{ id: string; item_name: string; sku?: string | null; item_code?: string }> = firstPage.items || [];
+        const totalPages = firstPage.pagination?.total_pages ?? 1;
+        for (let page = 2; page <= totalPages; page++) {
+          const nextPage = await fetchPage(page);
+          if (!nextPage) break;
+          list = list.concat(nextPage.items || []);
         }
+        setItems(list);
+        // Pre-populate the two known test items (resolved by SKU).
+        const defaults = [
+          { sku: 'PRE-COOK-5', batch: 'Batch-SEP-08-09-2026', quantity: '110', master_pack_size: '5' },
+          { sku: 'PRE-COOK-10', batch: 'Batch-SEP-09-09-2026', quantity: '10', master_pack_size: '2' },
+        ];
+        setReceiveAsnItems(defaults.map((d) => {
+          const match = list.find((i) => (i.sku ?? i.item_code ?? '') === d.sku);
+          return { item_id: match?.id ?? '', batch: d.batch, quantity: d.quantity, master_pack_size: d.master_pack_size };
+        }));
       } catch {
         // item selector is best-effort
       }
