@@ -32,9 +32,12 @@ export function PackingSlipList({ warehouseId }: { warehouseId?: string }) {
     const [viewSlip, setViewSlip] = React.useState<PackingSlip | null>(null);
     const [viewLoading, setViewLoading] = React.useState(false);
     const [busyId, setBusyId] = React.useState<string | null>(null);
+    const fetchRequestId = React.useRef(0);
+    const detailRequestId = React.useRef(0);
 
     const fetch = React.useCallback(async () => {
         if (!accessToken) return;
+        const requestId = ++fetchRequestId.current;
         setLoading(true);
         setError(null);
         try {
@@ -44,11 +47,15 @@ export function PackingSlipList({ warehouseId }: { warehouseId?: string }) {
                 page,
                 page_size: 20,
             });
+            if (requestId !== fetchRequestId.current) return;
             setData(result);
         } catch (err) {
+            if (requestId !== fetchRequestId.current) return;
             setError(err instanceof Error ? err.message : 'Failed to load packing slips');
         } finally {
-            setLoading(false);
+            if (requestId === fetchRequestId.current) {
+                setLoading(false);
+            }
         }
     }, [accessToken, warehouseId, statusFilter, page]);
 
@@ -58,17 +65,23 @@ export function PackingSlipList({ warehouseId }: { warehouseId?: string }) {
 
     const openDetail = async (id: string) => {
         if (!accessToken) return;
+        const requestId = ++detailRequestId.current;
         setViewLoading(true);
         try {
-            setViewSlip(await packingSlipApi.get(accessToken, id));
+            const slip = await packingSlipApi.get(accessToken, id);
+            if (requestId !== detailRequestId.current) return;
+            setViewSlip(slip);
         } catch (err) {
+            if (requestId !== detailRequestId.current) return;
             toast({
                 title: 'Error',
                 description: err instanceof Error ? err.message : 'Failed to load packing slip',
                 variant: 'destructive',
             });
         } finally {
-            setViewLoading(false);
+            if (requestId === detailRequestId.current) {
+                setViewLoading(false);
+            }
         }
     };
 

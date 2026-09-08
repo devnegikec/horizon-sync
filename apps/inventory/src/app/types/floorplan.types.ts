@@ -206,7 +206,7 @@ export const LAYOUT_TEMPLATES: LayoutTemplate[] = [
           ]
         },
         {
-          code: 'Z-03', name: 'Cold Storage', offset_x: 0, offset_y: 110, aisle_spacing: 6.5, aisles: [
+          code: 'Z03', name: 'Cold Storage', offset_x: 0, offset_y: 110, aisle_spacing: 6.5, aisles: [
             { code: 'A01', name: 'Aisle 1', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'right_only', num_levels: 4, level_height: 1.5, bins_per_level: 1, bin_capacity: 200, num_bays_per_row: 12, bay_depth: 1.8 },
             { code: 'A02', name: 'Aisle 2', direction: 'horizontal', position_along: 0, position_start: 0, corridor_width: 3.0, rows: 'left_only', num_levels: 4, level_height: 1.5, bins_per_level: 1, bin_capacity: 200, num_bays_per_row: 12, bay_depth: 1.8 },
           ]
