@@ -15,14 +15,14 @@ import { WMSStatusBadge } from './WMSStatusBadge';
 
 interface ReceivingSlipListProps {
   warehouseId?: string;
-  initialStatus?: string;
+  statusFilter: string;
+  onStatusFilterChange: (status: string) => void;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ReceivingSlipList({ warehouseId, initialStatus = 'all' }: ReceivingSlipListProps) {
+export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterChange }: ReceivingSlipListProps) {
   const { toast } = useToast();
-  const [statusFilter, setStatusFilter] = React.useState(initialStatus);
   const [page, setPage] = React.useState(1);
   const [rejectingId, setRejectingId] = React.useState<string | null>(null);
   const [rejectReason, setRejectReason] = React.useState('');
@@ -32,11 +32,6 @@ export function ReceivingSlipList({ warehouseId, initialStatus = 'all' }: Receiv
   const [confirmApproveSlip, setConfirmApproveSlip] = React.useState<ReceivingSlip | null>(null);
   const [confirmPutAwaySlip, setConfirmPutAwaySlip] = React.useState<ReceivingSlip | null>(null);
   const [actionLoading, setActionLoading] = React.useState(false);
-
-  // Keep the local filter in sync when the user navigates here from the Stats tab.
-  React.useEffect(() => {
-    setStatusFilter(initialStatus);
-  }, [initialStatus]);
 
   const { data, statusCounts, loading, error, refetch, approveSlip, rejectSlip, rejectItem, getSlip, generatePutAway } = useReceivingSlips({
     warehouse_id: warehouseId,
@@ -108,7 +103,7 @@ export function ReceivingSlipList({ warehouseId, initialStatus = 'all' }: Receiv
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={onStatusFilterChange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>

@@ -274,6 +274,7 @@ function InboundManagement({
           <InboundSectionContent section={inboundSection}
             warehouseId={selectedWarehouseId}
             receivingStatusFilter={receivingStatusFilter}
+            onReceivingStatusFilterChange={onReceivingStatusFilterChange}
             onSlipGenerated={() => onInboundSectionChange('receiving')} />
         </div>
       </div>
@@ -285,16 +286,22 @@ function InboundSectionContent({
   section,
   warehouseId,
   receivingStatusFilter,
+  onReceivingStatusFilterChange,
   onSlipGenerated,
 }: {
   section: InboundSection;
   warehouseId: string;
   receivingStatusFilter: string;
+  onReceivingStatusFilterChange: (status: string) => void;
   onSlipGenerated: () => void;
 }) {
   switch (section) {
     case 'receiving':
-      return <ReceivingSlipSection warehouseId={warehouseId} initialStatus={receivingStatusFilter} />;
+      return (
+        <ReceivingSlipSection warehouseId={warehouseId}
+          statusFilter={receivingStatusFilter}
+          onStatusFilterChange={onReceivingStatusFilterChange} />
+      );
     case 'putaway':
       return <PutAwaySection warehouseId={warehouseId} />;
     case 'vehicle':
@@ -316,14 +323,17 @@ function InboundScanView({ warehouseId, onSlipGenerated }: { warehouseId: string
   );
 }
 
-function ReceivingSlipSection({ warehouseId, initialStatus }: { warehouseId: string; initialStatus?: string }) {
+function ReceivingSlipSection({ warehouseId, statusFilter, onStatusFilterChange }: { warehouseId: string; statusFilter: string; onStatusFilterChange: (status: string) => void }) {
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold">Receiving Slips</h2>
         <p className="text-sm text-muted-foreground">Review and approve or reject receiving slips generated from inbound scan sessions.</p>
       </div>
-      <ReceivingSlipList warehouseId={warehouseId || undefined} initialStatus={initialStatus} />
+      <ReceivingSlipList key={statusFilter}
+        warehouseId={warehouseId || undefined}
+        statusFilter={statusFilter}
+        onStatusFilterChange={onStatusFilterChange} />
     </div>
   );
 }

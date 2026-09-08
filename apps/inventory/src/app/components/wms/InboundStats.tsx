@@ -36,8 +36,6 @@ const STATS: StatDef[] = [
   { key: 'pending_review', title: 'Pending Review', filter: 'pending_review', icon: Clock },
   { key: 'pending_putaway', title: 'Pending Put-Away', filter: 'pending_putaway', icon: PackageCheck },
   { key: 'putaway_in_progress', title: 'Put-Away In Progress', filter: 'putaway_in_progress', icon: Loader },
-  { key: 'putaway_complete', title: 'Put-Away Complete', filter: 'putaway_complete', icon: CheckCircle2 },
-  { key: 'rejected', title: 'Rejected', filter: 'rejected', icon: XCircle },
 ];
 
 function StatCard({
@@ -84,7 +82,7 @@ export function InboundStats({ warehouseId, onSelectStatus }: InboundStatsProps)
   });
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {STATS.map((stat, i) => (
         <StatCard key={stat.key} stat={stat} counts={statusCounts} colorIndex={i} onSelect={onSelectStatus} />
       ))}

@@ -2,8 +2,6 @@ import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
 
-import { inboundApi, layoutApi, outboundApi, outboundOrderApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi, vehicleArrivalApi, erpSyncApi } from '../utility/api/wms';
-import { pickSettingsApi } from '../utility/api/pick-settings';
 import type {
   DispatchListResponse,
   DispatchRecord,
@@ -32,6 +30,8 @@ import type {
   PaginatedVehicleArrivals,
   VehicleArrival,
 } from '../types/wms.types';
+import { pickSettingsApi } from '../utility/api/pick-settings';
+import { inboundApi, layoutApi, outboundApi, outboundOrderApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi, vehicleArrivalApi, erpSyncApi } from '../utility/api/wms';
 
 // ============================================
 // PICK SETTINGS HOOK (runtime config gating)
@@ -241,18 +241,26 @@ export function useReceivingSlips({
   const [data, setData] = React.useState<PaginatedReceivingSlips | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const requestIdRef = React.useRef(0);
 
   const fetch = React.useCallback(async () => {
     if (!accessToken) return;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const result = await inboundApi.listReceivingSlips(accessToken, { warehouse_id, status, page, page_size });
-      setData(result);
+      if (requestId === requestIdRef.current) {
+        setData(result);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load receiving slips');
+      if (requestId === requestIdRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load receiving slips');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [accessToken, warehouse_id, status, page, page_size]);
 
