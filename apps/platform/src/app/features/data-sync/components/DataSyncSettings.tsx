@@ -159,8 +159,8 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
         setItems(list);
         // Pre-populate the two known test items (resolved by SKU).
         const defaults = [
-          { sku: 'PRE-COOK-5', batch: 'Batch-SEP-08-09-2026', quantity: '110', master_pack_size: '5' },
-          { sku: 'PRE-COOK-10', batch: 'Batch-SEP-09-09-2026', quantity: '10', master_pack_size: '2' },
+          { sku: 'PRE-COOK-10', batch: 'Batch-SEP-10-LTR-2026', quantity: '10', master_pack_size: '5' },
+          { sku: 'PRE-COOK-5', batch: 'Batch-SEP-05-LTR-2026', quantity: '12', master_pack_size: '3' },
         ];
         setReceiveAsnItems(defaults.map((d) => {
           const match = list.find((i) => (i.sku ?? i.item_code ?? '') === d.sku);

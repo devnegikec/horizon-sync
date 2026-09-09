@@ -468,6 +468,10 @@ export interface PutAwayListBatchResponse {
   put_away_lists: PutAwayList[];
 }
 
+export interface PickListBatchResponse {
+  pick_lists: PickList[];
+}
+
 // ============================================
 // OUTBOUND / PICK LIST TYPES
 // ============================================
