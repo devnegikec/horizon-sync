@@ -34,6 +34,8 @@ import { useOutboundOrders } from '../../hooks/useWMS';
 import { outboundOrderApi, packingSlipApi, wmsWorkerApi } from '../../utility/api/wms';
 import type { OutboundOrder, WMSWorker } from '../../types/wms.types';
 import { WMSStatusBadge } from './WMSStatusBadge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
+import { ids } from 'webpack';
 
 function workerLabel(worker: WMSWorker): string {
     const full = `${worker.first_name} ${worker.last_name}`.trim();
@@ -166,17 +168,14 @@ function GeneratePickListsDialog({
     }, [order?.id]);
 
     if (!order) return null;
-
     const handleGenerate = async () => {
         if (!accessToken) return;
         setBusy(true);
         try {
-            const lists = await outboundOrderApi.generatePickLists(
-                accessToken,
-                order.id,
-                workerIds,
-                mode === 'default' ? undefined : mode,
-            );
+            const lists = await outboundOrderApi.generatePickLists(accessToken, order.id, {
+                mode: mode === 'default' ? undefined : mode,
+                worker_ids: workerIds,
+            });
             const summary = lists.length > 1
                 ? `${lists.length} pick lists created: ${lists.map((l) => l.pick_list_no).join(', ')}`
                 : `Pick list ${lists[0]?.pick_list_no ?? ''} created`;
@@ -248,7 +247,7 @@ function GeneratePickListsDialog({
 
                 <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
-                    <Button onClick={handleGenerate} disabled={busy}>
+                    <Button onClick={() => handleGenerate()} disabled={busy}>
                         {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <PackageOpen className="h-4 w-4 mr-1" />}
                         Create Pick List
                     </Button>
@@ -375,6 +374,7 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
         try {
             await packingSlipApi.createFromOrders(accessToken, [order.id]);
             toast({ title: 'Packing slip created', description: `Packing slip created for ${order.order_no}` });
+            refetch();
         } catch (err) {
             toast({
                 title: 'Error',
@@ -420,7 +420,7 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
 
             <p className="text-xs text-muted-foreground">
                 Orders are imported from incoming order files (packing slip PDF/CSV) or created manually.
-                Confirm an order, then generate pick lists for it.
+                Flow: <span className="font-medium">Confirm</span> → <span className="font-medium">Create Pick List</span> → pick items → order becomes <span className="font-medium">Completed</span> → <span className="font-medium">Pack</span> (creates a packing slip) → Packing Slips tab → <span className="font-medium">Mark Loading</span> → <span className="font-medium">Dispatch</span>.
             </p>
 
             {loading && <div className="text-sm text-muted-foreground animate-pulse">Loading orders...</div>}
@@ -498,18 +498,28 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
                                                     </Button>
                                                 )}
                                                 {order.status === 'completed' && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="gap-1 h-7 px-2 text-xs"
-                                                        disabled={packingId === order.id}
-                                                        onClick={() => handlePack(order)}
-                                                    >
-                                                        {packingId === order.id
-                                                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                                            : <PackageCheck className="h-3.5 w-3.5" />}
-                                                        Pack
-                                                    </Button>
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="gap-1 h-7 px-2 text-xs"
+                                                                    disabled={packingId === order.id}
+                                                                    onClick={() => handlePack(order)}
+                                                                >
+                                                                    {packingId === order.id
+                                                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                                        : <PackageCheck className="h-3.5 w-3.5" />}
+                                                                    Pack
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Create a packing slip from this completed order&apos;s picked items.</p>
+                                                                <p className="text-muted-foreground">Then Mark Loading → Dispatch from the Packing Slips tab.</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
                                                 )}
                                                 <Button
                                                     size="sm"

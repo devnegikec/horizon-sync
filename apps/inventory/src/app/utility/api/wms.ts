@@ -57,6 +57,7 @@ import type {
   BulkDispositionAction,
   BulkDispositionResponse,
   PaginatedInboundExceptions,
+  PickListBatchResponse,
 } from '../../types/wms.types';
 
 const BASE = `${environment.apiCoreUrl}/api/v1`;
@@ -561,14 +562,14 @@ export const outboundOrderApi = {
   generatePickLists: (
     token: string,
     id: string,
-    workerIds: string[],
-    mode?: 'auto' | 'manual',
+    data?: { mode?: 'auto' | 'manual'; worker_id?: string; worker_ids?: string[] }
   ) =>
     req<PickList[]>(`${BASE}/outbound/orders/${id}/generate-pick-lists`, token, {
       method: 'POST',
-      body: JSON.stringify({ worker_ids: workerIds, mode: mode ?? null }),
+      body: JSON.stringify(data ?? {}),
     }),
 };
+
 
 // ============================================
 // PACKING SLIPS (internal staging of picked goods)
@@ -576,7 +577,7 @@ export const outboundOrderApi = {
 
 export const packingSlipApi = {
   createFromOrders: (token: string, orderIds: string[]) =>
-    req<PackingSlip>(`${BASE}/outbound/packing-slips`, token, {
+    req<PackingSlip>(`${BASE}/outbound/packing-slips/`, token, {
       method: 'POST',
       body: JSON.stringify({ order_ids: orderIds }),
     }),
@@ -589,7 +590,7 @@ export const packingSlipApi = {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
     });
-    return req<PaginatedPackingSlips>(`${BASE}/outbound/packing-slips?${p}`, token);
+    return req<PaginatedPackingSlips>(`${BASE}/outbound/packing-slips/?${p}`, token);
   },
 
   get: (token: string, id: string) =>
