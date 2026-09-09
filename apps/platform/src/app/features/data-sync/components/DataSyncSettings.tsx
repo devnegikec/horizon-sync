@@ -157,15 +157,6 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
           list = list.concat(nextPage.items || []);
         }
         setItems(list);
-        // Pre-populate the two known test items (resolved by SKU).
-        const defaults = [
-          { sku: 'PRE-COOK-10', batch: 'Batch-SEP-10-LTR-2026', quantity: '10', master_pack_size: '5' },
-          { sku: 'PRE-COOK-5', batch: 'Batch-SEP-05-LTR-2026', quantity: '12', master_pack_size: '3' },
-        ];
-        setReceiveAsnItems(defaults.map((d) => {
-          const match = list.find((i) => (i.sku ?? i.item_code ?? '') === d.sku);
-          return { item_id: match?.id ?? '', batch: d.batch, quantity: d.quantity, master_pack_size: d.master_pack_size };
-        }));
       } catch {
         // item selector is best-effort
       }

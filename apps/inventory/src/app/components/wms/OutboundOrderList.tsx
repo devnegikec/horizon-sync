@@ -374,6 +374,7 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
         try {
             await packingSlipApi.createFromOrders(accessToken, [order.id]);
             toast({ title: 'Packing slip created', description: `Packing slip created for ${order.order_no}` });
+            refetch();
         } catch (err) {
             toast({
                 title: 'Error',
