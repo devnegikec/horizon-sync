@@ -32,7 +32,7 @@ import { useUserStore } from '@horizon-sync/store';
 
 import { useOutboundOrders } from '../../hooks/useWMS';
 import { outboundOrderApi, packingSlipApi, wmsWorkerApi } from '../../utility/api/wms';
-import type { OutboundOrder, WMSWorker } from '../../types/wms.types';
+import type { OutboundOrder, OutboundOrderListItem, WMSWorker } from '../../types/wms.types';
 import { WMSStatusBadge } from './WMSStatusBadge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 import { ids } from 'webpack';
@@ -139,7 +139,7 @@ function GeneratePickListsDialog({
     onClose,
     onGenerated,
 }: {
-    order: OutboundOrder | null;
+    order: OutboundOrderListItem | null;
     onClose: () => void;
     onGenerated: () => void;
 }) {
@@ -338,7 +338,8 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
     const [typeFilter, setTypeFilter] = React.useState('all');
     const [page, setPage] = React.useState(1);
     const [viewOrder, setViewOrder] = React.useState<OutboundOrder | null>(null);
-    const [generateOrder, setGenerateOrder] = React.useState<OutboundOrder | null>(null);
+    const [viewLoading, setViewLoading] = React.useState(false);
+    const [generateOrder, setGenerateOrder] = React.useState<OutboundOrderListItem | null>(null);
     const [confirmingId, setConfirmingId] = React.useState<string | null>(null);
     const [packingId, setPackingId] = React.useState<string | null>(null);
 
@@ -350,7 +351,7 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
         page_size: 20,
     });
 
-    const handleConfirm = async (order: OutboundOrder) => {
+    const handleConfirm = async (order: OutboundOrderListItem) => {
         if (!accessToken) return;
         setConfirmingId(order.id);
         try {
@@ -368,7 +369,7 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
         }
     };
 
-    const handlePack = async (order: OutboundOrder) => {
+    const handlePack = async (order: OutboundOrderListItem) => {
         if (!accessToken) return;
         setPackingId(order.id);
         try {
@@ -383,6 +384,23 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
             });
         } finally {
             setPackingId(null);
+        }
+    };
+
+    const handleView = async (order: OutboundOrderListItem) => {
+        if (!accessToken) return;
+        setViewLoading(true);
+        try {
+            const detail = await outboundOrderApi.getOrder(accessToken, order.id);
+            setViewOrder(detail);
+        } catch (err) {
+            toast({
+                title: 'Error',
+                description: err instanceof Error ? err.message : 'Failed to load order detail',
+                variant: 'destructive',
+            });
+        } finally {
+            setViewLoading(false);
         }
     };
 
@@ -450,8 +468,8 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
                                 </tr>
                             )}
                             {data?.orders.map((order) => {
-                                const inStock = order.items.filter((i) => i.stock_status === 'in_stock').length;
-                                const outOfStock = order.items.length - inStock;
+                                const inStock = order.in_stock_count;
+                                const outOfStock = order.out_of_stock_count;
                                 return (
                                     <tr key={order.id} className="hover:bg-muted/30 transition-colors">
                                         <td className="px-4 py-3 font-mono font-medium">{order.order_no}</td>
@@ -467,7 +485,7 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
                                             <span className="text-muted-foreground"> / </span>
                                             <span className={outOfStock > 0 ? 'text-red-600' : 'text-muted-foreground'}>{outOfStock} out</span>
                                         </td>
-                                        <td className="px-4 py-3 text-right">{order.items.length}</td>
+                                        <td className="px-4 py-3 text-right">{order.item_count}</td>
                                         <td className="px-4 py-3 text-muted-foreground">
                                             {order.created_at ? new Date(order.created_at).toLocaleDateString() : '—'}
                                         </td>
@@ -525,9 +543,10 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
                                                     size="sm"
                                                     variant="ghost"
                                                     className="gap-1 h-7 px-2 text-xs"
-                                                    onClick={() => setViewOrder(order)}
+                                                    disabled={viewLoading}
+                                                    onClick={() => handleView(order)}
                                                 >
-                                                    <Eye className="h-3.5 w-3.5" />
+                                                    {viewLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
                                                     View
                                                 </Button>
                                             </div>

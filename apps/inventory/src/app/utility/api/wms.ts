@@ -11,6 +11,7 @@ import type {
   SessionSummary,
   ReceivingSlip,
   PaginatedReceivingSlips,
+  ReceivingSlipActionResult,
   PutAwayList,
   PutAwayListBatchResponse,
   PutAwayItem,
@@ -207,13 +208,13 @@ export const inboundApi = {
   getReceivingSlip: (token: string, slipId: string) => req<ReceivingSlip>(`${BASE}/inbound/receiving-slips/${slipId}`, token),
 
   approveSlip: (token: string, slipId: string, workerId?: string) =>
-    req<ReceivingSlip>(`${BASE}/inbound/receiving-slips/${slipId}/approve`, token, {
+    req<ReceivingSlipActionResult>(`${BASE}/inbound/receiving-slips/${slipId}/approve`, token, {
       method: 'POST',
       body: JSON.stringify(workerId ? { worker_id: workerId } : {}),
     }),
 
   rejectSlip: (token: string, slipId: string, reason: string) =>
-    req<ReceivingSlip>(`${BASE}/inbound/receiving-slips/${slipId}/reject`, token, {
+    req<ReceivingSlipActionResult>(`${BASE}/inbound/receiving-slips/${slipId}/reject`, token, {
       method: 'POST',
       body: JSON.stringify({ reason }),
     }),

@@ -14,7 +14,9 @@ import type {
   PaginatedLocations,
   PaginatedOutboundOrders,
   PaginatedPickLists,
+  PaginatedPackingSlips,
   PaginatedReceivingSlips,
+  ReceivingSlipActionResult,
   PickList,
   PickScanResult,
   PutAwayItem,
@@ -31,7 +33,7 @@ import type {
   VehicleArrival,
 } from '../types/wms.types';
 import { pickSettingsApi } from '../utility/api/pick-settings';
-import { inboundApi, layoutApi, outboundApi, outboundOrderApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi, vehicleArrivalApi, erpSyncApi } from '../utility/api/wms';
+import { inboundApi, layoutApi, outboundApi, outboundOrderApi, packingSlipApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi, vehicleArrivalApi, erpSyncApi } from '../utility/api/wms';
 
 // ============================================
 // PICK SETTINGS HOOK (runtime config gating)
@@ -269,7 +271,7 @@ export function useReceivingSlips({
   }, [fetch]);
 
   const approveSlip = React.useCallback(
-    async (slipId: string): Promise<ReceivingSlip> => {
+    async (slipId: string): Promise<ReceivingSlipActionResult> => {
       if (!accessToken) throw new Error('Not authenticated');
       const result = await inboundApi.approveSlip(accessToken, slipId);
       await fetch();
@@ -279,7 +281,7 @@ export function useReceivingSlips({
   );
 
   const rejectSlip = React.useCallback(
-    async (slipId: string, reason: string): Promise<ReceivingSlip> => {
+    async (slipId: string, reason: string): Promise<ReceivingSlipActionResult> => {
       if (!accessToken) throw new Error('Not authenticated');
       const result = await inboundApi.rejectSlip(accessToken, slipId, reason);
       await fetch();
@@ -459,7 +461,7 @@ export function usePickLists(params: { status?: string; warehouse_id?: string; s
     fetch();
   }, [fetch]);
 
-  return { data, loading, error, refetch: fetch };
+  return { data, statusCounts: data?.status_counts ?? null, loading, error, refetch: fetch };
 }
 
 export function useOutboundOrders(params: {
@@ -496,7 +498,38 @@ export function useOutboundOrders(params: {
     fetch();
   }, [fetch]);
 
-  return { data, loading, error, refetch: fetch };
+  return { data, statusCounts: data?.status_counts ?? null, loading, error, refetch: fetch };
+}
+
+export function usePackingSlips(params: { warehouse_id?: string; status?: string; page?: number; page_size?: number }) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [data, setData] = React.useState<PaginatedPackingSlips | null>(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const latestRequestRef = React.useRef(0);
+
+  const fetch = React.useCallback(async () => {
+    if (!accessToken) return;
+    const requestId = ++latestRequestRef.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await packingSlipApi.list(accessToken, params);
+      if (requestId === latestRequestRef.current) setData(result);
+    } catch (err) {
+      if (requestId === latestRequestRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load packing slips');
+      }
+    } finally {
+      if (requestId === latestRequestRef.current) setLoading(false);
+    }
+  }, [accessToken, params.warehouse_id, params.status, params.page, params.page_size]);
+
+  React.useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { data, statusCounts: data?.status_counts ?? null, loading, error, refetch: fetch };
 }
 
 export function usePickList(pickListId: string | null) {
