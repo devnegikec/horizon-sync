@@ -585,20 +585,23 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
     const [gatePickListId, setGatePickListId] = React.useState('');
     const [ordersRefreshKey, setOrdersRefreshKey] = React.useState(0);
     const [pickRefreshKey, setPickRefreshKey] = React.useState(0);
+    const [statsRefreshKey, setStatsRefreshKey] = React.useState(0);
 
     const handleOrdersRefresh = React.useCallback(() => {
         setOrdersRefreshKey((k) => k + 1);
+        setStatsRefreshKey((k) => k + 1);
     }, []);
 
     const handlePickRefresh = React.useCallback(() => {
         setPickRefreshKey((k) => k + 1);
+        setStatsRefreshKey((k) => k + 1);
     }, []);
 
     return (
         <div className="space-y-4">
             <OutboundHeader activeTab={activeTab} warehouseId={warehouseId} onImportSuccess={handleOrdersRefresh} />
 
-            <OutboundStats warehouseId={warehouseId ?? undefined} activeTab={activeTab} />
+            <OutboundStats warehouseId={warehouseId ?? undefined} activeTab={activeTab} refreshKey={statsRefreshKey} />
 
             <div className="border rounded-lg overflow-hidden">
                 {/* Sub-tabs */}

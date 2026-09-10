@@ -433,15 +433,16 @@ export function usePutAwayList(listId: string | null) {
 // PICK LIST HOOK
 // ============================================
 
-export function usePickLists(params: { status?: string; warehouse_id?: string; sort_by?: string; page?: number; page_size?: number }) {
+export function usePickLists(params: { status?: string; warehouse_id?: string; sort_by?: string; page?: number; page_size?: number; enabled?: boolean; refreshKey?: number }) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const enabled = params.enabled !== false;
   const [data, setData] = React.useState<PaginatedPickLists | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const latestRequestRef = React.useRef(0);
 
   const fetch = React.useCallback(async () => {
-    if (!accessToken) return;
+    if (!accessToken || !enabled) return;
     const requestId = ++latestRequestRef.current;
     setLoading(true);
     setError(null);
@@ -455,7 +456,7 @@ export function usePickLists(params: { status?: string; warehouse_id?: string; s
     } finally {
       if (requestId === latestRequestRef.current) setLoading(false);
     }
-  }, [accessToken, params.status, params.warehouse_id, params.sort_by, params.page, params.page_size]);
+  }, [accessToken, enabled, params.status, params.warehouse_id, params.sort_by, params.page, params.page_size, params.refreshKey]);
 
   React.useEffect(() => {
     fetch();
@@ -470,15 +471,18 @@ export function useOutboundOrders(params: {
   warehouse_id?: string;
   page?: number;
   page_size?: number;
+  enabled?: boolean;
+  refreshKey?: number;
 }) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const enabled = params.enabled !== false;
   const [data, setData] = React.useState<PaginatedOutboundOrders | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const latestRequestRef = React.useRef(0);
 
   const fetch = React.useCallback(async () => {
-    if (!accessToken) return;
+    if (!accessToken || !enabled) return;
     const requestId = ++latestRequestRef.current;
     setLoading(true);
     setError(null);
@@ -492,7 +496,7 @@ export function useOutboundOrders(params: {
     } finally {
       if (requestId === latestRequestRef.current) setLoading(false);
     }
-  }, [accessToken, params.status, params.order_type, params.warehouse_id, params.page, params.page_size]);
+  }, [accessToken, enabled, params.status, params.order_type, params.warehouse_id, params.page, params.page_size, params.refreshKey]);
 
   React.useEffect(() => {
     fetch();
@@ -501,15 +505,16 @@ export function useOutboundOrders(params: {
   return { data, statusCounts: data?.status_counts ?? null, loading, error, refetch: fetch };
 }
 
-export function usePackingSlips(params: { warehouse_id?: string; status?: string; page?: number; page_size?: number }) {
+export function usePackingSlips(params: { warehouse_id?: string; status?: string; page?: number; page_size?: number; enabled?: boolean; refreshKey?: number }) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const enabled = params.enabled !== false;
   const [data, setData] = React.useState<PaginatedPackingSlips | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const latestRequestRef = React.useRef(0);
 
   const fetch = React.useCallback(async () => {
-    if (!accessToken) return;
+    if (!accessToken || !enabled) return;
     const requestId = ++latestRequestRef.current;
     setLoading(true);
     setError(null);
@@ -523,7 +528,7 @@ export function usePackingSlips(params: { warehouse_id?: string; status?: string
     } finally {
       if (requestId === latestRequestRef.current) setLoading(false);
     }
-  }, [accessToken, params.warehouse_id, params.status, params.page, params.page_size]);
+  }, [accessToken, enabled, params.warehouse_id, params.status, params.page, params.page_size, params.refreshKey]);
 
   React.useEffect(() => {
     fetch();

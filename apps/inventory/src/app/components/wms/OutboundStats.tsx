@@ -15,6 +15,8 @@ interface OutboundStatsProps {
      * any other tab (gate/dispatch/exceptions) keeps showing the previous stats.
      */
     activeTab: string;
+    /** Increment to force the active tab's counts to refetch (e.g. after import/generation). */
+    refreshKey?: number;
 }
 
 interface StatDef {
@@ -66,10 +68,14 @@ function StatCard({
     stat,
     counts,
     colorIndex,
+    loading,
+    error,
 }: {
     stat: StatDef;
     counts: Record<string, number> | null;
     colorIndex: number;
+    loading: boolean;
+    error: boolean;
 }) {
     const Icon = stat.icon;
     const colors = STAT_COLORS[colorIndex] || STAT_COLORS[0];
@@ -80,7 +86,13 @@ function StatCard({
                 <div className="flex items-start justify-between">
                     <div className="space-y-2">
                         <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                        <p className="text-3xl font-bold tracking-tight">{formatQuantity(counts?.[stat.key] ?? 0)}</p>
+                        {loading && !counts ? (
+                            <div className="h-9 w-16 animate-pulse rounded-md bg-muted" />
+                        ) : (
+                            <p className="text-3xl font-bold tracking-tight">
+                                {error && !counts ? '—' : formatQuantity(counts?.[stat.key] ?? 0)}
+                            </p>
+                        )}
                     </div>
                     <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl', colors.bg)}>
                         <Icon className={cn('h-6 w-6', colors.fg)} />
@@ -91,7 +103,7 @@ function StatCard({
     );
 }
 
-export function OutboundStats({ warehouseId, activeTab }: OutboundStatsProps) {
+export function OutboundStats({ warehouseId, activeTab, refreshKey }: OutboundStatsProps) {
     // Remember the last stats tab so gate/dispatch/exceptions keep showing the
     // previous stats rather than clearing.
     const [statsTab, setStatsTab] = React.useState<StatsTab>('orders');
@@ -102,30 +114,44 @@ export function OutboundStats({ warehouseId, activeTab }: OutboundStatsProps) {
         }
     }, [activeTab]);
 
-    const { statusCounts: orderCounts } = useOutboundOrders({
+    // Only the active tab's counts are fetched — inactive tabs stay idle.
+    const orders = useOutboundOrders({
         warehouse_id: warehouseId,
         page: 1,
         page_size: 1,
+        enabled: statsTab === 'orders',
+        refreshKey,
     });
-    const { statusCounts: pickCounts } = usePickLists({
+    const picks = usePickLists({
         warehouse_id: warehouseId,
         page: 1,
         page_size: 1,
+        enabled: statsTab === 'pick',
+        refreshKey,
     });
-    const { statusCounts: packingCounts } = usePackingSlips({
+    const packing = usePackingSlips({
         warehouse_id: warehouseId,
         page: 1,
         page_size: 1,
+        enabled: statsTab === 'packing',
+        refreshKey,
     });
 
     const stats = STATS_BY_TAB[statsTab];
-    const counts =
-        statsTab === 'orders' ? orderCounts : statsTab === 'pick' ? pickCounts : packingCounts;
+    const active =
+        statsTab === 'orders' ? orders : statsTab === 'pick' ? picks : packing;
 
     return (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat, i) => (
-                <StatCard key={stat.key} stat={stat} counts={counts as unknown as Record<string, number> | null} colorIndex={i} />
+                <StatCard
+                    key={stat.key}
+                    stat={stat}
+                    counts={active.statusCounts as unknown as Record<string, number> | null}
+                    loading={active.loading}
+                    error={!!active.error}
+                    colorIndex={i}
+                />
             ))}
         </div>
     );
