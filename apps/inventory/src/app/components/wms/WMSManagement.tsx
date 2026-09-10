@@ -16,6 +16,7 @@ import {
   Truck,
   AlertTriangle,
   ScanLine,
+  RefreshCw,
 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
@@ -256,6 +257,8 @@ function InboundManagement({
   onReceivingStatusFilterChange,
   onPutawayStatusFilterChange,
 }: WMSContentProps) {
+  const [refreshKey, setRefreshKey] = React.useState(0);
+
   const openReceiving = (status: string) => {
     onReceivingStatusFilterChange(status);
     onInboundSectionChange('receiving');
@@ -266,8 +269,35 @@ function InboundManagement({
     onInboundSectionChange('putaway');
   };
 
+  const handleRefresh = React.useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  const heading: { title: string; subtitle: string } | undefined =
+    inboundSection === 'receiving'
+      ? {
+          title: 'Receiving Slips',
+          subtitle: 'Review and approve or reject receiving slips generated from inbound scan sessions.',
+        }
+      : inboundSection === 'putaway'
+        ? {
+            title: 'Put-Away Lists',
+            subtitle: 'Put-away lists are generated automatically when a receiving slip is approved. Click a row to see its items.',
+          }
+        : undefined;
+
   return (
     <div className="space-y-4">
+      {heading && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">{heading.title}</h2>
+            <p className="text-sm text-muted-foreground">{heading.subtitle}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2 shrink-0 self-start sm:self-auto">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </Button>
+        </div>
+      )}
       <InboundStats warehouseId={selectedWarehouseId || undefined}
         activeSection={inboundSection}
         onSelectReceivingStatus={openReceiving}
@@ -290,6 +320,7 @@ function InboundManagement({
             warehouseId={selectedWarehouseId}
             receivingStatusFilter={receivingStatusFilter}
             putawayStatusFilter={putawayStatusFilter}
+            refreshKey={refreshKey}
             onReceivingStatusFilterChange={onReceivingStatusFilterChange}
             onPutawayStatusFilterChange={onPutawayStatusFilterChange}
             onSlipGenerated={() => onInboundSectionChange('receiving')} />
@@ -304,6 +335,7 @@ function InboundSectionContent({
   warehouseId,
   receivingStatusFilter,
   putawayStatusFilter,
+  refreshKey,
   onReceivingStatusFilterChange,
   onPutawayStatusFilterChange,
   onSlipGenerated,
@@ -312,6 +344,7 @@ function InboundSectionContent({
   warehouseId: string;
   receivingStatusFilter: string;
   putawayStatusFilter: string;
+  refreshKey: number;
   onReceivingStatusFilterChange: (status: string) => void;
   onPutawayStatusFilterChange: (status: string) => void;
   onSlipGenerated: () => void;
@@ -321,12 +354,14 @@ function InboundSectionContent({
       return (
         <ReceivingSlipSection warehouseId={warehouseId}
           statusFilter={receivingStatusFilter}
+          refreshKey={refreshKey}
           onStatusFilterChange={onReceivingStatusFilterChange} />
       );
     case 'putaway':
       return (
         <PutAwaySection warehouseId={warehouseId}
           statusFilter={putawayStatusFilter}
+          refreshKey={refreshKey}
           onStatusFilterChange={onPutawayStatusFilterChange} />
       );
     case 'vehicle':
@@ -348,42 +383,42 @@ function InboundScanView({ warehouseId, onSlipGenerated }: { warehouseId: string
   );
 }
 
-function ReceivingSlipSection({ warehouseId, statusFilter, onStatusFilterChange }: { warehouseId: string; statusFilter: string; onStatusFilterChange: (status: string) => void }) {
+function ReceivingSlipSection({
+  warehouseId,
+  statusFilter,
+  refreshKey,
+  onStatusFilterChange,
+}: {
+  warehouseId: string;
+  statusFilter: string;
+  refreshKey: number;
+  onStatusFilterChange: (status: string) => void;
+}) {
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold">Receiving Slips</h2>
-        <p className="text-sm text-muted-foreground">Review and approve or reject receiving slips generated from inbound scan sessions.</p>
-      </div>
-      <ReceivingSlipList key={statusFilter}
-        warehouseId={warehouseId || undefined}
-        statusFilter={statusFilter}
-        onStatusFilterChange={onStatusFilterChange} />
-    </div>
+    <ReceivingSlipList key={statusFilter}
+      warehouseId={warehouseId || undefined}
+      statusFilter={statusFilter}
+      refreshKey={refreshKey}
+      onStatusFilterChange={onStatusFilterChange} />
   );
 }
 
 function PutAwaySection({
   warehouseId,
   statusFilter,
+  refreshKey,
   onStatusFilterChange,
 }: {
   warehouseId: string;
   statusFilter: string;
+  refreshKey: number;
   onStatusFilterChange: (status: string) => void;
 }) {
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold">Put-Away Lists</h2>
-        <p className="text-sm text-muted-foreground">
-          Put-away lists are generated automatically when a receiving slip is approved. Click a row to see its items.
-        </p>
-      </div>
-      <PutAwayView warehouseId={warehouseId || undefined}
-        statusFilter={statusFilter}
-        onStatusFilterChange={onStatusFilterChange} />
-    </div>
+    <PutAwayView warehouseId={warehouseId || undefined}
+      statusFilter={statusFilter}
+      refreshKey={refreshKey}
+      onStatusFilterChange={onStatusFilterChange} />
   );
 }
 

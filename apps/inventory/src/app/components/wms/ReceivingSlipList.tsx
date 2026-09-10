@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { PackageOpen, RefreshCw } from 'lucide-react';
+import { PackageOpen } from 'lucide-react';
 
 import { Button, Card, CardContent, ConfirmationDialog, EmptyState, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable } from '@horizon-sync/ui/components/data-table';
@@ -16,6 +16,8 @@ import { createReceivingSlipColumns, RejectSlipDialog, SlipDetailDialog } from '
 interface ReceivingSlipListProps {
   warehouseId?: string;
   statusFilter: string;
+  /** Increment to trigger a refetch (e.g. from the panel-level Refresh button). */
+  refreshKey?: number;
   onStatusFilterChange: (status: string) => void;
 }
 
@@ -47,12 +49,10 @@ function ReceivingSlipFilters({
   statusFilter,
   statusCounts,
   onStatusFilterChange,
-  onRefresh,
 }: {
   statusFilter: string;
   statusCounts: ReceivingSlipStatusCounts | null;
   onStatusFilterChange: (status: string) => void;
-  onRefresh: () => void;
 }) {
   return (
     <div className="flex items-center gap-3">
@@ -68,10 +68,6 @@ function ReceivingSlipFilters({
           ))}
         </SelectContent>
       </Select>
-      <Button variant="outline" size="sm" onClick={onRefresh} className="gap-2">
-        <RefreshCw className="h-3.5 w-3.5" />
-        Refresh
-      </Button>
     </div>
   );
 }
@@ -167,7 +163,7 @@ function ReceivingSlipsTable({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterChange }: ReceivingSlipListProps) {
+export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onStatusFilterChange }: ReceivingSlipListProps) {
   const { toast } = useToast();
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
@@ -193,6 +189,14 @@ export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterCha
   React.useEffect(() => {
     setPage(1);
   }, [statusFilter]);
+
+  // Refetch when the panel-level Refresh button is pressed (skip the initial mount).
+  const lastRefreshKeyRef = React.useRef(refreshKey);
+  React.useEffect(() => {
+    if (lastRefreshKeyRef.current === refreshKey) return;
+    lastRefreshKeyRef.current = refreshKey;
+    refetch();
+  }, [refreshKey, refetch]);
 
   const serverPagination = React.useMemo(() => {
     if (!pagination) return undefined;
@@ -297,8 +301,7 @@ export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterCha
     <div className="space-y-4">
       <ReceivingSlipFilters statusFilter={statusFilter}
         statusCounts={statusCounts}
-        onStatusFilterChange={onStatusFilterChange}
-        onRefresh={refetch} />
+        onStatusFilterChange={onStatusFilterChange} />
 
       <ReceivingSlipsTable isInitialLoading={isInitialLoading}
         error={error}

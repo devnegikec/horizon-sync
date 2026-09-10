@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { RefreshCw, Eye } from 'lucide-react';
+import { Eye } from 'lucide-react';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -17,10 +17,12 @@ interface PutAwayViewProps {
   warehouseId?: string;
   /** Controlled status filter (e.g. driven by the inbound stat cards). */
   statusFilter?: string;
+  /** Increment to trigger a refetch (e.g. from the panel-level Refresh button). */
+  refreshKey?: number;
   onStatusFilterChange?: (status: string) => void;
 }
 
-export function PutAwayView({ warehouseId, statusFilter: statusFilterProp, onStatusFilterChange }: PutAwayViewProps) {
+export function PutAwayView({ warehouseId, statusFilter: statusFilterProp, refreshKey, onStatusFilterChange }: PutAwayViewProps) {
   const [internalStatusFilter, setInternalStatusFilter] = React.useState('all');
   const statusFilter = statusFilterProp ?? internalStatusFilter;
   const setStatusFilter = onStatusFilterChange ?? setInternalStatusFilter;
@@ -39,6 +41,14 @@ export function PutAwayView({ warehouseId, statusFilter: statusFilterProp, onSta
     page,
     page_size: 20,
   });
+
+  // Refetch when the panel-level Refresh button is pressed (skip the initial mount).
+  const lastRefreshKeyRef = React.useRef(refreshKey);
+  React.useEffect(() => {
+    if (lastRefreshKeyRef.current === refreshKey) return;
+    lastRefreshKeyRef.current = refreshKey;
+    refetch();
+  }, [refreshKey, refetch]);
 
   const lists: PutAwayList[] = (data?.put_away_lists as PutAwayList[] | undefined) ?? [];
   const pagination = data?.pagination as
@@ -60,15 +70,7 @@ export function PutAwayView({ warehouseId, statusFilter: statusFilterProp, onSta
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="sm" onClick={refetch} className="gap-2">
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </Button>
       </div>
-
-      <p className="text-xs text-muted-foreground">
-        Put-away lists are created from approved receiving slips. Click View to see items and manage put-away operations.
-      </p>
 
       {loading && <div className="text-sm text-muted-foreground animate-pulse">Loading put-away lists...</div>}
       {error && <div className="text-sm text-destructive">{error}</div>}
