@@ -215,6 +215,7 @@ function PutAwayGroupRow({ group, warehouseId, onComplete, onSkip }: PutAwayGrou
   const rows = group.rows;
   const first = rows[0];
   const totalQty = rows.reduce((s, r) => s + (r.quantity || 0), 0);
+  const totalSerials = rows.reduce((s, r) => s + (r.serial_nos?.length ?? 1), 0);
   const doneCount = rows.filter((r) => r.status === 'completed' || r.status === 'skipped').length;
   const aggStatus = rows.length === 0
     ? 'pending'
@@ -244,7 +245,7 @@ function PutAwayGroupRow({ group, warehouseId, onComplete, onSkip }: PutAwayGrou
         <td className="px-4 py-2 text-right font-medium">{totalQty}</td>
         <td className="px-4 py-2"><WMSStatusBadge status={aggStatus} /></td>
         <td className="px-4 py-2 text-right text-xs text-muted-foreground">
-          {rows.length} serial{rows.length > 1 ? 's' : ''}
+          {totalSerials} serial{totalSerials > 1 ? 's' : ''}
         </td>
       </tr>
       {expanded && rows.map((item) => (
@@ -302,11 +303,18 @@ function PutAwayItemRow({ item, warehouseId, onComplete, onSkip }: ItemRowProps)
     <>
       <tr className={`${isDone ? 'opacity-50' : ''} bg-muted/20`}>
         <td className="px-4 py-1.5 pl-10">
-          <span className="font-mono text-xs font-medium">S.N: {item.serial_number ?? item.batch_number ?? item.id}</span>
+          {item.serial_nos && item.serial_nos.length > 0 ? (
+            <span className="font-mono text-xs font-medium">{item.serial_nos.length} serials</span>
+          ) : (
+            <span className="font-mono text-xs font-medium">S.N: {item.serial_number ?? item.batch_number ?? item.id}</span>
+          )}
         </td>
         <td className="px-4 py-1.5 text-xs text-muted-foreground" colSpan={2}>
           <span className="inline-flex gap-3 flex-wrap">
             <span>SKU: <span className="font-mono">{item.sku}</span></span>
+            {item.serial_nos && item.serial_nos.length > 0 && (
+              <span>Serials: <span className="font-mono">{item.serial_nos.join(', ')}</span></span>
+            )}
             {item.manufacturing_date && (
               <span>Mfg: {new Date(item.manufacturing_date).toLocaleDateString()}</span>
             )}
