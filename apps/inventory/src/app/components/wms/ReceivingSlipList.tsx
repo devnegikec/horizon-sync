@@ -178,6 +178,7 @@ export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterCha
   const [confirmPutAwaySlip, setConfirmPutAwaySlip] = React.useState<ReceivingSlip | null>(null);
   const [rejectTarget, setRejectTarget] = React.useState<ReceivingSlip | null>(null);
   const [actionLoading, setActionLoading] = React.useState(false);
+  const viewRequestIdRef = React.useRef(0);
 
   const { data, statusCounts, loading, error, refetch, approveSlip, rejectSlip: submitReject, rejectItem, getSlip, generatePutAway } = useReceivingSlips({
     warehouse_id: warehouseId,
@@ -212,16 +213,24 @@ export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterCha
   }, [pagination]);
 
   const handleView = React.useCallback(async (slip: ReceivingSlip) => {
+    const requestId = ++viewRequestIdRef.current;
     setDialogOpen(true);
     setViewSlip(null);
     setViewLoading(true);
     try {
-      setViewSlip(await getSlip(slip.id));
+      const detail = await getSlip(slip.id);
+      // Ignore responses from superseded requests so a slower one cannot
+      // overwrite the slip the user selected last.
+      if (requestId !== viewRequestIdRef.current) return;
+      setViewSlip(detail);
     } catch (err) {
+      if (requestId !== viewRequestIdRef.current) return;
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to load slip', variant: 'destructive' });
       setDialogOpen(false);
     } finally {
-      setViewLoading(false);
+      if (requestId === viewRequestIdRef.current) {
+        setViewLoading(false);
+      }
     }
   }, [getSlip, toast]);
 
@@ -257,9 +266,13 @@ export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterCha
     try {
       await rejectItem(slipId, itemId, reason);
       toast({ title: 'Item rejected', description: 'Item marked as rejected.' });
-      // Refresh detail view
+      // Refresh the detail view, unless the user has since viewed another slip.
       if (viewSlip?.id === slipId) {
-        setViewSlip(await getSlip(slipId));
+        const requestId = viewRequestIdRef.current;
+        const detail = await getSlip(slipId);
+        if (requestId === viewRequestIdRef.current) {
+          setViewSlip(detail);
+        }
       }
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to reject item', variant: 'destructive' });
