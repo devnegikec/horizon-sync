@@ -17,8 +17,8 @@ import { useToast } from '@horizon-sync/ui/hooks';
 import { useUserStore } from '@horizon-sync/store';
 
 import { usePickList, usePickLists, useErpSyncQueue, usePickSettings } from '../../hooks/useWMS';
-import type { PickList, PickListItem, PickSerialDetail, WMSWorker, ErpSyncMessage } from '../../types/wms.types';
-import { wmsWorkerApi, scanIdempotencyKey } from '../../utility/api/wms';
+import type { PickList, PickListItem, PickSerialDetail, WMSWorker, ErpSyncMessage, PackingSlipListItem } from '../../types/wms.types';
+import { wmsWorkerApi, packingSlipApi, scanIdempotencyKey } from '../../utility/api/wms';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
 function workerDisplayName(w: WMSWorker | undefined): string | null {
@@ -795,6 +795,107 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
 // PICK LIST LIST (mirrors PutAwayView)
 // ============================================
 
+function PackPickListDialog({
+  pickList,
+  warehouseId,
+  onClose,
+  onPacked,
+}: {
+  pickList: PickList | null;
+  warehouseId?: string;
+  onClose: () => void;
+  onPacked: () => void;
+}) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const { toast } = useToast();
+  const [slips, setSlips] = React.useState<PackingSlipListItem[]>([]);
+  const [target, setTarget] = React.useState('new');
+  const [loading, setLoading] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!pickList || !accessToken) return;
+    // Reset per-open state so a previous pick list's destination isn't reused.
+    setTarget('new');
+    setLoadError(null);
+    let cancelled = false;
+    setLoading(true);
+    packingSlipApi
+      .list(accessToken, { warehouse_id: warehouseId, status: 'draft', page: 1, page_size: 100 })
+      .then((d) => { if (!cancelled) setSlips(d.packing_slips ?? []); })
+      .catch((err) => {
+        if (!cancelled) {
+          setSlips([]);
+          setLoadError(err instanceof Error ? err.message : 'Failed to load packing slips');
+        }
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [pickList, accessToken, warehouseId]);
+
+  if (!pickList) return null;
+
+  const handlePack = async () => {
+    if (!accessToken) return;
+    setBusy(true);
+    try {
+      const slip = await packingSlipApi.packPickLists(
+        accessToken,
+        [pickList.id],
+        target === 'new' ? undefined : target,
+      );
+      toast({ title: 'Packed', description: `Added to ${slip.packing_slip_no}` });
+      onPacked();
+      onClose();
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to pack', variant: 'destructive' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle>Pack Pick List</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <p className="text-sm text-muted-foreground">
+            Pack <span className="font-mono font-medium text-foreground">{pickList.pick_list_no}</span> into a packing slip.
+          </p>
+          <Select value={target} onValueChange={setTarget}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Destination" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="new">New packing slip</SelectItem>
+              {slips.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.packing_slip_no}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {loading && <p className="text-xs text-muted-foreground">Loading draft packing slips…</p>}
+          {!loading && loadError && (
+            <p className="text-xs text-destructive">Couldn't load existing packing slips: {loadError}</p>
+          )}
+          {!loading && !loadError && slips.length === 0 && (
+            <p className="text-xs text-muted-foreground">No draft packing slips — a new one will be created.</p>
+          )}
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button onClick={handlePack} disabled={busy}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <PackageCheck className="h-4 w-4 mr-1" />}
+            Pack
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface PickListViewProps {
   warehouseId?: string;
 }
@@ -805,6 +906,7 @@ export function PickListView({ warehouseId }: PickListViewProps) {
   const [page, setPage] = React.useState(1);
   const [viewListId, setViewListId] = React.useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [packListId, setPackListId] = React.useState<string | null>(null);
   const workers = useWorkers(true, warehouseId);
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
 
@@ -912,15 +1014,28 @@ export function PickListView({ warehouseId }: PickListViewProps) {
                     {pl.created_at ? new Date(pl.created_at).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="gap-1 h-7 px-2 text-xs"
-                      onClick={() => { setViewListId(pl.id); setDialogOpen(true); }}
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      View
-                    </Button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      {['pick_complete', 'completed', 'ready_for_dispatch'].includes(pl.status) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 h-7 px-2 text-xs"
+                          onClick={() => setPackListId(pl.id)}
+                        >
+                          <PackageCheck className="h-3.5 w-3.5" />
+                          Pack
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1 h-7 px-2 text-xs"
+                        onClick={() => { setViewListId(pl.id); setDialogOpen(true); }}
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        View
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -940,6 +1055,13 @@ export function PickListView({ warehouseId }: PickListViewProps) {
       )}
 
       <PickListDetailDialog listId={viewListId} open={dialogOpen} onOpenChange={setDialogOpen} warehouseId={warehouseId} />
+
+      <PackPickListDialog
+        pickList={data?.pick_lists.find((p) => p.id === packListId) ?? null}
+        warehouseId={warehouseId}
+        onClose={() => setPackListId(null)}
+        onPacked={refetch}
+      />
     </div>
   );
 }

@@ -453,6 +453,7 @@ export interface PutAwayItem {
   item_name?: string | null;
   batch_number: string | null;
   serial_number?: string | null;
+  serial_nos?: string[] | null;
   manufacturing_date?: string | null;
   expiry_date?: string | null;
   quantity: number;

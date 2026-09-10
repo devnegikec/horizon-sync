@@ -102,7 +102,7 @@ function QtyCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow,
     meta?.updateData?.(row.index, 'qty', Number.isNaN(parsed) ? 0 : parsed);
   };
 
-  if (meta?.disabled) {
+  if (meta?.disabled || !meta?.warehouseIdFrom) {
     return <div className="px-2 py-1 text-right">{String(intValue)}</div>;
   }
 
@@ -110,11 +110,11 @@ function QtyCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow,
     return (
       <input
         type="number"
-        value={draft}
+        value={parseInt(draft, 10) > 0 ? draft : ''}
         autoFocus
         step="1"
         min="0"
-        className="h-8 w-full rounded-md border bg-background px-2 py-1 text-right text-sm"
+        className="h-8 w-24 rounded-md border bg-background px-2 py-1 text-center text-sm"
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
@@ -222,7 +222,7 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
           id: row.item_id,
           item_code: row.item_code || '',
           item_name: row.item_name,
-          qty: row.qty || 0,
+          qty: row.qty || 0.0,
           uom: row.uom || null,
         });
         seeded = true;
@@ -281,7 +281,7 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
       },
       {
         accessorKey: 'qty',
-        header: () => <div className="px-2 text-right">Quantity</div>,
+        header: () => <div className="space-y-1.5">Quantity</div>,
         cell: QtyCellComponent,
         size: 100,
       },
@@ -291,7 +291,6 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
           <div className="px-2 py-1 text-sm text-muted-foreground">{String(getValue() ?? '')}</div>
         ),
       },
-
       {
         id: 'actions', header: '', size: 50,
         cell: ({ row, table: tbl }: CellContext<AsnEntryLineRow, unknown>) => {
@@ -309,7 +308,7 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
   );
 
   const newRowTemplate: AsnEntryLineRow = React.useMemo(
-    () => ({ item_id: '', qty: 1, uom: 'pcs', sort_order: items.length + 1, sku: '' }),
+    () => ({ item_id: '', qty: 0, uom: '-', sort_order: items.length + 1, sku: '' }),
     [items.length]
   );
 

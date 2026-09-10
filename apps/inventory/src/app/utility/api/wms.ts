@@ -583,6 +583,12 @@ export const packingSlipApi = {
       body: JSON.stringify({ order_ids: orderIds }),
     }),
 
+  packPickLists: (token: string, pickListIds: string[], packingSlipId?: string) =>
+    req<PackingSlip>(`${BASE}/outbound/packing-slips/pick-lists`, token, {
+      method: 'POST',
+      body: JSON.stringify({ pick_list_ids: pickListIds, packing_slip_id: packingSlipId ?? null }),
+    }),
+
   list: (
     token: string,
     params: { warehouse_id?: string; status?: string; page?: number; page_size?: number },
