@@ -34,9 +34,10 @@ import { PickExceptionQueue } from './PickExceptionQueue';
 import { GateVerificationPanel } from './GateVerificationPanel';
 import { DispatchList } from './DispatchList';
 import { OutboundOrderList } from './OutboundOrderList';
+import { OutboundStats } from './OutboundStats';
 import { PackingSlipList } from './PackingSlipList';
 import { outboundOrderApi } from '../../utility/api/wms';
-import type { SAPInvoicePayload, OutboundOrder } from '../../types/wms.types';
+import type { SAPInvoicePayload, OutboundOrderListItem } from '../../types/wms.types';
 
 // ============================================
 // TYPES
@@ -470,7 +471,7 @@ function OutboundHeader({ activeTab, warehouseId, onImportSuccess }: HeaderProps
         try {
             // Fetch all pages of orders
             const firstPage = await outboundOrderApi.listOrders(accessToken, { warehouse_id: warehouseId, page: 1, page_size: 100 });
-            let allOrders: OutboundOrder[] = firstPage.orders ?? [];
+            let allOrders: OutboundOrderListItem[] = firstPage.orders ?? [];
             const totalPages = (firstPage.pagination as { total_pages?: number })?.total_pages ?? 1;
             for (let p = 2; p <= totalPages; p++) {
                 const page = await outboundOrderApi.listOrders(accessToken, { warehouse_id: warehouseId, page: p, page_size: 100 });
@@ -483,7 +484,7 @@ function OutboundHeader({ activeTab, warehouseId, onImportSuccess }: HeaderProps
                 o.order_type,
                 o.status,
                 o.invoice_reference ?? '',
-                String(o.items?.length ?? 0),
+                String(o.item_count ?? 0),
                 o.created_at ?? '',
             ]);
 
@@ -584,18 +585,23 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
     const [gatePickListId, setGatePickListId] = React.useState('');
     const [ordersRefreshKey, setOrdersRefreshKey] = React.useState(0);
     const [pickRefreshKey, setPickRefreshKey] = React.useState(0);
+    const [statsRefreshKey, setStatsRefreshKey] = React.useState(0);
 
     const handleOrdersRefresh = React.useCallback(() => {
         setOrdersRefreshKey((k) => k + 1);
+        setStatsRefreshKey((k) => k + 1);
     }, []);
 
     const handlePickRefresh = React.useCallback(() => {
         setPickRefreshKey((k) => k + 1);
+        setStatsRefreshKey((k) => k + 1);
     }, []);
 
     return (
         <div className="space-y-4">
             <OutboundHeader activeTab={activeTab} warehouseId={warehouseId} onImportSuccess={handleOrdersRefresh} />
+
+            <OutboundStats warehouseId={warehouseId ?? undefined} activeTab={activeTab} refreshKey={statsRefreshKey} />
 
             <div className="border rounded-lg overflow-hidden">
                 {/* Sub-tabs */}

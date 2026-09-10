@@ -363,6 +363,13 @@ export interface PaginatedReceivingSlips {
   status_counts?: ReceivingSlipStatusCounts;
 }
 
+export interface ReceivingSlipActionResult {
+  success: boolean;
+  slip_id: string;
+  status: string;
+  message: string;
+}
+
 // ============================================
 // INBOUND EXCEPTIONS / HOLD / QUARANTINE
 // ============================================
@@ -582,9 +589,24 @@ export interface PickList {
   progress: PickListProgress | null;
 }
 
+export interface PickListStatusCounts {
+  total: number;
+  draft: number;
+  confirmed: number;
+  pending_picking: number;
+  in_progress: number;
+  pick_complete: number;
+  completed: number;
+  ready_for_dispatch: number;
+  in_transit: number;
+  delivered: number;
+  cancelled: number;
+}
+
 export interface PaginatedPickLists {
   pick_lists: PickList[];
   pagination: WMSPagination;
+  status_counts?: PickListStatusCounts;
 }
 
 // ============================================
@@ -636,9 +658,34 @@ export interface OutboundOrder {
   items: OutboundOrderItem[];
 }
 
+export interface OutboundOrderStatusCounts {
+  total: number;
+  draft: number;
+  confirmed: number;
+  pending_picking: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface OutboundOrderListItem {
+  id: string;
+  organization_id: string;
+  order_no: string;
+  order_type: OutboundOrderType;
+  warehouse_id: string;
+  status: OutboundOrderStatus;
+  invoice_reference: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  item_count: number;
+  in_stock_count: number;
+  out_of_stock_count: number;
+}
+
 export interface PaginatedOutboundOrders {
-  orders: OutboundOrder[];
+  orders: OutboundOrderListItem[];
   pagination: WMSPagination;
+  status_counts?: OutboundOrderStatusCounts;
 }
 
 // ============================================
@@ -688,9 +735,18 @@ export interface PackingSlipListItem {
   created_at: string | null;
 }
 
+export interface PackingSlipStatusCounts {
+  total: number;
+  draft: number;
+  loading: number;
+  dispatched: number;
+  cancelled: number;
+}
+
 export interface PaginatedPackingSlips {
   packing_slips: PackingSlipListItem[];
   pagination: WMSPagination;
+  status_counts?: PackingSlipStatusCounts;
 }
 
 export interface UpdatePriorityRequest {
