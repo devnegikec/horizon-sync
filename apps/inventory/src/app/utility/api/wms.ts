@@ -14,6 +14,7 @@ import type {
   ReceivingSlipActionResult,
   PutAwayList,
   PutAwayListBatchResponse,
+  PaginatedPutAwayLists,
   PutAwayItem,
   PickList,
   PaginatedPickLists,
@@ -342,7 +343,7 @@ export const putAwayApi = {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
     });
-    return req<{ put_away_lists: PutAwayList[]; pagination: unknown }>(`${BASE}/put-away?${p}`, token);
+    return req<PaginatedPutAwayLists>(`${BASE}/put-away?${p}`, token);
   },
 
   getPutAwayList: (token: string, id: string) => req<PutAwayList>(`${BASE}/put-away/${id}`, token),

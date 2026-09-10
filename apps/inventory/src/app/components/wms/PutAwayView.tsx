@@ -15,13 +15,23 @@ import { WMSStatusBadge } from './WMSStatusBadge';
 
 interface PutAwayViewProps {
   warehouseId?: string;
+  /** Controlled status filter (e.g. driven by the inbound stat cards). */
+  statusFilter?: string;
+  onStatusFilterChange?: (status: string) => void;
 }
 
-export function PutAwayView({ warehouseId }: PutAwayViewProps) {
-  const [statusFilter, setStatusFilter] = React.useState('all');
+export function PutAwayView({ warehouseId, statusFilter: statusFilterProp, onStatusFilterChange }: PutAwayViewProps) {
+  const [internalStatusFilter, setInternalStatusFilter] = React.useState('all');
+  const statusFilter = statusFilterProp ?? internalStatusFilter;
+  const setStatusFilter = onStatusFilterChange ?? setInternalStatusFilter;
   const [page, setPage] = React.useState(1);
   const [viewListId, setViewListId] = React.useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
+
+  // Reset to the first page whenever the status filter changes.
+  React.useEffect(() => {
+    setPage(1);
+  }, [statusFilter]);
 
   const { data, loading, error, refetch } = usePutAwayLists({
     warehouse_id: warehouseId,

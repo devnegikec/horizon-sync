@@ -71,6 +71,7 @@ export function WMSManagement() {
   const [manageSection, setManageSection] = React.useState<ManageSection>('workers');
   const [inboundSection, setInboundSection] = React.useState<InboundSection>('receiving');
   const [receivingStatusFilter, setReceivingStatusFilter] = React.useState<string>('all');
+  const [putawayStatusFilter, setPutawayStatusFilter] = React.useState<string>('all');
 
   const { warehouses, loading: warehousesLoading, refetch: refetchWarehouses } = useMyWarehouses();
   const userPermissions = useUserStore((s) => s.permissions.permissions);
@@ -124,10 +125,12 @@ export function WMSManagement() {
         inboundSection={inboundSection}
         manageSection={manageSection}
         receivingStatusFilter={receivingStatusFilter}
+        putawayStatusFilter={putawayStatusFilter}
         selectedWarehouseId={selectedWarehouseId}
         onInboundSectionChange={setInboundSection}
         onManageSectionChange={setManageSection}
-        onReceivingStatusFilterChange={setReceivingStatusFilter} />
+        onReceivingStatusFilterChange={setReceivingStatusFilter}
+        onPutawayStatusFilterChange={setPutawayStatusFilter} />
     </div>
   );
 }
@@ -185,10 +188,12 @@ interface WMSContentProps {
   inboundSection: InboundSection;
   manageSection: ManageSection;
   receivingStatusFilter: string;
+  putawayStatusFilter: string;
   selectedWarehouseId: string;
   onInboundSectionChange: (section: InboundSection) => void;
   onManageSectionChange: (section: ManageSection) => void;
   onReceivingStatusFilterChange: (status: string) => void;
+  onPutawayStatusFilterChange: (status: string) => void;
 }
 
 const wmsViewComponents: Record<WMSView, React.ComponentType<WMSContentProps>> = {
@@ -246,17 +251,27 @@ function InboundManagement({
   inboundSection,
   selectedWarehouseId,
   receivingStatusFilter,
+  putawayStatusFilter,
   onInboundSectionChange,
   onReceivingStatusFilterChange,
+  onPutawayStatusFilterChange,
 }: WMSContentProps) {
   const openReceiving = (status: string) => {
     onReceivingStatusFilterChange(status);
     onInboundSectionChange('receiving');
   };
 
+  const openPutAway = (status: string) => {
+    onPutawayStatusFilterChange(status);
+    onInboundSectionChange('putaway');
+  };
+
   return (
     <div className="space-y-4">
-      <InboundStats warehouseId={selectedWarehouseId || undefined} onSelectStatus={openReceiving} />
+      <InboundStats warehouseId={selectedWarehouseId || undefined}
+        activeSection={inboundSection}
+        onSelectReceivingStatus={openReceiving}
+        onSelectPutAwayStatus={openPutAway} />
       <div className="border rounded-lg overflow-hidden">
         <div className="flex border-b">
           <SectionTab active={inboundSection === 'receiving'}
@@ -274,7 +289,9 @@ function InboundManagement({
           <InboundSectionContent section={inboundSection}
             warehouseId={selectedWarehouseId}
             receivingStatusFilter={receivingStatusFilter}
+            putawayStatusFilter={putawayStatusFilter}
             onReceivingStatusFilterChange={onReceivingStatusFilterChange}
+            onPutawayStatusFilterChange={onPutawayStatusFilterChange}
             onSlipGenerated={() => onInboundSectionChange('receiving')} />
         </div>
       </div>
@@ -286,13 +303,17 @@ function InboundSectionContent({
   section,
   warehouseId,
   receivingStatusFilter,
+  putawayStatusFilter,
   onReceivingStatusFilterChange,
+  onPutawayStatusFilterChange,
   onSlipGenerated,
 }: {
   section: InboundSection;
   warehouseId: string;
   receivingStatusFilter: string;
+  putawayStatusFilter: string;
   onReceivingStatusFilterChange: (status: string) => void;
+  onPutawayStatusFilterChange: (status: string) => void;
   onSlipGenerated: () => void;
 }) {
   switch (section) {
@@ -303,7 +324,11 @@ function InboundSectionContent({
           onStatusFilterChange={onReceivingStatusFilterChange} />
       );
     case 'putaway':
-      return <PutAwaySection warehouseId={warehouseId} />;
+      return (
+        <PutAwaySection warehouseId={warehouseId}
+          statusFilter={putawayStatusFilter}
+          onStatusFilterChange={onPutawayStatusFilterChange} />
+      );
     case 'vehicle':
       return <VehicleArrivalManagement warehouseId={warehouseId || undefined} />;
     case 'exceptions':
@@ -338,7 +363,15 @@ function ReceivingSlipSection({ warehouseId, statusFilter, onStatusFilterChange 
   );
 }
 
-function PutAwaySection({ warehouseId }: { warehouseId: string }) {
+function PutAwaySection({
+  warehouseId,
+  statusFilter,
+  onStatusFilterChange,
+}: {
+  warehouseId: string;
+  statusFilter: string;
+  onStatusFilterChange: (status: string) => void;
+}) {
   return (
     <div className="space-y-4">
       <div>
@@ -347,7 +380,9 @@ function PutAwaySection({ warehouseId }: { warehouseId: string }) {
           Put-away lists are generated automatically when a receiving slip is approved. Click a row to see its items.
         </p>
       </div>
-      <PutAwayView warehouseId={warehouseId || undefined} />
+      <PutAwayView warehouseId={warehouseId || undefined}
+        statusFilter={statusFilter}
+        onStatusFilterChange={onStatusFilterChange} />
     </div>
   );
 }

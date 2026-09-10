@@ -491,6 +491,20 @@ export interface PutAwayListBatchResponse {
   put_away_lists: PutAwayList[];
 }
 
+export interface PutAwayStatusCounts {
+  total: number;
+  pending: number;
+  in_progress: number;
+  completed: number;
+  cancelled?: number;
+}
+
+export interface PaginatedPutAwayLists {
+  put_away_lists: PutAwayList[];
+  pagination: WMSPagination;
+  status_counts?: PutAwayStatusCounts;
+}
+
 export interface PickListBatchResponse {
   pick_lists: PickList[];
 }
