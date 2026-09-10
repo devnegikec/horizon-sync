@@ -215,7 +215,8 @@ function PutAwayGroupRow({ group, warehouseId, onComplete, onSkip }: PutAwayGrou
   const rows = group.rows;
   const first = rows[0];
   const totalQty = rows.reduce((s, r) => s + (r.quantity || 0), 0);
-  const totalSerials = rows.reduce((s, r) => s + (r.serial_nos?.length ?? 1), 0);
+  const totalSerials = rows.reduce((s, r) => s + (r.serial_nos?.length ?? 0), 0);
+  const hasSerials = rows.some((r) => (r.serial_nos?.length ?? 0) > 0);
   const doneCount = rows.filter((r) => r.status === 'completed' || r.status === 'skipped').length;
   const aggStatus = rows.length === 0
     ? 'pending'
@@ -245,7 +246,9 @@ function PutAwayGroupRow({ group, warehouseId, onComplete, onSkip }: PutAwayGrou
         <td className="px-4 py-2 text-right font-medium">{totalQty}</td>
         <td className="px-4 py-2"><WMSStatusBadge status={aggStatus} /></td>
         <td className="px-4 py-2 text-right text-xs text-muted-foreground">
-          {totalSerials} serial{totalSerials > 1 ? 's' : ''}
+          {hasSerials
+            ? `${totalSerials} serial${totalSerials > 1 ? 's' : ''}`
+            : `${rows.length} line${rows.length > 1 ? 's' : ''}`}
         </td>
       </tr>
       {expanded && rows.map((item) => (

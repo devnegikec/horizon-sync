@@ -811,16 +811,25 @@ function PackPickListDialog({
   const [slips, setSlips] = React.useState<PackingSlipListItem[]>([]);
   const [target, setTarget] = React.useState('new');
   const [loading, setLoading] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
     if (!pickList || !accessToken) return;
+    // Reset per-open state so a previous pick list's destination isn't reused.
+    setTarget('new');
+    setLoadError(null);
     let cancelled = false;
     setLoading(true);
     packingSlipApi
       .list(accessToken, { warehouse_id: warehouseId, status: 'draft', page: 1, page_size: 100 })
       .then((d) => { if (!cancelled) setSlips(d.packing_slips ?? []); })
-      .catch(() => { if (!cancelled) setSlips([]); })
+      .catch((err) => {
+        if (!cancelled) {
+          setSlips([]);
+          setLoadError(err instanceof Error ? err.message : 'Failed to load packing slips');
+        }
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [pickList, accessToken, warehouseId]);
@@ -868,7 +877,10 @@ function PackPickListDialog({
             </SelectContent>
           </Select>
           {loading && <p className="text-xs text-muted-foreground">Loading draft packing slips…</p>}
-          {!loading && slips.length === 0 && (
+          {!loading && loadError && (
+            <p className="text-xs text-destructive">Couldn't load existing packing slips: {loadError}</p>
+          )}
+          {!loading && !loadError && slips.length === 0 && (
             <p className="text-xs text-muted-foreground">No draft packing slips — a new one will be created.</p>
           )}
         </div>
