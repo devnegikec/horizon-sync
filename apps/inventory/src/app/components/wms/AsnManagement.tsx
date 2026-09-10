@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Plus } from 'lucide-react';
+import { Plus, RefreshCw, RotateCcw } from 'lucide-react';
 
 import { DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -14,6 +14,25 @@ import { AsnStats } from '../advance stock notice/AsnStats';
 
 interface AsnManagementProps {
   warehouseId?: string;
+}
+
+/** True when any work-queue filter (source warehouse, ETA range, vehicle) is set. */
+function hasActiveWorkQueueFilters(filters: {
+  source_warehouse_id: string;
+  delivery_date_from: string;
+  delivery_date_to: string;
+  vehicle_no: string;
+}): boolean {
+  return (
+    !!filters.source_warehouse_id ||
+    !!filters.delivery_date_from ||
+    !!filters.delivery_date_to ||
+    !!filters.vehicle_no
+  );
+}
+
+function getRefreshIconClass(isLoading: boolean): string {
+  return isLoading ? 'h-4 w-4 animate-spin' : 'h-4 w-4';
 }
 
 export function AsnManagement({ warehouseId }: AsnManagementProps) {
@@ -60,6 +79,18 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
     management.refetch();
   };
 
+  const handleResetFilters = () => {
+    management.setFilters((prev) => ({
+      ...prev,
+      source_warehouse_id: '',
+      delivery_date_from: '',
+      delivery_date_to: '',
+      vehicle_no: '',
+    }));
+  };
+
+  const hasWorkQueueFilters = hasActiveWorkQueueFilters(management.filters);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -74,10 +105,20 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
             confirmed ASN, scan the arriving goods, and end the session.
           </p>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          New ASN Order
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button type="button"
+            variant="outline"
+            onClick={() => management.refetch()}
+            disabled={management.loading}
+            className="gap-2">
+            <RefreshCw className={getRefreshIconClass(management.loading)} />
+            Refresh
+          </Button>
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New ASN Order
+          </Button>
+        </div>
       </div>
 
       <AsnStats counts={management.statusCounts} />
@@ -127,6 +168,15 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
             onChange={(e) =>
               management.setFilters((prev) => ({ ...prev, vehicle_no: e.target.value }))} />
         </div>
+
+        <Button type="button"
+          variant="outline"
+          onClick={handleResetFilters}
+          disabled={!hasWorkQueueFilters}
+          className="gap-2">
+          <RotateCcw className="h-4 w-4" />
+          Reset
+        </Button>
       </div>
 
       <AsnOrdersTable asnOrders={management.asnOrders}

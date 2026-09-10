@@ -48,6 +48,19 @@ const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
       });
     }, [value]);
 
+    // Open the native picker when clicking anywhere on the field,
+    // not only on the browser's calendar icon.
+    const openPicker = React.useCallback(() => {
+      const input = inputRef.current;
+      if (!input || disabled) return;
+      if (typeof input.showPicker !== 'function') return;
+      try {
+        input.showPicker();
+      } catch {
+        // Picker already open, or the browser blocked the call — ignore.
+      }
+    }, [disabled]);
+
     return (
       <div className={cn('relative', className)}>
         {/* Native date input — transparent overlay; opens the native picker in all browsers */}
@@ -60,6 +73,7 @@ const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
           required={required}
           disabled={disabled}
           onChange={(e) => onChange?.(e.target.value)}
+          onClick={openPicker}
           className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
           aria-label={formattedDisplay ?? placeholder} />
 
