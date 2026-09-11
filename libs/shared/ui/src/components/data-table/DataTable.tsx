@@ -215,7 +215,11 @@ function DataTableBodyRows<TData>({
       {rows.map((row) => (
         <TableRow key={row.id}
           data-state={row.getIsSelected() && 'selected'}
-          className={cn(getRowClassName ? getRowClassName(row.original) : undefined, subRowsEnabled && row.depth > 0 && 'bg-muted/30')}>
+          className={cn(
+            getRowClassName ? getRowClassName(row.original) : undefined,
+            // Sub-rows render as a compact, indented band under their parent.
+            subRowsEnabled && row.depth > 0 && 'bg-muted/30 [&>td]:py-1.5',
+          )}>
           {row.getVisibleCells().map((cell) => (
             <TableCell key={cell.id}>
               {subRowsEnabled && cell.column.id === expandableColumnId ? (
