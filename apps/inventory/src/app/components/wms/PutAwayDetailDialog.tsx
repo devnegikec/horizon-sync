@@ -1,16 +1,10 @@
 import * as React from 'react';
 
-import { Loader2, CheckCircle2, SkipForward, Search, MapPin, ChevronDown, ChevronRight } from 'lucide-react';
+import { Loader2, CheckCircle2, SkipForward, Search, MapPin } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components/ui/dialog';
-import { DetailDialog } from '@horizon-sync/ui/components/ui/detail-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { useToast } from '@horizon-sync/ui/hooks';
 
@@ -18,6 +12,7 @@ import { usePutAwayList } from '../../hooks/useWMS';
 import type { PutAwayItem, PutAwayList, WarehouseLocation } from '../../types/wms.types';
 import { layoutApi } from '../../utility/api/wms';
 
+import { QRDetailDialog, type QRDetailColumn, type QRDetailRow } from './QRDetailDialog';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
 // ─── Complete Item Dialog (bin position selection) ───────────────────────────
@@ -27,7 +22,59 @@ interface CompleteItemDialogProps {
   onOpenChange: (open: boolean) => void;
   item: PutAwayItem;
   warehouseId: string;
-  onConfirm: (itemId: string, binId: string) => Promise<void>;
+  onConfirm: (itemId: string, binId: string) => Promise<unknown>;
+}
+
+function BinSearchResults({
+  searching,
+  query,
+  results,
+  selectedBin,
+  onSelect,
+}: {
+  searching: boolean;
+  query: string;
+  results: WarehouseLocation[];
+  selectedBin: WarehouseLocation | null;
+  onSelect: (location: WarehouseLocation) => void;
+}) {
+  if (searching) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (results.length > 0) {
+    return (
+      <div className="border rounded-lg max-h-[200px] overflow-y-auto">
+        {results.map((loc) => (
+          <button key={loc.id}
+            type="button"
+            className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${selectedBin?.id === loc.id ? 'bg-accent text-accent-foreground' : ''}`}
+            onClick={() => onSelect(loc)}>
+            <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="font-mono font-medium">{loc.code}</span>
+              {loc.full_path && <span className="text-xs text-muted-foreground ml-2 truncate">{loc.full_path}</span>}
+            </div>
+            {loc.available_capacity > 0 && (
+              <span className="text-xs text-muted-foreground shrink-0">
+                Cap: {loc.available_capacity}/{loc.total_capacity}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  if (query.length >= 1) {
+    return <p className="text-xs text-muted-foreground py-2">No bins found matching &quot;{query}&quot;</p>;
+  }
+
+  return null;
 }
 
 function CompleteItemDialog({ open, onOpenChange, item, warehouseId, onConfirm }: CompleteItemDialogProps) {
@@ -116,58 +163,20 @@ function CompleteItemDialog({ open, onOpenChange, item, warehouseId, onConfirm }
           )}
 
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Search Bin Location</label>
+            <p className="text-xs font-medium text-muted-foreground">Search Bin Location</p>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input className="pl-10"
-                placeholder="Type to search bins..."
-                value={query}
-                onChange={(e) => handleQueryChange(e.target.value)} />
+              <Input className="pl-10" placeholder="Type to search bins..." value={query} onChange={(e) => handleQueryChange(e.target.value)} />
             </div>
 
-            {searching && (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            )}
-
-            {!searching && results.length > 0 && (
-              <div className="border rounded-lg max-h-[200px] overflow-y-auto">
-                {results.map((loc) => (
-                  <button key={loc.id}
-                    type="button"
-                    className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${selectedBin?.id === loc.id ? 'bg-accent text-accent-foreground' : ''
-                      }`}
-                    onClick={() => setSelectedBin(loc)}>
-                    <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <span className="font-mono font-medium">{loc.code}</span>
-                      {loc.full_path && (
-                        <span className="text-xs text-muted-foreground ml-2 truncate">{loc.full_path}</span>
-                      )}
-                    </div>
-                    {loc.available_capacity > 0 && (
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        Cap: {loc.available_capacity}/{loc.total_capacity}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {!searching && query.length >= 1 && results.length === 0 && (
-              <p className="text-xs text-muted-foreground py-2">No bins found matching "{query}"</p>
-            )}
+            <BinSearchResults searching={searching} query={query} results={results} selectedBin={selectedBin} onSelect={setSelectedBin} />
           </div>
 
           {selectedBin && (
             <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm">
               <span className="font-medium text-green-700">Selected: </span>
               <span className="text-green-600 font-mono">{selectedBin.code}</span>
-              {selectedBin.full_path && (
-                <span className="text-green-500 text-xs ml-1">({selectedBin.full_path})</span>
-              )}
+              {selectedBin.full_path && <span className="text-green-500 text-xs ml-1">({selectedBin.full_path})</span>}
             </div>
           )}
 
@@ -203,96 +212,136 @@ function groupPutAwayItems(items: PutAwayItem[]): PutAwayLineGroup[] {
   return Array.from(groups.values());
 }
 
-interface PutAwayGroupRowProps {
-  group: PutAwayLineGroup;
-  warehouseId: string;
-  onComplete: (itemId: string, binId?: string) => Promise<PutAwayItem>;
-  onSkip: (itemId: string, reason: string) => Promise<PutAwayItem>;
+const EMPTY = '\u2014';
+
+/** Prefer the full serial list when present, else the single serial/batch. */
+function serialLabel(item: PutAwayItem): string | null {
+  if (item.serial_nos && item.serial_nos.length > 0) return item.serial_nos.join(', ');
+  return item.serial_number ?? item.batch_number ?? null;
 }
 
-function PutAwayGroupRow({ group, warehouseId, onComplete, onSkip }: PutAwayGroupRowProps) {
-  const [expanded, setExpanded] = React.useState(false);
-  const rows = group.rows;
-  const first = rows[0];
-  const totalQty = rows.reduce((s, r) => s + (r.quantity || 0), 0);
-  const totalSerials = rows.reduce((s, r) => s + (r.serial_nos?.length ?? 0), 0);
-  const hasSerials = rows.some((r) => (r.serial_nos?.length ?? 0) > 0);
-  const doneCount = rows.filter((r) => r.status === 'completed' || r.status === 'skipped').length;
-  const aggStatus = rows.length === 0
-    ? 'pending'
-    : doneCount === 0
-      ? 'pending'
-      : doneCount >= rows.length
-        ? 'completed'
-        : 'in_progress';
+/** The group's batch when every unit shares it, otherwise null (units differ). */
+function commonBatch(rows: PutAwayItem[]): string | null {
+  const batches = rows.map((r) => r.batch_number).filter((b): b is string => Boolean(b));
+  const unique = [...new Set(batches)];
+  return unique.length === 1 ? unique[0] : null;
+}
+
+/** Aggregate a group's units into a put-away status. */
+function groupStatus(rows: PutAwayItem[]): string {
+  const done = rows.filter((r) => r.status === 'completed' || r.status === 'skipped').length;
+  if (done === 0) return 'pending';
+  if (done >= rows.length) return 'completed';
+  return 'in_progress';
+}
+
+function itemToChildRow(item: PutAwayItem, productName: string): QRDetailRow {
+  return {
+    id: item.id,
+    name: item.item_name ?? productName,
+    sku: item.sku,
+    batch: item.batch_number,
+    serialNumber: serialLabel(item),
+    manufacturingDate: item.manufacturing_date ?? null,
+    expiryDate: item.expiry_date ?? null,
+    quantity: item.quantity,
+    meta: { item },
+  };
+}
+
+function groupToRow(group: PutAwayLineGroup): QRDetailRow {
+  const first = group.rows[0];
+  const productName = first.item_name ?? first.sku;
+  return {
+    id: group.itemId,
+    name: productName,
+    sku: first.sku,
+    batch: commonBatch(group.rows),
+    serialNumber: null,
+    quantity: group.rows.reduce((sum, r) => sum + (r.quantity || 0), 0),
+    meta: { status: groupStatus(group.rows) },
+    children: group.rows.map((item) => itemToChildRow(item, productName)),
+  };
+}
+
+/** One parent row per product (item_id) with each unit as a child row. */
+function listToRows(items: PutAwayItem[]): QRDetailRow[] {
+  return groupPutAwayItems(items).map(groupToRow);
+}
+
+// ─── Extra columns / actions ─────────────────────────────────────────────────
+
+function BinCell({ row }: { row: QRDetailRow }) {
+  const item = row.meta?.item as PutAwayItem | undefined;
+  if (!item) return null;
+  return <span className="font-mono text-[11px]">{item.suggested_bin_code ?? item.bin_location_code ?? EMPTY}</span>;
+}
+
+function StatusCell({ row }: { row: QRDetailRow }) {
+  const item = row.meta?.item as PutAwayItem | undefined;
+  const status = item?.status ?? (row.meta?.status as string | undefined);
+  if (!status) return null;
+  return <WMSStatusBadge status={status} />;
+}
+
+function ActionsCell({
+  row,
+  onComplete,
+  onSkip,
+}: {
+  row: QRDetailRow;
+  onComplete: (item: PutAwayItem) => void;
+  onSkip: (item: PutAwayItem) => void;
+}) {
+  const item = row.meta?.item as PutAwayItem | undefined;
+  // Parent (product) rows and already-finished units carry no actions.
+  if (!item || item.status === 'completed' || item.status === 'skipped') return null;
 
   return (
-    <>
-      <tr
-        className="hover:bg-muted/20 cursor-pointer transition-colors"
-        onClick={() => setExpanded((e) => !e)}
-      >
-        <td className="px-4 py-2">
-          <span className="inline-flex items-center gap-1">
-            {expanded
-              ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-              : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-            }
-            <span className="font-medium">{first.item_name ?? first.sku}</span>
-          </span>
-        </td>
-        <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{first.sku}</td>
-        <td className="px-4 py-2 font-mono text-xs text-muted-foreground">—</td>
-        <td className="px-4 py-2 text-right font-medium">{totalQty}</td>
-        <td className="px-4 py-2"><WMSStatusBadge status={aggStatus} /></td>
-        <td className="px-4 py-2 text-right text-xs text-muted-foreground">
-          {hasSerials
-            ? `${totalSerials} serial${totalSerials > 1 ? 's' : ''}`
-            : `${rows.length} line${rows.length > 1 ? 's' : ''}`}
-        </td>
-      </tr>
-      {expanded && rows.map((item) => (
-        <PutAwayItemRow key={item.id}
-          item={item}
-          warehouseId={warehouseId}
-          onComplete={onComplete}
-          onSkip={onSkip} />
-      ))}
-    </>
+    <div className="flex items-center justify-end gap-1">
+      <Button size="sm"
+        variant="outline"
+        className="h-7 gap-1 border-green-200 px-2 text-xs text-green-600 hover:bg-green-50"
+        onClick={() => onComplete(item)}>
+        <CheckCircle2 className="h-3 w-3" />
+        Complete
+      </Button>
+      <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs text-muted-foreground" onClick={() => onSkip(item)}>
+        <SkipForward className="h-3 w-3" />
+        Skip
+      </Button>
+    </div>
   );
 }
 
-interface ItemRowProps {
+// ─── Skip item dialog (replaces the old inline skip input row) ───────────────
+
+interface SkipItemDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   item: PutAwayItem;
-  warehouseId: string;
-  onComplete: (itemId: string, binId?: string) => Promise<PutAwayItem>;
-  onSkip: (itemId: string, reason: string) => Promise<PutAwayItem>;
+  onConfirm: (itemId: string, reason: string) => Promise<PutAwayItem>;
 }
 
-function PutAwayItemRow({ item, warehouseId, onComplete, onSkip }: ItemRowProps) {
-  const [skipping, setSkipping] = React.useState(false);
-  const [skipReason, setSkipReason] = React.useState('');
-  const [completeDialogOpen, setCompleteDialogOpen] = React.useState(false);
-  const [busy, setBusy] = React.useState(false);
+function SkipItemDialog({ open, onOpenChange, item, onConfirm }: SkipItemDialogProps) {
   const { toast } = useToast();
+  const [reason, setReason] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
 
-  const handleCompleteConfirm = async (itemId: string, binId: string) => {
-    setBusy(true);
-    try {
-      await onComplete(itemId, binId);
-    } finally {
+  React.useEffect(() => {
+    if (open) {
+      setReason('');
       setBusy(false);
     }
-  };
+  }, [open]);
 
-  const handleSkip = async () => {
-    if (!skipReason.trim()) return;
+  const handleConfirm = async () => {
+    if (!reason.trim()) return;
     setBusy(true);
     try {
-      await onSkip(item.id, skipReason);
+      await onConfirm(item.id, reason);
       toast({ title: 'Item skipped', description: item.sku });
-      setSkipping(false);
-      setSkipReason('');
+      onOpenChange(false);
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
     } finally {
@@ -300,87 +349,75 @@ function PutAwayItemRow({ item, warehouseId, onComplete, onSkip }: ItemRowProps)
     }
   };
 
-  const isDone = item.status === 'completed' || item.status === 'skipped';
-
   return (
-    <>
-      <tr className={`${isDone ? 'opacity-50' : ''} bg-muted/20`}>
-        <td className="px-4 py-1.5 pl-10">
-          {item.serial_nos && item.serial_nos.length > 0 ? (
-            <span className="font-mono text-xs font-medium">{item.serial_nos.length} serials</span>
-          ) : (
-            <span className="font-mono text-xs font-medium">S.N: {item.serial_number ?? item.batch_number ?? item.id}</span>
-          )}
-        </td>
-        <td className="px-4 py-1.5 text-xs text-muted-foreground" colSpan={2}>
-          <span className="inline-flex gap-3 flex-wrap">
-            <span>SKU: <span className="font-mono">{item.sku}</span></span>
-            {item.serial_nos && item.serial_nos.length > 0 && (
-              <span>Serials: <span className="font-mono">{item.serial_nos.join(', ')}</span></span>
-            )}
-            {item.manufacturing_date && (
-              <span>Mfg: {new Date(item.manufacturing_date).toLocaleDateString()}</span>
-            )}
-            {item.expiry_date && (
-              <span>Exp: {new Date(item.expiry_date).toLocaleDateString()}</span>
-            )}
-            {item.suggested_bin_code && (
-              <span>Bin: <span className="font-mono">{item.suggested_bin_code}</span></span>
-            )}
-          </span>
-        </td>
-        <td className="px-4 py-1.5 text-right">{item.quantity}</td>
-        <td className="px-4 py-1.5">
-          <WMSStatusBadge status={item.status} />
-        </td>
-        <td className="px-4 py-1.5 text-right">
-          {!isDone && (
-            <div className="flex items-center justify-end gap-1">
-              <Button size="sm"
-                variant="outline"
-                className="text-green-600 border-green-200 hover:bg-green-50 gap-1 h-7 px-2 text-xs"
-                disabled={busy}
-                onClick={() => setCompleteDialogOpen(true)}>
-                <CheckCircle2 className="h-3 w-3" />
-                Complete
-              </Button>
-              <Button size="sm"
-                variant="outline"
-                className="text-muted-foreground gap-1 h-7 px-2 text-xs"
-                disabled={busy}
-                onClick={() => setSkipping((s) => !s)}>
-                <SkipForward className="h-3 w-3" />
-                Skip
-              </Button>
-            </div>
-          )}
-        </td>
-      </tr>
-      {skipping && (
-        <tr>
-          <td colSpan={6} className="px-4 py-2 bg-muted/30">
-            <div className="flex items-center gap-2">
-              <Input className="flex-1 h-8 text-sm"
-                placeholder="Skip reason..."
-                value={skipReason}
-                onChange={(e) => setSkipReason(e.target.value)} />
-              <Button size="sm" variant="destructive" className="h-8" disabled={!skipReason.trim() || busy} onClick={handleSkip}>
-                Confirm Skip
-              </Button>
-              <Button size="sm" variant="ghost" className="h-8" onClick={() => { setSkipping(false); setSkipReason(''); }}>
-                Cancel
-              </Button>
-            </div>
-          </td>
-        </tr>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle>Skip Put-Away — {item.sku}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">This unit will not be put away. Provide a reason for skipping it.</p>
+          <Input placeholder="Skip reason..." value={reason} onChange={(e) => setReason(e.target.value)} />
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button variant="destructive" size="sm" disabled={!reason.trim() || busy} onClick={handleConfirm}>
+              Confirm Skip
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Summary block ───────────────────────────────────────────────────────────
+
+function PutAwaySummary({ list }: { list: PutAwayList }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-4 gap-3 text-sm">
+        <div className="rounded-lg border p-3">
+          <p className="mb-1 text-xs text-muted-foreground">Status</p>
+          <WMSStatusBadge status={list.status} />
+        </div>
+        <div className="rounded-lg border p-3">
+          <p className="mb-1 text-xs text-muted-foreground">Progress</p>
+          <p className="text-sm font-medium">
+            {list.completed_items} / {list.total_items} units
+          </p>
+        </div>
+        <div className="rounded-lg border p-3">
+          <p className="mb-1 text-xs text-muted-foreground">Worker</p>
+          <p className="text-sm font-medium">{list.worker_name ?? list.assigned_to ?? EMPTY}</p>
+        </div>
+        <div className="rounded-lg border p-3">
+          <p className="mb-1 text-xs text-muted-foreground">Receiving Slip</p>
+          <p className="font-mono text-sm font-medium">{list.receiving_slip_no ?? EMPTY}</p>
+        </div>
+      </div>
+
+      {list.remarks && (
+        <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Remarks: </span>
+          {list.remarks}
+        </div>
       )}
 
-      <CompleteItemDialog open={completeDialogOpen}
-        onOpenChange={setCompleteDialogOpen}
-        item={item}
-        warehouseId={warehouseId}
-        onConfirm={handleCompleteConfirm} />
-    </>
+      {list.warnings && list.warnings.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-sm">
+          <span className="font-medium text-amber-700">Warnings: </span>
+          <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs text-amber-600">
+            {list.warnings.map((warning, index) => (
+              <li key={index}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <p className="text-xs text-muted-foreground">Created: {list.created_at ? new Date(list.created_at).toLocaleString() : EMPTY}</p>
+    </div>
   );
 }
 
@@ -394,96 +431,62 @@ interface PutAwayDetailDialogProps {
 
 export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetailDialogProps) {
   const { list, loading, error, completeItem, skipItem } = usePutAwayList(listId);
+  const [completeTarget, setCompleteTarget] = React.useState<PutAwayItem | null>(null);
+  const [skipTarget, setSkipTarget] = React.useState<PutAwayItem | null>(null);
+
+  const rows = React.useMemo(() => (list ? listToRows(list.items) : []), [list]);
+
+  const columns = React.useMemo<QRDetailColumn[]>(
+    () => [
+      { id: 'bin', header: 'Bin', cell: (row) => <BinCell row={row} /> },
+      { id: 'status', header: 'Status', cell: (row) => <StatusCell row={row} /> },
+      {
+        id: 'actions',
+        header: 'Actions',
+        align: 'right',
+        cell: (row) => <ActionsCell row={row} onComplete={setCompleteTarget} onSkip={setSkipTarget} />,
+      },
+    ],
+    [],
+  );
+
+  // Drop any open item dialogs when a different list is loaded.
+  React.useEffect(() => {
+    setCompleteTarget(null);
+    setSkipTarget(null);
+  }, [listId]);
 
   return (
-    <DetailDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title={list ? `Put-Away — ${list.put_away_list_no}` : 'Loading...'}
-      size="xl"
-      loading={loading}
-      loadingMessage="Loading put-away details..."
-    >
+    <>
+      <QRDetailDialog open={open}
+        onOpenChange={onOpenChange}
+        title={list ? `Put-Away — ${list.put_away_list_no}` : 'Loading...'}
+        loading={loading}
+        loadingMessage="Loading put-away details..."
+        rows={rows}
+        columns={columns}
+        emptyMessage="No items"
+        subtitle={error ? <p className="text-sm text-destructive">{error}</p> : undefined}
+        summary={list ? <PutAwaySummary list={list} /> : undefined}/>
 
-      {error && <div className="text-sm text-destructive py-4">{error}</div>}
-
-      {!loading && !error && list && (
-        <div className="flex flex-col gap-4">
-          {/* Summary row */}
-          <div className="grid grid-cols-4 gap-3 text-sm">
-            <div className="rounded-lg border p-3">
-              <p className="text-xs text-muted-foreground mb-1">Status</p>
-              <WMSStatusBadge status={list.status} />
-            </div>
-            <div className="rounded-lg border p-3">
-              <p className="text-xs text-muted-foreground mb-1">Total Items</p>
-              <p className="font-semibold text-lg">{list.total_items}</p>
-            </div>
-            <div className="rounded-lg border p-3">
-              <p className="text-xs text-muted-foreground mb-1">Worker</p>
-              <p className="font-medium text-sm">{list.worker_name ?? list.assigned_to ?? '—'}</p>
-            </div>
-            <div className="rounded-lg border p-3">
-              <p className="text-xs text-muted-foreground mb-1">Receiving Slip</p>
-              <p className="font-medium font-mono text-sm">{list.receiving_slip_no ?? '—'}</p>
-            </div>
-          </div>
-
-          {list.remarks && (
-            <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Remarks: </span>{list.remarks}
-            </div>
-          )}
-
-          {list.warnings && list.warnings.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-sm">
-              <span className="font-medium text-amber-700">Warnings: </span>
-              <ul className="list-disc list-inside text-amber-600 text-xs mt-1 space-y-0.5">
-                {list.warnings.map((w, i) => (
-                  <li key={i}>{w}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Items table */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Line Items ({list.items.length})
-            </div>
-            <table className="w-full text-sm">
-              <thead className="bg-muted/30">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Product</th>
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">SKU</th>
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Batch</th>
-                  <th className="text-right px-4 py-2 font-medium text-muted-foreground">Qty</th>
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Status</th>
-                  <th className="text-right px-4 py-2 font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {list.items.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-4 text-center text-muted-foreground text-xs">No items</td>
-                  </tr>
-                )}
-                {groupPutAwayItems(list.items).map((group) => (
-                  <PutAwayGroupRow key={group.itemId}
-                    group={group}
-                    warehouseId={list.warehouse_id}
-                    onComplete={completeItem}
-                    onSkip={skipItem} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            Created: {list.created_at ? new Date(list.created_at).toLocaleString() : '—'}
-          </p>
-        </div>
+      {list && completeTarget && (
+        <CompleteItemDialog open
+          onOpenChange={(next) => {
+            if (!next) setCompleteTarget(null);
+          }}
+          item={completeTarget}
+          warehouseId={list.warehouse_id}
+          onConfirm={completeItem}/>
       )}
-    </DetailDialog>
+
+      {skipTarget && (
+        <SkipItemDialog open
+          onOpenChange={(next) => {
+            if (!next) setSkipTarget(null);
+          }}
+          item={skipTarget}
+          onConfirm={skipItem}/>
+      )}
+    </>
   );
 }

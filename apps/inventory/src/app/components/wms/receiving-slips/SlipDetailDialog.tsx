@@ -21,6 +21,7 @@ function itemToChildRow(item: ReceivingSlipGroupItem, productName: string): QRDe
     id: item.id,
     name: item.name ?? productName,
     sku: item.sku,
+    batch: item.batch_number,
     serialNumber: item.serial_number,
     manufacturingDate: item.manufacturing_date ?? null,
     expiryDate: item.expiry_date ?? null,
@@ -38,6 +39,7 @@ function groupToRow(group: ReceivingSlipGroup, index: number): QRDetailRow {
     id: group.parent_qseal?.id ?? `group-${index}`,
     name: group.product_name,
     sku: group.items[0]?.sku ?? null,
+    batch: group.items[0]?.batch_number ?? null,
     serialNumber: group.parent_qseal?.serial_number ?? null,
     quantity: group.items.length,
     meta: {
@@ -69,6 +71,7 @@ function legacyToRow(item: ReceivingSlipItem): QRDetailRow {
     id: item.id,
     name: item.parent_qseal?.name ?? item.sku,
     sku: item.sku,
+    batch: item.batch_number,
     serialNumber: item.parent_qseal?.serial_number ?? null,
     quantity: item.quantity,
     meta: {
@@ -249,7 +252,6 @@ export function SlipDetailDialog({ slip, loading, open, onOpenChange, onRejectIt
         rows={rows}
         columns={columns}
         emptyMessage="No items"
-        contentClassName="max-w-4xl max-h-[90vh] flex flex-col"
         summary={slip ? <SlipSummary slip={slip} totalUnits={countUnits(slip)} /> : undefined}/>
 
       {slip && (
