@@ -473,7 +473,7 @@ export interface PutAwayList {
   worker_name: string | null;
   items: PutAwayItem[];
   completed_at: string | null;
-  created_at: string | null;
+  created_at: string;
   updated_at: string | null;
 }
 

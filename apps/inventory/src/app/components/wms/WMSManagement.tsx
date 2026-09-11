@@ -280,7 +280,7 @@ function InboundManagement({
       : inboundSection === 'putaway'
         ? {
             title: 'Put-Away Lists',
-            subtitle: 'Put-away lists are generated automatically when a receiving slip is approved. Click a row to see its items.',
+            subtitle: 'Put-away lists are generated automatically when a receiving slip is approved.',
           }
         : undefined;
 
@@ -393,8 +393,7 @@ function ReceivingSlipSection({
   onStatusFilterChange: (status: string) => void;
 }) {
   return (
-    <ReceivingSlipList key={statusFilter}
-      warehouseId={warehouseId || undefined}
+    <ReceivingSlipList warehouseId={warehouseId || undefined}
       statusFilter={statusFilter}
       refreshKey={refreshKey}
       onStatusFilterChange={onStatusFilterChange}/>
