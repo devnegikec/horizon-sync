@@ -1,16 +1,17 @@
 import * as React from 'react';
 
-import { type ColumnDef, flexRender, type Table } from '@tanstack/react-table';
+import { type ColumnDef, flexRender, type Row, type Table } from '@tanstack/react-table';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 import { useDataTable, type DataTableConfig } from '../../hooks/useDataTable';
+import { cn } from '../../lib';
 import { Table as TableComponent, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '../ui/table';
 
 import { DataTablePagination } from './DataTablePagination';
 import { DataTableToolbar } from './DataTableToolbar';
 import { DataTableViewOptions } from './DataTableViewOptions';
 
-export interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
+export interface DataTableProps<TData, TValue> {  columns: ColumnDef<TData, TValue>[];
   data: TData[];
   config?: DataTableConfig;
   filterPlaceholder?: string;
@@ -24,11 +25,37 @@ export interface DataTableProps<TData, TValue> {
   /** Optional function to derive a custom className for each row. */
   getRowClassName?: (row: TData) => string | undefined;
   /**
+   * Opt-in sub-rows: return the child rows of a row (or null/undefined when it
+   * has none). Enables collapsible rows rendered indented underneath the parent.
+   */
+  getSubRows?: (row: TData) => TData[] | undefined;
+  /** When sub-rows are enabled, start with every parent expanded. Default: false. */
+  defaultExpanded?: boolean;
+  /**
    * Called once the TanStack table instance is available (and again only if it changes).
    * Prefer this over `renderViewOptions` when you only need the instance — passing
    * `renderViewOptions` suppresses the built-in `DataTableViewOptions` menu.
    */
   onTableReady?: (table: Table<TData>) => void;
+}
+
+/** Whether the top toolbar has anything to render. */
+function hasToolbarContent(
+  renderFilters: unknown,
+  renderBulkActions: unknown,
+  renderViewOptions: unknown,
+  enableFiltering: boolean | undefined,
+  enableColumnVisibility: boolean | undefined,
+): boolean {
+  if (renderFilters || renderBulkActions || renderViewOptions) return true;
+  if (enableFiltering) return true;
+  return Boolean(enableColumnVisibility && !renderViewOptions);
+}
+
+/** Scroll-container props applied to the table body when `fixedHeader` is set. */
+function scrollAreaProps(fixedHeader: boolean, maxHeight: string): { className?: string; style?: React.CSSProperties } {
+  if (!fixedHeader) return {};
+  return { className: 'overflow-auto', style: { maxHeight } };
 }
 
 export function DataTable<TData, TValue>({
@@ -43,13 +70,27 @@ export function DataTable<TData, TValue>({
   maxHeight = '600px',
   renderFooter,
   getRowClassName,
+  getSubRows,
+  defaultExpanded = false,
   onTableReady,
 }: DataTableProps<TData, TValue>) {
   const { table, globalFilter, setGlobalFilter } = useDataTable({
     data,
     columns,
     config,
+    getSubRows,
+    defaultExpanded,
   });
+
+  const subRowsEnabled = typeof getSubRows === 'function';
+  const showToolbar = hasToolbarContent(
+    renderFilters,
+    renderBulkActions,
+    renderViewOptions,
+    config?.enableFiltering,
+    config?.enableColumnVisibility,
+  );
+  const scrollArea = scrollAreaProps(fixedHeader, maxHeight);
 
   const reportedTableRef = React.useRef<Table<TData> | null>(null);
 
@@ -61,19 +102,24 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      <DataTableTopBar table={table}
-        config={config}
-        globalFilter={globalFilter}
-        onGlobalFilterChange={setGlobalFilter}
-        filterPlaceholder={filterPlaceholder}
-        renderBulkActions={renderBulkActions}
-        renderFilters={renderFilters}
-        renderViewOptions={renderViewOptions} />
+      {showToolbar && (
+        <DataTableTopBar table={table}
+          config={config}
+          globalFilter={globalFilter}
+          onGlobalFilterChange={setGlobalFilter}
+          filterPlaceholder={filterPlaceholder}
+          renderBulkActions={renderBulkActions}
+          renderFilters={renderFilters}
+          renderViewOptions={renderViewOptions} />
+      )}
       <div className="rounded-md border overflow-hidden">
-        <div className={fixedHeader ? 'overflow-auto' : undefined} style={fixedHeader ? { maxHeight } : undefined}>
+        <div {...scrollArea}>
           <TableComponent>
             <DataTableHeaderRow table={table} fixedHeader={fixedHeader} />
-            <DataTableBodyRows table={table} columnCount={columns.length} getRowClassName={getRowClassName} />
+            <DataTableBodyRows table={table}
+              columnCount={columns.length}
+              getRowClassName={getRowClassName}
+              subRowsEnabled={subRowsEnabled} />
             {renderFooter ? (
               <TableFooter className="border-t bg-transparent">
                 {renderFooter()}
@@ -135,10 +181,12 @@ function DataTableBodyRows<TData>({
   table,
   columnCount,
   getRowClassName,
+  subRowsEnabled,
 }: {
   table: Table<TData>;
   columnCount: number;
   getRowClassName?: (row: TData) => string | undefined;
+  subRowsEnabled: boolean;
 }) {
   const rows = table.getRowModel().rows;
 
@@ -157,12 +205,49 @@ function DataTableBodyRows<TData>({
   return (
     <TableBody>
       {rows.map((row) => (
-        <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className={getRowClassName ? getRowClassName(row.original) : undefined}>
-          {row.getVisibleCells().map((cell) => (
-            <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+        <TableRow key={row.id}
+          data-state={row.getIsSelected() && 'selected'}
+          className={cn(getRowClassName ? getRowClassName(row.original) : undefined, subRowsEnabled && row.depth > 0 && 'bg-muted/30')}>
+          {row.getVisibleCells().map((cell, cellIndex) => (
+            <TableCell key={cell.id}>
+              {subRowsEnabled && cellIndex === 0 ? (
+                <DataTableExpandableCell row={row}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </DataTableExpandableCell>
+              ) : (
+                flexRender(cell.column.columnDef.cell, cell.getContext())
+              )}
+            </TableCell>
           ))}
         </TableRow>
       ))}
     </TableBody>
+  );
+}
+
+/**
+ * Wraps the first cell of a row to add an expand/collapse toggle (for rows with
+ * children) and indentation based on the row's depth.
+ */
+function DataTableExpandableCell<TData>({ row, children }: { row: Row<TData>; children: React.ReactNode }) {
+  const indent = row.depth * 16;
+  const style = indent > 0 ? { paddingLeft: `${indent}px` } : undefined;
+
+  if (!row.getCanExpand()) {
+    return <div style={style}>{children}</div>;
+  }
+
+  const expanded = row.getIsExpanded();
+  return (
+    <div className="flex items-start gap-1" style={style}>
+      <button type="button"
+        onClick={row.getToggleExpandedHandler()}
+        aria-expanded={expanded}
+        aria-label={expanded ? 'Collapse row' : 'Expand row'}
+        className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+        {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+      </button>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
   );
 }
