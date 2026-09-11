@@ -1,24 +1,18 @@
 import * as React from 'react';
 
-import { RefreshCw } from 'lucide-react';
-
 import { Button } from '@horizon-sync/ui/components/ui/button';
 
+import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
 import { useDispatches } from '../../hooks/useWMS';
 
-export function DispatchList() {
+export function DispatchList({ refreshKey }: { refreshKey?: number }) {
   const [page, setPage] = React.useState(1);
   const { data, loading, error, refetch } = useDispatches({ page, page_size: 20 });
 
+  useRefreshOnKey(refreshKey, refetch);
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Button variant="outline" size="sm" onClick={refetch} className="gap-2">
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </Button>
-      </div>
-
       {loading && <div className="text-sm text-muted-foreground animate-pulse">Loading dispatches...</div>}
       {error && <div className="text-sm text-destructive">{error}</div>}
 
@@ -38,7 +32,9 @@ export function DispatchList() {
               <tbody className="divide-y">
                 {data.dispatches.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No dispatch records found</td>
+                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                      No dispatch records found
+                    </td>
                   </tr>
                 )}
                 {data.dispatches.map((d) => (
@@ -47,9 +43,7 @@ export function DispatchList() {
                     <td className="px-4 py-3 text-muted-foreground">{d.invoice_reference ?? '—'}</td>
                     <td className="px-4 py-3">{d.vehicle_number ?? '—'}</td>
                     <td className="px-4 py-3">{d.driver_name ?? '—'}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {d.dispatched_at ? new Date(d.dispatched_at).toLocaleString() : '—'}
-                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{d.dispatched_at ? new Date(d.dispatched_at).toLocaleString() : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -58,10 +52,16 @@ export function DispatchList() {
 
           {data.pagination.total_pages > 1 && (
             <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Page {data.pagination.page} of {data.pagination.total_pages}</span>
+              <span>
+                Page {data.pagination.page} of {data.pagination.total_pages}
+              </span>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={!data.pagination.has_prev} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-                <Button variant="outline" size="sm" disabled={!data.pagination.has_next} onClick={() => setPage((p) => p + 1)}>Next</Button>
+                <Button variant="outline" size="sm" disabled={!data.pagination.has_prev} onClick={() => setPage((p) => p - 1)}>
+                  Previous
+                </Button>
+                <Button variant="outline" size="sm" disabled={!data.pagination.has_next} onClick={() => setPage((p) => p + 1)}>
+                  Next
+                </Button>
               </div>
             </div>
           )}
