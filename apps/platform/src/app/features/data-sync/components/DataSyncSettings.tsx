@@ -134,6 +134,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   const [selectedPutAwayWorkerIds, setSelectedPutAwayWorkerIds] = React.useState<string[]>([]);
   const [workerNames, setWorkerNames] = React.useState<Record<string, string>>({});
   const [workersLoading, setWorkersLoading] = React.useState(false);
+  const [workersError, setWorkersError] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -182,6 +183,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   React.useEffect(() => {
     setSelectedPutAwayWorkerIds([]);
     setWarehouseUserAssignments([]);
+    setWorkersError(null);
     if (!accessToken || !receiveAsnTargetWarehouseId) return;
 
     let cancelled = false;
@@ -191,15 +193,22 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
       UserService.getUsers(1, 100, accessToken),
     ]).then(([assignmentsResult, usersResult]) => {
       if (cancelled) return;
-      const assignments = assignmentsResult.status === 'fulfilled' && Array.isArray(assignmentsResult.value)
-        ? assignmentsResult.value
-        : [];
+      if (assignmentsResult.status === 'rejected') {
+        setWorkersError(assignmentsResult.reason instanceof Error
+          ? assignmentsResult.reason.message
+          : 'Failed to load workers for the selected warehouse.');
+        return;
+      }
+      const assignments = Array.isArray(assignmentsResult.value) ? assignmentsResult.value : [];
       const usersResponse = usersResult.status === 'fulfilled' ? usersResult.value : null;
       const users = Array.isArray(usersResponse?.items)
         ? usersResponse.items
         : Array.isArray(usersResponse?.users) ? usersResponse.users : [];
       setWarehouseUserAssignments(assignments.filter((assignment) => assignment.user_id));
       setWorkerNames(Object.fromEntries(users.map((user) => [user.id, user.display_name || `${user.first_name} ${user.last_name}`.trim() || user.email])));
+      if (usersResult.status === 'rejected') {
+        setWorkersError('Workers loaded, but their names could not be loaded. User IDs are shown instead.');
+      }
     }).finally(() => {
       if (!cancelled) setWorkersLoading(false);
     });
@@ -652,7 +661,9 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2" align="start">
-                              {warehouseUserAssignments.length === 0 ? (
+                              {workersError ? (
+                                <p className="p-2 text-sm text-destructive">{workersError}</p>
+                              ) : warehouseUserAssignments.length === 0 ? (
                                 <p className="p-2 text-sm text-muted-foreground">
                                   {receiveAsnTargetWarehouseId ? 'No active workers found for this warehouse.' : 'Select a target warehouse first.'}
                                 </p>
@@ -679,6 +690,9 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                               )}
                             </PopoverContent>
                           </Popover>
+                          {workersError && (
+                            <p className="text-xs text-destructive">{workersError}</p>
+                          )}
                           {putAwayRequiresWorker && selectedPutAwayWorkerIds.length === 0 && (
                             <p className="text-xs text-destructive">Select at least one active worker before syncing.</p>
                           )}
