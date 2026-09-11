@@ -9,6 +9,7 @@ export { BlocksManagement } from './BlocksManagement';
 export { AggregationManagement } from './AggregationManagement';
 export { SkuCustomizationManagement } from './SkuCustomizationManagement';
 export { AnalyticsManagement } from './AnalyticsManagement';
+export { QSealActivationManagement } from './QSealActivationManagement';
 export { ActivationManagement } from './ActivationManagement';
 export { ProductSettingsManagement } from './ProductSettingsManagement';
 export { BrandManagement } from './BrandManagement';
