@@ -241,7 +241,7 @@ function GeneratePickListsDialog({
                 <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-xs text-amber-700 flex items-start gap-2">
                     <TriangleAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                     <span>
-                        Items flagged Out of Stock may short-pick during fulfillment and are recorded as pick exceptions.
+                        Out-of-stock items are automatically excluded from the pick lists.
                     </span>
                 </div>
 
@@ -491,7 +491,18 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated }: Outboun
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-1.5">
-                                                {order.status === 'draft' && (
+                                                {order.status === 'draft' && order.out_of_stock_count > 0 && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="gap-1 h-7 px-2 text-xs"
+                                                        onClick={() => setGenerateOrder(order)}
+                                                    >
+                                                        <ClipboardList className="h-3.5 w-3.5" />
+                                                        Partial Order
+                                                    </Button>
+                                                )}
+                                                {order.status === 'draft' && order.out_of_stock_count === 0 && (
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
