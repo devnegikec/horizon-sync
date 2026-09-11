@@ -34,7 +34,19 @@ import type {
   VehicleArrival,
 } from '../types/wms.types';
 import { pickSettingsApi } from '../utility/api/pick-settings';
-import { inboundApi, layoutApi, outboundApi, outboundOrderApi, packingSlipApi, putAwayApi, wmsWorkerApi, wmsDeviceApi, wmsDashboardApi, vehicleArrivalApi, erpSyncApi } from '../utility/api/wms';
+import {
+  inboundApi,
+  layoutApi,
+  outboundApi,
+  outboundOrderApi,
+  packingSlipApi,
+  putAwayApi,
+  wmsWorkerApi,
+  wmsDeviceApi,
+  wmsDashboardApi,
+  vehicleArrivalApi,
+  erpSyncApi,
+} from '../utility/api/wms';
 
 // ============================================
 // PICK SETTINGS HOOK (runtime config gating)
@@ -300,10 +312,7 @@ export function useReceivingSlips({
   );
 
   const generatePutAway = React.useCallback(
-    async (
-      slipId: string,
-      options?: { mode?: 'auto' | 'manual'; workerIds?: string[] },
-    ): Promise<PutAwayList | PutAwayListBatchResponse> => {
+    async (slipId: string, options?: { mode?: 'auto' | 'manual'; workerIds?: string[] }): Promise<PutAwayList | PutAwayListBatchResponse> => {
       if (!accessToken) throw new Error('Not authenticated');
       const ids = (options?.workerIds ?? []).filter(Boolean);
       const result = await putAwayApi.generateFromSlip(accessToken, slipId, {
@@ -361,18 +370,24 @@ export function usePutAwayLists({
   const [data, setData] = React.useState<PaginatedPutAwayLists | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const requestIdRef = React.useRef(0);
 
   const fetch = React.useCallback(async () => {
     if (!accessToken) return;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const result = await putAwayApi.listPutAwayLists(accessToken, { warehouse_id, status, page, page_size });
-      setData(result);
+      // Ignore responses from superseded requests so a slower one cannot
+      // overwrite the list/status counts for the current warehouse, status or page.
+      if (requestId === requestIdRef.current) setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load put-away lists');
+      if (requestId === requestIdRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load put-away lists');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }, [accessToken, warehouse_id, status, page, page_size]);
 
@@ -434,7 +449,15 @@ export function usePutAwayList(listId: string | null) {
 // PICK LIST HOOK
 // ============================================
 
-export function usePickLists(params: { status?: string; warehouse_id?: string; sort_by?: string; page?: number; page_size?: number; enabled?: boolean; refreshKey?: number }) {
+export function usePickLists(params: {
+  status?: string;
+  warehouse_id?: string;
+  sort_by?: string;
+  page?: number;
+  page_size?: number;
+  enabled?: boolean;
+  refreshKey?: number;
+}) {
   const accessToken = useUserStore((s) => s.accessToken);
   const enabled = params.enabled !== false;
   const [data, setData] = React.useState<PaginatedPickLists | null>(null);
@@ -506,7 +529,14 @@ export function useOutboundOrders(params: {
   return { data, statusCounts: data?.status_counts ?? null, loading, error, refetch: fetch };
 }
 
-export function usePackingSlips(params: { warehouse_id?: string; status?: string; page?: number; page_size?: number; enabled?: boolean; refreshKey?: number }) {
+export function usePackingSlips(params: {
+  warehouse_id?: string;
+  status?: string;
+  page?: number;
+  page_size?: number;
+  enabled?: boolean;
+  refreshKey?: number;
+}) {
   const accessToken = useUserStore((s) => s.accessToken);
   const enabled = params.enabled !== false;
   const [data, setData] = React.useState<PaginatedPackingSlips | null>(null);
@@ -748,7 +778,24 @@ export function usePickList(pickListId: string | null) {
     }
   }, [accessToken, pickListId]);
 
-  return { pickList, loading, error, refetch: fetchPickList, recordScan, complete, cancel, assignWorker, accept, confirm, markReady, markInTransit, markDelivered, stageTransfer, stageScan, assignHandlingUnit };
+  return {
+    pickList,
+    loading,
+    error,
+    refetch: fetchPickList,
+    recordScan,
+    complete,
+    cancel,
+    assignWorker,
+    accept,
+    confirm,
+    markReady,
+    markInTransit,
+    markDelivered,
+    stageTransfer,
+    stageScan,
+    assignHandlingUnit,
+  };
 }
 
 // ============================================

@@ -119,7 +119,7 @@ export function WMSManagement() {
       <WMSHeader warehouses={warehouses}
         warehousesLoading={warehousesLoading}
         selectedWarehouseId={selectedWarehouseId}
-        onWarehouseChange={setSelectedWarehouseId} />
+        onWarehouseChange={setSelectedWarehouseId}/>
       <WMSNavigation activeView={activeView} canManage={canManage} onViewChange={setActiveView} />
       <WMSContent activeView={activeView}
         canManage={canManage}
@@ -131,7 +131,7 @@ export function WMSManagement() {
         onInboundSectionChange={setInboundSection}
         onManageSectionChange={setManageSection}
         onReceivingStatusFilterChange={setReceivingStatusFilter}
-        onPutawayStatusFilterChange={setPutawayStatusFilter} />
+        onPutawayStatusFilterChange={setPutawayStatusFilter}/>
     </div>
   );
 }
@@ -300,20 +300,18 @@ function InboundManagement({
       )}
       <InboundStats warehouseId={selectedWarehouseId || undefined}
         activeSection={inboundSection}
+        refreshKey={refreshKey}
         onSelectReceivingStatus={openReceiving}
-        onSelectPutAwayStatus={openPutAway} />
+        onSelectPutAwayStatus={openPutAway}/>
       <div className="border rounded-lg overflow-hidden">
         <div className="flex border-b">
-          <SectionTab active={inboundSection === 'receiving'}
-            icon={Warehouse}
-            label="Receiving Slips"
-            onClick={() => openReceiving('all')} />
-          <SectionTab active={inboundSection === 'putaway'} icon={PackageCheck} label="Put-Away" onClick={() => onInboundSectionChange('putaway')} />
+          <SectionTab active={inboundSection === 'receiving'} icon={Warehouse} label="Receiving Slips" onClick={() => openReceiving('all')} />
+          <SectionTab active={inboundSection === 'putaway'} icon={PackageCheck} label="Put-Away" onClick={() => openPutAway('all')} />
           <SectionTab active={inboundSection === 'vehicle'} icon={Truck} label="Vehicle Arrivals" onClick={() => onInboundSectionChange('vehicle')} />
           <SectionTab active={inboundSection === 'exceptions'}
             icon={AlertTriangle}
             label="Holds & Quarantine"
-            onClick={() => onInboundSectionChange('exceptions')} />
+            onClick={() => onInboundSectionChange('exceptions')}/>
         </div>
         <div className="p-4 space-y-4">
           <InboundSectionContent section={inboundSection}
@@ -323,7 +321,7 @@ function InboundManagement({
             refreshKey={refreshKey}
             onReceivingStatusFilterChange={onReceivingStatusFilterChange}
             onPutawayStatusFilterChange={onPutawayStatusFilterChange}
-            onSlipGenerated={() => onInboundSectionChange('receiving')} />
+            onSlipGenerated={() => onInboundSectionChange('receiving')}/>
         </div>
       </div>
     </div>
@@ -355,14 +353,14 @@ function InboundSectionContent({
         <ReceivingSlipSection warehouseId={warehouseId}
           statusFilter={receivingStatusFilter}
           refreshKey={refreshKey}
-          onStatusFilterChange={onReceivingStatusFilterChange} />
+          onStatusFilterChange={onReceivingStatusFilterChange}/>
       );
     case 'putaway':
       return (
         <PutAwaySection warehouseId={warehouseId}
           statusFilter={putawayStatusFilter}
           refreshKey={refreshKey}
-          onStatusFilterChange={onPutawayStatusFilterChange} />
+          onStatusFilterChange={onPutawayStatusFilterChange}/>
       );
     case 'vehicle':
       return <VehicleArrivalManagement warehouseId={warehouseId || undefined} />;
@@ -399,7 +397,7 @@ function ReceivingSlipSection({
       warehouseId={warehouseId || undefined}
       statusFilter={statusFilter}
       refreshKey={refreshKey}
-      onStatusFilterChange={onStatusFilterChange} />
+      onStatusFilterChange={onStatusFilterChange}/>
   );
 }
 
@@ -418,7 +416,7 @@ function PutAwaySection({
     <PutAwayView warehouseId={warehouseId || undefined}
       statusFilter={statusFilter}
       refreshKey={refreshKey}
-      onStatusFilterChange={onStatusFilterChange} />
+      onStatusFilterChange={onStatusFilterChange}/>
   );
 }
 
@@ -442,21 +440,24 @@ function ManageManagement({ manageSection, selectedWarehouseId, onManageSectionC
           <SectionTab active={manageSection === 'workers'} icon={Users} label="Workers" onClick={() => onManageSectionChange('workers')} />
           <SectionTab active={manageSection === 'devices'} icon={Monitor} label="Devices" onClick={() => onManageSectionChange('devices')} />
           {canManage && (
-            <SectionTab active={manageSection === 'designer'} icon={MapPin} label="Layout Designer" onClick={() => onManageSectionChange('designer')} />
+            <SectionTab active={manageSection === 'designer'}
+              icon={MapPin}
+              label="Layout Designer"
+              onClick={() => onManageSectionChange('designer')}/>
           )}
           <SectionTab active={manageSection === 'tree'} icon={Layers} label="Location Tree" onClick={() => onManageSectionChange('tree')} />
           <SectionTab active={manageSection === '3d'} icon={Box} label="3D View" onClick={() => onManageSectionChange('3d')} />
           <SectionTab active={manageSection === 'location-qr'}
             icon={QrCode}
             label="Location QR"
-            onClick={() => onManageSectionChange('location-qr')} />
+            onClick={() => onManageSectionChange('location-qr')}/>
         </div>
         <div className="p-4">
           <ManageSectionContent section={manageSection}
             warehouseId={selectedWarehouseId}
             canDesignLayout={canManage}
             treeKey={treeKey}
-            onLayoutChanged={handleLayoutChanged} />
+            onLayoutChanged={handleLayoutChanged}/>
         </div>
       </div>
     </div>
@@ -492,7 +493,15 @@ function ManageSectionContent({
   }
 }
 
-function DesignerContent({ warehouseId, canDesignLayout, onLayoutChanged }: { warehouseId: string; canDesignLayout: boolean; onLayoutChanged: () => void }) {
+function DesignerContent({
+  warehouseId,
+  canDesignLayout,
+  onLayoutChanged,
+}: {
+  warehouseId: string;
+  canDesignLayout: boolean;
+  onLayoutChanged: () => void;
+}) {
   if (!warehouseId || !canDesignLayout) {
     return <p className="text-sm text-muted-foreground">Select a warehouse to design its layout.</p>;
   }
