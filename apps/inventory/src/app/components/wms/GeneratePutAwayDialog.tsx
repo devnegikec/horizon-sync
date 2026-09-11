@@ -28,10 +28,7 @@ interface GeneratePutAwayDialogProps {
   slip: ReceivingSlip | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onGenerate: (
-    slipId: string,
-    options?: { mode?: 'auto' | 'manual'; workerIds?: string[] },
-  ) => Promise<PutAwayList | PutAwayListBatchResponse>;
+  onGenerate: (slipId: string, options?: { mode?: 'auto' | 'manual'; workerIds?: string[] }) => Promise<PutAwayList | PutAwayListBatchResponse>;
 }
 
 function workerLabel(worker: WMSWorker): string {
@@ -45,11 +42,7 @@ function workerLabel(worker: WMSWorker): string {
  * Fetch every assignable worker for a warehouse, following pagination so
  * warehouses with more than one page of workers are fully covered.
  */
-async function fetchAllWorkers(
-  accessToken: string,
-  warehouseId?: string,
-  pageSize = 100,
-): Promise<WMSWorker[]> {
+async function fetchAllWorkers(accessToken: string, warehouseId?: string, pageSize = 100): Promise<WMSWorker[]> {
   const all: WMSWorker[] = [];
   let page = 1;
   while (page > 0) {
@@ -64,15 +57,37 @@ async function fetchAllWorkers(
   return all;
 }
 
-function WorkerMultiSelect({
-  workers,
-  selected,
-  onChange,
-}: {
-  workers: WMSWorker[];
-  selected: string[];
-  onChange: (ids: string[]) => void;
-}) {
+/**
+ * Kick off loading all assignable workers for the slip's warehouse and report
+ * the result via `setWorkers`. Returns a cleanup function that ignores a
+ * response arriving after the dialog closed or the slip changed.
+ */
+function loadWarehouseWorkers(accessToken: string, warehouseId: string | undefined, setWorkers: (workers: WMSWorker[]) => void): () => void {
+  let cancelled = false;
+  fetchAllWorkers(accessToken, warehouseId)
+    .then((data) => {
+      if (!cancelled) setWorkers(data);
+    })
+    .catch(() => {
+      if (!cancelled) setWorkers([]);
+    });
+  return () => {
+    cancelled = true;
+  };
+}
+
+/** Human-readable hint for the selected generation mode. */
+function modeHint(mode: PutAwayGenerationMode): string {
+  if (mode === 'manual') {
+    return 'Items are grouped by SKU/batch without bin assignment; workers choose bins when completing each item.';
+  }
+  if (mode === 'auto') {
+    return 'The server assigns bins and sorts items along the optimal walking route.';
+  }
+  return 'Uses the organisation default put-away mode (auto unless overridden in settings).';
+}
+
+function WorkerMultiSelect({ workers, selected, onChange }: { workers: WMSWorker[]; selected: string[]; onChange: (ids: string[]) => void }) {
   const [open, setOpen] = React.useState(false);
   const selectedWorkers = workers.filter((w) => selected.includes(w.id));
 
@@ -89,8 +104,7 @@ function WorkerMultiSelect({
       {selectedWorkers.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {selectedWorkers.map((w) => (
-            <span key={w.id}
-              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+            <span key={w.id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
               {workerLabel(w)}
               <button type="button"
                 onClick={() => remove(w.id)}
@@ -115,32 +129,37 @@ function WorkerMultiSelect({
           </button>
         </PopoverTrigger>
         <PopoverContent className="p-1" align="start">
-          <label htmlFor="pa-worker-none"
-            className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground">
-            <Checkbox id="pa-worker-none" checked={selected.length === 0} onCheckedChange={() => onChange([])} className="mr-2" />
-            No worker (unassigned)
-          </label>
-          {workers.map((w) => {
-            const checked = selected.includes(w.id);
-            return (
-              <label key={w.id}
-                htmlFor={`pa-worker-${w.id}`}
-                className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground">
-                <Checkbox id={`pa-worker-${w.id}`} checked={checked} onCheckedChange={() => toggle(w.id)} className="mr-2" />
-                {workerLabel(w)}
-              </label>
-            );
-          })}
+          {/* Cap the list height so long worker lists scroll instead of overflowing the dialog. */}
+          <div className="max-h-[240px] overflow-y-auto">
+            <label htmlFor="pa-worker-none"
+              className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground">
+              <Checkbox id="pa-worker-none" checked={selected.length === 0} onCheckedChange={() => onChange([])} className="mr-2" />
+              No worker (unassigned)
+            </label>
+            {workers.map((w) => {
+              const checked = selected.includes(w.id);
+              return (
+                <label key={w.id}
+                  htmlFor={`pa-worker-${w.id}`}
+                  className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground">
+                  <Checkbox id={`pa-worker-${w.id}`} checked={checked} onCheckedChange={() => toggle(w.id)} className="mr-2" />
+                  {workerLabel(w)}
+                </label>
+              );
+            })}
+          </div>
+          <div className="mt-1 border-t border-border pt-1">
+            <Button size="sm" variant="default" className="w-full justify-center" onClick={() => setOpen(false)}>
+              Done
+            </Button>
+          </div>
         </PopoverContent>
       </Popover>
     </div>
   );
 }
 
-function generationToast(
-  result: PutAwayList | PutAwayListBatchResponse,
-  slipNumber: string,
-): { title: string; description: string } {
+function generationToast(result: PutAwayList | PutAwayListBatchResponse, slipNumber: string): { title: string; description: string } {
   const lists = 'put_away_lists' in result ? result.put_away_lists : [result];
   const warnings = lists.flatMap((l) => l.warnings ?? []);
   const summary =
@@ -149,9 +168,7 @@ function generationToast(
       : `Put-away list ${lists[0].put_away_list_no} created from ${slipNumber}`;
   return {
     title: lists.length > 1 ? 'Put-away lists generated' : 'Put-away generated',
-    description: warnings.length > 0
-      ? `${summary} — ${warnings[0]}${warnings.length > 1 ? ` (+${warnings.length - 1} more)` : ''}`
-      : `${summary}.`,
+    description: warnings.length > 0 ? `${summary} — ${warnings[0]}${warnings.length > 1 ? ` (+${warnings.length - 1} more)` : ''}` : `${summary}.`,
   };
 }
 
@@ -176,17 +193,7 @@ export function GeneratePutAwayDialog({ slip, open, onOpenChange, onGenerate }: 
   // first page so workers beyond the first 100 can still be assigned.
   React.useEffect(() => {
     if (!open || !accessToken) return;
-    let cancelled = false;
-    fetchAllWorkers(accessToken, slip?.warehouse_id)
-      .then((data) => {
-        if (!cancelled) setWorkers(data);
-      })
-      .catch(() => {
-        if (!cancelled) setWorkers([]);
-      });
-    return () => {
-      cancelled = true;
-    };
+    return loadWarehouseWorkers(accessToken, slip?.warehouse_id, setWorkers);
   }, [open, accessToken, slip?.warehouse_id]);
 
   // Reset form each time the dialog opens for a new slip.
@@ -229,8 +236,7 @@ export function GeneratePutAwayDialog({ slip, open, onOpenChange, onGenerate }: 
       contentClassName="sm:max-w-[460px]"
       subtitle={
         <p className="text-sm text-muted-foreground mt-1.5">
-          Generate a put-away list from receiving slip{' '}
-          <span className="font-mono font-medium text-foreground">{slip?.slip_number ?? ''}</span>.
+          Generate a put-away list from receiving slip <span className="font-mono font-medium text-foreground">{slip?.slip_number ?? ''}</span>.
         </p>
       }>
       <div className="space-y-4 py-2">
@@ -246,31 +252,18 @@ export function GeneratePutAwayDialog({ slip, open, onOpenChange, onGenerate }: 
               <SelectItem value="manual">Manual — worker assigns bins</SelectItem>
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            {mode === 'manual'
-              ? 'Items are grouped by SKU/batch without bin assignment; workers choose bins when completing each item.'
-              : mode === 'auto'
-                ? 'The server assigns bins and sorts items along the optimal walking route.'
-                : 'Uses the organisation default put-away mode (auto unless overridden in settings).'}
-          </p>
+          <p className="text-xs text-muted-foreground">{modeHint(mode)}</p>
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">
-            Assign Workers (optional — select multiple to split the work)
-          </p>
+          <p className="text-xs font-medium text-muted-foreground">Assign Workers (optional)</p>
           <WorkerMultiSelect workers={workers} selected={workerIds} onChange={setWorkerIds} />
-          <p className="text-xs text-muted-foreground">
-            Selecting more than one worker splits the slip&apos;s items across separate put-away lists.
-            Leave empty to keep the list unassigned.
-          </p>
+          <p className="text-xs text-muted-foreground">Selecting more than one worker splits the slip&apos;s items across separate put-away lists.</p>
         </div>
 
         <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-xs text-amber-700 flex items-start gap-2">
           <TriangleAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-          <span>
-            Damaged, rejected, held, quarantined and excess lines are skipped automatically and reported as warnings.
-          </span>
+          <span>Damaged, rejected, held, quarantined and excess lines are skipped automatically and reported as warnings.</span>
         </div>
       </div>
 
