@@ -1,19 +1,34 @@
 import * as React from 'react';
 
-import { Eye, CheckCircle2, Loader2, PackageOpen, ChevronsUpDown, X, ClipboardList, PackageCheck, TriangleAlert } from 'lucide-react';
+import { type ColumnDef } from '@tanstack/react-table';
+import { Loader2, PackageOpen, ChevronsUpDown, X, ClipboardList, TriangleAlert } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
-import { Checkbox, Popover, PopoverContent, PopoverTrigger } from '@horizon-sync/ui/components';
-import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
+import {
+  Button,
+  Card,
+  CardContent,
+  Checkbox,
+  EmptyState,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  TableSkeleton,
+} from '@horizon-sync/ui/components';
+import { DataTable } from '@horizon-sync/ui/components/data-table';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
 import { useOutboundOrders } from '../../hooks/useWMS';
-import type { OutboundOrder, OutboundOrderListItem, PaginatedOutboundOrders, WMSWorker } from '../../types/wms.types';
+import type { OutboundOrder, OutboundOrderListItem, WMSWorker } from '../../types/wms.types';
 import { outboundOrderApi, packingSlipApi, wmsWorkerApi } from '../../utility/api/wms';
 
+import { createOutboundOrderColumns } from './OutboundOrderColumns';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
 /** `'all'` in a filter dropdown means "no server-side filter". */
@@ -21,16 +36,96 @@ function filterParam(value: string): string | undefined {
   return value === 'all' ? undefined : value;
 }
 
-/** True when there is no page of orders to render (still loading, or genuinely empty). */
-function hasNoOrders(data: PaginatedOutboundOrders | null): boolean {
-  return !data || data.orders.length === 0;
+type ServerPagination = {
+  totalItems: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number, pageSize: number) => void;
+};
+
+function OutboundOrdersEmpty({ filtered, onClearFilter }: { filtered: boolean; onClearFilter: () => void }) {
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="p-6">
+          <EmptyState icon={<PackageOpen className="h-12 w-12" />}
+            title="No orders found"
+            description={filtered ? 'No orders match the selected filters' : 'Import an incoming order file or create an order manually.'}
+            action={
+              filtered ? (
+                <Button variant="outline" onClick={onClearFilter}>
+                  Clear filters
+                </Button>
+              ) : undefined
+            }/>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
-/** Loading / error placeholder for the orders table. */
-function OrdersStatus({ loading, error }: { loading: boolean; error: string | null }) {
-  if (loading) return <div className="text-sm text-muted-foreground animate-pulse">Loading orders...</div>;
-  if (error) return <div className="text-sm text-destructive">{error}</div>;
-  return null;
+function OutboundOrdersTable({
+  isInitialLoading,
+  error,
+  orders,
+  columns,
+  serverPagination,
+  pageSize,
+  filtered,
+  onClearFilter,
+}: {
+  isInitialLoading: boolean;
+  error: string | null;
+  orders: OutboundOrderListItem[];
+  columns: ColumnDef<OutboundOrderListItem>[];
+  serverPagination?: ServerPagination;
+  pageSize: number;
+  filtered: boolean;
+  onClearFilter: () => void;
+}) {
+  const renderBody = () => {
+    if (isInitialLoading) {
+      return (
+        <Card>
+          <CardContent className="p-0">
+            <TableSkeleton columns={8} rows={8} showHeader={true} />
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (orders.length === 0) {
+      return <OutboundOrdersEmpty filtered={filtered} onClearFilter={onClearFilter} />;
+    }
+
+    return (
+      <Card>
+        <CardContent className="p-0">
+          <DataTable columns={columns}
+            data={orders}
+            config={{
+              showSerialNumber: false,
+              showPagination: true,
+              enableRowSelection: false,
+              enableColumnVisibility: true,
+              enableSorting: false,
+              enableFiltering: false,
+              initialPageSize: pageSize,
+              serverPagination,
+            }}
+            fixedHeader
+            maxHeight="auto"/>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {error && <div className="text-sm text-destructive">{error}</div>}
+      {renderBody()}
+    </div>
+  );
 }
 
 function workerLabel(worker: WMSWorker): string {
@@ -334,6 +429,7 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [typeFilter, setTypeFilter] = React.useState('all');
   const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(20);
   const [viewOrder, setViewOrder] = React.useState<OutboundOrder | null>(null);
   const [viewLoading, setViewLoading] = React.useState(false);
   const [generateOrder, setGenerateOrder] = React.useState<OutboundOrderListItem | null>(null);
@@ -345,7 +441,7 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
     order_type: filterParam(typeFilter),
     warehouse_id: warehouseId,
     page,
-    page_size: 20,
+    page_size: pageSize,
   });
 
   // Refetch when the panel-level Refresh button is pressed (skip the initial mount).
@@ -404,6 +500,38 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
     }
   };
 
+  const orders: OutboundOrderListItem[] = data?.orders ?? [];
+  const pagination = data?.pagination;
+  const isInitialLoading = loading && !data;
+
+  const serverPagination = React.useMemo(() => {
+    if (!pagination) return undefined;
+
+    return {
+      totalItems: pagination.total_items,
+      currentPage: pagination.page,
+      pageSize: pagination.page_size,
+      onPageChange: (nextPage: number, nextPageSize: number) => {
+        if (nextPageSize !== pagination.page_size) {
+          setPageSize(nextPageSize);
+          setPage(1);
+          return;
+        }
+        setPage(nextPage);
+      },
+    };
+  }, [pagination]);
+
+  const columns = createOutboundOrderColumns({
+    confirmingId,
+    packingId,
+    viewLoading,
+    onConfirm: handleConfirm,
+    onPack: handlePack,
+    onCreatePickList: setGenerateOrder,
+    onView: handleView,
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -447,124 +575,18 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
         <span className="font-medium">Dispatch</span>.
       </p>
 
-      <OrdersStatus loading={loading} error={error} />
-
-      {!loading && (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Order #</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Type</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Invoice Ref</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Stock</th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Items</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Created</th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {hasNoOrders(data) && (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                    No orders found. Import an incoming order to create one.
-                  </td>
-                </tr>
-              )}
-              {data?.orders.map((order) => {
-                const inStock = order.in_stock_count;
-                const outOfStock = order.out_of_stock_count;
-                return (
-                  <tr key={order.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-mono font-medium">{order.order_no}</td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium uppercase">
-                        {order.order_type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{order.invoice_reference ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <WMSStatusBadge status={order.status} />
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      <span className="text-green-600">{inStock} in</span>
-                      <span className="text-muted-foreground"> / </span>
-                      <span className={outOfStock > 0 ? 'text-red-600' : 'text-muted-foreground'}>{outOfStock} out</span>
-                    </td>
-                    <td className="px-4 py-3 text-right">{order.item_count}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{order.created_at ? new Date(order.created_at).toLocaleDateString() : '—'}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {order.status === 'draft' && (
-                          <Button size="sm"
-                            variant="outline"
-                            className="gap-1 h-7 px-2 text-xs"
-                            disabled={confirmingId === order.id}
-                            onClick={() => handleConfirm(order)}>
-                            {confirmingId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                            Confirm
-                          </Button>
-                        )}
-                        {order.status === 'confirmed' && (
-                          <Button size="sm" className="gap-1 h-7 px-2 text-xs" onClick={() => setGenerateOrder(order)}>
-                            <ClipboardList className="h-3.5 w-3.5" />
-                            Create Pick List
-                          </Button>
-                        )}
-                        {order.status === 'completed' && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button size="sm"
-                                  variant="outline"
-                                  className="gap-1 h-7 px-2 text-xs"
-                                  disabled={packingId === order.id}
-                                  onClick={() => handlePack(order)}>
-                                  {packingId === order.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <PackageCheck className="h-3.5 w-3.5" />
-                                  )}
-                                  Pack
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Create a packing slip from this completed order&apos;s picked items.</p>
-                                <p className="text-muted-foreground">Then Mark Loading → Dispatch from the Packing Slips tab.</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                        <Button size="sm" variant="ghost" className="gap-1 h-7 px-2 text-xs" disabled={viewLoading} onClick={() => handleView(order)}>
-                          {viewLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
-                          View
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {data && data.pagination.total_pages > 1 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>
-            Page {data.pagination.page} of {data.pagination.total_pages}
-          </span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={!data.pagination.has_prev} onClick={() => setPage((p) => p - 1)}>
-              Previous
-            </Button>
-            <Button variant="outline" size="sm" disabled={!data.pagination.has_next} onClick={() => setPage((p) => p + 1)}>
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      <OutboundOrdersTable isInitialLoading={isInitialLoading}
+        error={error}
+        orders={orders}
+        columns={columns}
+        serverPagination={serverPagination}
+        pageSize={pageSize}
+        filtered={statusFilter !== 'all' || typeFilter !== 'all'}
+        onClearFilter={() => {
+          setStatusFilter('all');
+          setTypeFilter('all');
+          setPage(1);
+        }}/>
 
       <OrderDetailDialog order={viewOrder} onClose={() => setViewOrder(null)} />
       <GeneratePickListsDialog order={generateOrder}

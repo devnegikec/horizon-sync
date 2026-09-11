@@ -1,11 +1,23 @@
 import * as React from 'react';
 
-import { CheckCircle2, Eye, UserRound, Loader2, ChevronDown, ChevronRight, Truck, PackageCheck, type LucideIcon } from 'lucide-react';
+import { type ColumnDef } from '@tanstack/react-table';
+import { CheckCircle2, UserRound, Loader2, ChevronDown, ChevronRight, Truck, PackageCheck, PackageOpen, type LucideIcon } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
-import { Button } from '@horizon-sync/ui/components/ui/button';
+import {
+  Button,
+  Card,
+  CardContent,
+  EmptyState,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  TableSkeleton,
+} from '@horizon-sync/ui/components';
+import { DataTable } from '@horizon-sync/ui/components/data-table';
 import { DetailDialog } from '@horizon-sync/ui/components/ui/detail-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
@@ -13,17 +25,10 @@ import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
 import { usePickList, usePickLists, usePickSettings } from '../../hooks/useWMS';
-import type {
-  PickList,
-  PickListItem,
-  PickSerialDetail,
-  PickListProgress,
-  WMSWorker,
-  PackingSlipListItem,
-  PaginatedPickLists,
-} from '../../types/wms.types';
+import type { PickList, PickListItem, PickSerialDetail, PickListProgress, WMSWorker, PackingSlipListItem } from '../../types/wms.types';
 import { wmsWorkerApi, packingSlipApi } from '../../utility/api/wms';
 
+import { createPickListColumns } from './PickListColumns';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
 function workerDisplayName(w: WMSWorker | undefined): string | null {
@@ -1123,95 +1128,94 @@ function pickListWorkerLabel(pl: PickList, workerById: Map<string, WMSWorker>): 
   return '—';
 }
 
-function PickListRow({
-  pl,
-  workerById,
-  onPack,
-  onView,
-}: {
-  pl: PickList;
-  workerById: Map<string, WMSWorker>;
-  onPack: (id: string) => void;
-  onView: (id: string) => void;
-}) {
-  const canPack = ['pick_complete', 'completed', 'ready_for_dispatch'].includes(pl.status);
-  const totalQty = pl.progress?.total_qty ?? '—';
-  const priorityClass = pl.priority > 0 ? 'font-mono font-semibold text-foreground' : 'text-muted-foreground';
+function PickListsEmpty({ filtered, onClearFilter }: { filtered: boolean; onClearFilter: () => void }) {
   return (
-    <tr className="hover:bg-muted/30 transition-colors">
-      <td className="px-4 py-3 font-mono font-medium">{pl.pick_list_no}</td>
-      <td className="px-4 py-3 text-muted-foreground">{pl.invoice_reference ?? '—'}</td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-1.5">
-          <WMSStatusBadge status={pl.status} />
-          {pl.is_aging && (
-            <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600">Aged</span>
-          )}
+    <Card>
+      <CardContent className="p-0">
+        <div className="p-6">
+          <EmptyState icon={<PackageOpen className="h-12 w-12" />}
+            title="No pick lists found"
+            description={filtered ? 'No pick lists match the selected filters' : 'Generate one from a confirmed order in the Orders tab.'}
+            action={
+              filtered ? (
+                <Button variant="outline" onClick={onClearFilter}>
+                  Clear filters
+                </Button>
+              ) : undefined
+            }/>
         </div>
-      </td>
-      <td className="px-4 py-3 text-right">
-        <span className={priorityClass}>{pl.priority > 0 ? `P${pl.priority}` : '—'}</span>
-      </td>
-      <td className="px-4 py-3 text-right">{totalQty}</td>
-      <td className="px-4 py-3 text-muted-foreground text-xs">{pickListWorkerLabel(pl, workerById)}</td>
-      <td className="px-4 py-3 text-muted-foreground">{pl.created_at ? new Date(pl.created_at).toLocaleDateString() : '—'}</td>
-      <td className="px-4 py-3 text-right">
-        <div className="flex items-center justify-end gap-1.5">
-          {canPack && (
-            <Button size="sm" variant="outline" className="gap-1 h-7 px-2 text-xs" onClick={() => onPack(pl.id)}>
-              <PackageCheck className="h-3.5 w-3.5" />
-              Pack
-            </Button>
-          )}
-          <Button size="sm" variant="ghost" className="gap-1 h-7 px-2 text-xs" onClick={() => onView(pl.id)}>
-            <Eye className="h-3.5 w-3.5" />
-            View
-          </Button>
-        </div>
-      </td>
-    </tr>
+      </CardContent>
+    </Card>
   );
 }
 
+type ServerPagination = {
+  totalItems: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number, pageSize: number) => void;
+};
+
 function PickListsTable({
-  data,
-  workerById,
-  onPack,
-  onView,
+  isInitialLoading,
+  error,
+  pickLists,
+  columns,
+  serverPagination,
+  pageSize,
+  filtered,
+  onClearFilter,
 }: {
-  data: PaginatedPickLists | null;
-  workerById: Map<string, WMSWorker>;
-  onPack: (id: string) => void;
-  onView: (id: string) => void;
+  isInitialLoading: boolean;
+  error: string | null;
+  pickLists: PickList[];
+  columns: ColumnDef<PickList>[];
+  serverPagination?: ServerPagination;
+  pageSize: number;
+  filtered: boolean;
+  onClearFilter: () => void;
 }) {
+  const renderBody = () => {
+    if (isInitialLoading) {
+      return (
+        <Card>
+          <CardContent className="p-0">
+            <TableSkeleton columns={8} rows={8} showHeader={true} />
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (pickLists.length === 0) {
+      return <PickListsEmpty filtered={filtered} onClearFilter={onClearFilter} />;
+    }
+
+    return (
+      <Card>
+        <CardContent className="p-0">
+          <DataTable columns={columns}
+            data={pickLists}
+            config={{
+              showSerialNumber: false,
+              showPagination: true,
+              enableRowSelection: false,
+              enableColumnVisibility: true,
+              enableSorting: false,
+              enableFiltering: false,
+              initialPageSize: pageSize,
+              serverPagination,
+            }}
+            fixedHeader
+            maxHeight="auto"/>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/50">
-          <tr>
-            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Pick List #</th>
-            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Invoice Ref</th>
-            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-            <th className="text-right px-4 py-3 font-medium text-muted-foreground">Priority</th>
-            <th className="text-right px-4 py-3 font-medium text-muted-foreground">Qty</th>
-            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Worker</th>
-            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Created</th>
-            <th className="text-right px-4 py-3 font-medium text-muted-foreground">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {(!data || data.pick_lists.length === 0) && (
-            <tr>
-              <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                No pick lists found. Generate one from a confirmed order in the Orders tab.
-              </td>
-            </tr>
-          )}
-          {data?.pick_lists.map((pl) => (
-            <PickListRow key={pl.id} pl={pl} workerById={workerById} onPack={onPack} onView={onView} />
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-4">
+      {error && <div className="text-sm text-destructive">{error}</div>}
+      {renderBody()}
     </div>
   );
 }
@@ -1226,6 +1230,7 @@ export function PickListView({ warehouseId, refreshKey }: PickListViewProps) {
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [sortBy, setSortBy] = React.useState('created_at');
   const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(20);
   const [viewListId, setViewListId] = React.useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [packListId, setPackListId] = React.useState<string | null>(null);
@@ -1237,11 +1242,42 @@ export function PickListView({ warehouseId, refreshKey }: PickListViewProps) {
     warehouse_id: warehouseId,
     sort_by: sortBy,
     page,
-    page_size: 20,
+    page_size: pageSize,
   });
 
   // Refetch when the panel-level Refresh button is pressed (skip the initial mount).
   useRefreshOnKey(refreshKey, refetch);
+
+  const pickLists: PickList[] = data?.pick_lists ?? [];
+  const pagination = data?.pagination;
+  const isInitialLoading = loading && !data;
+
+  const serverPagination = React.useMemo(() => {
+    if (!pagination) return undefined;
+
+    return {
+      totalItems: pagination.total_items,
+      currentPage: pagination.page,
+      pageSize: pagination.page_size,
+      onPageChange: (nextPage: number, nextPageSize: number) => {
+        if (nextPageSize !== pagination.page_size) {
+          setPageSize(nextPageSize);
+          setPage(1);
+          return;
+        }
+        setPage(nextPage);
+      },
+    };
+  }, [pagination]);
+
+  const columns = createPickListColumns({
+    onPack: (pickList) => setPackListId(pickList.id),
+    onView: (pickList) => {
+      setViewListId(pickList.id);
+      setDialogOpen(true);
+    },
+    getWorkerLabel: (pickList) => pickListWorkerLabel(pickList, workerById),
+  });
 
   return (
     <div className="space-y-4">
@@ -1282,34 +1318,17 @@ export function PickListView({ warehouseId, refreshKey }: PickListViewProps) {
         </Select>
       </div>
 
-      {loading && <div className="text-sm text-muted-foreground animate-pulse">Loading pick lists...</div>}
-      {error && <div className="text-sm text-destructive">{error}</div>}
-
-      {!loading && (
-        <PickListsTable data={data}
-          workerById={workerById}
-          onPack={setPackListId}
-          onView={(id) => {
-            setViewListId(id);
-            setDialogOpen(true);
-          }}/>
-      )}
-
-      {data && data.pagination.total_pages > 1 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>
-            Page {data.pagination.page} of {data.pagination.total_pages}
-          </span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={!data.pagination.has_prev} onClick={() => setPage((p) => p - 1)}>
-              Previous
-            </Button>
-            <Button variant="outline" size="sm" disabled={!data.pagination.has_next} onClick={() => setPage((p) => p + 1)}>
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      <PickListsTable isInitialLoading={isInitialLoading}
+        error={error}
+        pickLists={pickLists}
+        columns={columns}
+        serverPagination={serverPagination}
+        pageSize={pageSize}
+        filtered={statusFilter !== 'all'}
+        onClearFilter={() => {
+          setStatusFilter('all');
+          setPage(1);
+        }}/>
 
       <PickListDetailDialog listId={viewListId} open={dialogOpen} onOpenChange={setDialogOpen} warehouseId={warehouseId} />
 
