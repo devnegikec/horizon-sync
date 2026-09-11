@@ -15,6 +15,7 @@ import type {
   PaginatedOutboundOrders,
   PaginatedPickLists,
   PaginatedPackingSlips,
+  PaginatedPutAwayLists,
   PaginatedReceivingSlips,
   ReceivingSlipActionResult,
   PickList,
@@ -357,7 +358,7 @@ export function usePutAwayLists({
   page_size?: number;
 }) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [data, setData] = React.useState<{ put_away_lists: PutAwayList[]; pagination: unknown } | null>(null);
+  const [data, setData] = React.useState<PaginatedPutAwayLists | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -379,7 +380,7 @@ export function usePutAwayLists({
     fetch();
   }, [fetch]);
 
-  return { data, loading, error, refetch: fetch };
+  return { data, statusCounts: data?.status_counts ?? null, loading, error, refetch: fetch };
 }
 
 export function usePutAwayList(listId: string | null) {

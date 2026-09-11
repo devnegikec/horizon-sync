@@ -97,12 +97,7 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
         <div>
           <h2 className="text-lg font-semibold">Advance Stock Notice</h2>
           <p className="text-sm text-muted-foreground">
-            Create and manage advance stock notice (ASN) orders to notify warehouses of incoming shipments.
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Confirming an ASN makes it eligible for receiving. To generate a receiving slip,
-            open <span className="font-medium">Inbound</span>, start a scan session against the
-            confirmed ASN, scan the arriving goods, and end the session.
+            Create and manage advance stock notice (ASN) orders.
           </p>
         </div>
         <div className="flex items-center gap-2">

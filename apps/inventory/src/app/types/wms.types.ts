@@ -268,12 +268,7 @@ export interface AsnReceivingSummary {
   line_items: AsnReconciliationLineItem[];
 }
 
-export type ReceivingSlipStatus =
-  | 'pending_review'
-  | 'pending_putaway'
-  | 'putaway_in_progress'
-  | 'putaway_complete'
-  | 'rejected';
+export type ReceivingSlipStatus = 'pending_review' | 'pending_putaway' | 'putaway_in_progress' | 'putaway_complete' | 'rejected';
 
 /** Individual unit inside a receiving slip group */
 export interface ReceivingSlipGroupItem {
@@ -344,7 +339,7 @@ export interface ReceivingSlip {
   groups?: ReceivingSlipGroup[];
   /** Legacy flat format */
   items?: ReceivingSlipItem[];
-  created_at: string | null;
+  created_at: string;
   updated_at: string | null;
 }
 
@@ -415,12 +410,7 @@ export interface InboundException {
   evidence: InboundExceptionEvidence[];
 }
 
-export type BulkDispositionAction =
-  | 'release_to_receiving'
-  | 'move_to_hold'
-  | 'move_to_quarantine'
-  | 'return_to_sender'
-  | 'dispose';
+export type BulkDispositionAction = 'release_to_receiving' | 'move_to_hold' | 'move_to_quarantine' | 'return_to_sender' | 'dispose';
 
 export interface PaginatedInboundExceptions {
   exceptions: InboundException[];
@@ -483,12 +473,26 @@ export interface PutAwayList {
   worker_name: string | null;
   items: PutAwayItem[];
   completed_at: string | null;
-  created_at: string | null;
+  created_at: string;
   updated_at: string | null;
 }
 
 export interface PutAwayListBatchResponse {
   put_away_lists: PutAwayList[];
+}
+
+export interface PutAwayStatusCounts {
+  total: number;
+  pending: number;
+  in_progress: number;
+  completed: number;
+  cancelled?: number;
+}
+
+export interface PaginatedPutAwayLists {
+  put_away_lists: PutAwayList[];
+  pagination: WMSPagination;
+  status_counts?: PutAwayStatusCounts;
 }
 
 export interface PickListBatchResponse {
@@ -616,12 +620,7 @@ export interface PaginatedPickLists {
 
 export type OutboundOrderType = 'asn' | 'sap';
 
-export type OutboundOrderStatus =
-  | 'draft'
-  | 'confirmed'
-  | 'pending_picking'
-  | 'completed'
-  | 'cancelled';
+export type OutboundOrderStatus = 'draft' | 'confirmed' | 'pending_picking' | 'completed' | 'cancelled';
 
 export type OutboundOrderItemStockStatus = 'in_stock' | 'out_of_stock';
 

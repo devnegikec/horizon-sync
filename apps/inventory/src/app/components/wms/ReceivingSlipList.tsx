@@ -1,9 +1,21 @@
 import * as React from 'react';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { PackageOpen, RefreshCw } from 'lucide-react';
+import { PackageOpen } from 'lucide-react';
 
-import { Button, Card, CardContent, ConfirmationDialog, EmptyState, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableSkeleton } from '@horizon-sync/ui/components';
+import {
+  Button,
+  Card,
+  CardContent,
+  ConfirmationDialog,
+  EmptyState,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  TableSkeleton,
+} from '@horizon-sync/ui/components';
 import { DataTable } from '@horizon-sync/ui/components/data-table';
 import { useToast } from '@horizon-sync/ui/hooks';
 
@@ -16,6 +28,8 @@ import { createReceivingSlipColumns, RejectSlipDialog, SlipDetailDialog } from '
 interface ReceivingSlipListProps {
   warehouseId?: string;
   statusFilter: string;
+  /** Increment to trigger a refetch (e.g. from the panel-level Refresh button). */
+  refreshKey?: number;
   onStatusFilterChange: (status: string) => void;
 }
 
@@ -47,12 +61,10 @@ function ReceivingSlipFilters({
   statusFilter,
   statusCounts,
   onStatusFilterChange,
-  onRefresh,
 }: {
   statusFilter: string;
   statusCounts: ReceivingSlipStatusCounts | null;
   onStatusFilterChange: (status: string) => void;
-  onRefresh: () => void;
 }) {
   return (
     <div className="flex items-center gap-3">
@@ -68,10 +80,6 @@ function ReceivingSlipFilters({
           ))}
         </SelectContent>
       </Select>
-      <Button variant="outline" size="sm" onClick={onRefresh} className="gap-2">
-        <RefreshCw className="h-3.5 w-3.5" />
-        Refresh
-      </Button>
     </div>
   );
 }
@@ -84,9 +92,7 @@ function ReceivingSlipsEmpty({ filtered, onClearFilter }: { filtered: boolean; o
           <EmptyState icon={<PackageOpen className="h-12 w-12" />}
             title="No receiving slips found"
             description={
-              filtered
-                ? 'No receiving slips match the selected status'
-                : 'Receiving slips will appear here once an inbound scan session is ended'
+              filtered ? 'No receiving slips match the selected status' : 'Receiving slips will appear here once an inbound scan session is ended'
             }
             action={
               filtered ? (
@@ -94,7 +100,7 @@ function ReceivingSlipsEmpty({ filtered, onClearFilter }: { filtered: boolean; o
                   Clear filter
                 </Button>
               ) : undefined
-            } />
+            }/>
         </div>
       </CardContent>
     </Card>
@@ -151,7 +157,7 @@ function ReceivingSlipsTable({
               serverPagination,
             }}
             fixedHeader
-            maxHeight="auto" />
+            maxHeight="auto"/>
         </CardContent>
       </Card>
     );
@@ -167,7 +173,7 @@ function ReceivingSlipsTable({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterChange }: ReceivingSlipListProps) {
+export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onStatusFilterChange }: ReceivingSlipListProps) {
   const { toast } = useToast();
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
@@ -180,7 +186,18 @@ export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterCha
   const [actionLoading, setActionLoading] = React.useState(false);
   const viewRequestIdRef = React.useRef(0);
 
-  const { data, statusCounts, loading, error, refetch, approveSlip, rejectSlip: submitReject, rejectItem, getSlip, generatePutAway } = useReceivingSlips({
+  const {
+    data,
+    statusCounts,
+    loading,
+    error,
+    refetch,
+    approveSlip,
+    rejectSlip: submitReject,
+    rejectItem,
+    getSlip,
+    generatePutAway,
+  } = useReceivingSlips({
     warehouse_id: warehouseId,
     status: statusFilter === 'all' ? undefined : statusFilter,
     page,
@@ -193,6 +210,14 @@ export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterCha
   React.useEffect(() => {
     setPage(1);
   }, [statusFilter]);
+
+  // Refetch when the panel-level Refresh button is pressed (skip the initial mount).
+  const lastRefreshKeyRef = React.useRef(refreshKey);
+  React.useEffect(() => {
+    if (lastRefreshKeyRef.current === refreshKey) return;
+    lastRefreshKeyRef.current = refreshKey;
+    refetch();
+  }, [refreshKey, refetch]);
 
   const serverPagination = React.useMemo(() => {
     if (!pagination) return undefined;
@@ -212,27 +237,30 @@ export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterCha
     };
   }, [pagination]);
 
-  const handleView = React.useCallback(async (slip: ReceivingSlip) => {
-    const requestId = ++viewRequestIdRef.current;
-    setDialogOpen(true);
-    setViewSlip(null);
-    setViewLoading(true);
-    try {
-      const detail = await getSlip(slip.id);
-      // Ignore responses from superseded requests so a slower one cannot
-      // overwrite the slip the user selected last.
-      if (requestId !== viewRequestIdRef.current) return;
-      setViewSlip(detail);
-    } catch (err) {
-      if (requestId !== viewRequestIdRef.current) return;
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to load slip', variant: 'destructive' });
-      setDialogOpen(false);
-    } finally {
-      if (requestId === viewRequestIdRef.current) {
-        setViewLoading(false);
+  const handleView = React.useCallback(
+    async (slip: ReceivingSlip) => {
+      const requestId = ++viewRequestIdRef.current;
+      setDialogOpen(true);
+      setViewSlip(null);
+      setViewLoading(true);
+      try {
+        const detail = await getSlip(slip.id);
+        // Ignore responses from superseded requests so a slower one cannot
+        // overwrite the slip the user selected last.
+        if (requestId !== viewRequestIdRef.current) return;
+        setViewSlip(detail);
+      } catch (err) {
+        if (requestId !== viewRequestIdRef.current) return;
+        toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to load slip', variant: 'destructive' });
+        setDialogOpen(false);
+      } finally {
+        if (requestId === viewRequestIdRef.current) {
+          setViewLoading(false);
+        }
       }
-    }
-  }, [getSlip, toast]);
+    },
+    [getSlip, toast],
+  );
 
   const handleConfirmApprove = React.useCallback(async () => {
     if (!confirmApproveSlip) return;
@@ -248,24 +276,27 @@ export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterCha
     }
   }, [approveSlip, confirmApproveSlip, toast]);
 
-  const handleConfirmReject = React.useCallback(async (reason: string) => {
-    if (!rejectTarget) return;
-    setActionLoading(true);
-    try {
-      await submitReject(rejectTarget.id, reason);
-      toast({ title: 'Slip rejected', description: rejectTarget.slip_number });
-      setRejectTarget(null);
-    } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to reject', variant: 'destructive' });
-    } finally {
-      setActionLoading(false);
-    }
-  }, [rejectTarget, submitReject, toast]);
+  const handleConfirmReject = React.useCallback(
+    async (reason: string) => {
+      if (!rejectTarget) return;
+      setActionLoading(true);
+      try {
+        await submitReject(rejectTarget.id, reason);
+        toast({ title: 'Slip rejected', description: rejectTarget.slip_number });
+        setRejectTarget(null);
+      } catch (err) {
+        toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to reject', variant: 'destructive' });
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [rejectTarget, submitReject, toast],
+  );
 
-  const handleRejectItem = React.useCallback(async (slipId: string, itemId: string, reason: string) => {
-    try {
+  // Errors propagate to the caller (SlipDetailDialog owns the success/error toast).
+  const handleRejectItem = React.useCallback(
+    async (slipId: string, itemId: string, reason: string) => {
       await rejectItem(slipId, itemId, reason);
-      toast({ title: 'Item rejected', description: 'Item marked as rejected.' });
       // Refresh the detail view, unless the user has since viewed another slip.
       if (viewSlip?.id === slipId) {
         const requestId = viewRequestIdRef.current;
@@ -274,10 +305,9 @@ export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterCha
           setViewSlip(detail);
         }
       }
-    } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to reject item', variant: 'destructive' });
-    }
-  }, [getSlip, rejectItem, toast, viewSlip]);
+    },
+    [getSlip, rejectItem, viewSlip],
+  );
 
   const columns = React.useMemo(
     () =>
@@ -295,10 +325,7 @@ export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterCha
 
   return (
     <div className="space-y-4">
-      <ReceivingSlipFilters statusFilter={statusFilter}
-        statusCounts={statusCounts}
-        onStatusFilterChange={onStatusFilterChange}
-        onRefresh={refetch} />
+      <ReceivingSlipFilters statusFilter={statusFilter} statusCounts={statusCounts} onStatusFilterChange={onStatusFilterChange} />
 
       <ReceivingSlipsTable isInitialLoading={isInitialLoading}
         error={error}
@@ -307,7 +334,7 @@ export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterCha
         serverPagination={serverPagination}
         pageSize={pageSize}
         filtered={statusFilter !== 'all'}
-        onClearFilter={() => onStatusFilterChange('all')} />
+        onClearFilter={() => onStatusFilterChange('all')}/>
 
       <SlipDetailDialog slip={viewSlip}
         loading={viewLoading}
@@ -318,25 +345,31 @@ export function ReceivingSlipList({ warehouseId, statusFilter, onStatusFilterCha
           if (viewSlip) setViewSlip(await getSlip(viewSlip.id));
           await refetch();
           toast({ title: 'Inbound exception created', description: 'Item is blocked from normal put-away.' });
-        }} />
+        }}/>
 
       <ConfirmationDialog open={!!confirmApproveSlip}
-        onOpenChange={(open) => { if (!open) setConfirmApproveSlip(null); }}
+        onOpenChange={(open) => {
+          if (!open) setConfirmApproveSlip(null);
+        }}
         title="Approve Receiving Slip"
         description={getApproveDescription(confirmApproveSlip)}
         confirmLabel="Approve"
         loading={actionLoading}
-        onConfirm={handleConfirmApprove} />
+        onConfirm={handleConfirmApprove}/>
 
       <RejectSlipDialog slip={rejectTarget}
         loading={actionLoading}
-        onOpenChange={(open) => { if (!open) setRejectTarget(null); }}
-        onConfirm={handleConfirmReject} />
+        onOpenChange={(open) => {
+          if (!open) setRejectTarget(null);
+        }}
+        onConfirm={handleConfirmReject}/>
 
       <GeneratePutAwayDialog slip={confirmPutAwaySlip}
         open={!!confirmPutAwaySlip}
-        onOpenChange={(open) => { if (!open) setConfirmPutAwaySlip(null); }}
-        onGenerate={generatePutAway} />
+        onOpenChange={(open) => {
+          if (!open) setConfirmPutAwaySlip(null);
+        }}
+        onGenerate={generatePutAway}/>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   type VisibilityState,
   type RowSelectionState,
   getCoreRowModel,
+  getExpandedRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -39,10 +40,17 @@ export interface UseDataTableProps<TData, TValue> {
   data: TData[];
   columns: ColumnDef<TData, TValue>[];
   config?: DataTableConfig;
+  /**
+   * Opt-in sub-rows: return the child rows of a row (or null/undefined when it
+   * has none). Enables row expansion and renders children indented underneath.
+   */
+  getSubRows?: (row: TData) => TData[] | undefined;
+  /** When sub-rows are enabled, start with every parent expanded. Default: false. */
+  defaultExpanded?: boolean;
 }
 
 // eslint-disable-next-line complexity
-export function useDataTable<TData, TValue>({ data, columns, config = {} }: UseDataTableProps<TData, TValue>) {
+export function useDataTable<TData, TValue>({ data, columns, config = {}, getSubRows, defaultExpanded = false }: UseDataTableProps<TData, TValue>) {
   const safeData = React.useMemo(() => data ?? [], [data]);
   const safeColumns = React.useMemo(() => columns ?? [], [columns]);
   const {
@@ -57,13 +65,14 @@ export function useDataTable<TData, TValue>({ data, columns, config = {} }: UseD
   } = config ?? {};
 
   const isServerPagination = !!serverPagination;
+  const subRowsEnabled = typeof getSubRows === 'function';
 
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
-  
+
   // For server pagination, use server state; for client pagination, use local state
   const [clientPagination, setClientPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -96,7 +105,7 @@ export function useDataTable<TData, TValue>({ data, columns, config = {} }: UseD
       id: 'serial',
       header: 'S.No.',
       cell: ({ row }) => {
-        const baseNumber = isServerPagination 
+        const baseNumber = isServerPagination
           ? (serverPagination.currentPage - 1) * serverPagination.pageSize
           : pagination.pageIndex * pagination.pageSize;
         const serialNumber = baseNumber + row.index + 1;
@@ -140,6 +149,15 @@ export function useDataTable<TData, TValue>({ data, columns, config = {} }: UseD
     data: safeData,
     columns: finalColumns,
     ...(config?.meta ? { meta: config.meta } : {}),
+    // Sub-rows are opt-in: only wire up expansion when a getSubRows is provided.
+    ...(subRowsEnabled
+      ? {
+          getSubRows,
+          getExpandedRowModel: getExpandedRowModel(),
+          enableExpanding: true,
+          initialState: { expanded: defaultExpanded ? true : {} },
+        }
+      : {}),
     state: {
       sorting: enableSorting ? sorting : undefined,
       columnFilters: enableFiltering ? columnFilters : undefined,
