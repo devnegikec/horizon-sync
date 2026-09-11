@@ -745,6 +745,7 @@ export interface PackingSlipItem {
 export interface PackingSlipGroupItem {
   serial_number: string;
   sku: string;
+  uom?: string | null;
   batch_number: string | null;
   manufacturing_date?: string | null;
   expiry_date?: string | null;

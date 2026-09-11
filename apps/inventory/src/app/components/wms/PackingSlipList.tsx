@@ -34,6 +34,7 @@ function packingItemToChildRow(item: PackingSlipGroupItem, productName: string, 
         manufacturingDate: item.manufacturing_date ?? null,
         expiryDate: item.expiry_date ?? null,
         quantity: item.quantity,
+        meta: { uom: item.uom ?? 'EA' },
     };
 }
 
@@ -47,7 +48,7 @@ function packingGroupToRow(group: PackingSlipGroup, index: number): QRDetailRow 
         batch: first?.batch_number ?? null,
         serialNumber: group.parent_qseal?.serial_number ?? null,
         quantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
-        meta: { bin: group.bin_location_id },
+        meta: { bin: group.bin_location_id, uom: first?.uom ?? 'EA' },
         children: items.map((item, itemIndex) => packingItemToChildRow(item, group.product_name, itemIndex)),
     };
 }
@@ -142,6 +143,12 @@ export function PackingSlipList({ warehouseId }: { warehouseId?: string }) {
                 setViewLoading(false);
             }
         }
+    };
+
+    const closeDetail = () => {
+        detailRequestId.current += 1;
+        setViewLoading(false);
+        setViewSlip(null);
     };
 
     const markLoading = async (id: string) => {
@@ -300,7 +307,7 @@ export function PackingSlipList({ warehouseId }: { warehouseId?: string }) {
             <QRDetailDialog
                 open={viewSlip !== null || viewLoading}
                 onOpenChange={(o) => {
-                    if (!o) setViewSlip(null);
+                    if (!o) closeDetail();
                 }}
                 title={viewSlip ? `Packing — ${viewSlip.packing_slip_no}` : 'Loading...'}
                 loading={viewLoading}
