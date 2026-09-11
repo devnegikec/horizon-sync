@@ -5,11 +5,12 @@ import type { ReceivingSlipGroup } from '../../../types/wms.types';
  * All rejected → `rejected`; some rejected → `mixed`; otherwise the first item's flag.
  */
 export function getGroupFlag(group: ReceivingSlipGroup): string {
-  const flags = group.items.map((item) => item.flag ?? 'ok');
+  const items = Array.isArray(group.items) ? group.items : [];
+  const flags = items.map((item) => item.flag ?? 'ok');
   const allRejected = flags.length > 0 && flags.every((flag) => flag === 'rejected');
   if (allRejected) return 'rejected';
   const anyRejected = flags.some((flag) => flag === 'rejected');
-  return anyRejected ? 'mixed' : (group.items[0]?.flag ?? 'ok');
+  return anyRejected ? 'mixed' : (items[0]?.flag ?? 'ok');
 }
 
 /**
@@ -17,7 +18,7 @@ export function getGroupFlag(group: ReceivingSlipGroup): string {
  * A single distinct code is returned as-is; multiple codes become `MIXED`.
  */
 export function getGroupCondition(group: ReceivingSlipGroup): string | null {
-  const codes = group.items
+  const codes = (Array.isArray(group.items) ? group.items : [])
     .map((item) => item.condition_code?.trim().toUpperCase() ?? null)
     .filter((code): code is string => Boolean(code));
   if (codes.length === 0) return null;

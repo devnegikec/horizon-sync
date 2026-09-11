@@ -9,7 +9,7 @@ import { Input } from '@horizon-sync/ui/components/ui/input';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { usePutAwayList } from '../../hooks/useWMS';
-import type { PutAwayItem, PutAwayList, WarehouseLocation } from '../../types/wms.types';
+import type { PutAwayGroup, PutAwayGroupItem, PutAwayItem, PutAwayList, WarehouseLocation } from '../../types/wms.types';
 import { layoutApi } from '../../utility/api/wms';
 
 import { QRDetailDialog, type QRDetailColumn, type QRDetailRow } from './QRDetailDialog';
@@ -264,8 +264,56 @@ function groupToRow(group: PutAwayLineGroup): QRDetailRow {
   };
 }
 
-/** One parent row per product (item_id) with each unit as a child row. */
-function listToRows(items: PutAwayItem[]): QRDetailRow[] {
+function groupedItemToPutAwayItem(group: PutAwayGroup, item: PutAwayGroupItem, index: number): PutAwayItem {
+  return {
+    id: item.id ?? `${group.parent_qseal?.id ?? group.sort_order}-${index}`,
+    item_id: item.item_id ?? group.parent_qseal?.id ?? group.product_name,
+    sku: item.sku,
+    item_name: item.item_name ?? group.product_name,
+    batch_number: item.batch_number,
+    serial_number: item.serial_number,
+    manufacturing_date: item.manufacturing_date ?? null,
+    expiry_date: item.expiry_date ?? null,
+    quantity: item.quantity,
+    bin_location_id: group.bin_location_id,
+    bin_location_code: group.bin_location_code,
+    suggested_bin_code: group.bin_location_code,
+    status: group.status === 'in_progress' ? 'pending' : group.status === 'cancelled' ? 'skipped' : group.status,
+    sort_order: group.sort_order,
+  };
+}
+
+function groupedToRow(group: PutAwayGroup, groupIndex: number): QRDetailRow {
+  const items = Array.isArray(group.items) ? group.items : [];
+  const first = items[0];
+  return {
+    id: group.parent_qseal?.id ?? `group-${groupIndex}`,
+    name: group.product_name,
+    sku: first?.sku ?? null,
+    batch: first?.batch_number ?? null,
+    serialNumber: group.parent_qseal?.serial_number ?? null,
+    quantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
+    meta: { status: group.status, bin: group.bin_location_code },
+    children: items.map((item, index) => {
+      const mappedItem = groupedItemToPutAwayItem(group, item, index);
+      const row = itemToChildRow(mappedItem, group.product_name);
+      return {
+        ...row,
+        meta: {
+          ...row.meta,
+          actionable: Boolean(item.id),
+        },
+      };
+    }),
+  };
+}
+
+/** Render the grouped response format, with a flat-item fallback for older APIs. */
+function listToRows(list: PutAwayList): QRDetailRow[] {
+  if (Array.isArray(list.groups) && list.groups.length > 0) {
+    return list.groups.map(groupedToRow);
+  }
+  const items = Array.isArray(list.items) ? list.items : [];
   return groupPutAwayItems(items).map(groupToRow);
 }
 
@@ -273,8 +321,8 @@ function listToRows(items: PutAwayItem[]): QRDetailRow[] {
 
 function BinCell({ row }: { row: QRDetailRow }) {
   const item = row.meta?.item as PutAwayItem | undefined;
-  if (!item) return null;
-  return <span className="font-mono text-[11px]">{item.suggested_bin_code ?? item.bin_location_code ?? EMPTY}</span>;
+  const bin = item?.suggested_bin_code ?? item?.bin_location_code ?? row.meta?.bin;
+  return <span className="font-mono text-[11px]">{typeof bin === 'string' && bin.length > 0 ? bin : EMPTY}</span>;
 }
 
 function StatusCell({ row }: { row: QRDetailRow }) {
@@ -295,7 +343,7 @@ function ActionsCell({
 }) {
   const item = row.meta?.item as PutAwayItem | undefined;
   // Parent (product) rows and already-finished units carry no actions.
-  if (!item || item.status === 'completed' || item.status === 'skipped') return null;
+  if (!item || row.meta?.actionable === false || item.status === 'completed' || item.status === 'skipped') return null;
 
   return (
     <div className="flex items-center justify-end gap-1">
@@ -434,7 +482,7 @@ export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetai
   const [completeTarget, setCompleteTarget] = React.useState<PutAwayItem | null>(null);
   const [skipTarget, setSkipTarget] = React.useState<PutAwayItem | null>(null);
 
-  const rows = React.useMemo(() => (list ? listToRows(list.items) : []), [list]);
+  const rows = React.useMemo(() => (list ? listToRows(list) : []), [list]);
 
   const columns = React.useMemo<QRDetailColumn[]>(
     () => [
@@ -467,7 +515,7 @@ export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetai
         columns={columns}
         emptyMessage="No items"
         subtitle={error ? <p className="text-sm text-destructive">{error}</p> : undefined}
-        summary={list ? <PutAwaySummary list={list} /> : undefined}/>
+        summary={list ? <PutAwaySummary list={list} /> : undefined} />
 
       {list && completeTarget && (
         <CompleteItemDialog open
@@ -476,7 +524,7 @@ export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetai
           }}
           item={completeTarget}
           warehouseId={list.warehouse_id}
-          onConfirm={completeItem}/>
+          onConfirm={completeItem} />
       )}
 
       {skipTarget && (
@@ -485,7 +533,7 @@ export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetai
             if (!next) setSkipTarget(null);
           }}
           item={skipTarget}
-          onConfirm={skipItem}/>
+          onConfirm={skipItem} />
       )}
     </>
   );

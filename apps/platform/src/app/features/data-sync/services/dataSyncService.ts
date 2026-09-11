@@ -13,6 +13,10 @@ export interface FeatureSummary {
   skipped?: number;
   already_existed?: boolean;
   error?: string;
+  put_away_count?: number;
+  put_away_list_nos?: string[];
+  put_away_list_no?: string;
+  put_away_status?: string;
 }
 
 export interface DataSyncResult {
@@ -30,14 +34,23 @@ export interface ReceiveAsnItemConfig {
   master_pack_size: number;
 }
 
+export type ReceiveAsnStep = 'qr_blocks' | 'asn' | 'receiving_slip' | 'put_away';
+
 export interface ReceiveAsnOptions {
   mode: 'items' | 'block_ids';
+  steps: ReceiveAsnStep[];
+  qr_image: boolean;
   items: ReceiveAsnItemConfig[];
   block_ids: string[];
   qr_type: string;
   asn_type: string;
   source_warehouse_id?: string;
   target_warehouse_id?: string;
+  put_away_worker_ids?: string[];
+}
+
+export interface WarehouseUserAssignment {
+  user_id: string;
 }
 
 async function parseError(res: Response, fallback: string): Promise<Error> {
@@ -47,6 +60,19 @@ async function parseError(res: Response, fallback: string): Promise<Error> {
 }
 
 export const dataSyncService = {
+  async listWarehouseUsers(token: string, warehouseId: string): Promise<WarehouseUserAssignment[]> {
+    const res = await fetch(`${environment.apiCoreUrl}/api/v1/warehouse-users?warehouse_id=${encodeURIComponent(warehouseId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      throw await parseError(res, `Failed to load warehouse workers (HTTP ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data)
+      ? data
+      : data?.items ?? data?.users ?? data?.warehouse_users ?? data?.assignments ?? data?.data ?? [];
+  },
+
   /** List the catalog of on-demand seedable data categories. */
   async listFeatures(token: string): Promise<SyncableFeature[]> {
     const res = await fetch(`${DATA_SYNC_URL}/features`, {

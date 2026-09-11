@@ -454,6 +454,35 @@ export interface PutAwayItem {
   sort_order: number;
 }
 
+export interface PutAwayGroupItem {
+  id?: string;
+  item_id?: string;
+  item_name?: string | null;
+  serial_number: string;
+  sku: string;
+  batch_number: string | null;
+  manufacturing_date?: string | null;
+  expiry_date?: string | null;
+  quantity: number;
+  box_count?: number;
+}
+
+export interface PutAwayGroup {
+  parent_qseal?: {
+    id: string;
+    serial_number: string;
+    name: string;
+    qseal_type: string;
+    capacity: number;
+  } | null;
+  product_name: string;
+  bin_location_id: string | null;
+  bin_location_code: string | null;
+  status: PutAwayStatus;
+  sort_order: number;
+  items: PutAwayGroupItem[];
+}
+
 export interface PutAwayList {
   id: string;
   organization_id: string;
@@ -471,7 +500,8 @@ export interface PutAwayList {
   warnings?: string[] | null;
   assigned_to: string | null;
   worker_name: string | null;
-  items: PutAwayItem[];
+  items?: PutAwayItem[];
+  groups?: PutAwayGroup[];
   completed_at: string | null;
   created_at: string;
   updated_at: string | null;
