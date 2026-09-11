@@ -306,7 +306,7 @@ function InboundManagement({
       <div className="border rounded-lg overflow-hidden">
         <div className="flex border-b">
           <SectionTab active={inboundSection === 'receiving'} icon={Warehouse} label="Receiving Slips" onClick={() => openReceiving('all')} />
-          <SectionTab active={inboundSection === 'putaway'} icon={PackageCheck} label="Put-Away" onClick={() => onInboundSectionChange('putaway')} />
+          <SectionTab active={inboundSection === 'putaway'} icon={PackageCheck} label="Put-Away" onClick={() => openPutAway('all')} />
           <SectionTab active={inboundSection === 'vehicle'} icon={Truck} label="Vehicle Arrivals" onClick={() => onInboundSectionChange('vehicle')} />
           <SectionTab active={inboundSection === 'exceptions'}
             icon={AlertTriangle}
