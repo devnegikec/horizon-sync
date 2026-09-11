@@ -22,6 +22,8 @@ interface InboundStatsProps {
   onSelectReceivingStatus: (status: string) => void;
   /** Called when a put-away status card is clicked, with the status to filter by ('all' clears the filter). */
   onSelectPutAwayStatus: (status: string) => void;
+  /** Increment to refetch the status counts (e.g. from the panel-level Refresh button). */
+  refreshKey?: number;
 }
 
 interface StatDef {
@@ -98,12 +100,7 @@ function StatCard({
   );
 }
 
-export function InboundStats({
-  warehouseId,
-  activeSection,
-  onSelectReceivingStatus,
-  onSelectPutAwayStatus,
-}: InboundStatsProps) {
+export function InboundStats({ warehouseId, activeSection, onSelectReceivingStatus, onSelectPutAwayStatus, refreshKey }: InboundStatsProps) {
   // Remember the last stats section so vehicle/exceptions keep showing the
   // previous stats rather than clearing.
   const [statsSection, setStatsSection] = React.useState<StatsSection>('receiving');
@@ -126,19 +123,27 @@ export function InboundStats({
     page_size: 1,
   });
 
+  const { refetch: refetchReceiving } = receiving;
+  const { refetch: refetchPutaway } = putaway;
+
+  // InboundStats owns its own count requests, so it must react to the parent's
+  // refresh key itself — skip the initial mount.
+  const lastRefreshKeyRef = React.useRef(refreshKey);
+  React.useEffect(() => {
+    if (lastRefreshKeyRef.current === refreshKey) return;
+    lastRefreshKeyRef.current = refreshKey;
+    refetchReceiving();
+    refetchPutaway();
+  }, [refreshKey, refetchReceiving, refetchPutaway]);
+
   const stats = STATS_BY_SECTION[statsSection];
-  const counts: ReceivingSlipStatusCounts | PutAwayStatusCounts | null =
-    statsSection === 'putaway' ? putaway.statusCounts : receiving.statusCounts;
+  const counts: ReceivingSlipStatusCounts | PutAwayStatusCounts | null = statsSection === 'putaway' ? putaway.statusCounts : receiving.statusCounts;
   const onSelect = statsSection === 'putaway' ? onSelectPutAwayStatus : onSelectReceivingStatus;
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat, i) => (
-        <StatCard key={stat.key}
-          stat={stat}
-          counts={counts as Record<string, number> | null}
-          colorIndex={i}
-          onSelect={onSelect} />
+        <StatCard key={stat.key} stat={stat} counts={counts as Record<string, number> | null} colorIndex={i} onSelect={onSelect} />
       ))}
     </div>
   );

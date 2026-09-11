@@ -300,6 +300,7 @@ function InboundManagement({
       )}
       <InboundStats warehouseId={selectedWarehouseId || undefined}
         activeSection={inboundSection}
+        refreshKey={refreshKey}
         onSelectReceivingStatus={openReceiving}
         onSelectPutAwayStatus={openPutAway}/>
       <div className="border rounded-lg overflow-hidden">
@@ -392,8 +393,7 @@ function ReceivingSlipSection({
   onStatusFilterChange: (status: string) => void;
 }) {
   return (
-    <ReceivingSlipList key={statusFilter}
-      warehouseId={warehouseId || undefined}
+    <ReceivingSlipList warehouseId={warehouseId || undefined}
       statusFilter={statusFilter}
       refreshKey={refreshKey}
       onStatusFilterChange={onStatusFilterChange}/>

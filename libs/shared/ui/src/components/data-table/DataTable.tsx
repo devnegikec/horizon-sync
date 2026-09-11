@@ -11,7 +11,8 @@ import { DataTablePagination } from './DataTablePagination';
 import { DataTableToolbar } from './DataTableToolbar';
 import { DataTableViewOptions } from './DataTableViewOptions';
 
-export interface DataTableProps<TData, TValue> {  columns: ColumnDef<TData, TValue>[];
+export interface DataTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[];
   data: TData[];
   config?: DataTableConfig;
   filterPlaceholder?: string;
@@ -39,17 +40,21 @@ export interface DataTableProps<TData, TValue> {  columns: ColumnDef<TData, TVal
   onTableReady?: (table: Table<TData>) => void;
 }
 
-/** Whether the top toolbar has anything to render. */
+/**
+ * Whether the top toolbar has anything to render. Defaults mirror
+ * `useDataTable` (filtering + column visibility are on unless disabled), so an
+ * omitted `config` does not accidentally hide the default controls.
+ */
 function hasToolbarContent(
   renderFilters: unknown,
   renderBulkActions: unknown,
   renderViewOptions: unknown,
-  enableFiltering: boolean | undefined,
-  enableColumnVisibility: boolean | undefined,
+  enableFiltering = true,
+  enableColumnVisibility = true,
 ): boolean {
   if (renderFilters || renderBulkActions || renderViewOptions) return true;
   if (enableFiltering) return true;
-  return Boolean(enableColumnVisibility && !renderViewOptions);
+  return enableColumnVisibility && !renderViewOptions;
 }
 
 /** Scroll-container props applied to the table body when `fixedHeader` is set. */
@@ -83,14 +88,15 @@ export function DataTable<TData, TValue>({
   });
 
   const subRowsEnabled = typeof getSubRows === 'function';
-  const showToolbar = hasToolbarContent(
-    renderFilters,
-    renderBulkActions,
-    renderViewOptions,
-    config?.enableFiltering,
-    config?.enableColumnVisibility,
-  );
+  const showToolbar = hasToolbarContent(renderFilters, renderBulkActions, renderViewOptions, config?.enableFiltering, config?.enableColumnVisibility);
   const scrollArea = scrollAreaProps(fixedHeader, maxHeight);
+
+  // The expand/collapse toggle and depth indentation belong to the first *data*
+  // cell, skipping the synthetic selection/serial columns the hook prepends.
+  const expandableColumnId = React.useMemo(() => {
+    if (!subRowsEnabled) return undefined;
+    return table.getVisibleLeafColumns().find((column) => column.id !== 'select' && column.id !== 'serial')?.id;
+  }, [subRowsEnabled, table]);
 
   const reportedTableRef = React.useRef<Table<TData> | null>(null);
 
@@ -110,7 +116,7 @@ export function DataTable<TData, TValue>({
           filterPlaceholder={filterPlaceholder}
           renderBulkActions={renderBulkActions}
           renderFilters={renderFilters}
-          renderViewOptions={renderViewOptions} />
+          renderViewOptions={renderViewOptions}/>
       )}
       <div className="rounded-md border overflow-hidden">
         <div {...scrollArea}>
@@ -119,12 +125,9 @@ export function DataTable<TData, TValue>({
             <DataTableBodyRows table={table}
               columnCount={columns.length}
               getRowClassName={getRowClassName}
-              subRowsEnabled={subRowsEnabled} />
-            {renderFooter ? (
-              <TableFooter className="border-t bg-transparent">
-                {renderFooter()}
-              </TableFooter>
-            ) : null}
+              subRowsEnabled={subRowsEnabled}
+              expandableColumnId={expandableColumnId}/>
+            {renderFooter ? <TableFooter className="border-t bg-transparent">{renderFooter()}</TableFooter> : null}
           </TableComponent>
         </div>
       </div>
@@ -154,7 +157,12 @@ function DataTableTopBar<TData>({
 }) {
   return (
     <div className="flex items-center justify-between">
-      <DataTableToolbar table={table} globalFilter={globalFilter} onGlobalFilterChange={onGlobalFilterChange} filterPlaceholder={filterPlaceholder} renderBulkActions={renderBulkActions} renderFilters={renderFilters} />
+      <DataTableToolbar table={table}
+        globalFilter={globalFilter}
+        onGlobalFilterChange={onGlobalFilterChange}
+        filterPlaceholder={filterPlaceholder}
+        renderBulkActions={renderBulkActions}
+        renderFilters={renderFilters}/>
       {config?.enableColumnVisibility && !renderViewOptions && <DataTableViewOptions table={table} />}
       {renderViewOptions && renderViewOptions(table)}
     </div>
@@ -167,9 +175,7 @@ function DataTableHeaderRow<TData>({ table, fixedHeader }: { table: Table<TData>
       {table.getHeaderGroups().map((headerGroup) => (
         <TableRow key={headerGroup.id}>
           {headerGroup.headers.map((header) => (
-            <TableHead key={header.id}>
-              {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-            </TableHead>
+            <TableHead key={header.id}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</TableHead>
           ))}
         </TableRow>
       ))}
@@ -182,11 +188,13 @@ function DataTableBodyRows<TData>({
   columnCount,
   getRowClassName,
   subRowsEnabled,
+  expandableColumnId,
 }: {
   table: Table<TData>;
   columnCount: number;
   getRowClassName?: (row: TData) => string | undefined;
   subRowsEnabled: boolean;
+  expandableColumnId?: string;
 }) {
   const rows = table.getRowModel().rows;
 
@@ -208,12 +216,10 @@ function DataTableBodyRows<TData>({
         <TableRow key={row.id}
           data-state={row.getIsSelected() && 'selected'}
           className={cn(getRowClassName ? getRowClassName(row.original) : undefined, subRowsEnabled && row.depth > 0 && 'bg-muted/30')}>
-          {row.getVisibleCells().map((cell, cellIndex) => (
+          {row.getVisibleCells().map((cell) => (
             <TableCell key={cell.id}>
-              {subRowsEnabled && cellIndex === 0 ? (
-                <DataTableExpandableCell row={row}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </DataTableExpandableCell>
+              {subRowsEnabled && cell.column.id === expandableColumnId ? (
+                <DataTableExpandableCell row={row}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</DataTableExpandableCell>
               ) : (
                 flexRender(cell.column.columnDef.cell, cell.getContext())
               )}

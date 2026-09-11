@@ -48,6 +48,22 @@ function groupToRow(group: ReceivingSlipGroup, index: number): QRDetailRow {
   };
 }
 
+/** Adapts a legacy flat item to the shape the item actions/exception dialog expect. */
+function legacyActionItem(item: ReceivingSlipItem): ReceivingSlipGroupItem {
+  return {
+    id: item.id,
+    name: item.parent_qseal?.name ?? null,
+    serial_number: item.parent_qseal?.serial_number ?? '',
+    sku: item.sku,
+    batch_number: item.batch_number,
+    quantity: item.quantity,
+    box_count: item.box_count,
+    flag: item.flag,
+    condition_code: item.condition_code ?? null,
+    notes: item.notes,
+  };
+}
+
 function legacyToRow(item: ReceivingSlipItem): QRDetailRow {
   return {
     id: item.id,
@@ -58,6 +74,7 @@ function legacyToRow(item: ReceivingSlipItem): QRDetailRow {
     meta: {
       flag: item.flag,
       conditionCode: item.condition_code ?? null,
+      item: legacyActionItem(item),
     },
   };
 }
@@ -102,11 +119,7 @@ function ActionsCell({
   if (!item) return null;
 
   if (item.flag === 'rejected') {
-    return (
-      <span className="text-xs font-medium text-destructive">
-        Rejected{item.rejection_reason ? ` — ${item.rejection_reason}` : ''}
-      </span>
-    );
+    return <span className="text-xs font-medium text-destructive">Rejected{item.rejection_reason ? ` — ${item.rejection_reason}` : ''}</span>;
   }
 
   return (
@@ -150,16 +163,8 @@ function SlipSummary({ slip, totalUnits }: { slip: ReceivingSlip; totalUnits: nu
 
       {(slip.asn_order_no || slip.vehicle_no) && (
         <div className="flex flex-wrap gap-2">
-          {slip.asn_order_no && (
-            <span className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">
-              ASN: {slip.asn_order_no}
-            </span>
-          )}
-          {slip.vehicle_no && (
-            <span className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">
-              Vehicle: {slip.vehicle_no}
-            </span>
-          )}
+          {slip.asn_order_no && <span className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">ASN: {slip.asn_order_no}</span>}
+          {slip.vehicle_no && <span className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">Vehicle: {slip.vehicle_no}</span>}
         </div>
       )}
 
@@ -177,9 +182,7 @@ function SlipSummary({ slip, totalUnits }: { slip: ReceivingSlip; totalUnits: nu
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground">
-        Created: {slip.created_at ? new Date(slip.created_at).toLocaleString() : '\u2014'}
-      </p>
+      <p className="text-xs text-muted-foreground">Created: {slip.created_at ? new Date(slip.created_at).toLocaleString() : '\u2014'}</p>
     </div>
   );
 }
@@ -199,17 +202,26 @@ export function SlipDetailDialog({ slip, loading, open, onOpenChange, onRejectIt
   const { toast } = useToast();
   const [exceptionItem, setExceptionItem] = React.useState<ReceivingSlipGroupItem | null>(null);
 
-  const handleReject = React.useCallback(async (itemId: string) => {
-    if (!slip || !onRejectItem) return;
-    const reason = prompt('Rejection reason:');
-    if (!reason?.trim()) return;
-    try {
-      await onRejectItem(slip.id, itemId, reason);
-      toast({ title: 'Item rejected' });
-    } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
-    }
-  }, [slip, onRejectItem, toast]);
+  // Drop any open exception when the selected slip changes, so an item from a
+  // previous slip is never submitted against the new slip's id.
+  React.useEffect(() => {
+    setExceptionItem(null);
+  }, [slip?.id]);
+
+  const handleReject = React.useCallback(
+    async (itemId: string) => {
+      if (!slip || !onRejectItem) return;
+      const reason = prompt('Rejection reason:');
+      if (!reason?.trim()) return;
+      try {
+        await onRejectItem(slip.id, itemId, reason);
+        toast({ title: 'Item rejected' });
+      } catch (err) {
+        toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
+      }
+    },
+    [slip, onRejectItem, toast],
+  );
 
   const rows = React.useMemo(() => (slip ? slipToRows(slip) : []), [slip]);
 
@@ -221,11 +233,7 @@ export function SlipDetailDialog({ slip, loading, open, onOpenChange, onRejectIt
         id: 'actions',
         header: 'Actions',
         align: 'right',
-        cell: (row) => (
-          <ActionsCell row={row}
-            onException={setExceptionItem}
-            onReject={onRejectItem ? handleReject : undefined} />
-        ),
+        cell: (row) => <ActionsCell row={row} onException={setExceptionItem} onReject={onRejectItem ? handleReject : undefined} />,
       },
     ],
     [handleReject, onRejectItem],
@@ -242,7 +250,7 @@ export function SlipDetailDialog({ slip, loading, open, onOpenChange, onRejectIt
         columns={columns}
         emptyMessage="No items"
         contentClassName="max-w-4xl max-h-[90vh] flex flex-col"
-        summary={slip ? <SlipSummary slip={slip} totalUnits={countUnits(slip)} /> : undefined} />
+        summary={slip ? <SlipSummary slip={slip} totalUnits={countUnits(slip)} /> : undefined}/>
 
       {slip && (
         <InboundExceptionDialog open={Boolean(exceptionItem)}
@@ -251,7 +259,7 @@ export function SlipDetailDialog({ slip, loading, open, onOpenChange, onRejectIt
           }}
           slipId={slip.id}
           item={exceptionItem}
-          onCompleted={() => onExceptionCreated?.()} />
+          onCompleted={() => onExceptionCreated?.()}/>
       )}
     </>
   );
