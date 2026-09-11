@@ -35,18 +35,19 @@ function itemToChildRow(item: ReceivingSlipGroupItem, productName: string): QRDe
 }
 
 function groupToRow(group: ReceivingSlipGroup, index: number): QRDetailRow {
+  const items = Array.isArray(group.items) ? group.items : [];
   return {
     id: group.parent_qseal?.id ?? `group-${index}`,
     name: group.product_name,
-    sku: group.items[0]?.sku ?? null,
-    batch: group.items[0]?.batch_number ?? null,
+    sku: items[0]?.sku ?? null,
+    batch: items[0]?.batch_number ?? null,
     serialNumber: group.parent_qseal?.serial_number ?? null,
-    quantity: group.items.length,
+    quantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
     meta: {
       flag: getGroupFlag(group),
       conditionCode: getGroupCondition(group),
     },
-    children: group.items.map((item) => itemToChildRow(item, group.product_name)),
+    children: items.map((item) => itemToChildRow(item, group.product_name)),
   };
 }
 
@@ -84,16 +85,19 @@ function legacyToRow(item: ReceivingSlipItem): QRDetailRow {
 
 /** Maps a slip's grouped (preferred) or legacy flat items into dialog rows. */
 function slipToRows(slip: ReceivingSlip): QRDetailRow[] {
-  if (slip.groups && slip.groups.length > 0) {
+  if (Array.isArray(slip.groups) && slip.groups.length > 0) {
     return slip.groups.map(groupToRow);
   }
-  return (slip.items ?? []).map(legacyToRow);
+  return (Array.isArray(slip.items) ? slip.items : []).map(legacyToRow);
 }
 
 /** Total picked/expected units across a slip's groups (or its flat total). */
 function countUnits(slip: ReceivingSlip): number {
-  if (slip.groups && slip.groups.length > 0) {
-    return slip.groups.reduce((sum, group) => sum + group.items.length, 0);
+  if (Array.isArray(slip.groups) && slip.groups.length > 0) {
+    return slip.groups.reduce(
+      (sum, group) => sum + (Array.isArray(group.items) ? group.items.reduce((groupSum, item) => groupSum + (item.quantity || 0), 0) : 0),
+      0,
+    );
   }
   return slip.total_items;
 }
@@ -252,7 +256,7 @@ export function SlipDetailDialog({ slip, loading, open, onOpenChange, onRejectIt
         rows={rows}
         columns={columns}
         emptyMessage="No items"
-        summary={slip ? <SlipSummary slip={slip} totalUnits={countUnits(slip)} /> : undefined}/>
+        summary={slip ? <SlipSummary slip={slip} totalUnits={countUnits(slip)} /> : undefined} />
 
       {slip && (
         <InboundExceptionDialog open={Boolean(exceptionItem)}
@@ -261,7 +265,7 @@ export function SlipDetailDialog({ slip, loading, open, onOpenChange, onRejectIt
           }}
           slipId={slip.id}
           item={exceptionItem}
-          onCompleted={() => onExceptionCreated?.()}/>
+          onCompleted={() => onExceptionCreated?.()} />
       )}
     </>
   );
