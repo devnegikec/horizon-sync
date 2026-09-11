@@ -1,15 +1,160 @@
 import * as React from 'react';
 
-import { Eye } from 'lucide-react';
+import { type ColumnDef } from '@tanstack/react-table';
+import { PackageOpen } from 'lucide-react';
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
-import { Button } from '@horizon-sync/ui/components/ui/button';
+import {
+  Button,
+  Card,
+  CardContent,
+  EmptyState,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  TableSkeleton,
+} from '@horizon-sync/ui/components';
+import { DataTable } from '@horizon-sync/ui/components/data-table';
 
 import { usePutAwayLists } from '../../hooks/useWMS';
-import type { PutAwayList } from '../../types/wms.types';
+import type { PutAwayList, PutAwayStatusCounts } from '../../types/wms.types';
 
+import { createPutAwayColumns } from './PutAwayColumns';
 import { PutAwayDetailDialog } from './PutAwayDetailDialog';
-import { WMSStatusBadge } from './WMSStatusBadge';
+
+// ─── Sub components ───────────────────────────────────────────────────────────
+
+type ServerPagination = {
+  totalItems: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number, pageSize: number) => void;
+};
+
+const STATUS_FILTERS: { value: string; label: string; countKey: keyof PutAwayStatusCounts }[] = [
+  { value: 'all', label: 'All Statuses', countKey: 'total' },
+  { value: 'pending', label: 'Pending', countKey: 'pending' },
+  { value: 'in_progress', label: 'In Progress', countKey: 'in_progress' },
+  { value: 'completed', label: 'Completed', countKey: 'completed' },
+  { value: 'cancelled', label: 'Cancelled', countKey: 'cancelled' },
+];
+
+function PutAwayFilters({
+  statusFilter,
+  statusCounts,
+  onStatusFilterChange,
+}: {
+  statusFilter: string;
+  statusCounts: PutAwayStatusCounts | null;
+  onStatusFilterChange: (status: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <Select value={statusFilter} onValueChange={onStatusFilterChange}>
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder="All Statuses" />
+        </SelectTrigger>
+        <SelectContent>
+          {STATUS_FILTERS.map((filter) => (
+            <SelectItem key={filter.value} value={filter.value}>
+              {filter.label} ({statusCounts?.[filter.countKey] ?? 0})
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function PutAwayEmpty({ filtered, onClearFilter }: { filtered: boolean; onClearFilter: () => void }) {
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="p-6">
+          <EmptyState icon={<PackageOpen className="h-12 w-12" />}
+            title="No put-away lists found"
+            description={
+              filtered
+                ? 'No put-away lists match the selected status'
+                : 'Put-away lists are generated automatically when a receiving slip is approved'
+            }
+            action={
+              filtered ? (
+                <Button variant="outline" onClick={onClearFilter}>
+                  Clear filter
+                </Button>
+              ) : undefined
+            }/>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PutAwayTable({
+  isInitialLoading,
+  error,
+  lists,
+  columns,
+  serverPagination,
+  pageSize,
+  filtered,
+  onClearFilter,
+}: {
+  isInitialLoading: boolean;
+  error: string | null;
+  lists: PutAwayList[];
+  columns: ColumnDef<PutAwayList>[];
+  serverPagination?: ServerPagination;
+  pageSize: number;
+  filtered: boolean;
+  onClearFilter: () => void;
+}) {
+  const renderBody = () => {
+    if (isInitialLoading) {
+      return (
+        <Card>
+          <CardContent className="p-0">
+            <TableSkeleton columns={8} rows={8} showHeader={true} />
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (lists.length === 0) {
+      return <PutAwayEmpty filtered={filtered} onClearFilter={onClearFilter} />;
+    }
+
+    return (
+      <Card>
+        <CardContent className="p-0">
+          <DataTable columns={columns}
+            data={lists}
+            config={{
+              showSerialNumber: true,
+              showPagination: true,
+              enableRowSelection: false,
+              enableColumnVisibility: true,
+              enableSorting: false,
+              enableFiltering: false,
+              initialPageSize: pageSize,
+              serverPagination,
+            }}
+            fixedHeader
+            maxHeight="auto"/>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {error && <div className="text-sm text-destructive">{error}</div>}
+      {renderBody()}
+    </div>
+  );
+}
 
 // ─── Main PutAwayView ─────────────────────────────────────────────────────────
 
@@ -27,6 +172,7 @@ export function PutAwayView({ warehouseId, statusFilter: statusFilterProp, refre
   const statusFilter = statusFilterProp ?? internalStatusFilter;
   const setStatusFilter = onStatusFilterChange ?? setInternalStatusFilter;
   const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(20);
   const [viewListId, setViewListId] = React.useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
 
@@ -35,11 +181,11 @@ export function PutAwayView({ warehouseId, statusFilter: statusFilterProp, refre
     setPage(1);
   }, [statusFilter]);
 
-  const { data, loading, error, refetch } = usePutAwayLists({
+  const { data, statusCounts, loading, error, refetch } = usePutAwayLists({
     warehouse_id: warehouseId,
     status: statusFilter === 'all' ? undefined : statusFilter,
     page,
-    page_size: 20,
+    page_size: pageSize,
   });
 
   // Refetch when the panel-level Refresh button is pressed (skip the initial mount).
@@ -50,96 +196,50 @@ export function PutAwayView({ warehouseId, statusFilter: statusFilterProp, refre
     refetch();
   }, [refreshKey, refetch]);
 
-  const lists: PutAwayList[] = (data?.put_away_lists as PutAwayList[] | undefined) ?? [];
-  const pagination = data?.pagination as
-    | { page: number; total_pages: number; has_prev: boolean; has_next: boolean }
-    | undefined;
+  const lists: PutAwayList[] = data?.put_away_lists ?? [];
+  const pagination = data?.pagination;
+
+  const serverPagination = React.useMemo(() => {
+    if (!pagination) return undefined;
+
+    return {
+      totalItems: pagination.total_items,
+      currentPage: pagination.page,
+      pageSize: pagination.page_size,
+      onPageChange: (nextPage: number, nextPageSize: number) => {
+        if (nextPageSize !== pagination.page_size) {
+          setPageSize(nextPageSize);
+          setPage(1);
+          return;
+        }
+        setPage(nextPage);
+      },
+    };
+  }, [pagination]);
+
+  const handleView = React.useCallback((list: PutAwayList) => {
+    setViewListId(list.id);
+    setDialogOpen(true);
+  }, []);
+
+  const columns = React.useMemo(() => createPutAwayColumns({ onView: handleView }), [handleView]);
+
+  const isInitialLoading = loading && !data;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <PutAwayFilters statusFilter={statusFilter} statusCounts={statusCounts} onStatusFilterChange={setStatusFilter} />
 
-      {loading && <div className="text-sm text-muted-foreground animate-pulse">Loading put-away lists...</div>}
-      {error && <div className="text-sm text-destructive">{error}</div>}
+      <PutAwayTable isInitialLoading={isInitialLoading}
+        error={error}
+        lists={lists}
+        columns={columns}
+        serverPagination={serverPagination}
+        pageSize={pageSize}
+        filtered={statusFilter !== 'all'}
+        onClearFilter={() => setStatusFilter('all')}/>
 
-      {!loading && (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">List #</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Receiving Slip</th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Items</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Worker</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Created</th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {lists.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    No put-away lists found. Generate one from an approved receiving slip.
-                  </td>
-                </tr>
-              )}
-              {lists.map((list) => (
-                <tr key={list.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-mono font-medium">{list.put_away_list_no}</td>
-                  <td className="px-4 py-3"><WMSStatusBadge status={list.status} /></td>
-                  <td className="px-4 py-3 font-mono text-xs">{list.receiving_slip_no ?? '—'}</td>
-                  <td className="px-4 py-3 text-right">{list.total_items}</td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">{list.worker_name ?? list.assigned_to ?? '—'}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {list.created_at ? new Date(list.created_at).toLocaleDateString() : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button size="sm"
-                      variant="ghost"
-                      className="gap-1 h-7 px-2 text-xs"
-                      onClick={() => { setViewListId(list.id); setDialogOpen(true); }}>
-                      <Eye className="h-3.5 w-3.5" />
-                      View
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {pagination && pagination.total_pages > 1 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>Page {pagination.page} of {pagination.total_pages}</span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={!pagination.has_prev} onClick={() => setPage((p) => p - 1)}>
-              Previous
-            </Button>
-            <Button variant="outline" size="sm" disabled={!pagination.has_next} onClick={() => setPage((p) => p + 1)}>
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
-
-      <PutAwayDetailDialog listId={viewListId}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen} />
+      <PutAwayDetailDialog listId={viewListId} open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>
   );
 }
