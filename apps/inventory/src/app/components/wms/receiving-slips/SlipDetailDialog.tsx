@@ -42,7 +42,7 @@ function groupToRow(group: ReceivingSlipGroup, index: number): QRDetailRow {
     sku: items[0]?.sku ?? null,
     batch: items[0]?.batch_number ?? null,
     serialNumber: group.parent_qseal?.serial_number ?? null,
-    quantity: items.length,
+    quantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
     meta: {
       flag: getGroupFlag(group),
       conditionCode: getGroupCondition(group),
@@ -94,7 +94,10 @@ function slipToRows(slip: ReceivingSlip): QRDetailRow[] {
 /** Total picked/expected units across a slip's groups (or its flat total). */
 function countUnits(slip: ReceivingSlip): number {
   if (Array.isArray(slip.groups) && slip.groups.length > 0) {
-    return slip.groups.reduce((sum, group) => sum + (Array.isArray(group.items) ? group.items.length : 0), 0);
+    return slip.groups.reduce(
+      (sum, group) => sum + (Array.isArray(group.items) ? group.items.reduce((groupSum, item) => groupSum + (item.quantity || 0), 0) : 0),
+      0,
+    );
   }
   return slip.total_items;
 }

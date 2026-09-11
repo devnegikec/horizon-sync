@@ -294,7 +294,17 @@ function groupedToRow(group: PutAwayGroup, groupIndex: number): QRDetailRow {
     serialNumber: group.parent_qseal?.serial_number ?? null,
     quantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
     meta: { status: group.status, bin: group.bin_location_code },
-    children: items.map((item, index) => itemToChildRow(groupedItemToPutAwayItem(group, item, index), group.product_name)),
+    children: items.map((item, index) => {
+      const mappedItem = groupedItemToPutAwayItem(group, item, index);
+      const row = itemToChildRow(mappedItem, group.product_name);
+      return {
+        ...row,
+        meta: {
+          ...row.meta,
+          actionable: Boolean(item.id),
+        },
+      };
+    }),
   };
 }
 
@@ -333,7 +343,7 @@ function ActionsCell({
 }) {
   const item = row.meta?.item as PutAwayItem | undefined;
   // Parent (product) rows and already-finished units carry no actions.
-  if (!item || item.status === 'completed' || item.status === 'skipped') return null;
+  if (!item || row.meta?.actionable === false || item.status === 'completed' || item.status === 'skipped') return null;
 
   return (
     <div className="flex items-center justify-end gap-1">
