@@ -10,16 +10,75 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@horizon-sync/ui/components';
-import { DetailDialog } from '@horizon-sync/ui/components/ui/detail-dialog';
 import { useToast } from '@horizon-sync/ui/hooks';
 import { useUserStore } from '@horizon-sync/store';
 
 import { packingSlipApi } from '../../utility/api/wms';
 import type {
+    PackingSlipGroup,
+    PackingSlipGroupItem,
     PackingSlip,
+    PackingSlipItem,
     PaginatedPackingSlips,
 } from '../../types/wms.types';
+import { QRDetailDialog, type QRDetailColumn, type QRDetailRow } from './QRDetailDialog';
 import { WMSStatusBadge } from './WMSStatusBadge';
+
+function packingItemToChildRow(item: PackingSlipGroupItem, productName: string, index: number): QRDetailRow {
+    return {
+        id: `${item.serial_number}-${index}`,
+        name: productName,
+        sku: item.sku,
+        batch: item.batch_number,
+        serialNumber: item.serial_number,
+        manufacturingDate: item.manufacturing_date ?? null,
+        expiryDate: item.expiry_date ?? null,
+        quantity: item.quantity,
+    };
+}
+
+function packingGroupToRow(group: PackingSlipGroup, index: number): QRDetailRow {
+    const items = Array.isArray(group.items) ? group.items : [];
+    const first = items[0];
+    return {
+        id: group.parent_qseal?.id ?? `packing-group-${index}`,
+        name: group.product_name,
+        sku: first?.sku ?? null,
+        batch: first?.batch_number ?? null,
+        serialNumber: group.parent_qseal?.serial_number ?? null,
+        quantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
+        meta: { bin: group.bin_location_id },
+        children: items.map((item, itemIndex) => packingItemToChildRow(item, group.product_name, itemIndex)),
+    };
+}
+
+function packingItemToRow(item: PackingSlipItem): QRDetailRow {
+    return {
+        id: item.id,
+        name: item.item_name ?? item.sku ?? item.item_id,
+        sku: item.sku ?? item.item_id,
+        batch: item.batch_no,
+        quantity: item.qty,
+        meta: { bin: item.bin_location_id, uom: item.uom },
+    };
+}
+
+function packingSlipToRows(slip: PackingSlip): QRDetailRow[] {
+    if (Array.isArray(slip.groups) && slip.groups.length > 0) {
+        return slip.groups.map(packingGroupToRow);
+    }
+    return (Array.isArray(slip.items) ? slip.items : []).map(packingItemToRow);
+}
+
+function packingSlipItemCount(slip: PackingSlip): number {
+    if (Array.isArray(slip.groups) && slip.groups.length > 0) {
+        return slip.groups.reduce(
+            (sum, group) => sum + (Array.isArray(group.items) ? group.items.reduce((groupSum, item) => groupSum + (item.quantity || 0), 0) : 0),
+            0,
+        );
+    }
+    return (Array.isArray(slip.items) ? slip.items : []).reduce((sum, item) => sum + (item.qty || 0), 0);
+}
 
 export function PackingSlipList({ warehouseId }: { warehouseId?: string }) {
     const accessToken = useUserStore((s) => s.accessToken);
@@ -238,68 +297,46 @@ export function PackingSlipList({ warehouseId }: { warehouseId?: string }) {
                 </>
             )}
 
-            <DetailDialog
-                open={viewSlip !== null}
+            <QRDetailDialog
+                open={viewSlip !== null || viewLoading}
                 onOpenChange={(o) => {
                     if (!o) setViewSlip(null);
                 }}
                 title={viewSlip ? `Packing — ${viewSlip.packing_slip_no}` : 'Loading...'}
-                size="lg"
                 loading={viewLoading}
                 loadingMessage="Loading packing slip..."
-            >
-                {viewSlip && (
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-3 gap-3 text-sm">
-                            <div className="rounded-lg border p-3">
-                                <p className="text-xs text-muted-foreground mb-1">Status</p>
-                                <WMSStatusBadge status={viewSlip.status} />
-                            </div>
-                            <div className="rounded-lg border p-3">
-                                <p className="text-xs text-muted-foreground mb-1">Orders</p>
-                                <p className="font-semibold">{viewSlip.order_ids.length}</p>
-                            </div>
-                            <div className="rounded-lg border p-3">
-                                <p className="text-xs text-muted-foreground mb-1">Items</p>
-                                <p className="font-semibold">{viewSlip.items.length}</p>
-                            </div>
+                rows={viewSlip ? packingSlipToRows(viewSlip) : []}
+                columns={[
+                    {
+                        id: 'bin',
+                        header: 'Bin',
+                        cell: (row) => <span className="font-mono text-[11px]">{typeof row.meta?.bin === 'string' ? row.meta.bin.slice(0, 8) : '—'}</span>,
+                    },
+                    {
+                        id: 'uom',
+                        header: 'UOM',
+                        align: 'right',
+                        cell: (row) => <span className="text-xs text-muted-foreground">{typeof row.meta?.uom === 'string' ? row.meta.uom : '—'}</span>,
+                    },
+                ] satisfies QRDetailColumn[]}
+                emptyMessage="No items"
+                summary={viewSlip ? (
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                        <div className="rounded-lg border p-3">
+                            <p className="mb-1 text-xs text-muted-foreground">Status</p>
+                            <WMSStatusBadge status={viewSlip.status} />
                         </div>
-
-                        <div className="border rounded-lg overflow-hidden">
-                            <table className="w-full text-sm">
-                                <thead className="bg-muted/30">
-                                    <tr>
-                                        <th className="text-left px-4 py-2 font-medium text-muted-foreground">SKU</th>
-                                        <th className="text-left px-4 py-2 font-medium text-muted-foreground">Batch</th>
-                                        <th className="text-left px-4 py-2 font-medium text-muted-foreground">Bin</th>
-                                        <th className="text-right px-4 py-2 font-medium text-muted-foreground">Qty</th>
-                                        <th className="text-right px-4 py-2 font-medium text-muted-foreground">UOM</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y">
-                                    {viewSlip.items.length === 0 && (
-                                        <tr>
-                                            <td colSpan={5} className="px-4 py-4 text-center text-muted-foreground text-xs">No items</td>
-                                        </tr>
-                                    )}
-                                    {viewSlip.items.map((item) => (
-                                        <tr key={item.id}>
-                                            <td className="px-4 py-2">
-                                                <span className="font-mono font-medium">{item.sku ?? item.item_id}</span>
-                                                {item.item_name && <span className="text-xs text-muted-foreground ml-2">{item.item_name}</span>}
-                                            </td>
-                                            <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{item.batch_no ?? '—'}</td>
-                                            <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{item.bin_location_id ? item.bin_location_id.slice(0, 8) : '—'}</td>
-                                            <td className="px-4 py-2 text-right">{item.qty}</td>
-                                            <td className="px-4 py-2 text-right text-muted-foreground">{item.uom}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <div className="rounded-lg border p-3">
+                            <p className="mb-1 text-xs text-muted-foreground">Orders</p>
+                            <p className="font-semibold">{viewSlip.order_ids.length}</p>
+                        </div>
+                        <div className="rounded-lg border p-3">
+                            <p className="mb-1 text-xs text-muted-foreground">Items</p>
+                            <p className="font-semibold">{packingSlipItemCount(viewSlip)}</p>
                         </div>
                     </div>
-                )}
-            </DetailDialog>
+                ) : undefined}
+            />
         </div>
     );
 }
