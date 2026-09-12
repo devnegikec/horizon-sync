@@ -742,6 +742,34 @@ export interface PackingSlipItem {
   sort_order: number;
 }
 
+export interface PackingSlipGroupItem {
+  serial_number: string;
+  sku: string;
+  uom?: string | null;
+  batch_number: string | null;
+  manufacturing_date?: string | null;
+  expiry_date?: string | null;
+  quantity: number;
+  box_count?: number;
+}
+
+export interface PackingSlipGroup {
+  parent_qseal?: {
+    id: string;
+    serial_number: string;
+    name: string;
+    qseal_type: string;
+    capacity: number;
+  } | null;
+  product_name: string;
+  order_id: string;
+  pick_list_id: string;
+  bin_location_id: string | null;
+  handling_unit_id: string | null;
+  sort_order: number;
+  items: PackingSlipGroupItem[];
+}
+
 export interface PackingSlip {
   id: string;
   organization_id: string;
@@ -752,7 +780,8 @@ export interface PackingSlip {
   created_at: string | null;
   updated_at: string | null;
   order_ids: string[];
-  items: PackingSlipItem[];
+  items?: PackingSlipItem[];
+  groups?: PackingSlipGroup[];
 }
 
 export interface PackingSlipListItem {
