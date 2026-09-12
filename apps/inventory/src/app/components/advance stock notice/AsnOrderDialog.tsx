@@ -24,6 +24,7 @@ import type { Warehouse } from '../../types/warehouse.types';
 import { WarehousesResponse } from '../../types/warehouse.types';
 import { formatDate } from '../../utility';
 import { asnOrderApi } from '../../utility/api/asn-orders';
+import { itemApi } from '../../utility/api/items';
 import { warehouseApi } from '../../utility/api/warehouses';
 import { parseAsnEntryCsv, ASN_ENTRY_SAMPLE_CSV } from '../../utility/asnEntryCsvParser';
 import { convertAsnOrderToPDFData } from '../../utils/pdf/asnOrderToPDF';
@@ -42,6 +43,8 @@ const EMPTY_LINE: AsnEntryLineRow = {
   item_code: '',
   sku: '',
   qty: 0,
+  items_per_master_pack: 0,
+  no_of_cases: 0,
   uom: 'pcs',
   sort_order: 1,
 };
@@ -106,6 +109,22 @@ function mapItemsToCreate(rows: AsnEntryLineRow[]): AsnOrderItemCreate[] {
       uom: r.uom || 'pcs',
       sort_order: i + 1,
     }));
+}
+
+function numericExtra(item: AsnOrder['items'][number], key: string): number | undefined {
+  const value = item.extra_data?.[key] ?? item[key as keyof typeof item];
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function getImportedMasterPackSize(item: {
+  items_per_master_pack?: number | null;
+  packaging_units?: Array<{ items_per_master_pack?: number | null }> | null;
+}): number {
+  const direct = Number(item.items_per_master_pack);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  const nested = item.packaging_units?.find((unit) => Number(unit.items_per_master_pack) > 0)?.items_per_master_pack;
+  return Math.max(1, Number(nested) || 1);
 }
 
 function buildUpdatePayload(formData: AsnOrderFormData, items: AsnOrderItemCreate[]): AsnOrderUpdate {
@@ -404,17 +423,39 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
     if (open && resolvedOrder) {
       setFormData(buildFormFromEntry(resolvedOrder));
       if (resolvedOrder.items && resolvedOrder.items.length > 0) {
-        setLineItems(
-          resolvedOrder.items.map((item, i) => ({
-            item_id: item.item_id,
-            item_name: item.item_name || '',
-            item_code: item.item_code || item.item_sku || '',
-            sku: item.sku || item.item_sku || '',
-            qty: typeof item.qty === 'object' ? item.qty.qty : Number(item.qty) || 0,
-            uom: item.uom || 'pcs',
-            sort_order: item.sort_order || i + 1,
-          })),
-        );
+        const initialRows = resolvedOrder.items.map((item, i) => ({
+          item_id: item.item_id,
+          item_name: item.item_name || '',
+          item_code: item.item_code || item.item_sku || '',
+          sku: item.sku || item.item_sku || '',
+          qty: typeof item.qty === 'object' ? item.qty.qty : Number(item.qty) || 0,
+          items_per_master_pack: numericExtra(item, 'items_per_master_pack'),
+          no_of_cases: numericExtra(item, 'no_of_cases') ?? 0,
+          uom: item.uom || 'pcs',
+          sort_order: item.sort_order || i + 1,
+        }));
+        setLineItems(initialRows);
+
+        let cancelled = false;
+        const hydrateMasterPacks = async () => {
+          const hydrated = await Promise.all(initialRows.map(async (row) => {
+            if (!accessToken || !row.item_id || row.items_per_master_pack) return row;
+            try {
+              const item = await itemApi.get(accessToken, row.item_id) as {
+                items_per_master_pack?: number | null;
+                packaging_units?: Array<{ items_per_master_pack?: number | null }> | null;
+              };
+              const masterPack = getImportedMasterPackSize(item);
+              const cases = row.no_of_cases > 0 ? row.no_of_cases : Math.max(1, Math.round(row.qty / masterPack));
+              return { ...row, items_per_master_pack: masterPack, no_of_cases: cases, qty: masterPack * cases };
+            } catch {
+              return row;
+            }
+          }));
+          if (!cancelled) setLineItems(hydrated);
+        };
+        void hydrateMasterPacks();
+        return () => { cancelled = true; };
       } else {
         setLineItems([{ ...EMPTY_LINE }]);
       }
@@ -498,9 +539,11 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
             // Require an exact SKU match; do not silently fall back to the
             // first search result (that would assign the wrong item).
             const match = data.items?.find(
-              (item: { sku?: string | null }) => item.sku?.toLowerCase() === lower,
+              (item: { sku?: string | null; items_per_master_pack?: number | null; packaging_units?: Array<{ items_per_master_pack?: number | null }> | null }) => item.sku?.toLowerCase() === lower,
             );
             if (match) {
+              const masterPack = getImportedMasterPackSize(match);
+              const noOfCases = Math.max(1, Number(row.no_of_cases) || 1);
               return {
                 ...row,
                 item_id: match.id,
@@ -508,6 +551,9 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                 item_code: match.item_code || '',
                 sku: match.sku || row.sku,
                 uom: match.uom || row.uom || 'pcs',
+                items_per_master_pack: masterPack,
+                no_of_cases: noOfCases,
+                qty: masterPack * noOfCases,
               };
             }
           } catch {
@@ -550,6 +596,23 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   const isReadOnly = viewMode || (isEdit && formData.status !== 'draft');
   const isLineItemEditingDisabled = isReadOnly;
   const availableStatuses = React.useMemo(() => getAvailableStatuses(isEdit, formData.status), [isEdit, formData.status]);
+  const fulfillmentItems = React.useMemo(
+    () => lineItems
+      .filter((row) => row.item_id)
+      .map((row, index) => {
+        const original = resolvedOrder?.items.find((item) => item.item_id === row.item_id);
+        return {
+          id: original?.id ?? `${row.item_id}-${index}`,
+          item_id: row.item_id,
+          item_name: row.item_name || original?.item_name,
+          item_code: row.item_code || original?.item_code,
+          sku: row.sku || original?.sku,
+          qty: Number(row.qty) || 0,
+          delivered_qty: original?.delivered_qty ?? 0,
+        };
+      }),
+    [lineItems, resolvedOrder?.items],
+  );
 
   // eslint-disable-next-line complexity
   const handleSubmit = async (e: React.FormEvent) => {
@@ -699,7 +762,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                   sampleFileName="asn-order-sample.csv"
                   previewColumns={[
                     { key: 'sku', label: 'SKU' },
-                    { key: 'qty', label: 'Qty' },
+                    { key: 'no_of_cases', label: 'Number of Cases' },
                     { key: 'uom', label: 'UOM' },
                   ]} />
                 {(lineItems.length > 1 || (lineItems.length === 1 && lineItems[0].item_id)) && (
@@ -728,7 +791,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                 warehouseIdTo={formData.warehouse_id_to}
                 renderFooter={() => (
                   <tr>
-                    <td colSpan={2} className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Total Quantity:</td>
+                    <td colSpan={4} className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Total Quantity:</td>
                     <td className="px-4 py-3 text-right text-sm font-semibold">{grandTotal}</td>
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3"></td>
@@ -737,7 +800,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
             )}
           </div>
 
-          {isEdit && resolvedOrder?.items && <FulfillmentStatusTable items={resolvedOrder.items} />}
+          {isEdit && <FulfillmentStatusTable items={fulfillmentItems} />}
 
           {viewMode && resolvedOrder && <VehicleDetails asnOrder={resolvedOrder} />}
         </form>

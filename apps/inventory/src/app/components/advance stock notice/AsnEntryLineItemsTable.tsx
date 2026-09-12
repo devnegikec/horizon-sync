@@ -9,6 +9,7 @@ import { Button, EditableDataTable } from '@horizon-sync/ui/components';
 
 import { environment } from '../../../environments/environment';
 import { getCurrencySymbol } from '../../types/currency.types';
+import { itemApi } from '../../utility/api/items';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 
 /** Minimal item shape returned by the /items/picker endpoint */
@@ -19,6 +20,8 @@ interface PickerItem {
   uom: string | null;
   qty: number;
   sku?: string | null;
+  items_per_master_pack?: number | null;
+  packaging_units?: Array<{ items_per_master_pack?: number | null; is_base_unit?: boolean }> | null;
 }
 
 interface PickerResponse {
@@ -29,6 +32,7 @@ interface TableMeta {
   updateData?: (rowIndex: number, columnId: string, value: unknown) => void;
   deleteRow?: (rowIndex: number) => void;
   getItemData?: (itemId: string) => PickerItem | undefined;
+  fetchItemData?: (itemId: string) => Promise<PickerItem | null>;
   searchItems?: (query: string) => Promise<PickerItem[]>;
   itemLabelFormatter?: (item: PickerItem) => string;
   disabled?: boolean;
@@ -45,6 +49,8 @@ export interface AsnEntryLineRow {
   item_code?: string;
   sku?: string;
   qty: number;
+  items_per_master_pack?: number;
+  no_of_cases: number;
   uom: string;
   sort_order: number;
 }
@@ -62,15 +68,30 @@ interface AsnEntryLineItemsTableProps {
 const defaultLabelFormatter = (item: PickerItem) => item.item_name ?? '';
 const defaultSearchItems = async () => [] as PickerItem[];
 
-function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId: string) {
+function getMasterPackSize(item: PickerItem | null | undefined): number | null {
+  const direct = Number(item?.items_per_master_pack);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  const configuredUnit = item?.packaging_units?.find((unit) => Number(unit.items_per_master_pack) > 0);
+  const nested = Number(configuredUnit?.items_per_master_pack);
+  return Number.isFinite(nested) && nested > 0 ? nested : null;
+}
+
+async function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId: string) {
   meta.updateData?.(rowIndex, 'item_id', newItemId);
-  const selectedItem = meta.getItemData?.(newItemId);
+  let selectedItem = meta.getItemData?.(newItemId);
+  if (meta.fetchItemData) {
+    selectedItem = (await meta.fetchItemData(newItemId)) ?? selectedItem;
+  }
   if (selectedItem) {
+    const masterPack = getMasterPackSize(selectedItem) ?? 1;
     setTimeout(() => {
       meta.updateData?.(rowIndex, 'uom', selectedItem.uom || 'pcs');
       meta.updateData?.(rowIndex, 'item_name', selectedItem.item_name || '');
       meta.updateData?.(rowIndex, 'item_code', selectedItem.item_code || '');
       meta.updateData?.(rowIndex, 'sku', selectedItem.sku || '');
+      meta.updateData?.(rowIndex, 'items_per_master_pack', masterPack);
+      meta.updateData?.(rowIndex, 'no_of_cases', 1);
+      meta.updateData?.(rowIndex, 'qty', masterPack);
     }, 0);
   }
 }
@@ -86,56 +107,31 @@ function DisabledItemCell({ itemId, meta }: { itemId: string; meta: TableMeta })
 }
 
 function QtyCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow, unknown>) {
-  const meta = table.options.meta as TableMeta | undefined;
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [draft, setDraft] = React.useState('');
-
   const intValue = Math.trunc(Number(getValue()) || 0);
+  return <div className="px-2 py-1 text-right text-muted-foreground">{String(intValue)}</div>;
+}
 
-  React.useEffect(() => {
-    setDraft(String(intValue));
-  }, [intValue]);
+function MasterPackCellComponent({ getValue }: CellContext<AsnEntryLineRow, unknown>) {
+  return <div className="px-2 py-1 text-right text-muted-foreground">{String(Math.trunc(Number(getValue()) || 0))}</div>;
+}
 
-  const commit = () => {
-    setIsEditing(false);
-    const parsed = parseInt(draft, 10);
-    meta?.updateData?.(row.index, 'qty', Number.isNaN(parsed) ? 0 : parsed);
-  };
-
-  if (meta?.disabled || !meta?.warehouseIdFrom) {
-    return <div className="px-2 py-1 text-right">{String(intValue)}</div>;
-  }
-
-  if (isEditing) {
-    return (
-      <input
-        type="number"
-        value={parseInt(draft, 10) > 0 ? draft : ''}
-        autoFocus
-        step="1"
-        min="0"
-        className="h-8 w-24 rounded-md border bg-background px-2 py-1 text-center text-sm"
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.currentTarget.blur();
-          } else if (e.key === 'Escape') {
-            setDraft(String(intValue));
-            setIsEditing(false);
-          }
-        }}
-      />
-    );
-  }
-
+function CasesCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow, unknown>) {
+  const meta = table.options.meta as TableMeta | undefined;
+  if (meta?.disabled) return <div className="px-2 py-1 text-right">{String(getValue() ?? 0)}</div>;
   return (
-    <div
-      onClick={() => setIsEditing(true)}
-      className="cursor-pointer hover:bg-muted/50 rounded px-2 py-1 min-h-[32px] flex items-center justify-end text-right"
-    >
-      {String(intValue)}
-    </div>
+    <input
+      type="number"
+      min="1"
+      step="1"
+      value={Number(getValue()) > 0 ? String(getValue()) : ''}
+      className="h-8 w-20 rounded-md border bg-background px-2 py-1 text-center text-sm"
+      onChange={(event) => {
+        const noOfCases = Math.max(1, parseInt(event.target.value, 10) || 1);
+        const masterPack = Math.max(1, Number(row.original.items_per_master_pack) || 1);
+        meta?.updateData?.(row.index, 'no_of_cases', noOfCases);
+        meta?.updateData?.(row.index, 'qty', masterPack * noOfCases);
+      }}
+    />
   );
 }
 
@@ -224,6 +220,7 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
           item_name: row.item_name,
           qty: row.qty || 0.0,
           uom: row.uom || null,
+          items_per_master_pack: row.items_per_master_pack ?? null,
         });
         seeded = true;
       }
@@ -243,6 +240,13 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
     return data.items;
   }, [accessToken, warehouseIdFrom]);
 
+  const fetchItemData = React.useCallback(async (itemId: string): Promise<PickerItem | null> => {
+    if (!accessToken) return null;
+    const item = await itemApi.get(accessToken, itemId) as PickerItem;
+    itemsCacheRef.current.set(item.id, item);
+    return item;
+  }, [accessToken]);
+
   const itemLabelFormatter = React.useCallback(
     (item: PickerItem) => {
       const code = (item.sku || item.item_code)?.trim();
@@ -260,8 +264,10 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
   const handleDataChange = React.useCallback(
     (newData: AsnEntryLineRow[]) => {
       const updated = newData.map((item) => {
-        const qty = Number(item.qty) || 0;
-        return { ...item, qty };
+        const masterPack = Math.max(1, Number(item.items_per_master_pack) || 1);
+        const noOfCases = Math.max(1, Number(item.no_of_cases) || 1);
+        const qty = masterPack * noOfCases;
+        return { ...item, items_per_master_pack: masterPack, no_of_cases: noOfCases, qty };
       });
       onItemsChange(updated);
     },
@@ -278,6 +284,18 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
             {row.original.sku || row.original.item_code || '—'}
           </div>
         ),
+      },
+      {
+        accessorKey: 'items_per_master_pack',
+        header: 'Items / Master Pack',
+        cell: MasterPackCellComponent,
+        size: 130,
+      },
+      {
+        accessorKey: 'no_of_cases',
+        header: 'Cases',
+        cell: CasesCellComponent,
+        size: 90,
       },
       {
         accessorKey: 'qty',
@@ -308,23 +326,23 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
   );
 
   const newRowTemplate: AsnEntryLineRow = React.useMemo(
-    () => ({ item_id: '', qty: 0, uom: '-', sort_order: items.length + 1, sku: '' }),
+    () => ({ item_id: '', qty: 0, items_per_master_pack: 0, no_of_cases: 0, uom: '-', sort_order: items.length + 1, sku: '' }),
     [items.length]
   );
 
   /* Disable "Add Item" until all existing rows have valid item_id and qty > 0 */
   const allRowsComplete = React.useMemo(() => {
     if (items.length === 0) return true;
-    return items.every((row) => !!row.item_id && row.qty > 0);
+    return items.every((row) => !!row.item_id && Number(row.items_per_master_pack) > 0 && row.no_of_cases > 0 && row.qty > 0);
   }, [items]);
 
   const tableConfig = React.useMemo(
     () => ({
       showPagination: false,
       enableColumnVisibility: false,
-      meta: { getItemData, searchItems, itemLabelFormatter, disabled, warehouseIdFrom },
+      meta: { getItemData, fetchItemData, searchItems, itemLabelFormatter, disabled, warehouseIdFrom },
     }),
-    [getItemData, searchItems, itemLabelFormatter, disabled, warehouseIdFrom]
+    [getItemData, fetchItemData, searchItems, itemLabelFormatter, disabled, warehouseIdFrom]
   );
 
   return (

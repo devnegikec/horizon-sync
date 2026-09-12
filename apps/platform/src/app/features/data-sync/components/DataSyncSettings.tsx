@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { AlertCircle, Check, Database, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { AlertCircle, Check, Database, FileUp, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
 import { Badge, Button, Checkbox, Input, Label, Popover, PopoverContent, PopoverTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
@@ -33,8 +33,50 @@ interface FeatureRowProps {
 interface ReceiveAsnRow {
   item_id: string;
   batch: string;
-  quantity: string;
   master_pack_size: string;
+  no_of_cases: string;
+  quantity: string;
+}
+
+interface ReceiveAsnCsvRow {
+  item_id?: string;
+  sku?: string;
+  item_code?: string;
+  batch?: string;
+  no_of_cases: string;
+}
+
+function parseReceiveAsnCsv(text: string): ReceiveAsnCsvRow[] {
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) throw new Error('CSV must include a header and at least one item row.');
+
+  const headers = lines[0].split(',').map((header) => header.trim().toLowerCase());
+  const indexOf = (...names: string[]) => names.map((name) => headers.indexOf(name)).find((index) => index >= 0) ?? -1;
+  const itemIdIndex = indexOf('item_id', 'item id');
+  const skuIndex = indexOf('sku');
+  const itemCodeIndex = indexOf('item_code', 'item code');
+  const batchIndex = indexOf('batch');
+  const casesIndex = indexOf('no_of_cases', 'number of cases', 'number_of_cases', 'cases');
+
+  if (itemIdIndex < 0 && skuIndex < 0 && itemCodeIndex < 0) {
+    throw new Error('CSV must include item_id, SKU, or item_code.');
+  }
+  if (casesIndex < 0) throw new Error('CSV must include a number of cases column.');
+
+  return lines.slice(1).map((line, rowIndex) => {
+    const columns = line.split(',').map((value) => value.trim());
+    const noOfCases = columns[casesIndex] ?? '';
+    if (!/^\d+$/.test(noOfCases) || Number(noOfCases) < 1) {
+      throw new Error(`Invalid number of cases on CSV row ${rowIndex + 2}.`);
+    }
+    return {
+      item_id: itemIdIndex >= 0 ? columns[itemIdIndex] : undefined,
+      sku: skuIndex >= 0 ? columns[skuIndex] : undefined,
+      item_code: itemCodeIndex >= 0 ? columns[itemCodeIndex] : undefined,
+      batch: batchIndex >= 0 ? columns[batchIndex] : undefined,
+      no_of_cases: noOfCases,
+    };
+  });
 }
 
 const INBOUND_STEPS: Array<{ key: ReceiveAsnStep; title: string; description: string }> = [
@@ -135,6 +177,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   const [workerNames, setWorkerNames] = React.useState<Record<string, string>>({});
   const [workersLoading, setWorkersLoading] = React.useState(false);
   const [workersError, setWorkersError] = React.useState<string | null>(null);
+  const receiveAsnCsvInputRef = React.useRef<HTMLInputElement>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -260,30 +303,110 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
     setSelected(Object.fromEntries(features.map((feature) => [feature.key, false])));
   };
 
-  const updateReceiveAsnItem = (idx: number, field: keyof ReceiveAsnRow, value: string) => {
+  const updateReceiveAsnItem = (
+    idx: number,
+    field: keyof ReceiveAsnRow,
+    value: string
+  ) => {
     setReceiveAsnItems((prev) =>
       prev.map((r, i) => {
         if (i !== idx) return r;
+
+
+        const item = items.find((it) => it.id === value);
+
+        const pack = item?.items_per_master_pack;
+
+        const batch =
+          `Batch-Sep-` +
+          (item?.sku || item?.item_name || item?.id.slice(0, 8));
+
+        // Determine effective values first
+        const masterPackSize =
+          pack && pack > 0
+            ? String(pack)
+            : r.master_pack_size;
+
+        const numOfCases =
+          parseInt(r.no_of_cases, 10) > 0
+            ? r.no_of_cases
+            : '5';
+
+        // Then calculate quantity
+        const masterPack = parseInt(masterPackSize, 10);
+        const cases = parseInt(numOfCases, 10);
+
+        const quantity =
+          !isNaN(masterPack) && !isNaN(cases)
+            ? String(masterPack * cases)
+            : '0';
         if (field === 'item_id') {
-          // Auto-populate Items per Master Pack from the selected item's base
-          // packaging unit (same attribute Generate QR Block uses). If the
-          // item has no master-pack size, leave any user-entered value as-is.
-          const item = items.find((it) => it.id === value);
-          const pack = item?.items_per_master_pack;
           return {
             ...r,
             item_id: value,
-            master_pack_size:
-              pack && pack > 0 ? String(pack) : r.master_pack_size,
+            batch,
+            master_pack_size: masterPackSize,
+            no_of_cases: numOfCases,
+            quantity,
           };
         }
-        return { ...r, [field]: value };
-      }),
+        if (field === 'no_of_cases') {
+          return {
+            ...r,
+            [field]: value, quantity: !isNaN(masterPack) && !isNaN(parseInt(value, 10)) ? String(masterPack * parseInt(value, 10)) : '0',
+          };
+        }
+        return {
+          ...r,
+          [field]: value,
+        };
+      })
     );
   };
 
   const addReceiveAsnItem = () => {
-    setReceiveAsnItems((prev) => [...prev, { item_id: '', batch: '', quantity: '10', master_pack_size: '' }]);
+    setReceiveAsnItems((prev) => [...prev, { item_id: '', batch: '', master_pack_size: '', quantity: '', no_of_cases: '1' }]);
+  };
+
+  const importReceiveAsnItems = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const importedRows = parseReceiveAsnCsv(String(reader.result ?? ''));
+        const rows = importedRows.map((csvRow, index) => {
+          const identifier = (csvRow.item_id || csvRow.sku || csvRow.item_code || '').toLowerCase();
+          const item = items.find((candidate) => [candidate.id, candidate.sku, candidate.item_code]
+            .filter(Boolean)
+            .some((value) => value?.toLowerCase() === identifier));
+          if (!item) {
+            throw new Error(`Item not found for CSV row ${index + 2}: ${csvRow.item_id || csvRow.sku || csvRow.item_code}`);
+          }
+
+          const masterPackSize = Math.max(1, item.items_per_master_pack ?? 1);
+          const noOfCases = Math.max(1, Number(csvRow.no_of_cases));
+          return {
+            item_id: item.id,
+            batch: csvRow.batch || `Batch-Sep-${item.sku || item.item_name || item.id.slice(0, 8)}`,
+            master_pack_size: String(masterPackSize),
+            no_of_cases: String(noOfCases),
+            quantity: String(masterPackSize * noOfCases),
+          };
+        });
+        setReceiveAsnItems(rows);
+        toast({ title: 'ASN items imported', description: `${rows.length} item${rows.length === 1 ? '' : 's'} loaded from ${file.name}.` });
+      } catch (err) {
+        toast({
+          title: 'ASN CSV import failed',
+          description: err instanceof Error ? err.message : 'Could not import ASN items.',
+          variant: 'destructive',
+        });
+      }
+    };
+    reader.readAsText(file);
   };
 
   const removeReceiveAsnItem = (idx: number) => {
@@ -325,7 +448,8 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
               .map((r) => ({
                 item_id: r.item_id,
                 batch: r.batch,
-                quantity: Math.max(1, parseInt(r.quantity, 10) || 10),
+                quantity: Math.max(1, parseInt(r.quantity, 10) || 1),
+                no_of_cases: Math.max(1, parseInt(r.no_of_cases, 10) || 1),
                 master_pack_size: r.master_pack_size
                   ? Math.max(1, parseInt(r.master_pack_size, 10) || 1)
                   : 0,
@@ -546,10 +670,6 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                                     <Input value={row.batch} onChange={(e) => updateReceiveAsnItem(idx, 'batch', e.target.value)} disabled={!canEdit || syncing} />
                                   </div>
                                   <div className="space-y-1.5">
-                                    <Label className="text-xs">Qty</Label>
-                                    <Input type="number" min={1} value={row.quantity} onChange={(e) => updateReceiveAsnItem(idx, 'quantity', e.target.value)} disabled={!canEdit || syncing} />
-                                  </div>
-                                  <div className="space-y-1.5">
                                     <Label className="text-xs">Items / Master Pack</Label>
                                     <Input
                                       type="number"
@@ -560,15 +680,42 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                                       disabled={!canEdit || syncing}
                                     />
                                   </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs">number of case</Label>
+                                    <Input value={row.no_of_cases} min={1} onChange={(e) => updateReceiveAsnItem(idx, 'no_of_cases', e.target.value)} disabled={!canEdit || syncing} />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs">Qty</Label>
+                                    <Input value={row.quantity} min={1} onChange={(e) => updateReceiveAsnItem(idx, 'quantity', e.target.value)} disabled={!canEdit || syncing} />
+                                  </div>
                                   <Button variant="ghost" size="sm" onClick={() => removeReceiveAsnItem(idx)} disabled={!canEdit || syncing} className="h-9 px-2">
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
                               ))}
-                              <Button variant="outline" size="sm" onClick={addReceiveAsnItem} disabled={!canEdit || syncing} className="gap-1">
-                                <Plus className="h-3.5 w-3.5" />
-                                Add item
-                              </Button>
+                              <div className="flex flex-wrap gap-2">
+                                <Button variant="outline" size="sm" onClick={addReceiveAsnItem} disabled={!canEdit || syncing} className="gap-1">
+                                  <Plus className="h-3.5 w-3.5" />
+                                  Add item
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => receiveAsnCsvInputRef.current?.click()}
+                                  disabled={!canEdit || syncing || items.length === 0}
+                                  className="gap-1"
+                                >
+                                  <FileUp className="h-3.5 w-3.5" />
+                                  Import CSV
+                                </Button>
+                                <Input
+                                  ref={receiveAsnCsvInputRef}
+                                  type="file"
+                                  accept=".csv,text/csv"
+                                  onChange={importReceiveAsnItems}
+                                  className="hidden"
+                                />
+                              </div>
                             </div>
                           ) : (
                             <div className="space-y-2">
@@ -596,9 +743,9 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="purchase">Purchase</SelectItem>
                                   <SelectItem value="stock_receipt">Stock Receipt</SelectItem>
                                   <SelectItem value="internal_transfer">Internal Transfer</SelectItem>
+                                  <SelectItem value="purchase">Purchase</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
