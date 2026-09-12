@@ -34,6 +34,8 @@ export interface AsnOrderLineItem {
     created_at: string;
     updated_at: string;
     extra_data?: Record<string, unknown>;
+    items_per_master_pack?: number | null;
+    no_of_cases?: number | null;
 }
 
 export interface WarehouseDetails {

@@ -575,6 +575,32 @@ export interface PickSerialDetail {
   expiry_date?: string | null;
 }
 
+export interface PickListGroupItem {
+  serial_number: string | null;
+  sku: string;
+  batch_number: string | null;
+  manufacturing_date?: string | null;
+  expiry_date?: string | null;
+  quantity: number;
+  box_count?: number;
+}
+
+export interface PickListGroup {
+  parent_qseal: {
+    id: string;
+    serial_number: string;
+    name: string;
+    qseal_type: string;
+    capacity: number;
+  } | null;
+  product_name: string;
+  bin_location_id: string | null;
+  bin_location_path?: string | null;
+  handling_unit_id?: string | null;
+  sort_order: number;
+  items: PickListGroupItem[];
+}
+
 export interface PickListItem {
   id: string;
   item_id: string;
@@ -621,6 +647,7 @@ export interface PickList {
   age_minutes?: number;
   is_aging?: boolean;
   items: PickListItem[];
+  groups?: PickListGroup[];
   progress: PickListProgress | null;
 }
 

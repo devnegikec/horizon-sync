@@ -17,7 +17,7 @@ import { useToast } from '@horizon-sync/ui/hooks';
 import { useUserStore } from '@horizon-sync/store';
 
 import { usePickList, usePickLists, useErpSyncQueue, usePickSettings } from '../../hooks/useWMS';
-import type { PickList, PickListItem, PickSerialDetail, WMSWorker, ErpSyncMessage, PackingSlipListItem } from '../../types/wms.types';
+import type { PickList, PickListGroup, PickListItem, PickSerialDetail, WMSWorker, ErpSyncMessage, PackingSlipListItem } from '../../types/wms.types';
 import { wmsWorkerApi, packingSlipApi, scanIdempotencyKey } from '../../utility/api/wms';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
@@ -137,6 +137,8 @@ function useWorkers(enabled: boolean, warehouseId?: string): WMSWorker[] {
 interface PickLineGroup {
   itemId: string;
   rows: PickListItem[];
+  parentQseal?: PickListGroup['parent_qseal'];
+  productName?: string;
 }
 
 function groupPickItems(items: PickListItem[]): PickLineGroup[] {
@@ -147,6 +149,38 @@ function groupPickItems(items: PickListItem[]): PickLineGroup[] {
     groups.set(it.item_id, g);
   }
   return Array.from(groups.values());
+}
+
+function groupedPickItems(groups: PickListGroup[]): PickLineGroup[] {
+  return groups.map((group, groupIndex) => ({
+    itemId: `group-${groupIndex}`,
+    parentQseal: group.parent_qseal,
+    productName: group.product_name,
+    rows: (Array.isArray(group.items) ? group.items : []).map((item, itemIndex) => ({
+      id: '',
+      item_id: `${groupIndex}-${item.sku}`,
+      item_name: group.product_name,
+      sku: item.sku,
+      warehouse_id: '',
+      qty: item.quantity || 0,
+      picked_qty: 0,
+      uom: '',
+      per_case_qty: group.parent_qseal?.capacity ?? null,
+      case_qty: group.parent_qseal ? 1 : null,
+      loose_qty: item.quantity || 0,
+      batch_no: item.batch_number,
+      bin_location_id: group.bin_location_id,
+      bin_location_path: group.bin_location_path,
+      handling_unit_id: group.handling_unit_id ?? null,
+      sort_order: itemIndex,
+      serials: item.serial_number ? [{
+        serial_number: item.serial_number,
+        sku: item.sku,
+        manufacturing_date: item.manufacturing_date ?? null,
+        expiry_date: item.expiry_date ?? null,
+      }] : [],
+    })),
+  }));
 }
 
 function PickLineRow({ group }: { group: PickLineGroup }) {
@@ -195,8 +229,13 @@ function PickLineRow({ group }: { group: PickLineGroup }) {
               : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             }
             <span className="font-mono font-medium">{first.sku ?? first.item_id}</span>
-            {first.item_name && (
-              <span className="text-xs text-muted-foreground ml-2">{first.item_name}</span>
+            {(group.productName || first.item_name) && (
+              <span className="text-xs text-muted-foreground ml-2">{group.productName || first.item_name}</span>
+            )}
+            {group.parentQseal && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-mono">
+                {group.parentQseal.serial_number} ({group.parentQseal.capacity})
+              </span>
             )}
             {hu && (
               <span className="ml-2 inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-mono text-blue-600">
@@ -448,13 +487,20 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
     : null;
   const assignedEmployeeId = assignedWorker?.employee_id ?? null;
   const assignedWorkerQr = workerQrValue(assignedWorker);
+  const displayGroups = React.useMemo(
+    () => pickList?.groups && pickList.groups.length > 0
+      ? groupedPickItems(pickList.groups)
+      : groupPickItems(pickList?.items ?? []),
+    [pickList?.groups, pickList?.items],
+  );
+  const displayItems = React.useMemo(() => displayGroups.flatMap((group) => group.rows), [displayGroups]);
 
   const openLines = React.useMemo(
     () =>
-      (pickList?.items ?? []).filter(
+      (pickList?.groups && pickList.groups.length > 0 ? [] : pickList?.items ?? []).filter(
         (i) => (i.qty - (i.picked_qty ?? 0)) > 0,
       ),
-    [pickList],
+    [pickList?.groups, pickList?.items],
   );
   const effectiveHuItemId = huItemId || openLines[0]?.id || '';
 
@@ -729,7 +775,7 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
             {/* Items table */}
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Line Items ({new Set(pickList.items.map((i) => i.item_id)).size} SKUs · {progress?.total_qty ?? pickList.items.length} units)
+                Line Items ({displayGroups.length} groups · {progress?.total_qty ?? displayItems.reduce((sum, item) => sum + item.qty, 0)} units)
               </div>
               <table className="w-full text-sm">
                 <thead className="bg-muted/30">
@@ -746,12 +792,12 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {pickList.items.length === 0 && (
+                  {displayGroups.length === 0 && (
                     <tr>
                       <td colSpan={9} className="px-4 py-4 text-center text-muted-foreground text-xs">No items</td>
                     </tr>
                   )}
-                  {groupPickItems(pickList.items).map((group) => (
+                  {displayGroups.map((group) => (
                     <PickLineRow key={group.itemId} group={group} />
                   ))}
                 </tbody>
