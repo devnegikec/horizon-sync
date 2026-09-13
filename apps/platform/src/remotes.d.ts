@@ -35,6 +35,11 @@ declare module 'inventory/QSealPage' {
   export default Component;
 }
 
+declare module 'inventory/WMSActivationPage' {
+  const Component: React.ComponentType;
+  export default Component;
+}
+
 declare module 'inventory/WMSPage' {
   const Component: React.ComponentType;
   export default Component;

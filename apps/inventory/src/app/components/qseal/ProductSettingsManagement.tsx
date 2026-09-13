@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Settings, Plus, RefreshCw, Pencil, Trash2, X, Check, KeyRound, Globe, Coins } from 'lucide-react';
+import { Settings, Plus, RefreshCw, Pencil, Trash2, X, Check, KeyRound, Globe, Coins, Zap } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/compo
 import { useQRProductSettings } from '../../hooks/useQRProductSettings';
 import type { SettingType, QRProductSetting } from '../../types/qr-product-settings.types';
 
+import { ActivationManagement } from './ActivationManagement';
 import { BrandManagement } from './BrandManagement';
 import { LandingPageTab } from './LandingPageTab';
 import { QRCreditSummary } from './QRCreditSummary';
@@ -343,6 +344,10 @@ export function ProductSettingsManagement() {
             <Coins className="h-3.5 w-3.5 mr-1.5" />
             QR Credit
           </TabsTrigger>
+          <TabsTrigger value="wms-activation">
+            <Zap className="h-3.5 w-3.5 mr-1.5" />
+            WMS Activation
+          </TabsTrigger>
         </TabsList>
         {SETTING_TABS.map((tab) => (
           <TabsContent key={tab.key} value={tab.key}>
@@ -357,6 +362,9 @@ export function ProductSettingsManagement() {
         </TabsContent>
         <TabsContent value="qr-credit">
           <QRCreditSummary />
+        </TabsContent>
+        <TabsContent value="wms-activation">
+          <ActivationManagement />
         </TabsContent>
       </Tabs>
     </div>

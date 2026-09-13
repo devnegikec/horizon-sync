@@ -7,6 +7,12 @@ export interface QRCreditBalance {
   updated_at: string | null;
 }
 
+export interface QRCreditAddRequest {
+  amount: number;
+  reason: string;
+  reference_id: string;
+}
+
 export interface QRCreditLedgerItem {
   id: string;
   organization_id: string;
