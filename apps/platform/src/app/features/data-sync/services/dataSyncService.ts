@@ -31,6 +31,7 @@ export interface ReceiveAsnItemConfig {
   sku?: string;
   batch: string;
   quantity: number;
+  no_of_cases?: number;
   master_pack_size: number;
 }
 

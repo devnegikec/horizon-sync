@@ -23,6 +23,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { useToast } from '@horizon-sync/ui/hooks';
 
+import { usePickList, usePickLists, useErpSyncQueue, usePickSettings } from '../../hooks/useWMS';
+import type { PickList, PickListGroup, PickListItem, PickSerialDetail, WMSWorker, ErpSyncMessage, PackingSlipListItem } from '../../types/wms.types';
+import { wmsWorkerApi, packingSlipApi, scanIdempotencyKey } from '../../utility/api/wms';
 import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
 import { usePickList, usePickLists, usePickSettings } from '../../hooks/useWMS';
 import type { PickList, PickListItem, PickSerialDetail, PickListProgress, WMSWorker, PackingSlipListItem } from '../../types/wms.types';
@@ -131,6 +134,8 @@ function useWorkers(enabled: boolean, warehouseId?: string): WMSWorker[] {
 interface PickLineGroup {
   itemId: string;
   rows: PickListItem[];
+  parentQseal?: PickListGroup['parent_qseal'];
+  productName?: string;
 }
 
 function groupPickItems(items: PickListItem[]): PickLineGroup[] {
@@ -143,6 +148,36 @@ function groupPickItems(items: PickListItem[]): PickLineGroup[] {
   return Array.from(groups.values());
 }
 
+function groupedPickItems(groups: PickListGroup[]): PickLineGroup[] {
+  return groups.map((group, groupIndex) => ({
+    itemId: `group-${groupIndex}`,
+    parentQseal: group.parent_qseal,
+    productName: group.product_name,
+    rows: (Array.isArray(group.items) ? group.items : []).map((item, itemIndex) => ({
+      id: '',
+      item_id: `${groupIndex}-${item.sku}`,
+      item_name: group.product_name,
+      sku: item.sku,
+      warehouse_id: '',
+      qty: item.quantity || 0,
+      picked_qty: itemIndex === 0 ? group.picked_qty ?? 0 : 0,
+      uom: '',
+      per_case_qty: group.parent_qseal?.capacity ?? null,
+      case_qty: group.parent_qseal ? 1 : null,
+      loose_qty: item.quantity || 0,
+      batch_no: item.batch_number,
+      bin_location_id: group.bin_location_id,
+      bin_location_path: group.bin_location_path,
+      handling_unit_id: group.handling_unit_id ?? null,
+      sort_order: itemIndex,
+      serials: item.serial_number ? [{
+        serial_number: item.serial_number,
+        sku: item.sku,
+        manufacturing_date: item.manufacturing_date ?? null,
+        expiry_date: item.expiry_date ?? null,
+      }] : [],
+    })),
+  }));
 /** First non-null value from a list, or null. */
 function firstValue<T>(values: (T | null | undefined)[]): T | null {
   return values.find((v) => v != null) ?? null;
@@ -227,6 +262,14 @@ function PickLineRow({ group }: { group: PickLineGroup }) {
           <span className="inline-flex items-center gap-1">
             <ExpandChevron expanded={expanded} />
             <span className="font-mono font-medium">{first.sku ?? first.item_id}</span>
+            {(group.productName || first.item_name) && (
+              <span className="text-xs text-muted-foreground ml-2">{group.productName || first.item_name}</span>
+            )}
+            {group.parentQseal && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-mono">
+                {group.parentQseal.serial_number} ({group.parentQseal.capacity})
+              </span>
+            )}
             {first.item_name && <span className="text-xs text-muted-foreground ml-2">{first.item_name}</span>}
             {hu && (
               <span className="ml-2 inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-mono text-blue-600">
@@ -862,6 +905,28 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
   const [assignOpen, setAssignOpen] = React.useState(false);
   const [qrOpen, setQrOpen] = React.useState(false);
   const [confirmAction, setConfirmAction] = React.useState<'complete' | 'cancel' | null>(null);
+  const [binDialogOpen, setBinDialogOpen] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const assignedWorker = pickList?.assigned_to ? workerById.get(pickList.assigned_to) : undefined;
+  const assignedWorkerName = pickList?.assigned_to
+    ? workerDisplayName(assignedWorker) ?? pickList.assigned_to
+    : null;
+  const assignedEmployeeId = assignedWorker?.employee_id ?? null;
+  const assignedWorkerQr = workerQrValue(assignedWorker);
+  const displayGroups = React.useMemo(
+    () => pickList?.groups && pickList.groups.length > 0
+      ? groupedPickItems(pickList.groups)
+      : groupPickItems(pickList?.items ?? []),
+    [pickList?.groups, pickList?.items],
+  );
+  const displayItems = React.useMemo(() => displayGroups.flatMap((group) => group.rows), [displayGroups]);
+
+  const openLines = React.useMemo(
+    () => (pickList?.items ?? []).filter((i) => (i.qty - (i.picked_qty ?? 0)) > 0),
+    [pickList?.items],
+  );
+  const effectiveHuItemId = huItemId || openLines[0]?.id || '';
 
   const openLines = React.useMemo(() => (pickList?.items ?? []).filter((i) => i.qty - (i.picked_qty ?? 0) > 0), [pickList]);
   const effectiveHuItemId = effectiveHuLineId(huItemId, openLines);
@@ -960,6 +1025,146 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
         size="xl"
         loading={loading}
         loadingMessage="Loading pick list details..."
+        footer={footer}
+      >
+        {error && <div className="text-sm text-destructive py-4">{error}</div>}
+
+        {!loading && !error && pickList && (
+          <div className="flex flex-col gap-4">
+            {/* Summary row */}
+            <div className="grid grid-cols-4 gap-3 text-sm">
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground mb-1">Status</p>
+                <WMSStatusBadge status={pickList.status} />
+                {pickList.accepted_at && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Accepted {new Date(pickList.accepted_at).toLocaleTimeString()}
+                  </p>
+                )}
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground mb-1">Progress</p>
+                <p className="font-semibold text-lg">{progress ? `${progress.completion_percentage}%` : '—'}</p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground mb-1">Invoice Ref</p>
+                <p className="font-medium font-mono text-sm">{pickList.invoice_reference ?? '—'}</p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground mb-1">Worker</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm">{assignedWorkerName ?? '—'}</p>
+                    {assignedEmployeeId && (
+                      <p className="text-xs text-muted-foreground font-mono mt-0.5">{assignedEmployeeId}</p>
+                    )}
+                  </div>
+                  {assignedWorkerQr && (
+                    <button
+                      type="button"
+                      onClick={() => setQrOpen(true)}
+                      className="shrink-0 rounded-md hover:ring-2 hover:ring-blue-400 transition"
+                      title="View worker QR code"
+                    >
+                      <WorkerQrCode value={assignedWorkerQr} size={44} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            {progress && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>{progress.picked_qty} of {progress.total_qty} items picked</span>
+                  <span>{progress.completion_percentage}%</span>
+                </div>
+                <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                    style={{ width: `${progress.completion_percentage}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Qty: {progress.picked_qty} / {progress.total_qty}</span>
+                  <span>Remaining: {progress.remaining_qty}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Handling unit association (gated on pick.enable_handling_unit + accepted task) */}
+            {canAssignHu && enableHandlingUnit && openLines.length > 0 && (
+              <div className="border rounded-lg p-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Handling unit</p>
+                <div className="flex gap-2">
+                  <Select value={effectiveHuItemId} onValueChange={setHuItemId}>
+                    <SelectTrigger className="w-[260px] shrink-0">
+                      <SelectValue placeholder="Select line" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {openLines.map((line) => {
+                        const remaining = (line.qty ?? 0) - (line.picked_qty ?? 0);
+                        const label = `${line.sku ?? line.item_id} — ${remaining} remaining`;
+                        return (
+                          <SelectItem key={line.id} value={line.id}>
+                            {label}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={huInput}
+                    onChange={(e) => setHuInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAssignHu()}
+                    placeholder="Handling unit ID (trolley/carton/pallet)..."
+                    className="font-mono text-sm"
+                  />
+                  <Button onClick={handleAssignHu} variant="outline" className="gap-2 shrink-0">
+                    Assign HU
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Items table */}
+            <div className="border rounded-lg overflow-hidden">
+              <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Line Items ({displayGroups.length} groups · {progress?.total_qty ?? displayItems.reduce((sum, item) => sum + item.qty, 0)} units)
+              </div>
+              <table className="w-full text-sm">
+                <thead className="bg-muted/30">
+                  <tr>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">SKU</th>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Batch</th>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Location Bin</th>
+                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Required</th>
+                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Per Case</th>
+                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Cases</th>
+                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Loose</th>
+                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Picked</th>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {displayGroups.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-4 text-center text-muted-foreground text-xs">No items</td>
+                    </tr>
+                  )}
+                  {displayGroups.map((group) => (
+                    <PickLineRow key={group.itemId} group={group} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Created: {pickList.created_at ? new Date(pickList.created_at).toLocaleString() : '—'}
+            </p>
+          </div>
+        )}
         footer={
           <PickListFooter caps={caps}
             handlers={{
