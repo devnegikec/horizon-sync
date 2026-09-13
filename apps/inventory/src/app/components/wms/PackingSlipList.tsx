@@ -128,20 +128,34 @@ interface PackingSlipDetailRow {
 function packingSlipDetailRows(slip: PackingSlip | null): PackingSlipDetailRow[] {
   if (!slip) return [];
   if (slip.groups && slip.groups.length > 0) {
-    return slip.groups.map((group, groupIndex) => {
-      const items = group.items;
-      const batches = Array.from(new Set(items.map((i) => i.batch_number).filter((b): b is string => !!b)));
-      return {
-        id: `group-${groupIndex}`,
-        item_id: null,
-        sku: items[0]?.sku ?? null,
-        item_name: group.product_name,
-        batch_no: batches.join(', ') || null,
-        bin_location_id: group.bin_location_id,
-        qty: items.reduce((sum, i) => sum + (i.quantity || 0), 0),
-        uom: items[0]?.uom ?? null,
-      };
+    const rows: PackingSlipDetailRow[] = [];
+    slip.groups.forEach((group, groupIndex) => {
+      // Aggregate by SKU+batch so a group carrying multiple products is not
+      // collapsed into a single row labelled with only the first SKU/UOM.
+      const byKey = new Map<string, { sku: string; batch_no: string | null; uom: string | null; qty: number }>();
+      for (const item of group.items) {
+        const key = `${item.sku}::${item.batch_number ?? ''}`;
+        const agg = byKey.get(key);
+        if (agg) {
+          agg.qty += item.quantity || 0;
+        } else {
+          byKey.set(key, { sku: item.sku, batch_no: item.batch_number, uom: item.uom ?? null, qty: item.quantity || 0 });
+        }
+      }
+      for (const [key, agg] of byKey) {
+        rows.push({
+          id: `group-${groupIndex}-${key}`,
+          item_id: null,
+          sku: agg.sku,
+          item_name: group.product_name,
+          batch_no: agg.batch_no,
+          bin_location_id: group.bin_location_id,
+          qty: agg.qty,
+          uom: agg.uom,
+        });
+      }
     });
+    return rows;
   }
   return (slip.items ?? []).map((item) => ({
     id: item.id,
@@ -153,6 +167,15 @@ function packingSlipDetailRows(slip: PackingSlip | null): PackingSlipDetailRow[]
     qty: item.qty,
     uom: item.uom,
   }));
+}
+
+/** Total number of packing-slip line items, counting grouped items individually. */
+function packingSlipItemCount(slip: PackingSlip | null): number {
+  if (!slip) return 0;
+  if (slip.groups && slip.groups.length > 0) {
+    return slip.groups.reduce((sum, group) => sum + group.items.length, 0);
+  }
+  return slip.items?.length ?? 0;
 }
 
 export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProps) {
@@ -347,7 +370,7 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Items</p>
-                <p className="font-semibold">{detailRows.length}</p>
+                <p className="font-semibold">{packingSlipItemCount(viewSlip)}</p>
               </div>
             </div>
 
