@@ -138,9 +138,10 @@ interface PickLineGroup {
 function groupPickItems(items: PickListItem[]): PickLineGroup[] {
   const groups = new Map<string, PickLineGroup>();
   for (const it of items) {
-    const g = groups.get(it.item_id) ?? { itemId: it.item_id, rows: [] };
+    const key = `${it.item_id}::${it.batch_no ?? ''}`;
+    const g = groups.get(key) ?? { itemId: key, rows: [] };
     g.rows.push(it);
-    groups.set(it.item_id, g);
+    groups.set(key, g);
   }
   return Array.from(groups.values());
 }

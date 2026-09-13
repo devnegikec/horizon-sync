@@ -114,6 +114,47 @@ function PackingSlipsTable({
   );
 }
 
+interface PackingSlipDetailRow {
+  id: string;
+  item_id: string | null;
+  sku: string | null;
+  item_name: string | null;
+  batch_no: string | null;
+  bin_location_id: string | null;
+  qty: number;
+  uom: string | null;
+}
+
+function packingSlipDetailRows(slip: PackingSlip | null): PackingSlipDetailRow[] {
+  if (!slip) return [];
+  if (slip.groups && slip.groups.length > 0) {
+    return slip.groups.map((group, groupIndex) => {
+      const items = group.items;
+      const batches = Array.from(new Set(items.map((i) => i.batch_number).filter((b): b is string => !!b)));
+      return {
+        id: `group-${groupIndex}`,
+        item_id: null,
+        sku: items[0]?.sku ?? null,
+        item_name: group.product_name,
+        batch_no: batches.join(', ') || null,
+        bin_location_id: group.bin_location_id,
+        qty: items.reduce((sum, i) => sum + (i.quantity || 0), 0),
+        uom: items[0]?.uom ?? null,
+      };
+    });
+  }
+  return (slip.items ?? []).map((item) => ({
+    id: item.id,
+    item_id: item.item_id,
+    sku: item.sku ?? null,
+    item_name: item.item_name ?? null,
+    batch_no: item.batch_no,
+    bin_location_id: item.bin_location_id,
+    qty: item.qty,
+    uom: item.uom,
+  }));
+}
+
 export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const { toast } = useToast();
@@ -249,6 +290,8 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
     onDispatch: (slip) => dispatch(slip.id),
   });
 
+  const detailRows = React.useMemo(() => packingSlipDetailRows(viewSlip), [viewSlip]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -304,7 +347,7 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Items</p>
-                <p className="font-semibold">{(viewSlip.items ?? []).length}</p>
+                <p className="font-semibold">{detailRows.length}</p>
               </div>
             </div>
 
@@ -320,25 +363,25 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {(viewSlip.items ?? []).length === 0 && (
+                  {detailRows.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-4 py-4 text-center text-muted-foreground text-xs">
                         No items
                       </td>
                     </tr>
                   )}
-                  {(viewSlip.items ?? []).map((item) => (
-                    <tr key={item.id}>
+                  {detailRows.map((row) => (
+                    <tr key={row.id}>
                       <td className="px-4 py-2">
-                        <span className="font-mono font-medium">{item.sku ?? item.item_id}</span>
-                        {item.item_name && <span className="text-xs text-muted-foreground ml-2">{item.item_name}</span>}
+                        <span className="font-mono font-medium">{row.sku ?? row.item_id ?? '—'}</span>
+                        {row.item_name && <span className="text-xs text-muted-foreground ml-2">{row.item_name}</span>}
                       </td>
-                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{item.batch_no ?? '—'}</td>
+                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{row.batch_no ?? '—'}</td>
                       <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
-                        {item.bin_location_id ? item.bin_location_id.slice(0, 8) : '—'}
+                        {row.bin_location_id ? row.bin_location_id.slice(0, 8) : '—'}
                       </td>
-                      <td className="px-4 py-2 text-right">{item.qty}</td>
-                      <td className="px-4 py-2 text-right text-muted-foreground">{item.uom}</td>
+                      <td className="px-4 py-2 text-right">{row.qty}</td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">{row.uom}</td>
                     </tr>
                   ))}
                 </tbody>
