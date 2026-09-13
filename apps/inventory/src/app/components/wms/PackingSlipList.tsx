@@ -54,7 +54,7 @@ function PackingSlipsEmpty({ filtered, onClearFilter }: { filtered: boolean; onC
                   Clear filter
                 </Button>
               ) : undefined
-            }/>
+            } />
         </div>
       </CardContent>
     </Card>
@@ -108,7 +108,7 @@ function PackingSlipsTable({
             serverPagination,
           }}
           fixedHeader
-          maxHeight="auto"/>
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );
@@ -281,7 +281,7 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
         onClearFilter={() => {
           setStatusFilter('all');
           setPage(1);
-        }}/>
+        }} />
 
       <DetailDialog open={viewSlip !== null}
         onOpenChange={(o) => {
@@ -304,7 +304,7 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Items</p>
-                <p className="font-semibold">{viewSlip.items.length}</p>
+                <p className="font-semibold">{(viewSlip.items ?? []).length}</p>
               </div>
             </div>
 
@@ -320,14 +320,14 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {viewSlip.items.length === 0 && (
+                  {(viewSlip.items ?? []).length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-4 py-4 text-center text-muted-foreground text-xs">
                         No items
                       </td>
                     </tr>
                   )}
-                  {viewSlip.items.map((item) => (
+                  {(viewSlip.items ?? []).map((item) => (
                     <tr key={item.id}>
                       <td className="px-4 py-2">
                         <span className="font-mono font-medium">{item.sku ?? item.item_id}</span>
