@@ -5,7 +5,7 @@ import axios from 'axios';
 import { useUserStore } from '@horizon-sync/store';
 
 import { environment } from '../../../../environments/environment';
-import type { QRCreditBalance } from '../types/qrCredit.types';
+import type { QRCreditAddRequest, QRCreditBalance } from '../types/qrCredit.types';
 import { getApiErrorMessage } from '../utils/apiError';
 
 export const useQRCredits = () => {
@@ -21,10 +21,9 @@ export const useQRCredits = () => {
     }
 
     try {
-      const res = await axios.get<QRCreditBalance>(
-        `${environment.apiCoreUrl}/api/v1/qr-credits/balance`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
+      const res = await axios.get<QRCreditBalance>(`${environment.apiCoreUrl}/api/v1/qr-credits/balance`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       setSummary(res.data);
       setError(null);
     } catch (err: unknown) {
@@ -34,6 +33,28 @@ export const useQRCredits = () => {
       setLoading(false);
     }
   }, [accessToken]);
+
+  const addCredits = useCallback(
+    async (organizationId: string, data: Omit<QRCreditAddRequest, 'reference_id'>) => {
+      if (!accessToken) {
+        throw new Error('You must be logged in to add QR credits');
+      }
+
+      try {
+        const response = await axios.post<QRCreditBalance>(
+          `${environment.apiCoreUrl}/api/v1/qr-credits/organizations/${organizationId}/add`,
+          { ...data, reference_id: crypto.randomUUID() },
+          { headers: { Authorization: `Bearer ${accessToken}` } },
+        );
+        setSummary(response.data);
+        setError(null);
+        return response.data;
+      } catch (err: unknown) {
+        throw new Error(getApiErrorMessage(err, 'Failed to add QR credits'));
+      }
+    },
+    [accessToken],
+  );
 
   useEffect(() => {
     fetchCredits();
@@ -45,5 +66,6 @@ export const useQRCredits = () => {
     loading,
     error,
     refetch: fetchCredits,
+    addCredits,
   };
 };

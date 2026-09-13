@@ -13,7 +13,7 @@ import {
   AggregationManagement,
   SkuCustomizationManagement,
   AnalyticsManagement,
-  ActivationManagement,
+  QSealActivationManagement,
   ProductSettingsManagement,
 } from '../components/qseal';
 
@@ -74,7 +74,7 @@ export function QSealPage() {
             {activeView === 'blocks' && <BlocksManagement />}
             {activeView === 'sku_customization' && <SkuCustomizationManagement />}
             {activeView === 'analytics' && <AnalyticsManagement />}
-            {activeView === 'activation' && <ActivationManagement />}
+            {activeView === 'activation' && <QSealActivationManagement />}
             {activeView === 'aggregation' && <AggregationManagement />}
             {activeView === 'product_settings' && <ProductSettingsManagement />}
           </main>

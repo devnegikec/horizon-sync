@@ -15,6 +15,8 @@ import { PickSettingsEditor } from '../features/pick-settings/components/PickSet
 import { useAuth } from '../hooks';
 import { DEFAULT_ORGANIZATION_SETTINGS } from '../types/organization-settings.types';
 
+const WMSActivationPage = React.lazy(() => import('inventory/WMSActivationPage'));
+
 /**
  * SettingsPage Component
  *
@@ -80,12 +82,13 @@ export function SettingsPage() {
           }
         }}
         className="space-y-6">
-        <TabsList className="flex-wrap">
+        <TabsList className="h-auto flex-wrap gap-1">
           <TabsTrigger value="organization">Organization</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="items-uom">Items & UOM</TabsTrigger>
           <TabsTrigger value="feature-flags">Feature Flags</TabsTrigger>
           <TabsTrigger value="pick-settings">Pick Settings</TabsTrigger>
+          <TabsTrigger value="wms-activation">WMS Activation</TabsTrigger>
           <TabsTrigger value="data-sync">Data Sync</TabsTrigger>
         </TabsList>
 
@@ -117,6 +120,12 @@ export function SettingsPage() {
         <TabsContent value="pick-settings" className="space-y-6">
           {/* WMS pick configuration (PR-02 / T-17) */}
           <PickSettingsEditor accessToken={accessToken} canEdit={canEdit} />
+        </TabsContent>
+
+        <TabsContent value="wms-activation" className="space-y-6">
+          <React.Suspense fallback={<div className="py-8 text-center text-muted-foreground">Loading WMS Activation...</div>}>
+            <WMSActivationPage />
+          </React.Suspense>
         </TabsContent>
 
         <TabsContent value="data-sync" className="space-y-6">
