@@ -598,6 +598,7 @@ export interface PickListGroup {
   bin_location_path?: string | null;
   handling_unit_id?: string | null;
   sort_order: number;
+  picked_qty?: number;
   items: PickListGroupItem[];
 }
 

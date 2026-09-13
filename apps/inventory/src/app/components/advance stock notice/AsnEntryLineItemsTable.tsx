@@ -242,9 +242,13 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
 
   const fetchItemData = React.useCallback(async (itemId: string): Promise<PickerItem | null> => {
     if (!accessToken) return null;
-    const item = await itemApi.get(accessToken, itemId) as PickerItem;
-    itemsCacheRef.current.set(item.id, item);
-    return item;
+    try {
+      const item = await itemApi.get(accessToken, itemId) as PickerItem;
+      itemsCacheRef.current.set(item.id, item);
+      return item;
+    } catch {
+      return null;
+    }
   }, [accessToken]);
 
   const itemLabelFormatter = React.useCallback(

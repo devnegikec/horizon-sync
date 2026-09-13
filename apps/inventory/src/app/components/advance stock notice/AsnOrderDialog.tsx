@@ -103,12 +103,19 @@ function normalizeLineNumbers(item: AsnOrder['items'][number]) {
 function mapItemsToCreate(rows: AsnEntryLineRow[]): AsnOrderItemCreate[] {
   return rows
     .filter((r) => !!r.item_id)
-    .map((r, i) => ({
-      item_id: r.item_id,
-      qty: Number(r.qty) || 0,
-      uom: r.uom || 'pcs',
-      sort_order: i + 1,
-    }));
+    .map((r, i) => {
+      const itemsPerMasterPack = Number(r.items_per_master_pack) || 0;
+      const noOfCases = Number(r.no_of_cases) || 0;
+      return {
+        item_id: r.item_id,
+        qty: Number(r.qty) || 0,
+        uom: r.uom || 'pcs',
+        sort_order: i + 1,
+        ...(itemsPerMasterPack > 0 || noOfCases > 0
+          ? { extra_data: { items_per_master_pack: itemsPerMasterPack, no_of_cases: noOfCases } }
+          : {}),
+      };
+    });
 }
 
 function numericExtra(item: AsnOrder['items'][number], key: string): number | undefined {
@@ -446,8 +453,13 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                 packaging_units?: Array<{ items_per_master_pack?: number | null }> | null;
               };
               const masterPack = getImportedMasterPackSize(item);
-              const cases = row.no_of_cases > 0 ? row.no_of_cases : Math.max(1, Math.round(row.qty / masterPack));
-              return { ...row, items_per_master_pack: masterPack, no_of_cases: cases, qty: masterPack * cases };
+              if (row.no_of_cases > 0) {
+                return { ...row, items_per_master_pack: masterPack, no_of_cases: row.no_of_cases, qty: masterPack * row.no_of_cases };
+              }
+              // Old line without packaging data: hydrate only the master-pack
+              // size and keep the original quantity untouched instead of
+              // silently rounding it into whole cases.
+              return { ...row, items_per_master_pack: masterPack };
             } catch {
               return row;
             }

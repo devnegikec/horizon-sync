@@ -356,6 +356,21 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
             [field]: value, quantity: !isNaN(masterPack) && !isNaN(parseInt(value, 10)) ? String(masterPack * parseInt(value, 10)) : '0',
           };
         }
+        if (field === 'quantity') {
+          const requestedQty = parseInt(value, 10);
+          const noOfCases =
+            !isNaN(masterPack) && masterPack > 0 && !isNaN(requestedQty)
+              ? Math.max(1, Math.round(requestedQty / masterPack))
+              : parseInt(r.no_of_cases, 10) || 1;
+          return {
+            ...r,
+            no_of_cases: String(noOfCases),
+            quantity:
+              !isNaN(masterPack) && masterPack > 0
+                ? String(masterPack * noOfCases)
+                : String(requestedQty || 0),
+          };
+        }
         return {
           ...r,
           [field]: value,

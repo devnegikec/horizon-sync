@@ -163,7 +163,7 @@ function groupedPickItems(groups: PickListGroup[]): PickLineGroup[] {
       sku: item.sku,
       warehouse_id: '',
       qty: item.quantity || 0,
-      picked_qty: 0,
+      picked_qty: itemIndex === 0 ? group.picked_qty ?? 0 : 0,
       uom: '',
       per_case_qty: group.parent_qseal?.capacity ?? null,
       case_qty: group.parent_qseal ? 1 : null,
@@ -496,11 +496,8 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
   const displayItems = React.useMemo(() => displayGroups.flatMap((group) => group.rows), [displayGroups]);
 
   const openLines = React.useMemo(
-    () =>
-      (pickList?.groups && pickList.groups.length > 0 ? [] : pickList?.items ?? []).filter(
-        (i) => (i.qty - (i.picked_qty ?? 0)) > 0,
-      ),
-    [pickList?.groups, pickList?.items],
+    () => (pickList?.items ?? []).filter((i) => (i.qty - (i.picked_qty ?? 0)) > 0),
+    [pickList?.items],
   );
   const effectiveHuItemId = huItemId || openLines[0]?.id || '';
 

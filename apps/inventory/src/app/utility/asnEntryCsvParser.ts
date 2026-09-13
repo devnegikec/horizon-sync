@@ -65,10 +65,11 @@ function parseDataRow(
   sortOrder: number,
 ): { row: AsnEntryLineRow } | { error: { row: number; message: string } } {
   const sku = idx.sku !== -1 ? cols[idx.sku]?.trim() : '';
-  const noOfCases = parseFloat(cols[idx.noOfCases]);
+  const rawCases = cols[idx.noOfCases]?.trim() ?? '';
+  const noOfCases = Number.parseInt(rawCases, 10);
 
   if (!sku) return { error: { row: rowNum, message: 'Missing SKU' } };
-  if (isNaN(noOfCases) || noOfCases <= 0) return { error: { row: rowNum, message: `Invalid Number of Cases "${cols[idx.noOfCases]}"` } };
+  if (!/^\d+$/.test(rawCases) || noOfCases <= 0) return { error: { row: rowNum, message: `Invalid Number of Cases "${cols[idx.noOfCases]}"` } };
 
   const uom = idx.uom !== -1 && cols[idx.uom]?.trim() ? cols[idx.uom].trim() : 'pcs';
   const itemName = idx.itemName !== -1 && cols[idx.itemName]?.trim() ? cols[idx.itemName].trim() : '';

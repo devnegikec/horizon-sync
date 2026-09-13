@@ -150,6 +150,7 @@ export interface AsnOrderItemCreate {
     qty: number;
     uom: string;
     sort_order: number;
+    extra_data?: Record<string, unknown>;
 }
 
 export interface AsnOrderCreate {
