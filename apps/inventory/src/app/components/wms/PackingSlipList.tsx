@@ -347,7 +347,7 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Items</p>
-                <p className="font-semibold">{detailRows.length}</p>
+                <p className="font-semibold">{(viewSlip.items ?? []).length}</p>
               </div>
             </div>
 
@@ -363,15 +363,15 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {detailRows.length === 0 && (
+                  {(viewSlip.items ?? []).length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-4 py-4 text-center text-muted-foreground text-xs">
                         No items
                       </td>
                     </tr>
                   )}
-                  {detailRows.map((row) => (
-                    <tr key={row.id}>
+                  {(viewSlip.items ?? []).map((item) => (
+                    <tr key={item.id}>
                       <td className="px-4 py-2">
                         <span className="font-mono font-medium">{row.sku ?? row.item_id ?? '—'}</span>
                         {row.item_name && <span className="text-xs text-muted-foreground ml-2">{row.item_name}</span>}
