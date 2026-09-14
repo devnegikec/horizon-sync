@@ -19,7 +19,7 @@ import {
 import { DataTable } from '@horizon-sync/ui/components/data-table';
 import { useToast } from '@horizon-sync/ui/hooks';
 
-import { useReceivingSlips } from '../../hooks/useWMS';
+import { useReceivingSlip, useReceivingSlips } from '../../hooks/useWMS';
 import type { ReceivingSlip, ReceivingSlipStatus, ReceivingSlipStatusCounts } from '../../types/wms.types';
 
 import { GeneratePutAwayDialog } from './GeneratePutAwayDialog';
@@ -31,6 +31,11 @@ interface ReceivingSlipListProps {
   /** Increment to trigger a refetch (e.g. from the panel-level Refresh button). */
   refreshKey?: number;
   onStatusFilterChange: (status: string) => void;
+  /**
+   * Publishes the list's status counts so sibling stat cards can reuse them
+   * instead of issuing a second request to the same endpoint.
+   */
+  onStatusCountsChange?: (counts: ReceivingSlipStatusCounts | null) => void;
 }
 
 type ServerPagination = {
@@ -173,18 +178,16 @@ function ReceivingSlipsTable({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onStatusFilterChange }: ReceivingSlipListProps) {
+export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onStatusFilterChange, onStatusCountsChange }: ReceivingSlipListProps) {
   const { toast } = useToast();
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
-  const [viewSlip, setViewSlip] = React.useState<ReceivingSlip | null>(null);
-  const [viewLoading, setViewLoading] = React.useState(false);
+  const [viewSlipId, setViewSlipId] = React.useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [confirmApproveSlip, setConfirmApproveSlip] = React.useState<ReceivingSlip | null>(null);
   const [confirmPutAwaySlip, setConfirmPutAwaySlip] = React.useState<ReceivingSlip | null>(null);
   const [rejectTarget, setRejectTarget] = React.useState<ReceivingSlip | null>(null);
   const [actionLoading, setActionLoading] = React.useState(false);
-  const viewRequestIdRef = React.useRef(0);
 
   const {
     data,
@@ -195,7 +198,6 @@ export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onSta
     approveSlip,
     rejectSlip: submitReject,
     rejectItem,
-    getSlip,
     generatePutAway,
   } = useReceivingSlips({
     warehouse_id: warehouseId,
@@ -203,6 +205,10 @@ export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onSta
     page,
     page_size: pageSize,
   });
+
+  // Cached detail for the open dialog. Mutations invalidate the receiving-slips
+  // prefix, so approving/rejecting/flagging refreshes this automatically.
+  const { slip: viewSlip, loading: viewLoading, error: viewError, refetch: refetchViewSlip } = useReceivingSlip(viewSlipId);
 
   const slips = data?.receiving_slips ?? [];
   const pagination = data?.pagination;
@@ -218,6 +224,12 @@ export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onSta
     lastRefreshKeyRef.current = refreshKey;
     refetch();
   }, [refreshKey, refetch]);
+
+  // Share the counts returned with the list so the stat cards above don't need
+  // their own request to the same endpoint.
+  React.useEffect(() => {
+    onStatusCountsChange?.(statusCounts);
+  }, [statusCounts, onStatusCountsChange]);
 
   const serverPagination = React.useMemo(() => {
     if (!pagination) return undefined;
@@ -237,30 +249,10 @@ export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onSta
     };
   }, [pagination]);
 
-  const handleView = React.useCallback(
-    async (slip: ReceivingSlip) => {
-      const requestId = ++viewRequestIdRef.current;
-      setDialogOpen(true);
-      setViewSlip(null);
-      setViewLoading(true);
-      try {
-        const detail = await getSlip(slip.id);
-        // Ignore responses from superseded requests so a slower one cannot
-        // overwrite the slip the user selected last.
-        if (requestId !== viewRequestIdRef.current) return;
-        setViewSlip(detail);
-      } catch (err) {
-        if (requestId !== viewRequestIdRef.current) return;
-        toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to load slip', variant: 'destructive' });
-        setDialogOpen(false);
-      } finally {
-        if (requestId === viewRequestIdRef.current) {
-          setViewLoading(false);
-        }
-      }
-    },
-    [getSlip, toast],
-  );
+  const handleView = React.useCallback((slip: ReceivingSlip) => {
+    setViewSlipId(slip.id);
+    setDialogOpen(true);
+  }, []);
 
   /**
    * Show a toast in both trees: the in-app Toaster (standalone inventory) and
@@ -319,17 +311,11 @@ export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onSta
   // Errors propagate to the caller (SlipDetailDialog owns the success/error toast).
   const handleRejectItem = React.useCallback(
     async (slipId: string, itemId: string, reason: string) => {
+      // `rejectItem` invalidates the receiving-slips prefix, which refreshes this
+      // slip's cached detail alongside the list.
       await rejectItem(slipId, itemId, reason);
-      // Refresh the detail view, unless the user has since viewed another slip.
-      if (viewSlip?.id === slipId) {
-        const requestId = viewRequestIdRef.current;
-        const detail = await getSlip(slipId);
-        if (requestId === viewRequestIdRef.current) {
-          setViewSlip(detail);
-        }
-      }
     },
-    [getSlip, rejectItem, viewSlip],
+    [rejectItem],
   );
 
   const columns = React.useMemo(
@@ -361,12 +347,13 @@ export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onSta
 
       <SlipDetailDialog slip={viewSlip}
         loading={viewLoading}
+        error={viewError}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onRejectItem={canRejectItems ? handleRejectItem : undefined}
         onExceptionCreated={async () => {
-          if (viewSlip) setViewSlip(await getSlip(viewSlip.id));
-          await refetch();
+          // The exception blocks an item, so both the detail and the list change.
+          await Promise.all([refetchViewSlip(), refetch()]);
           toast({ title: 'Inbound exception created', description: 'Item is blocked from normal put-away.' });
         }}/>
 

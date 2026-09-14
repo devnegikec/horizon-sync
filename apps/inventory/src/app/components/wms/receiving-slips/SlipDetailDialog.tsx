@@ -199,13 +199,15 @@ function SlipSummary({ slip, totalUnits }: { slip: ReceivingSlip; totalUnits: nu
 interface SlipDetailDialogProps {
   slip: ReceivingSlip | null;
   loading: boolean;
+  /** Detail fetch failure, shown in place of the line items. */
+  error?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRejectItem?: (slipId: string, itemId: string, reason: string) => Promise<void>;
   onExceptionCreated?: () => void;
 }
 
-export function SlipDetailDialog({ slip, loading, open, onOpenChange, onRejectItem, onExceptionCreated }: SlipDetailDialogProps) {
+export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onRejectItem, onExceptionCreated }: SlipDetailDialogProps) {
   const { toast } = useToast();
   const [exceptionItem, setExceptionItem] = React.useState<ReceivingSlipGroupItem | null>(null);
 
@@ -250,13 +252,13 @@ export function SlipDetailDialog({ slip, loading, open, onOpenChange, onRejectIt
     <>
       <QRDetailDialog open={open}
         onOpenChange={onOpenChange}
-        title={slip ? `Receiving Slip — ${slip.slip_number}` : 'Loading...'}
+        title={slip ? `Receiving Slip — ${slip.slip_number}` : 'Receiving Slip'}
         loading={loading}
         loadingMessage="Loading slip details..."
         rows={rows}
         columns={columns}
-        emptyMessage="No items"
-        summary={slip ? <SlipSummary slip={slip} totalUnits={countUnits(slip)} /> : undefined} />
+        emptyMessage={error ?? 'No items'}
+        summary={slip ? <SlipSummary slip={slip} totalUnits={countUnits(slip)} /> : undefined}/>
 
       {slip && (
         <InboundExceptionDialog open={Boolean(exceptionItem)}
@@ -265,7 +267,7 @@ export function SlipDetailDialog({ slip, loading, open, onOpenChange, onRejectIt
           }}
           slipId={slip.id}
           item={exceptionItem}
-          onCompleted={() => onExceptionCreated?.()} />
+          onCompleted={() => onExceptionCreated?.()}/>
       )}
     </>
   );
