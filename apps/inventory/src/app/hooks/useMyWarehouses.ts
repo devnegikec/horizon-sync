@@ -2,8 +2,8 @@ import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
 
-import { warehouseUserApi, AssignedWarehouse } from '../utility/api/warehouseUsers';
 import { getFriendlyErrorMessage } from '../utility/api/core';
+import { warehouseUserApi, AssignedWarehouse } from '../utility/api/warehouseUsers';
 
 interface UseMyWarehousesResult {
   warehouses: AssignedWarehouse[];

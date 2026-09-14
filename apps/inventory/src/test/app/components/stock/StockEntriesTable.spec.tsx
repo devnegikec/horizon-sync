@@ -45,7 +45,11 @@ jest.mock('@horizon-sync/ui/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: any) => <div data-testid="dropdown-menu">{children}</div>,
   DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
   DropdownMenuItem: ({ children, onClick }: any) => (
-    <div data-testid="dropdown-menu-item" onClick={onClick}>
+    <div data-testid="dropdown-menu-item"
+      role="menuitem"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={onClick}>
       {children}
     </div>
   ),

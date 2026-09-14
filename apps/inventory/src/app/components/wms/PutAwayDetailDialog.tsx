@@ -264,10 +264,28 @@ function groupToRow(group: PutAwayLineGroup): QRDetailRow {
   };
 }
 
+/** Stable id fallback for a group item the API returned without an id. */
+function fallbackItemId(group: PutAwayGroup, index: number): string {
+  const groupId = group.parent_qseal?.id ?? group.sort_order;
+  return `${groupId}-${index}`;
+}
+
+/** Item ids fall back to the parent q-seal id, then the product name. */
+function resolveGroupItemId(group: PutAwayGroup, item: PutAwayGroupItem): string {
+  return item.item_id ?? group.parent_qseal?.id ?? group.product_name;
+}
+
+/** Group statuses that do not map 1:1 onto the per-item status vocabulary. */
+function itemStatusForGroup(group: PutAwayGroup): PutAwayItem['status'] {
+  if (group.status === 'in_progress') return 'pending';
+  if (group.status === 'cancelled') return 'skipped';
+  return group.status;
+}
+
 function groupedItemToPutAwayItem(group: PutAwayGroup, item: PutAwayGroupItem, index: number): PutAwayItem {
   return {
-    id: item.id ?? `${group.parent_qseal?.id ?? group.sort_order}-${index}`,
-    item_id: item.item_id ?? group.parent_qseal?.id ?? group.product_name,
+    id: item.id ?? fallbackItemId(group, index),
+    item_id: resolveGroupItemId(group, item),
     sku: item.sku,
     item_name: item.item_name ?? group.product_name,
     batch_number: item.batch_number,
@@ -278,7 +296,7 @@ function groupedItemToPutAwayItem(group: PutAwayGroup, item: PutAwayGroupItem, i
     bin_location_id: group.bin_location_id,
     bin_location_code: group.bin_location_code,
     suggested_bin_code: group.bin_location_code,
-    status: group.status === 'in_progress' ? 'pending' : group.status === 'cancelled' ? 'skipped' : group.status,
+    status: itemStatusForGroup(group),
     sort_order: group.sort_order,
   };
 }
@@ -508,7 +526,7 @@ export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetai
     <>
       <QRDetailDialog open={open}
         onOpenChange={onOpenChange}
-        title={list ? `Put-Away — ${list.put_away_list_no}` : 'Loading...'}
+        title={list ? `Put-Away — ${list.put_away_list_no}` : 'Put-Away'}
         loading={loading}
         loadingMessage="Loading put-away details..."
         rows={rows}

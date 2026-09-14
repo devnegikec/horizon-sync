@@ -1,8 +1,11 @@
 import * as React from 'react';
+
 import { Upload, X, Loader2 } from 'lucide-react';
+
 import { Label } from '@horizon-sync/ui/components/ui/label';
 
 import { landingPageApi } from '../../../api/landing-page';
+
 import { resolveImageUrl } from './image-url';
 
 interface ImageUploadFieldProps {
@@ -60,11 +63,9 @@ export function ImageUploadField({
       {value ? (
         <div className="relative rounded-md border overflow-hidden bg-muted/30 h-20">
           <img src={resolveImageUrl(value) ?? undefined} alt={label} className="w-full h-full object-contain" />
-          <button
-            type="button"
+          <button type="button"
             className="absolute top-1 right-1 h-6 w-6 bg-background/80 rounded-md flex items-center justify-center"
-            onClick={() => onChange(null)}
-          >
+            onClick={() => onChange(null)}>
             <X className="h-3 w-3" />
           </button>
         </div>
@@ -74,12 +75,10 @@ export function ImageUploadField({
           Uploading...
         </div>
       ) : (
-        <button
-          type="button"
+        <button type="button"
           className="flex w-full items-center justify-center gap-2 rounded-md border-2 border-dashed p-4 text-xs text-muted-foreground hover:border-primary/50 transition-colors"
           onClick={() => inputRef.current?.click()}
-          disabled={!productId || !accessToken}
-        >
+          disabled={!productId || !accessToken}>
           <Upload className="h-4 w-4" />
           {!productId ? 'Select a product first' : hint}
         </button>
@@ -87,8 +86,7 @@ export function ImageUploadField({
       {uploadError && (
         <p className="text-[10px] text-destructive">{uploadError}</p>
       )}
-      <input
-        ref={inputRef}
+      <input ref={inputRef}
         type="file"
         accept="image/png,image/jpeg"
         className="hidden"
@@ -97,8 +95,7 @@ export function ImageUploadField({
           if (f) handleFile(f);
           // Reset so re-selecting the same file triggers onChange again
           e.target.value = '';
-        }}
-      />
+        }}/>
     </div>
   );
 }

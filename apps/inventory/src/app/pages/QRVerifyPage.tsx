@@ -1,7 +1,8 @@
 import * as React from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
 
 import { CheckCircle2, XCircle, Loader2, QrCode } from 'lucide-react';
+import { useParams, useSearchParams } from 'react-router-dom';
+
 
 import { Button, Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components';
 import { Input } from '@horizon-sync/ui/components/ui/input';
@@ -121,23 +122,19 @@ export function QRVerifyPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="qr-url">QR Code URL</Label>
-              <Input
-                id="qr-url"
+              <Input id="qr-url"
                 type="text"
                 value={qrUrl}
                 onChange={(e) => setQrUrl(e.target.value)}
                 placeholder="https://example.com/01/12345678901234/21/ABC123?c=...&n=..."
-                className="font-mono text-sm"
-              />
+                className="font-mono text-sm"/>
               <p className="text-xs text-muted-foreground">
                 Paste the complete QR code URL from your scan
               </p>
             </div>
-            <Button
-              onClick={handleManualVerify}
+            <Button onClick={handleManualVerify}
               disabled={loading || !qrUrl.trim()}
-              className="w-full"
-            >
+              className="w-full">
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

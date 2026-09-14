@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import { Receipt } from 'lucide-react';
 
+import { BankAccountDetails } from '@horizon-sync/ui';
 import {
   Button,
   Dialog,
@@ -17,7 +18,6 @@ import {
 
 import type { DeliveryNote } from '../../types/delivery-note.types';
 
-import { BankAccountDetails } from '@horizon-sync/ui';
 
 interface ConvertToInvoiceItem {
   item_id: string; // delivery_note_item UUID

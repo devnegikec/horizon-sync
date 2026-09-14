@@ -5,14 +5,12 @@ import { CheckCircle2, ClipboardList, Clock, Loader, PackageCheck } from 'lucide
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { usePutAwayLists, useReceivingSlips } from '../../hooks/useWMS';
 import type { PutAwayStatusCounts, ReceivingSlipStatusCounts } from '../../types/wms.types';
 import { formatQuantity } from '../../utility';
 
 type InboundStatsSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions';
 
 interface InboundStatsProps {
-  warehouseId?: string;
   /**
    * Active inbound sub-tab. Stats switch for 'receiving' and 'putaway';
    * any other tab (vehicle/exceptions) keeps showing the previous stats.
@@ -22,8 +20,16 @@ interface InboundStatsProps {
   onSelectReceivingStatus: (status: string) => void;
   /** Called when a put-away status card is clicked, with the status to filter by ('all' clears the filter). */
   onSelectPutAwayStatus: (status: string) => void;
-  /** Increment to refetch the status counts (e.g. from the panel-level Refresh button). */
-  refreshKey?: number;
+  /**
+   * Receiving-slip status counts, supplied by `ReceivingSlipList`'s list request
+   * so this component does not need a second call to the same endpoint.
+   */
+  receivingCounts?: ReceivingSlipStatusCounts | null;
+  /**
+   * Put-away status counts, supplied by `PutAwayView`'s list request so this
+   * component does not need a second call to the same endpoint.
+   */
+  putawayCounts?: PutAwayStatusCounts | null;
 }
 
 interface StatDef {
@@ -100,7 +106,7 @@ function StatCard({
   );
 }
 
-export function InboundStats({ warehouseId, activeSection, onSelectReceivingStatus, onSelectPutAwayStatus, refreshKey }: InboundStatsProps) {
+export function InboundStats({ activeSection, onSelectReceivingStatus, onSelectPutAwayStatus, receivingCounts, putawayCounts }: InboundStatsProps) {
   // Remember the last stats section so vehicle/exceptions keep showing the
   // previous stats rather than clearing.
   const [statsSection, setStatsSection] = React.useState<StatsSection>('receiving');
@@ -111,33 +117,9 @@ export function InboundStats({ warehouseId, activeSection, onSelectReceivingStat
     }
   }, [activeSection]);
 
-  const receiving = useReceivingSlips({
-    warehouse_id: warehouseId,
-    page: 1,
-    page_size: 1,
-  });
-
-  const putaway = usePutAwayLists({
-    warehouse_id: warehouseId,
-    page: 1,
-    page_size: 1,
-  });
-
-  const { refetch: refetchReceiving } = receiving;
-  const { refetch: refetchPutaway } = putaway;
-
-  // InboundStats owns its own count requests, so it must react to the parent's
-  // refresh key itself — skip the initial mount.
-  const lastRefreshKeyRef = React.useRef(refreshKey);
-  React.useEffect(() => {
-    if (lastRefreshKeyRef.current === refreshKey) return;
-    lastRefreshKeyRef.current = refreshKey;
-    refetchReceiving();
-    refetchPutaway();
-  }, [refreshKey, refetchReceiving, refetchPutaway]);
-
   const stats = STATS_BY_SECTION[statsSection];
-  const counts: ReceivingSlipStatusCounts | PutAwayStatusCounts | null = statsSection === 'putaway' ? putaway.statusCounts : receiving.statusCounts;
+  const counts: ReceivingSlipStatusCounts | PutAwayStatusCounts | null =
+    statsSection === 'putaway' ? (putawayCounts ?? null) : (receivingCounts ?? null);
   const onSelect = statsSection === 'putaway' ? onSelectPutAwayStatus : onSelectReceivingStatus;
 
   return (

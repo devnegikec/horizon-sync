@@ -3,6 +3,7 @@ import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { Package, Plus, MoreHorizontal, Eye, Edit, Power, PowerOff, Building2, Upload } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { TableSkeleton, Badge, Button, Card, CardContent } from '@horizon-sync/ui/components'
 import { DataTable, DataTableColumnHeader, DataTableViewOptions } from '@horizon-sync/ui/components/data-table';
 import {
@@ -14,10 +15,9 @@ import {
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
+import { getCurrencySymbol } from '../../types/currency.types';
 import type { ApiItem } from '../../types/items-api.types';
 import { formatDate } from '../../utility/formatDate';
-import { useCurrencyStore } from '@horizon-sync/store';
-import { getCurrencySymbol } from '../../types/currency.types';
 
 const ITEM_STATUS_BADGE: Record<
   string,
@@ -174,10 +174,8 @@ export function ItemsTable({
                     Edit Item
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => onToggleStatus(item)}
-                    className={isActive ? 'text-destructive focus:text-destructive' : undefined}
-                  >
+                  <DropdownMenuItem onClick={() => onToggleStatus(item)}
+                    className={isActive ? 'text-destructive focus:text-destructive' : undefined}>
                     {isActive ? (
                       <>
                         <PowerOff className="mr-2 h-4 w-4" />

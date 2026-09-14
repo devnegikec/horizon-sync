@@ -23,14 +23,12 @@ function ScansOverTimeChart({ summary }: { summary: AnalyticsSummary }) {
   const chartWidth = Math.max(summary.by_date.length * 14, 28);
   return (
     <>
-      <svg
-        aria-label="Scans over time"
+      <svg aria-label="Scans over time"
         role="img"
         viewBox={`0 0 ${chartWidth} 100`}
         preserveAspectRatio="none"
         className="block w-full text-primary"
-        style={{ height: 128 }}
-      >
+        style={{ height: 128 }}>
         {summary.by_date.map((day, index) => {
           const height = Math.max((day.count / maxDayCount) * 96, 2);
           return (
@@ -287,13 +285,11 @@ export function AnalyticsManagement() {
       {/* Scan Events Table */}
       <div>
         <h3 className="text-lg font-semibold mb-3">Recent Scan Events</h3>
-        <AnalyticsTable
-          events={scanEvents}
+        <AnalyticsTable events={scanEvents}
           loading={loading && scanEvents.length === 0}
           error={null}
           hasActiveFilters={hasActiveFilters}
-          serverPagination={serverPaginationConfig}
-        />
+          serverPagination={serverPaginationConfig}/>
       </div>
     </div>
   );

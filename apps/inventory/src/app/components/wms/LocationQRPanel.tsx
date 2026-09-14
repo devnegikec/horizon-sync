@@ -147,7 +147,7 @@ const LazyQrCode = React.memo(function LazyQrCode({ value, size }: { value: stri
       .then((url) => {
         if (!cancelled) setImg(url);
       })
-      .catch(() => { });
+      .catch(() => { /* ignore image generation failures */ });
     return () => {
       cancelled = true;
     };
@@ -370,8 +370,13 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
               <tbody>
                 {filteredLocations.map((loc) => {
                   const qrValue = loc.qr_code || loc.code;
-                  return <QRRow key={loc.id} loc={loc} qrValue={qrValue} selected={selectedIds.has(loc.id)}
-                    onToggle={() => toggleSelection(loc.id)} onPrint={() => handlePrintSingle(loc)} printing={printing} />;
+                  return <QRRow key={loc.id}
+loc={loc}
+qrValue={qrValue}
+selected={selectedIds.has(loc.id)}
+                    onToggle={() => toggleSelection(loc.id)}
+onPrint={() => handlePrintSingle(loc)}
+printing={printing} />;
                 })}
               </tbody>
             </table>

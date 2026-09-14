@@ -12,12 +12,12 @@
  *   GET    /api/v1/public/products/:productId/landing-page
  */
 
-import { apiRequest } from '../utility/api/core';
 import type {
   LandingPageConfigCreate,
   LandingPageConfigUpdate,
   LandingPageConfigResponse,
 } from '../types/landing-page.types';
+import { apiRequest } from '../utility/api/core';
 
 export const landingPageApi = {
   /**

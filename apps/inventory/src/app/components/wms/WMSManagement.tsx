@@ -26,6 +26,7 @@ import { Label } from '@horizon-sync/ui/components/ui/label';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { useMyWarehouses } from '../../hooks/useMyWarehouses';
+import type { PutAwayStatusCounts, ReceivingSlipStatusCounts } from '../../types/wms.types';
 import { hasPermission } from '../../utils/permissions';
 import { StockManagement } from '../stock';
 
@@ -258,6 +259,10 @@ function InboundManagement({
   onPutawayStatusFilterChange,
 }: WMSContentProps) {
   const [refreshKey, setRefreshKey] = React.useState(0);
+  // Both count sets are produced by the list requests in `ReceivingSlipList` /
+  // `PutAwayView` so the stat cards don't fetch the same endpoints a second time.
+  const [receivingCounts, setReceivingCounts] = React.useState<ReceivingSlipStatusCounts | null>(null);
+  const [putawayCounts, setPutawayCounts] = React.useState<PutAwayStatusCounts | null>(null);
 
   const openReceiving = (status: string) => {
     onReceivingStatusFilterChange(status);
@@ -298,9 +303,9 @@ function InboundManagement({
           </Button>
         </div>
       )}
-      <InboundStats warehouseId={selectedWarehouseId || undefined}
-        activeSection={inboundSection}
-        refreshKey={refreshKey}
+      <InboundStats activeSection={inboundSection}
+        receivingCounts={receivingCounts}
+        putawayCounts={putawayCounts}
         onSelectReceivingStatus={openReceiving}
         onSelectPutAwayStatus={openPutAway}/>
       <div className="border rounded-lg overflow-hidden">
@@ -321,6 +326,8 @@ function InboundManagement({
             refreshKey={refreshKey}
             onReceivingStatusFilterChange={onReceivingStatusFilterChange}
             onPutawayStatusFilterChange={onPutawayStatusFilterChange}
+            onReceivingCountsChange={setReceivingCounts}
+            onPutAwayCountsChange={setPutawayCounts}
             onSlipGenerated={() => onInboundSectionChange('receiving')}/>
         </div>
       </div>
@@ -336,6 +343,8 @@ function InboundSectionContent({
   refreshKey,
   onReceivingStatusFilterChange,
   onPutawayStatusFilterChange,
+  onReceivingCountsChange,
+  onPutAwayCountsChange,
   onSlipGenerated,
 }: {
   section: InboundSection;
@@ -345,6 +354,8 @@ function InboundSectionContent({
   refreshKey: number;
   onReceivingStatusFilterChange: (status: string) => void;
   onPutawayStatusFilterChange: (status: string) => void;
+  onReceivingCountsChange: (counts: ReceivingSlipStatusCounts | null) => void;
+  onPutAwayCountsChange: (counts: PutAwayStatusCounts | null) => void;
   onSlipGenerated: () => void;
 }) {
   switch (section) {
@@ -353,14 +364,16 @@ function InboundSectionContent({
         <ReceivingSlipSection warehouseId={warehouseId}
           statusFilter={receivingStatusFilter}
           refreshKey={refreshKey}
-          onStatusFilterChange={onReceivingStatusFilterChange}/>
+          onStatusFilterChange={onReceivingStatusFilterChange}
+          onStatusCountsChange={onReceivingCountsChange}/>
       );
     case 'putaway':
       return (
         <PutAwaySection warehouseId={warehouseId}
           statusFilter={putawayStatusFilter}
           refreshKey={refreshKey}
-          onStatusFilterChange={onPutawayStatusFilterChange}/>
+          onStatusFilterChange={onPutawayStatusFilterChange}
+          onStatusCountsChange={onPutAwayCountsChange}/>
       );
     case 'vehicle':
       return <VehicleArrivalManagement warehouseId={warehouseId || undefined} />;
@@ -386,17 +399,20 @@ function ReceivingSlipSection({
   statusFilter,
   refreshKey,
   onStatusFilterChange,
+  onStatusCountsChange,
 }: {
   warehouseId: string;
   statusFilter: string;
   refreshKey: number;
   onStatusFilterChange: (status: string) => void;
+  onStatusCountsChange: (counts: ReceivingSlipStatusCounts | null) => void;
 }) {
   return (
     <ReceivingSlipList warehouseId={warehouseId || undefined}
       statusFilter={statusFilter}
       refreshKey={refreshKey}
-      onStatusFilterChange={onStatusFilterChange}/>
+      onStatusFilterChange={onStatusFilterChange}
+      onStatusCountsChange={onStatusCountsChange}/>
   );
 }
 
@@ -405,17 +421,20 @@ function PutAwaySection({
   statusFilter,
   refreshKey,
   onStatusFilterChange,
+  onStatusCountsChange,
 }: {
   warehouseId: string;
   statusFilter: string;
   refreshKey: number;
   onStatusFilterChange: (status: string) => void;
+  onStatusCountsChange: (counts: PutAwayStatusCounts | null) => void;
 }) {
   return (
     <PutAwayView warehouseId={warehouseId || undefined}
       statusFilter={statusFilter}
       refreshKey={refreshKey}
-      onStatusFilterChange={onStatusFilterChange}/>
+      onStatusFilterChange={onStatusFilterChange}
+      onStatusCountsChange={onStatusCountsChange}/>
   );
 }
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 import { FileText, Eye, Calendar, DollarSign } from 'lucide-react';
 
+import { CurrencyIcon } from '@horizon-sync/ui';
 import {
   Card,
   CardContent,
@@ -17,7 +18,6 @@ import {
 
 import { journalEntriesApi, type JournalEntry } from '../../utility/api/journal-entries';
 import { formatCurrency, formatDate } from '../../utils/payment.utils';
-import { CurrencyIcon } from '@horizon-sync/ui';
 
 export function JournalEntries() {
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);

@@ -107,31 +107,71 @@ function DisabledItemCell({ itemId, meta }: { itemId: string; meta: TableMeta })
 }
 
 function QtyCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow, unknown>) {
+  const meta = table.options.meta as TableMeta | undefined;
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState('');
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
   const intValue = Math.trunc(Number(getValue()) || 0);
   return <div className="px-2 py-1 text-right text-muted-foreground">{String(intValue)}</div>;
 }
 
-function MasterPackCellComponent({ getValue }: CellContext<AsnEntryLineRow, unknown>) {
-  return <div className="px-2 py-1 text-right text-muted-foreground">{String(Math.trunc(Number(getValue()) || 0))}</div>;
-}
+  React.useEffect(() => {
+    setDraft(String(intValue));
+  }, [intValue]);
+
+  // Focus the editor when it opens (user-initiated, so no jsx-a11y/no-autofocus).
+  React.useEffect(() => {
+    if (isEditing) inputRef.current?.focus();
+  }, [isEditing]);
+
+  const commit = () => {
+    setIsEditing(false);
+    const parsed = parseInt(draft, 10);
+    meta?.updateData?.(row.index, 'qty', Number.isNaN(parsed) ? 0 : parsed);
+  };
+
+  if (meta?.disabled || !meta?.warehouseIdFrom) {
+    return <div className="px-2 py-1 text-right">{String(intValue)}</div>;
+  }
+
+  if (isEditing) {
+    return (
+      <input type="number"
+        ref={inputRef}
+        value={parseInt(draft, 10) > 0 ? draft : ''}
+        step="1"
+        min="0"
+        className="h-8 w-24 rounded-md border bg-background px-2 py-1 text-center text-sm"
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.currentTarget.blur();
+          } else if (e.key === 'Escape') {
+            setDraft(String(intValue));
+            setIsEditing(false);
+          }
+        }}/>
+    );
+  }
 
 function CasesCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow, unknown>) {
   const meta = table.options.meta as TableMeta | undefined;
   if (meta?.disabled) return <div className="px-2 py-1 text-right">{String(getValue() ?? 0)}</div>;
   return (
-    <input
-      type="number"
-      min="1"
-      step="1"
-      value={Number(getValue()) > 0 ? String(getValue()) : ''}
-      className="h-8 w-20 rounded-md border bg-background px-2 py-1 text-center text-sm"
-      onChange={(event) => {
-        const noOfCases = Math.max(1, parseInt(event.target.value, 10) || 1);
-        const masterPack = Math.max(1, Number(row.original.items_per_master_pack) || 1);
-        meta?.updateData?.(row.index, 'no_of_cases', noOfCases);
-        meta?.updateData?.(row.index, 'qty', masterPack * noOfCases);
+    <div role="button"
+      tabIndex={0}
+      onClick={() => setIsEditing(true)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          setIsEditing(true);
+        }
       }}
-    />
+      className="cursor-pointer hover:bg-muted/50 rounded px-2 py-1 min-h-[32px] flex items-center justify-end text-right">
+      {String(intValue)}
+    </div>
   );
 }
 

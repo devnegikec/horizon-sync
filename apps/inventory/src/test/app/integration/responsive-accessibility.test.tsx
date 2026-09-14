@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { axe, toHaveNoViolations } from 'jest-axe';
 
 import * as invoicesApi from '../../../app/api/invoices';
@@ -109,7 +109,7 @@ describe('Responsive Design and Accessibility Tests', () => {
       // On mobile, table should be scrollable or stacked
       const table = screen.getByRole('table');
       const tableContainer = table.closest('[data-responsive="true"]');
-      
+
       expect(tableContainer).toBeInTheDocument();
     });
 
@@ -225,7 +225,7 @@ describe('Responsive Design and Accessibility Tests', () => {
       renderWithProviders(<InvoiceManagement />);
 
       const statusButton = screen.getByRole('button', { name: /mark as sent/i });
-      
+
       // Check for aria-live region
       const liveRegion = screen.getByRole('status');
       expect(liveRegion).toHaveAttribute('aria-live', 'polite');
@@ -240,7 +240,7 @@ describe('Responsive Design and Accessibility Tests', () => {
       const { container } = renderWithProviders(<InvoiceManagement />);
 
       const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
-      
+
       // Check that headings follow proper hierarchy
       let previousLevel = 0;
       headings.forEach((heading) => {
@@ -255,12 +255,12 @@ describe('Responsive Design and Accessibility Tests', () => {
 
       // Check that text has sufficient contrast
       const textElements = container.querySelectorAll('p, span, button, a');
-      
+
       textElements.forEach((element) => {
         const styles = window.getComputedStyle(element);
         const color = styles.color;
         const backgroundColor = styles.backgroundColor;
-        
+
         // Basic check - actual contrast calculation would be more complex
         expect(color).not.toBe(backgroundColor);
       });
@@ -280,7 +280,7 @@ describe('Responsive Design and Accessibility Tests', () => {
 
       // Links should have descriptive text, not "click here"
       const links = screen.getAllByRole('link');
-      
+
       links.forEach((link) => {
         const text = link.textContent?.toLowerCase() || '';
         expect(text).not.toMatch(/click here|read more|learn more/);
@@ -298,7 +298,7 @@ describe('Responsive Design and Accessibility Tests', () => {
       // Error messages should be associated with inputs
       const customerInput = screen.getByLabelText(/customer/i);
       const errorMessage = screen.getByText(/customer is required/i);
-      
+
       expect(customerInput).toHaveAttribute('aria-describedby');
       expect(errorMessage).toHaveAttribute('id', customerInput.getAttribute('aria-describedby'));
     });

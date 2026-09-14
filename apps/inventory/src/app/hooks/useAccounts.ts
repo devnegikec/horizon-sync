@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getFriendlyErrorMessage } from '../utility/api/core';
+
 
 import { useUserStore } from '@horizon-sync/store';
 
 import type { AccountListItem, AccountFilters, AccountPaginationResponse } from '../types/account.types';
 import { accountApi } from '../utility/api/accounts';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 const MAX_PAGE_SIZE = 100;
 const MIN_PAGE_SIZE = 1;

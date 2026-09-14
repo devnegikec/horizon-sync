@@ -33,6 +33,7 @@ interface FeatureRowProps {
 interface ReceiveAsnRow {
   item_id: string;
   batch: string;
+  boxes: string;
   master_pack_size: string;
   no_of_cases: string;
   quantity: string;
@@ -77,6 +78,35 @@ function parseReceiveAsnCsv(text: string): ReceiveAsnCsvRow[] {
       no_of_cases: noOfCases,
     };
   });
+}
+
+const BATCH_SUFFIX_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const MONTH_LABELS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+/** Default batch prefix, e.g. "BT-SEP-14-A12C" (the server appends the sequence). */
+function generateBatchName(date = new Date()): string {
+  const month = MONTH_LABELS[date.getMonth()];
+  const day = String(date.getDate()).padStart(2, '0');
+  let suffix = '';
+  for (let i = 0; i < 4; i++) {
+    suffix += BATCH_SUFFIX_CHARS[Math.floor(Math.random() * BATCH_SUFFIX_CHARS.length)];
+  }
+  return `BT-${month}-${day}-${suffix}`;
+}
+
+const DEFAULT_LINE_QUANTITY = 10;
+
+/**
+ * Total units in a line = items per master pack × boxes. When the item has no
+ * master pack (the field stays blank), fall back to the default quantity.
+ */
+function rowQuantity(row: ReceiveAsnRow): number {
+  const pack = parseInt(row.master_pack_size, 10);
+  const boxes = parseInt(row.boxes, 10);
+  if (!Number.isFinite(pack) || !Number.isFinite(boxes) || pack <= 0 || boxes <= 0) {
+    return DEFAULT_LINE_QUANTITY;
+  }
+  return pack * boxes;
 }
 
 const INBOUND_STEPS: Array<{ key: ReceiveAsnStep; title: string; description: string }> = [
@@ -380,48 +410,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   };
 
   const addReceiveAsnItem = () => {
-    setReceiveAsnItems((prev) => [...prev, { item_id: '', batch: '', master_pack_size: '', quantity: '', no_of_cases: '1' }]);
-  };
-
-  const importReceiveAsnItems = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const importedRows = parseReceiveAsnCsv(String(reader.result ?? ''));
-        const rows = importedRows.map((csvRow, index) => {
-          const identifier = (csvRow.item_id || csvRow.sku || csvRow.item_code || '').toLowerCase();
-          const item = items.find((candidate) => [candidate.id, candidate.sku, candidate.item_code]
-            .filter(Boolean)
-            .some((value) => value?.toLowerCase() === identifier));
-          if (!item) {
-            throw new Error(`Item not found for CSV row ${index + 2}: ${csvRow.item_id || csvRow.sku || csvRow.item_code}`);
-          }
-
-          const masterPackSize = Math.max(1, item.items_per_master_pack ?? 1);
-          const noOfCases = Math.max(1, Number(csvRow.no_of_cases));
-          return {
-            item_id: item.id,
-            batch: csvRow.batch || `Batch-Sep-${item.sku || item.item_name || item.id.slice(0, 8)}`,
-            master_pack_size: String(masterPackSize),
-            no_of_cases: String(noOfCases),
-            quantity: String(masterPackSize * noOfCases),
-          };
-        });
-        setReceiveAsnItems(rows);
-        toast({ title: 'ASN items imported', description: `${rows.length} item${rows.length === 1 ? '' : 's'} loaded from ${file.name}.` });
-      } catch (err) {
-        toast({
-          title: 'ASN CSV import failed',
-          description: err instanceof Error ? err.message : 'Could not import ASN items.',
-          variant: 'destructive',
-        });
-      }
-    };
-    reader.readAsText(file);
+    setReceiveAsnItems((prev) => [...prev, { item_id: '', batch: generateBatchName(), boxes: '1', master_pack_size: '' }]);
   };
 
   const removeReceiveAsnItem = (idx: number) => {
@@ -463,8 +452,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
               .map((r) => ({
                 item_id: r.item_id,
                 batch: r.batch,
-                quantity: Math.max(1, parseInt(r.quantity, 10) || 1),
-                no_of_cases: Math.max(1, parseInt(r.no_of_cases, 10) || 1),
+                quantity: rowQuantity(r),
                 master_pack_size: r.master_pack_size
                   ? Math.max(1, parseInt(r.master_pack_size, 10) || 1)
                   : 0,
@@ -577,15 +565,13 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
             {selected['stock_boost'] && (
               <div className="space-y-2 rounded-md border border-border p-3">
                 <Label htmlFor="stock-boost-qty">Increase quantity per item</Label>
-                <Input
-                  id="stock-boost-qty"
+                <Input id="stock-boost-qty"
                   type="number"
                   min={1}
                   value={stockBoostQty}
                   onChange={(e) => setStockBoostQty(e.target.value)}
                   disabled={!canEdit || syncing}
-                  className="w-full"
-                />
+                  className="w-full"/>
               </div>
             )}
 
@@ -602,13 +588,11 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                   return (
                     <div key={step.key} className="rounded-md border border-border bg-muted/20 p-3">
                       <div className="flex items-start gap-3">
-                        <Checkbox
-                          id={`inbound-step-${step.key}`}
+                        <Checkbox id={`inbound-step-${step.key}`}
                           checked={stepSelected}
                           disabled={!canEdit || syncing || !previousSelected}
                           onCheckedChange={(value) => toggleInboundStep(step.key, value === true)}
-                          className="mt-0.5"
-                        />
+                          className="mt-0.5"/>
                         <Label htmlFor={`inbound-step-${step.key}`} className="flex cursor-pointer flex-col gap-0.5">
                           <span className="text-sm font-medium">
                             Step {index + 1}: {step.title}
@@ -622,8 +606,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-2">
                               <Label htmlFor="receive-asn-mode">Mode</Label>
-                              <Select
-                                value={receiveAsnMode}
+                              <Select value={receiveAsnMode}
                                 onValueChange={(v) => setReceiveAsnMode(v as 'items' | 'block_ids')}
                                 disabled={!canEdit || syncing}>
                                 <SelectTrigger id="receive-asn-mode" className="w-full">
@@ -650,12 +633,10 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                           </div>
 
                           <div className="flex items-center gap-3">
-                            <Checkbox
-                              id="receive-asn-qr-image"
+                            <Checkbox id="receive-asn-qr-image"
                               checked={receiveAsnQrImage}
                               disabled={!canEdit || syncing}
-                              onCheckedChange={(value) => setReceiveAsnQrImage(value === true)}
-                            />
+                              onCheckedChange={(value) => setReceiveAsnQrImage(value === true)}/>
                             <Label htmlFor="receive-asn-qr-image" className="cursor-pointer text-sm">
                               Generate QR image after QR codes are created
                             </Label>
@@ -664,7 +645,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                           {receiveAsnMode === 'items' ? (
                             <div className="space-y-3">
                               {receiveAsnItems.map((row, idx) => (
-                                <div key={idx} className="grid grid-cols-[1fr_1.4fr_70px_90px_auto] items-end gap-2">
+                                <div key={idx} className="grid grid-cols-[1fr_1.4fr_70px_90px_80px_auto] items-end gap-2">
                                   <div className="space-y-1.5">
                                     <Label className="text-xs">Item</Label>
                                     <Select value={row.item_id} onValueChange={(v) => updateReceiveAsnItem(idx, 'item_id', v)} disabled={!canEdit || syncing}>
@@ -685,15 +666,16 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                                     <Input value={row.batch} onChange={(e) => updateReceiveAsnItem(idx, 'batch', e.target.value)} disabled={!canEdit || syncing} />
                                   </div>
                                   <div className="space-y-1.5">
+                                    <Label className="text-xs">Box</Label>
+                                    <Input type="number" min={1} value={row.boxes} onChange={(e) => updateReceiveAsnItem(idx, 'boxes', e.target.value)} disabled={!canEdit || syncing} />
+                                  </div>
+                                  <div className="space-y-1.5">
                                     <Label className="text-xs">Items / Master Pack</Label>
-                                    <Input
-                                      type="number"
-                                      min={1}
-                                      placeholder="Auto"
-                                      value={row.master_pack_size}
-                                      onChange={(e) => updateReceiveAsnItem(idx, 'master_pack_size', e.target.value)}
-                                      disabled={!canEdit || syncing}
-                                    />
+                                    <Input type="number" placeholder="Auto" value={row.master_pack_size} readOnly className="bg-muted/50" />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs">Qty</Label>
+                                    <Input type="number" value={rowQuantity(row)} readOnly className="bg-muted/50" />
                                   </div>
                                   <div className="space-y-1.5">
                                     <Label className="text-xs">number of case</Label>
@@ -735,14 +717,12 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                           ) : (
                             <div className="space-y-2">
                               <Label htmlFor="receive-asn-block-ids">Block IDs (comma-separated)</Label>
-                              <Input
-                                id="receive-asn-block-ids"
+                              <Input id="receive-asn-block-ids"
                                 value={receiveAsnBlockIds}
                                 onChange={(e) => setReceiveAsnBlockIds(e.target.value)}
                                 placeholder="uuid1, uuid2, ..."
                                 disabled={!canEdit || syncing}
-                                className="font-mono"
-                              />
+                                className="font-mono"/>
                             </div>
                           )}
                         </div>
@@ -805,13 +785,11 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                           <Label htmlFor="receive-asn-put-away-workers">Put-away workers *</Label>
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Button
-                                id="receive-asn-put-away-workers"
+                              <Button id="receive-asn-put-away-workers"
                                 type="button"
                                 variant="outline"
                                 className="w-full justify-between font-normal"
-                                disabled={!canEdit || syncing || workersLoading || !receiveAsnTargetWarehouseId}
-                              >
+                                disabled={!canEdit || syncing || workersLoading || !receiveAsnTargetWarehouseId}>
                                 <span className="truncate">
                                   {workersLoading
                                     ? 'Loading workers...'
@@ -835,14 +813,12 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                                     const selectedWorker = selectedPutAwayWorkerIds.includes(assignment.user_id);
                                     return (
                                       <label key={assignment.user_id} className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted">
-                                        <Checkbox
-                                          checked={selectedWorker}
+                                        <Checkbox checked={selectedWorker}
                                           onCheckedChange={(checked) => {
                                             setSelectedPutAwayWorkerIds((current) => checked === true
                                               ? [...current, assignment.user_id]
                                               : current.filter((id) => id !== assignment.user_id));
-                                          }}
-                                        />
+                                          }}/>
                                         <span>{workerNames[assignment.user_id] ?? assignment.user_id}</span>
                                         {selectedWorker && <Check className="ml-auto h-4 w-4" />}
                                       </label>

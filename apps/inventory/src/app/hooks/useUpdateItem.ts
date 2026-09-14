@@ -1,10 +1,11 @@
 import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { getFriendlyErrorMessage } from '../utility/api/core';
+
 
 import { environment } from '../../environments/environment';
 import type { UpdateItemPayload } from '../types/items-api.types';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 const ITEMS_URL = `${environment.apiCoreUrl}/api/v1/items`;
 

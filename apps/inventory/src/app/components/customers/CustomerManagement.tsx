@@ -28,8 +28,8 @@ import { cn } from '@horizon-sync/ui/lib';
 
 import { useCustomerActions } from '../../hooks/useCustomerActions';
 import { useCustomers } from '../../hooks/useCustomers';
-import type { Customer } from '../../types/customer.types';
 import { getCurrencySymbol } from '../../types/currency.types';
+import type { Customer } from '../../types/customer.types';
 import { customerApi } from '../../utility/api';
 import { ErrorBanner } from '../common';
 
@@ -385,13 +385,11 @@ export function CustomerManagement() {
             {/* File upload drop zone */}
             <div>
               <p className="font-medium text-sm mb-2">Select File</p>
-              <label
-                className={cn(
+              <label className={cn(
                   'flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-8 cursor-pointer transition-colors',
                   'hover:border-primary/50 hover:bg-accent/50',
                   selectedFile && 'border-primary bg-accent/30'
-                )}
-              >
+                )}>
                 <Upload className="h-8 w-8 text-muted-foreground mb-3" />
                 {selectedFile ? (
                   <>
@@ -406,13 +404,11 @@ export function CustomerManagement() {
                     <p className="text-xs text-muted-foreground mt-1">CSV or Excel (.csv, .xlsx, .xls)</p>
                   </>
                 )}
-                <input
-                  type="file"
+                <input type="file"
                   className="hidden"
                   accept=".csv,.xlsx,.xls"
                   onChange={handleFileChange}
-                  disabled={isImporting}
-                />
+                  disabled={isImporting}/>
               </label>
             </div>
           </div>

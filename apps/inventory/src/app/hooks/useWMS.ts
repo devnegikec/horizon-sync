@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+
 import { useUserStore } from '@horizon-sync/store';
 
 import type {
@@ -15,8 +17,6 @@ import type {
   PaginatedOutboundOrders,
   PaginatedPickLists,
   PaginatedPackingSlips,
-  PaginatedPutAwayLists,
-  PaginatedReceivingSlips,
   ReceivingSlipActionResult,
   PickList,
   PickScanResult,
@@ -33,6 +33,7 @@ import type {
   PaginatedVehicleArrivals,
   VehicleArrival,
 } from '../types/wms.types';
+import { queryErrorToMessage } from '../utility/api/error-utils';
 import { pickSettingsApi } from '../utility/api/pick-settings';
 import {
   inboundApi,
@@ -47,6 +48,22 @@ import {
   vehicleArrivalApi,
   erpSyncApi,
 } from '../utility/api/wms';
+
+// ============================================
+// QUERY KEYS
+// ============================================
+
+/**
+ * Root key for put-away list queries. Invalidate this prefix after any mutation
+ * that creates or changes put-away lists so mounted lists/counters refresh.
+ */
+export const PUT_AWAY_LISTS_QUERY_KEY = ['wms', 'put-away-lists'] as const;
+
+/**
+ * Root key for receiving slip queries. Invalidate this prefix after any mutation
+ * that changes a slip's status or the status counts.
+ */
+export const RECEIVING_SLIPS_QUERY_KEY = ['wms', 'receiving-slips'] as const;
 
 // ============================================
 // PICK SETTINGS HOOK (runtime config gating)
@@ -253,62 +270,42 @@ export function useReceivingSlips({
   page_size?: number;
 }) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [data, setData] = React.useState<PaginatedReceivingSlips | null>(null);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const requestIdRef = React.useRef(0);
+  const queryClient = useQueryClient();
 
-  const fetch = React.useCallback(async () => {
-    if (!accessToken) return;
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await inboundApi.listReceivingSlips(accessToken, { warehouse_id, status, page, page_size });
-      if (requestId === requestIdRef.current) {
-        setData(result);
-      }
-    } catch (err) {
-      if (requestId === requestIdRef.current) {
-        setError(err instanceof Error ? err.message : 'Failed to load receiving slips');
-      }
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
-      }
-    }
-  }, [accessToken, warehouse_id, status, page, page_size]);
-
-  React.useEffect(() => {
-    fetch();
-  }, [fetch]);
+  // TanStack Query dedupes identical in-flight requests and caches by key, so
+  // several components asking for the same page share a single API call.
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: [...RECEIVING_SLIPS_QUERY_KEY, { warehouse_id, status, page, page_size }],
+    queryFn: async () => {
+      if (!accessToken) throw new Error('Not authenticated');
+      return inboundApi.listReceivingSlips(accessToken, { warehouse_id, status, page, page_size });
+    },
+    // Keep the previous page/filter's rows visible while the next one loads.
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    enabled: !!accessToken,
+  });
 
   const approveSlip = React.useCallback(
     async (slipId: string): Promise<ReceivingSlipActionResult> => {
       if (!accessToken) throw new Error('Not authenticated');
       const result = await inboundApi.approveSlip(accessToken, slipId);
-      await fetch();
+      queryClient.invalidateQueries({ queryKey: RECEIVING_SLIPS_QUERY_KEY });
+      // Approving a slip generates its put-away list(s).
+      queryClient.invalidateQueries({ queryKey: PUT_AWAY_LISTS_QUERY_KEY });
       return result;
     },
-    [accessToken, fetch],
+    [accessToken, queryClient],
   );
 
   const rejectSlip = React.useCallback(
     async (slipId: string, reason: string): Promise<ReceivingSlipActionResult> => {
       if (!accessToken) throw new Error('Not authenticated');
       const result = await inboundApi.rejectSlip(accessToken, slipId, reason);
-      await fetch();
+      queryClient.invalidateQueries({ queryKey: RECEIVING_SLIPS_QUERY_KEY });
       return result;
     },
-    [accessToken, fetch],
-  );
-
-  const getSlip = React.useCallback(
-    async (slipId: string): Promise<ReceivingSlip> => {
-      if (!accessToken) throw new Error('Not authenticated');
-      return inboundApi.getReceivingSlip(accessToken, slipId);
-    },
-    [accessToken],
+    [accessToken, queryClient],
   );
 
   const generatePutAway = React.useCallback(
@@ -320,34 +317,64 @@ export function useReceivingSlips({
         ...(ids.length === 1 ? { worker_id: ids[0] } : {}),
         ...(ids.length > 1 ? { worker_ids: ids } : {}),
       });
-      await fetch();
+      queryClient.invalidateQueries({ queryKey: RECEIVING_SLIPS_QUERY_KEY });
+      // A new put-away list was created — refresh mounted lists and counters.
+      queryClient.invalidateQueries({ queryKey: PUT_AWAY_LISTS_QUERY_KEY });
       return result;
     },
-    [accessToken, fetch],
+    [accessToken, queryClient],
   );
 
   const rejectItem = React.useCallback(
     async (slipId: string, itemId: string, reason: string): Promise<void> => {
       if (!accessToken) throw new Error('Not authenticated');
       await inboundApi.rejectItem(accessToken, slipId, itemId, reason);
-      await fetch();
+      queryClient.invalidateQueries({ queryKey: RECEIVING_SLIPS_QUERY_KEY });
     },
-    [accessToken, fetch],
+    [accessToken, queryClient],
   );
 
-  const statusCounts = data?.status_counts ?? null;
-
   return {
-    data,
-    statusCounts,
-    loading,
-    error,
-    refetch: fetch,
+    data: data ?? null,
+    statusCounts: data?.status_counts ?? null,
+    loading: isFetching,
+    error: queryErrorToMessage(error),
+    refetch,
     approveSlip,
     rejectSlip,
     rejectItem,
-    getSlip,
     generatePutAway,
+  };
+}
+
+// ============================================
+// RECEIVING SLIP DETAIL HOOK
+// ============================================
+
+/**
+ * Fetch a single receiving slip (with its line items) through TanStack Query.
+ * The key is nested under `RECEIVING_SLIPS_QUERY_KEY`, so the mutations in
+ * `useReceivingSlips` (approve/reject/flag) also refresh an open detail.
+ */
+export function useReceivingSlip(slipId: string | null) {
+  const accessToken = useUserStore((s) => s.accessToken);
+
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: [...RECEIVING_SLIPS_QUERY_KEY, 'detail', slipId],
+    queryFn: async () => {
+      if (!slipId) throw new Error('No slip selected');
+      if (!accessToken) throw new Error('Not authenticated');
+      return inboundApi.getReceivingSlip(accessToken, slipId);
+    },
+    staleTime: 30_000,
+    enabled: !!slipId && !!accessToken,
+  });
+
+  return {
+    slip: data ?? null,
+    loading: isFetching,
+    error: queryErrorToMessage(error),
+    refetch,
   };
 }
 
@@ -367,82 +394,80 @@ export function usePutAwayLists({
   page_size?: number;
 }) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [data, setData] = React.useState<PaginatedPutAwayLists | null>(null);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const requestIdRef = React.useRef(0);
 
-  const fetch = React.useCallback(async () => {
-    if (!accessToken) return;
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await putAwayApi.listPutAwayLists(accessToken, { warehouse_id, status, page, page_size });
-      // Ignore responses from superseded requests so a slower one cannot
-      // overwrite the list/status counts for the current warehouse, status or page.
-      if (requestId === requestIdRef.current) setData(result);
-    } catch (err) {
-      if (requestId === requestIdRef.current) {
-        setError(err instanceof Error ? err.message : 'Failed to load put-away lists');
-      }
-    } finally {
-      if (requestId === requestIdRef.current) setLoading(false);
-    }
-  }, [accessToken, warehouse_id, status, page, page_size]);
+  // TanStack Query dedupes identical in-flight requests and caches by key, so
+  // several components asking for the same page share a single API call.
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: [...PUT_AWAY_LISTS_QUERY_KEY, { warehouse_id, status, page, page_size }],
+    queryFn: async () => {
+      if (!accessToken) throw new Error('Not authenticated');
+      return putAwayApi.listPutAwayLists(accessToken, { warehouse_id, status, page, page_size });
+    },
+    // Keep the previous page/filter's rows visible while the next one loads.
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    enabled: !!accessToken,
+  });
 
-  React.useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  return { data, statusCounts: data?.status_counts ?? null, loading, error, refetch: fetch };
+  return {
+    data: data ?? null,
+    statusCounts: data?.status_counts ?? null,
+    loading: isFetching,
+    error: queryErrorToMessage(error),
+    refetch,
+  };
 }
 
+/**
+ * Fetch a single put-away list (with its items/bin locations) through TanStack
+ * Query. The key is nested under `PUT_AWAY_LISTS_QUERY_KEY`, so completing or
+ * skipping an item — and anything else that invalidates the prefix — also
+ * refreshes an open detail.
+ */
 export function usePutAwayList(listId: string | null) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [list, setList] = React.useState<PutAwayList | null>(null);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchList = React.useCallback(async () => {
-    if (!listId || !accessToken) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await putAwayApi.getPutAwayList(accessToken, listId);
-      setList(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load put-away list');
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken, listId]);
-
-  React.useEffect(() => {
-    fetchList();
-  }, [fetchList]);
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: [...PUT_AWAY_LISTS_QUERY_KEY, 'detail', listId],
+    queryFn: async () => {
+      if (!listId) throw new Error('No list selected');
+      if (!accessToken) throw new Error('Not authenticated');
+      return putAwayApi.getPutAwayList(accessToken, listId);
+    },
+    staleTime: 30_000,
+    enabled: !!listId && !!accessToken,
+  });
 
   const completeItem = React.useCallback(
     async (itemId: string, binId?: string): Promise<PutAwayItem> => {
       if (!listId || !accessToken) throw new Error('No list selected');
       const result = await putAwayApi.completeItem(accessToken, listId, itemId, binId);
-      await fetchList();
+      // Item progress changes this detail and the list's status/counts.
+      queryClient.invalidateQueries({ queryKey: PUT_AWAY_LISTS_QUERY_KEY });
       return result;
     },
-    [accessToken, listId, fetchList],
+    [accessToken, listId, queryClient],
   );
 
   const skipItem = React.useCallback(
     async (itemId: string, reason: string): Promise<PutAwayItem> => {
       if (!listId || !accessToken) throw new Error('No list selected');
       const result = await putAwayApi.skipItem(accessToken, listId, itemId, reason);
-      await fetchList();
+      queryClient.invalidateQueries({ queryKey: PUT_AWAY_LISTS_QUERY_KEY });
       return result;
     },
-    [accessToken, listId, fetchList],
+    [accessToken, listId, queryClient],
   );
 
-  return { list, loading, error, refetch: fetchList, completeItem, skipItem };
+  return {
+    list: data ?? null,
+    loading: isFetching,
+    error: queryErrorToMessage(error),
+    refetch,
+    completeItem,
+    skipItem,
+  };
 }
 
 // ============================================

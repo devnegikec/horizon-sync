@@ -1,12 +1,12 @@
 import * as React from 'react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components';
 import { useFeatureVisibility } from '@horizon-sync/ui/hooks';
-import { useUserStore } from '@horizon-sync/store';
 
-import { itemApi } from '../../utility/api/items';
-import { REQUIRE_ITEM_APPROVAL } from '../../constants/feature-flags';
 import { environment } from '../../../environments/environment';
+import { REQUIRE_ITEM_APPROVAL } from '../../constants/feature-flags';
+import { itemApi } from '../../utility/api/items';
 
 export interface ItemApprovalActionsProps {
     item: { id: string; status?: string | null };
@@ -73,65 +73,53 @@ export function ItemApprovalActions({ item, onChanged, className }: ItemApproval
         <div className={className}>
             <div className="flex flex-wrap items-center gap-2">
                 {status === 'draft' && (
-                    <Button
-                        type="button"
+                    <Button type="button"
                         size="sm"
                         variant="outline"
                         disabled={loading !== null}
-                        onClick={() => run('submit')}
-                    >
+                        onClick={() => run('submit')}>
                         {loading === 'submit' ? 'Submitting…' : 'Submit for Approval'}
                     </Button>
                 )}
 
                 {status === 'pending_approval' && (
                     <>
-                        <Button
-                            type="button"
+                        <Button type="button"
                             size="sm"
                             variant="default"
                             disabled={loading !== null}
-                            onClick={() => run('approve')}
-                        >
+                            onClick={() => run('approve')}>
                             {loading === 'approve' ? 'Approving…' : 'Approve'}
                         </Button>
                         {!rejecting ? (
-                            <Button
-                                type="button"
+                            <Button type="button"
                                 size="sm"
                                 variant="destructive"
                                 disabled={loading !== null}
-                                onClick={() => setRejecting(true)}
-                            >
+                                onClick={() => setRejecting(true)}>
                                 Reject
                             </Button>
                         ) : (
                             <span className="flex items-center gap-2">
-                                <input
-                                    value={reason}
+                                <input value={reason}
                                     onChange={(e) => setReason(e.target.value)}
                                     placeholder="Rejection reason"
-                                    className="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-                                />
-                                <Button
-                                    type="button"
+                                    className="h-8 rounded-md border border-input bg-transparent px-2 text-sm"/>
+                                <Button type="button"
                                     size="sm"
                                     variant="destructive"
                                     disabled={loading !== null || !reason.trim()}
-                                    onClick={() => run('reject')}
-                                >
+                                    onClick={() => run('reject')}>
                                     {loading === 'reject' ? 'Rejecting…' : 'Confirm'}
                                 </Button>
-                                <Button
-                                    type="button"
+                                <Button type="button"
                                     size="sm"
                                     variant="ghost"
                                     disabled={loading !== null}
                                     onClick={() => {
                                         setRejecting(false);
                                         setReason('');
-                                    }}
-                                >
+                                    }}>
                                     Cancel
                                 </Button>
                             </span>
