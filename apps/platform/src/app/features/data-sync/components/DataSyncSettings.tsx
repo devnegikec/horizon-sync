@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { AlertCircle, Check, Database, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { AlertCircle, Check, Database, FileUp, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
 import { Badge, Button, Checkbox, Input, Label, Popover, PopoverContent, PopoverTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
@@ -35,6 +35,49 @@ interface ReceiveAsnRow {
   batch: string;
   boxes: string;
   master_pack_size: string;
+  no_of_cases: string;
+  quantity: string;
+}
+
+interface ReceiveAsnCsvRow {
+  item_id?: string;
+  sku?: string;
+  item_code?: string;
+  batch?: string;
+  no_of_cases: string;
+}
+
+function parseReceiveAsnCsv(text: string): ReceiveAsnCsvRow[] {
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) throw new Error('CSV must include a header and at least one item row.');
+
+  const headers = lines[0].split(',').map((header) => header.trim().toLowerCase());
+  const indexOf = (...names: string[]) => names.map((name) => headers.indexOf(name)).find((index) => index >= 0) ?? -1;
+  const itemIdIndex = indexOf('item_id', 'item id');
+  const skuIndex = indexOf('sku');
+  const itemCodeIndex = indexOf('item_code', 'item code');
+  const batchIndex = indexOf('batch');
+  const casesIndex = indexOf('no_of_cases', 'number of cases', 'number_of_cases', 'cases');
+
+  if (itemIdIndex < 0 && skuIndex < 0 && itemCodeIndex < 0) {
+    throw new Error('CSV must include item_id, SKU, or item_code.');
+  }
+  if (casesIndex < 0) throw new Error('CSV must include a number of cases column.');
+
+  return lines.slice(1).map((line, rowIndex) => {
+    const columns = line.split(',').map((value) => value.trim());
+    const noOfCases = columns[casesIndex] ?? '';
+    if (!/^\d+$/.test(noOfCases) || Number(noOfCases) < 1) {
+      throw new Error(`Invalid number of cases on CSV row ${rowIndex + 2}.`);
+    }
+    return {
+      item_id: itemIdIndex >= 0 ? columns[itemIdIndex] : undefined,
+      sku: skuIndex >= 0 ? columns[skuIndex] : undefined,
+      item_code: itemCodeIndex >= 0 ? columns[itemCodeIndex] : undefined,
+      batch: batchIndex >= 0 ? columns[batchIndex] : undefined,
+      no_of_cases: noOfCases,
+    };
+  });
 }
 
 const BATCH_SUFFIX_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -164,6 +207,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   const [workerNames, setWorkerNames] = React.useState<Record<string, string>>({});
   const [workersLoading, setWorkersLoading] = React.useState(false);
   const [workersError, setWorkersError] = React.useState<string | null>(null);
+  const receiveAsnCsvInputRef = React.useRef<HTMLInputElement>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -289,25 +333,79 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
     setSelected(Object.fromEntries(features.map((feature) => [feature.key, false])));
   };
 
-  const updateReceiveAsnItem = (idx: number, field: keyof ReceiveAsnRow, value: string) => {
+  const updateReceiveAsnItem = (
+    idx: number,
+    field: keyof ReceiveAsnRow,
+    value: string
+  ) => {
     setReceiveAsnItems((prev) =>
       prev.map((r, i) => {
         if (i !== idx) return r;
+
+
+        const item = items.find((it) => it.id === value);
+
+        const pack = item?.items_per_master_pack;
+
+        const batch =
+          `Batch-Sep-` +
+          (item?.sku || item?.item_name || item?.id.slice(0, 8));
+
+        // Determine effective values first
+        const masterPackSize =
+          pack && pack > 0
+            ? String(pack)
+            : r.master_pack_size;
+
+        const numOfCases =
+          parseInt(r.no_of_cases, 10) > 0
+            ? r.no_of_cases
+            : '5';
+
+        // Then calculate quantity
+        const masterPack = parseInt(masterPackSize, 10);
+        const cases = parseInt(numOfCases, 10);
+
+        const quantity =
+          !isNaN(masterPack) && !isNaN(cases)
+            ? String(masterPack * cases)
+            : '0';
         if (field === 'item_id') {
-          // Auto-populate Items per Master Pack from the selected item's base
-          // packaging unit (same attribute Generate QR Block uses). If the
-          // item has no master-pack size, leave any user-entered value as-is.
-          const item = items.find((it) => it.id === value);
-          const pack = item?.items_per_master_pack;
           return {
             ...r,
             item_id: value,
-            master_pack_size:
-              pack && pack > 0 ? String(pack) : r.master_pack_size,
+            batch,
+            master_pack_size: masterPackSize,
+            no_of_cases: numOfCases,
+            quantity,
           };
         }
-        return { ...r, [field]: value };
-      }),
+        if (field === 'no_of_cases') {
+          return {
+            ...r,
+            [field]: value, quantity: !isNaN(masterPack) && !isNaN(parseInt(value, 10)) ? String(masterPack * parseInt(value, 10)) : '0',
+          };
+        }
+        if (field === 'quantity') {
+          const requestedQty = parseInt(value, 10);
+          const noOfCases =
+            !isNaN(masterPack) && masterPack > 0 && !isNaN(requestedQty)
+              ? Math.max(1, Math.round(requestedQty / masterPack))
+              : parseInt(r.no_of_cases, 10) || 1;
+          return {
+            ...r,
+            no_of_cases: String(noOfCases),
+            quantity:
+              !isNaN(masterPack) && masterPack > 0
+                ? String(masterPack * noOfCases)
+                : String(requestedQty || 0),
+          };
+        }
+        return {
+          ...r,
+          [field]: value,
+        };
+      })
     );
   };
 
@@ -579,15 +677,42 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                                     <Label className="text-xs">Qty</Label>
                                     <Input type="number" value={rowQuantity(row)} readOnly className="bg-muted/50" />
                                   </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs">number of case</Label>
+                                    <Input value={row.no_of_cases} min={1} onChange={(e) => updateReceiveAsnItem(idx, 'no_of_cases', e.target.value)} disabled={!canEdit || syncing} />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs">Qty</Label>
+                                    <Input value={row.quantity} min={1} onChange={(e) => updateReceiveAsnItem(idx, 'quantity', e.target.value)} disabled={!canEdit || syncing} />
+                                  </div>
                                   <Button variant="ghost" size="sm" onClick={() => removeReceiveAsnItem(idx)} disabled={!canEdit || syncing} className="h-9 px-2">
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
                               ))}
-                              <Button variant="outline" size="sm" onClick={addReceiveAsnItem} disabled={!canEdit || syncing} className="gap-1">
-                                <Plus className="h-3.5 w-3.5" />
-                                Add item
-                              </Button>
+                              <div className="flex flex-wrap gap-2">
+                                <Button variant="outline" size="sm" onClick={addReceiveAsnItem} disabled={!canEdit || syncing} className="gap-1">
+                                  <Plus className="h-3.5 w-3.5" />
+                                  Add item
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => receiveAsnCsvInputRef.current?.click()}
+                                  disabled={!canEdit || syncing || items.length === 0}
+                                  className="gap-1"
+                                >
+                                  <FileUp className="h-3.5 w-3.5" />
+                                  Import CSV
+                                </Button>
+                                <Input
+                                  ref={receiveAsnCsvInputRef}
+                                  type="file"
+                                  accept=".csv,text/csv"
+                                  onChange={importReceiveAsnItems}
+                                  className="hidden"
+                                />
+                              </div>
                             </div>
                           ) : (
                             <div className="space-y-2">
@@ -613,9 +738,9 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="purchase">Purchase</SelectItem>
                                   <SelectItem value="stock_receipt">Stock Receipt</SelectItem>
                                   <SelectItem value="internal_transfer">Internal Transfer</SelectItem>
+                                  <SelectItem value="purchase">Purchase</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>

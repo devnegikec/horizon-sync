@@ -25,7 +25,7 @@ import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
 import { usePickList, usePickLists, usePickSettings } from '../../hooks/useWMS';
-import type { PickList, PickListItem, PickSerialDetail, PickListProgress, WMSWorker, PackingSlipListItem } from '../../types/wms.types';
+import type { PickList, PickListGroup, PickListItem, PickSerialDetail, PickListProgress, WMSWorker, PackingSlipListItem } from '../../types/wms.types';
 import { wmsWorkerApi, packingSlipApi } from '../../utility/api/wms';
 
 import { createPickListColumns } from './PickListColumns';
@@ -131,16 +131,51 @@ function useWorkers(enabled: boolean, warehouseId?: string): WMSWorker[] {
 interface PickLineGroup {
   itemId: string;
   rows: PickListItem[];
+  parentQseal?: PickListGroup['parent_qseal'];
+  productName?: string;
 }
 
 function groupPickItems(items: PickListItem[]): PickLineGroup[] {
   const groups = new Map<string, PickLineGroup>();
   for (const it of items) {
-    const g = groups.get(it.item_id) ?? { itemId: it.item_id, rows: [] };
+    const key = `${it.item_id}::${it.batch_no ?? ''}`;
+    const g = groups.get(key) ?? { itemId: key, rows: [] };
     g.rows.push(it);
-    groups.set(it.item_id, g);
+    groups.set(key, g);
   }
   return Array.from(groups.values());
+}
+
+function groupedPickItems(groups: PickListGroup[]): PickLineGroup[] {
+  return groups.map((group, groupIndex) => ({
+    itemId: `group-${groupIndex}`,
+    parentQseal: group.parent_qseal,
+    productName: group.product_name,
+    rows: (Array.isArray(group.items) ? group.items : []).map((item, itemIndex) => ({
+      id: '',
+      item_id: `${groupIndex}-${item.sku}`,
+      item_name: group.product_name,
+      sku: item.sku,
+      warehouse_id: '',
+      qty: item.quantity || 0,
+      picked_qty: itemIndex === 0 ? group.picked_qty ?? 0 : 0,
+      uom: '',
+      per_case_qty: group.parent_qseal?.capacity ?? null,
+      case_qty: group.parent_qseal ? 1 : null,
+      loose_qty: item.quantity || 0,
+      batch_no: item.batch_number,
+      bin_location_id: group.bin_location_id,
+      bin_location_path: group.bin_location_path,
+      handling_unit_id: group.handling_unit_id ?? null,
+      sort_order: itemIndex,
+      serials: item.serial_number ? [{
+        serial_number: item.serial_number,
+        sku: item.sku,
+        manufacturing_date: item.manufacturing_date ?? null,
+        expiry_date: item.expiry_date ?? null,
+      }] : [],
+    })),
+  }));
 }
 
 /** First non-null value from a list, or null. */
@@ -227,7 +262,14 @@ function PickLineRow({ group }: { group: PickLineGroup }) {
           <span className="inline-flex items-center gap-1">
             <ExpandChevron expanded={expanded} />
             <span className="font-mono font-medium">{first.sku ?? first.item_id}</span>
-            {first.item_name && <span className="text-xs text-muted-foreground ml-2">{first.item_name}</span>}
+            {(group.productName || first.item_name) && (
+              <span className="text-xs text-muted-foreground ml-2">{group.productName || first.item_name}</span>
+            )}
+            {group.parentQseal && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-mono">
+                {group.parentQseal.serial_number} ({group.parentQseal.capacity})
+              </span>
+            )}
             {hu && (
               <span className="ml-2 inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-mono text-blue-600">
                 HU {hu.slice(0, 8)}
@@ -715,7 +757,7 @@ function HandlingUnitSection({
             if (e.key === 'Enter') onAssign();
           }}
           placeholder="Handling unit ID (trolley/carton/pallet)..."
-          className="font-mono text-sm"/>
+          className="font-mono text-sm" />
         <Button onClick={onAssign} variant="outline" className="gap-2 shrink-0">
           Assign HU
         </Button>
@@ -725,11 +767,12 @@ function HandlingUnitSection({
   );
 }
 
-function PickListItemsTable({ items, progress }: { items: PickListItem[]; progress: PickListProgress | null }) {
+function PickListItemsTable({ groups, progress }: { groups: PickLineGroup[]; progress: PickListProgress | null }) {
+  const totalUnits = groups.reduce((sum, group) => sum + group.rows.reduce((s, row) => s + (row.qty || 0), 0), 0);
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-        Line Items ({new Set(items.map((i) => i.item_id)).size} SKUs · {progress?.total_qty ?? items.length} units)
+        Line Items ({groups.length} groups · {progress?.total_qty ?? totalUnits} units)
       </div>
       <table className="w-full text-sm">
         <thead className="bg-muted/30">
@@ -746,14 +789,14 @@ function PickListItemsTable({ items, progress }: { items: PickListItem[]; progre
           </tr>
         </thead>
         <tbody className="divide-y">
-          {items.length === 0 && (
+          {groups.length === 0 && (
             <tr>
               <td colSpan={9} className="px-4 py-4 text-center text-muted-foreground text-xs">
                 No items
               </td>
             </tr>
           )}
-          {groupPickItems(items).map((group) => (
+          {groups.map((group) => (
             <PickLineRow key={group.itemId} group={group} />
           ))}
         </tbody>
@@ -794,6 +837,12 @@ function PickListDetailBody({
   onShowQr: () => void;
 }) {
   const { enableHandlingUnit } = usePickSettings();
+  const displayGroups = React.useMemo(
+    () => (pickList?.groups && pickList.groups.length > 0
+      ? groupedPickItems(pickList.groups)
+      : groupPickItems(pickList?.items ?? [])),
+    [pickList?.groups, pickList?.items],
+  );
   if (error) return <div className="text-sm text-destructive py-4">{error}</div>;
   if (loading || !pickList) return null;
   return (
@@ -807,8 +856,8 @@ function PickListDetailBody({
         huInput={huInput}
         onHuInputChange={onHuInputChange}
         onAssign={onAssignHu}
-        error={huError}/>
-      <PickListItemsTable items={pickList.items} progress={progress} />
+        error={huError} />
+      <PickListItemsTable groups={displayGroups} progress={progress} />
       <p className="text-xs text-muted-foreground">Created: {pickList.created_at ? new Date(pickList.created_at).toLocaleString() : '—'}</p>
     </div>
   );
@@ -839,7 +888,7 @@ function PickListConfirmDialog({
       }
       confirmLabel={isComplete ? 'Mark Complete' : 'Cancel Pick List'}
       destructive={action === 'cancel'}
-      onConfirm={isComplete ? onConfirmComplete : onConfirmCancel}/>
+      onConfirm={isComplete ? onConfirmComplete : onConfirmCancel} />
   );
 }
 
@@ -973,7 +1022,7 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
             }}
             hasWorker={worker.id !== null}
             onAssignClick={() => setAssignOpen(true)}
-            onClose={() => onOpenChange(false)}/>
+            onClose={() => onOpenChange(false)} />
         }>
         <PickListDetailBody pickList={pickList}
           loading={loading}
@@ -988,18 +1037,18 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
           onHuInputChange={setHuInput}
           onAssignHu={handleAssignHu}
           huError={scanError}
-          onShowQr={() => setQrOpen(true)}/>
+          onShowQr={() => setQrOpen(true)} />
       </DetailDialog>
       <AssignWorkerDialog open={assignOpen}
         onOpenChange={setAssignOpen}
         currentWorkerId={worker.id}
         warehouseId={pickListWarehouseId(pickList, warehouseId)}
-        onAssign={handleAssign}/>
+        onAssign={handleAssign} />
       <WorkerQrDialog open={qrOpen} onOpenChange={setQrOpen} worker={worker.raw} />
       <PickListConfirmDialog action={confirmAction}
         onClose={() => setConfirmAction(null)}
         onConfirmComplete={handleComplete}
-        onConfirmCancel={handleCancel}/>
+        onConfirmCancel={handleCancel} />
     </>
   );
 }
@@ -1142,7 +1191,7 @@ function PickListsEmpty({ filtered, onClearFilter }: { filtered: boolean; onClea
                   Clear filters
                 </Button>
               ) : undefined
-            }/>
+            } />
         </div>
       </CardContent>
     </Card>
@@ -1206,7 +1255,7 @@ function PickListsTable({
               serverPagination,
             }}
             fixedHeader
-            maxHeight="auto"/>
+            maxHeight="auto" />
         </CardContent>
       </Card>
     );
@@ -1328,14 +1377,14 @@ export function PickListView({ warehouseId, refreshKey }: PickListViewProps) {
         onClearFilter={() => {
           setStatusFilter('all');
           setPage(1);
-        }}/>
+        }} />
 
       <PickListDetailDialog listId={viewListId} open={dialogOpen} onOpenChange={setDialogOpen} warehouseId={warehouseId} />
 
       <PackPickListDialog pickList={data?.pick_lists.find((p) => p.id === packListId) ?? null}
         warehouseId={warehouseId}
         onClose={() => setPackListId(null)}
-        onPacked={refetch}/>
+        onPacked={refetch} />
     </div>
   );
 }

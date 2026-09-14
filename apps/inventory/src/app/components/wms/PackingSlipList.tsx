@@ -54,7 +54,7 @@ function PackingSlipsEmpty({ filtered, onClearFilter }: { filtered: boolean; onC
                   Clear filter
                 </Button>
               ) : undefined
-            }/>
+            } />
         </div>
       </CardContent>
     </Card>
@@ -108,15 +108,74 @@ function PackingSlipsTable({
             serverPagination,
           }}
           fixedHeader
-          maxHeight="auto"/>
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );
 }
 
-/** Detail responses may omit `items`; normalise to a list for rendering. */
-function slipItemsOf(slip: PackingSlip | null): PackingSlipItem[] {
-  return slip?.items ?? [];
+interface PackingSlipDetailRow {
+  id: string;
+  item_id: string | null;
+  sku: string | null;
+  item_name: string | null;
+  batch_no: string | null;
+  bin_location_id: string | null;
+  qty: number;
+  uom: string | null;
+}
+
+function packingSlipDetailRows(slip: PackingSlip | null): PackingSlipDetailRow[] {
+  if (!slip) return [];
+  if (slip.groups && slip.groups.length > 0) {
+    const rows: PackingSlipDetailRow[] = [];
+    slip.groups.forEach((group, groupIndex) => {
+      // Aggregate by SKU+batch so a group carrying multiple products is not
+      // collapsed into a single row labelled with only the first SKU/UOM.
+      const byKey = new Map<string, { sku: string; batch_no: string | null; uom: string | null; qty: number }>();
+      for (const item of group.items) {
+        const key = `${item.sku}::${item.batch_number ?? ''}`;
+        const agg = byKey.get(key);
+        if (agg) {
+          agg.qty += item.quantity || 0;
+        } else {
+          byKey.set(key, { sku: item.sku, batch_no: item.batch_number, uom: item.uom ?? null, qty: item.quantity || 0 });
+        }
+      }
+      for (const [key, agg] of byKey) {
+        rows.push({
+          id: `group-${groupIndex}-${key}`,
+          item_id: null,
+          sku: agg.sku,
+          item_name: group.product_name,
+          batch_no: agg.batch_no,
+          bin_location_id: group.bin_location_id,
+          qty: agg.qty,
+          uom: agg.uom,
+        });
+      }
+    });
+    return rows;
+  }
+  return (slip.items ?? []).map((item) => ({
+    id: item.id,
+    item_id: item.item_id,
+    sku: item.sku ?? null,
+    item_name: item.item_name ?? null,
+    batch_no: item.batch_no,
+    bin_location_id: item.bin_location_id,
+    qty: item.qty,
+    uom: item.uom,
+  }));
+}
+
+/** Total number of packing-slip line items, counting grouped items individually. */
+function packingSlipItemCount(slip: PackingSlip | null): number {
+  if (!slip) return 0;
+  if (slip.groups && slip.groups.length > 0) {
+    return slip.groups.reduce((sum, group) => sum + group.items.length, 0);
+  }
+  return slip.items?.length ?? 0;
 }
 
 export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProps) {
@@ -255,6 +314,8 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
     onDispatch: (slip) => dispatch(slip.id),
   });
 
+  const detailRows = React.useMemo(() => packingSlipDetailRows(viewSlip), [viewSlip]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -287,7 +348,7 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
         onClearFilter={() => {
           setStatusFilter('all');
           setPage(1);
-        }}/>
+        }} />
 
       <DetailDialog open={viewSlip !== null}
         onOpenChange={(o) => {
@@ -310,7 +371,7 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Items</p>
-                <p className="font-semibold">{slipItems.length}</p>
+                <p className="font-semibold">{packingSlipItemCount(viewSlip)}</p>
               </div>
             </div>
 
@@ -326,25 +387,25 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {slipItems.length === 0 && (
+                  {detailRows.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-4 py-4 text-center text-muted-foreground text-xs">
                         No items
                       </td>
                     </tr>
                   )}
-                  {slipItems.map((item) => (
-                    <tr key={item.id}>
+                  {detailRows.map((row) => (
+                    <tr key={row.id}>
                       <td className="px-4 py-2">
-                        <span className="font-mono font-medium">{item.sku ?? item.item_id}</span>
-                        {item.item_name && <span className="text-xs text-muted-foreground ml-2">{item.item_name}</span>}
+                        <span className="font-mono font-medium">{row.sku ?? row.item_id ?? '—'}</span>
+                        {row.item_name && <span className="text-xs text-muted-foreground ml-2">{row.item_name}</span>}
                       </td>
-                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{item.batch_no ?? '—'}</td>
+                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{row.batch_no ?? '—'}</td>
                       <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
-                        {item.bin_location_id ? item.bin_location_id.slice(0, 8) : '—'}
+                        {row.bin_location_id ? row.bin_location_id.slice(0, 8) : '—'}
                       </td>
-                      <td className="px-4 py-2 text-right">{item.qty}</td>
-                      <td className="px-4 py-2 text-right text-muted-foreground">{item.uom}</td>
+                      <td className="px-4 py-2 text-right">{row.qty}</td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">{row.uom}</td>
                     </tr>
                   ))}
                 </tbody>
