@@ -165,9 +165,20 @@ interface PutAwayViewProps {
   /** Increment to trigger a refetch (e.g. from the panel-level Refresh button). */
   refreshKey?: number;
   onStatusFilterChange?: (status: string) => void;
+  /**
+   * Publishes the list's status counts so sibling stat cards can reuse them
+   * instead of issuing a second request to the same endpoint.
+   */
+  onStatusCountsChange?: (counts: PutAwayStatusCounts | null) => void;
 }
 
-export function PutAwayView({ warehouseId, statusFilter: statusFilterProp, refreshKey, onStatusFilterChange }: PutAwayViewProps) {
+export function PutAwayView({
+  warehouseId,
+  statusFilter: statusFilterProp,
+  refreshKey,
+  onStatusFilterChange,
+  onStatusCountsChange,
+}: PutAwayViewProps) {
   const [internalStatusFilter, setInternalStatusFilter] = React.useState('all');
   const statusFilter = statusFilterProp ?? internalStatusFilter;
   const setStatusFilter = onStatusFilterChange ?? setInternalStatusFilter;
@@ -195,6 +206,12 @@ export function PutAwayView({ warehouseId, statusFilter: statusFilterProp, refre
     lastRefreshKeyRef.current = refreshKey;
     refetch();
   }, [refreshKey, refetch]);
+
+  // Share the counts returned with the list so the stat cards above don't need
+  // their own request to the same endpoint.
+  React.useEffect(() => {
+    onStatusCountsChange?.(statusCounts);
+  }, [statusCounts, onStatusCountsChange]);
 
   const lists: PutAwayList[] = data?.put_away_lists ?? [];
   const pagination = data?.pagination;

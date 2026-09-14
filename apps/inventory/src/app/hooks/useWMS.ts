@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+
 import { useUserStore } from '@horizon-sync/store';
 
 import type {
@@ -15,7 +17,6 @@ import type {
   PaginatedOutboundOrders,
   PaginatedPickLists,
   PaginatedPackingSlips,
-  PaginatedPutAwayLists,
   PaginatedReceivingSlips,
   ReceivingSlipActionResult,
   PickList,
@@ -33,6 +34,7 @@ import type {
   PaginatedVehicleArrivals,
   VehicleArrival,
 } from '../types/wms.types';
+import { queryErrorToMessage } from '../utility/api/error-utils';
 import { pickSettingsApi } from '../utility/api/pick-settings';
 import {
   inboundApi,
@@ -47,6 +49,16 @@ import {
   vehicleArrivalApi,
   erpSyncApi,
 } from '../utility/api/wms';
+
+// ============================================
+// QUERY KEYS
+// ============================================
+
+/**
+ * Root key for put-away list queries. Invalidate this prefix after any mutation
+ * that creates or changes put-away lists so mounted lists/counters refresh.
+ */
+export const PUT_AWAY_LISTS_QUERY_KEY = ['wms', 'put-away-lists'] as const;
 
 // ============================================
 // PICK SETTINGS HOOK (runtime config gating)
@@ -253,6 +265,7 @@ export function useReceivingSlips({
   page_size?: number;
 }) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
   const [data, setData] = React.useState<PaginatedReceivingSlips | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -288,9 +301,11 @@ export function useReceivingSlips({
       if (!accessToken) throw new Error('Not authenticated');
       const result = await inboundApi.approveSlip(accessToken, slipId);
       await fetch();
+      // Approving a slip generates its put-away list(s).
+      queryClient.invalidateQueries({ queryKey: PUT_AWAY_LISTS_QUERY_KEY });
       return result;
     },
-    [accessToken, fetch],
+    [accessToken, fetch, queryClient],
   );
 
   const rejectSlip = React.useCallback(
@@ -321,9 +336,11 @@ export function useReceivingSlips({
         ...(ids.length > 1 ? { worker_ids: ids } : {}),
       });
       await fetch();
+      // A new put-away list was created — refresh mounted lists and counters.
+      queryClient.invalidateQueries({ queryKey: PUT_AWAY_LISTS_QUERY_KEY });
       return result;
     },
-    [accessToken, fetch],
+    [accessToken, fetch, queryClient],
   );
 
   const rejectItem = React.useCallback(
@@ -367,39 +384,33 @@ export function usePutAwayLists({
   page_size?: number;
 }) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [data, setData] = React.useState<PaginatedPutAwayLists | null>(null);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const requestIdRef = React.useRef(0);
 
-  const fetch = React.useCallback(async () => {
-    if (!accessToken) return;
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await putAwayApi.listPutAwayLists(accessToken, { warehouse_id, status, page, page_size });
-      // Ignore responses from superseded requests so a slower one cannot
-      // overwrite the list/status counts for the current warehouse, status or page.
-      if (requestId === requestIdRef.current) setData(result);
-    } catch (err) {
-      if (requestId === requestIdRef.current) {
-        setError(err instanceof Error ? err.message : 'Failed to load put-away lists');
-      }
-    } finally {
-      if (requestId === requestIdRef.current) setLoading(false);
-    }
-  }, [accessToken, warehouse_id, status, page, page_size]);
+  // TanStack Query dedupes identical in-flight requests and caches by key, so
+  // several components asking for the same page share a single API call.
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: [...PUT_AWAY_LISTS_QUERY_KEY, { warehouse_id, status, page, page_size }],
+    queryFn: async () => {
+      if (!accessToken) throw new Error('Not authenticated');
+      return putAwayApi.listPutAwayLists(accessToken, { warehouse_id, status, page, page_size });
+    },
+    // Keep the previous page/filter's rows visible while the next one loads.
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    enabled: !!accessToken,
+  });
 
-  React.useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  return { data, statusCounts: data?.status_counts ?? null, loading, error, refetch: fetch };
+  return {
+    data: data ?? null,
+    statusCounts: data?.status_counts ?? null,
+    loading: isFetching,
+    error: queryErrorToMessage(error),
+    refetch,
+  };
 }
 
 export function usePutAwayList(listId: string | null) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
   const [list, setList] = React.useState<PutAwayList | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -427,9 +438,11 @@ export function usePutAwayList(listId: string | null) {
       if (!listId || !accessToken) throw new Error('No list selected');
       const result = await putAwayApi.completeItem(accessToken, listId, itemId, binId);
       await fetchList();
+      // Item progress changes the list's status/counts shown elsewhere in WMS.
+      queryClient.invalidateQueries({ queryKey: PUT_AWAY_LISTS_QUERY_KEY });
       return result;
     },
-    [accessToken, listId, fetchList],
+    [accessToken, listId, fetchList, queryClient],
   );
 
   const skipItem = React.useCallback(
@@ -437,9 +450,10 @@ export function usePutAwayList(listId: string | null) {
       if (!listId || !accessToken) throw new Error('No list selected');
       const result = await putAwayApi.skipItem(accessToken, listId, itemId, reason);
       await fetchList();
+      queryClient.invalidateQueries({ queryKey: PUT_AWAY_LISTS_QUERY_KEY });
       return result;
     },
-    [accessToken, listId, fetchList],
+    [accessToken, listId, fetchList, queryClient],
   );
 
   return { list, loading, error, refetch: fetchList, completeItem, skipItem };

@@ -5,7 +5,7 @@ import { CheckCircle2, ClipboardList, Clock, Loader, PackageCheck } from 'lucide
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { usePutAwayLists, useReceivingSlips } from '../../hooks/useWMS';
+import { useReceivingSlips } from '../../hooks/useWMS';
 import type { PutAwayStatusCounts, ReceivingSlipStatusCounts } from '../../types/wms.types';
 import { formatQuantity } from '../../utility';
 
@@ -22,6 +22,11 @@ interface InboundStatsProps {
   onSelectReceivingStatus: (status: string) => void;
   /** Called when a put-away status card is clicked, with the status to filter by ('all' clears the filter). */
   onSelectPutAwayStatus: (status: string) => void;
+  /**
+   * Put-away status counts, supplied by `PutAwayView`'s list request so this
+   * component does not need a second call to the same endpoint.
+   */
+  putawayCounts?: PutAwayStatusCounts | null;
   /** Increment to refetch the status counts (e.g. from the panel-level Refresh button). */
   refreshKey?: number;
 }
@@ -100,7 +105,14 @@ function StatCard({
   );
 }
 
-export function InboundStats({ warehouseId, activeSection, onSelectReceivingStatus, onSelectPutAwayStatus, refreshKey }: InboundStatsProps) {
+export function InboundStats({
+  warehouseId,
+  activeSection,
+  onSelectReceivingStatus,
+  onSelectPutAwayStatus,
+  putawayCounts,
+  refreshKey,
+}: InboundStatsProps) {
   // Remember the last stats section so vehicle/exceptions keep showing the
   // previous stats rather than clearing.
   const [statsSection, setStatsSection] = React.useState<StatsSection>('receiving');
@@ -117,27 +129,21 @@ export function InboundStats({ warehouseId, activeSection, onSelectReceivingStat
     page_size: 1,
   });
 
-  const putaway = usePutAwayLists({
-    warehouse_id: warehouseId,
-    page: 1,
-    page_size: 1,
-  });
-
   const { refetch: refetchReceiving } = receiving;
-  const { refetch: refetchPutaway } = putaway;
 
-  // InboundStats owns its own count requests, so it must react to the parent's
-  // refresh key itself — skip the initial mount.
+  // Only the receiving counts are fetched here; put-away counts arrive via the
+  // `putawayCounts` prop from `PutAwayView`, which the parent also refreshes on
+  // this same key. Skip the initial mount.
   const lastRefreshKeyRef = React.useRef(refreshKey);
   React.useEffect(() => {
     if (lastRefreshKeyRef.current === refreshKey) return;
     lastRefreshKeyRef.current = refreshKey;
     refetchReceiving();
-    refetchPutaway();
-  }, [refreshKey, refetchReceiving, refetchPutaway]);
+  }, [refreshKey, refetchReceiving]);
 
   const stats = STATS_BY_SECTION[statsSection];
-  const counts: ReceivingSlipStatusCounts | PutAwayStatusCounts | null = statsSection === 'putaway' ? putaway.statusCounts : receiving.statusCounts;
+  const counts: ReceivingSlipStatusCounts | PutAwayStatusCounts | null =
+    statsSection === 'putaway' ? (putawayCounts ?? null) : receiving.statusCounts;
   const onSelect = statsSection === 'putaway' ? onSelectPutAwayStatus : onSelectReceivingStatus;
 
   return (
