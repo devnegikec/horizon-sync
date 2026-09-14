@@ -593,7 +593,7 @@ export const SystemConfiguration: React.FC = () => {
                   <li>Includes accounts for all types (Assets, Liabilities, Equity, Revenue, Expenses)</li>
                   <li>Creates default account mappings for common transaction types</li>
                   <li>Validates account codes against your configured format</li>
-                  <li>Idempotent - safe to call multiple times (won't create duplicates)</li>
+                  <li>Idempotent - safe to call multiple times (won&apos;t create duplicates)</li>
                   <li>Clear data will DELETE ALL accounts - use with caution!</li>
                   <li>Refresh the page after seeding to see the new accounts</li>
                 </ul>
@@ -631,7 +631,7 @@ export const SystemConfiguration: React.FC = () => {
           {defaultAccounts.length === 0 ? (
             <div className="rounded-lg border bg-muted/50 p-4">
               <p className="text-sm text-muted-foreground">
-                No default accounts configured. Click "Add Mapping" to create one.
+                No default accounts configured. Click &quot;Add Mapping&quot; to create one.
               </p>
             </div>
           ) : (
@@ -669,7 +669,7 @@ export const SystemConfiguration: React.FC = () => {
                         disabled={saving || !userIsSystemAdmin} />
                       {!config.scenario && (
                         <p className="text-xs text-muted-foreground">
-                          Standard mapping — add a scenario like "domestic" or "international" for variants
+                          Standard mapping — add a scenario like &quot;domestic&quot; or &quot;international&quot; for variants
                         </p>
                       )}
                     </div>

@@ -6,10 +6,10 @@ import type { StockReconciliation, StockReconciliationStatus } from '../../../..
 
 /**
  * Property 9: Status-based action button rendering
- * 
+ *
  * For any stock reconciliation record, the system should display edit and delete buttons
  * only when status is "draft", and display only view button when status is "submitted".
- * 
+ *
  * **Validates: Requirements 4.8, 4.9**
  */
 
@@ -59,7 +59,11 @@ jest.mock('@horizon-sync/ui/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: any) => <div data-testid="dropdown-menu">{children}</div>,
   DropdownMenuContent: ({ children }: any) => <div data-testid="dropdown-content">{children}</div>,
   DropdownMenuItem: ({ children, onClick }: any) => (
-    <div data-testid="dropdown-menu-item" onClick={onClick}>
+    <div data-testid="dropdown-menu-item"
+      role="menuitem"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={onClick}>
       {children}
     </div>
   ),
@@ -116,16 +120,16 @@ describe('Property 9: Status-based action button rendering', () => {
             // Count menu items - draft should have more items (View, Edit, Delete)
             // Non-draft should have fewer items (only View)
             const menuItems = container.querySelectorAll('[data-testid="dropdown-menu-item"]');
-            
+
             if (isDraft) {
               // Draft reconciliations should have: View, Edit, Delete (3 items per reconciliation)
               // Plus separators between them
               const separators = container.querySelectorAll('[data-testid="dropdown-menu-separator"]');
-              
+
               // Property: Draft reconciliations must have edit and delete options available
               // We verify this by checking that there are more menu items than just "View"
               expect(menuItems.length).toBeGreaterThanOrEqual(reconciliations.length);
-              
+
               // Property: Draft reconciliations should have separators (indicating multiple action groups)
               const draftCount = reconciliations.filter((r) => r.status === 'draft').length;
               if (draftCount > 0) {

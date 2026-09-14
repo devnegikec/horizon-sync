@@ -23,12 +23,12 @@ export interface ConversionData {
   delivery_date?: string;
 }
 
-export function ConvertToSalesOrderDialog({ 
-  open, 
-  onOpenChange, 
-  quotation, 
-  onConvert, 
-  converting 
+export function ConvertToSalesOrderDialog({
+  open,
+  onOpenChange,
+  quotation,
+  onConvert,
+  converting
 }: ConvertToSalesOrderDialogProps) {
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency) || 'USD';
   const [formData, setFormData] = React.useState({
@@ -59,7 +59,7 @@ export function ConvertToSalesOrderDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!quotation) return;
 
     // Validation
@@ -108,7 +108,7 @@ export function ConvertToSalesOrderDialog({
               <FileText className="h-4 w-4" />
               <span>Converting Quotation</span>
             </div>
-            
+
             <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <p className="text-sm text-muted-foreground">Quotation Number</p>
@@ -148,8 +148,8 @@ export function ConvertToSalesOrderDialog({
                     rate: Number(item.rate),
                     amount: Number(item.amount),
                     sort_order: item.sort_order,
-                  }))} 
-                  onItemsChange={() => {}} 
+                  }))}
+                  onItemsChange={() => { /* table is read-only here */ }}
                   readonly/>
               ) : (
                 <p className="text-sm text-muted-foreground">No line items</p>
@@ -162,7 +162,7 @@ export function ConvertToSalesOrderDialog({
           {/* Sales Order Details */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Sales Order Details</h3>
-            
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="order_date">Order Date *</Label>
@@ -172,7 +172,7 @@ export function ConvertToSalesOrderDialog({
                   onChange={(e) => handleChange('order_date', e.target.value)}
                   required/>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="delivery_date">Delivery Date (Optional)</Label>
                 <Input id="delivery_date"
@@ -185,7 +185,7 @@ export function ConvertToSalesOrderDialog({
 
             <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 p-3 text-sm">
               <p className="text-blue-900 dark:text-blue-100">
-                The sales order will be created with all line items from this Quotation. 
+                The sales order will be created with all line items from this Quotation.
                 Customer, Currency, and Remarks will be copied automatically.
               </p>
             </div>

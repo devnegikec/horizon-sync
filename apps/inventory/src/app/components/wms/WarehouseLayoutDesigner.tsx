@@ -135,7 +135,15 @@ function AisleRow({
   return (
     <div className="rounded-md border bg-background">
       <div className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none"
-        onClick={() => setOpen((o) => !o)}>
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setOpen((o) => !o);
+          }
+        }}>
         {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
         <span className="text-xs font-medium flex-1 truncate">
           Aisle&nbsp;<span className="font-mono">{aisle.code || `Z${zoneIndex + 1}-A${index + 1}`}</span>

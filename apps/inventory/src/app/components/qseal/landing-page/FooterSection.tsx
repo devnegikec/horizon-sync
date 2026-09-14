@@ -53,7 +53,7 @@ export function FooterSection({ config, setConfig }: SectionProps) {
         placeholder="Footer copyright text"
         className="h-8 text-xs"/>
       <div className="flex items-center justify-between">
-        <Label className="text-xs">Show "Powered by QSeal"</Label>
+        <Label className="text-xs">Show &quot;Powered by QSeal&quot;</Label>
         <Switch checked={config.footer.show_powered_by}
           onCheckedChange={(v) =>
             setConfig((c) => ({ ...c, footer: { ...c.footer, show_powered_by: v } }))

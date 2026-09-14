@@ -89,12 +89,18 @@ function QtyCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow,
   const meta = table.options.meta as TableMeta | undefined;
   const [isEditing, setIsEditing] = React.useState(false);
   const [draft, setDraft] = React.useState('');
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
   const intValue = Math.trunc(Number(getValue()) || 0);
 
   React.useEffect(() => {
     setDraft(String(intValue));
   }, [intValue]);
+
+  // Focus the editor when it opens (user-initiated, so no jsx-a11y/no-autofocus).
+  React.useEffect(() => {
+    if (isEditing) inputRef.current?.focus();
+  }, [isEditing]);
 
   const commit = () => {
     setIsEditing(false);
@@ -109,8 +115,8 @@ function QtyCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow,
   if (isEditing) {
     return (
       <input type="number"
+        ref={inputRef}
         value={parseInt(draft, 10) > 0 ? draft : ''}
-        autoFocus
         step="1"
         min="0"
         className="h-8 w-24 rounded-md border bg-background px-2 py-1 text-center text-sm"
@@ -128,7 +134,15 @@ function QtyCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow,
   }
 
   return (
-    <div onClick={() => setIsEditing(true)}
+    <div role="button"
+      tabIndex={0}
+      onClick={() => setIsEditing(true)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          setIsEditing(true);
+        }
+      }}
       className="cursor-pointer hover:bg-muted/50 rounded px-2 py-1 min-h-[32px] flex items-center justify-end text-right">
       {String(intValue)}
     </div>

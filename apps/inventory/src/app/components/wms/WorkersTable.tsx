@@ -85,10 +85,10 @@ export function WorkersTable({
   const columns = React.useMemo(
     () =>
       createWorkerColumns({
-        onEdit: onEdit ?? (() => {}),
-        onDelete: onDelete ? handleDeleteClick : () => {},
+        onEdit: onEdit ?? (() => { /* no edit handler */ }),
+        onDelete: onDelete ? handleDeleteClick : () => { /* no delete handler */ },
         onPrintQR,
-        onRegenerateQR: onRegenerateQR ? handleRegenerateClick : () => {},
+        onRegenerateQR: onRegenerateQR ? handleRegenerateClick : () => { /* no regenerate handler */ },
         showEditAction: !!onEdit,
         showDeleteAction: !!onDelete,
         showRegenerateAction: !!onRegenerateQR,

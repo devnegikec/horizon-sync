@@ -355,9 +355,9 @@ export function ActivationManagement() {
                 <QrCode className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="font-semibold">'New Batch'</p>
+                <p className="font-semibold">&apos;New Batch&apos;</p>
                 <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground font-mono font-normal">'Create a manufacturing batch tied to an item'</p>
+                  <p className="text-xs text-muted-foreground font-mono font-normal">&apos;Create a manufacturing batch tied to an item&apos;</p>
                 </div>
               </div>
             </div>

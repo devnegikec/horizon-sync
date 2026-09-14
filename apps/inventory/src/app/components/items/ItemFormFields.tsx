@@ -111,12 +111,18 @@ export function ItemFormFields(props: Omit<ItemFormFieldsProps, 'salesTaxTemplat
   purchaseTaxTemplates?: TaxTemplate[];
   isLoadingTaxTemplates?: boolean;
 }) {
+  const {
+    salesTaxTemplates = [],
+    purchaseTaxTemplates = [],
+    isLoadingTaxTemplates = false,
+  } = props;
+
   return (
     <MultiStepFormProvider totalSteps={3}>
       <ItemFormContent {...props}
-        salesTaxTemplates={props.salesTaxTemplates || []}
-        purchaseTaxTemplates={props.purchaseTaxTemplates || []}
-        isLoadingTaxTemplates={props.isLoadingTaxTemplates || false}/>
+        salesTaxTemplates={salesTaxTemplates}
+        purchaseTaxTemplates={purchaseTaxTemplates}
+        isLoadingTaxTemplates={isLoadingTaxTemplates}/>
     </MultiStepFormProvider>
   );
 }

@@ -69,7 +69,7 @@ function HierarchicalNode({ account, level }: HierarchicalNodeProps) {
         ) : (
           <div className="w-5" />
         )}
-        
+
         <div className="flex-1 grid grid-cols-12 gap-4 items-center">
           <div className="col-span-2">
             <span className="font-mono text-sm">{account.account_code}</span>
@@ -171,10 +171,10 @@ export function Reports() {
         <CardContent>
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium mb-2 block">Account Type</label>
+              <label className="text-sm font-medium mb-2 block" htmlFor="report-filter-account-type">Account Type</label>
               <Select value={filters.account_type}
                 onValueChange={(value) => setFilters((prev) => ({ ...prev, account_type: value }))}>
-                <SelectTrigger>
+                <SelectTrigger id="report-filter-account-type">
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -189,10 +189,10 @@ export function Reports() {
             </div>
 
             <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium mb-2 block">Status</label>
+              <label className="text-sm font-medium mb-2 block" htmlFor="report-filter-status">Status</label>
               <Select value={filters.status}
                 onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
-                <SelectTrigger>
+                <SelectTrigger id="report-filter-status">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -205,8 +205,9 @@ export function Reports() {
             </div>
 
             <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium mb-2 block">As of Date</label>
+              <label className="text-sm font-medium mb-2 block" htmlFor="report-filter-as-of-date">As of Date</label>
               <input type="date"
+                id="report-filter-as-of-date"
                 value={filters.as_of_date}
                 onChange={(e) => setFilters((prev) => ({ ...prev, as_of_date: e.target.value }))}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"/>
@@ -324,7 +325,7 @@ export function Reports() {
                     <div className="col-span-2 text-right">Currency</div>
                     <div className="col-span-2 text-right">Balance</div>
                   </div>
-                  
+
                   {/* Tree */}
                   <div className="border rounded-b">
                     {hierarchicalReport.tree.map((account: ReportAccount) => (

@@ -147,7 +147,7 @@ const LazyQrCode = React.memo(function LazyQrCode({ value, size }: { value: stri
       .then((url) => {
         if (!cancelled) setImg(url);
       })
-      .catch(() => { });
+      .catch(() => { /* ignore image generation failures */ });
     return () => {
       cancelled = true;
     };
