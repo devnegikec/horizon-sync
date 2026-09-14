@@ -21,7 +21,7 @@ import { DetailDialog } from '@horizon-sync/ui/components/ui/detail-dialog';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
-import type { PackingSlip, PackingSlipListItem, PaginatedPackingSlips } from '../../types/wms.types';
+import type { PackingSlip, PackingSlipItem, PackingSlipListItem, PaginatedPackingSlips } from '../../types/wms.types';
 import { packingSlipApi } from '../../utility/api/wms';
 
 import { createPackingSlipColumns } from './PackingSlipColumns';
@@ -112,6 +112,11 @@ function PackingSlipsTable({
       </CardContent>
     </Card>
   );
+}
+
+/** Detail responses may omit `items`; normalise to a list for rendering. */
+function slipItemsOf(slip: PackingSlip | null): PackingSlipItem[] {
+  return slip?.items ?? [];
 }
 
 export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProps) {
@@ -223,6 +228,7 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
   const slips = data?.packing_slips ?? [];
   const pagination = data?.pagination;
   const isInitialLoading = loading && !data;
+  const slipItems = slipItemsOf(viewSlip);
 
   const serverPagination = React.useMemo(() => {
     if (!pagination) return undefined;
@@ -304,7 +310,7 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Items</p>
-                <p className="font-semibold">{viewSlip.items.length}</p>
+                <p className="font-semibold">{slipItems.length}</p>
               </div>
             </div>
 
@@ -320,14 +326,14 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {viewSlip.items.length === 0 && (
+                  {slipItems.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-4 py-4 text-center text-muted-foreground text-xs">
                         No items
                       </td>
                     </tr>
                   )}
-                  {viewSlip.items.map((item) => (
+                  {slipItems.map((item) => (
                     <tr key={item.id}>
                       <td className="px-4 py-2">
                         <span className="font-mono font-medium">{item.sku ?? item.item_id}</span>

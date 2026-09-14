@@ -262,19 +262,42 @@ export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onSta
     [getSlip, toast],
   );
 
+  /**
+   * Show a toast in both trees: the in-app Toaster (standalone inventory) and
+   * the platform host's Toaster via `app:toast`, because when this remote is
+   * mounted by the host the two React trees do not share the toast store.
+   */
+  const notify = React.useCallback(
+    (payload: { title: string; description: string; variant?: 'default' | 'destructive'; className?: string }) => {
+      toast({ ...payload, duration: 4000 });
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { ...payload, duration: 4000 } }));
+    },
+    [toast],
+  );
+
   const handleConfirmApprove = React.useCallback(async () => {
     if (!confirmApproveSlip) return;
     setActionLoading(true);
     try {
-      await approveSlip(confirmApproveSlip.id);
-      toast({ title: 'Slip approved', description: `${confirmApproveSlip.slip_number} moved to put-away.` });
-      setConfirmApproveSlip(null);
+      const result = await approveSlip(confirmApproveSlip.id);
+      // The API owns the message/copy: green when success, red otherwise.
+      notify({
+        title: result.success ? 'Slip approved' : 'Approval failed',
+        description: result.message || `${confirmApproveSlip.slip_number} approval could not be completed.`,
+        variant: result.success ? undefined : 'destructive',
+        className: result.success ? 'border-emerald-600 bg-emerald-600 text-white' : undefined,
+      });
+      if (result.success) setConfirmApproveSlip(null);
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to approve', variant: 'destructive' });
+      notify({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to approve',
+        variant: 'destructive',
+      });
     } finally {
       setActionLoading(false);
     }
-  }, [approveSlip, confirmApproveSlip, toast]);
+  }, [approveSlip, confirmApproveSlip, notify]);
 
   const handleConfirmReject = React.useCallback(
     async (reason: string) => {
