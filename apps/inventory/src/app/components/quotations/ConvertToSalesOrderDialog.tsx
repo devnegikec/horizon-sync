@@ -2,8 +2,8 @@ import * as React from 'react';
 
 import { ArrowRight, FileText } from 'lucide-react';
 
-import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Separator } from '@horizon-sync/ui/components';
 import { useCurrencyStore } from '@horizon-sync/store';
+import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Input, Label, Separator } from '@horizon-sync/ui/components';
 
 import { getCurrencySymbol } from '../../types/currency.types';
 import type { Quotation } from '../../types/quotation.types';

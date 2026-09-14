@@ -418,55 +418,56 @@ export function usePutAwayLists({
   };
 }
 
+/**
+ * Fetch a single put-away list (with its items/bin locations) through TanStack
+ * Query. The key is nested under `PUT_AWAY_LISTS_QUERY_KEY`, so completing or
+ * skipping an item — and anything else that invalidates the prefix — also
+ * refreshes an open detail.
+ */
 export function usePutAwayList(listId: string | null) {
   const accessToken = useUserStore((s) => s.accessToken);
   const queryClient = useQueryClient();
-  const [list, setList] = React.useState<PutAwayList | null>(null);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
 
-  const fetchList = React.useCallback(async () => {
-    if (!listId || !accessToken) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await putAwayApi.getPutAwayList(accessToken, listId);
-      setList(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load put-away list');
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken, listId]);
-
-  React.useEffect(() => {
-    fetchList();
-  }, [fetchList]);
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: [...PUT_AWAY_LISTS_QUERY_KEY, 'detail', listId],
+    queryFn: async () => {
+      if (!listId) throw new Error('No list selected');
+      if (!accessToken) throw new Error('Not authenticated');
+      return putAwayApi.getPutAwayList(accessToken, listId);
+    },
+    staleTime: 30_000,
+    enabled: !!listId && !!accessToken,
+  });
 
   const completeItem = React.useCallback(
     async (itemId: string, binId?: string): Promise<PutAwayItem> => {
       if (!listId || !accessToken) throw new Error('No list selected');
       const result = await putAwayApi.completeItem(accessToken, listId, itemId, binId);
-      await fetchList();
-      // Item progress changes the list's status/counts shown elsewhere in WMS.
+      // Item progress changes this detail and the list's status/counts.
       queryClient.invalidateQueries({ queryKey: PUT_AWAY_LISTS_QUERY_KEY });
       return result;
     },
-    [accessToken, listId, fetchList, queryClient],
+    [accessToken, listId, queryClient],
   );
 
   const skipItem = React.useCallback(
     async (itemId: string, reason: string): Promise<PutAwayItem> => {
       if (!listId || !accessToken) throw new Error('No list selected');
       const result = await putAwayApi.skipItem(accessToken, listId, itemId, reason);
-      await fetchList();
       queryClient.invalidateQueries({ queryKey: PUT_AWAY_LISTS_QUERY_KEY });
       return result;
     },
-    [accessToken, listId, fetchList, queryClient],
+    [accessToken, listId, queryClient],
   );
 
-  return { list, loading, error, refetch: fetchList, completeItem, skipItem };
+  return {
+    list: data ?? null,
+    loading: isFetching,
+    error: queryErrorToMessage(error),
+    refetch,
+    completeItem,
+    skipItem,
+  };
 }
 
 // ============================================

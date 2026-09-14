@@ -1,7 +1,7 @@
 import { ShoppingCart, CheckCircle, DollarSign, Truck } from 'lucide-react';
 
-import { StatCard } from '../shared';
 import { getCurrencySymbol } from '../../types/currency.types';
+import { StatCard } from '../shared';
 
 interface SalesOrderStatsProps {
   total: number;

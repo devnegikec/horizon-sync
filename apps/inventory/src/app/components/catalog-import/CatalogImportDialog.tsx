@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import { useUserStore } from '@horizon-sync/store';
 import {
     Badge,
     Button,
@@ -17,7 +18,6 @@ import {
     SelectValue,
     Textarea,
 } from '@horizon-sync/ui/components';
-import { useUserStore } from '@horizon-sync/store';
 
 import {
     catalogImportApi,
@@ -101,13 +101,11 @@ export function CatalogImportDialog({ open, onOpenChange, onSuccess }: CatalogIm
     };
 
     return (
-        <Dialog
-            open={open}
+        <Dialog open={open}
             onOpenChange={(next) => {
                 if (!next) reset();
                 onOpenChange(next);
-            }}
-        >
+            }}>
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>Bulk Catalog Import</DialogTitle>
@@ -140,13 +138,11 @@ export function CatalogImportDialog({ open, onOpenChange, onSuccess }: CatalogIm
 
                     <div className="grid gap-2">
                         <Label htmlFor="import-rows">Rows (JSON array)</Label>
-                        <Textarea
-                            id="import-rows"
+                        <Textarea id="import-rows"
                             value={jsonText}
                             onChange={(e) => setJsonText(e.target.value)}
                             placeholder='[{"name": "Widget", "sku": "WDG-001", "uom": "pcs", "action": "create"}, {"action": "delete", "item_id": "<uuid>"}]'
-                            className="min-h-40 font-mono text-xs"
-                        />
+                            className="min-h-40 font-mono text-xs"/>
                     </div>
 
                     {error && (

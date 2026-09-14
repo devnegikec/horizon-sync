@@ -108,8 +108,7 @@ function QtyCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow,
 
   if (isEditing) {
     return (
-      <input
-        type="number"
+      <input type="number"
         value={parseInt(draft, 10) > 0 ? draft : ''}
         autoFocus
         step="1"
@@ -124,16 +123,13 @@ function QtyCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow,
             setDraft(String(intValue));
             setIsEditing(false);
           }
-        }}
-      />
+        }}/>
     );
   }
 
   return (
-    <div
-      onClick={() => setIsEditing(true)}
-      className="cursor-pointer hover:bg-muted/50 rounded px-2 py-1 min-h-[32px] flex items-center justify-end text-right"
-    >
+    <div onClick={() => setIsEditing(true)}
+      className="cursor-pointer hover:bg-muted/50 rounded px-2 py-1 min-h-[32px] flex items-center justify-end text-right">
       {String(intValue)}
     </div>
   );

@@ -98,15 +98,13 @@ export function MaterialRequestManagement() {
         onSave={handleSave}/>
 
       {/* Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmAction}
+      <ConfirmationDialog open={!!confirmAction}
         onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
         title={confirmAction?.title || ''}
         description={confirmAction?.message || ''}
         confirmLabel={confirmAction?.type === 'delete' ? 'Delete' : confirmAction?.type === 'cancel' ? 'Cancel' : 'Confirm'}
         variant={confirmAction?.type === 'submit' ? 'default' : 'destructive'}
-        onConfirm={executeConfirmedAction}
-      />
+        onConfirm={executeConfirmedAction}/>
     </div>
   );
 }

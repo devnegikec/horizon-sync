@@ -1,5 +1,7 @@
 import * as React from 'react';
+
 import { Shield } from 'lucide-react';
+
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Switch } from '@horizon-sync/ui/components/ui/switch';
@@ -18,17 +20,14 @@ export function WarrantySection({ config, setConfig }: SectionProps) {
     <CollapsibleSection icon={Shield} title="Warranty">
       <div className="flex items-center justify-between">
         <Label className="text-xs">Enable Warranty Section</Label>
-        <Switch
-          checked={w.enabled}
+        <Switch checked={w.enabled}
           onCheckedChange={(v) =>
             setConfig((c) => ({ ...c, warranty: { ...c.warranty, enabled: v } }))
-          }
-        />
+          }/>
       </div>
       {w.enabled && (
         <>
-          <Input
-            value={w.title}
+          <Input value={w.title}
             onChange={(e) =>
               setConfig((c) => ({
                 ...c,
@@ -36,10 +35,8 @@ export function WarrantySection({ config, setConfig }: SectionProps) {
               }))
             }
             placeholder="Section title"
-            className="h-8 text-xs"
-          />
-          <Textarea
-            value={w.description}
+            className="h-8 text-xs"/>
+          <Textarea value={w.description}
             onChange={(e) =>
               setConfig((c) => ({
                 ...c,
@@ -48,11 +45,9 @@ export function WarrantySection({ config, setConfig }: SectionProps) {
             }
             placeholder="Description text"
             className="text-xs"
-            rows={2}
-          />
+            rows={2}/>
           <div className="grid grid-cols-2 gap-2">
-            <Input
-              value={w.cta_text}
+            <Input value={w.cta_text}
               onChange={(e) =>
                 setConfig((c) => ({
                   ...c,
@@ -60,10 +55,8 @@ export function WarrantySection({ config, setConfig }: SectionProps) {
                 }))
               }
               placeholder="CTA Button Text"
-              className="h-8 text-xs"
-            />
-            <Input
-              value={w.cta_url}
+              className="h-8 text-xs"/>
+            <Input value={w.cta_url}
               onChange={(e) =>
                 setConfig((c) => ({
                   ...c,
@@ -71,8 +64,7 @@ export function WarrantySection({ config, setConfig }: SectionProps) {
                 }))
               }
               placeholder="CTA Button URL"
-              className="h-8 text-xs"
-            />
+              className="h-8 text-xs"/>
           </div>
         </>
       )}

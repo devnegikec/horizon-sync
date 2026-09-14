@@ -7,14 +7,15 @@ import {
 
 import { useUserStore } from '@horizon-sync/store';
 import { useCurrencyStore } from '@horizon-sync/store';
-import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { DetailDialog } from '@horizon-sync/ui/components';
+import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
 
-import type { Item } from '../../types/item.types';
 import { getCurrencySymbol } from '../../types/currency.types';
+import type { Item } from '../../types/item.types';
 import { apiRequest } from '../../utility/api/core';
+
 import { ItemApprovalActions } from './ItemApprovalActions';
 
 // Full API response type for item detail
@@ -185,16 +186,12 @@ function PackagingDetailsCard({ detail }: { detail: ItemDetailResponse }) {
         <InfoRow icon={Box} label="Base Unit" value={base.unit_name} />
         <InfoRow icon={Layers} label="Conversion Factor" value={base.conversion_factor} />
         <InfoRow icon={Package} label="Items per Master Pack" value={base.items_per_master_pack} />
-        <InfoRow
-          icon={Ruler}
+        <InfoRow icon={Ruler}
           label="Dimensions (L × W × H)"
-          value={hasDimensions ? `${base.length_mm} × ${base.width_mm} × ${base.height_mm} mm` : undefined}
-        />
-        <InfoRow
-          icon={Weight}
+          value={hasDimensions ? `${base.length_mm} × ${base.width_mm} × ${base.height_mm} mm` : undefined}/>
+        <InfoRow icon={Weight}
           label="Weight"
-          value={base.weight_grams != null ? `${base.weight_grams} g` : undefined}
-        />
+          value={base.weight_grams != null ? `${base.weight_grams} g` : undefined}/>
       </div>
     </SectionCard>
   );
@@ -374,16 +371,14 @@ export function ItemDetailDialog({ open, onOpenChange, item }: ItemDetailDialogP
   const standardRate = detail?.standard_rate ? parseFloat(detail.standard_rate) : item.defaultPrice;
 
   return (
-    <DetailDialog
-      open={open}
+    <DetailDialog open={open}
       onOpenChange={onOpenChange}
       size="lg"
       contentClassName="max-w-4xl flex flex-col"
       style={{ height: 'min(85vh, 820px)' }}
       title={detail?.item_name || item.name}
       loading={loading}
-      loadingMessage="Loading details..."
-    >
+      loadingMessage="Loading details...">
       {error && (
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive mb-4">
           {error}

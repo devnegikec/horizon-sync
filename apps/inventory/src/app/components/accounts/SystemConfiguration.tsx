@@ -19,6 +19,7 @@ import {
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { useToast } from '@horizon-sync/ui/hooks';
 
+import { environment } from '../../../environments/environment';
 import type {
   DefaultAccountMapping,
   DefaultAccountUpdate,
@@ -29,7 +30,6 @@ import type {
   DefaultAccountUpdateResponse,
 } from '../../types/account.types';
 import { accountApi } from '../../utility/api/accounts';
-import { environment } from '../../../environments/environment';
 import { isSystemAdmin } from '../../utils/permissions';
 import { DeleteConfirmationDialog } from '../common/DeleteConfirmationDialog';
 
@@ -849,8 +849,7 @@ export const SystemConfiguration: React.FC = () => {
       </Card>
 
       {/* Delete Confirmation Dialog */}
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
+      <DeleteConfirmationDialog open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={confirmDelete}
         title="Delete Default Account Mapping"
@@ -859,19 +858,16 @@ export const SystemConfiguration: React.FC = () => {
           : ''
         }
         confirmText="Delete Mapping"
-        cancelText="Cancel"
-      />
+        cancelText="Cancel"/>
 
       {/* Clear All Accounts Confirmation Dialog */}
-      <ConfirmationDialog
-        open={confirmClearDataOpen}
+      <ConfirmationDialog open={confirmClearDataOpen}
         onOpenChange={setConfirmClearDataOpen}
         title="Delete All Accounts"
         description="Are you sure you want to delete ALL accounts? This action cannot be undone!"
         confirmLabel="Delete All"
         variant="destructive"
-        onConfirm={executeClearData}
-      />
+        onConfirm={executeClearData}/>
     </div>
   );
 };

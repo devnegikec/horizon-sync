@@ -61,12 +61,10 @@ describe('InvoiceDetailDialog', () => {
 
   it('renders PDF action buttons when callbacks provided', () => {
     render(
-      <InvoiceDetailDialog
-        {...defaultProps}
+      <InvoiceDetailDialog {...defaultProps}
         onDownloadPDF={jest.fn()}
         onPreviewPDF={jest.fn()}
-        onSendEmail={jest.fn()}
-      />
+        onSendEmail={jest.fn()}/>
     );
     expect(screen.getByText('Download PDF')).toBeTruthy();
     expect(screen.getByText('Preview PDF')).toBeTruthy();

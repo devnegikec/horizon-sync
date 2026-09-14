@@ -3,10 +3,10 @@ import * as React from 'react';
 import { Check, ChevronsUpDown, Loader2, Plus, RefreshCw, Search, Zap, QrCode } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DetailDialog } from '@horizon-sync/ui/components';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DetailDialog } from '@horizon-sync/ui/components';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@horizon-sync/ui/components/ui/popover';
@@ -343,8 +343,7 @@ export function ActivationManagement() {
         </Card>
       )}
 
-      <DetailDialog
-        open={dialogOpen}
+      <DetailDialog open={dialogOpen}
         onOpenChange={setDialogOpen}
         size="lg"
         contentClassName="max-w-4xl flex flex-col"

@@ -3,7 +3,6 @@ import * as React from 'react';
 import { useUserStore } from '@horizon-sync/store';
 
 import { qrProductSettingApi } from '../api/qr-product-settings';
-import { getFriendlyErrorMessage } from '../utility/api/core';
 import type {
   QRProductSetting,
   QRProductSettingCreate,
@@ -11,6 +10,7 @@ import type {
   QRProductSettingListResponse,
   SettingType,
 } from '../types/qr-product-settings.types';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export function useQRProductSettings(settingType?: SettingType) {
   const accessToken = useUserStore((s) => s.accessToken);

@@ -240,8 +240,7 @@ export function ItemMultiStepDialog({
   const isStepCurrent = (stepId: number) => stepId === currentStep;
 
   return (
-    <DetailDialog
-      open={open}
+    <DetailDialog open={open}
       onOpenChange={onOpenChange}
       size="lg"
       contentClassName="max-w-4xl flex flex-col"
@@ -257,8 +256,7 @@ export function ItemMultiStepDialog({
           onPrevious={handlePrevious}
           onNext={handleNext}
           onSubmit={handleSubmit} />
-      }
-    >
+      }>
       <div className="flex h-full min-h-0 flex-col">
         {/* Stepper (fixed) */}
         <div className="flex items-center justify-between border-b pb-4 shrink-0">

@@ -57,8 +57,7 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
 
                 <div className="space-y-2">
                     <Label htmlFor="salesTaxTemplateId">Sales Tax Template</Label>
-                    <Select
-                        value={formData.salesTaxTemplateId ?? 'none'}
+                    <Select value={formData.salesTaxTemplateId ?? 'none'}
                         onValueChange={(v) => onUpdate({ salesTaxTemplateId: v === 'none' ? null : v })}
                         disabled={isLoadingTaxTemplates}>
                         <SelectTrigger id="salesTaxTemplateId">
@@ -75,8 +74,7 @@ export const Step3TaxAdditional = React.memo(function Step3TaxAdditional({
 
                 <div className="space-y-2">
                     <Label htmlFor="purchaseTaxTemplateId">Purchase Tax Template</Label>
-                    <Select
-                        value={formData.purchaseTaxTemplateId ?? 'none'}
+                    <Select value={formData.purchaseTaxTemplateId ?? 'none'}
                         onValueChange={(v) => onUpdate({ purchaseTaxTemplateId: v === 'none' ? null : v })}
                         disabled={isLoadingTaxTemplates}>
                         <SelectTrigger id="purchaseTaxTemplateId">

@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { type Table } from '@tanstack/react-table';
 import { Wallet, Plus, Download } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import {
   Card,
   CardContent,
@@ -16,9 +17,8 @@ import {
   SelectValue,
 } from '@horizon-sync/ui/components';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
-import { cn } from '@horizon-sync/ui/lib';
-import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks';
+import { cn } from '@horizon-sync/ui/lib';
 
 import { useAccountActions } from '../../hooks/useAccountActions';
 import { useAccounts } from '../../hooks/useAccounts';
@@ -310,32 +310,26 @@ export function AccountManagement() {
         onUpdated={refetch}/>
 
       {/* Delete Confirmation Dialogs */}
-      <DeleteConfirmationDialog 
-        open={deleteDialogOpen}
+      <DeleteConfirmationDialog open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={confirmDeleteAccount}
-        description={accountToDelete ? `Are you sure you want to delete account "${accountToDelete.account_name}" (${accountToDelete.account_code})? This action cannot be undone.` : ''}
-      />
+        description={accountToDelete ? `Are you sure you want to delete account "${accountToDelete.account_name}" (${accountToDelete.account_code})? This action cannot be undone.` : ''}/>
 
-      <DefaultAccountDeleteDialog 
-        open={defaultDeleteDialogOpen}
+      <DefaultAccountDeleteDialog open={defaultDeleteDialogOpen}
         onOpenChange={setDefaultDeleteDialogOpen}
         onConfirm={confirmDeleteAccount}
         account={accountToDelete}
         defaultAccountUsage={accountToDelete ? getDefaultAccountUsage(accountToDelete.id) : []}
-        isSystemAdmin={userIsSystemAdmin}
-      />
+        isSystemAdmin={userIsSystemAdmin}/>
 
       {/* Toggle Status Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmToggleAccount}
+      <ConfirmationDialog open={!!confirmToggleAccount}
         onOpenChange={(open) => { if (!open) setConfirmToggleAccount(null); }}
         title={confirmToggleAccount?.is_active ? 'Deactivate Account' : 'Activate Account'}
         description={confirmToggleAccount ? `Are you sure you want to ${confirmToggleAccount.is_active ? 'deactivate' : 'activate'} account "${confirmToggleAccount.account_name}"?` : ''}
         confirmLabel={confirmToggleAccount?.is_active ? 'Deactivate' : 'Activate'}
         variant={confirmToggleAccount?.is_active ? 'destructive' : 'default'}
-        onConfirm={executeToggleStatus}
-      />
+        onConfirm={executeToggleStatus}/>
     </div>
   );
 }

@@ -56,14 +56,12 @@ export function PaymentDialog({ open, onOpenChange, payment, initialData, presel
   };
 
   return (
-    <FormDialog
-      open={open}
+    <FormDialog open={open}
       onOpenChange={onOpenChange}
       title={isEditMode ? 'Edit Payment' : 'Capture Payment'}
       size="lg"
       saving={loading}
-      footer={null}
-    >
+      footer={null}>
       <PaymentForm initialData={formInitialData}
         preselectedInvoiceId={preselectedInvoiceId}
         onSubmit={handleSubmit}

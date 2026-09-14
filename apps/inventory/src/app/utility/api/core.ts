@@ -3,8 +3,9 @@
  * Provides standardized fetch functions for API calls with error handling
  */
 
-import { environment } from '../../../environments/environment';
 import { useUserStore } from '@horizon-sync/store';
+
+import { environment } from '../../../environments/environment';
 
 const BASE_URL = environment.apiCoreUrl;
 

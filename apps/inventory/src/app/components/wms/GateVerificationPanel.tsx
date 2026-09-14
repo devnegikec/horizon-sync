@@ -105,15 +105,13 @@ export function GateVerificationPanel({ pickListId, onDispatchCreated }: GateVer
 
       {/* Scan input */}
       <div className="flex gap-2">
-        <Input
-          ref={inputRef}
+        <Input ref={inputRef}
           value={qrInput}
           onChange={(e) => setQrInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleScan()}
           placeholder="Scan item QR code..."
           className="font-mono text-sm"
-          autoFocus
-        />
+          autoFocus/>
         <Button onClick={handleScan} className="gap-2 shrink-0">
           <ScanLine className="h-4 w-4" />
           Scan

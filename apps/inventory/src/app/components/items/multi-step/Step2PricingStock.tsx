@@ -185,7 +185,9 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
           <div className="space-y-2">
             <Label htmlFor="packagingLengthMm">Length (mm)</Label>
             <Input id="packagingLengthMm"
-              type="number" step="0.1" min="0"
+              type="number"
+step="0.1"
+min="0"
               value={formData.packagingLengthMm}
               onChange={(e) => onUpdate({ packagingLengthMm: e.target.value })}
               placeholder="0" />
@@ -193,7 +195,9 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
           <div className="space-y-2">
             <Label htmlFor="packagingWidthMm">Width (mm)</Label>
             <Input id="packagingWidthMm"
-              type="number" step="0.1" min="0"
+              type="number"
+step="0.1"
+min="0"
               value={formData.packagingWidthMm}
               onChange={(e) => onUpdate({ packagingWidthMm: e.target.value })}
               placeholder="0" />
@@ -201,7 +205,9 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
           <div className="space-y-2">
             <Label htmlFor="packagingHeightMm">Height (mm)</Label>
             <Input id="packagingHeightMm"
-              type="number" step="0.1" min="0"
+              type="number"
+step="0.1"
+min="0"
               value={formData.packagingHeightMm}
               onChange={(e) => onUpdate({ packagingHeightMm: e.target.value })}
               placeholder="0" />
@@ -209,7 +215,9 @@ export function Step2PricingStock({ formData, onUpdate }: Step2PricingStockProps
           <div className="space-y-2">
             <Label htmlFor="packagingWeightGrams">Weight (g)</Label>
             <Input id="packagingWeightGrams"
-              type="number" step="0.1" min="0"
+              type="number"
+step="0.1"
+min="0"
               value={formData.packagingWeightGrams}
               onChange={(e) => onUpdate({ packagingWeightGrams: e.target.value })}
               placeholder="0" />
