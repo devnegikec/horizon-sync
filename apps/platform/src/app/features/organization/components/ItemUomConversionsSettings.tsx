@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Plus, Save, Upload, Trash2, RotateCcw, AlertCircle, Download, ChevronDown, FileDown, Loader2 } from 'lucide-react';
+import { Plus, Save, Upload, Trash2, RotateCcw, AlertCircle, Download, ChevronDown, FileDown, Loader2, Search, Check } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
@@ -20,9 +20,12 @@ import {
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@horizon-sync/ui/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
+
+import { useDebouncedValue } from '../../search/hooks/useDebouncedValue';
 
 import { UomService, type Uom } from '../../../services/uom.service';
 import { itemService, type ItemListItem } from '../../../services/item.service';
@@ -162,6 +165,121 @@ function parseConversionCsv(text: string): BulkConversionRow[] {
     return result;
 }
 
+function ItemSearchCombobox({
+    value,
+    onValueChange,
+    disabled,
+    itemById,
+    searchItems,
+}: {
+    value: string | null;
+    onValueChange: (id: string) => void;
+    disabled: boolean;
+    itemById: Map<string, ItemListItem>;
+    searchItems: (query: string) => Promise<ItemListItem[]>;
+}) {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<ItemListItem[]>([]);
+    const [searching, setSearching] = useState(false);
+    const debouncedQuery = useDebouncedValue(query, 300);
+
+    useEffect(() => {
+        const q = debouncedQuery.trim();
+        if (q.length < 2) {
+            setResults([]);
+            setSearching(false);
+            return;
+        }
+        let cancelled = false;
+        setSearching(true);
+        searchItems(q)
+            .then((res) => {
+                if (!cancelled) {
+                    setResults(res);
+                    setSearching(false);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setResults([]);
+                    setSearching(false);
+                }
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [debouncedQuery, searchItems]);
+
+    const selected = value ? itemById.get(value) : undefined;
+    const label = selected
+        ? `${selected.item_name}${selected.item_code ? ` (${selected.item_code})` : ''}`
+        : 'Select item';
+
+    const handleSelect = (item: ItemListItem) => {
+        onValueChange(item.id);
+        setOpen(false);
+        setQuery('');
+        setResults([]);
+    };
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <button
+                    type="button"
+                    disabled={disabled}
+                    className="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    <span className={selected ? 'truncate' : 'truncate text-muted-foreground'}>{label}</span>
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2" align="start">
+                <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Search items..."
+                        className="pl-8"
+                        autoFocus
+                    />
+                </div>
+                <div className="mt-2 max-h-60 overflow-y-auto">
+                    {searching ? (
+                        <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Searching…
+                        </div>
+                    ) : query.trim().length < 2 ? (
+                        <p className="px-2 py-6 text-center text-sm text-muted-foreground">
+                            Type at least 2 characters to search
+                        </p>
+                    ) : results.length === 0 ? (
+                        <p className="px-2 py-6 text-center text-sm text-muted-foreground">No items found</p>
+                    ) : (
+                        results.map((it) => (
+                            <button
+                                key={it.id}
+                                type="button"
+                                onClick={() => handleSelect(it)}
+                                className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                            >
+                                <span>
+                                    {it.item_name}
+                                    {it.item_code ? ` (${it.item_code})` : ''}
+                                </span>
+                                {it.id === value && <Check className="h-4 w-4" />}
+                            </button>
+                        ))
+                    )}
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConversionsSettingsProps) {
     const { toast } = useToast();
     const [items, setItems] = useState<ItemListItem[]>([]);
@@ -175,6 +293,7 @@ export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConv
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isImporting, setIsImporting] = useState(false);
     const [exportFileName, setExportFileName] = useState('items-uom-export');
+    const [deletedRows, setDeletedRows] = useState<ConversionRow[]>([]);
 
     const itemById = useMemo(() => {
         const map = new Map<string, ItemListItem>();
@@ -192,14 +311,28 @@ export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConv
         setLoading(true);
         setError(null);
         try {
-            const [itemsData, uomsData, conversionsData] = await Promise.all([
-                itemService.list(accessToken),
+            const [uomsData, conversionsData] = await Promise.all([
                 UomService.list(accessToken),
                 uomConversionService.list(accessToken),
             ]);
-            setItems(itemsData);
             setUoms(uomsData);
             setRows(conversionsData.map(rowFromConversion));
+            setDeletedRows([]);
+            // Hydrate item details only for items already referenced by
+            // conversions instead of eagerly loading the full item list.
+            const itemIds = Array.from(
+                new Set(conversionsData.map((c) => c.item_id).filter((id): id is string => !!id)),
+            );
+            if (itemIds.length > 0) {
+                const settled = await Promise.allSettled(itemIds.map((id) => itemService.get(accessToken, id)));
+                setItems(
+                    settled
+                        .filter((r): r is PromiseFulfilledResult<ItemListItem> => r.status === 'fulfilled')
+                        .map((r) => r.value),
+                );
+            } else {
+                setItems([]);
+            }
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Failed to load items and conversions');
         } finally {
@@ -210,6 +343,16 @@ export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConv
     useEffect(() => {
         load();
     }, [load]);
+
+    const searchItems = useCallback(async (query: string): Promise<ItemListItem[]> => {
+        const results = await itemService.search(accessToken, query);
+        setItems((prev) => {
+            const map = new Map(prev.map((i) => [i.id, i]));
+            results.forEach((r) => map.set(r.id, r));
+            return Array.from(map.values());
+        });
+        return results;
+    }, [accessToken]);
 
     const addRow = () => {
         setRows((prev) => [
@@ -232,12 +375,31 @@ export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConv
     };
 
     const removeRow = (key: string) => {
+        const row = rows.find((r) => r.key === key);
+        if (row && !row.isNew) {
+            setDeletedRows((prev) => [...prev, row]);
+        }
         setRows((prev) => prev.filter((r) => r.key !== key));
     };
 
     const buildRows = (): { payload: BulkConversionRow[]; valid: boolean } => {
         const payload: BulkConversionRow[] = [];
         let valid = true;
+        // Rows removed from the UI must be explicitly deleted server-side;
+        // otherwise the next reload brings them back. Delete first so a
+        // re-added conversion of the same key is recreated after deletion.
+        for (const r of deletedRows) {
+            if (!r.item_id || !r.from_uom || !r.to_uom) continue;
+            payload.push({
+                item_id: r.item_id,
+                from_uom: r.from_uom,
+                to_uom: r.to_uom,
+                from_uom_id: r.from_uom_id || null,
+                to_uom_id: r.to_uom_id || null,
+                conversion_factor: Number(r.conversion_factor) || 1,
+                action: 'delete',
+            });
+        }
         for (const r of rows) {
             if (!r.item_id || !r.from_uom || !r.to_uom) {
                 valid = false;
@@ -455,23 +617,13 @@ export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConv
                             >
                                 <div className="space-y-1">
                                     <Label>Item</Label>
-                                    <Select
-                                        value={row.item_id ?? ''}
-                                        disabled={!canEdit}
+                                    <ItemSearchCombobox
+                                        value={row.item_id}
                                         onValueChange={(v) => updateRow(row.key, { item_id: v })}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select item" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {items.map((it) => (
-                                                <SelectItem key={it.id} value={it.id}>
-                                                    {it.item_name}
-                                                    {it.item_code ? ` (${it.item_code})` : ''}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                        disabled={!canEdit}
+                                        itemById={itemById}
+                                        searchItems={searchItems}
+                                    />
                                     {item && (
                                         <p className="text-xs text-muted-foreground">Base UOM: {item.uom ?? '—'}</p>
                                     )}

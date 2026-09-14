@@ -662,9 +662,12 @@ export function usePickList(pickListId: string | null) {
     if (!pickListId || !accessToken) throw new Error('No pick list selected');
     setError(null);
     try {
-      const result = await outboundApi.acceptTask(accessToken, pickListId);
-      setPickList(result);
-      return result;
+      await outboundApi.acceptTask(accessToken, pickListId);
+      // The accept endpoint returns a minimal payload (no items/groups), so
+      // re-fetch the full pick list to keep the detail view populated.
+      const full = await outboundApi.getPickList(accessToken, pickListId);
+      setPickList(full);
+      return full;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to accept task';
       setError(msg);
