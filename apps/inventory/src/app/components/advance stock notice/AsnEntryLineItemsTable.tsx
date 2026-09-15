@@ -4,11 +4,10 @@ import { type CellContext, type ColumnDef } from '@tanstack/react-table';
 import { Trash2 } from 'lucide-react';
 
 
-import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
+import { useUserStore } from '@horizon-sync/store';
 import { Button, EditableDataTable } from '@horizon-sync/ui/components';
 
 import { environment } from '../../../environments/environment';
-import { getCurrencySymbol } from '../../types/currency.types';
 import { itemApi } from '../../utility/api/items';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 
@@ -76,103 +75,108 @@ function getMasterPackSize(item: PickerItem | null | undefined): number | null {
   return Number.isFinite(nested) && nested > 0 ? nested : null;
 }
 
+/** Row values derived from a picked item — blank strings fall back to defaults. */
+function selectedItemRowValues(item: PickerItem, masterPack: number): Record<string, unknown> {
+  return {
+    uom: item.uom || 'pcs',
+    item_name: item.item_name || '',
+    item_code: item.item_code || '',
+    sku: item.sku || '',
+    items_per_master_pack: masterPack,
+    no_of_cases: 1,
+    qty: masterPack,
+  };
+}
+
+function applyRowValues(meta: TableMeta, rowIndex: number, values: Record<string, unknown>): void {
+  Object.entries(values).forEach(([columnId, value]) => {
+    meta.updateData?.(rowIndex, columnId, value);
+  });
+}
+
 async function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId: string) {
   meta.updateData?.(rowIndex, 'item_id', newItemId);
   let selectedItem = meta.getItemData?.(newItemId);
   if (meta.fetchItemData) {
     selectedItem = (await meta.fetchItemData(newItemId)) ?? selectedItem;
   }
-  if (selectedItem) {
-    const masterPack = getMasterPackSize(selectedItem) ?? 1;
-    setTimeout(() => {
-      meta.updateData?.(rowIndex, 'uom', selectedItem.uom || 'pcs');
-      meta.updateData?.(rowIndex, 'item_name', selectedItem.item_name || '');
-      meta.updateData?.(rowIndex, 'item_code', selectedItem.item_code || '');
-      meta.updateData?.(rowIndex, 'sku', selectedItem.sku || '');
-      meta.updateData?.(rowIndex, 'items_per_master_pack', masterPack);
-      meta.updateData?.(rowIndex, 'no_of_cases', 1);
-      meta.updateData?.(rowIndex, 'qty', masterPack);
-    }, 0);
-  }
+  if (!selectedItem) return;
+  const masterPack = getMasterPackSize(selectedItem) ?? 1;
+  const values = selectedItemRowValues(selectedItem, masterPack);
+  // Deferred so the grid's own state writes for this row settle first.
+  setTimeout(() => applyRowValues(meta, rowIndex, values), 0);
 }
 
-function DisabledItemCell({ itemId, meta }: { itemId: string; meta: TableMeta }) {
-  const itemData = meta.getItemData?.(itemId);
-  if (itemData) {
-    const label = (meta.itemLabelFormatter ?? defaultLabelFormatter)(itemData);
-    return <div className="px-2 py-1">{label}</div>;
-  }
-  // Fallback: check if the row has item_name via the table data
-  return <div className="px-2 py-1 text-muted-foreground">{itemId ? '—' : ''}</div>;
-}
-
-function QtyCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow, unknown>) {
-  const meta = table.options.meta as TableMeta | undefined;
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [draft, setDraft] = React.useState('');
-  const inputRef = React.useRef<HTMLInputElement>(null);
-
+function QtyCellComponent({ getValue }: CellContext<AsnEntryLineRow, unknown>) {
   const intValue = Math.trunc(Number(getValue()) || 0);
   return <div className="px-2 py-1 text-right text-muted-foreground">{String(intValue)}</div>;
 }
 
-  React.useEffect(() => {
-    setDraft(String(intValue));
-  }, [intValue]);
-
-  // Focus the editor when it opens (user-initiated, so no jsx-a11y/no-autofocus).
-  React.useEffect(() => {
-    if (isEditing) inputRef.current?.focus();
-  }, [isEditing]);
-
-  const commit = () => {
-    setIsEditing(false);
-    const parsed = parseInt(draft, 10);
-    meta?.updateData?.(row.index, 'qty', Number.isNaN(parsed) ? 0 : parsed);
-  };
-
-  if (meta?.disabled || !meta?.warehouseIdFrom) {
-    return <div className="px-2 py-1 text-right">{String(intValue)}</div>;
-  }
-
-  if (isEditing) {
-    return (
-      <input type="number"
-        ref={inputRef}
-        value={parseInt(draft, 10) > 0 ? draft : ''}
-        step="1"
-        min="0"
-        className="h-8 w-24 rounded-md border bg-background px-2 py-1 text-center text-sm"
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.currentTarget.blur();
-          } else if (e.key === 'Escape') {
-            setDraft(String(intValue));
-            setIsEditing(false);
-          }
-        }}/>
-    );
-  }
+function MasterPackCellComponent({ getValue }: CellContext<AsnEntryLineRow, unknown>) {
+  return <div className="px-2 py-1 text-right text-muted-foreground">{String(Math.trunc(Number(getValue()) || 0))}</div>;
+}
 
 function CasesCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow, unknown>) {
   const meta = table.options.meta as TableMeta | undefined;
   if (meta?.disabled) return <div className="px-2 py-1 text-right">{String(getValue() ?? 0)}</div>;
   return (
-    <div role="button"
-      tabIndex={0}
-      onClick={() => setIsEditing(true)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          setIsEditing(true);
-        }
-      }}
-      className="cursor-pointer hover:bg-muted/50 rounded px-2 py-1 min-h-[32px] flex items-center justify-end text-right">
-      {String(intValue)}
+    <input type="number"
+      min="1"
+      step="1"
+      value={Number(getValue()) > 0 ? String(getValue()) : ''}
+      className="h-8 w-20 rounded-md border bg-background px-2 py-1 text-center text-sm"
+      onChange={(event) => {
+        const noOfCases = Math.max(1, parseInt(event.target.value, 10) || 1);
+        const masterPack = Math.max(1, Number(row.original.items_per_master_pack) || 1);
+        meta?.updateData?.(row.index, 'no_of_cases', noOfCases);
+        meta?.updateData?.(row.index, 'qty', masterPack * noOfCases);
+      }}/>
+  );
+}
+
+/** "Name (code)" when the row carries item fields, else null. */
+function rowItemLabel(row: AsnEntryLineRow): string | null {
+  if (!row.item_name) return null;
+  const code = row.sku || row.item_code;
+  return code ? `${row.item_name} (${code})` : row.item_name;
+}
+
+/** Read-only cell for disabled/view mode: row fields first, then the item cache. */
+function DisabledItemPickerCell({ meta, row, itemId }: { meta?: TableMeta; row: AsnEntryLineRow; itemId: string }) {
+  const fromRow = rowItemLabel(row);
+  if (fromRow) return <div className="px-2 py-1">{fromRow}</div>;
+
+  const cached = meta?.getItemData?.(itemId);
+  if (cached) {
+    const label = (meta?.itemLabelFormatter ?? defaultLabelFormatter)(cached);
+    return <div className="px-2 py-1">{label}</div>;
+  }
+  return <div className="px-2 py-1 text-muted-foreground">{itemId ? '—' : ''}</div>;
+}
+
+function WarehouseRequiredHint() {
+  return (
+    <div className="px-2 py-1.5 flex items-center gap-1.5 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+      <span className="text-xs font-medium text-amber-700 dark:text-amber-400">⚠ Please select a warehouse above to add items</span>
     </div>
   );
+}
+
+/**
+ * CSV-imported rows may carry item_name/item_code without an item_id; build a
+ * temporary PickerItem so the user sees what to search for.
+ */
+function buildCsvPlaceholderItem(row: AsnEntryLineRow, itemId: string): PickerItem | null {
+  if (itemId) return null;
+  if (!row.item_name && !row.item_code) return null;
+  return {
+    id: '',
+    item_code: row.item_code || '',
+    item_name: row.item_name || row.item_code || '',
+    uom: row.uom || null,
+    qty: row.qty || 0,
+    sku: row.sku || null,
+  };
 }
 
 function ItemPickerCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow, unknown>) {
@@ -180,47 +184,16 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<AsnEntryL
   const itemId = getValue() as string;
 
   if (!meta || meta.disabled) {
-    // In disabled/view mode, show item_name from row data directly
-    const rowItemName = row.original.item_name;
-    const rowItemCode = row.original.sku || row.original.item_code;
-    if (rowItemName) {
-      const label = rowItemCode ? `${rowItemName} (${rowItemCode})` : rowItemName;
-      return <div className="px-2 py-1">{label}</div>;
-    }
-    // Fallback to cache
-    if (meta) {
-      const itemData = meta.getItemData?.(itemId);
-      if (itemData) {
-        const label = (meta.itemLabelFormatter ?? defaultLabelFormatter)(itemData);
-        return <div className="px-2 py-1">{label}</div>;
-      }
-    }
-    return <div className="px-2 py-1 text-muted-foreground">{itemId ? '—' : ''}</div>;
+    return <DisabledItemPickerCell meta={meta} row={row.original} itemId={itemId} />;
   }
 
   if (!meta.warehouseIdFrom) {
-    return (
-      <div className="px-2 py-1.5 flex items-center gap-1.5 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-        <span className="text-xs font-medium text-amber-700 dark:text-amber-400">⚠ Please select a warehouse above to add items</span>
-      </div>
-    );
+    return <WarehouseRequiredHint />;
   }
 
-  const itemData = meta.getItemData?.(itemId);
-
-  // CSV-imported rows may have item_name/item_code without an actual item_id.
-  // Build a temporary PickerItem so the user sees what to search for.
-  const csvPlaceholderItem: PickerItem | null =
-    !itemId && (row.original.item_name || row.original.item_code)
-      ? {
-        id: '',
-        item_code: row.original.item_code || '',
-        item_name: row.original.item_name || row.original.item_code || '',
-        uom: row.original.uom || null,
-        qty: row.original.qty || 0,
-        sku: row.original.sku || null,
-      }
-      : null;
+  const csvPlaceholderItem = buildCsvPlaceholderItem(row.original, itemId);
+  const placeholder = csvPlaceholderItem ? 'Click to select item…' : 'Search items…';
+  const searchPlaceholder = csvPlaceholderItem ? `Search: ${csvPlaceholderItem.item_name}` : 'Search items…';
 
   return (
     <ItemPickerSelect value={itemId}
@@ -228,17 +201,15 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<AsnEntryL
       searchItems={meta.searchItems ?? defaultSearchItems}
       labelFormatter={meta.itemLabelFormatter ?? defaultLabelFormatter}
       valueKey="id"
-      placeholder={csvPlaceholderItem ? 'Click to select item…' : 'Search items…'}
-      searchPlaceholder={csvPlaceholderItem ? `Search: ${csvPlaceholderItem.item_name}` : 'Search items…'}
+      placeholder={placeholder}
+      searchPlaceholder={searchPlaceholder}
       minSearchLength={2}
-      selectedItemData={itemData || csvPlaceholderItem} />
+      selectedItemData={meta.getItemData?.(itemId) || csvPlaceholderItem} />
   );
 }
 
 export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false, warehouseIdFrom, warehouseIdTo, renderFooter }: AsnEntryLineItemsTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const itemsCacheRef = React.useRef<Map<string, PickerItem>>(new Map());
   const [cacheVersion, setCacheVersion] = React.useState(0);
 
@@ -366,7 +337,7 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
         },
       },
     ],
-    [disabled, currencySymbol]
+    [disabled]
   );
 
   const newRowTemplate: AsnEntryLineRow = React.useMemo(

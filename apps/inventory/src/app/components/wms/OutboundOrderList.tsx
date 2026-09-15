@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Loader2, PackageOpen, ChevronsUpDown, X, ClipboardList, TriangleAlert } from 'lucide-react';
 
@@ -24,8 +25,8 @@ import { DataTable } from '@horizon-sync/ui/components/data-table';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
-import { useOutboundOrders } from '../../hooks/useWMS';
-import type { OutboundOrder, OutboundOrderListItem, WMSWorker } from '../../types/wms.types';
+import { OUTBOUND_ORDERS_QUERY_KEY, useOutboundOrder, useOutboundOrders } from '../../hooks/useWMS';
+import type { OutboundOrder, OutboundOrderListItem, OutboundOrderStatusCounts, WMSWorker } from '../../types/wms.types';
 import { outboundOrderApi, packingSlipApi, wmsWorkerApi } from '../../utility/api/wms';
 
 import { createOutboundOrderColumns } from './OutboundOrderColumns';
@@ -34,6 +35,64 @@ import { WMSStatusBadge } from './WMSStatusBadge';
 /** `'all'` in a filter dropdown means "no server-side filter". */
 function filterParam(value: string): string | undefined {
   return value === 'all' ? undefined : value;
+}
+
+const STATUS_FILTERS: { value: string; label: string; countKey: keyof OutboundOrderStatusCounts }[] = [
+  { value: 'all', label: 'All Statuses', countKey: 'total' },
+  { value: 'draft', label: 'Draft', countKey: 'draft' },
+  { value: 'confirmed', label: 'Confirmed', countKey: 'confirmed' },
+  { value: 'pending_picking', label: 'Pending Picking', countKey: 'pending_picking' },
+  { value: 'completed', label: 'Completed', countKey: 'completed' },
+  { value: 'cancelled', label: 'Cancelled', countKey: 'cancelled' },
+];
+
+const TYPE_FILTERS: { value: string; label: string }[] = [
+  { value: 'all', label: 'All Types' },
+  { value: 'sap', label: 'SAP' },
+  { value: 'asn', label: 'ASN' },
+];
+
+function OutboundOrderFilters({
+  statusFilter,
+  typeFilter,
+  statusCounts,
+  onStatusFilterChange,
+  onTypeFilterChange,
+}: {
+  statusFilter: string;
+  typeFilter: string;
+  statusCounts: OutboundOrderStatusCounts | null;
+  onStatusFilterChange: (status: string) => void;
+  onTypeFilterChange: (type: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <Select value={statusFilter} onValueChange={onStatusFilterChange}>
+        <SelectTrigger className="w-[170px]">
+          <SelectValue placeholder="All Statuses" />
+        </SelectTrigger>
+        <SelectContent>
+          {STATUS_FILTERS.map((filter) => (
+            <SelectItem key={filter.value} value={filter.value}>
+              {filter.label} ({statusCounts?.[filter.countKey] ?? 0})
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={typeFilter} onValueChange={onTypeFilterChange}>
+        <SelectTrigger className="w-[140px]">
+          <SelectValue placeholder="All Types" />
+        </SelectTrigger>
+        <SelectContent>
+          {TYPE_FILTERS.map((filter) => (
+            <SelectItem key={filter.value} value={filter.value}>
+              {filter.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
 }
 
 type ServerPagination = {
@@ -339,16 +398,12 @@ function GeneratePickListsDialog({
   );
 }
 
-function OrderDetailDialog({ order, onClose }: { order: OutboundOrder | null; onClose: () => void }) {
-  if (!order) return null;
-
+function OrderDetailBody({ order }: { order: OutboundOrder }) {
   const inStock = order.items.filter((i) => i.stock_status === 'in_stock').length;
   const outOfStock = order.items.length - inStock;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-background rounded-xl shadow-xl border w-full max-w-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto">
-        <h2 className="text-lg font-semibold">Order — {order.order_no}</h2>
+    <>
         <div className="grid grid-cols-4 gap-3 text-sm">
           <div className="rounded-lg border p-3">
             <p className="text-xs text-muted-foreground mb-1">Type</p>
@@ -405,7 +460,28 @@ function OrderDetailDialog({ order, onClose }: { order: OutboundOrder | null; on
             </tbody>
           </table>
         </div>
+    </>
+  );
+}
 
+interface OrderDetailDialogProps {
+  order: OutboundOrder | null;
+  loading: boolean;
+  /** Detail fetch failure, shown in place of the line items. */
+  error: string | null;
+  onClose: () => void;
+}
+
+function OrderDetailDialog({ order, loading, error, onClose }: OrderDetailDialogProps) {
+  if (!order && !loading && !error) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-background rounded-xl shadow-xl border w-full max-w-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+        <h2 className="text-lg font-semibold">{order ? `Order — ${order.order_no}` : 'Order'}</h2>
+        {loading && !order && <p className="text-sm text-muted-foreground">Loading order details...</p>}
+        {error && !order && <p className="text-sm text-destructive">{error}</p>}
+        {order && <OrderDetailBody order={order} />}
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
             Close
@@ -421,22 +497,27 @@ interface OutboundOrderListProps {
   onPickListsGenerated?: () => void;
   /** Increment to trigger a refetch (e.g. from the panel-level Refresh button). */
   refreshKey?: number;
+  /**
+   * Publishes the list's status counts so sibling stat cards can reuse them
+   * instead of issuing a second request to the same endpoint.
+   */
+  onStatusCountsChange?: (counts: OutboundOrderStatusCounts | null) => void;
 }
 
-export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKey }: OutboundOrderListProps) {
+export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKey, onStatusCountsChange }: OutboundOrderListProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [typeFilter, setTypeFilter] = React.useState('all');
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
-  const [viewOrder, setViewOrder] = React.useState<OutboundOrder | null>(null);
-  const [viewLoading, setViewLoading] = React.useState(false);
+  const [viewOrderId, setViewOrderId] = React.useState<string | null>(null);
   const [generateOrder, setGenerateOrder] = React.useState<OutboundOrderListItem | null>(null);
   const [confirmingId, setConfirmingId] = React.useState<string | null>(null);
   const [packingId, setPackingId] = React.useState<string | null>(null);
 
-  const { data, loading, error, refetch } = useOutboundOrders({
+  const { data, statusCounts, loading, error, refetch } = useOutboundOrders({
     status: filterParam(statusFilter),
     order_type: filterParam(typeFilter),
     warehouse_id: warehouseId,
@@ -444,16 +525,30 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
     page_size: pageSize,
   });
 
+  // Cached detail for the open dialog. Confirm/pack invalidate the outbound-orders
+  // prefix, so this refreshes alongside the list.
+  const { order: viewOrder, loading: viewLoading, error: viewError } = useOutboundOrder(viewOrderId);
+
   // Refetch when the panel-level Refresh button is pressed (skip the initial mount).
   useRefreshOnKey(refreshKey, refetch);
 
-  const handleConfirm = async (order: OutboundOrderListItem) => {
+  // Share the counts returned with the list so the stat cards above don't need
+  // their own request to the same endpoint.
+  React.useEffect(() => {
+    onStatusCountsChange?.(statusCounts);
+  }, [statusCounts, onStatusCountsChange]);
+
+  const invalidateOrders = React.useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: OUTBOUND_ORDERS_QUERY_KEY });
+  }, [queryClient]);
+
+  const handleConfirm = React.useCallback(async (order: OutboundOrderListItem) => {
     if (!accessToken) return;
     setConfirmingId(order.id);
     try {
       await outboundOrderApi.confirmOrder(accessToken, order.id);
       toast({ title: 'Order confirmed', description: `${order.order_no} is now confirmed` });
-      refetch();
+      invalidateOrders();
     } catch (err) {
       toast({
         title: 'Error',
@@ -463,15 +558,15 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
     } finally {
       setConfirmingId(null);
     }
-  };
+  }, [accessToken, toast, invalidateOrders]);
 
-  const handlePack = async (order: OutboundOrderListItem) => {
+  const handlePack = React.useCallback(async (order: OutboundOrderListItem) => {
     if (!accessToken) return;
     setPackingId(order.id);
     try {
       await packingSlipApi.createFromOrders(accessToken, [order.id]);
       toast({ title: 'Packing slip created', description: `Packing slip created for ${order.order_no}` });
-      refetch();
+      invalidateOrders();
     } catch (err) {
       toast({
         title: 'Error',
@@ -481,24 +576,27 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
     } finally {
       setPackingId(null);
     }
-  };
+  }, [accessToken, toast, invalidateOrders]);
 
-  const handleView = async (order: OutboundOrderListItem) => {
-    if (!accessToken) return;
-    setViewLoading(true);
-    try {
-      const detail = await outboundOrderApi.getOrder(accessToken, order.id);
-      setViewOrder(detail);
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load order detail',
-        variant: 'destructive',
-      });
-    } finally {
-      setViewLoading(false);
-    }
-  };
+  const handleView = React.useCallback((order: OutboundOrderListItem) => {
+    setViewOrderId(order.id);
+  }, []);
+
+  const handleStatusFilterChange = React.useCallback((value: string) => {
+    setStatusFilter(value);
+    setPage(1);
+  }, []);
+
+  const handleTypeFilterChange = React.useCallback((value: string) => {
+    setTypeFilter(value);
+    setPage(1);
+  }, []);
+
+  const handleClearFilters = React.useCallback(() => {
+    setStatusFilter('all');
+    setTypeFilter('all');
+    setPage(1);
+  }, []);
 
   const orders: OutboundOrderListItem[] = data?.orders ?? [];
   const pagination = data?.pagination;
@@ -522,51 +620,27 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
     };
   }, [pagination]);
 
-  const columns = createOutboundOrderColumns({
-    confirmingId,
-    packingId,
-    viewLoading,
-    onConfirm: handleConfirm,
-    onPack: handlePack,
-    onCreatePickList: setGenerateOrder,
-    onView: handleView,
-  });
+  const columns = React.useMemo(
+    () =>
+      createOutboundOrderColumns({
+        confirmingId,
+        packingId,
+        viewLoading,
+        onConfirm: handleConfirm,
+        onPack: handlePack,
+        onCreatePickList: setGenerateOrder,
+        onView: handleView,
+      }),
+    [confirmingId, packingId, viewLoading, handleConfirm, handlePack, handleView],
+  );
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Select value={statusFilter}
-          onValueChange={(v) => {
-            setStatusFilter(v);
-            setPage(1);
-          }}>
-          <SelectTrigger className="w-[170px]">
-            <SelectValue placeholder="All Statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="pending_picking">Pending Picking</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={typeFilter}
-          onValueChange={(v) => {
-            setTypeFilter(v);
-            setPage(1);
-          }}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="All Types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="sap">SAP</SelectItem>
-            <SelectItem value="asn">ASN</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <OutboundOrderFilters statusFilter={statusFilter}
+        typeFilter={typeFilter}
+        statusCounts={statusCounts}
+        onStatusFilterChange={handleStatusFilterChange}
+        onTypeFilterChange={handleTypeFilterChange}/>
 
       <p className="text-xs text-muted-foreground">
         Orders are imported from incoming order files (packing slip PDF/CSV) or created manually. Flow: <span className="font-medium">Confirm</span> →{' '}
@@ -582,17 +656,16 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
         serverPagination={serverPagination}
         pageSize={pageSize}
         filtered={statusFilter !== 'all' || typeFilter !== 'all'}
-        onClearFilter={() => {
-          setStatusFilter('all');
-          setTypeFilter('all');
-          setPage(1);
-        }}/>
+        onClearFilter={handleClearFilters}/>
 
-      <OrderDetailDialog order={viewOrder} onClose={() => setViewOrder(null)} />
+      <OrderDetailDialog order={viewOrder}
+        loading={viewLoading}
+        error={viewError}
+        onClose={() => setViewOrderId(null)}/>
       <GeneratePickListsDialog order={generateOrder}
         onClose={() => setGenerateOrder(null)}
         onGenerated={() => {
-          refetch();
+          invalidateOrders();
           onPickListsGenerated?.();
         }}/>
     </div>

@@ -8,7 +8,7 @@ import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { environment } from '../../../../environments/environment';
-import { UserService } from '../../../services/user.service';
+import { UserService, type User, type UsersResponse } from '../../../services/user.service';
 import { dataSyncService, type FeatureSummary, type ReceiveAsnStep, type SyncableFeature, type WarehouseUserAssignment } from '../services/dataSyncService';
 
 export interface DataSyncSettingsProps {
@@ -33,7 +33,6 @@ interface FeatureRowProps {
 interface ReceiveAsnRow {
   item_id: string;
   batch: string;
-  boxes: string;
   master_pack_size: string;
   no_of_cases: string;
   quantity: string;
@@ -45,6 +44,22 @@ interface ReceiveAsnCsvRow {
   item_code?: string;
   batch?: string;
   no_of_cases: string;
+}
+
+/** Message from a rejected promise, falling back to a caller-supplied string. */
+function loadFailureMessage(reason: unknown, fallback: string): string {
+  return reason instanceof Error ? reason.message : fallback;
+}
+
+function workerNameFrom(user: User): string {
+  const full = `${user.first_name} ${user.last_name}`.trim();
+  return user.display_name || full || user.email;
+}
+
+/** Users from the settled users request — the endpoint has returned either key. */
+function usersFromResult(result: PromiseSettledResult<UsersResponse>): User[] {
+  if (result.status !== 'fulfilled') return [];
+  return result.value.users ?? result.value.items;
 }
 
 function parseReceiveAsnCsv(text: string): ReceiveAsnCsvRow[] {
@@ -78,35 +93,6 @@ function parseReceiveAsnCsv(text: string): ReceiveAsnCsvRow[] {
       no_of_cases: noOfCases,
     };
   });
-}
-
-const BATCH_SUFFIX_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-const MONTH_LABELS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-
-/** Default batch prefix, e.g. "BT-SEP-14-A12C" (the server appends the sequence). */
-function generateBatchName(date = new Date()): string {
-  const month = MONTH_LABELS[date.getMonth()];
-  const day = String(date.getDate()).padStart(2, '0');
-  let suffix = '';
-  for (let i = 0; i < 4; i++) {
-    suffix += BATCH_SUFFIX_CHARS[Math.floor(Math.random() * BATCH_SUFFIX_CHARS.length)];
-  }
-  return `BT-${month}-${day}-${suffix}`;
-}
-
-const DEFAULT_LINE_QUANTITY = 10;
-
-/**
- * Total units in a line = items per master pack × boxes. When the item has no
- * master pack (the field stays blank), fall back to the default quantity.
- */
-function rowQuantity(row: ReceiveAsnRow): number {
-  const pack = parseInt(row.master_pack_size, 10);
-  const boxes = parseInt(row.boxes, 10);
-  if (!Number.isFinite(pack) || !Number.isFinite(boxes) || pack <= 0 || boxes <= 0) {
-    return DEFAULT_LINE_QUANTITY;
-  }
-  return pack * boxes;
 }
 
 const INBOUND_STEPS: Array<{ key: ReceiveAsnStep; title: string; description: string }> = [
@@ -149,6 +135,30 @@ function FeatureRow({ feature, checked, disabled, onToggle }: FeatureRowProps) {
   );
 }
 
+function putAwaySummaryLabel(putAwayCount: number, status?: string): string {
+  const plural = putAwayCount === 1 ? '' : 's';
+  return `${putAwayCount} put-away list${plural}${status ? ` · ${status}` : ''}`;
+}
+
+/** Badge copy for one feature's sync result. */
+function syncResultBadge(summary?: FeatureSummary): string {
+  if (!summary) return 'done';
+  if (summary.put_away_count !== undefined) {
+    return putAwaySummaryLabel(summary.put_away_count, summary.put_away_status);
+  }
+  return `${summary.created ?? 0} created · ${summary.skipped ?? 0} skipped`;
+}
+
+function hasPutAwayLists(summary?: FeatureSummary): boolean {
+  const listNos = summary?.put_away_list_nos;
+  if (listNos && listNos.length > 0) return true;
+  return Boolean(summary?.put_away_list_no);
+}
+
+function putAwayListsLabel(summary?: FeatureSummary): string {
+  return summary?.put_away_list_nos?.join(', ') ?? summary?.put_away_list_no ?? '';
+}
+
 function SyncResults({ results }: { results: FeatureResult[] }) {
   if (results.length === 0) return null;
   return (
@@ -158,27 +168,650 @@ function SyncResults({ results }: { results: FeatureResult[] }) {
         <React.Fragment key={result.key}>
           <div className="flex items-center justify-between text-sm">
             <span>{result.label}</span>
-            <Badge variant="outline">
-              {result.summary?.put_away_count !== undefined
-                ? `${result.summary.put_away_count} put-away list${result.summary.put_away_count === 1 ? '' : 's'}${result.summary.put_away_status ? ` · ${result.summary.put_away_status}` : ''}`
-                : result.summary ? `${result.summary.created ?? 0} created · ${result.summary.skipped ?? 0} skipped` : 'done'}
-            </Badge>
+            <Badge variant="outline">{syncResultBadge(result.summary)}</Badge>
           </div>
-          {((result.summary?.put_away_list_nos && result.summary.put_away_list_nos.length > 0)
-            || result.summary?.put_away_list_no) && (
-              <p className="text-xs text-muted-foreground">
-                Put-away lists: {result.summary.put_away_list_nos?.join(', ') ?? result.summary.put_away_list_no}
-              </p>
-            )}
+          {hasPutAwayLists(result.summary) && (
+            <p className="text-xs text-muted-foreground">
+              Put-away lists: {putAwayListsLabel(result.summary)}
+            </p>
+          )}
         </React.Fragment>
       ))}
     </div>
   );
 }
 
+interface ReceiveAsnItemOption {
+  id: string;
+  item_name: string;
+  sku?: string | null;
+  item_code?: string;
+  items_per_master_pack?: number | null;
+}
+
+/** Batch label for a row tied to the given item. */
+function receiveAsnBatchLabel(item?: ReceiveAsnItemOption): string {
+  const suffix = item?.sku || item?.item_name || item?.id.slice(0, 8);
+  return `Batch-Sep-${suffix}`;
+}
+
+function effectiveMasterPack(item: ReceiveAsnItemOption | undefined, row: ReceiveAsnRow): string {
+  const pack = item?.items_per_master_pack;
+  if (pack && pack > 0) return String(pack);
+  return row.master_pack_size;
+}
+
+function effectiveCaseCount(row: ReceiveAsnRow): string {
+  return parseInt(row.no_of_cases, 10) > 0 ? row.no_of_cases : '5';
+}
+
+function multipliedQuantity(masterPackSize: string, cases: string): string {
+  const pack = parseInt(masterPackSize, 10);
+  const count = parseInt(cases, 10);
+  return !isNaN(pack) && !isNaN(count) ? String(pack * count) : '0';
+}
+
+/** Case count and quantity implied by a directly-typed quantity. */
+function quantityToCases(requestedQty: number, masterPack: number, row: ReceiveAsnRow): { noOfCases: string; quantity: string } {
+  const usablePack = !isNaN(masterPack) && masterPack > 0;
+  if (usablePack && !isNaN(requestedQty)) {
+    const noOfCases = Math.max(1, Math.round(requestedQty / masterPack));
+    return { noOfCases: String(noOfCases), quantity: String(masterPack * noOfCases) };
+  }
+  const fallbackCases = parseInt(row.no_of_cases, 10) || 1;
+  return {
+    noOfCases: String(fallbackCases),
+    quantity: usablePack ? String(masterPack * fallbackCases) : String(requestedQty || 0),
+  };
+}
+
+/** Apply one field edit to a row, recomputing the values derived from it. */
+function applyReceiveAsnItemChange(
+  row: ReceiveAsnRow,
+  field: keyof ReceiveAsnRow,
+  value: string,
+  items: ReceiveAsnItemOption[],
+): ReceiveAsnRow {
+  const item = items.find((candidate) => candidate.id === value);
+  const masterPackSize = effectiveMasterPack(item, row);
+
+  if (field === 'item_id') {
+    const cases = effectiveCaseCount(row);
+    return {
+      ...row,
+      item_id: value,
+      batch: receiveAsnBatchLabel(item),
+      master_pack_size: masterPackSize,
+      no_of_cases: cases,
+      quantity: multipliedQuantity(masterPackSize, cases),
+    };
+  }
+  if (field === 'no_of_cases') {
+    return { ...row, no_of_cases: value, quantity: multipliedQuantity(masterPackSize, value) };
+  }
+  if (field === 'quantity') {
+    const { noOfCases, quantity } = quantityToCases(parseInt(value, 10), parseInt(masterPackSize, 10), row);
+    return { ...row, no_of_cases: noOfCases, quantity };
+  }
+  return { ...row, [field]: value };
+}
+
+function findCsvItem(csvRow: ReceiveAsnCsvRow, items: ReceiveAsnItemOption[]): ReceiveAsnItemOption | undefined {
+  const identifier = (csvRow.item_id || csvRow.sku || csvRow.item_code || '').toLowerCase();
+  return items.find((candidate) => [candidate.id, candidate.sku, candidate.item_code]
+    .filter(Boolean)
+    .some((value) => value?.toLowerCase() === identifier));
+}
+
+function receiveAsnRowFromCsv(csvRow: ReceiveAsnCsvRow, rowNumber: number, items: ReceiveAsnItemOption[]): ReceiveAsnRow {
+  const item = findCsvItem(csvRow, items);
+  if (!item) {
+    throw new Error(`Item not found for CSV row ${rowNumber}: ${csvRow.item_id || csvRow.sku || csvRow.item_code}`);
+  }
+  const masterPackSize = Math.max(1, item.items_per_master_pack ?? 1);
+  const noOfCases = Math.max(1, Number(csvRow.no_of_cases));
+  return {
+    item_id: item.id,
+    batch: csvRow.batch || receiveAsnBatchLabel(item),
+    master_pack_size: String(masterPackSize),
+    no_of_cases: String(noOfCases),
+    quantity: String(masterPackSize * noOfCases),
+  };
+}
+
+/** Payload rows for the receive-ASN sync, derived from the configured item rows. */
+function syncItemRows(rows: ReceiveAsnRow[]) {
+  return rows.filter((row) => row.item_id).map((row) => ({
+    item_id: row.item_id,
+    batch: row.batch,
+    quantity: Math.max(1, parseInt(row.quantity, 10) || 1),
+    no_of_cases: Math.max(1, parseInt(row.no_of_cases, 10) || 1),
+    master_pack_size: row.master_pack_size ? Math.max(1, parseInt(row.master_pack_size, 10) || 1) : 0,
+  }));
+}
+
+interface ReceiveAsnSyncInput {
+  mode: 'items' | 'block_ids';
+  steps: Record<string, boolean>;
+  qrImage: boolean;
+  rows: ReceiveAsnRow[];
+  blockIds: string;
+  qrType: string;
+  asnType: string;
+  targetWarehouseId: string;
+  sourceWarehouseId: string;
+  workerIds: string[];
+}
+
+/** Receive-ASN block of the sync request, shaped for the data-sync service. */
+function buildReceiveAsnSyncInput(input: ReceiveAsnSyncInput) {
+  const usesItems = input.mode === 'items';
+  return {
+    mode: input.mode,
+    steps: INBOUND_STEPS.filter((step) => input.steps[step.key]).map((step) => step.key),
+    qr_image: input.qrImage,
+    items: usesItems ? syncItemRows(input.rows) : [],
+    block_ids: usesItems ? [] : input.blockIds.split(',').map((value) => value.trim()).filter(Boolean),
+    qr_type: input.qrType,
+    asn_type: input.asnType,
+    target_warehouse_id: input.targetWarehouseId || undefined,
+    put_away_worker_ids: input.workerIds,
+    source_warehouse_id: input.asnType === 'internal_transfer' ? (input.sourceWarehouseId || undefined) : undefined,
+  };
+}
+
+function featureResultFrom(feature: SyncableFeature, result: Awaited<ReturnType<typeof dataSyncService.sync>>): FeatureResult {
+  const summary = result.summary?.[feature.key];
+  const usable = typeof summary === 'object' && summary !== null;
+  return {
+    key: feature.key,
+    label: feature.label,
+    summary: usable ? (summary as FeatureSummary) : undefined,
+    ok: true,
+  };
+}
+
+interface WarehouseOption {
+  id: string;
+  name: string;
+  code?: string;
+}
+
+/** Everything the per-step inbound panels need, threaded from DataSyncSettings. */
+interface InboundStepFieldsProps {
+  stepKey: string;
+  canEdit: boolean;
+  syncing: boolean;
+  mode: 'items' | 'block_ids';
+  onModeChange: (value: 'items' | 'block_ids') => void;
+  qrType: string;
+  onQrTypeChange: (value: string) => void;
+  qrImage: boolean;
+  onQrImageChange: (value: boolean) => void;
+  itemOptions: ReceiveAsnItemOption[];
+  rows: ReceiveAsnRow[];
+  onUpdateRow: (idx: number, field: keyof ReceiveAsnRow, value: string) => void;
+  onRemoveRow: (idx: number) => void;
+  onAddRow: () => void;
+  onImportCsv: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  csvInputRef: React.RefObject<HTMLInputElement | null>;
+  blockIds: string;
+  onBlockIdsChange: (value: string) => void;
+  asnType: string;
+  onAsnTypeChange: (value: string) => void;
+  warehouses: WarehouseOption[];
+  targetWarehouseId: string;
+  onTargetWarehouseChange: (value: string) => void;
+  sourceWarehouseId: string;
+  onSourceWarehouseChange: (value: string) => void;
+  workersLoading: boolean;
+  workersError: string | null;
+  assignments: WarehouseUserAssignment[];
+  selectedWorkerIds: string[];
+  onToggleWorker: (userId: string, checked: boolean) => void;
+  workerNames: Record<string, string>;
+  requiresWorker: boolean;
+}
+
+function itemOptionSuffix(item: ReceiveAsnItemOption): string {
+  return item.sku ?? item.item_code ?? item.id.slice(0, 8);
+}
+
+function QrBlocksFields({
+  canEdit,
+  syncing,
+  mode,
+  onModeChange,
+  qrType,
+  onQrTypeChange,
+  qrImage,
+  onQrImageChange,
+  itemOptions,
+  rows,
+  onUpdateRow,
+  onRemoveRow,
+  onAddRow,
+  onImportCsv,
+  csvInputRef,
+  blockIds,
+  onBlockIdsChange,
+}: InboundStepFieldsProps) {
+  const locked = !canEdit || syncing;
+
+  return (
+    <div className="mt-3 space-y-3 border-t border-border pt-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="receive-asn-mode">Mode</Label>
+          <Select value={mode} onValueChange={onModeChange} disabled={locked}>
+            <SelectTrigger id="receive-asn-mode" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="items">Configured items</SelectItem>
+              <SelectItem value="block_ids">Existing block IDs</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">QR type</Label>
+          <Select value={qrType} onValueChange={onQrTypeChange} disabled={locked}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dynamic">Dynamic</SelectItem>
+              <SelectItem value="static">Static</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Checkbox id="receive-asn-qr-image"
+          checked={qrImage}
+          disabled={locked}
+          onCheckedChange={(value) => onQrImageChange(value === true)}/>
+        <Label htmlFor="receive-asn-qr-image" className="cursor-pointer text-sm">
+          Generate QR image after QR codes are created
+        </Label>
+      </div>
+
+      {mode === 'items' ? (
+        <div className="space-y-3">
+          {rows.map((row, idx) => (
+            <div key={idx} className="grid grid-cols-[1fr_1.4fr_70px_90px_auto] items-end gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Item</Label>
+                <Select value={row.item_id} onValueChange={(v) => onUpdateRow(idx, 'item_id', v)} disabled={locked}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select item" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {itemOptions.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.item_name} ({itemOptionSuffix(option)})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Batch (sequence auto-appended)</Label>
+                <Input value={row.batch} onChange={(e) => onUpdateRow(idx, 'batch', e.target.value)} disabled={locked} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Items / Master Pack</Label>
+                <Input type="number"
+                  min={1}
+                  placeholder="Auto"
+                  value={row.master_pack_size}
+                  onChange={(e) => onUpdateRow(idx, 'master_pack_size', e.target.value)}
+                  disabled={locked}/>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">number of case</Label>
+                <Input value={row.no_of_cases} min={1} onChange={(e) => onUpdateRow(idx, 'no_of_cases', e.target.value)} disabled={locked} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qty</Label>
+                <Input value={row.quantity} min={1} onChange={(e) => onUpdateRow(idx, 'quantity', e.target.value)} disabled={locked} />
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => onRemoveRow(idx)} disabled={locked} className="h-9 px-2">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={onAddRow} disabled={locked} className="gap-1">
+              <Plus className="h-3.5 w-3.5" />
+              Add item
+            </Button>
+            <Button variant="outline"
+              size="sm"
+              onClick={() => csvInputRef.current?.click()}
+              disabled={locked || itemOptions.length === 0}
+              className="gap-1">
+              <FileUp className="h-3.5 w-3.5" />
+              Import CSV
+            </Button>
+            <Input ref={csvInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={onImportCsv}
+              className="hidden"/>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor="receive-asn-block-ids">Block IDs (comma-separated)</Label>
+          <Input id="receive-asn-block-ids"
+            value={blockIds}
+            onChange={(e) => onBlockIdsChange(e.target.value)}
+            placeholder="uuid1, uuid2, ..."
+            disabled={locked}
+            className="font-mono"/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AsnFields({
+  canEdit,
+  syncing,
+  asnType,
+  onAsnTypeChange,
+  warehouses,
+  targetWarehouseId,
+  onTargetWarehouseChange,
+  sourceWarehouseId,
+  onSourceWarehouseChange,
+}: InboundStepFieldsProps) {
+  const locked = !canEdit || syncing;
+
+  return (
+    <div className="mt-3 space-y-3 border-t border-border pt-3">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">ASN Type</Label>
+          <Select value={asnType} onValueChange={onAsnTypeChange} disabled={locked}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="stock_receipt">Stock Receipt</SelectItem>
+              <SelectItem value="internal_transfer">Internal Transfer</SelectItem>
+              <SelectItem value="purchase">Purchase</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Target Warehouse</Label>
+          <Select value={targetWarehouseId} onValueChange={onTargetWarehouseChange} disabled={locked}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select warehouse" />
+            </SelectTrigger>
+            <SelectContent>
+              {warehouses.map((wh) => (
+                <SelectItem key={wh.id} value={wh.id}>
+                  {wh.name} ({wh.code ?? wh.id.slice(0, 8)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {asnType === 'internal_transfer' && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Source Warehouse</Label>
+            <Select value={sourceWarehouseId} onValueChange={onSourceWarehouseChange} disabled={locked}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select warehouse" />
+              </SelectTrigger>
+              <SelectContent>
+                {warehouses.map((wh) => (
+                  <SelectItem key={wh.id} value={wh.id}>
+                    {wh.name} ({wh.code ?? wh.id.slice(0, 8)})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function workerTriggerLabel(workersLoading: boolean, count: number): string {
+  if (workersLoading) return 'Loading workers...';
+  if (count === 0) return 'Select at least one worker';
+  return `${count} worker${count === 1 ? '' : 's'} selected`;
+}
+
+/** Popover body listing the assignable put-away workers. */
+function WorkerPickerList({
+  workersError,
+  assignments,
+  hasTarget,
+  selectedWorkerIds,
+  onToggleWorker,
+  workerNames,
+}: {
+  workersError: string | null;
+  assignments: WarehouseUserAssignment[];
+  hasTarget: boolean;
+  selectedWorkerIds: string[];
+  onToggleWorker: (userId: string, checked: boolean) => void;
+  workerNames: Record<string, string>;
+}) {
+  if (workersError) return <p className="p-2 text-sm text-destructive">{workersError}</p>;
+  if (assignments.length === 0) {
+    return (
+      <p className="p-2 text-sm text-muted-foreground">
+        {hasTarget ? 'No active workers found for this warehouse.' : 'Select a target warehouse first.'}
+      </p>
+    );
+  }
+  return (
+    <div className="max-h-56 space-y-1 overflow-y-auto">
+      {assignments.map((assignment) => {
+        const selectedWorker = selectedWorkerIds.includes(assignment.user_id);
+        return (
+          <label key={assignment.user_id} className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted">
+            <Checkbox checked={selectedWorker}
+              onCheckedChange={(checked) => onToggleWorker(assignment.user_id, checked === true)}/>
+            <span>{workerNames[assignment.user_id] ?? assignment.user_id}</span>
+            {selectedWorker && <Check className="ml-auto h-4 w-4" />}
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+function PutAwayFields({
+  canEdit,
+  syncing,
+  targetWarehouseId,
+  workersLoading,
+  workersError,
+  assignments,
+  selectedWorkerIds,
+  onToggleWorker,
+  workerNames,
+  requiresWorker,
+}: InboundStepFieldsProps) {
+  const locked = !canEdit || syncing;
+  const count = selectedWorkerIds.length;
+  const triggerDisabled = locked || workersLoading || !targetWarehouseId;
+
+  return (
+    <div className="mt-3 space-y-2 border-t border-border pt-3">
+      <Label htmlFor="receive-asn-put-away-workers">Put-away workers *</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button id="receive-asn-put-away-workers"
+            type="button"
+            variant="outline"
+            className="w-full justify-between font-normal"
+            disabled={triggerDisabled}>
+            <span className="truncate">{workerTriggerLabel(workersLoading, count)}</span>
+            <span className="ml-2 text-muted-foreground">⌄</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2" align="start">
+          <WorkerPickerList workersError={workersError}
+            assignments={assignments}
+            hasTarget={Boolean(targetWarehouseId)}
+            selectedWorkerIds={selectedWorkerIds}
+            onToggleWorker={onToggleWorker}
+            workerNames={workerNames}/>
+        </PopoverContent>
+      </Popover>
+      {workersError && (
+        <p className="text-xs text-destructive">{workersError}</p>
+      )}
+      {requiresWorker && count === 0 && (
+        <p className="text-xs text-destructive">Select at least one active worker before syncing.</p>
+      )}
+      <p className="text-xs text-muted-foreground">
+        Select one or more active workers from the target warehouse. Each worker receives a separate put-away list.
+      </p>
+    </div>
+  );
+}
+
+/** The step-specific fields shown under a selected inbound step. */
+function InboundStepFields(props: InboundStepFieldsProps) {
+  const { stepKey } = props;
+  if (stepKey === 'qr_blocks') return <QrBlocksFields {...props} />;
+  if (stepKey === 'asn') return <AsnFields {...props} />;
+  if (stepKey === 'put_away') return <PutAwayFields {...props} />;
+  return null;
+}
+
+/** Loading / error / empty states for the sync settings body. */
+function SyncBody({ loading, error, isEmpty, onRetry, children }: {
+  loading: boolean;
+  error: string | null;
+  isEmpty: boolean;
+  onRetry: () => void;
+  children: React.ReactNode;
+}) {
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-destructive">
+        <AlertCircle className="h-4 w-4" />
+        {error}
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+  if (isEmpty) {
+    return <p className="text-sm text-muted-foreground">No syncable data categories are available.</p>;
+  }
+  return <>{children}</>;
+}
+
+/** Warehouse / quantity fields shown for the stock-related features. */
+function StockOptions({ selected, locked, warehouses, selectedWarehouseId, onWarehouseChange, stockBoostQty, onStockBoostChange }: {
+  selected: Record<string, boolean>;
+  locked: boolean;
+  warehouses: WarehouseOption[];
+  selectedWarehouseId: string;
+  onWarehouseChange: (value: string) => void;
+  stockBoostQty: string;
+  onStockBoostChange: (value: string) => void;
+}) {
+  return (
+    <>
+      {selected['stock'] && (
+        <div className="space-y-2 rounded-md border border-border p-3">
+          <Label htmlFor="sync-warehouse">Warehouse</Label>
+          <Select value={selectedWarehouseId} onValueChange={onWarehouseChange} disabled={locked}>
+            <SelectTrigger id="sync-warehouse" className="w-full">
+              <SelectValue placeholder="Select warehouse" />
+            </SelectTrigger>
+            <SelectContent>
+              {warehouses.map((wh) => (
+                <SelectItem key={wh.id} value={wh.id}>
+                  {wh.name} ({wh.code ?? wh.id.slice(0, 8)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {selected['stock_boost'] && (
+        <div className="space-y-2 rounded-md border border-border p-3">
+          <Label htmlFor="stock-boost-qty">Increase quantity per item</Label>
+          <Input id="stock-boost-qty"
+            type="number"
+            min={1}
+            value={stockBoostQty}
+            onChange={(e) => onStockBoostChange(e.target.value)}
+            disabled={locked}
+            className="w-full"/>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Last-sync results followed by the select-all / sync controls. */
+function SyncActions({ results, locked, selectedCount, syncDisabled, syncing, onSelectAll, onClearAll, onSync }: {
+  results: FeatureResult[] | null;
+  locked: boolean;
+  selectedCount: number;
+  syncDisabled: boolean;
+  syncing: boolean;
+  onSelectAll: () => void;
+  onClearAll: () => void;
+  onSync: () => void;
+}) {
+  return (
+    <>
+      {results && <SyncResults results={results} />}
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" disabled={locked} onClick={onSelectAll}>
+            Select all
+          </Button>
+          <Button variant="ghost" size="sm" disabled={locked} onClick={onClearAll}>
+            Clear
+          </Button>
+        </div>
+        <Button disabled={syncDisabled} onClick={onSync}>
+          {syncing ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Syncing…
+            </>
+          ) : (
+            `Sync ${selectedCount} selected`
+          )}
+        </Button>
+      </div>
+    </>
+  );
+}
+
 export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps) {
-  const { toast } = useToast();
-  const [features, setFeatures] = React.useState<SyncableFeature[]>([]);
+  const { toast } = useToast();  const [features, setFeatures] = React.useState<SyncableFeature[]>([]);
   const [selected, setSelected] = React.useState<Record<string, boolean>>({});
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -187,7 +820,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   const [warehouses, setWarehouses] = React.useState<Array<{ id: string; name: string; code?: string }>>([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState('');
   const [stockBoostQty, setStockBoostQty] = React.useState('100');
-  const [items, setItems] = React.useState<Array<{ id: string; item_name: string; sku?: string | null; item_code?: string; items_per_master_pack?: number | null }>>([]);
+  const [items, setItems] = React.useState<ReceiveAsnItemOption[]>([]);
   const [receiveAsnMode, setReceiveAsnMode] = React.useState<'items' | 'block_ids'>('items');
   const [receiveAsnSteps, setReceiveAsnSteps] = React.useState<Record<string, boolean>>({
     qr_blocks: true,
@@ -208,6 +841,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   const [workersLoading, setWorkersLoading] = React.useState(false);
   const [workersError, setWorkersError] = React.useState<string | null>(null);
   const receiveAsnCsvInputRef = React.useRef<HTMLInputElement>(null);
+  const locked = !canEdit || syncing;
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -267,18 +901,13 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
     ]).then(([assignmentsResult, usersResult]) => {
       if (cancelled) return;
       if (assignmentsResult.status === 'rejected') {
-        setWorkersError(assignmentsResult.reason instanceof Error
-          ? assignmentsResult.reason.message
-          : 'Failed to load workers for the selected warehouse.');
+        setWorkersError(loadFailureMessage(assignmentsResult.reason, 'Failed to load workers for the selected warehouse.'));
         return;
       }
       const assignments = Array.isArray(assignmentsResult.value) ? assignmentsResult.value : [];
-      const usersResponse = usersResult.status === 'fulfilled' ? usersResult.value : null;
-      const users = Array.isArray(usersResponse?.items)
-        ? usersResponse.items
-        : Array.isArray(usersResponse?.users) ? usersResponse.users : [];
+      const users = usersFromResult(usersResult);
       setWarehouseUserAssignments(assignments.filter((assignment) => assignment.user_id));
-      setWorkerNames(Object.fromEntries(users.map((user) => [user.id, user.display_name || `${user.first_name} ${user.last_name}`.trim() || user.email])));
+      setWorkerNames(Object.fromEntries(users.map((user) => [user.id, workerNameFrom(user)])));
       if (usersResult.status === 'rejected') {
         setWorkersError('Workers loaded, but their names could not be loaded. User IDs are shown instead.');
       }
@@ -333,88 +962,43 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
     setSelected(Object.fromEntries(features.map((feature) => [feature.key, false])));
   };
 
-  const updateReceiveAsnItem = (
-    idx: number,
-    field: keyof ReceiveAsnRow,
-    value: string
-  ) => {
-    setReceiveAsnItems((prev) =>
-      prev.map((r, i) => {
-        if (i !== idx) return r;
-
-
-        const item = items.find((it) => it.id === value);
-
-        const pack = item?.items_per_master_pack;
-
-        const batch =
-          `Batch-Sep-` +
-          (item?.sku || item?.item_name || item?.id.slice(0, 8));
-
-        // Determine effective values first
-        const masterPackSize =
-          pack && pack > 0
-            ? String(pack)
-            : r.master_pack_size;
-
-        const numOfCases =
-          parseInt(r.no_of_cases, 10) > 0
-            ? r.no_of_cases
-            : '5';
-
-        // Then calculate quantity
-        const masterPack = parseInt(masterPackSize, 10);
-        const cases = parseInt(numOfCases, 10);
-
-        const quantity =
-          !isNaN(masterPack) && !isNaN(cases)
-            ? String(masterPack * cases)
-            : '0';
-        if (field === 'item_id') {
-          return {
-            ...r,
-            item_id: value,
-            batch,
-            master_pack_size: masterPackSize,
-            no_of_cases: numOfCases,
-            quantity,
-          };
-        }
-        if (field === 'no_of_cases') {
-          return {
-            ...r,
-            [field]: value, quantity: !isNaN(masterPack) && !isNaN(parseInt(value, 10)) ? String(masterPack * parseInt(value, 10)) : '0',
-          };
-        }
-        if (field === 'quantity') {
-          const requestedQty = parseInt(value, 10);
-          const noOfCases =
-            !isNaN(masterPack) && masterPack > 0 && !isNaN(requestedQty)
-              ? Math.max(1, Math.round(requestedQty / masterPack))
-              : parseInt(r.no_of_cases, 10) || 1;
-          return {
-            ...r,
-            no_of_cases: String(noOfCases),
-            quantity:
-              !isNaN(masterPack) && masterPack > 0
-                ? String(masterPack * noOfCases)
-                : String(requestedQty || 0),
-          };
-        }
-        return {
-          ...r,
-          [field]: value,
-        };
-      })
-    );
+  const updateReceiveAsnItem = (idx: number, field: keyof ReceiveAsnRow, value: string) => {
+    setReceiveAsnItems((prev) => prev.map((row, i) => (i === idx ? applyReceiveAsnItemChange(row, field, value, items) : row)));
   };
 
   const addReceiveAsnItem = () => {
-    setReceiveAsnItems((prev) => [...prev, { item_id: '', batch: generateBatchName(), boxes: '1', master_pack_size: '' }]);
+    setReceiveAsnItems((prev) => [...prev, { item_id: '', batch: '', master_pack_size: '', quantity: '', no_of_cases: '1' }]);
+  };
+
+  const importReceiveAsnItems = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const importedRows = parseReceiveAsnCsv(String(reader.result ?? ''));
+        const rows = importedRows.map((csvRow, index) => receiveAsnRowFromCsv(csvRow, index + 2, items));
+        setReceiveAsnItems(rows);
+        toast({ title: 'ASN items imported', description: `${rows.length} item${rows.length === 1 ? '' : 's'} loaded from ${file.name}.` });
+      } catch (err) {
+        toast({
+          title: 'ASN CSV import failed',
+          description: err instanceof Error ? err.message : 'Could not import ASN items.',
+          variant: 'destructive',
+        });
+      }
+    };
+    reader.readAsText(file);
   };
 
   const removeReceiveAsnItem = (idx: number) => {
     setReceiveAsnItems((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const togglePutAwayWorker = (userId: string, checked: boolean) => {
+    setSelectedPutAwayWorkerIds((current) => (checked ? [...current, userId] : current.filter((id) => id !== userId)));
   };
 
   const toggleInboundStep = (key: string, checked: boolean) => {
@@ -442,46 +1026,22 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
         'USD',
         selected['stock'] ? selectedWarehouseId : undefined,
         selected['stock_boost'] ? Math.max(1, parseInt(stockBoostQty, 10) || 100) : undefined,
-        selected['receive_asn'] ? {
-          mode: receiveAsnMode,
-          steps: INBOUND_STEPS.filter((step) => receiveAsnSteps[step.key]).map((step) => step.key),
-          qr_image: receiveAsnQrImage,
-          items: receiveAsnMode === 'items'
-            ? receiveAsnItems
-              .filter((r) => r.item_id)
-              .map((r) => ({
-                item_id: r.item_id,
-                batch: r.batch,
-                quantity: rowQuantity(r),
-                master_pack_size: r.master_pack_size
-                  ? Math.max(1, parseInt(r.master_pack_size, 10) || 1)
-                  : 0,
-              }))
-            : [],
-          block_ids: receiveAsnMode === 'block_ids'
-            ? receiveAsnBlockIds.split(',').map((s) => s.trim()).filter(Boolean)
-            : [],
-          qr_type: receiveAsnQrType,
-          asn_type: receiveAsnType,
-          target_warehouse_id: receiveAsnTargetWarehouseId || undefined,
-          put_away_worker_ids: selectedPutAwayWorkerIds,
-          source_warehouse_id: receiveAsnType === 'internal_transfer'
-            ? (receiveAsnSourceWarehouseId || undefined)
-            : undefined,
-        } : undefined
+        selected['receive_asn']
+          ? buildReceiveAsnSyncInput({
+            mode: receiveAsnMode,
+            steps: receiveAsnSteps,
+            qrImage: receiveAsnQrImage,
+            rows: receiveAsnItems,
+            blockIds: receiveAsnBlockIds,
+            qrType: receiveAsnQrType,
+            asnType: receiveAsnType,
+            targetWarehouseId: receiveAsnTargetWarehouseId,
+            sourceWarehouseId: receiveAsnSourceWarehouseId,
+            workerIds: selectedPutAwayWorkerIds,
+          })
+          : undefined
       );
-      const perFeature: FeatureResult[] = features
-        .filter((feature) => selected[feature.key])
-        .map((feature) => {
-          const summary = result.summary?.[feature.key];
-          return {
-            key: feature.key,
-            label: feature.label,
-            summary: typeof summary === 'object' && summary !== null ? (summary as FeatureSummary) : undefined,
-            ok: true,
-          };
-        });
-      setResults(perFeature);
+      setResults(features.filter((feature) => selected[feature.key]).map((feature) => featureResultFrom(feature, result)));
       toast({
         title: 'Data sync complete',
         description: result.message,
@@ -514,66 +1074,28 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {loading ? (
-          <div className="space-y-2">
-            {[0, 1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-10 w-full" />
-            ))}
-          </div>
-        ) : error ? (
-          <div className="flex items-center gap-2 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            {error}
-            <Button variant="outline" size="sm" onClick={() => void load()}>
-              Retry
-            </Button>
-          </div>
-        ) : features.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No syncable data categories are available.</p>
-        ) : (
+        <SyncBody loading={loading}
+          error={error}
+          isEmpty={features.length === 0}
+          onRetry={() => void load()}>
           <>
             <div className="space-y-1">
               {features.map((feature) => (
                 <FeatureRow key={feature.key}
                   feature={feature}
                   checked={Boolean(selected[feature.key])}
-                  disabled={!canEdit || syncing}
+                  disabled={locked}
                   onToggle={toggleFeature} />
               ))}
             </div>
 
-            {selected['stock'] && (
-              <div className="space-y-2 rounded-md border border-border p-3">
-                <Label htmlFor="sync-warehouse">Warehouse</Label>
-                <Select value={selectedWarehouseId}
-                  onValueChange={setSelectedWarehouseId}
-                  disabled={!canEdit || syncing}>
-                  <SelectTrigger id="sync-warehouse" className="w-full">
-                    <SelectValue placeholder="Select warehouse" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {warehouses.map((wh) => (
-                      <SelectItem key={wh.id} value={wh.id}>
-                        {wh.name} ({wh.code ?? wh.id.slice(0, 8)})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {selected['stock_boost'] && (
-              <div className="space-y-2 rounded-md border border-border p-3">
-                <Label htmlFor="stock-boost-qty">Increase quantity per item</Label>
-                <Input id="stock-boost-qty"
-                  type="number"
-                  min={1}
-                  value={stockBoostQty}
-                  onChange={(e) => setStockBoostQty(e.target.value)}
-                  disabled={!canEdit || syncing}
-                  className="w-full"/>
-              </div>
-            )}
+            <StockOptions selected={selected}
+              locked={locked}
+              warehouses={warehouses}
+              selectedWarehouseId={selectedWarehouseId}
+              onWarehouseChange={setSelectedWarehouseId}
+              stockBoostQty={stockBoostQty}
+              onStockBoostChange={setStockBoostQty}/>
 
             {selected['receive_asn'] && (
               <div className="space-y-3 rounded-md border border-border p-3">
@@ -601,274 +1123,60 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                         </Label>
                       </div>
 
-                      {stepSelected && step.key === 'qr_blocks' && (
-                        <div className="mt-3 space-y-3 border-t border-border pt-3">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                              <Label htmlFor="receive-asn-mode">Mode</Label>
-                              <Select value={receiveAsnMode}
-                                onValueChange={(v) => setReceiveAsnMode(v as 'items' | 'block_ids')}
-                                disabled={!canEdit || syncing}>
-                                <SelectTrigger id="receive-asn-mode" className="w-full">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="items">Configured items</SelectItem>
-                                  <SelectItem value="block_ids">Existing block IDs</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">QR type</Label>
-                              <Select value={receiveAsnQrType} onValueChange={setReceiveAsnQrType} disabled={!canEdit || syncing}>
-                                <SelectTrigger className="w-full">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="dynamic">Dynamic</SelectItem>
-                                  <SelectItem value="static">Static</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <Checkbox id="receive-asn-qr-image"
-                              checked={receiveAsnQrImage}
-                              disabled={!canEdit || syncing}
-                              onCheckedChange={(value) => setReceiveAsnQrImage(value === true)}/>
-                            <Label htmlFor="receive-asn-qr-image" className="cursor-pointer text-sm">
-                              Generate QR image after QR codes are created
-                            </Label>
-                          </div>
-
-                          {receiveAsnMode === 'items' ? (
-                            <div className="space-y-3">
-                              {receiveAsnItems.map((row, idx) => (
-                                <div key={idx} className="grid grid-cols-[1fr_1.4fr_70px_90px_80px_auto] items-end gap-2">
-                                  <div className="space-y-1.5">
-                                    <Label className="text-xs">Item</Label>
-                                    <Select value={row.item_id} onValueChange={(v) => updateReceiveAsnItem(idx, 'item_id', v)} disabled={!canEdit || syncing}>
-                                      <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select item" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {items.map((it) => (
-                                          <SelectItem key={it.id} value={it.id}>
-                                            {it.item_name} ({it.sku ?? it.item_code ?? it.id.slice(0, 8)})
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <div className="space-y-1.5">
-                                    <Label className="text-xs">Batch (sequence auto-appended)</Label>
-                                    <Input value={row.batch} onChange={(e) => updateReceiveAsnItem(idx, 'batch', e.target.value)} disabled={!canEdit || syncing} />
-                                  </div>
-                                  <div className="space-y-1.5">
-                                    <Label className="text-xs">Box</Label>
-                                    <Input type="number" min={1} value={row.boxes} onChange={(e) => updateReceiveAsnItem(idx, 'boxes', e.target.value)} disabled={!canEdit || syncing} />
-                                  </div>
-                                  <div className="space-y-1.5">
-                                    <Label className="text-xs">Items / Master Pack</Label>
-                                    <Input type="number" placeholder="Auto" value={row.master_pack_size} readOnly className="bg-muted/50" />
-                                  </div>
-                                  <div className="space-y-1.5">
-                                    <Label className="text-xs">Qty</Label>
-                                    <Input type="number" value={rowQuantity(row)} readOnly className="bg-muted/50" />
-                                  </div>
-                                  <div className="space-y-1.5">
-                                    <Label className="text-xs">number of case</Label>
-                                    <Input value={row.no_of_cases} min={1} onChange={(e) => updateReceiveAsnItem(idx, 'no_of_cases', e.target.value)} disabled={!canEdit || syncing} />
-                                  </div>
-                                  <div className="space-y-1.5">
-                                    <Label className="text-xs">Qty</Label>
-                                    <Input value={row.quantity} min={1} onChange={(e) => updateReceiveAsnItem(idx, 'quantity', e.target.value)} disabled={!canEdit || syncing} />
-                                  </div>
-                                  <Button variant="ghost" size="sm" onClick={() => removeReceiveAsnItem(idx)} disabled={!canEdit || syncing} className="h-9 px-2">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ))}
-                              <div className="flex flex-wrap gap-2">
-                                <Button variant="outline" size="sm" onClick={addReceiveAsnItem} disabled={!canEdit || syncing} className="gap-1">
-                                  <Plus className="h-3.5 w-3.5" />
-                                  Add item
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => receiveAsnCsvInputRef.current?.click()}
-                                  disabled={!canEdit || syncing || items.length === 0}
-                                  className="gap-1"
-                                >
-                                  <FileUp className="h-3.5 w-3.5" />
-                                  Import CSV
-                                </Button>
-                                <Input
-                                  ref={receiveAsnCsvInputRef}
-                                  type="file"
-                                  accept=".csv,text/csv"
-                                  onChange={importReceiveAsnItems}
-                                  className="hidden"
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              <Label htmlFor="receive-asn-block-ids">Block IDs (comma-separated)</Label>
-                              <Input id="receive-asn-block-ids"
-                                value={receiveAsnBlockIds}
-                                onChange={(e) => setReceiveAsnBlockIds(e.target.value)}
-                                placeholder="uuid1, uuid2, ..."
-                                disabled={!canEdit || syncing}
-                                className="font-mono"/>
-                            </div>
-                          )}
-                        </div>
+                      {stepSelected && (
+                        <InboundStepFields stepKey={step.key}
+                          canEdit={canEdit}
+                          syncing={syncing}
+                          mode={receiveAsnMode}
+                          onModeChange={setReceiveAsnMode}
+                          qrType={receiveAsnQrType}
+                          onQrTypeChange={setReceiveAsnQrType}
+                          qrImage={receiveAsnQrImage}
+                          onQrImageChange={setReceiveAsnQrImage}
+                          itemOptions={items}
+                          rows={receiveAsnItems}
+                          onUpdateRow={updateReceiveAsnItem}
+                          onRemoveRow={removeReceiveAsnItem}
+                          onAddRow={addReceiveAsnItem}
+                          onImportCsv={importReceiveAsnItems}
+                          csvInputRef={receiveAsnCsvInputRef}
+                          blockIds={receiveAsnBlockIds}
+                          onBlockIdsChange={setReceiveAsnBlockIds}
+                          asnType={receiveAsnType}
+                          onAsnTypeChange={setReceiveAsnType}
+                          warehouses={warehouses}
+                          targetWarehouseId={receiveAsnTargetWarehouseId}
+                          onTargetWarehouseChange={setReceiveAsnTargetWarehouseId}
+                          sourceWarehouseId={receiveAsnSourceWarehouseId}
+                          onSourceWarehouseChange={setReceiveAsnSourceWarehouseId}
+                          workersLoading={workersLoading}
+                          workersError={workersError}
+                          assignments={warehouseUserAssignments}
+                          selectedWorkerIds={selectedPutAwayWorkerIds}
+                          onToggleWorker={togglePutAwayWorker}
+                          workerNames={workerNames}
+                          requiresWorker={putAwayRequiresWorker}/>
                       )}
 
-                      {stepSelected && step.key === 'asn' && (
-                        <div className="mt-3 space-y-3 border-t border-border pt-3">
-                          <div className="grid grid-cols-3 gap-3">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">ASN Type</Label>
-                              <Select value={receiveAsnType} onValueChange={setReceiveAsnType} disabled={!canEdit || syncing}>
-                                <SelectTrigger className="w-full">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="stock_receipt">Stock Receipt</SelectItem>
-                                  <SelectItem value="internal_transfer">Internal Transfer</SelectItem>
-                                  <SelectItem value="purchase">Purchase</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Target Warehouse</Label>
-                              <Select value={receiveAsnTargetWarehouseId} onValueChange={setReceiveAsnTargetWarehouseId} disabled={!canEdit || syncing}>
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Select warehouse" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {warehouses.map((wh) => (
-                                    <SelectItem key={wh.id} value={wh.id}>
-                                      {wh.name} ({wh.code ?? wh.id.slice(0, 8)})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            {receiveAsnType === 'internal_transfer' && (
-                              <div className="space-y-1.5">
-                                <Label className="text-xs">Source Warehouse</Label>
-                                <Select value={receiveAsnSourceWarehouseId} onValueChange={setReceiveAsnSourceWarehouseId} disabled={!canEdit || syncing}>
-                                  <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select warehouse" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {warehouses.map((wh) => (
-                                      <SelectItem key={wh.id} value={wh.id}>
-                                        {wh.name} ({wh.code ?? wh.id.slice(0, 8)})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
 
-                      {stepSelected && step.key === 'put_away' && (
-                        <div className="mt-3 space-y-2 border-t border-border pt-3">
-                          <Label htmlFor="receive-asn-put-away-workers">Put-away workers *</Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button id="receive-asn-put-away-workers"
-                                type="button"
-                                variant="outline"
-                                className="w-full justify-between font-normal"
-                                disabled={!canEdit || syncing || workersLoading || !receiveAsnTargetWarehouseId}>
-                                <span className="truncate">
-                                  {workersLoading
-                                    ? 'Loading workers...'
-                                    : selectedPutAwayWorkerIds.length > 0
-                                      ? `${selectedPutAwayWorkerIds.length} worker${selectedPutAwayWorkerIds.length === 1 ? '' : 's'} selected`
-                                      : 'Select at least one worker'}
-                                </span>
-                                <span className="ml-2 text-muted-foreground">⌄</span>
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2" align="start">
-                              {workersError ? (
-                                <p className="p-2 text-sm text-destructive">{workersError}</p>
-                              ) : warehouseUserAssignments.length === 0 ? (
-                                <p className="p-2 text-sm text-muted-foreground">
-                                  {receiveAsnTargetWarehouseId ? 'No active workers found for this warehouse.' : 'Select a target warehouse first.'}
-                                </p>
-                              ) : (
-                                <div className="max-h-56 space-y-1 overflow-y-auto">
-                                  {warehouseUserAssignments.map((assignment) => {
-                                    const selectedWorker = selectedPutAwayWorkerIds.includes(assignment.user_id);
-                                    return (
-                                      <label key={assignment.user_id} className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted">
-                                        <Checkbox checked={selectedWorker}
-                                          onCheckedChange={(checked) => {
-                                            setSelectedPutAwayWorkerIds((current) => checked === true
-                                              ? [...current, assignment.user_id]
-                                              : current.filter((id) => id !== assignment.user_id));
-                                          }}/>
-                                        <span>{workerNames[assignment.user_id] ?? assignment.user_id}</span>
-                                        {selectedWorker && <Check className="ml-auto h-4 w-4" />}
-                                      </label>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </PopoverContent>
-                          </Popover>
-                          {workersError && (
-                            <p className="text-xs text-destructive">{workersError}</p>
-                          )}
-                          {putAwayRequiresWorker && selectedPutAwayWorkerIds.length === 0 && (
-                            <p className="text-xs text-destructive">Select at least one active worker before syncing.</p>
-                          )}
-                          <p className="text-xs text-muted-foreground">
-                            Select one or more active workers from the target warehouse. Each worker receives a separate put-away list.
-                          </p>
-                        </div>
-                      )}
+
+
                     </div>
                   );
                 })}
               </div>
             )}
 
-            {results && <SyncResults results={results} />}
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" disabled={!canEdit || syncing} onClick={selectAll}>
-                  Select all
-                </Button>
-                <Button variant="ghost" size="sm" disabled={!canEdit || syncing} onClick={clearAll}>
-                  Clear
-                </Button>
-              </div>
-              <Button disabled={syncDisabled} onClick={() => void handleSync()}>
-                {syncing ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Syncing…
-                  </>
-                ) : (
-                  `Sync ${selectedKeys.length} selected`
-                )}
-              </Button>
-            </div>
+            <SyncActions results={results}
+              locked={locked}
+              selectedCount={selectedKeys.length}
+              syncDisabled={syncDisabled}
+              syncing={syncing}
+              onSelectAll={selectAll}
+              onClearAll={clearAll}
+              onSync={() => void handleSync()}/>
           </>
-        )}
+        </SyncBody>
       </CardContent>
     </Card>
   );
