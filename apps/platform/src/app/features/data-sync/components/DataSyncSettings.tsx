@@ -62,11 +62,45 @@ function usersFromResult(result: PromiseSettledResult<UsersResponse>): User[] {
   return result.value.users ?? result.value.items;
 }
 
+/**
+ * Split one CSV line into trimmed fields, honouring double-quoted fields so a
+ * quoted identifier or batch containing commas does not shift the columns.
+ */
+function splitCsvLine(line: string): string[] {
+  const values: string[] = [];
+  let value = '';
+  let quoted = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (quoted) {
+      if (char === '"') {
+        if (line[i + 1] === '"') {
+          value += '"';
+          i += 1;
+        } else {
+          quoted = false;
+        }
+      } else {
+        value += char;
+      }
+    } else if (char === '"') {
+      quoted = true;
+    } else if (char === ',') {
+      values.push(value.trim());
+      value = '';
+    } else {
+      value += char;
+    }
+  }
+  values.push(value.trim());
+  return values;
+}
+
 function parseReceiveAsnCsv(text: string): ReceiveAsnCsvRow[] {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
   if (lines.length < 2) throw new Error('CSV must include a header and at least one item row.');
 
-  const headers = lines[0].split(',').map((header) => header.trim().toLowerCase());
+  const headers = splitCsvLine(lines[0]).map((header) => header.toLowerCase());
   const indexOf = (...names: string[]) => names.map((name) => headers.indexOf(name)).find((index) => index >= 0) ?? -1;
   const itemIdIndex = indexOf('item_id', 'item id');
   const skuIndex = indexOf('sku');
@@ -80,7 +114,7 @@ function parseReceiveAsnCsv(text: string): ReceiveAsnCsvRow[] {
   if (casesIndex < 0) throw new Error('CSV must include a number of cases column.');
 
   return lines.slice(1).map((line, rowIndex) => {
-    const columns = line.split(',').map((value) => value.trim());
+    const columns = splitCsvLine(line);
     const noOfCases = columns[casesIndex] ?? '';
     if (!/^\d+$/.test(noOfCases) || Number(noOfCases) < 1) {
       throw new Error(`Invalid number of cases on CSV row ${rowIndex + 2}.`);
@@ -248,6 +282,14 @@ function applyReceiveAsnItemChange(
   }
   if (field === 'no_of_cases') {
     return { ...row, no_of_cases: value, quantity: multipliedQuantity(masterPackSize, value) };
+  }
+  if (field === 'master_pack_size') {
+    // Pack size drives the quantity, so a manual override must recompute it.
+    // Persist the case count used for the product too: `effectiveCaseCount`
+    // falls back to a default when the field is blank, and submission clamps a
+    // blank case count to 1, which would leave quantity and cases disagreeing.
+    const cases = effectiveCaseCount(row);
+    return { ...row, master_pack_size: value, no_of_cases: cases, quantity: multipliedQuantity(value, cases) };
   }
   if (field === 'quantity') {
     const { noOfCases, quantity } = quantityToCases(parseInt(value, 10), parseInt(masterPackSize, 10), row);

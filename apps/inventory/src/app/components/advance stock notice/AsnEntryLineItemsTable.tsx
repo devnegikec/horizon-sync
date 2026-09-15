@@ -30,6 +30,12 @@ interface PickerResponse {
 interface TableMeta {
   updateData?: (rowIndex: number, columnId: string, value: unknown) => void;
   deleteRow?: (rowIndex: number) => void;
+  /**
+   * Identity of the row currently at an index, or undefined when the row no
+   * longer exists. Two rows can carry the same item id (duplicate picks), so
+   * `sortOrder` (stable through local edits) disambiguates them.
+   */
+  getRowIdentity?: (rowIndex: number) => { itemId: string; sortOrder: number } | undefined;
   getItemData?: (itemId: string) => PickerItem | undefined;
   fetchItemData?: (itemId: string) => Promise<PickerItem | null>;
   searchItems?: (query: string) => Promise<PickerItem[]>;
@@ -95,6 +101,10 @@ function applyRowValues(meta: TableMeta, rowIndex: number, values: Record<string
 }
 
 async function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId: string) {
+  // Snapshot the row's identity before the async lookup: the row may have been
+  // removed or reordered meanwhile, and a duplicate item id would otherwise
+  // make the index ambiguous.
+  const identity = meta.getRowIdentity?.(rowIndex);
   meta.updateData?.(rowIndex, 'item_id', newItemId);
   let selectedItem = meta.getItemData?.(newItemId);
   if (meta.fetchItemData) {
@@ -103,8 +113,18 @@ async function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId:
   if (!selectedItem) return;
   const masterPack = getMasterPackSize(selectedItem) ?? 1;
   const values = selectedItemRowValues(selectedItem, masterPack);
+  // Writing by index is only safe while the row at that index is still the one
+  // we edited — same item id *and* same `sort_order`.
+  const rowStillMatches = () => {
+    if (!meta.getRowIdentity) return true;
+    const current = meta.getRowIdentity(rowIndex);
+    return !!current && current.itemId === newItemId && current.sortOrder === identity?.sortOrder;
+  };
+  if (!rowStillMatches()) return;
   // Deferred so the grid's own state writes for this row settle first.
-  setTimeout(() => applyRowValues(meta, rowIndex, values), 0);
+  setTimeout(() => {
+    if (rowStillMatches()) applyRowValues(meta, rowIndex, values);
+  }, 0);
 }
 
 function QtyCellComponent({ getValue }: CellContext<AsnEntryLineRow, unknown>) {
@@ -212,6 +232,22 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
   const accessToken = useUserStore((s) => s.accessToken);
   const itemsCacheRef = React.useRef<Map<string, PickerItem>>(new Map());
   const [cacheVersion, setCacheVersion] = React.useState(0);
+  /* Latest rows, so a deferred item-selection write can confirm its index is still valid. */
+  const itemsRef = React.useRef(items);
+
+  React.useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  const getRowIdentity = React.useCallback(
+    (rowIndex: number) => {
+      const row = itemsRef.current[rowIndex];
+      // `sort_order` stays with the row through local edits/delete/reorder, so
+      // it disambiguates rows that share an item id.
+      return row ? { itemId: row.item_id, sortOrder: row.sort_order } : undefined;
+    },
+    []
+  );
 
   /* Clear items cache when warehouse changes (Asn levels are warehouse-specific) */
   React.useEffect(() => {
@@ -278,6 +314,9 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
 
   const handleDataChange = React.useCallback(
     (newData: AsnEntryLineRow[]) => {
+      // Keep the guard's source current: `items` only catches up on the parent's
+      // next render, which may be after a deferred item-selection write.
+      itemsRef.current = newData;
       const updated = newData.map((item) => {
         const masterPack = Math.max(1, Number(item.items_per_master_pack) || 1);
         const noOfCases = Math.max(1, Number(item.no_of_cases) || 1);
@@ -355,9 +394,9 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
     () => ({
       showPagination: false,
       enableColumnVisibility: false,
-      meta: { getItemData, fetchItemData, searchItems, itemLabelFormatter, disabled, warehouseIdFrom },
+      meta: { getItemData, fetchItemData, searchItems, itemLabelFormatter, getRowIdentity, disabled, warehouseIdFrom },
     }),
-    [getItemData, fetchItemData, searchItems, itemLabelFormatter, disabled, warehouseIdFrom]
+    [getItemData, fetchItemData, searchItems, itemLabelFormatter, getRowIdentity, disabled, warehouseIdFrom]
   );
 
   return (

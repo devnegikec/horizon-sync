@@ -24,7 +24,7 @@ import { Input } from '@horizon-sync/ui/components/ui/input';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
-import { usePickList, usePickLists, usePickSettings } from '../../hooks/useWMS';
+import { useInvalidateOutboundOrders, usePickList, usePickLists, usePickSettings } from '../../hooks/useWMS';
 import type { PickList, PickListGroup, PickListItem, PickSerialDetail, PickListProgress, WMSWorker, PackingSlipListItem } from '../../types/wms.types';
 import { wmsWorkerApi, packingSlipApi } from '../../utility/api/wms';
 
@@ -901,6 +901,7 @@ interface PickListDetailDialogProps {
 
 function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickListDetailDialogProps) {
   const { toast } = useToast();
+  const invalidateOrders = useInvalidateOutboundOrders();
   const { pickList, loading, error, complete, cancel, assignWorker, accept, confirm, markReady, markInTransit, markDelivered, assignHandlingUnit } =
     usePickList(listId);
   const workers = useWorkers(open, pickListWarehouseId(pickList, warehouseId));
@@ -938,6 +939,9 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
   const handleComplete = async () => {
     try {
       await complete();
+      // Completing the pick list moves the underlying order on, so the Orders
+      // tab and its stat counts are now stale.
+      invalidateOrders();
       toast({ title: 'Pick list completed' });
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
@@ -956,6 +960,8 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
   const handleCancel = async () => {
     try {
       await cancel();
+      // Cancelling releases the order's reserved stock and reverts its status.
+      invalidateOrders();
       toast({ title: 'Pick list cancelled' });
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
@@ -1070,6 +1076,7 @@ function PackPickListDialog({
 }) {
   const accessToken = useUserStore((s) => s.accessToken);
   const { toast } = useToast();
+  const invalidateOrders = useInvalidateOutboundOrders();
   const [slips, setSlips] = React.useState<PackingSlipListItem[]>([]);
   const [target, setTarget] = React.useState('new');
   const [loading, setLoading] = React.useState(false);
@@ -1110,6 +1117,8 @@ function PackPickListDialog({
     try {
       const slip = await packingSlipApi.packPickLists(accessToken, [pickList.id], target === 'new' ? undefined : target);
       toast({ title: 'Packed', description: `Added to ${slip.packing_slip_no}` });
+      // Packing moves the underlying order on, so the Orders tab is now stale.
+      invalidateOrders();
       onPacked();
       onClose();
     } catch (err) {
@@ -1229,7 +1238,7 @@ function PickListsTable({
       return (
         <Card>
           <CardContent className="p-0">
-            <TableSkeleton columns={8} rows={8} showHeader={true} />
+            <TableSkeleton columns={9} rows={8} showHeader={true} />
           </CardContent>
         </Card>
       );
@@ -1245,7 +1254,7 @@ function PickListsTable({
           <DataTable columns={columns}
             data={pickLists}
             config={{
-              showSerialNumber: false,
+              showSerialNumber: true,
               showPagination: true,
               enableRowSelection: false,
               enableColumnVisibility: true,

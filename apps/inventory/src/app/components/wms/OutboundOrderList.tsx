@@ -1,6 +1,5 @@
 import * as React from 'react';
 
-import { useQueryClient } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Loader2, PackageOpen, ChevronsUpDown, X, ClipboardList, TriangleAlert } from 'lucide-react';
 
@@ -25,8 +24,8 @@ import { DataTable } from '@horizon-sync/ui/components/data-table';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
-import { OUTBOUND_ORDERS_QUERY_KEY, useOutboundOrder, useOutboundOrders } from '../../hooks/useWMS';
-import type { OutboundOrder, OutboundOrderListItem, OutboundOrderStatusCounts, WMSWorker } from '../../types/wms.types';
+import { useInvalidateOutboundOrders, useOutboundOrder, useOutboundOrders } from '../../hooks/useWMS';
+import type { OutboundOrder, OutboundOrderCountsState, OutboundOrderListItem, OutboundOrderStatusCounts, WMSWorker } from '../../types/wms.types';
 import { outboundOrderApi, packingSlipApi, wmsWorkerApi } from '../../utility/api/wms';
 
 import { createOutboundOrderColumns } from './OutboundOrderColumns';
@@ -147,7 +146,7 @@ function OutboundOrdersTable({
       return (
         <Card>
           <CardContent className="p-0">
-            <TableSkeleton columns={8} rows={8} showHeader={true} />
+            <TableSkeleton columns={9} rows={8} showHeader={true} />
           </CardContent>
         </Card>
       );
@@ -163,7 +162,7 @@ function OutboundOrdersTable({
           <DataTable columns={columns}
             data={orders}
             config={{
-              showSerialNumber: false,
+              showSerialNumber: true,
               showPagination: true,
               enableRowSelection: false,
               enableColumnVisibility: true,
@@ -283,6 +282,7 @@ function GeneratePickListsDialog({
 }) {
   const accessToken = useUserStore((s) => s.accessToken);
   const { toast } = useToast();
+  const invalidateOrders = useInvalidateOutboundOrders();
   const [mode, setMode] = React.useState<'default' | 'auto' | 'manual'>('default');
   const [workerIds, setWorkerIds] = React.useState<string[]>([]);
   const [workers, setWorkers] = React.useState<WMSWorker[]>([]);
@@ -325,6 +325,8 @@ function GeneratePickListsDialog({
           ? `${lists.length} pick lists created: ${lists.map((l) => l.pick_list_no).join(', ')}`
           : `Pick list ${lists[0]?.pick_list_no ?? ''} created`;
       toast({ title: 'Pick lists generated', description: summary });
+      // Generating a pick list moves the order to pending picking.
+      invalidateOrders();
       onClose();
       onGenerated();
     } catch (err) {
@@ -498,15 +500,15 @@ interface OutboundOrderListProps {
   /** Increment to trigger a refetch (e.g. from the panel-level Refresh button). */
   refreshKey?: number;
   /**
-   * Publishes the list's status counts so sibling stat cards can reuse them
-   * instead of issuing a second request to the same endpoint.
+   * Publishes the list's status counts (tagged with the warehouse they belong
+   * to) so sibling stat cards can reuse them instead of issuing a second
+   * request to the same endpoint.
    */
-  onStatusCountsChange?: (counts: OutboundOrderStatusCounts | null) => void;
+  onStatusCountsChange?: (state: OutboundOrderCountsState) => void;
 }
 
 export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKey, onStatusCountsChange }: OutboundOrderListProps) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [typeFilter, setTypeFilter] = React.useState('all');
@@ -517,7 +519,7 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
   const [confirmingId, setConfirmingId] = React.useState<string | null>(null);
   const [packingId, setPackingId] = React.useState<string | null>(null);
 
-  const { data, statusCounts, loading, error, refetch } = useOutboundOrders({
+  const { data, statusCounts, loading, isPlaceholderData, error, refetch } = useOutboundOrders({
     status: filterParam(statusFilter),
     order_type: filterParam(typeFilter),
     warehouse_id: warehouseId,
@@ -533,14 +535,22 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
   useRefreshOnKey(refreshKey, refetch);
 
   // Share the counts returned with the list so the stat cards above don't need
-  // their own request to the same endpoint.
+  // their own request to the same endpoint. `warehouseId` tags the counts so the
+  // cards can drop them when the warehouse selection changes.
+  //
+  // `keepPreviousData` keeps the previous request's counts visible while the next
+  // one loads. When the warehouse changes those counts belong to the old
+  // warehouse, so tagging them with the new id would show the wrong totals —
+  // withhold them until the response matches the current selection.
   React.useEffect(() => {
-    onStatusCountsChange?.(statusCounts);
-  }, [statusCounts, onStatusCountsChange]);
+    onStatusCountsChange?.({
+      warehouseId,
+      counts: isPlaceholderData ? null : statusCounts,
+      loading,
+    });
+  }, [warehouseId, statusCounts, loading, isPlaceholderData, onStatusCountsChange]);
 
-  const invalidateOrders = React.useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: OUTBOUND_ORDERS_QUERY_KEY });
-  }, [queryClient]);
+  const invalidateOrders = useInvalidateOutboundOrders();
 
   const handleConfirm = React.useCallback(async (order: OutboundOrderListItem) => {
     if (!accessToken) return;

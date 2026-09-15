@@ -21,6 +21,7 @@ import { DetailDialog } from '@horizon-sync/ui/components/ui/detail-dialog';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
+import { useInvalidateOutboundOrders } from '../../hooks/useWMS';
 import type { PackingSlip, PackingSlipListItem, PaginatedPackingSlips } from '../../types/wms.types';
 import { packingSlipApi } from '../../utility/api/wms';
 
@@ -181,6 +182,7 @@ function packingSlipItemCount(slip: PackingSlip | null): number {
 export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const { toast } = useToast();
+  const invalidateOrders = useInvalidateOutboundOrders();
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
   const [statusFilter, setStatusFilter] = React.useState('all');
@@ -271,6 +273,8 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
     try {
       await packingSlipApi.dispatch(accessToken, id);
       toast({ title: 'Packing slip dispatched' });
+      // Dispatching completes the order, so the Orders tab is now stale.
+      invalidateOrders();
       fetch();
       setViewSlip(null);
     } catch (err) {
