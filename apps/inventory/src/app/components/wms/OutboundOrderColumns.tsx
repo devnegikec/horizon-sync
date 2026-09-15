@@ -105,19 +105,24 @@ export function createOutboundOrderColumns({
       cell: ({ row }) => <span className="font-mono font-medium">{row.original.order_no}</span>,
     },
     {
-      accessorKey: 'order_type',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
-      cell: ({ row }) => <OrderTypeCell order={row.original} />,
-    },
-    {
-      accessorKey: 'invoice_reference',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Invoice Ref" />,
-      cell: ({ row }) => <span className="text-muted-foreground">{row.original.invoice_reference ?? '—'}</span>,
-    },
-    {
       accessorKey: 'status',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
       cell: ({ row }) => <WMSStatusBadge status={row.original.status} />,
+    },
+    {
+      accessorKey: 'invoice_reference',
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Invoice" />,
+      cell: ({ row }) =>
+        row.original.invoice_reference ? (
+          <span className="font-mono text-sm text-blue-600 dark:text-blue-400">{row.original.invoice_reference}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
+      accessorKey: 'order_type',
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
+      cell: ({ row }) => <OrderTypeCell order={row.original} />,
     },
     {
       id: 'stock',

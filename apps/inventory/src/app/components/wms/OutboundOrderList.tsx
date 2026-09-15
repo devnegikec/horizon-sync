@@ -146,7 +146,7 @@ function OutboundOrdersTable({
       return (
         <Card>
           <CardContent className="p-0">
-            <TableSkeleton columns={8} rows={8} showHeader={true} />
+            <TableSkeleton columns={9} rows={8} showHeader={true} />
           </CardContent>
         </Card>
       );
@@ -162,7 +162,7 @@ function OutboundOrdersTable({
           <DataTable columns={columns}
             data={orders}
             config={{
-              showSerialNumber: false,
+              showSerialNumber: true,
               showPagination: true,
               enableRowSelection: false,
               enableColumnVisibility: true,

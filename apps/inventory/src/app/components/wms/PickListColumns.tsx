@@ -69,14 +69,19 @@ export function createPickListColumns({ onPack, onView, getWorkerLabel }: PickLi
       cell: ({ row }) => <span className="font-mono font-medium">{row.original.pick_list_no}</span>,
     },
     {
-      accessorKey: 'invoice_reference',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Invoice Ref" />,
-      cell: ({ row }) => <span className="text-muted-foreground">{row.original.invoice_reference ?? '—'}</span>,
-    },
-    {
       accessorKey: 'status',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
       cell: ({ row }) => <PickListStatusCell pickList={row.original} />,
+    },
+    {
+      accessorKey: 'invoice_reference',
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Invoice" />,
+      cell: ({ row }) =>
+        row.original.invoice_reference ? (
+          <span className="font-mono text-sm text-blue-600 dark:text-blue-400">{row.original.invoice_reference}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
     },
     {
       accessorKey: 'priority',
