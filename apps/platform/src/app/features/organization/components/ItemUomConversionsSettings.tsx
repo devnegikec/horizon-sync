@@ -49,6 +49,15 @@ interface ConversionRow {
     to_uom_id: string | null;
     conversion_factor: string;
     isNew: boolean;
+    /** Server-side identity used to delete the original conversion when the
+     *  row's identifying fields are edited or the row is removed. */
+    original?: {
+        item_id: string;
+        from_uom: string;
+        to_uom: string;
+        from_uom_id: string | null;
+        to_uom_id: string | null;
+    };
 }
 
 let rowCounter = 0;
@@ -67,6 +76,15 @@ function rowFromConversion(c: UomConversion): ConversionRow {
         to_uom_id: c.to_uom_id,
         conversion_factor: String(c.conversion_factor ?? ''),
         isNew: false,
+        original: c.item_id
+            ? {
+                item_id: c.item_id,
+                from_uom: c.from_uom,
+                to_uom: c.to_uom,
+                from_uom_id: c.from_uom_id,
+                to_uom_id: c.to_uom_id,
+            }
+            : undefined,
     };
 }
 
@@ -311,27 +329,41 @@ export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConv
         setLoading(true);
         setError(null);
         try {
-            const [uomsData, conversionsData] = await Promise.all([
+            const [uomsData, conversionsData, itemsData] = await Promise.all([
                 UomService.list(accessToken),
                 uomConversionService.list(accessToken),
+                itemService.list(accessToken),
             ]);
             setUoms(uomsData);
             setRows(conversionsData.map(rowFromConversion));
             setDeletedRows([]);
-            // Hydrate item details only for items already referenced by
-            // conversions instead of eagerly loading the full item list.
+            // Hydrate item details for referenced items. The item list is
+            // capped at 100, so fetch any referenced items that fall outside
+            // the first page in a single parallel batch.
+            const listed = new Map(itemsData.map((i) => [i.id, i]));
             const itemIds = Array.from(
                 new Set(conversionsData.map((c) => c.item_id).filter((id): id is string => !!id)),
             );
-            if (itemIds.length > 0) {
-                const settled = await Promise.allSettled(itemIds.map((id) => itemService.get(accessToken, id)));
-                setItems(
-                    settled
-                        .filter((r): r is PromiseFulfilledResult<ItemListItem> => r.status === 'fulfilled')
-                        .map((r) => r.value),
-                );
+            const missingIds = itemIds.filter((id) => !listed.has(id));
+            if (missingIds.length === 0) {
+                setItems(itemsData);
             } else {
-                setItems([]);
+                const settled = await Promise.allSettled(missingIds.map((id) => itemService.get(accessToken, id)));
+                const hydrated = [...itemsData];
+                let failed = 0;
+                settled.forEach((r) => {
+                    if (r.status === 'fulfilled') {
+                        hydrated.push(r.value);
+                    } else {
+                        failed += 1;
+                    }
+                });
+                setItems(hydrated);
+                if (failed > 0) {
+                    setError(
+                        `Could not load details for ${failed} item${failed === 1 ? '' : 's'}; some conversions may show "Select item".`,
+                    );
+                }
             }
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Failed to load items and conversions');
@@ -389,18 +421,43 @@ export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConv
         // otherwise the next reload brings them back. Delete first so a
         // re-added conversion of the same key is recreated after deletion.
         for (const r of deletedRows) {
-            if (!r.item_id || !r.from_uom || !r.to_uom) continue;
+            const itemId = r.original?.item_id ?? r.item_id;
+            const fromUom = r.original?.from_uom ?? r.from_uom;
+            const toUom = r.original?.to_uom ?? r.to_uom;
+            const fromUomId = r.original?.from_uom_id ?? r.from_uom_id;
+            const toUomId = r.original?.to_uom_id ?? r.to_uom_id;
+            if (!itemId || !fromUom || !toUom) continue;
             payload.push({
-                item_id: r.item_id,
-                from_uom: r.from_uom,
-                to_uom: r.to_uom,
-                from_uom_id: r.from_uom_id || null,
-                to_uom_id: r.to_uom_id || null,
+                item_id: itemId,
+                from_uom: fromUom,
+                to_uom: toUom,
+                from_uom_id: fromUomId || null,
+                to_uom_id: toUomId || null,
                 conversion_factor: Number(r.conversion_factor) || 1,
                 action: 'delete',
             });
         }
         for (const r of rows) {
+            // If an existing row's identifying fields changed, delete the
+            // original conversion so saving replaces it instead of leaving a
+            // stale duplicate on the server.
+            if (
+                !r.isNew &&
+                r.original?.item_id &&
+                (r.item_id !== r.original.item_id ||
+                    r.from_uom !== r.original.from_uom ||
+                    r.to_uom !== r.original.to_uom)
+            ) {
+                payload.push({
+                    item_id: r.original.item_id,
+                    from_uom: r.original.from_uom,
+                    to_uom: r.original.to_uom,
+                    from_uom_id: r.original.from_uom_id || null,
+                    to_uom_id: r.original.to_uom_id || null,
+                    conversion_factor: 1,
+                    action: 'delete',
+                });
+            }
             if (!r.item_id || !r.from_uom || !r.to_uom) {
                 valid = false;
                 continue;
