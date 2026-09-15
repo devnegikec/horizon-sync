@@ -552,7 +552,7 @@ export function useOutboundOrders({
 
   // TanStack Query dedupes identical in-flight requests and caches by key, so
   // several components asking for the same page share a single API call.
-  const { data, isFetching, error, refetch } = useQuery({
+  const { data, isFetching, isPlaceholderData, error, refetch } = useQuery({
     queryKey: [...OUTBOUND_ORDERS_QUERY_KEY, { status, order_type, warehouse_id, page, page_size }],
     queryFn: async () => {
       if (!accessToken) throw new Error('Not authenticated');
@@ -568,6 +568,8 @@ export function useOutboundOrders({
     data: data ?? null,
     statusCounts: data?.status_counts ?? null,
     loading: isFetching,
+    /** True while `data` still belongs to the previous query key (warehouse/filter/page). */
+    isPlaceholderData,
     error: queryErrorToMessage(error),
     refetch,
   };

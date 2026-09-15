@@ -30,8 +30,12 @@ interface PickerResponse {
 interface TableMeta {
   updateData?: (rowIndex: number, columnId: string, value: unknown) => void;
   deleteRow?: (rowIndex: number) => void;
-  /** Item currently at a row index, or undefined when the row no longer exists. */
-  getRowItemId?: (rowIndex: number) => string | undefined;
+  /**
+   * Identity of the row currently at an index, or undefined when the row no
+   * longer exists. Two rows can carry the same item id (duplicate picks), so
+   * `sortOrder` (stable through local edits) disambiguates them.
+   */
+  getRowIdentity?: (rowIndex: number) => { itemId: string; sortOrder: number } | undefined;
   getItemData?: (itemId: string) => PickerItem | undefined;
   fetchItemData?: (itemId: string) => Promise<PickerItem | null>;
   searchItems?: (query: string) => Promise<PickerItem[]>;
@@ -97,6 +101,10 @@ function applyRowValues(meta: TableMeta, rowIndex: number, values: Record<string
 }
 
 async function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId: string) {
+  // Snapshot the row's identity before the async lookup: the row may have been
+  // removed or reordered meanwhile, and a duplicate item id would otherwise
+  // make the index ambiguous.
+  const identity = meta.getRowIdentity?.(rowIndex);
   meta.updateData?.(rowIndex, 'item_id', newItemId);
   let selectedItem = meta.getItemData?.(newItemId);
   if (meta.fetchItemData) {
@@ -105,13 +113,17 @@ async function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId:
   if (!selectedItem) return;
   const masterPack = getMasterPackSize(selectedItem) ?? 1;
   const values = selectedItemRowValues(selectedItem, masterPack);
-  // The lookup above is async, so the row may have been removed or reordered
-  // meanwhile — writing by index would then overwrite an unrelated row.
-  const rowStillHoldsItem = () => !meta.getRowItemId || meta.getRowItemId(rowIndex) === newItemId;
-  if (!rowStillHoldsItem()) return;
+  // Writing by index is only safe while the row at that index is still the one
+  // we edited — same item id *and* same `sort_order`.
+  const rowStillMatches = () => {
+    if (!meta.getRowIdentity) return true;
+    const current = meta.getRowIdentity(rowIndex);
+    return !!current && current.itemId === newItemId && current.sortOrder === identity?.sortOrder;
+  };
+  if (!rowStillMatches()) return;
   // Deferred so the grid's own state writes for this row settle first.
   setTimeout(() => {
-    if (rowStillHoldsItem()) applyRowValues(meta, rowIndex, values);
+    if (rowStillMatches()) applyRowValues(meta, rowIndex, values);
   }, 0);
 }
 
@@ -227,8 +239,13 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
     itemsRef.current = items;
   }, [items]);
 
-  const getRowItemId = React.useCallback(
-    (rowIndex: number) => itemsRef.current[rowIndex]?.item_id,
+  const getRowIdentity = React.useCallback(
+    (rowIndex: number) => {
+      const row = itemsRef.current[rowIndex];
+      // `sort_order` stays with the row through local edits/delete/reorder, so
+      // it disambiguates rows that share an item id.
+      return row ? { itemId: row.item_id, sortOrder: row.sort_order } : undefined;
+    },
     []
   );
 
@@ -377,9 +394,9 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
     () => ({
       showPagination: false,
       enableColumnVisibility: false,
-      meta: { getItemData, fetchItemData, searchItems, itemLabelFormatter, getRowItemId, disabled, warehouseIdFrom },
+      meta: { getItemData, fetchItemData, searchItems, itemLabelFormatter, getRowIdentity, disabled, warehouseIdFrom },
     }),
-    [getItemData, fetchItemData, searchItems, itemLabelFormatter, getRowItemId, disabled, warehouseIdFrom]
+    [getItemData, fetchItemData, searchItems, itemLabelFormatter, getRowIdentity, disabled, warehouseIdFrom]
   );
 
   return (

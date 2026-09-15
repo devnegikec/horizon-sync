@@ -519,7 +519,7 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
   const [confirmingId, setConfirmingId] = React.useState<string | null>(null);
   const [packingId, setPackingId] = React.useState<string | null>(null);
 
-  const { data, statusCounts, loading, error, refetch } = useOutboundOrders({
+  const { data, statusCounts, loading, isPlaceholderData, error, refetch } = useOutboundOrders({
     status: filterParam(statusFilter),
     order_type: filterParam(typeFilter),
     warehouse_id: warehouseId,
@@ -537,9 +537,18 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
   // Share the counts returned with the list so the stat cards above don't need
   // their own request to the same endpoint. `warehouseId` tags the counts so the
   // cards can drop them when the warehouse selection changes.
+  //
+  // `keepPreviousData` keeps the previous request's counts visible while the next
+  // one loads. When the warehouse changes those counts belong to the old
+  // warehouse, so tagging them with the new id would show the wrong totals —
+  // withhold them until the response matches the current selection.
   React.useEffect(() => {
-    onStatusCountsChange?.({ warehouseId, counts: statusCounts, loading });
-  }, [warehouseId, statusCounts, loading, onStatusCountsChange]);
+    onStatusCountsChange?.({
+      warehouseId,
+      counts: isPlaceholderData ? null : statusCounts,
+      loading,
+    });
+  }, [warehouseId, statusCounts, loading, isPlaceholderData, onStatusCountsChange]);
 
   const invalidateOrders = useInvalidateOutboundOrders();
 

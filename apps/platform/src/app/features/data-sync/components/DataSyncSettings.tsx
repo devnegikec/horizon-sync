@@ -285,7 +285,11 @@ function applyReceiveAsnItemChange(
   }
   if (field === 'master_pack_size') {
     // Pack size drives the quantity, so a manual override must recompute it.
-    return { ...row, master_pack_size: value, quantity: multipliedQuantity(value, effectiveCaseCount(row)) };
+    // Persist the case count used for the product too: `effectiveCaseCount`
+    // falls back to a default when the field is blank, and submission clamps a
+    // blank case count to 1, which would leave quantity and cases disagreeing.
+    const cases = effectiveCaseCount(row);
+    return { ...row, master_pack_size: value, no_of_cases: cases, quantity: multipliedQuantity(value, cases) };
   }
   if (field === 'quantity') {
     const { noOfCases, quantity } = quantityToCases(parseInt(value, 10), parseInt(masterPackSize, 10), row);

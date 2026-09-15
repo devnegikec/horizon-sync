@@ -901,6 +901,7 @@ interface PickListDetailDialogProps {
 
 function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickListDetailDialogProps) {
   const { toast } = useToast();
+  const invalidateOrders = useInvalidateOutboundOrders();
   const { pickList, loading, error, complete, cancel, assignWorker, accept, confirm, markReady, markInTransit, markDelivered, assignHandlingUnit } =
     usePickList(listId);
   const workers = useWorkers(open, pickListWarehouseId(pickList, warehouseId));
@@ -938,6 +939,9 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
   const handleComplete = async () => {
     try {
       await complete();
+      // Completing the pick list moves the underlying order on, so the Orders
+      // tab and its stat counts are now stale.
+      invalidateOrders();
       toast({ title: 'Pick list completed' });
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
@@ -956,6 +960,8 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
   const handleCancel = async () => {
     try {
       await cancel();
+      // Cancelling releases the order's reserved stock and reverts its status.
+      invalidateOrders();
       toast({ title: 'Pick list cancelled' });
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
