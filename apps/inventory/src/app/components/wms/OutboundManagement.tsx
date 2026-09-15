@@ -25,7 +25,7 @@ import { Input } from '@horizon-sync/ui/components/ui/input';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { environment } from '../../../environments/environment';
-import type { SAPInvoicePayload, OutboundOrderListItem } from '../../types/wms.types';
+import type { SAPInvoicePayload, OutboundOrderListItem, OutboundOrderStatusCounts } from '../../types/wms.types';
 import { outboundOrderApi } from '../../utility/api/wms';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 
@@ -608,6 +608,11 @@ interface TabContentProps {
   onGatePickListChange: (value: string) => void;
   onPickListsGenerated: () => void;
   onDispatchCreated: () => void;
+  /**
+   * Publishes the orders list's status counts up to the stat cards, so they do
+   * not need their own request to the same endpoint.
+   */
+  onOrderCountsChange: (counts: OutboundOrderStatusCounts | null) => void;
 }
 
 function OutboundTabContent({
@@ -618,10 +623,16 @@ function OutboundTabContent({
   onGatePickListChange,
   onPickListsGenerated,
   onDispatchCreated,
+  onOrderCountsChange,
 }: TabContentProps) {
   switch (activeTab) {
     case 'orders':
-      return <OutboundOrderList refreshKey={refreshKeys.orders} warehouseId={warehouseId} onPickListsGenerated={onPickListsGenerated} />;
+      return (
+        <OutboundOrderList refreshKey={refreshKeys.orders}
+          warehouseId={warehouseId}
+          onPickListsGenerated={onPickListsGenerated}
+          onStatusCountsChange={onOrderCountsChange}/>
+      );
     case 'pick':
       return <PickListView refreshKey={refreshKeys.pick} warehouseId={warehouseId} />;
     case 'packing':
@@ -655,6 +666,9 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
   const [activeTab, setActiveTab] = React.useState<OutboundTab>('orders');
   const [gatePickListId, setGatePickListId] = React.useState('');
   const [statsRefreshKey, setStatsRefreshKey] = React.useState(0);
+  // Order counts come from the list request in `OutboundOrderList` so the stat
+  // cards don't fetch the same endpoint a second time.
+  const [orderCounts, setOrderCounts] = React.useState<OutboundOrderStatusCounts | null>(null);
   const [refreshKeys, setRefreshKeys] = React.useState<Record<OutboundTab, number>>(EMPTY_REFRESH_KEYS);
 
   /** Bump the active tab's list and the stat cards. */
@@ -689,7 +703,10 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
         )}
       </div>
 
-      <OutboundStats warehouseId={wid} activeTab={activeTab} refreshKey={statsRefreshKey} />
+      <OutboundStats warehouseId={wid}
+        activeTab={activeTab}
+        ordersCounts={orderCounts}
+        refreshKey={statsRefreshKey}/>
 
       <div className="border rounded-lg overflow-hidden">
         <OutboundSubTabs activeTab={activeTab} onChange={setActiveTab} />
@@ -701,7 +718,8 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
             refreshKeys={refreshKeys}
             onGatePickListChange={setGatePickListId}
             onPickListsGenerated={handlePickRefresh}
-            onDispatchCreated={handleDispatchCreated}/>
+            onDispatchCreated={handleDispatchCreated}
+            onOrderCountsChange={setOrderCounts}/>
         </div>
       </div>
     </div>

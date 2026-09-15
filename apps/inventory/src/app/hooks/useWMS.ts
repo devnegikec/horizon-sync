@@ -14,7 +14,6 @@ import type {
   GateSessionProgress,
   LocationTree,
   PaginatedLocations,
-  PaginatedOutboundOrders,
   PaginatedPickLists,
   PaginatedPackingSlips,
   ReceivingSlipActionResult,
@@ -64,6 +63,12 @@ export const PUT_AWAY_LISTS_QUERY_KEY = ['wms', 'put-away-lists'] as const;
  * that changes a slip's status or the status counts.
  */
 export const RECEIVING_SLIPS_QUERY_KEY = ['wms', 'receiving-slips'] as const;
+
+/**
+ * Root key for outbound order queries. Invalidate this prefix after any mutation
+ * that changes an order's status or the status counts.
+ */
+export const OUTBOUND_ORDERS_QUERY_KEY = ['wms', 'outbound-orders'] as const;
 
 // ============================================
 // PICK SETTINGS HOOK (runtime config gating)
@@ -514,44 +519,69 @@ export function usePickLists(params: {
   return { data, statusCounts: data?.status_counts ?? null, loading, error, refetch: fetch };
 }
 
-export function useOutboundOrders(params: {
+export function useOutboundOrders({
+  status,
+  order_type,
+  warehouse_id,
+  page,
+  page_size,
+}: {
   status?: string;
   order_type?: string;
   warehouse_id?: string;
   page?: number;
   page_size?: number;
-  enabled?: boolean;
-  refreshKey?: number;
 }) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const enabled = params.enabled !== false;
-  const [data, setData] = React.useState<PaginatedOutboundOrders | null>(null);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const latestRequestRef = React.useRef(0);
 
-  const fetch = React.useCallback(async () => {
-    if (!accessToken || !enabled) return;
-    const requestId = ++latestRequestRef.current;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await outboundOrderApi.listOrders(accessToken, params);
-      if (requestId === latestRequestRef.current) setData(result);
-    } catch (err) {
-      if (requestId === latestRequestRef.current) {
-        setError(err instanceof Error ? err.message : 'Failed to load orders');
-      }
-    } finally {
-      if (requestId === latestRequestRef.current) setLoading(false);
-    }
-  }, [accessToken, enabled, params.status, params.order_type, params.warehouse_id, params.page, params.page_size, params.refreshKey]);
+  // TanStack Query dedupes identical in-flight requests and caches by key, so
+  // several components asking for the same page share a single API call.
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: [...OUTBOUND_ORDERS_QUERY_KEY, { status, order_type, warehouse_id, page, page_size }],
+    queryFn: async () => {
+      if (!accessToken) throw new Error('Not authenticated');
+      return outboundOrderApi.listOrders(accessToken, { status, order_type, warehouse_id, page, page_size });
+    },
+    // Keep the previous page/filter's rows visible while the next one loads.
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    enabled: !!accessToken,
+  });
 
-  React.useEffect(() => {
-    fetch();
-  }, [fetch]);
+  return {
+    data: data ?? null,
+    statusCounts: data?.status_counts ?? null,
+    loading: isFetching,
+    error: queryErrorToMessage(error),
+    refetch,
+  };
+}
 
-  return { data, statusCounts: data?.status_counts ?? null, loading, error, refetch: fetch };
+/**
+ * Fetch a single outbound order (with its items) through TanStack Query. The key
+ * is nested under `OUTBOUND_ORDERS_QUERY_KEY`, so confirming an order or packing
+ * it also refreshes an open detail.
+ */
+export function useOutboundOrder(orderId: string | null) {
+  const accessToken = useUserStore((s) => s.accessToken);
+
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: [...OUTBOUND_ORDERS_QUERY_KEY, 'detail', orderId],
+    queryFn: async () => {
+      if (!orderId) throw new Error('No order selected');
+      if (!accessToken) throw new Error('Not authenticated');
+      return outboundOrderApi.getOrder(accessToken, orderId);
+    },
+    staleTime: 30_000,
+    enabled: !!orderId && !!accessToken,
+  });
+
+  return {
+    order: data ?? null,
+    loading: isFetching,
+    error: queryErrorToMessage(error),
+    refetch,
+  };
 }
 
 export function usePackingSlips(params: {
