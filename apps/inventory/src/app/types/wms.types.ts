@@ -725,6 +725,19 @@ export interface OutboundOrderStatusCounts {
   cancelled: number;
 }
 
+/**
+ * Order status counts published by the orders list, tagged with the warehouse
+ * they were fetched for. Consumers discard counts whose tag does not match the
+ * selected warehouse: the list is unmounted on the other outbound tabs, so it
+ * cannot republish them after a warehouse switch.
+ */
+export interface OutboundOrderCountsState {
+  warehouseId?: string;
+  counts: OutboundOrderStatusCounts | null;
+  /** True while the orders list request is in flight. */
+  loading: boolean;
+}
+
 export interface OutboundOrderListItem {
   id: string;
   organization_id: string;

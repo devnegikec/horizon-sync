@@ -25,7 +25,7 @@ import { Input } from '@horizon-sync/ui/components/ui/input';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { environment } from '../../../environments/environment';
-import type { SAPInvoicePayload, OutboundOrderListItem, OutboundOrderStatusCounts } from '../../types/wms.types';
+import type { SAPInvoicePayload, OutboundOrderCountsState, OutboundOrderListItem } from '../../types/wms.types';
 import { outboundOrderApi } from '../../utility/api/wms';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 
@@ -600,6 +600,12 @@ const EMPTY_REFRESH_KEYS: Record<OutboundTab, number> = {
   exceptions: 0,
 };
 
+/**
+ * Stats used until the orders list publishes counts for the selected warehouse.
+ * `counts: null` renders as "unavailable" rather than a misleading zero.
+ */
+const NO_ORDER_COUNTS: OutboundOrderCountsState = { counts: null, loading: false };
+
 interface TabContentProps {
   activeTab: OutboundTab;
   warehouseId?: string;
@@ -612,7 +618,7 @@ interface TabContentProps {
    * Publishes the orders list's status counts up to the stat cards, so they do
    * not need their own request to the same endpoint.
    */
-  onOrderCountsChange: (counts: OutboundOrderStatusCounts | null) => void;
+  onOrderCountsChange: (state: OutboundOrderCountsState) => void;
 }
 
 function OutboundTabContent({
@@ -668,7 +674,7 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
   const [statsRefreshKey, setStatsRefreshKey] = React.useState(0);
   // Order counts come from the list request in `OutboundOrderList` so the stat
   // cards don't fetch the same endpoint a second time.
-  const [orderCounts, setOrderCounts] = React.useState<OutboundOrderStatusCounts | null>(null);
+  const [orderCounts, setOrderCounts] = React.useState<OutboundOrderCountsState>(NO_ORDER_COUNTS);
   const [refreshKeys, setRefreshKeys] = React.useState<Record<OutboundTab, number>>(EMPTY_REFRESH_KEYS);
 
   /** Bump the active tab's list and the stat cards. */
@@ -685,6 +691,9 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
   const heading = TAB_HEADINGS[activeTab];
   const canRefresh = REFRESHABLE_TABS.includes(activeTab);
   const wid = warehouseId ?? undefined;
+  // Counts fetched for a previous warehouse are discarded: the orders list is
+  // unmounted on the other tabs, so nothing would refresh them.
+  const ordersState = orderCounts.warehouseId === wid ? orderCounts : NO_ORDER_COUNTS;
 
   return (
     <div className="space-y-4">
@@ -705,7 +714,7 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
 
       <OutboundStats warehouseId={wid}
         activeTab={activeTab}
-        ordersCounts={orderCounts}
+        ordersState={ordersState}
         refreshKey={statsRefreshKey}/>
 
       <div className="border rounded-lg overflow-hidden">

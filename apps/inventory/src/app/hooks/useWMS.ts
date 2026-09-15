@@ -519,6 +519,22 @@ export function usePickLists(params: {
   return { data, statusCounts: data?.status_counts ?? null, loading, error, refetch: fetch };
 }
 
+/**
+ * Invalidate every outbound-order query (list, status counts and detail).
+ *
+ * Call this from any mutation that changes an order's status — generating a
+ * pick list, packing one, dispatching a packing slip — including mutations
+ * performed on another tab. Relying on `staleTime` alone leaves the orders list
+ * and its stat cards serving cached counts for up to 30s after the mutation.
+ */
+export function useInvalidateOutboundOrders() {
+  const queryClient = useQueryClient();
+  return React.useCallback(
+    () => queryClient.invalidateQueries({ queryKey: OUTBOUND_ORDERS_QUERY_KEY }),
+    [queryClient],
+  );
+}
+
 export function useOutboundOrders({
   status,
   order_type,

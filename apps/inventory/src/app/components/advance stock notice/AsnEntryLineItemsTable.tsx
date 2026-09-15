@@ -30,6 +30,8 @@ interface PickerResponse {
 interface TableMeta {
   updateData?: (rowIndex: number, columnId: string, value: unknown) => void;
   deleteRow?: (rowIndex: number) => void;
+  /** Item currently at a row index, or undefined when the row no longer exists. */
+  getRowItemId?: (rowIndex: number) => string | undefined;
   getItemData?: (itemId: string) => PickerItem | undefined;
   fetchItemData?: (itemId: string) => Promise<PickerItem | null>;
   searchItems?: (query: string) => Promise<PickerItem[]>;
@@ -103,8 +105,14 @@ async function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId:
   if (!selectedItem) return;
   const masterPack = getMasterPackSize(selectedItem) ?? 1;
   const values = selectedItemRowValues(selectedItem, masterPack);
+  // The lookup above is async, so the row may have been removed or reordered
+  // meanwhile — writing by index would then overwrite an unrelated row.
+  const rowStillHoldsItem = () => !meta.getRowItemId || meta.getRowItemId(rowIndex) === newItemId;
+  if (!rowStillHoldsItem()) return;
   // Deferred so the grid's own state writes for this row settle first.
-  setTimeout(() => applyRowValues(meta, rowIndex, values), 0);
+  setTimeout(() => {
+    if (rowStillHoldsItem()) applyRowValues(meta, rowIndex, values);
+  }, 0);
 }
 
 function QtyCellComponent({ getValue }: CellContext<AsnEntryLineRow, unknown>) {
@@ -212,6 +220,17 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
   const accessToken = useUserStore((s) => s.accessToken);
   const itemsCacheRef = React.useRef<Map<string, PickerItem>>(new Map());
   const [cacheVersion, setCacheVersion] = React.useState(0);
+  /* Latest rows, so a deferred item-selection write can confirm its index is still valid. */
+  const itemsRef = React.useRef(items);
+
+  React.useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  const getRowItemId = React.useCallback(
+    (rowIndex: number) => itemsRef.current[rowIndex]?.item_id,
+    []
+  );
 
   /* Clear items cache when warehouse changes (Asn levels are warehouse-specific) */
   React.useEffect(() => {
@@ -278,6 +297,9 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
 
   const handleDataChange = React.useCallback(
     (newData: AsnEntryLineRow[]) => {
+      // Keep the guard's source current: `items` only catches up on the parent's
+      // next render, which may be after a deferred item-selection write.
+      itemsRef.current = newData;
       const updated = newData.map((item) => {
         const masterPack = Math.max(1, Number(item.items_per_master_pack) || 1);
         const noOfCases = Math.max(1, Number(item.no_of_cases) || 1);
@@ -355,9 +377,9 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
     () => ({
       showPagination: false,
       enableColumnVisibility: false,
-      meta: { getItemData, fetchItemData, searchItems, itemLabelFormatter, disabled, warehouseIdFrom },
+      meta: { getItemData, fetchItemData, searchItems, itemLabelFormatter, getRowItemId, disabled, warehouseIdFrom },
     }),
-    [getItemData, fetchItemData, searchItems, itemLabelFormatter, disabled, warehouseIdFrom]
+    [getItemData, fetchItemData, searchItems, itemLabelFormatter, getRowItemId, disabled, warehouseIdFrom]
   );
 
   return (

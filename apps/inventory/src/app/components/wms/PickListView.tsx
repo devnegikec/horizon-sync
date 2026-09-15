@@ -24,7 +24,7 @@ import { Input } from '@horizon-sync/ui/components/ui/input';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
-import { usePickList, usePickLists, usePickSettings } from '../../hooks/useWMS';
+import { useInvalidateOutboundOrders, usePickList, usePickLists, usePickSettings } from '../../hooks/useWMS';
 import type { PickList, PickListGroup, PickListItem, PickSerialDetail, PickListProgress, WMSWorker, PackingSlipListItem } from '../../types/wms.types';
 import { wmsWorkerApi, packingSlipApi } from '../../utility/api/wms';
 
@@ -1070,6 +1070,7 @@ function PackPickListDialog({
 }) {
   const accessToken = useUserStore((s) => s.accessToken);
   const { toast } = useToast();
+  const invalidateOrders = useInvalidateOutboundOrders();
   const [slips, setSlips] = React.useState<PackingSlipListItem[]>([]);
   const [target, setTarget] = React.useState('new');
   const [loading, setLoading] = React.useState(false);
@@ -1110,6 +1111,8 @@ function PackPickListDialog({
     try {
       const slip = await packingSlipApi.packPickLists(accessToken, [pickList.id], target === 'new' ? undefined : target);
       toast({ title: 'Packed', description: `Added to ${slip.packing_slip_no}` });
+      // Packing moves the underlying order on, so the Orders tab is now stale.
+      invalidateOrders();
       onPacked();
       onClose();
     } catch (err) {
