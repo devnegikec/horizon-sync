@@ -49,12 +49,11 @@ import { cn } from '@horizon-sync/ui/lib';
 
 
 import { useAsnOrderManagement } from '../../hooks/useAsnOrderManagement';
-import { useMyWarehouses } from '../../hooks/useMyWarehouses';
+import { useSelectedWarehouse } from '../../hooks/useSelectedWarehouse';
 import { useStockEntryMutations } from '../../hooks/useStock';
 import { useStockLevels } from '../../hooks/useStockLevels';
 import { useStockMovements } from '../../hooks/useStockMovements';
 import { useStockReconciliations } from '../../hooks/useStockReconciliations';
-import { useSelectedWarehouseStore } from '../../store/selectedWarehouseStore';
 import type { AsnOrder } from '../../types/asn-order.types';
 import type { PaginationInfo } from '../../types/quotation.types';
 import type {
@@ -718,17 +717,6 @@ function useStockEntryActions(refetch: () => void) {
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
-/**
- * The app-wide warehouse selection, dropped once it is known to no longer be one
- * of the user's assigned warehouses (unassigned/deleted, or another user signed
- * in). While the assigned list is still loading the stored id is trusted so the
- * first fetch already targets it instead of flashing "all warehouses".
- */
-function resolveSharedWarehouseId(sharedWarehouseId: string, assigned: { id: string }[], loading: boolean): string {
-  if (loading) return sharedWarehouseId;
-  return assigned.some((w) => w.id === sharedWarehouseId) ? sharedWarehouseId : '';
-}
-
 export function StockManagement({ warehouseId }: { warehouseId?: string }) {
   const [activeTab, setActiveTab] = React.useState<ActiveTab>('levels');
   const [stockEntryDialogOpen, setStockEntryDialogOpen] = React.useState(false);
@@ -755,18 +743,16 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
   const [warehouseOpen, setWarehouseOpen] = useState(false);
 
   /* ---------- warehouse selector ---------- */
-  const { warehouses: allWarehouses, loading: warehousesLoading } = useMyWarehouses();
-  const sharedWarehouseId = useSelectedWarehouseStore((s) => s.warehouseId);
-  const setSharedWarehouseId = useSelectedWarehouseStore((s) => s.setWarehouseId);
+  // `autoSelectFirst: false`: unlike WMS, "all warehouses" is a valid choice here.
+  // The hook validates the app-wide selection, so a warehouse picked on another
+  // tab is still selected, and it is ignored once it is no longer assigned.
+  const { warehouses: allWarehouses, loading: warehousesLoading, warehouseId: selectedWarehouseId, setWarehouseId: setSharedWarehouseId } = useSelectedWarehouse({ autoSelectFirst: false });
 
   // When a warehouse is selected from the top-level WMS switcher, the filter is
   // locked to that warehouse. Derive the effective value directly from the prop
   // so the first fetch already uses the locked warehouse (no "all warehouses"
   // flash followed by a re-fetch).
   const isWarehouseLocked = Boolean(warehouseId);
-  // Unlocked, the selector reads the app-wide selection, so a warehouse picked on
-  // another tab is still selected here.
-  const selectedWarehouseId = resolveSharedWarehouseId(sharedWarehouseId, allWarehouses, warehousesLoading);
   const effectiveWarehouseId = isWarehouseLocked ? (warehouseId ?? '') : selectedWarehouseId;
 
   const asnManagement = useAsnOrderManagement();
