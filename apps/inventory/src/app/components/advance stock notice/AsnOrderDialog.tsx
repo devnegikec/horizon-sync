@@ -375,10 +375,16 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
     [assignedWarehouses, resolvedOrder?.to_warehouse],
   );
 
-  const targetWarehouse = React.useMemo(() => {
-    if (resolvedOrder?.to_warehouse?.id) return resolvedOrder.to_warehouse as Warehouse;
-    return assignedWarehouses.find((w) => w.id === resolvedOrder?.warehouse_id_to) ?? null;
-  }, [resolvedOrder?.to_warehouse, resolvedOrder?.warehouse_id_to, assignedWarehouses]);
+  // Only a complete `Warehouse` record may be handed to the PDF builder. The
+  // order's `to_warehouse` carries identity fields only (id/name/code), so it is
+  // used to match an assigned warehouse by id rather than cast into a partial
+  // `Warehouse`. When there is no match, `null` lets the PDF builder fall back to
+  // the order's own `warehouse` details (address, phone, email).
+  const targetWarehouseId = resolvedOrder?.to_warehouse?.id || resolvedOrder?.warehouse_id_to;
+  const targetWarehouse = React.useMemo(
+    () => assignedWarehouses.find((w) => w.id === targetWarehouseId) ?? null,
+    [assignedWarehouses, targetWarehouseId],
+  );
 
   const { loading: pdfLoading, handleDownload, handlePreview, handleGenerateBase64 } = useAsnOrderPDFActions(targetWarehouse);
   const { emailDialogOpen, pdfAttachment, openEmailWithPdf, handleEmailClose, handleEmailSuccess } = useEmailWithPdfAttachment();
