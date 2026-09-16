@@ -806,6 +806,7 @@ export interface PackingSlipGroup {
   order_id: string;
   pick_list_id: string;
   bin_location_id: string | null;
+  bin_location_path?: string | null;
   handling_unit_id: string | null;
   sort_order: number;
   items: PackingSlipGroupItem[];
@@ -821,6 +822,7 @@ export interface PackingSlip {
   created_at: string | null;
   updated_at: string | null;
   order_ids: string[];
+  invoice_reference?: string[];
   items?: PackingSlipItem[];
   groups?: PackingSlipGroup[];
 }
@@ -832,6 +834,7 @@ export interface PackingSlipListItem {
   status: PackingSlipStatus;
   item_count: number;
   order_ids: string[];
+  invoice_reference?: string[];
   created_at: string | null;
 }
 

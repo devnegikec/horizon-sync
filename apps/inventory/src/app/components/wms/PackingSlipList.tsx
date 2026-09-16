@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { PackageCheck } from 'lucide-react';
+import { ChevronDown, ChevronRight, PackageCheck } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import {
@@ -22,7 +22,7 @@ import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
 import { useInvalidateOutboundOrders } from '../../hooks/useWMS';
-import type { PackingSlip, PackingSlipListItem, PaginatedPackingSlips } from '../../types/wms.types';
+import type { PackingSlip, PackingSlipGroup, PackingSlipListItem, PaginatedPackingSlips } from '../../types/wms.types';
 import { packingSlipApi } from '../../utility/api/wms';
 
 import { createPackingSlipColumns } from './PackingSlipColumns';
@@ -115,68 +115,134 @@ function PackingSlipsTable({
   );
 }
 
-interface PackingSlipDetailRow {
-  id: string;
-  item_id: string | null;
-  sku: string | null;
-  item_name: string | null;
-  batch_no: string | null;
-  bin_location_id: string | null;
-  qty: number;
-  uom: string | null;
+function ExpandChevron({ expanded }: { expanded: boolean }) {
+  const Icon = expanded ? ChevronDown : ChevronRight;
+  return <Icon className="h-3.5 w-3.5 text-muted-foreground" />;
 }
 
-function packingSlipDetailRows(slip: PackingSlip | null): PackingSlipDetailRow[] {
-  if (!slip) return [];
-  if (slip.groups && slip.groups.length > 0) {
-    const rows: PackingSlipDetailRow[] = [];
-    slip.groups.forEach((group, groupIndex) => {
-      // Aggregate by SKU+batch so a group carrying multiple products is not
-      // collapsed into a single row labelled with only the first SKU/UOM.
-      const byKey = new Map<string, { sku: string; batch_no: string | null; uom: string | null; qty: number }>();
-      for (const item of group.items) {
-        const key = `${item.sku}::${item.batch_number ?? ''}`;
-        const agg = byKey.get(key);
-        if (agg) {
-          agg.qty += item.quantity || 0;
-        } else {
-          byKey.set(key, { sku: item.sku, batch_no: item.batch_number, uom: item.uom ?? null, qty: item.quantity || 0 });
-        }
-      }
-      for (const [key, agg] of byKey) {
-        rows.push({
-          id: `group-${groupIndex}-${key}`,
-          item_id: null,
-          sku: agg.sku,
-          item_name: group.product_name,
-          batch_no: agg.batch_no,
-          bin_location_id: group.bin_location_id,
-          qty: agg.qty,
-          uom: agg.uom,
-        });
-      }
-    });
-    return rows;
-  }
-  return (slip.items ?? []).map((item) => ({
-    id: item.id,
-    item_id: item.item_id,
-    sku: item.sku ?? null,
-    item_name: item.item_name ?? null,
-    batch_no: item.batch_no,
-    bin_location_id: item.bin_location_id,
-    qty: item.qty,
-    uom: item.uom,
-  }));
+function PackingSlipGroupRow({ group }: { group: PackingSlipGroup }) {
+  const [expanded, setExpanded] = React.useState(false);
+  const first = group.items[0];
+  const totalQty = group.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  const batches = Array.from(new Set(group.items.map((item) => item.batch_number ?? '').filter(Boolean)));
+  const binPath = group.bin_location_path || group.bin_location_id;
+
+  return (
+    <>
+      <tr className="hover:bg-muted/20 cursor-pointer transition-colors" onClick={() => setExpanded((e) => !e)}>
+        <td className="px-4 py-2">
+          <span className="inline-flex items-center gap-1">
+            <ExpandChevron expanded={expanded} />
+            <span className="font-mono font-medium">{first?.sku ?? '—'}</span>
+            {group.product_name && <span className="text-xs text-muted-foreground ml-2">{group.product_name}</span>}
+            {group.parent_qseal && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-mono">
+                {group.parent_qseal.serial_number} ({group.parent_qseal.capacity})
+              </span>
+            )}
+          </span>
+        </td>
+        <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
+          {batches.length === 0 ? '—' : batches.join(', ')}
+        </td>
+        <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
+          {binPath ? (
+            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5">{binPath}</span>
+          ) : (
+            '—'
+          )}
+        </td>
+        <td className="px-4 py-2 text-right">{totalQty}</td>
+        <td className="px-4 py-2 text-right text-muted-foreground">{first?.uom ?? '—'}</td>
+      </tr>
+      {expanded &&
+        group.items.map((item, idx) => (
+          <tr key={`${item.serial_number}-${idx}`} className="bg-muted/20">
+            <td className="px-4 py-1.5 pl-10">
+              <span className="font-mono text-xs font-medium">S.N: {item.serial_number}</span>
+            </td>
+            <td className="px-4 py-1.5 text-xs text-muted-foreground" colSpan={4}>
+              <span className="inline-flex gap-3 flex-wrap items-center">
+                <span>
+                  SKU: <span className="font-mono">{item.sku}</span>
+                </span>
+                {item.manufacturing_date && <span>Mfg: {new Date(item.manufacturing_date).toLocaleDateString()}</span>}
+                {item.expiry_date && <span>Exp: {new Date(item.expiry_date).toLocaleDateString()}</span>}
+                {binPath && (
+                  <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 font-mono">
+                    Bin: {binPath}
+                  </span>
+                )}
+              </span>
+            </td>
+          </tr>
+        ))}
+    </>
+  );
 }
 
-/** Total number of packing-slip line items, counting grouped items individually. */
-function packingSlipItemCount(slip: PackingSlip | null): number {
+function PackingSlipLineItemsTable({ slip }: { slip: PackingSlip }) {
+  const groups = slip.groups && slip.groups.length > 0 ? slip.groups : null;
+  const totalUnits = packingSlipUnits(slip);
+
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        Line Items ({groups ? `${groups.length} groups · ` : ''}{totalUnits} units)
+      </div>
+      <table className="w-full text-sm">
+        <thead className="bg-muted/30">
+          <tr>
+            <th className="text-left px-4 py-2 font-medium text-muted-foreground">SKU</th>
+            <th className="text-left px-4 py-2 font-medium text-muted-foreground">Batch</th>
+            <th className="text-left px-4 py-2 font-medium text-muted-foreground">Location Bin</th>
+            <th className="text-right px-4 py-2 font-medium text-muted-foreground">Qty</th>
+            <th className="text-right px-4 py-2 font-medium text-muted-foreground">UOM</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {groups ? (
+            groups.map((group, groupIndex) => (
+              <PackingSlipGroupRow key={`${group.parent_qseal?.id ?? 'unpacked'}-${groupIndex}`} group={group} />
+            ))
+          ) : (slip.items ?? []).length === 0 ? (
+            <tr>
+              <td colSpan={5} className="px-4 py-4 text-center text-muted-foreground text-xs">
+                No items
+              </td>
+            </tr>
+          ) : (
+            (slip.items ?? []).map((item) => (
+              <tr key={item.id}>
+                <td className="px-4 py-2">
+                  <span className="font-mono font-medium">{item.sku ?? item.item_id ?? '—'}</span>
+                  {item.item_name && <span className="text-xs text-muted-foreground ml-2">{item.item_name}</span>}
+                </td>
+                <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{item.batch_no ?? '—'}</td>
+                <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
+                  {item.bin_location_id ? item.bin_location_id.slice(0, 8) : '—'}
+                </td>
+                <td className="px-4 py-2 text-right">{item.qty}</td>
+                <td className="px-4 py-2 text-right text-muted-foreground">{item.uom}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Total packed units across a packing slip, summed from grouped quantities. */
+function packingSlipUnits(slip: PackingSlip | null): number {
   if (!slip) return 0;
   if (slip.groups && slip.groups.length > 0) {
-    return slip.groups.reduce((sum, group) => sum + group.items.length, 0);
+    return slip.groups.reduce(
+      (sum, group) => sum + group.items.reduce((s, item) => s + (item.quantity || 0), 0),
+      0,
+    );
   }
-  return slip.items?.length ?? 0;
+  return (slip.items ?? []).reduce((sum, item) => sum + (item.qty || 0), 0);
 }
 
 export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProps) {
@@ -317,8 +383,6 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
     onDispatch: (slip) => dispatch(slip.id),
   });
 
-  const detailRows = React.useMemo(() => packingSlipDetailRows(viewSlip), [viewSlip]);
-
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -362,8 +426,8 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
         loading={viewLoading}
         loadingMessage="Loading packing slip...">
         {viewSlip && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3 text-sm">
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-4 gap-3 text-sm">
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Status</p>
                 <WMSStatusBadge status={viewSlip.status} />
@@ -373,47 +437,28 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
                 <p className="font-semibold">{viewSlip.order_ids.length}</p>
               </div>
               <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground mb-1">Items</p>
-                <p className="font-semibold">{packingSlipItemCount(viewSlip)}</p>
+                <p className="text-xs text-muted-foreground mb-1">Units</p>
+                <p className="font-semibold">{packingSlipUnits(viewSlip)}</p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground mb-1">Invoice Ref</p>
+                {viewSlip.invoice_reference && viewSlip.invoice_reference.length > 0 ? (
+                  <div className="space-y-0.5">
+                    {viewSlip.invoice_reference.map((ref) => (
+                      <p key={ref} className="font-mono text-xs">{ref}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="font-mono text-sm text-muted-foreground">—</p>
+                )}
               </div>
             </div>
 
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/30">
-                  <tr>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">SKU</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Batch</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Bin</th>
-                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Qty</th>
-                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">UOM</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {detailRows.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-4 py-4 text-center text-muted-foreground text-xs">
-                        No items
-                      </td>
-                    </tr>
-                  )}
-                  {detailRows.map((row) => (
-                    <tr key={row.id}>
-                      <td className="px-4 py-2">
-                        <span className="font-mono font-medium">{row.sku ?? row.item_id ?? '—'}</span>
-                        {row.item_name && <span className="text-xs text-muted-foreground ml-2">{row.item_name}</span>}
-                      </td>
-                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{row.batch_no ?? '—'}</td>
-                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
-                        {row.bin_location_id ? row.bin_location_id.slice(0, 8) : '—'}
-                      </td>
-                      <td className="px-4 py-2 text-right">{row.qty}</td>
-                      <td className="px-4 py-2 text-right text-muted-foreground">{row.uom}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <PackingSlipLineItemsTable slip={viewSlip} />
+
+            <p className="text-xs text-muted-foreground">
+              Created: {viewSlip.created_at ? new Date(viewSlip.created_at).toLocaleString() : '—'}
+            </p>
           </div>
         )}
       </DetailDialog>
