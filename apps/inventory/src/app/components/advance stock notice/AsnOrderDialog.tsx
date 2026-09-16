@@ -19,6 +19,7 @@ import type {
   AsnOrderUpdate,
   AsnOrderFormData,
   AsnOrderDialogProps,
+  AsnOrderWarehouseInfo,
 } from '../../types/asn-order.types';
 import type { Warehouse } from '../../types/warehouse.types';
 import { WarehousesResponse } from '../../types/warehouse.types';
@@ -57,6 +58,21 @@ function toDateInputValue(isoDate: string | null | undefined): string {
   } catch {
     return '';
   }
+}
+
+/**
+ * The user's assigned warehouses plus the order's own warehouse, so an existing
+ * order still renders its warehouse even if the user is no longer assigned to it.
+ */
+function withOrderWarehouse(
+  assigned: Warehouse[],
+  orderWarehouse?: AsnOrderWarehouseInfo | null,
+): Warehouse[] {
+  if (!orderWarehouse?.id || assigned.some((w) => w.id === orderWarehouse.id)) return assigned;
+  return [
+    ...assigned,
+    { id: orderWarehouse.id, name: orderWarehouse.name, code: orderWarehouse.code ?? '' } as Warehouse,
+  ];
 }
 
 function buildFormFromEntry(entry: AsnOrder): AsnOrderFormData {
@@ -338,52 +354,31 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   // Use API detail if available, otherwise fall back to prop
   const resolvedOrder = orderDetail || asnOrder;
 
-  const { data: allWarehousesData } = useQuery<WarehousesResponse>({
-    queryKey: ['warehouses-list', 'asn-all'],
-    queryFn: () => warehouseApi.list(accessToken || '', 1, 100, 'all') as Promise<WarehousesResponse>,
-    enabled: !!accessToken && open,
-  });
-
   const { data: assignedWarehousesData } = useQuery<WarehousesResponse>({
     queryKey: ['warehouses-list', 'asn-assigned'],
     queryFn: () => warehouseApi.list(accessToken || '', 1, 100, 'assigned') as Promise<WarehousesResponse>,
     enabled: !!accessToken && open,
   });
 
-  const allWarehouses = React.useMemo(() => allWarehousesData?.warehouses ?? [], [allWarehousesData?.warehouses]);
   const assignedWarehouses = React.useMemo(() => assignedWarehousesData?.warehouses ?? [], [assignedWarehousesData?.warehouses]);
 
-  // Merge from_warehouse and to_warehouse from API response into warehouse lists
-  // so they appear correctly in dropdowns even if not in the main warehouse lists
-  const warehousesFrom = React.useMemo(() => {
-    const list = [...allWarehouses];
-    if (resolvedOrder?.from_warehouse?.id && resolvedOrder?.from_warehouse?.name) {
-      const fromWh = resolvedOrder.from_warehouse;
-      const alreadyExists = list.some((w) => w.id === fromWh.id);
-      if (!alreadyExists) {
-        list.push({ id: fromWh.id, name: fromWh.name, code: fromWh.code ?? '' } as Warehouse);
-      }
-    }
-    return list;
-  }, [allWarehouses, resolvedOrder?.from_warehouse]);
+  // Only warehouses the user is actually assigned to may be selected. The order's
+  // own from/to warehouse is merged in so an existing order still displays its
+  // warehouse even when the viewer is no longer assigned to it.
+  const warehousesFrom = React.useMemo(
+    () => withOrderWarehouse(assignedWarehouses, resolvedOrder?.from_warehouse),
+    [assignedWarehouses, resolvedOrder?.from_warehouse],
+  );
 
-  const warehousesTo = React.useMemo(() => {
-    const list = [...allWarehouses];
-    if (resolvedOrder?.to_warehouse?.id && resolvedOrder?.to_warehouse?.name) {
-      const toWh = resolvedOrder.to_warehouse;
-      const alreadyExists = list.some((w) => w.id === toWh.id);
-      if (!alreadyExists) {
-        list.push({ id: toWh.id, name: toWh.name, code: toWh.code ?? '' } as Warehouse);
-      }
-    }
-    return list;
-  }, [allWarehouses, resolvedOrder?.to_warehouse]);
+  const warehousesTo = React.useMemo(
+    () => withOrderWarehouse(assignedWarehouses, resolvedOrder?.to_warehouse),
+    [assignedWarehouses, resolvedOrder?.to_warehouse],
+  );
 
   const targetWarehouse = React.useMemo(() => {
-    const warehouseId = resolvedOrder?.warehouse_id_to;
-    if (!warehouseId) return null;
-    return allWarehouses.find((w) => w.id === warehouseId) || null;
-  }, [resolvedOrder?.warehouse_id_to, allWarehouses]);
+    if (resolvedOrder?.to_warehouse?.id) return resolvedOrder.to_warehouse as Warehouse;
+    return assignedWarehouses.find((w) => w.id === resolvedOrder?.warehouse_id_to) ?? null;
+  }, [resolvedOrder?.to_warehouse, resolvedOrder?.warehouse_id_to, assignedWarehouses]);
 
   const { loading: pdfLoading, handleDownload, handlePreview, handleGenerateBase64 } = useAsnOrderPDFActions(targetWarehouse);
   const { emailDialogOpen, pdfAttachment, openEmailWithPdf, handleEmailClose, handleEmailSuccess } = useEmailWithPdfAttachment();
