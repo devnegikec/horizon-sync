@@ -806,6 +806,7 @@ export interface PackingSlipGroup {
   order_id: string;
   pick_list_id: string;
   bin_location_id: string | null;
+  bin_location_path?: string | null;
   handling_unit_id: string | null;
   sort_order: number;
   items: PackingSlipGroupItem[];

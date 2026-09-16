@@ -125,6 +125,7 @@ function PackingSlipGroupRow({ group }: { group: PackingSlipGroup }) {
   const first = group.items[0];
   const totalQty = group.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const batches = Array.from(new Set(group.items.map((item) => item.batch_number ?? '').filter(Boolean)));
+  const binPath = group.bin_location_path || group.bin_location_id;
 
   return (
     <>
@@ -145,8 +146,8 @@ function PackingSlipGroupRow({ group }: { group: PackingSlipGroup }) {
           {batches.length === 0 ? '—' : batches.join(', ')}
         </td>
         <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
-          {group.bin_location_id ? (
-            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5">{group.bin_location_id}</span>
+          {binPath ? (
+            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5">{binPath}</span>
           ) : (
             '—'
           )}
@@ -167,9 +168,9 @@ function PackingSlipGroupRow({ group }: { group: PackingSlipGroup }) {
                 </span>
                 {item.manufacturing_date && <span>Mfg: {new Date(item.manufacturing_date).toLocaleDateString()}</span>}
                 {item.expiry_date && <span>Exp: {new Date(item.expiry_date).toLocaleDateString()}</span>}
-                {group.bin_location_id && (
+                {binPath && (
                   <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 font-mono">
-                    Bin: {group.bin_location_id}
+                    Bin: {binPath}
                   </span>
                 )}
               </span>
@@ -182,9 +183,7 @@ function PackingSlipGroupRow({ group }: { group: PackingSlipGroup }) {
 
 function PackingSlipLineItemsTable({ slip }: { slip: PackingSlip }) {
   const groups = slip.groups && slip.groups.length > 0 ? slip.groups : null;
-  const totalUnits = groups
-    ? groups.reduce((sum, group) => sum + group.items.reduce((s, item) => s + (item.quantity || 0), 0), 0)
-    : (slip.items ?? []).reduce((sum, item) => sum + (item.qty || 0), 0);
+  const totalUnits = packingSlipUnits(slip);
 
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -234,13 +233,16 @@ function PackingSlipLineItemsTable({ slip }: { slip: PackingSlip }) {
   );
 }
 
-/** Total number of packing-slip line items, counting grouped items individually. */
-function packingSlipItemCount(slip: PackingSlip | null): number {
+/** Total packed units across a packing slip, summed from grouped quantities. */
+function packingSlipUnits(slip: PackingSlip | null): number {
   if (!slip) return 0;
   if (slip.groups && slip.groups.length > 0) {
-    return slip.groups.reduce((sum, group) => sum + group.items.length, 0);
+    return slip.groups.reduce(
+      (sum, group) => sum + group.items.reduce((s, item) => s + (item.quantity || 0), 0),
+      0,
+    );
   }
-  return slip.items?.length ?? 0;
+  return (slip.items ?? []).reduce((sum, item) => sum + (item.qty || 0), 0);
 }
 
 export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProps) {
@@ -435,8 +437,8 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
                 <p className="font-semibold">{viewSlip.order_ids.length}</p>
               </div>
               <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground mb-1">Items</p>
-                <p className="font-semibold">{packingSlipItemCount(viewSlip)}</p>
+                <p className="text-xs text-muted-foreground mb-1">Units</p>
+                <p className="font-semibold">{packingSlipUnits(viewSlip)}</p>
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-xs text-muted-foreground mb-1">Invoice Ref</p>
