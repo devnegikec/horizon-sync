@@ -20,14 +20,13 @@ import {
 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Label } from '@horizon-sync/ui/components/ui/label';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { useMyWarehouses } from '../../hooks/useMyWarehouses';
+import { useSelectedWarehouse } from '../../hooks/useSelectedWarehouse';
 import type { PutAwayStatusCounts, ReceivingSlipStatusCounts } from '../../types/wms.types';
 import { hasPermission } from '../../utils/permissions';
+import { WarehouseSelect } from '../common';
 import { StockManagement } from '../stock';
 
 import { AsnManagement } from './AsnManagement';
@@ -69,13 +68,15 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 
 export function WMSManagement() {
   const [activeView, setActiveView] = React.useState<WMSView>('asn');
-  const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('');
   const [manageSection, setManageSection] = React.useState<ManageSection>('workers');
   const [inboundSection, setInboundSection] = React.useState<InboundSection>('receiving');
   const [receivingStatusFilter, setReceivingStatusFilter] = React.useState<string>('all');
   const [putawayStatusFilter, setPutawayStatusFilter] = React.useState<string>('all');
 
-  const { warehouses, loading: warehousesLoading, refetch: refetchWarehouses } = useMyWarehouses();
+  // App-wide warehouse selection, kept in a persisted store (not component state)
+  // so it survives tab switches, route changes and reloads instead of snapping
+  // back to the first assigned warehouse on every remount.
+  const { warehouses, loading: warehousesLoading, warehouseId: selectedWarehouseId, setWarehouseId: setSelectedWarehouseId, refetch: refetchWarehouses } = useSelectedWarehouse();
   const userPermissions = useUserStore((s) => s.permissions.permissions);
   const userType = useUserStore((s) => s.user?.user_type);
   const isAdmin = userType === 'system_admin' || userType === 'organization_admin';
@@ -87,13 +88,6 @@ export function WMSManagement() {
       setActiveView('asn');
     }
   }, [activeView, canManage]);
-
-  // Auto-select first warehouse
-  React.useEffect(() => {
-    if (!selectedWarehouseId && warehouses.length > 0) {
-      setSelectedWarehouseId(warehouses[0].id);
-    }
-  }, [warehouses, selectedWarehouseId]);
 
   // Refresh warehouse list when warehouses are created/imported elsewhere
   React.useEffect(() => {
@@ -151,21 +145,14 @@ function WMSHeader({ warehouses, warehousesLoading, selectedWarehouseId, onWareh
         <h1 className="text-3xl font-bold tracking-tight">Warehouse Management</h1>
         <p className="text-muted-foreground mt-1">Manage inbound receiving, put-away, outbound picking, and gate verification</p>
       </div>
-      <div className="flex items-center gap-3">
-        <Label className="text-sm font-medium shrink-0">Warehouse</Label>
-        <Select value={selectedWarehouseId} onValueChange={onWarehouseChange} disabled={warehousesLoading}>
-          <SelectTrigger className="w-[220px]">
-            <SelectValue placeholder={warehousesLoading ? 'Loading...' : 'Select warehouse'} />
-          </SelectTrigger>
-          <SelectContent>
-            {warehouses.map((warehouse) => (
-              <SelectItem key={warehouse.id} value={warehouse.id}>
-                {warehouse.name} ({warehouse.code})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <WarehouseSelect warehouses={warehouses}
+        value={selectedWarehouseId}
+        onChange={onWarehouseChange}
+        loading={warehousesLoading}
+        label="Warehouse"
+        htmlId="wms-warehouse"
+        triggerClassName="w-[220px]"
+        className="flex flex-row items-center gap-3 space-y-0"/>
     </div>
   );
 }

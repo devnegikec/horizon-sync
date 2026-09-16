@@ -54,6 +54,7 @@ import { useStockEntryMutations } from '../../hooks/useStock';
 import { useStockLevels } from '../../hooks/useStockLevels';
 import { useStockMovements } from '../../hooks/useStockMovements';
 import { useStockReconciliations } from '../../hooks/useStockReconciliations';
+import { useSelectedWarehouseStore } from '../../store/selectedWarehouseStore';
 import type { AsnOrder } from '../../types/asn-order.types';
 import type { PaginationInfo } from '../../types/quotation.types';
 import type {
@@ -717,6 +718,17 @@ function useStockEntryActions(refetch: () => void) {
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The app-wide warehouse selection, dropped once it is known to no longer be one
+ * of the user's assigned warehouses (unassigned/deleted, or another user signed
+ * in). While the assigned list is still loading the stored id is trusted so the
+ * first fetch already targets it instead of flashing "all warehouses".
+ */
+function resolveSharedWarehouseId(sharedWarehouseId: string, assigned: { id: string }[], loading: boolean): string {
+  if (loading) return sharedWarehouseId;
+  return assigned.some((w) => w.id === sharedWarehouseId) ? sharedWarehouseId : '';
+}
+
 export function StockManagement({ warehouseId }: { warehouseId?: string }) {
   const [activeTab, setActiveTab] = React.useState<ActiveTab>('levels');
   const [stockEntryDialogOpen, setStockEntryDialogOpen] = React.useState(false);
@@ -737,18 +749,25 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
   /* ---------- global filters ---------- */
   const [filters, setFilters] = useState<StockFilters>({
     search: '',
-    warehouseId: '',
     status: 'all',
   });
   const [warehouseSearch, setWarehouseSearch] = useState('');
   const [warehouseOpen, setWarehouseOpen] = useState(false);
+
+  /* ---------- warehouse selector ---------- */
+  const { warehouses: allWarehouses, loading: warehousesLoading } = useMyWarehouses();
+  const sharedWarehouseId = useSelectedWarehouseStore((s) => s.warehouseId);
+  const setSharedWarehouseId = useSelectedWarehouseStore((s) => s.setWarehouseId);
 
   // When a warehouse is selected from the top-level WMS switcher, the filter is
   // locked to that warehouse. Derive the effective value directly from the prop
   // so the first fetch already uses the locked warehouse (no "all warehouses"
   // flash followed by a re-fetch).
   const isWarehouseLocked = Boolean(warehouseId);
-  const effectiveWarehouseId = isWarehouseLocked ? (warehouseId ?? '') : filters.warehouseId;
+  // Unlocked, the selector reads the app-wide selection, so a warehouse picked on
+  // another tab is still selected here.
+  const selectedWarehouseId = resolveSharedWarehouseId(sharedWarehouseId, allWarehouses, warehousesLoading);
+  const effectiveWarehouseId = isWarehouseLocked ? (warehouseId ?? '') : selectedWarehouseId;
 
   const asnManagement = useAsnOrderManagement();
   const setAsnFilters = asnManagement.setFilters;
@@ -804,7 +823,6 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
   const { toast } = useToast();
 
   /* ---------- warehouse selector ---------- */
-  const { warehouses: allWarehouses, loading: warehousesLoading } = useMyWarehouses();
   const filteredWarehouses = React.useMemo(() => {
     const base = isWarehouseLocked
       ? allWarehouses.filter((w) => w.id === warehouseId)
@@ -1056,11 +1074,11 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
                   {!isWarehouseLocked && (
                     <button className="w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
                       onClick={() => {
-                        setFilters((prev) => ({ ...prev, warehouseId: '' }));
+                        setSharedWarehouseId('');
                         setWarehouseOpen(false);
                       }}>
                       <span className="h-4 w-4 flex items-center justify-center">
-                        {!filters.warehouseId && <Check className="h-4 w-4" />}
+                        {!selectedWarehouseId && <Check className="h-4 w-4" />}
                       </span>
                       All Warehouses
                     </button>
@@ -1072,11 +1090,11 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
                     <button key={w.id}
                       className="w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
                       onClick={() => {
-                        setFilters((prev) => ({ ...prev, warehouseId: w.id }));
+                        setSharedWarehouseId(w.id);
                         setWarehouseOpen(false);
                       }}>
                       <span className="h-4 w-4 flex items-center justify-center">
-                        {filters.warehouseId === w.id && <Check className="h-4 w-4" />}
+                        {selectedWarehouseId === w.id && <Check className="h-4 w-4" />}
                       </span>
                       <span className="truncate">{w.name}</span>
                     </button>
@@ -1106,16 +1124,13 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
           )}
 
           {/* Clear all filters */}
-          {(filters.search || (!isWarehouseLocked && filters.warehouseId) || filters.status !== 'all') && (
+          {(filters.search || (!isWarehouseLocked && selectedWarehouseId) || filters.status !== 'all') && (
             <Button variant="ghost"
               size="sm"
-              onClick={() =>
-                setFilters({
-                  search: '',
-                  warehouseId: isWarehouseLocked ? (warehouseId ?? '') : '',
-                  status: 'all',
-                })
-              }
+              onClick={() => {
+                setFilters({ search: '', status: 'all' });
+                if (!isWarehouseLocked) setSharedWarehouseId('');
+              }}
               className="gap-1 text-muted-foreground">
               <X className="h-3.5 w-3.5" />
               Clear
