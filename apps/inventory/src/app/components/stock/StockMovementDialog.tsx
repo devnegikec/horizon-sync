@@ -12,6 +12,7 @@ import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 import { useStockMovementMutations } from '../../hooks/useStock';
 import type { ApiItem } from '../../types/items-api.types';
 import type { Warehouse } from '../../types/warehouse.types';
+import { WarehouseSelect } from '../common';
 
 interface StockMovementDialogProps {
   open: boolean;
@@ -59,9 +60,18 @@ export function StockMovementDialog({ open, onOpenChange, warehouses, items, onC
     }
   }, [open]);
 
+  // The API rejects a movement without an item and a warehouse, so never submit
+  // an empty selection (WarehouseSelect/Select both allow `''` for "nothing chosen").
+  const canSubmit = Boolean(formData.item_id) && Boolean(formData.warehouse_id);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+
+    if (!canSubmit) {
+      setSubmitError('Select an item and a warehouse before recording the movement.');
+      return;
+    }
 
     try {
       await createMovement({
@@ -99,7 +109,7 @@ export function StockMovementDialog({ open, onOpenChange, warehouses, items, onC
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="item_id">Item</Label>
+              <Label htmlFor="item_id">Item *</Label>
               <Select value={formData.item_id} onValueChange={(value) => setFormData({ ...formData, item_id: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select item" />
@@ -114,21 +124,11 @@ export function StockMovementDialog({ open, onOpenChange, warehouses, items, onC
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="warehouse_id">Warehouse</Label>
-              <Select value={formData.warehouse_id} onValueChange={(value) => setFormData({ ...formData, warehouse_id: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select warehouse" />
-                </SelectTrigger>
-                <SelectContent>
-                  {warehouses.map((warehouse) => (
-                    <SelectItem key={warehouse.id} value={warehouse.id}>
-                      {warehouse.name} ({warehouse.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <WarehouseSelect warehouses={warehouses}
+              value={formData.warehouse_id}
+              onChange={(warehouseId) => setFormData({ ...formData, warehouse_id: warehouseId })}
+              label="Warehouse *"
+              htmlId="warehouse_id"/>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -192,7 +192,7 @@ export function StockMovementDialog({ open, onOpenChange, warehouses, items, onC
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !canSubmit}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
