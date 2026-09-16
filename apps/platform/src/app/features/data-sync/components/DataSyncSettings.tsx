@@ -223,10 +223,23 @@ interface ReceiveAsnItemOption {
   items_per_master_pack?: number | null;
 }
 
-/** Batch label for a row tied to the given item. */
-function receiveAsnBatchLabel(item?: ReceiveAsnItemOption): string {
-  const suffix = item?.sku || item?.item_name || item?.id.slice(0, 8);
-  return `Batch-Sep-${suffix}`;
+const BATCH_SUFFIX_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+/** Four random upper-case alphanumeric characters, e.g. `A5U7`. */
+function randomBatchSuffix(): string {
+  let suffix = '';
+  for (let i = 0; i < 4; i += 1) {
+    suffix += BATCH_SUFFIX_CHARS[Math.floor(Math.random() * BATCH_SUFFIX_CHARS.length)];
+  }
+  return suffix;
+}
+
+/** Auto batch label in the form `BT-SEP-15-A5U7`. */
+function receiveAsnBatchLabel(): string {
+  const now = new Date();
+  const month = now.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+  const day = String(now.getDate()).padStart(2, '0');
+  return `BT-${month}-${day}-${randomBatchSuffix()}`;
 }
 
 function effectiveMasterPack(item: ReceiveAsnItemOption | undefined, row: ReceiveAsnRow): string {
@@ -274,7 +287,7 @@ function applyReceiveAsnItemChange(
     return {
       ...row,
       item_id: value,
-      batch: receiveAsnBatchLabel(item),
+      batch: receiveAsnBatchLabel(),
       master_pack_size: masterPackSize,
       no_of_cases: cases,
       quantity: multipliedQuantity(masterPackSize, cases),
@@ -314,7 +327,7 @@ function receiveAsnRowFromCsv(csvRow: ReceiveAsnCsvRow, rowNumber: number, items
   const noOfCases = Math.max(1, Number(csvRow.no_of_cases));
   return {
     item_id: item.id,
-    batch: csvRow.batch || receiveAsnBatchLabel(item),
+    batch: csvRow.batch || receiveAsnBatchLabel(),
     master_pack_size: String(masterPackSize),
     no_of_cases: String(noOfCases),
     quantity: String(masterPackSize * noOfCases),
@@ -482,7 +495,7 @@ function QrBlocksFields({
       {mode === 'items' ? (
         <div className="space-y-3">
           {rows.map((row, idx) => (
-            <div key={idx} className="grid grid-cols-[1fr_1.4fr_70px_90px_auto] items-end gap-2">
+            <div key={idx} className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.3fr)_64px_64px_72px_36px] items-end gap-2">
               <div className="space-y-1.5">
                 <Label className="text-xs">Item</Label>
                 <Select value={row.item_id} onValueChange={(v) => onUpdateRow(idx, 'item_id', v)} disabled={locked}>
@@ -499,29 +512,29 @@ function QrBlocksFields({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Batch (sequence auto-appended)</Label>
+                <Label className="text-xs">Batch</Label>
                 <Input value={row.batch} onChange={(e) => onUpdateRow(idx, 'batch', e.target.value)} disabled={locked} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Items / Master Pack</Label>
-                <Input type="number"
-                  min={1}
-                  placeholder="Auto"
-                  value={row.master_pack_size}
-                  onChange={(e) => onUpdateRow(idx, 'master_pack_size', e.target.value)}
-                  disabled={locked}/>
+                <Label className="text-xs">Pack</Label>
+                <Input type="number" value={row.master_pack_size} placeholder="Auto" disabled />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">number of case</Label>
-                <Input value={row.no_of_cases} min={1} onChange={(e) => onUpdateRow(idx, 'no_of_cases', e.target.value)} disabled={locked} />
+                <Label className="text-xs">Box</Label>
+                <Input type="number" min={1} value={row.no_of_cases} onChange={(e) => onUpdateRow(idx, 'no_of_cases', e.target.value)} disabled={locked} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Qty</Label>
-                <Input value={row.quantity} min={1} onChange={(e) => onUpdateRow(idx, 'quantity', e.target.value)} disabled={locked} />
+                <Input type="number" min={1} value={row.quantity} onChange={(e) => onUpdateRow(idx, 'quantity', e.target.value)} disabled={locked} />
               </div>
-              <Button variant="ghost" size="sm" onClick={() => onRemoveRow(idx)} disabled={locked} className="h-9 px-2">
+              <button type="button"
+                onClick={() => onRemoveRow(idx)}
+                disabled={locked}
+                aria-label="Remove item"
+                title="Remove item"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive disabled:pointer-events-none disabled:opacity-40">
                 <Trash2 className="h-4 w-4" />
-              </Button>
+              </button>
             </div>
           ))}
           <div className="flex flex-wrap gap-2">
