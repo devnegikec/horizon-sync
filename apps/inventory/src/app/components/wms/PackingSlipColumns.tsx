@@ -57,6 +57,22 @@ export function createPackingSlipColumns({ busyId, onView, onMarkLoading, onDisp
       cell: ({ row }) => <WMSStatusBadge status={row.original.status} />,
     },
     {
+      accessorKey: 'invoice_reference',
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Invoice" />,
+      cell: ({ row }) => {
+        const refs = row.original.invoice_reference;
+        return refs && refs.length > 0 ? (
+          <div className="space-y-0.5">
+            {refs.map((ref) => (
+              <span key={ref} className="block font-mono text-sm text-blue-600 dark:text-blue-400">{ref}</span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        );
+      },
+    },
+    {
       accessorKey: 'order_ids',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Orders" />,
       cell: ({ row }) => <span className="text-muted-foreground">{row.original.order_ids.length}</span>,

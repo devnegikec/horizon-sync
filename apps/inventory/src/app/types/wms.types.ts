@@ -821,6 +821,7 @@ export interface PackingSlip {
   created_at: string | null;
   updated_at: string | null;
   order_ids: string[];
+  invoice_reference?: string[];
   items?: PackingSlipItem[];
   groups?: PackingSlipGroup[];
 }
@@ -832,6 +833,7 @@ export interface PackingSlipListItem {
   status: PackingSlipStatus;
   item_count: number;
   order_ids: string[];
+  invoice_reference?: string[];
   created_at: string | null;
 }
 
