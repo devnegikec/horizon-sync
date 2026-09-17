@@ -1,4 +1,5 @@
 export { FlagBadge } from './FlagBadge';
+export { ConditionBadge } from './ConditionBadge';
 export { ReceivingGroupRow } from './ReceivingGroupRow';
 export { ReceivingGroupsTable } from './ReceivingGroupsTable';
 export { createReceivingSlipColumns } from './ReceivingSlipColumns';

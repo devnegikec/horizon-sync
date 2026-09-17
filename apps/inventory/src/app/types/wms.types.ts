@@ -103,6 +103,8 @@ export interface BinStockLevelsResponse {
 export interface BinStockParentChild {
   serial_number: string;
   batch_number: string | null;
+  /** Not returned by every backend build — the SKU column renders `—` while absent. */
+  sku?: string | null;
   item_id: string;
   quantity_on_hand: number;
   inventory_status: string;
@@ -115,6 +117,8 @@ export interface BinStockParent {
   parent_id: string;
   parent_serial: string;
   parent_name: string;
+  /** Not returned by every backend build — the SKU column renders `—` while absent. */
+  sku?: string | null;
   capacity: number;
   child_units_in_bin: number;
   quantity_on_hand: number;
@@ -124,7 +128,25 @@ export interface BinStockParent {
 export interface BinStockParentsResponse {
   bin_id: string;
   total_parent_boxes: number;
-  parents: BinStockParent[];
+  /** One entry per QSeal parent (box) in the bin. */
+  groups?: BinStockGroup[];
+  /** Legacy flat shape, still served by older backend builds. */
+  parents?: BinStockParent[];
+}
+
+/**
+ * A serialised unit inside a bin. The bin-stock API returns the same item shape
+ * as a receiving-slip group, plus the bin-specific `inventory_status`.
+ */
+export interface BinStockGroupItem extends ReceivingSlipGroupItem {
+  inventory_status: string;
+}
+
+/** A QSeal parent (box) in a bin and the units stored inside it. */
+export interface BinStockGroup {
+  parent_qseal: ReceivingSlipParentQSeal | null;
+  product_name: string;
+  items: BinStockGroupItem[];
 }
 
 export interface BinStockInfo {
