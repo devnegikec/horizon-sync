@@ -434,22 +434,24 @@ function CreateOrderDialog({ open, onClose, onSuccess, accessToken, warehouseId 
 }
 
 // ============================================
-// HEADER
+// HEADER ACTIONS
 // ============================================
 
-interface HeaderProps {
+interface OutboundActionsProps {
   activeTab: OutboundTab;
   warehouseId: string | null;
   onImportSuccess: () => void;
 }
 
-function OutboundHeader({ activeTab, warehouseId, onImportSuccess }: HeaderProps) {
+/**
+ * Order import/export and creation, rendered in the heading row after Refresh.
+ * Only offered on the Orders tab, where those actions have meaning.
+ */
+function OutboundActions({ activeTab, warehouseId, onImportSuccess }: OutboundActionsProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [exporting, setExporting] = React.useState(false);
   const [importOpen, setImportOpen] = React.useState(false);
   const [createOpen, setCreateOpen] = React.useState(false);
-
-  const showActions = activeTab === 'orders';
 
   const handleExport = React.useCallback(async () => {
     if (!accessToken || !warehouseId) return;
@@ -502,41 +504,34 @@ function OutboundHeader({ activeTab, warehouseId, onImportSuccess }: HeaderProps
     }
   }, [accessToken, warehouseId]);
 
+  if (activeTab !== 'orders') return null;
+
   return (
     <>
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Outbound Management</h2>
-          <p className="text-sm text-muted-foreground">Manage pick lists, gate verification, and dispatch records.</p>
-        </div>
-        {showActions && (
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Upload className="h-4 w-4" />
-                  Import/Export Incoming Order
-                  <ChevronDown className="h-4 w-4 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setImportOpen(true)}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import Incoming Order
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExport} disabled={exporting}>
-                  {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-                  Export Orders
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button className="gap-2" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" />
-              New Order
-            </Button>
-          </div>
-        )}
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-2">
+            <Upload className="h-3.5 w-3.5" />
+            Import/Export Incoming Order
+            <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import Incoming Order
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleExport} disabled={exporting}>
+            {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+            Export Orders
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
+        <Plus className="h-3.5 w-3.5" />
+        New Order
+      </Button>
 
       <ImportDialog open={importOpen}
         onClose={() => setImportOpen(false)}
@@ -697,19 +692,20 @@ export function OutboundManagement({ warehouseId }: OutboundManagementProps) {
 
   return (
     <div className="space-y-4">
-      <OutboundHeader activeTab={activeTab} warehouseId={warehouseId} onImportSuccess={handleOrdersRefresh} />
-
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">{heading.title}</h2>
           <p className="text-sm text-muted-foreground">{heading.subtitle}</p>
         </div>
-        {canRefresh && (
-          <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2 shrink-0 self-start sm:self-auto">
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </Button>
-        )}
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+          {canRefresh && (
+            <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2">
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </Button>
+          )}
+          <OutboundActions activeTab={activeTab} warehouseId={warehouseId} onImportSuccess={handleOrdersRefresh} />
+        </div>
       </div>
 
       <OutboundStats warehouseId={wid}

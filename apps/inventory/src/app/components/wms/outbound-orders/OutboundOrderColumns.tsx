@@ -7,10 +7,9 @@ import { Button } from '@horizon-sync/ui/components';
 import { DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 
-import type { OutboundOrderListItem } from '../../types/wms.types';
-import { formatDate } from '../../utility';
-
-import { WMSStatusBadge } from './WMSStatusBadge';
+import type { OutboundOrderListItem } from '../../../types/wms.types';
+import { formatDate } from '../../../utility';
+import { WMSStatusBadge } from '../WMSStatusBadge';
 
 export interface OutboundOrderColumnsOptions {
   /** Id of the order currently running the Confirm action, if any. */
