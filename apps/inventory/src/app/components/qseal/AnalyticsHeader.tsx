@@ -13,7 +13,7 @@ export function AnalyticsHeader({ onRefresh, isLoading = false }: AnalyticsHeade
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
         <p className="text-muted-foreground mt-1">
-          QR scan insights — last 30 days
+          QSeal scan insights for your products and packaging
         </p>
       </div>
 

@@ -3,6 +3,7 @@ import * as React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Package, QrCode, Palette, BarChart3, Zap, Settings, Layers } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { cn } from '@horizon-sync/ui/lib';
@@ -16,6 +17,7 @@ import {
   QSealActivationManagement,
   ProductSettingsManagement,
 } from '../components/qseal';
+import { hasPermission } from '../utils/permissions';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -43,7 +45,11 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 
 export function QSealPage() {
   const [activeView, setActiveView] = React.useState<ActiveView>('products');
-  const [createOpen, setCreateOpen] = React.useState(true);
+  const user = useUserStore((state) => state.user);
+  const userPermissions = useUserStore((state) => state.permissions?.permissions || []);
+  const canViewAnalytics = user?.user_type === 'system_admin'
+    || user?.user_type === 'organization_admin'
+    || hasPermission(userPermissions, 'qr_product.read');
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -58,7 +64,7 @@ export function QSealPage() {
                   label="SKU Customization"
                   isActive={activeView === 'sku_customization'}
                   onClick={() => setActiveView('sku_customization')} />
-                <NavItem icon={BarChart3} label="Analytics" isActive={activeView === 'analytics'} onClick={() => setActiveView('analytics')} />
+                {canViewAnalytics && <NavItem icon={BarChart3} label="Analytics" isActive={activeView === 'analytics'} onClick={() => setActiveView('analytics')} />}
                 <NavItem icon={Zap} label="Activation" isActive={activeView === 'activation'} onClick={() => setActiveView('activation')} />
                 <NavItem icon={Layers} label="Aggregation" isActive={activeView === 'aggregation'} onClick={() => setActiveView('aggregation')} />
                 <NavItem icon={Settings}
@@ -73,7 +79,7 @@ export function QSealPage() {
             {activeView === 'products' && <QSealManagement />}
             {activeView === 'blocks' && <BlocksManagement />}
             {activeView === 'sku_customization' && <SkuCustomizationManagement />}
-            {activeView === 'analytics' && <AnalyticsManagement />}
+            {activeView === 'analytics' && canViewAnalytics && <AnalyticsManagement />}
             {activeView === 'activation' && <QSealActivationManagement />}
             {activeView === 'aggregation' && <AggregationManagement />}
             {activeView === 'product_settings' && <ProductSettingsManagement />}
