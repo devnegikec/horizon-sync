@@ -22,7 +22,7 @@ import {
 } from '@horizon-sync/ui/components';
 
 import { useExceptionReasons } from '../../../hooks/useExceptionReasons';
-import type { FlagLineResponse, ReceivingSlipGroupItem, SettableLineFlag } from '../../../types/wms.types';
+import type { FlagLineRequest, FlagLineResponse, ReceivingSlipGroupItem, SettableLineFlag } from '../../../types/wms.types';
 import { SETTABLE_LINE_FLAGS, flagNeedsDestination } from '../../../types/wms.types';
 import type { NormalizedApiError } from '../../../utility/api/core';
 import { toNormalizedApiError } from '../../../utility/api/core';
@@ -46,6 +46,13 @@ const FLAG_LABELS: Record<SettableLineFlag, string> = {
   hold: 'Hold',
   quarantine: 'Quarantine',
 };
+
+/**
+ * A shortage is a per-line quantity measured against the ASN, so it cannot be
+ * applied to a whole pack; pack flagging covers physical problems with the
+ * carton (damaged / excess / hold / quarantine).
+ */
+const PACK_FLAGS = SETTABLE_LINE_FLAGS.filter((value) => value !== 'short');
 
 function isSettableFlag(flag: string | null | undefined): flag is SettableLineFlag {
   return SETTABLE_LINE_FLAGS.some((candidate) => candidate === flag);
@@ -186,24 +193,112 @@ function canSubmitFlag(flag: SettableLineFlag, reasonCode: string, shortQty: num
   return Boolean(destination);
 }
 
+interface FlagTarget {
+  primary: ReceivingSlipGroupItem | null;
+  lineCount: number;
+  isPack: boolean;
+}
+
+/** More than one line means a whole master pack is being flagged. */
+export function readTarget(lines: ReceivingSlipGroupItem[] | null): FlagTarget {
+  const items = lines ?? [];
+  return { primary: items[0] ?? null, lineCount: items.length, isPack: items.length > 1 };
+}
+
+export function flagOptionsFor(isPack: boolean): readonly SettableLineFlag[] {
+  return isPack ? PACK_FLAGS : SETTABLE_LINE_FLAGS;
+}
+
+function flagSubmitLabel(isPack: boolean, count: number): string {
+  return isPack ? `Flag ${count} lines` : 'Save flag';
+}
+
+interface FlagFormSeed {
+  flag: SettableLineFlag;
+  reasonCode: string;
+  shortQty: string;
+}
+
+/**
+ * A pack has no single prior flag, so it starts from the most common dock
+ * problem rather than inheriting one line's state. A single line starts from its
+ * own current values so a re-flag is a correction, not a fresh entry.
+ */
+export function seedFlagForm(lines: ReceivingSlipGroupItem[] | null): FlagFormSeed {
+  const primary = lines?.[0];
+  if (!primary || (lines?.length ?? 0) > 1) {
+    return { flag: 'damaged', reasonCode: '', shortQty: '' };
+  }
+  return {
+    flag: isSettableFlag(primary.flag) ? primary.flag : 'short',
+    reasonCode: primary.reason_code ?? '',
+    shortQty: primary.short_qty ? String(primary.short_qty) : '',
+  };
+}
+
+function flagDialogCopy(isPack: boolean, count: number): { title: string; description: string } {
+  if (!isPack) {
+    return {
+      title: 'Flag receiving line',
+      description: 'Records what actually arrived. The ASN expectation is never changed by this action.',
+    };
+  }
+  return {
+    title: 'Flag master pack',
+    description: `Applies one flag to all ${count} line(s) in this master pack. The ASN expectation is never changed by this action.`,
+  };
+}
+
+/** Identity line under the title: one line's serial, or the pack's size. */
+function targetLabel(primary: ReceivingSlipGroupItem | null, count: number): string {
+  if (count > 1) return `${primary?.sku ?? ''} \u00b7 ${count} lines in this master pack`;
+  return `${primary?.sku ?? ''} \u00b7 ${primary?.serial_number ?? ''}`;
+}
+
+/**
+ * Applies one payload to every line, one request per line: the flag endpoint is
+ * line-scoped, so a master pack cannot be flagged in a single call.
+ *
+ * `allSettled` is deliberate — a partial failure has to report how many lines
+ * already changed, because those are not rolled back.
+ */
+async function flagLines(
+  token: string,
+  slipId: string,
+  lines: ReceivingSlipGroupItem[],
+  payload: FlagLineRequest,
+): Promise<{ results: FlagLineResponse[]; failure: unknown }> {
+  const settled = await Promise.allSettled(lines.map((line) => inboundApi.flagLineItem(token, slipId, line.id, payload)));
+  const results = settled
+    .filter((entry): entry is PromiseFulfilledResult<FlagLineResponse> => entry.status === 'fulfilled')
+    .map((entry) => entry.value);
+  const failure = settled.find((entry) => entry.status === 'rejected');
+
+  return { results, failure: failure?.reason };
+}
+
 export interface FlagLineDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   slipId: string;
-  /** Line being flagged. `null` closes the dialog. */
-  item: ReceivingSlipGroupItem | null;
-  /** Receives the server's normalised line so the caller can report the result. */
-  onFlagged: (result: FlagLineResponse) => void;
   /**
-   * The slip or its line no longer exists (`404`). The caller refetches so the
+   * Lines the flag applies to. `null` closes the dialog. More than one line means
+   * a whole master pack is being flagged.
+   */
+  lines: ReceivingSlipGroupItem[] | null;
+  /** Receives the server's normalised lines so the caller can report the result. */
+  onFlagged: (results: FlagLineResponse[]) => void;
+  /**
+   * The slip or its lines no longer exist (`404`). The caller refetches so the
    * stale row disappears instead of being retried forever.
    */
   onStale?: () => void;
 }
 
-export function FlagLineDialog({ open, onOpenChange, slipId, item, onFlagged, onStale }: FlagLineDialogProps) {
+export function FlagLineDialog({ open, onOpenChange, slipId, lines, onFlagged, onStale }: FlagLineDialogProps) {
   const token = useUserStore((state) => state.accessToken);
   const { reasons, loading: reasonsLoading, error: reasonsError, reload: reloadReasons } = useExceptionReasons(open);
+  const { primary, lineCount, isPack } = readTarget(lines);
 
   const [flag, setFlag] = React.useState<SettableLineFlag>('short');
   const [reasonCode, setReasonCode] = React.useState('');
@@ -217,13 +312,14 @@ export function FlagLineDialog({ open, onOpenChange, slipId, item, onFlagged, on
   // line's current values and let the operator correct them.
   React.useEffect(() => {
     if (!open) return;
-    setFlag(isSettableFlag(item?.flag) ? item.flag : 'short');
-    setReasonCode(item?.reason_code ?? '');
-    setShortQty(item?.short_qty ? String(item.short_qty) : '');
+    const seed = seedFlagForm(lines);
+    setFlag(seed.flag);
+    setReasonCode(seed.reasonCode);
+    setShortQty(seed.shortQty);
     setDestination('');
     setNotes('');
     setError(null);
-  }, [open, item]);
+  }, [open, lines]);
 
   // Keep the reason code inside the selected flag's category.
   React.useEffect(() => {
@@ -232,18 +328,21 @@ export function FlagLineDialog({ open, onOpenChange, slipId, item, onFlagged, on
 
   const shortQtyValue = Number(shortQty) || 0;
   const canSubmit = canSubmitFlag(flag, reasonCode, shortQtyValue, destination);
+  const flagOptions = flagOptionsFor(isPack);
+  const copy = flagDialogCopy(isPack, lineCount);
 
-  const submit = React.useCallback(async () => {
-    if (!token || !item) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const result = await inboundApi.flagLineItem(token, slipId, item.id, buildFlagPayload({ flag, reasonCode, shortQty, destination, notes }));
-      onFlagged(result);
-      onOpenChange(false);
-    } catch (err) {
+  /**
+   * One shared failure path. A pack flag is several requests, so the message
+   * says how many lines changed before the failure — those are not undone.
+   */
+  const handleSubmitError = React.useCallback(
+    (err: unknown, flaggedCount: number, total: number) => {
       const normalized = toNormalizedApiError(err);
-      setError(normalized);
+      setError(
+        total > 1
+          ? { ...normalized, message: `${flaggedCount} of ${total} line(s) were flagged before this failed. ${normalized.message}` }
+          : normalized,
+      );
       if (normalized.code === 'REASON_CODE_INVALID') {
         // The picker was built from a stale reference list: refetch it and force
         // a fresh choice rather than letting the operator resubmit the same code.
@@ -256,25 +355,41 @@ export function FlagLineDialog({ open, onOpenChange, slipId, item, onFlagged, on
         onStale?.();
         onOpenChange(false);
       }
+    },
+    [reloadReasons, onStale, onOpenChange],
+  );
+
+  const submit = React.useCallback(async () => {
+    if (!token || !lines || lines.length === 0) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const outcome = await flagLines(token, slipId, lines, buildFlagPayload({ flag, reasonCode, shortQty, destination, notes }));
+      if (outcome.failure) {
+        // Some lines may already be flagged, so refresh before the retry.
+        if (outcome.results.length > 0) onStale?.();
+        handleSubmitError(outcome.failure, outcome.results.length, lines.length);
+        return;
+      }
+      onFlagged(outcome.results);
+      onOpenChange(false);
+    } catch (err) {
+      handleSubmitError(err, 0, lines.length);
     } finally {
       setSubmitting(false);
     }
-  }, [token, item, slipId, flag, reasonCode, shortQty, destination, notes, onFlagged, onStale, reloadReasons, onOpenChange]);
+  }, [token, lines, slipId, flag, reasonCode, shortQty, destination, notes, onFlagged, onStale, handleSubmitError, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Flag receiving line</DialogTitle>
-          <DialogDescription>
-            Records what actually arrived. The ASN expectation is never changed by this action.
-          </DialogDescription>
+          <DialogTitle>{copy.title}</DialogTitle>
+          <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 text-sm">
-          <p className="rounded-md bg-muted p-3 font-mono text-xs">
-            {item?.sku} · {item?.serial_number}
-          </p>
+          <p className="rounded-md bg-muted p-3 font-mono text-xs">{targetLabel(primary, lineCount)}</p>
 
           <div className="space-y-1.5">
             <Label htmlFor="flag-line-flag">Flag</Label>
@@ -283,7 +398,7 @@ export function FlagLineDialog({ open, onOpenChange, slipId, item, onFlagged, on
                 <SelectValue placeholder="Select a flag" />
               </SelectTrigger>
               <SelectContent>
-                {SETTABLE_LINE_FLAGS.map((value) => (
+                {flagOptions.map((value) => (
                   <SelectItem key={value} value={value}>
                     {FLAG_LABELS[value]}
                   </SelectItem>
@@ -341,7 +456,7 @@ export function FlagLineDialog({ open, onOpenChange, slipId, item, onFlagged, on
             Cancel
           </Button>
           <Button onClick={submit} disabled={submitting || !canSubmit}>
-            {submitting ? 'Saving…' : 'Save flag'}
+            {submitting ? 'Saving…' : flagSubmitLabel(isPack, lineCount)}
           </Button>
         </DialogFooter>
       </DialogContent>

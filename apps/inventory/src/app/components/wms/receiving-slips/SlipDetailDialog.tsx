@@ -49,9 +49,18 @@ function groupToRow(group: ReceivingSlipGroup, index: number): QRDetailRow {
     meta: {
       flag: getGroupFlag(group),
       conditionCode: getGroupCondition(group),
+      packItems: packFlagItems(items),
     },
     children: items.map((item) => itemToChildRow(item, group.product_name)),
   };
+}
+
+/**
+ * Lines a pack-level flag may still change. A rejected line is terminal, so it is
+ * left out of the fan-out.
+ */
+export function packFlagItems(items: ReceivingSlipGroupItem[]): ReceivingSlipGroupItem[] {
+  return items.filter((item) => item.flag !== 'rejected');
 }
 
 /** Adapts a legacy flat item to the shape the item actions/exception dialog expect. */
@@ -105,17 +114,27 @@ function countUnits(slip: ReceivingSlip): number {
   return slip.total_items;
 }
 
-/** Result copy for the post-flag toast: what actually changed on the line. */
-function flagToastCopy(result: FlagLineResponse): { title: string; description: string } {
-  if (result.flag === 'short') {
+/** Result copy for the post-flag toast: what actually changed on the line(s). */
+function flagToastCopy(results: FlagLineResponse[]): { title: string; description: string } {
+  const [first] = results;
+  if (!first) return { title: 'Flag saved', description: '' };
+
+  if (results.length > 1) {
+    return {
+      title: `${results.length} lines flagged ${first.flag}`,
+      description: `Master pack for ${first.sku} segregated to ${first.destination ?? 'HOLD/QUARANTINE'}.`,
+    };
+  }
+
+  if (first.flag === 'short') {
     return {
       title: 'Line flagged short',
-      description: `${result.short_qty ?? 0} unit(s) missing against the ASN for ${result.sku}.`,
+      description: `${first.short_qty ?? 0} unit(s) missing against the ASN for ${first.sku}.`,
     };
   }
   return {
-    title: `Line flagged ${result.flag}`,
-    description: `${result.sku} segregated to ${result.destination ?? 'HOLD/QUARANTINE'}.`,
+    title: `Line flagged ${first.flag}`,
+    description: `${first.sku} segregated to ${first.destination ?? 'HOLD/QUARANTINE'}.`,
   };
 }
 
@@ -146,20 +165,20 @@ function flagBlockedReason(slip: ReceivingSlip | null, canWrite: boolean): strin
 }
 
 function FlagAction({
-  item,
   blockedReason,
+  label,
   onFlag,
 }: {
-  item: ReceivingSlipGroupItem;
-  /** `null` when the line can be flagged. */
+  /** `null` when the line or pack can be flagged. */
   blockedReason: string | null;
-  onFlag: (item: ReceivingSlipGroupItem) => void;
+  label: string;
+  onFlag: () => void;
 }) {
   if (!blockedReason) {
     return (
-      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onFlag(item)}>
+      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={onFlag}>
         <AlertTriangle className="mr-1 h-3.5 w-3.5" />
-        Flag
+        {label}
       </Button>
     );
   }
@@ -172,7 +191,7 @@ function FlagAction({
           <span className="inline-flex">
             <Button size="sm" variant="outline" className="h-7 px-2 text-xs" disabled>
               <Lock className="mr-1 h-3.5 w-3.5" />
-              Flag
+              {label}
             </Button>
           </span>
         </TooltipTrigger>
@@ -188,16 +207,30 @@ function ActionsCell({
   row,
   blockedReason,
   onFlag,
+  onFlagPack,
   onReject,
 }: {
   row: QRDetailRow;
   blockedReason: string | null;
   onFlag: (item: ReceivingSlipGroupItem) => void;
+  onFlagPack: (items: ReceivingSlipGroupItem[]) => void;
   onReject?: (itemId: string) => void;
 }) {
   const item = row.meta?.item as ReceivingSlipGroupItem | undefined;
-  // Parent (group) rows carry no per-item actions.
-  if (!item) return null;
+  const packItems = row.meta?.packItems as ReceivingSlipGroupItem[] | undefined;
+
+  // A master pack has no single line to act on, but the whole pack can be flagged
+  // at once — the flag endpoint is line-scoped, so the dialog fans it out.
+  if (!item) {
+    if (!packItems || packItems.length === 0) return null;
+    return (
+      <div className="flex items-center justify-end gap-2">
+        <FlagAction blockedReason={blockedReason}
+          label={`Flag pack (${packItems.length})`}
+          onFlag={() => onFlagPack(packItems)}/>
+      </div>
+    );
+  }
 
   if (item.flag === 'rejected') {
     return <span className="text-xs font-medium text-destructive">Rejected{item.rejection_reason ? ` — ${item.rejection_reason}` : ''}</span>;
@@ -205,7 +238,7 @@ function ActionsCell({
 
   return (
     <div className="flex items-center justify-end gap-2">
-      <FlagAction item={item} blockedReason={blockedReason} onFlag={onFlag} />
+      <FlagAction blockedReason={blockedReason} label="Flag" onFlag={() => onFlag(item)} />
       {onReject && (
         <Button size="sm"
           variant="outline"
@@ -282,12 +315,12 @@ interface SlipDetailDialogProps {
 export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onRejectItem, onLineFlagged }: SlipDetailDialogProps) {
   const { toast } = useToast();
   const permissions = useUserStore((state) => state.permissions.permissions);
-  const [flagItem, setFlagItem] = React.useState<ReceivingSlipGroupItem | null>(null);
+  const [flagTarget, setFlagTarget] = React.useState<ReceivingSlipGroupItem[] | null>(null);
 
   // Drop any in-flight line edit when the selected slip changes, so a line from a
   // previous slip is never submitted against the new slip's id.
   React.useEffect(() => {
-    setFlagItem(null);
+    setFlagTarget(null);
   }, [slip?.id]);
 
   const handleReject = React.useCallback(
@@ -314,8 +347,8 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
 
   /** The flag endpoint owns the resulting state, so report what it returned. */
   const handleFlagged = React.useCallback(
-    (result: FlagLineResponse) => {
-      toast(flagToastCopy(result));
+    (results: FlagLineResponse[]) => {
+      toast(flagToastCopy(results));
       onLineFlagged?.();
     },
     [toast, onLineFlagged],
@@ -329,7 +362,13 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
         id: 'actions',
         header: 'Actions',
         align: 'right',
-        cell: (row) => <ActionsCell row={row} blockedReason={flagBlocked} onFlag={setFlagItem} onReject={onRejectItem ? handleReject : undefined} />,
+        cell: (row) => (
+          <ActionsCell row={row}
+            blockedReason={flagBlocked}
+            onFlag={(item) => setFlagTarget([item])}
+            onFlagPack={setFlagTarget}
+            onReject={onRejectItem ? handleReject : undefined}/>
+        ),
       },
     ],
     [flagBlocked, handleReject, onRejectItem],
@@ -348,12 +387,12 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
         summary={slip ? <SlipSummary slip={slip} totalUnits={countUnits(slip)} /> : undefined}/>
 
       {slip && (
-        <FlagLineDialog open={Boolean(flagItem)}
+        <FlagLineDialog open={Boolean(flagTarget)}
           onOpenChange={(next) => {
-            if (!next) setFlagItem(null);
+            if (!next) setFlagTarget(null);
           }}
           slipId={slip.id}
-          item={flagItem}
+          lines={flagTarget}
           onFlagged={handleFlagged}
           onStale={onLineFlagged}/>
       )}

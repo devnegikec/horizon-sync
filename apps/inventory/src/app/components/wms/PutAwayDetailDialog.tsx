@@ -608,7 +608,11 @@ interface PutAwayDetailDialogProps {
 export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetailDialogProps) {
   const { list, loading, error, refetch, completeItem, skipItem, raiseException } = usePutAwayList(listId);
   const permissions = useUserStore((state) => state.permissions.permissions);
-  const canException = hasPermission(permissions, 'inbound_exception.create');
+  // Either permission is enough: dock staff hold `inbound_exception.create`,
+  // while a warehouse manager holds `inbound_exception.dispose`. Gating on
+  // `create` alone would hide the control from the manager who is expected to
+  // use it.
+  const canException = hasPermission(permissions, 'inbound_exception.create') || hasPermission(permissions, 'inbound_exception.dispose');
 
   const [completeTarget, setCompleteTarget] = React.useState<PutAwayItem | null>(null);
   const [skipTarget, setSkipTarget] = React.useState<PutAwayItem | null>(null);
