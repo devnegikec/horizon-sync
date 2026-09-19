@@ -550,7 +550,81 @@ function SkipItemDialog({ open, onOpenChange, item, onConfirm }: SkipItemDialogP
 
 // ─── Summary block ───────────────────────────────────────────────────────────
 
+interface ParsedRemarks {
+  text: string | null;
+  warnings: string[];
+}
+
+/** Keys the backend may use for free-text remarks inside the JSON blob. */
+const REMARK_TEXT_KEYS = ['text', 'note', 'notes', 'message', 'remark', 'remarks'];
+
+const EMPTY_REMARKS: ParsedRemarks = { text: null, warnings: [] };
+
+/** Keep the string entries of a candidate warnings array, or null if unusable. */
+function asStringEntries(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  const entries = value.filter((entry): entry is string => typeof entry === 'string');
+  return entries.length > 0 ? entries : null;
+}
+
+/** First non-empty free-text value the backend stored alongside the warnings. */
+function firstRemarkText(record: Record<string, unknown>): string | null {
+  const found = REMARK_TEXT_KEYS.map((key) => record[key]).find(
+    (entry): entry is string => typeof entry === 'string',
+  );
+  return found?.trim() || null;
+}
+
+/** JSON.parse without throwing; a bare `null` is treated as "not JSON". */
+function tryParseJson(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+/** Interpret an already-parsed remark blob, or null when it carries nothing usable. */
+function readRemarkPayload(parsed: unknown): ParsedRemarks | null {
+  if (parsed === null || typeof parsed !== 'object') return null;
+
+  if (Array.isArray(parsed)) {
+    const warnings = asStringEntries(parsed);
+    return warnings ? { text: null, warnings } : null;
+  }
+
+  const record = parsed as Record<string, unknown>;
+  const warnings = asStringEntries(record.warnings) ?? [];
+  const text = firstRemarkText(record);
+  return warnings.length > 0 || text ? { text, warnings } : null;
+}
+
+function isJsonBlob(value: string): boolean {
+  return value.startsWith('{') || value.startsWith('[');
+}
+
+/**
+ * Remarks may arrive as plain text or as a JSON blob that carries warnings.
+ * Unwrap the blob so the UI shows readable text instead of raw JSON.
+ */
+function parseRemarks(raw: string | null | undefined): ParsedRemarks {
+  if (typeof raw !== 'string') return EMPTY_REMARKS;
+
+  const value = raw.trim();
+  if (!isJsonBlob(value)) return { text: value || null, warnings: [] };
+
+  // Unrecognised shape — show the raw value rather than silently hiding it.
+  return readRemarkPayload(tryParseJson(value)) ?? { text: value, warnings: [] };
+}
+
 function PutAwaySummary({ list }: { list: PutAwayList }) {
+  const remarks = React.useMemo(() => parseRemarks(list.remarks), [list.remarks]);
+  // Warnings live either in their own field or inside the remarks blob.
+  const warnings = React.useMemo(
+    () => [...new Set([...(Array.isArray(list.warnings) ? list.warnings : []), ...remarks.warnings])],
+    [list.warnings, remarks.warnings],
+  );
+
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-4 gap-3 text-sm">
@@ -574,18 +648,18 @@ function PutAwaySummary({ list }: { list: PutAwayList }) {
         </div>
       </div>
 
-      {list.remarks && (
+      {remarks.text && (
         <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Remarks: </span>
-          {list.remarks}
+          {remarks.text}
         </div>
       )}
 
-      {list.warnings && list.warnings.length > 0 && (
+      {warnings.length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-sm">
           <span className="font-medium text-amber-700">Warnings: </span>
           <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs text-amber-600">
-            {list.warnings.map((warning, index) => (
+            {warnings.map((warning, index) => (
               <li key={index}>{warning}</li>
             ))}
           </ul>
