@@ -215,6 +215,121 @@ export function getFriendlyErrorMessage(err: unknown): string {
   return 'An unexpected error occurred. Please try again.';
 }
 
+// ─── Error normalisation ──────────────────────────────────────────────────────
+
+/** A field-level problem, mapped onto the matching form control. */
+export interface ApiFieldError {
+  field: string;
+  reason?: string;
+  hint?: string;
+  message?: string;
+}
+
+/**
+ * The display contract for an API failure.
+ *
+ * The backend emits two envelopes — a domain one
+ * (`{ error, message, hint, details, current_state, required_state }`) and
+ * FastAPI's request-shape one (`{ detail: { code, message, errors } }`) — plus
+ * plain-string `detail` for auth/permission failures. This collapses all of them
+ * so callers can branch on `code`, highlight `fields` and show `hint` without
+ * re-parsing the body themselves.
+ */
+export interface NormalizedApiError {
+  /** 0 when the request never reached the API. */
+  httpStatus: number;
+  /** Stable machine-readable code, or `NETWORK` / `UNKNOWN`. */
+  code: string;
+  /** Always safe to display. */
+  message: string;
+  /** The single next action for the operator — show it whenever present. */
+  hint?: string;
+  fields: ApiFieldError[];
+  currentState?: string;
+  requiredState?: string[];
+  entityType?: string;
+  entityId?: string;
+}
+
+interface DomainErrorEnvelope {
+  error: string;
+  message?: string;
+  hint?: string;
+  details?: ApiFieldError[];
+  current_state?: string;
+  required_state?: string[];
+  entity_type?: string;
+  entity_id?: string;
+}
+
+interface FrameworkErrorEnvelope {
+  message?: string;
+  code?: string;
+  errors?: { field?: string; message?: string }[];
+}
+
+function fromDomainEnvelope(status: number, body: DomainErrorEnvelope): NormalizedApiError {
+  return {
+    httpStatus: status,
+    code: body.error,
+    message: body.message ?? body.error,
+    hint: body.hint,
+    fields: Array.isArray(body.details) ? body.details : [],
+    currentState: body.current_state,
+    requiredState: body.required_state,
+    entityType: body.entity_type,
+    entityId: body.entity_id,
+  };
+}
+
+function fromFrameworkEnvelope(status: number, detail: FrameworkErrorEnvelope): NormalizedApiError {
+  return {
+    httpStatus: status,
+    code: detail.code ?? 'VALIDATION_ERROR',
+    message: detail.message ?? 'Invalid input data',
+    fields: (detail.errors ?? []).map((issue) => ({ field: issue.field ?? '', message: issue.message })),
+  };
+}
+
+/** Splits a raw error body into the normalised shape. */
+export function normalizeApiError(status: number, body: unknown): NormalizedApiError {
+  if (body && typeof body === 'object') {
+    const { error, detail } = body as { error?: unknown; detail?: unknown };
+    if (typeof error === 'string') return fromDomainEnvelope(status, body as DomainErrorEnvelope);
+    if (detail && typeof detail === 'object') return fromFrameworkEnvelope(status, detail as FrameworkErrorEnvelope);
+    if (typeof detail === 'string') {
+      return { httpStatus: status, code: status === 403 ? 'FORBIDDEN' : 'ERROR', message: detail, fields: [] };
+    }
+  }
+  // Caller-supplied fallback message wins; see `toNormalizedApiError`.
+  return { httpStatus: status, code: 'UNKNOWN', message: '', fields: [] };
+}
+
+/** True for anything thrown by `apiRequest` or the WMS `req` helper. */
+function hasApiErrorShape(err: unknown): err is { status: number; details?: unknown; message: string } {
+  if (typeof err !== 'object' || err === null) return false;
+  return 'status' in err && typeof (err as { status: unknown }).status === 'number';
+}
+
+/**
+ * Normalises anything thrown by an API call. Network and unknown failures fall
+ * back to {@link getFriendlyErrorMessage}, so callers always get a message.
+ */
+export function toNormalizedApiError(err: unknown): NormalizedApiError {
+  if (hasApiErrorShape(err)) {
+    const normalized = normalizeApiError(err.status, err.details);
+    if (err.status === 401) {
+      // The WMS client talks to the API with `fetch` directly rather than through
+      // `apiRequest`, so this shared helper is the one place a 401 from every
+      // client can still become a login redirect.
+      window.dispatchEvent(new CustomEvent('app:session-expired'));
+      return { ...normalized, code: 'UNAUTHORIZED', message: 'Your session has expired. Please log in again.', fields: [] };
+    }
+    return { ...normalized, message: normalized.message || err.message };
+  }
+  return { httpStatus: 0, code: 'NETWORK', message: getFriendlyErrorMessage(err), fields: [] };
+}
+
 /**
  * Get a user-friendly error message for a given HTTP status code.
  */

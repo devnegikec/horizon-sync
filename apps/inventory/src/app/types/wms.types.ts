@@ -309,6 +309,8 @@ export interface ReceivingSlipGroupItem {
   exception_destination_location_id?: string | null;
   rejection_reason?: string | null;
   reason_code?: string | null;
+  /** Units missing against the ASN expectation; only set while `flag === 'short'`. */
+  short_qty?: number | null;
   notes: string | null;
 }
 
@@ -385,6 +387,134 @@ export interface ReceivingSlipActionResult {
   slip_id: string;
   status: string;
   message: string;
+}
+
+// ============================================
+// SHORT RECEIPTS (inbound shortage ledger)
+// ============================================
+
+/** Every line flag the API can report. `ok`/`rejected` are read-only states. */
+export type LineFlag = 'ok' | 'short' | 'damaged' | 'excess' | 'hold' | 'quarantine' | 'rejected';
+
+/** The flags an operator may set through the flag endpoint, in picker order. */
+export const SETTABLE_LINE_FLAGS = ['short', 'damaged', 'excess', 'hold', 'quarantine'] as const;
+export type SettableLineFlag = (typeof SETTABLE_LINE_FLAGS)[number];
+
+/**
+ * Reason codes are categorised, and the flag endpoint rejects a code whose
+ * category does not match the flag. `short` only accepts `short`.
+ */
+export const FLAG_REASON_CATEGORIES: Record<SettableLineFlag, string[]> = {
+  short: ['short'],
+  damaged: ['damage'],
+  excess: ['excess', 'unexpected_sku'],
+  hold: ['hold'],
+  quarantine: ['quarantine'],
+};
+
+/** `'short'` is a ledger record only — it is never physically segregated. */
+export function flagNeedsDestination(flag: SettableLineFlag): boolean {
+  return flag !== 'short';
+}
+
+export type BalanceStatus = 'open' | 'resolved' | 'written_off';
+export type CloseOutcome = 'written_off' | 'resolved_by_receipt';
+
+export interface FlagLineRequest {
+  flag: SettableLineFlag;
+  reason_code: string;
+  /** Required for `short`; must be omitted for every other flag. */
+  short_qty?: number | null;
+  /** Required for segregation flags; must be omitted for `short`. */
+  destination?: 'HOLD' | 'QUARANTINE' | null;
+  notes?: string | null;
+}
+
+export interface FlagLineResponse {
+  id: string;
+  slip_id: string;
+  sku: string;
+  batch_number: string | null;
+  quantity: number;
+  box_count: number;
+  flag: LineFlag;
+  reason_code: string | null;
+  short_qty: number | null;
+  condition_code: string | null;
+  exception_id: string | null;
+  exception_status: string | null;
+  destination: 'HOLD' | 'QUARANTINE' | null;
+  destination_location_id: string | null;
+  notes: string | null;
+}
+
+export interface ShortBalance {
+  id: string;
+  asn_order_id: string;
+  asn_order_item_id: string;
+  receiving_slip_id: string | null;
+  item_id: string | null;
+  sku: string;
+  expected_qty: number;
+  received_qty: number;
+  short_qty: number;
+  status: BalanceStatus;
+  reason_code: string | null;
+  note: string | null;
+  close_reason_code: string | null;
+  close_note: string | null;
+  closed_by: string | null;
+  closed_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+/** Server-side totals — never aggregate the list client side. */
+export interface ShortBalanceSummary {
+  total: number;
+  open_count: number;
+  resolved_count: number;
+  written_off_count: number;
+  open_short_qty: number;
+  total_short_qty: number;
+}
+
+export interface PaginatedShortBalances {
+  balances: ShortBalance[];
+  pagination: WMSPagination;
+  summary: ShortBalanceSummary;
+}
+
+export type ShortBalanceEventType = 'created' | 'updated' | 'resolved' | 'written_off';
+
+export interface ShortBalanceEvent {
+  id: string;
+  balance_id: string;
+  receiving_slip_id: string | null;
+  event_type: ShortBalanceEventType;
+  from_status: BalanceStatus | null;
+  to_status: BalanceStatus;
+  expected_qty: number;
+  received_qty: number;
+  short_qty: number;
+  reason_code: string | null;
+  note: string | null;
+  actor_id: string | null;
+  created_at: string | null;
+}
+
+export interface CloseShortBalanceRequest {
+  outcome: CloseOutcome;
+  reason_code?: string | null;
+  note?: string | null;
+}
+
+export interface ShortBalanceFilters {
+  asn_order_id?: string;
+  status?: BalanceStatus;
+  sku?: string;
+  page?: number;
+  page_size?: number;
 }
 
 // ============================================
@@ -545,6 +675,39 @@ export interface PaginatedPutAwayLists {
   put_away_lists: PutAwayList[];
   pagination: WMSPagination;
   status_counts?: PutAwayStatusCounts;
+}
+
+/**
+ * A put-away exception reuses the receipt classification vocabulary. `short`
+ * cannot apply here: a shortage is stock that never arrived, so there is
+ * nothing sitting on a put-away list to quarantine.
+ */
+export type PutAwayExceptionClassification = 'damaged' | 'excess' | 'hold' | 'quarantine';
+
+/** Picker order for the put-away exception classifications. */
+export const PUT_AWAY_EXCEPTION_CLASSIFICATIONS = ['damaged', 'excess', 'hold', 'quarantine'] as const;
+
+export type PutAwayExceptionDestination = 'HOLD' | 'QUARANTINE';
+
+/**
+ * `pack` raises one exception covering every unit inside a master pack; `item`
+ * covers a single unit.
+ */
+export type PutAwayExceptionScope = 'item' | 'pack';
+
+export interface PutAwayExceptionRequest {
+  classification: PutAwayExceptionClassification;
+  reason_code: string;
+  /** Both segregation bins are legal for every put-away classification. */
+  destination: PutAwayExceptionDestination;
+  note?: string | null;
+  scope: PutAwayExceptionScope;
+  /**
+   * The put-away item ids the exception covers. Sent explicitly so a pack
+   * request is self-describing rather than relying on the backend re-deriving
+   * which units were in the pack at the time.
+   */
+  item_ids: string[];
 }
 
 export interface PickListBatchResponse {

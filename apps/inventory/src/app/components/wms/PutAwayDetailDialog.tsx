@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Loader2, CheckCircle2, SkipForward, Search, MapPin } from 'lucide-react';
+import { Loader2, CheckCircle2, ShieldAlert, SkipForward, Search, MapPin } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -9,9 +9,18 @@ import { Input } from '@horizon-sync/ui/components/ui/input';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { usePutAwayList } from '../../hooks/useWMS';
-import type { PutAwayGroup, PutAwayGroupItem, PutAwayItem, PutAwayList, WarehouseLocation } from '../../types/wms.types';
+import type {
+  PutAwayExceptionRequest,
+  PutAwayGroup,
+  PutAwayGroupItem,
+  PutAwayItem,
+  PutAwayList,
+  WarehouseLocation,
+} from '../../types/wms.types';
 import { layoutApi } from '../../utility/api/wms';
+import { hasPermission } from '../../utils/permissions';
 
+import { PutAwayExceptionDialog, type PutAwayExceptionTarget } from './PutAwayExceptionDialog';
 import { QRDetailDialog, type QRDetailColumn, type QRDetailRow } from './QRDetailDialog';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
@@ -221,7 +230,7 @@ function serialLabel(item: PutAwayItem): string | null {
 }
 
 /** The group's batch when every unit shares it, otherwise null (units differ). */
-function commonBatch(rows: PutAwayItem[]): string | null {
+function commonBatch(rows: { batch_number: string | null }[]): string | null {
   const batches = rows.map((r) => r.batch_number).filter((b): b is string => Boolean(b));
   const unique = [...new Set(batches)];
   return unique.length === 1 ? unique[0] : null;
@@ -260,7 +269,54 @@ function groupToRow(group: PutAwayLineGroup): QRDetailRow {
     serialNumber: null,
     quantity: group.rows.reduce((sum, r) => sum + (r.quantity || 0), 0),
     meta: { status: groupStatus(group.rows) },
-    children: group.rows.map((item) => itemToChildRow(item, productName)),
+    children: group.rows.map((item) => legacyChildRow(item, productName)),
+  };
+}
+
+/* ---- Exception targets ------------------------------------------------- */
+
+/** One exception for one put-away unit. */
+function unitTarget(item: PutAwayItem, productName: string): PutAwayExceptionTarget {
+  return {
+    scope: 'item',
+    id: item.id,
+    sku: item.sku,
+    productName,
+    batchNumber: item.batch_number,
+    unitCount: 1,
+    quantity: item.quantity,
+    itemIds: [item.id],
+  };
+}
+
+/**
+ * One exception for a whole master pack. Only units the API gave an id to can be
+ * covered, so a pack without any addressable unit offers no pack target.
+ */
+function packTarget(group: PutAwayGroup, productName: string): PutAwayExceptionTarget | null {
+  const parentId = group.parent_qseal?.id;
+  const items = Array.isArray(group.items) ? group.items : [];
+  const covered = items.map((item) => item.id).filter((id): id is string => Boolean(id));
+  if (!parentId || covered.length === 0) return null;
+
+  return {
+    scope: 'pack',
+    id: parentId,
+    sku: items[0]?.sku ?? productName,
+    productName,
+    batchNumber: commonBatch(items),
+    unitCount: covered.length,
+    quantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
+    itemIds: covered,
+  };
+}
+
+/** Legacy flat payload: units are addressable, but there is no master pack. */
+function legacyChildRow(item: PutAwayItem, productName: string): QRDetailRow {
+  const row = itemToChildRow(item, productName);
+  return {
+    ...row,
+    meta: { ...row.meta, actionable: true, exceptionTarget: unitTarget(item, productName) },
   };
 }
 
@@ -311,18 +367,29 @@ function groupedToRow(group: PutAwayGroup, groupIndex: number): QRDetailRow {
     batch: first?.batch_number ?? null,
     serialNumber: group.parent_qseal?.serial_number ?? null,
     quantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
-    meta: { status: group.status, bin: group.bin_location_code },
-    children: items.map((item, index) => {
-      const mappedItem = groupedItemToPutAwayItem(group, item, index);
-      const row = itemToChildRow(mappedItem, group.product_name);
-      return {
-        ...row,
-        meta: {
-          ...row.meta,
-          actionable: Boolean(item.id),
-        },
-      };
-    }),
+    meta: {
+      status: group.status,
+      bin: group.bin_location_code,
+      exceptionTarget: packTarget(group, group.product_name),
+    },
+    children: items.map((item, index) => groupedChildRow(group, item, index)),
+  };
+}
+
+/**
+ * Child row for the grouped payload. A unit the API returned without an id has
+ * no addressable identity, so it gets neither actions nor an exception target.
+ */
+function groupedChildRow(group: PutAwayGroup, item: PutAwayGroupItem, index: number): QRDetailRow {
+  const mappedItem = groupedItemToPutAwayItem(group, item, index);
+  const row = itemToChildRow(mappedItem, group.product_name);
+  return {
+    ...row,
+    meta: {
+      ...row.meta,
+      actionable: Boolean(item.id),
+      exceptionTarget: item.id ? unitTarget(mappedItem, group.product_name) : undefined,
+    },
   };
 }
 
@@ -350,21 +417,64 @@ function StatusCell({ row }: { row: QRDetailRow }) {
   return <WMSStatusBadge status={status} />;
 }
 
+/** Manager-only affordance: excepting stock is more than a put-away decision. */
+function ExceptionAction({
+  target,
+  canException,
+  onException,
+}: {
+  target?: PutAwayExceptionTarget;
+  canException: boolean;
+  onException: (target: PutAwayExceptionTarget) => void;
+}) {
+  if (!canException || !target) return null;
+  return (
+    <Button size="sm"
+      variant="outline"
+      className="h-7 gap-1 border-amber-200 px-2 text-xs text-amber-600 hover:bg-amber-50"
+      onClick={() => onException(target)}>
+      <ShieldAlert className="h-3 w-3" />
+      Exception
+    </Button>
+  );
+}
+
+/** Actions cell for a row that has no put-away actions of its own. */
+function ExceptionOnly({ show, children }: { show: boolean; children: React.ReactNode }) {
+  if (!show) return null;
+  return <div className="flex justify-end">{children}</div>;
+}
+
 function ActionsCell({
   row,
+  canException,
+  onException,
   onComplete,
   onSkip,
 }: {
   row: QRDetailRow;
+  canException: boolean;
+  onException: (target: PutAwayExceptionTarget) => void;
   onComplete: (item: PutAwayItem) => void;
   onSkip: (item: PutAwayItem) => void;
 }) {
   const item = row.meta?.item as PutAwayItem | undefined;
-  // Parent (product) rows and already-finished units carry no actions.
-  if (!item || row.meta?.actionable === false || item.status === 'completed' || item.status === 'skipped') return null;
+  const target = row.meta?.exceptionTarget as PutAwayExceptionTarget | undefined;
+  const exception = <ExceptionAction target={target} canException={canException} onException={onException}/>;
+  const mayExcept = canException && Boolean(target);
+
+  // Parent (product) rows carry no put-away actions, but a manager can except
+  // the whole master pack from one.
+  if (!item) return <ExceptionOnly show={mayExcept}>{exception}</ExceptionOnly>;
+
+  // Finished units stay read-only; only pending ones can be excepted or skipped.
+  if (row.meta?.actionable === false || item.status !== 'pending') {
+    return <ExceptionOnly show={mayExcept}>{exception}</ExceptionOnly>;
+  }
 
   return (
     <div className="flex items-center justify-end gap-1">
+      {exception}
       <Button size="sm"
         variant="outline"
         className="h-7 gap-1 border-green-200 px-2 text-xs text-green-600 hover:bg-green-50"
@@ -496,11 +606,21 @@ interface PutAwayDetailDialogProps {
 }
 
 export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetailDialogProps) {
-  const { list, loading, error, completeItem, skipItem } = usePutAwayList(listId);
+  const { list, loading, error, refetch, completeItem, skipItem, raiseException } = usePutAwayList(listId);
+  const permissions = useUserStore((state) => state.permissions.permissions);
+  const canException = hasPermission(permissions, 'inbound_exception.create');
+
   const [completeTarget, setCompleteTarget] = React.useState<PutAwayItem | null>(null);
   const [skipTarget, setSkipTarget] = React.useState<PutAwayItem | null>(null);
+  const [exceptionTarget, setExceptionTarget] = React.useState<PutAwayExceptionTarget | null>(null);
 
   const rows = React.useMemo(() => (list ? listToRows(list) : []), [list]);
+
+  // The dialog addresses a unit or a pack; the hook addresses the list's items.
+  const raiseExceptionFor = React.useCallback(
+    (target: PutAwayExceptionTarget, request: PutAwayExceptionRequest) => raiseException(target.id, request),
+    [raiseException],
+  );
 
   const columns = React.useMemo<QRDetailColumn[]>(
     () => [
@@ -510,16 +630,23 @@ export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetai
         id: 'actions',
         header: 'Actions',
         align: 'right',
-        cell: (row) => <ActionsCell row={row} onComplete={setCompleteTarget} onSkip={setSkipTarget} />,
+        cell: (row) => (
+          <ActionsCell row={row}
+            canException={canException}
+            onException={setExceptionTarget}
+            onComplete={setCompleteTarget}
+            onSkip={setSkipTarget}/>
+        ),
       },
     ],
-    [],
+    [canException],
   );
 
   // Drop any open item dialogs when a different list is loaded.
   React.useEffect(() => {
     setCompleteTarget(null);
     setSkipTarget(null);
+    setExceptionTarget(null);
   }, [listId]);
 
   return (
@@ -553,6 +680,14 @@ export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetai
           item={skipTarget}
           onConfirm={skipItem} />
       )}
+
+      <PutAwayExceptionDialog open={Boolean(exceptionTarget)}
+        onOpenChange={(next) => {
+          if (!next) setExceptionTarget(null);
+        }}
+        target={exceptionTarget}
+        onConfirm={raiseExceptionFor}
+        onStale={refetch}/>
     </>
   );
 }

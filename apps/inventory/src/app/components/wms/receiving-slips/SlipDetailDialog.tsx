@@ -1,18 +1,21 @@
 import * as React from 'react';
 
-import { AlertTriangle, XCircle } from 'lucide-react';
+import { AlertTriangle, Lock, XCircle } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 import { useToast } from '@horizon-sync/ui/hooks';
 
-import type { ReceivingSlip, ReceivingSlipGroup, ReceivingSlipGroupItem, ReceivingSlipItem } from '../../../types/wms.types';
+import type { FlagLineResponse, ReceivingSlip, ReceivingSlipGroup, ReceivingSlipGroupItem, ReceivingSlipItem } from '../../../types/wms.types';
+import { hasPermission } from '../../../utils/permissions';
 import { QRDetailDialog, type QRDetailColumn, type QRDetailRow } from '../QRDetailDialog';
 import { WMSStatusBadge } from '../WMSStatusBadge';
 
 import { ConditionBadge } from './ConditionBadge';
 import { FlagBadge } from './FlagBadge';
+import { FlagLineDialog } from './FlagLineDialog';
 import { getGroupCondition, getGroupFlag } from './groupAggregates';
-import { InboundExceptionDialog } from './InboundExceptionDialog';
 
 // ─── Slip → generic rows ──────────────────────────────────────────────────────
 
@@ -102,6 +105,20 @@ function countUnits(slip: ReceivingSlip): number {
   return slip.total_items;
 }
 
+/** Result copy for the post-flag toast: what actually changed on the line. */
+function flagToastCopy(result: FlagLineResponse): { title: string; description: string } {
+  if (result.flag === 'short') {
+    return {
+      title: 'Line flagged short',
+      description: `${result.short_qty ?? 0} unit(s) missing against the ASN for ${result.sku}.`,
+    };
+  }
+  return {
+    title: `Line flagged ${result.flag}`,
+    description: `${result.sku} segregated to ${result.destination ?? 'HOLD/QUARANTINE'}.`,
+  };
+}
+
 // ─── Extra columns ────────────────────────────────────────────────────────────
 
 function FlagCell({ row }: { row: QRDetailRow }) {
@@ -112,13 +129,70 @@ function ConditionCell({ row }: { row: QRDetailRow }) {
   return <ConditionBadge code={(row.meta?.conditionCode as string | null) ?? null} />;
 }
 
+/**
+ * Flagging is only legal while the slip is pending review; afterwards the API
+ * answers `409 SLIP_NOT_PENDING_REVIEW`. It also needs `warehouse.update` or
+ * `wms.scan`. A control the operator cannot use is disabled with the actual
+ * reason rather than left to fail on submit.
+ */
+function flagBlockedReason(slip: ReceivingSlip | null, canWrite: boolean): string | null {
+  if (!canWrite) {
+    return 'You do not have permission to flag receipt lines — warehouse.update or wms.scan is required.';
+  }
+  if (slip?.status !== 'pending_review') {
+    return 'Flags can only be applied while the slip is pending review. Capture them before the Draft Receipt Note is approved.';
+  }
+  return null;
+}
+
+function FlagAction({
+  item,
+  blockedReason,
+  onFlag,
+}: {
+  item: ReceivingSlipGroupItem;
+  /** `null` when the line can be flagged. */
+  blockedReason: string | null;
+  onFlag: (item: ReceivingSlipGroupItem) => void;
+}) {
+  if (!blockedReason) {
+    return (
+      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onFlag(item)}>
+        <AlertTriangle className="mr-1 h-3.5 w-3.5" />
+        Flag
+      </Button>
+    );
+  }
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {/* The span keeps the tooltip reachable while the button is disabled. */}
+          <span className="inline-flex">
+            <Button size="sm" variant="outline" className="h-7 px-2 text-xs" disabled>
+              <Lock className="mr-1 h-3.5 w-3.5" />
+              Flag
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="max-w-64">{blockedReason}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 function ActionsCell({
   row,
-  onException,
+  blockedReason,
+  onFlag,
   onReject,
 }: {
   row: QRDetailRow;
-  onException: (item: ReceivingSlipGroupItem) => void;
+  blockedReason: string | null;
+  onFlag: (item: ReceivingSlipGroupItem) => void;
   onReject?: (itemId: string) => void;
 }) {
   const item = row.meta?.item as ReceivingSlipGroupItem | undefined;
@@ -131,10 +205,7 @@ function ActionsCell({
 
   return (
     <div className="flex items-center justify-end gap-2">
-      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onException(item)}>
-        <AlertTriangle className="mr-1 h-3.5 w-3.5" />
-        Exception
-      </Button>
+      <FlagAction item={item} blockedReason={blockedReason} onFlag={onFlag} />
       {onReject && (
         <Button size="sm"
           variant="outline"
@@ -204,17 +275,19 @@ interface SlipDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRejectItem?: (slipId: string, itemId: string, reason: string) => Promise<void>;
-  onExceptionCreated?: () => void;
+  /** Fired after a line is flagged, so the caller can refresh the slip and list. */
+  onLineFlagged?: () => void;
 }
 
-export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onRejectItem, onExceptionCreated }: SlipDetailDialogProps) {
+export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onRejectItem, onLineFlagged }: SlipDetailDialogProps) {
   const { toast } = useToast();
-  const [exceptionItem, setExceptionItem] = React.useState<ReceivingSlipGroupItem | null>(null);
+  const permissions = useUserStore((state) => state.permissions.permissions);
+  const [flagItem, setFlagItem] = React.useState<ReceivingSlipGroupItem | null>(null);
 
-  // Drop any open exception when the selected slip changes, so an item from a
+  // Drop any in-flight line edit when the selected slip changes, so a line from a
   // previous slip is never submitted against the new slip's id.
   React.useEffect(() => {
-    setExceptionItem(null);
+    setFlagItem(null);
   }, [slip?.id]);
 
   const handleReject = React.useCallback(
@@ -234,6 +307,20 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
 
   const rows = React.useMemo(() => (slip ? slipToRows(slip) : []), [slip]);
 
+  // Hiding the control up front is the documented answer to a 403; the API also
+  // refuses line edits once the slip is approved or rejected.
+  const canWrite = hasPermission(permissions, 'warehouse.update') || hasPermission(permissions, 'wms.scan');
+  const flagBlocked = flagBlockedReason(slip, canWrite);
+
+  /** The flag endpoint owns the resulting state, so report what it returned. */
+  const handleFlagged = React.useCallback(
+    (result: FlagLineResponse) => {
+      toast(flagToastCopy(result));
+      onLineFlagged?.();
+    },
+    [toast, onLineFlagged],
+  );
+
   const columns = React.useMemo<QRDetailColumn[]>(
     () => [
       { id: 'flag', header: 'Flag', cell: (row) => <FlagCell row={row} /> },
@@ -242,10 +329,10 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
         id: 'actions',
         header: 'Actions',
         align: 'right',
-        cell: (row) => <ActionsCell row={row} onException={setExceptionItem} onReject={onRejectItem ? handleReject : undefined} />,
+        cell: (row) => <ActionsCell row={row} blockedReason={flagBlocked} onFlag={setFlagItem} onReject={onRejectItem ? handleReject : undefined} />,
       },
     ],
-    [handleReject, onRejectItem],
+    [flagBlocked, handleReject, onRejectItem],
   );
 
   return (
@@ -261,13 +348,14 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
         summary={slip ? <SlipSummary slip={slip} totalUnits={countUnits(slip)} /> : undefined}/>
 
       {slip && (
-        <InboundExceptionDialog open={Boolean(exceptionItem)}
+        <FlagLineDialog open={Boolean(flagItem)}
           onOpenChange={(next) => {
-            if (!next) setExceptionItem(null);
+            if (!next) setFlagItem(null);
           }}
           slipId={slip.id}
-          item={exceptionItem}
-          onCompleted={() => onExceptionCreated?.()}/>
+          item={flagItem}
+          onFlagged={handleFlagged}
+          onStale={onLineFlagged}/>
       )}
     </>
   );

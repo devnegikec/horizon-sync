@@ -14,6 +14,7 @@ import type {
   ReceivingSlipActionResult,
   PutAwayList,
   PutAwayListBatchResponse,
+  PutAwayExceptionRequest,
   PaginatedPutAwayLists,
   PutAwayItem,
   PickList,
@@ -60,6 +61,13 @@ import type {
   BulkDispositionResponse,
   PaginatedInboundExceptions,
   PickListBatchResponse,
+  FlagLineRequest,
+  FlagLineResponse,
+  ShortBalanceFilters,
+  PaginatedShortBalances,
+  ShortBalance,
+  ShortBalanceEvent,
+  CloseShortBalanceRequest,
 } from '../../types/wms.types';
 
 const BASE = `${environment.apiCoreUrl}/api/v1`;
@@ -96,6 +104,41 @@ export function scanIdempotencyKey(pickListId: string): string {
   return `scan:${pickListId}:${nonce}`;
 }
 
+/** `Error` that also carries the HTTP status and the parsed error body. */
+export type WmsHttpError = Error & { status: number; details?: unknown };
+
+function httpError(message: string, status: number, details?: unknown): WmsHttpError {
+  const error = new Error(message) as WmsHttpError;
+  error.status = status;
+  error.details = details;
+  return error;
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Not JSON — could be HTML (nginx 502) or plain text.
+    return undefined;
+  }
+}
+
+/**
+ * Displayable message from either envelope: the domain `{ message, hint, … }`
+ * one or FastAPI's `{ detail: { message } }` one. The full body travels on
+ * `details` so `toNormalizedApiError` can still read `hint`/`details[]`.
+ */
+function errorBodyMessage(body: unknown, fallback: string): string {
+  if (!body || typeof body !== 'object') return fallback;
+  const { message, detail } = body as { message?: unknown; detail?: unknown };
+  if (typeof message === 'string' && message) return message;
+  if (typeof detail === 'string' && detail) return detail;
+  if (detail && typeof detail === 'object' && 'message' in detail) {
+    return String((detail as { message: unknown }).message);
+  }
+  return fallback;
+}
+
 async function req<T>(url: string, token: string, options: RequestInit = {}): Promise<T> {
   const { headers: extraHeaders, body, ...rest } = options;
   // Let the browser set the multipart boundary for file uploads; only JSON
@@ -112,14 +155,10 @@ async function req<T>(url: string, token: string, options: RequestInit = {}): Pr
   });
   if (!res.ok) {
     const text = await res.text();
-    let detail = text;
-    try {
-      const parsed = JSON.parse(text);
-      detail = parsed?.message ?? parsed?.detail ?? text;
-    } catch {
-      // not json
-    }
-    throw new Error(detail || `HTTP ${res.status}`);
+    const body = parseJson(text);
+    // `message` stays a displayable string so existing `err.message` callers keep
+    // working; `details` carries the whole body for the error normaliser.
+    throw httpError(errorBodyMessage(body, text || `HTTP ${res.status}`), res.status, body);
   }
   if (res.status === 204) return {} as T;
   return res.json();
@@ -220,10 +259,35 @@ export const inboundApi = {
       body: JSON.stringify({ reason }),
     }),
 
-  flagLineItem: (token: string, slipId: string, itemId: string, flag: 'short' | 'damaged', notes?: string) =>
-    req<unknown>(`${BASE}/inbound/receiving-slips/${slipId}/items/${itemId}/flag`, token, {
+  /**
+   * Flags one receiving-slip line. `short_qty` is required for `short` and must
+   * be omitted otherwise; `destination` is the inverse — required for the
+   * segregation flags, rejected for `short`.
+   */
+  flagLineItem: (token: string, slipId: string, itemId: string, data: FlagLineRequest) =>
+    req<FlagLineResponse>(`${BASE}/inbound/receiving-slips/${slipId}/items/${itemId}/flag`, token, {
       method: 'POST',
-      body: JSON.stringify({ flag, notes }),
+      body: JSON.stringify(data),
+    }),
+
+  listShortBalances: (token: string, params: ShortBalanceFilters = {}) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') p.append(key, String(value));
+    });
+    return req<PaginatedShortBalances>(`${BASE}/inbound/short-balances?${p}`, token);
+  },
+
+  getShortBalance: (token: string, balanceId: string) =>
+    req<ShortBalance>(`${BASE}/inbound/short-balances/${balanceId}`, token),
+
+  getShortBalanceHistory: (token: string, balanceId: string) =>
+    req<ShortBalanceEvent[]>(`${BASE}/inbound/short-balances/${balanceId}/history`, token),
+
+  closeShortBalance: (token: string, balanceId: string, data: CloseShortBalanceRequest) =>
+    req<ShortBalance>(`${BASE}/inbound/short-balances/${balanceId}/close`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
     }),
 
   rejectItem: (token: string, slipId: string, itemId: string, reason: string) =>
@@ -358,6 +422,18 @@ export const putAwayApi = {
     req<PutAwayItem>(`${BASE}/put-away/${listId}/items/${itemId}/skip`, token, {
       method: 'POST',
       body: JSON.stringify({ reason }),
+    }),
+
+  /**
+   * Raises an inbound exception for stock found to be unfit while being put
+   * away. `itemId` is the put-away item id for `scope: 'item'`, and the master
+   * pack's q-seal id for `scope: 'pack'` — in which case the backend raises a
+   * single exception covering every unit covered by `item_ids`.
+   */
+  raiseException: (token: string, listId: string, itemId: string, data: PutAwayExceptionRequest) =>
+    req<InboundException>(`${BASE}/put-away/${listId}/items/${itemId}/exception`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
     }),
 
   generateFromSlip: (

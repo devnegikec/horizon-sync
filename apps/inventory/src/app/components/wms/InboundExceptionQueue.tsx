@@ -1,15 +1,31 @@
 import * as React from 'react';
 
-import { AlertTriangle, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button, Input, Label, Textarea } from '@horizon-sync/ui/components';
 
-import type { BulkDispositionAction, InboundException, WMSPagination } from '../../types/wms.types';
+import type {
+  BulkDispositionAction,
+  InboundException,
+  PaginatedInboundExceptions,
+  WMSPagination,
+} from '../../types/wms.types';
 import { inboundApi } from '../../utility/api/wms';
 import { hasPermission } from '../../utils/permissions';
 
+import {
+  exceptionGroups,
+  groupDestinations,
+  groupReasons,
+  groupStatus,
+  isResolvedStatus,
+  type ExceptionGroup,
+} from './exceptionGroups';
+import { ShortageLedger } from './shortage';
+
 const PAGE_SIZE = 20;
+const EMPTY = '\u2014';
 
 const STATUS_STYLES: Record<string, string> = {
   pending_approval: 'bg-amber-500/10 text-amber-600',
@@ -40,8 +56,19 @@ function exceptionIdentity(exception: InboundException): string {
   return exception.item_name || exception.sku || exception.qr_identifier || 'Unknown identity';
 }
 
-function isResolvedStatus(status: string): boolean {
-  return status === 'closed' || status === 'released';
+interface ExceptionPage {
+  exceptions: InboundException[];
+  pagination: WMSPagination | null;
+  page: number;
+}
+
+/** Keeps the response mapping out of the effect so the loader stays readable. */
+function readExceptionPage(res: PaginatedInboundExceptions, fallbackPage: number): ExceptionPage {
+  return {
+    exceptions: res.exceptions ?? [],
+    pagination: res.pagination ?? null,
+    page: res.pagination?.page ?? fallbackPage,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -109,6 +136,149 @@ function ExceptionRow({
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  SKU + batch grouping                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Tri-state checkbox for a whole group. Toggling walks the group's selectable
+ * ids, because bulk disposal is keyed per exception, not per group.
+ */
+function GroupCheckbox({
+  ids,
+  selected,
+  label,
+  onToggle,
+}: {
+  ids: string[];
+  selected: Set<string>;
+  label: string;
+  onToggle: (id: string) => void;
+}) {
+  const chosen = ids.filter((id) => selected.has(id));
+  const allChosen = chosen.length > 0 && chosen.length === ids.length;
+
+  if (ids.length === 0) return null;
+
+  return (
+    <input type="checkbox"
+      aria-label={label}
+      checked={allChosen}
+      ref={(node) => {
+        if (node) node.indeterminate = chosen.length > 0 && !allChosen;
+      }}
+      onChange={() => ids.forEach((id) => onToggle(id))}/>
+  );
+}
+
+function GroupIdentity({
+  group,
+  expanded,
+  onToggleExpand,
+}: {
+  group: ExceptionGroup;
+  expanded: boolean;
+  onToggleExpand: () => void;
+}) {
+  const Chevron = expanded ? ChevronDown : ChevronRight;
+
+  return (
+    <button type="button" className="flex items-start gap-2 text-left" onClick={onToggleExpand}>
+      <Chevron className="mt-0.5 h-3.5 w-3.5 shrink-0"/>
+      <span>
+        <span className="font-medium">{group.sku}</span>
+        <span className="ml-2 font-mono text-xs text-muted-foreground">Batch {group.batchNumber ?? EMPTY}</span>
+        <span className="mt-0.5 block text-xs text-muted-foreground">
+          {group.exceptions.length} exception(s) on this page share this SKU and batch
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function GroupStatusCell({ status }: { status: string | null }) {
+  if (status) return <StatusBadge status={status} />;
+  return <span className="text-xs text-muted-foreground">Mixed</span>;
+}
+
+/**
+ * One entry for a batch. A group of one renders as an ordinary row, so the
+ * common case is unchanged and grouping only shows up where it helps.
+ */
+function ExceptionGroupRows({
+  group,
+  canDispose,
+  selected,
+  busy,
+  onToggle,
+  onDispose,
+}: {
+  group: ExceptionGroup;
+  canDispose: boolean;
+  selected: Set<string>;
+  busy: boolean;
+  onToggle: (id: string) => void;
+  onDispose: (exception: InboundException, action: BulkDispositionAction) => void;
+}) {
+  const [expanded, setExpanded] = React.useState(false);
+
+  if (!group.collapsed) {
+    const [only] = group.exceptions;
+    return (
+      <ExceptionRow exception={only}
+        canDispose={canDispose}
+        isSelected={selected.has(only.id)}
+        busy={busy}
+        onToggle={onToggle}
+        onDispose={onDispose}/>
+    );
+  }
+
+  const selectableIds = group.exceptions
+    .filter((exception) => !isResolvedStatus(exception.status))
+    .map((exception) => exception.id);
+  const toggleExpand = () => setExpanded((prev) => !prev);
+  const status = groupStatus(group);
+
+  return (
+    <>
+      <tr className="bg-muted/30 hover:bg-muted/40">
+        {canDispose && (
+          <td className="px-3 py-2 align-top">
+            <GroupCheckbox ids={selectableIds}
+              selected={selected}
+              label={`Select every exception for ${group.sku} batch ${group.batchNumber}`}
+              onToggle={onToggle}/>
+          </td>
+        )}
+        <td className="px-4 py-2 align-top">
+          <GroupIdentity group={group} expanded={expanded} onToggleExpand={toggleExpand}/>
+        </td>
+        <td className="px-4 py-2 align-top text-xs text-muted-foreground">{groupReasons(group)}</td>
+        <td className="px-4 py-2 text-center align-top font-medium tabular-nums">{group.quantity}</td>
+        <td className="px-4 py-2 align-top text-xs">{groupDestinations(group)}</td>
+        <td className="px-4 py-2 align-top"><GroupStatusCell status={status}/></td>
+        {canDispose && (
+          <td className="px-4 py-2 text-right align-top">
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={toggleExpand}>
+              {expanded ? 'Hide units' : `Show ${group.exceptions.length} units`}
+            </Button>
+          </td>
+        )}
+      </tr>
+      {expanded && group.exceptions.map((exception) => (
+        <ExceptionRow key={exception.id}
+          exception={exception}
+          canDispose={canDispose}
+          isSelected={selected.has(exception.id)}
+          busy={busy}
+          onToggle={onToggle}
+          onDispose={onDispose}/>
+      ))}
+    </>
+  );
+}
+
 function ExceptionsTable({
   exceptions,
   canDispose,
@@ -130,6 +300,7 @@ function ExceptionsTable({
 }) {
   const selectable = exceptions.filter((e) => !isResolvedStatus(e.status));
   const allVisibleSelected = selectable.length > 0 && selectable.every((e) => selected.has(e.id));
+  const groups = React.useMemo(() => exceptionGroups(exceptions), [exceptions]);
 
   return (
     <div className="overflow-x-auto rounded-lg border">
@@ -150,11 +321,11 @@ function ExceptionsTable({
           </tr>
         </thead>
         <tbody className="divide-y">
-          {exceptions.map((exception) => (
-            <ExceptionRow key={exception.id}
-              exception={exception}
+          {groups.map((group) => (
+            <ExceptionGroupRows key={group.key}
+              group={group}
               canDispose={canDispose}
-              isSelected={selected.has(exception.id)}
+              selected={selected}
               busy={busy}
               onToggle={onToggle}
               onDispose={onDispose}/>
@@ -228,7 +399,7 @@ function PaginationFooter({
 /*  Queue                                                              */
 /* ------------------------------------------------------------------ */
 
-export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string }) {
+function ExceptionQueueView({ warehouseId }: { warehouseId?: string }) {
   const token = useUserStore((state) => state.accessToken);
   const permissions = useUserStore((state) => state.permissions.permissions);
   const canDispose = hasPermission(permissions, 'inbound_exception.dispose');
@@ -271,9 +442,10 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
           page_size: PAGE_SIZE,
         });
         if (seq !== requestSeqRef.current) return;
-        setExceptions(res.exceptions ?? []);
-        setPagination(res.pagination ?? null);
-        setPage(res.pagination?.page ?? targetPage);
+        const next = readExceptionPage(res, targetPage);
+        setExceptions(next.exceptions);
+        setPagination(next.pagination);
+        setPage(next.page);
       } catch (err) {
         if (seq !== requestSeqRef.current) return;
         setError(err instanceof Error ? err.message : 'Failed to load exceptions');
@@ -371,7 +543,10 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">Hold / Quarantine Queue</h2>
-          <p className="text-sm text-muted-foreground">Non-pickable inbound stock awaiting a manager decision.</p>
+          <p className="text-sm text-muted-foreground">
+            Non-pickable inbound stock awaiting a manager decision. Exceptions sharing a SKU and batch — for example the
+            units of one excepted master pack — are grouped into a single row.
+          </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => load(page)} disabled={loading}>
           <RefreshCw className="mr-1 h-3.5 w-3.5" />
@@ -442,6 +617,41 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
       )}
 
       <PaginationFooter pagination={pagination} page={page} loading={loading} onPrev={() => load(page - 1)} onNext={() => load(page + 1)} />
+    </div>
+  );
+}
+
+const EXCEPTION_VIEWS = [
+  { key: 'queue', label: 'Hold / Quarantine Queue' },
+  { key: 'shortages', label: 'Shortage Ledger' },
+] as const;
+
+type ExceptionView = (typeof EXCEPTION_VIEWS)[number]['key'];
+
+/**
+ * "Holds & Quarantine" holds two different problems: stock that physically needs
+ * a disposition decision, and stock that never arrived. They share a section
+ * because both are inbound discrepancies a supervisor has to clear.
+ */
+export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string }) {
+  const [view, setView] = React.useState<ExceptionView>('queue');
+
+  return (
+    <div className="space-y-4">
+      <div className="inline-flex gap-1 rounded-lg border bg-muted/20 p-1">
+        {EXCEPTION_VIEWS.map(({ key, label }) => (
+          <button key={key}
+            type="button"
+            onClick={() => setView(key)}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              view === key ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'queue' ? <ExceptionQueueView warehouseId={warehouseId}/> : <ShortageLedger/>}
     </div>
   );
 }
