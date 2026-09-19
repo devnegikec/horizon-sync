@@ -33,7 +33,6 @@ import {
   DISPOSITION_ACTIONS,
   exceptionRows,
   exceptionSubRows,
-  rowExceptions,
   selectedExceptions,
   type DispositionSubmission,
   type DispositionTarget,
@@ -338,7 +337,8 @@ function ExceptionQueueView({ warehouseId }: { warehouseId?: string }) {
   }, []);
 
   const openDisposition = React.useCallback((row: ExceptionTableRow, action: BulkDispositionAction) => {
-    setTarget({ exceptions: rowExceptions(row), action });
+    // A mixed batch can hold already-resolved units; only actionable ones may be sent.
+    setTarget({ exceptions: selectedExceptions([row]), action });
   }, []);
 
   const columns = React.useMemo(

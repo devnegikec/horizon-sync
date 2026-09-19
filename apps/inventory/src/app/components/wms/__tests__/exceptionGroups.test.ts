@@ -50,7 +50,7 @@ describe('exceptionGroups', () => {
       exception({ id: 'c', sku: 'S1', batch_number: 'B1' }),
     ]);
 
-    expect(groups.map((group) => group.key)).toEqual(['S1::B1', 'S2::B2']);
+    expect(groups.map((group) => group.key)).toEqual(['["S1","B1"]', '["S2","B2"]']);
     expect(groups[0].exceptions.map((grouped) => grouped.id)).toEqual(['a', 'c']);
   });
 

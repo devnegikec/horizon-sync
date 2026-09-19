@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { ReceivingSlip, ReceivingSlipGroupItem } from '../../../types/wms.types';
+import type { ReceivingSlip, ReceivingSlipGroupItem } from '../../../../types/wms.types';
 import { discrepancyPhrases, slipDiscrepancies } from '../slipDiscrepancies';
 
 /** Only `groups[].items` is read, so the fixture stays this small on purpose. */

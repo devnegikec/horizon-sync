@@ -445,6 +445,27 @@ function ExceptionOnly({ show, children }: { show: boolean; children: React.Reac
   return <div className="flex justify-end">{children}</div>;
 }
 
+/** Finished work stays read-only: completed, cancelled and skipped rows are terminal. */
+function isTerminalStatus(status: string | undefined): boolean {
+  return status === 'completed' || status === 'cancelled' || status === 'skipped';
+}
+
+/** The row's own status, or its group's when the row is a parent pack. */
+function rowStatus(row: QRDetailRow): string | undefined {
+  const item = row.meta?.item as PutAwayItem | undefined;
+  return item?.status ?? (row.meta?.status as string | undefined);
+}
+
+/**
+ * Whether the exception affordance applies: the manager may except, the row has
+ * an addressable target, and the work is not already finished — a terminal row
+ * has nothing left to decide, so its parent pack is excluded too.
+ */
+function canExceptRow(row: QRDetailRow, canException: boolean): boolean {
+  if (!canException || !row.meta?.exceptionTarget) return false;
+  return !isTerminalStatus(rowStatus(row));
+}
+
 function ActionsCell({
   row,
   canException,
@@ -461,7 +482,7 @@ function ActionsCell({
   const item = row.meta?.item as PutAwayItem | undefined;
   const target = row.meta?.exceptionTarget as PutAwayExceptionTarget | undefined;
   const exception = <ExceptionAction target={target} canException={canException} onException={onException}/>;
-  const mayExcept = canException && Boolean(target);
+  const mayExcept = canExceptRow(row, canException);
 
   // Parent (product) rows carry no put-away actions, but a manager can except
   // the whole master pack from one.

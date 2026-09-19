@@ -317,6 +317,11 @@ function hasApiErrorShape(err: unknown): err is { status: number; details?: unkn
  */
 export function toNormalizedApiError(err: unknown): NormalizedApiError {
   if (hasApiErrorShape(err)) {
+    // `apiRequest` reports a request that never reached the API as status 0 and
+    // carries no HTTP body, so normalise it like any other network failure.
+    if (err.status === 0) {
+      return { httpStatus: 0, code: 'NETWORK', message: err.message, fields: [] };
+    }
     const normalized = normalizeApiError(err.status, err.details);
     if (err.status === 401) {
       // The WMS client talks to the API with `fetch` directly rather than through

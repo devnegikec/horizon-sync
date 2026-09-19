@@ -18,10 +18,13 @@ export interface ExceptionGroup {
  * Exceptions can only be collapsed when both the SKU and the batch are known —
  * without them there is no shared identity to group on, and rows that happen to
  * share a null would be merged misleadingly.
+ *
+ * The pair is JSON-encoded rather than delimiter-joined, so values containing the
+ * delimiter can never produce the same key and merge unrelated rows.
  */
 function groupKey(exception: InboundException): string | null {
   if (!exception.sku || !exception.batch_number) return null;
-  return `${exception.sku}::${exception.batch_number}`;
+  return JSON.stringify([exception.sku, exception.batch_number]);
 }
 
 /**

@@ -81,4 +81,12 @@ describe('toNormalizedApiError', () => {
     expect(result.httpStatus).toBe(0);
     expect(result.message).not.toBe('');
   });
+
+  it('keeps the network code for the status-0 error apiRequest throws', () => {
+    const result = toNormalizedApiError(apiError(0, undefined));
+
+    expect(result.code).toBe('NETWORK');
+    expect(result.httpStatus).toBe(0);
+    expect(result.message).toBe('server said no');
+  });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { ReceivingSlipGroupItem, SettableLineFlag } from '../../../types/wms.types';
+import type { ReceivingSlipGroupItem, SettableLineFlag } from '../../../../types/wms.types';
 import { flagOptionsFor, readTarget, seedFlagForm } from '../FlagLineDialog';
 import { packFlagItems } from '../SlipDetailDialog';
 

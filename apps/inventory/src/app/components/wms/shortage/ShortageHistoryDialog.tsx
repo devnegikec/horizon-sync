@@ -141,17 +141,25 @@ export function ShortageHistoryDialog({ balance, onOpenChange }: ShortageHistory
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<NormalizedApiError | null>(null);
 
+  // Guards against a slow request for the previous balance landing after the
+  // user has already switched, which would show the wrong audit trail.
+  const requestSeqRef = React.useRef(0);
+
   const load = React.useCallback(async () => {
     if (!token || !balanceId) return;
+    const seq = requestSeqRef.current + 1;
+    requestSeqRef.current = seq;
     setLoading(true);
     setError(null);
     try {
       const res = await inboundApi.getShortBalanceHistory(token, balanceId);
+      if (seq !== requestSeqRef.current) return;
       setEvents(res ?? []);
     } catch (err) {
+      if (seq !== requestSeqRef.current) return;
       setError(toNormalizedApiError(err));
     } finally {
-      setLoading(false);
+      if (seq === requestSeqRef.current) setLoading(false);
     }
   }, [token, balanceId]);
 
