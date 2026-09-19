@@ -6,4 +6,6 @@ export { createReceivingSlipColumns } from './ReceivingSlipColumns';
 export type { ReceivingSlipColumnsOptions } from './ReceivingSlipColumns';
 export { RejectSlipDialog } from './RejectSlipDialog';
 export type { RejectSlipDialogProps } from './RejectSlipDialog';
+export { RejectItemDialog } from './RejectItemDialog';
+export type { RejectItemDialogProps } from './RejectItemDialog';
 export { SlipDetailDialog } from './SlipDetailDialog';

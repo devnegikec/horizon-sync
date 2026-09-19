@@ -4,10 +4,10 @@ import { AlertTriangle, Lock, XCircle } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import type { FlagLineResponse, ReceivingSlip, ReceivingSlipGroup, ReceivingSlipGroupItem, ReceivingSlipItem } from '../../../types/wms.types';
+import { toNormalizedApiError, type NormalizedApiError } from '../../../utility/api/core';
 import { hasPermission } from '../../../utils/permissions';
 import { QRDetailDialog, type QRDetailColumn, type QRDetailRow } from '../QRDetailDialog';
 import { WMSStatusBadge } from '../WMSStatusBadge';
@@ -16,6 +16,7 @@ import { ConditionBadge } from './ConditionBadge';
 import { FlagBadge } from './FlagBadge';
 import { FlagLineDialog } from './FlagLineDialog';
 import { getGroupCondition, getGroupFlag } from './groupAggregates';
+import { RejectItemDialog } from './RejectItemDialog';
 
 // ─── Slip → generic rows ──────────────────────────────────────────────────────
 
@@ -164,97 +165,112 @@ function flagBlockedReason(slip: ReceivingSlip | null, canWrite: boolean): strin
   return null;
 }
 
-function FlagAction({
-  blockedReason,
-  label,
+function FlagButton({ label, onFlag }: { label: string; onFlag: () => void }) {
+  return (
+    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={onFlag}>
+      <AlertTriangle className="mr-1 h-3.5 w-3.5" />
+      {label}
+    </Button>
+  );
+}
+
+/**
+ * The flag control for a row, or nothing at all.
+ *
+ * It is withdrawn — rather than rendered disabled — once the slip has left
+ * `pending_review`, because a lock that can never be released is only noise. The
+ * reason is stated once in the slip summary instead.
+ */
+function FlagControl({
+  row,
+  canFlag,
   onFlag,
+  onFlagPack,
 }: {
-  /** `null` when the line or pack can be flagged. */
-  blockedReason: string | null;
-  label: string;
-  onFlag: () => void;
+  row: QRDetailRow;
+  canFlag: boolean;
+  onFlag: (item: ReceivingSlipGroupItem) => void;
+  onFlagPack: (items: ReceivingSlipGroupItem[]) => void;
 }) {
-  if (!blockedReason) {
-    return (
-      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={onFlag}>
-        <AlertTriangle className="mr-1 h-3.5 w-3.5" />
-        {label}
-      </Button>
-    );
-  }
+  const item = row.meta?.item as ReceivingSlipGroupItem | undefined;
+  const packItems = row.meta?.packItems as ReceivingSlipGroupItem[] | undefined;
+
+  if (!canFlag) return null;
+  if (item) return <FlagButton label="Flag" onFlag={() => onFlag(item)}/>;
+  if (!packItems?.length) return null;
+
+  // A pack row has no line of its own, and the flag endpoint is line-scoped, so
+  // the dialog fans the flag out across the pack.
+  return <FlagButton label={`Flag pack (${packItems.length})`} onFlag={() => onFlagPack(packItems)}/>;
+}
+
+/** Reject is a per-line decision, so it never appears on a pack row. */
+function RejectControl({
+  item,
+  onReject,
+}: {
+  item?: ReceivingSlipGroupItem;
+  onReject?: (item: ReceivingSlipGroupItem) => void;
+}) {
+  if (!item || !onReject) return null;
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {/* The span keeps the tooltip reachable while the button is disabled. */}
-          <span className="inline-flex">
-            <Button size="sm" variant="outline" className="h-7 px-2 text-xs" disabled>
-              <Lock className="mr-1 h-3.5 w-3.5" />
-              {label}
-            </Button>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="max-w-64">{blockedReason}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Button size="sm"
+      variant="outline"
+      className="h-7 border-destructive/20 px-2 text-xs text-destructive hover:!bg-destructive hover:!text-white"
+      onClick={() => onReject(item)}>
+      <XCircle className="mr-1 h-3.5 w-3.5" />
+      Reject
+    </Button>
   );
 }
 
 function ActionsCell({
   row,
-  blockedReason,
+  canFlag,
   onFlag,
   onFlagPack,
   onReject,
 }: {
   row: QRDetailRow;
-  blockedReason: string | null;
+  canFlag: boolean;
   onFlag: (item: ReceivingSlipGroupItem) => void;
   onFlagPack: (items: ReceivingSlipGroupItem[]) => void;
-  onReject?: (itemId: string) => void;
+  onReject?: (item: ReceivingSlipGroupItem) => void;
 }) {
   const item = row.meta?.item as ReceivingSlipGroupItem | undefined;
-  const packItems = row.meta?.packItems as ReceivingSlipGroupItem[] | undefined;
 
-  // A master pack has no single line to act on, but the whole pack can be flagged
-  // at once — the flag endpoint is line-scoped, so the dialog fans it out.
-  if (!item) {
-    if (!packItems || packItems.length === 0) return null;
-    return (
-      <div className="flex items-center justify-end gap-2">
-        <FlagAction blockedReason={blockedReason}
-          label={`Flag pack (${packItems.length})`}
-          onFlag={() => onFlagPack(packItems)}/>
-      </div>
-    );
-  }
-
-  if (item.flag === 'rejected') {
+  // A rejected line is read-only, and its reason is all that is worth showing.
+  if (item?.flag === 'rejected') {
     return <span className="text-xs font-medium text-destructive">Rejected{item.rejection_reason ? ` — ${item.rejection_reason}` : ''}</span>;
   }
 
   return (
     <div className="flex items-center justify-end gap-2">
-      <FlagAction blockedReason={blockedReason} label="Flag" onFlag={() => onFlag(item)} />
-      {onReject && (
-        <Button size="sm"
-          variant="outline"
-          className="h-7 border-destructive/20 px-2 text-xs text-destructive hover:!bg-destructive hover:!text-white"
-          onClick={() => onReject(item.id)}>
-          <XCircle className="mr-1 h-3.5 w-3.5" />
-          Reject
-        </Button>
-      )}
+      <FlagControl row={row} canFlag={canFlag} onFlag={onFlag} onFlagPack={onFlagPack}/>
+      <RejectControl item={item} onReject={onReject}/>
     </div>
   );
 }
 
 // ─── Summary block ────────────────────────────────────────────────────────────
 
-function SlipSummary({ slip, totalUnits }: { slip: ReceivingSlip; totalUnits: number }) {
+/**
+ * Why flagging is unavailable, stated once for the whole slip instead of as a
+ * locked button on every row.
+ */
+function FlagBlockedNote({ reason }: { reason: string | null }) {
+  if (!reason) return null;
+
+  return (
+    <p className="flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+      <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <span>{reason}</span>
+    </p>
+  );
+}
+
+function SlipSummary({ slip, totalUnits, flagBlocked }: { slip: ReceivingSlip; totalUnits: number; flagBlocked: string | null }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-3 gap-3 text-sm">
@@ -278,6 +294,8 @@ function SlipSummary({ slip, totalUnits }: { slip: ReceivingSlip; totalUnits: nu
           {slip.vehicle_no && <span className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">Vehicle: {slip.vehicle_no}</span>}
         </div>
       )}
+
+      <FlagBlockedNote reason={flagBlocked}/>
 
       {slip.rejection_reason && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -316,27 +334,34 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
   const { toast } = useToast();
   const permissions = useUserStore((state) => state.permissions.permissions);
   const [flagTarget, setFlagTarget] = React.useState<ReceivingSlipGroupItem[] | null>(null);
+  const [rejectTarget, setRejectTarget] = React.useState<ReceivingSlipGroupItem | null>(null);
+  const [rejectBusy, setRejectBusy] = React.useState(false);
+  const [rejectError, setRejectError] = React.useState<NormalizedApiError | null>(null);
 
   // Drop any in-flight line edit when the selected slip changes, so a line from a
   // previous slip is never submitted against the new slip's id.
   React.useEffect(() => {
     setFlagTarget(null);
+    setRejectTarget(null);
+    setRejectError(null);
   }, [slip?.id]);
 
-  const handleReject = React.useCallback(
-    async (itemId: string) => {
-      if (!slip || !onRejectItem) return;
-      const reason = prompt('Rejection reason:');
-      if (!reason?.trim()) return;
-      try {
-        await onRejectItem(slip.id, itemId, reason);
-        toast({ title: 'Item rejected' });
-      } catch (err) {
-        toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
-      }
-    },
-    [slip, onRejectItem, toast],
-  );
+  /** Rejection is confirmed in a dialog; the API owns the resulting state. */
+  const confirmReject = async (reason: string) => {
+    if (!slip || !rejectTarget || !onRejectItem) return;
+    setRejectBusy(true);
+    setRejectError(null);
+    try {
+      await onRejectItem(slip.id, rejectTarget.id, reason);
+      toast({ title: 'Line rejected', description: `${rejectTarget.sku} — ${reason}` });
+      setRejectTarget(null);
+    } catch (err) {
+      // The parent refreshes the slip, so keep the dialog open on the failure.
+      setRejectError(toNormalizedApiError(err));
+    } finally {
+      setRejectBusy(false);
+    }
+  };
 
   const rows = React.useMemo(() => (slip ? slipToRows(slip) : []), [slip]);
 
@@ -344,6 +369,7 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
   // refuses line edits once the slip is approved or rejected.
   const canWrite = hasPermission(permissions, 'warehouse.update') || hasPermission(permissions, 'wms.scan');
   const flagBlocked = flagBlockedReason(slip, canWrite);
+  const canFlag = flagBlocked === null;
 
   /** The flag endpoint owns the resulting state, so report what it returned. */
   const handleFlagged = React.useCallback(
@@ -364,14 +390,14 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
         align: 'right',
         cell: (row) => (
           <ActionsCell row={row}
-            blockedReason={flagBlocked}
+            canFlag={canFlag}
             onFlag={(item) => setFlagTarget([item])}
             onFlagPack={setFlagTarget}
-            onReject={onRejectItem ? handleReject : undefined}/>
+            onReject={onRejectItem ? setRejectTarget : undefined}/>
         ),
       },
     ],
-    [flagBlocked, handleReject, onRejectItem],
+    [canFlag, onRejectItem],
   );
 
   return (
@@ -384,7 +410,7 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
         rows={rows}
         columns={columns}
         emptyMessage={error ?? 'No items'}
-        summary={slip ? <SlipSummary slip={slip} totalUnits={countUnits(slip)} /> : undefined}/>
+        summary={slip ? <SlipSummary slip={slip} totalUnits={countUnits(slip)} flagBlocked={flagBlocked}/> : undefined}/>
 
       {slip && (
         <FlagLineDialog open={Boolean(flagTarget)}
@@ -396,6 +422,14 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
           onFlagged={handleFlagged}
           onStale={onLineFlagged}/>
       )}
+
+      <RejectItemDialog item={rejectTarget}
+        submitting={rejectBusy}
+        error={rejectError}
+        onOpenChange={(next) => {
+          if (!next) setRejectTarget(null);
+        }}
+        onConfirm={confirmReject}/>
     </>
   );
 }
