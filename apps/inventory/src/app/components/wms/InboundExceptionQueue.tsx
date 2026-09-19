@@ -1,188 +1,169 @@
 import * as React from 'react';
 
-import { AlertTriangle, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { type ColumnDef, type Table } from '@tanstack/react-table';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Button, Input, Label, Textarea } from '@horizon-sync/ui/components';
+import {
+  Button,
+  Card,
+  CardContent,
+  EmptyState,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  TableSkeleton,
+} from '@horizon-sync/ui/components';
+import { DataTable } from '@horizon-sync/ui/components/data-table';
 
-import type { BulkDispositionAction, InboundException, WMSPagination } from '../../types/wms.types';
+import type {
+  BulkDispositionAction,
+  InboundException,
+  PaginatedInboundExceptions,
+  WMSPagination,
+} from '../../types/wms.types';
 import { inboundApi } from '../../utility/api/wms';
 import { hasPermission } from '../../utils/permissions';
 
+import {
+  createInboundExceptionColumns,
+  DispositionDialog,
+  DISPOSITION_ACTIONS,
+  exceptionRows,
+  exceptionSubRows,
+  selectedExceptions,
+  type DispositionSubmission,
+  type DispositionTarget,
+  type ExceptionTableRow,
+} from './inbound-exceptions';
+import { ShortageLedger } from './shortage';
+
 const PAGE_SIZE = 20;
 
-const STATUS_STYLES: Record<string, string> = {
-  pending_approval: 'bg-amber-500/10 text-amber-600',
-  open: 'bg-amber-500/10 text-amber-600',
-  approved: 'bg-blue-500/10 text-blue-600',
-  released: 'bg-emerald-500/10 text-emerald-600',
-  closed: 'bg-muted text-muted-foreground',
-};
+/** Radix Select forbids an empty item value, so "everything" gets a sentinel. */
+const ALL_FILTERS = 'all';
 
-function StatusBadge({ status }: { status: string }) {
-  const style = STATUS_STYLES[status] ?? 'bg-muted text-muted-foreground';
-  return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${style}`}>{status.replace(/_/g, ' ')}</span>;
-}
+const DESTINATION_OPTIONS = ['HOLD', 'QUARANTINE'] as const;
 
-const DISPOSITION_ACTIONS: { value: BulkDispositionAction; label: string }[] = [
-  { value: 'release_to_receiving', label: 'Release' },
-  { value: 'move_to_hold', label: 'Hold' },
-  { value: 'move_to_quarantine', label: 'Quarantine' },
-  { value: 'return_to_sender', label: 'Return' },
-  { value: 'dispose', label: 'Dispose' },
-];
+const STATUS_OPTIONS = [
+  { value: 'pending_approval', label: 'Pending Approval' },
+  { value: 'open', label: 'Open' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'released', label: 'Released' },
+  { value: 'closed', label: 'Closed' },
+] as const;
 
-function requiresNote(action: BulkDispositionAction): boolean {
-  return action === 'return_to_sender' || action === 'dispose';
-}
-
-function exceptionIdentity(exception: InboundException): string {
-  return exception.item_name || exception.sku || exception.qr_identifier || 'Unknown identity';
-}
-
-function isResolvedStatus(status: string): boolean {
-  return status === 'closed' || status === 'released';
-}
-
-/* ------------------------------------------------------------------ */
-/*  Row / table / bulk bar / pagination                                */
-/* ------------------------------------------------------------------ */
-
-function ExceptionRow({
-  exception,
-  canDispose,
-  isSelected,
-  busy,
-  onToggle,
-  onDispose,
-}: {
-  exception: InboundException;
-  canDispose: boolean;
-  isSelected: boolean;
-  busy: boolean;
-  onToggle: (id: string) => void;
-  onDispose: (exception: InboundException, action: BulkDispositionAction) => void;
-}) {
-  const resolved = isResolvedStatus(exception.status);
-  const identity = exceptionIdentity(exception);
-
-  return (
-    <tr className="hover:bg-muted/20">
-      {canDispose && (
-        <td className="px-3 py-2 align-top">
-          {!resolved && (
-            <input type="checkbox" aria-label={`Select ${identity}`} checked={isSelected} onChange={() => onToggle(exception.id)} />
-          )}
-        </td>
-      )}
-      <td className="px-4 py-2 align-top">
-        <span className="flex items-center gap-2 font-medium">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
-          {identity}
-        </span>
-        {exception.note && <p className="mt-1 text-xs text-muted-foreground">{exception.note}</p>}
-        {exception.evidence.length > 0 && <p className="mt-1 text-xs text-muted-foreground">{exception.evidence.length} evidence file(s) attached</p>}
-      </td>
-      <td className="px-4 py-2 align-top text-xs text-muted-foreground">{exception.reason_code}</td>
-      <td className="px-4 py-2 align-top text-center">{exception.quantity}</td>
-      <td className="px-4 py-2 align-top text-xs">{exception.destination ?? '—'}</td>
-      <td className="px-4 py-2 align-top"><StatusBadge status={exception.status} /></td>
-      {canDispose && (
-        <td className="px-4 py-2 align-top text-right">
-          {!resolved && (
-            <div className="inline-flex flex-wrap justify-end gap-1">
-              {DISPOSITION_ACTIONS.map(({ value, label }) => (
-                <Button key={value}
-                  size="sm"
-                  variant={value === 'dispose' ? 'destructive' : 'outline'}
-                  className="h-7 px-2 text-xs"
-                  disabled={busy}
-                  onClick={() => onDispose(exception, value)}>
-                  {label}
-                </Button>
-              ))}
-            </div>
-          )}
-        </td>
-      )}
-    </tr>
-  );
-}
-
-function ExceptionsTable({
-  exceptions,
-  canDispose,
-  selected,
-  loading,
-  busy,
-  onToggleAll,
-  onToggle,
-  onDispose,
-}: {
+interface ExceptionPage {
   exceptions: InboundException[];
-  canDispose: boolean;
-  selected: Set<string>;
-  loading: boolean;
-  busy: boolean;
-  onToggleAll: () => void;
-  onToggle: (id: string) => void;
-  onDispose: (exception: InboundException, action: BulkDispositionAction) => void;
-}) {
-  const selectable = exceptions.filter((e) => !isResolvedStatus(e.status));
-  const allVisibleSelected = selectable.length > 0 && selectable.every((e) => selected.has(e.id));
+  pagination: WMSPagination | null;
+  page: number;
+}
 
+/** Keeps the response mapping out of the effect so the loader stays readable. */
+function readExceptionPage(res: PaginatedInboundExceptions, fallbackPage: number): ExceptionPage {
+  return {
+    exceptions: res.exceptions ?? [],
+    pagination: res.pagination ?? null,
+    page: res.pagination?.page ?? fallbackPage,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Filters, empty state and bulk bar                                */
+/* ------------------------------------------------------------------ */
+
+function ExceptionFilters({
+  destination,
+  status,
+  loading,
+  onDestinationChange,
+  onStatusChange,
+}: {
+  destination: string;
+  status: string;
+  loading: boolean;
+  onDestinationChange: (value: string) => void;
+  onStatusChange: (value: string) => void;
+}) {
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/30">
-          <tr>
-            {canDispose && (
-              <th className="w-10 px-3 py-2">
-                <input type="checkbox" aria-label="Select all" checked={allVisibleSelected} onChange={onToggleAll} disabled={loading || selectable.length === 0} />
-              </th>
-            )}
-            <th className="text-left px-4 py-2 font-medium text-muted-foreground">Item</th>
-            <th className="text-left px-4 py-2 font-medium text-muted-foreground">Reason</th>
-            <th className="text-center px-4 py-2 font-medium text-muted-foreground">Qty</th>
-            <th className="text-left px-4 py-2 font-medium text-muted-foreground">Destination</th>
-            <th className="text-left px-4 py-2 font-medium text-muted-foreground">Status</th>
-            {canDispose && <th className="text-right px-4 py-2 font-medium text-muted-foreground">Actions</th>}
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {exceptions.map((exception) => (
-            <ExceptionRow key={exception.id}
-              exception={exception}
-              canDispose={canDispose}
-              isSelected={selected.has(exception.id)}
-              busy={busy}
-              onToggle={onToggle}
-              onDispose={onDispose}/>
+    <div className="flex flex-wrap items-center gap-2">
+      <Select value={destination} onValueChange={onDestinationChange} disabled={loading}>
+        <SelectTrigger className="w-[190px]">
+          <SelectValue placeholder="All destinations" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_FILTERS}>All destinations</SelectItem>
+          {DESTINATION_OPTIONS.map((option) => (
+            <SelectItem key={option} value={option}>
+              {option}
+            </SelectItem>
           ))}
-        </tbody>
-      </table>
+        </SelectContent>
+      </Select>
+
+      <Select value={status} onValueChange={onStatusChange} disabled={loading}>
+        <SelectTrigger className="w-[190px]">
+          <SelectValue placeholder="All statuses" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_FILTERS}>All statuses</SelectItem>
+          {STATUS_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
 
+function ExceptionQueueEmpty({ filtered, onClearFilters }: { filtered: boolean; onClearFilters: () => void }) {
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="p-6">
+          <EmptyState icon={<AlertTriangle className="h-12 w-12" />}
+            title="No held or quarantined stock"
+            description={
+              filtered
+                ? 'No exceptions match the selected filters'
+                : 'Exceptions raised while receiving appear here for a manager decision'
+            }
+            action={
+              filtered ? (
+                <Button variant="outline" onClick={onClearFilters}>
+                  Clear filters
+                </Button>
+              ) : undefined
+            }/>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Bulk dispositions are keyed per exception, so the bar acts on the units behind the selection. */
 function BulkActionBar({
-  count,
+  exceptions,
   busy,
   onAction,
   onClear,
 }: {
-  count: number;
+  exceptions: InboundException[];
   busy: boolean;
   onAction: (action: BulkDispositionAction) => void;
   onClear: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2">
-      <span className="text-sm font-medium">{count} selected</span>
-      {DISPOSITION_ACTIONS.map(({ value, label }) => (
+      <span className="text-sm font-medium">{exceptions.length} selected</span>
+      {DISPOSITION_ACTIONS.map(({ value, label, destructive }) => (
         <Button key={value}
           size="sm"
-          variant={value === 'dispose' ? 'destructive' : 'outline'}
+          variant={destructive ? 'destructive' : 'outline'}
           disabled={busy}
           onClick={() => onAction(value)}>
           {label}
@@ -195,32 +176,79 @@ function BulkActionBar({
   );
 }
 
-function PaginationFooter({
-  pagination,
-  page,
-  loading,
-  onPrev,
-  onNext,
+/* ------------------------------------------------------------------ */
+/*  Table                                              */
+/* ------------------------------------------------------------------ */
+
+type ServerPagination = {
+  totalItems: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number, pageSize: number) => void;
+};
+
+function ExceptionTable({
+  isInitialLoading,
+  rows,
+  columns,
+  canDispose,
+  serverPagination,
+  pageSize,
+  filtered,
+  onClearFilters,
+  renderFilters,
+  renderBulkActions,
+  onTableReady,
 }: {
-  pagination: WMSPagination | null;
-  page: number;
-  loading: boolean;
-  onPrev: () => void;
-  onNext: () => void;
+  isInitialLoading: boolean;
+  rows: ExceptionTableRow[];
+  columns: ColumnDef<ExceptionTableRow>[];
+  canDispose: boolean;
+  serverPagination?: ServerPagination;
+  pageSize: number;
+  filtered: boolean;
+  onClearFilters: () => void;
+  renderFilters: () => React.ReactNode;
+  renderBulkActions: (rows: ExceptionTableRow[]) => React.ReactNode;
+  onTableReady: (table: Table<ExceptionTableRow>) => void;
 }) {
-  if (!pagination || pagination.total_pages <= 0) return null;
+  if (isInitialLoading) {
+    return (
+      <Card>
+        <CardContent className="p-0">
+          <TableSkeleton columns={9} rows={8} showHeader={true} />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (rows.length === 0) {
+    return <ExceptionQueueEmpty filtered={filtered} onClearFilters={onClearFilters} />;
+  }
+
   return (
-    <div className="flex items-center justify-between text-sm text-muted-foreground">
-      <span>Page {page} of {pagination.total_pages} · {pagination.total_items} total</span>
-      <div className="flex gap-2">
-        <Button size="sm" variant="outline" disabled={!pagination.has_prev || loading} onClick={onPrev}>
-          <ChevronLeft className="mr-1 h-3.5 w-3.5" /> Prev
-        </Button>
-        <Button size="sm" variant="outline" disabled={!pagination.has_next || loading} onClick={onNext}>
-          Next <ChevronRight className="ml-1 h-3.5 w-3.5" />
-        </Button>
-      </div>
-    </div>
+    <Card>
+      <CardContent className="p-0">
+        <DataTable columns={columns}
+          data={rows}
+          config={{
+            showSerialNumber: true,
+            showPagination: true,
+            enableRowSelection: canDispose,
+            enableColumnVisibility: true,
+            enableSorting: false,
+            enableFiltering: false,
+            initialPageSize: pageSize,
+            serverPagination,
+          }}
+          getSubRows={exceptionSubRows}
+          renderFilters={renderFilters}
+          renderBulkActions={renderBulkActions}
+          onTableReady={onTableReady}
+          fixedHeader
+          maxHeight="auto"/>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -228,7 +256,7 @@ function PaginationFooter({
 /*  Queue                                                              */
 /* ------------------------------------------------------------------ */
 
-export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string }) {
+function ExceptionQueueView({ warehouseId }: { warehouseId?: string }) {
   const token = useUserStore((state) => state.accessToken);
   const permissions = useUserStore((state) => state.permissions.permissions);
   const canDispose = hasPermission(permissions, 'inbound_exception.dispose');
@@ -236,44 +264,39 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
   const [exceptions, setExceptions] = React.useState<InboundException[]>([]);
   const [pagination, setPagination] = React.useState<WMSPagination | null>(null);
   const [page, setPage] = React.useState(1);
-  const [destination, setDestination] = React.useState('');
-  const [status, setStatus] = React.useState('');
+  const [pageSize, setPageSize] = React.useState(PAGE_SIZE);
+  const [destination, setDestination] = React.useState(ALL_FILTERS);
+  const [status, setStatus] = React.useState(ALL_FILTERS);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
-  const [note, setNote] = React.useState('');
-  const [itemId, setItemId] = React.useState('');
-  const [selected, setSelected] = React.useState<Set<string>>(new Set());
-  const [activeId, setActiveId] = React.useState<string | null>(null);
-  const [bulkBusy, setBulkBusy] = React.useState(false);
+  const [target, setTarget] = React.useState<DispositionTarget | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [table, setTable] = React.useState<Table<ExceptionTableRow> | null>(null);
 
   const requestSeqRef = React.useRef(0);
-  const selectableIds = React.useMemo(
-    () => exceptions.filter((e) => !isResolvedStatus(e.status)).map((e) => e.id),
-    [exceptions],
-  );
 
   const load = React.useCallback(
     async (targetPage: number) => {
       if (!token) return;
       const seq = requestSeqRef.current + 1;
       requestSeqRef.current = seq;
-      setSelected(new Set());
       setLoading(true);
       setError(null);
       setNotice(null);
       try {
         const res = await inboundApi.listExceptions(token, {
           warehouse_id: warehouseId,
-          destination: destination || undefined,
-          status: status || undefined,
+          destination: destination === ALL_FILTERS ? undefined : destination,
+          status: status === ALL_FILTERS ? undefined : status,
           page: targetPage,
-          page_size: PAGE_SIZE,
+          page_size: pageSize,
         });
         if (seq !== requestSeqRef.current) return;
-        setExceptions(res.exceptions ?? []);
-        setPagination(res.pagination ?? null);
-        setPage(res.pagination?.page ?? targetPage);
+        const next = readExceptionPage(res, targetPage);
+        setExceptions(next.exceptions);
+        setPagination(next.pagination);
+        setPage(next.page);
       } catch (err) {
         if (seq !== requestSeqRef.current) return;
         setError(err instanceof Error ? err.message : 'Failed to load exceptions');
@@ -281,97 +304,109 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
         if (seq === requestSeqRef.current) setLoading(false);
       }
     },
-    [token, warehouseId, destination, status],
+    [token, warehouseId, destination, status, pageSize],
   );
 
   React.useEffect(() => {
-    setSelected(new Set());
     load(1);
   }, [load]);
 
-  const toggleAll = () => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      const allSelected = selectableIds.length > 0 && selectableIds.every((id) => next.has(id));
-      if (allSelected) {
-        selectableIds.forEach((id) => next.delete(id));
-      } else {
-        selectableIds.forEach((id) => next.add(id));
+  // Newest first, so the exception just raised is the first thing a manager sees.
+  const rows = React.useMemo(() => exceptionRows(exceptions), [exceptions]);
+
+  const serverPagination = React.useMemo(() => {
+    if (!pagination) return undefined;
+
+    return {
+      totalItems: pagination.total_items,
+      currentPage: pagination.page,
+      pageSize: pagination.page_size,
+      onPageChange: (nextPage: number, nextPageSize: number) => {
+        setPage(nextPage);
+        if (nextPageSize !== pagination.page_size) {
+          setPageSize(nextPageSize);
+          return;
+        }
+        load(nextPage);
+      },
+    };
+  }, [pagination, load]);
+
+  const handleTableReady = React.useCallback((instance: Table<ExceptionTableRow>) => {
+    setTable(instance);
+  }, []);
+
+  const openDisposition = React.useCallback((row: ExceptionTableRow, action: BulkDispositionAction) => {
+    // A mixed batch can hold already-resolved units; only actionable ones may be sent.
+    setTarget({ exceptions: selectedExceptions([row]), action });
+  }, []);
+
+  const columns = React.useMemo(
+    () => createInboundExceptionColumns({ canDispose, onDispose: openDisposition }),
+    [canDispose, openDisposition],
+  );
+
+  const submitDisposition = React.useCallback(
+    async ({ action, note, itemId }: DispositionSubmission) => {
+      if (!token || !target) return;
+      setSubmitting(true);
+      try {
+        const ids = target.exceptions.map((exception) => exception.id);
+        if (ids.length === 1) {
+          await inboundApi.disposeException(token, ids[0], { action, note, item_id: itemId });
+          setNotice('Disposition recorded.');
+        } else {
+          const res = await inboundApi.bulkDisposeExceptions(token, { exception_ids: ids, action, note });
+          setNotice(`Bulk disposition complete — ${res.disposed_count ?? 0} succeeded, ${res.failed_count ?? 0} failed.`);
+        }
+        table?.resetRowSelection();
+        // Back to page 1 so the reloaded, newest-first queue is on top.
+        await load(1);
+      } finally {
+        setSubmitting(false);
       }
-      return next;
-    });
-  };
+    },
+    [token, target, table, load],
+  );
 
-  const toggleOne = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const renderBulkActions = React.useCallback(
+    (selectedRows: ExceptionTableRow[]) => {
+      const actionable = selectedExceptions(selectedRows);
+      return (
+        <BulkActionBar exceptions={actionable}
+          busy={submitting || loading}
+          onAction={(action) => setTarget({ exceptions: actionable, action })}
+          onClear={() => table?.resetRowSelection()}/>
+      );
+    },
+    [submitting, loading, table],
+  );
 
-  const disposeOne = async (exception: InboundException, action: BulkDispositionAction) => {
-    if (!token) return;
-    if (requiresNote(action) && !note.trim()) {
-      setError('A decision note is required for return-to-sender and dispose.');
-      return;
-    }
-    setActiveId(exception.id);
-    setError(null);
-    setNotice(null);
-    try {
-      await inboundApi.disposeException(token, exception.id, {
-        action,
-        note: note.trim() || undefined,
-        item_id: itemId.trim() || undefined,
-      });
-      setNote('');
-      setItemId('');
-      await load(page);
-      setNotice('Disposition updated.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Disposition failed');
-    } finally {
-      setActiveId(null);
-    }
-  };
+  const renderFilters = React.useCallback(
+    () => (
+      <ExceptionFilters destination={destination}
+        status={status}
+        loading={loading}
+        onDestinationChange={setDestination}
+        onStatusChange={setStatus}/>
+    ),
+    [destination, status, loading],
+  );
 
-  const disposeBulk = async (action: BulkDispositionAction) => {
-    if (!token || selected.size === 0) return;
-    if (requiresNote(action) && !note.trim()) {
-      setError('A decision note is required for return-to-sender and dispose.');
-      return;
-    }
-    setBulkBusy(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const res = await inboundApi.bulkDisposeExceptions(token, {
-        exception_ids: [...selected],
-        action,
-        note: note.trim() || undefined,
-      });
-      const message = `Bulk disposition complete — ${res.disposed_count ?? 0} succeeded, ${res.failed_count ?? 0} failed.`;
-      setNote('');
-      setSelected(new Set());
-      await load(page);
-      setNotice(message);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Bulk disposition failed');
-    } finally {
-      setBulkBusy(false);
-    }
-  };
-
-  const anyBusy = bulkBusy || activeId !== null;
+  const clearFilters = React.useCallback(() => {
+    setDestination(ALL_FILTERS);
+    setStatus(ALL_FILTERS);
+  }, []);
 
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">Hold / Quarantine Queue</h2>
-          <p className="text-sm text-muted-foreground">Non-pickable inbound stock awaiting a manager decision.</p>
+          <p className="text-sm text-muted-foreground">
+            Non-pickable inbound stock awaiting a manager decision. Exceptions sharing a SKU and batch — for example the
+            units of one excepted master pack — are grouped into one expandable row.
+          </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => load(page)} disabled={loading}>
           <RefreshCw className="mr-1 h-3.5 w-3.5" />
@@ -379,69 +414,61 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
         </Button>
       </div>
 
-      <div className="grid gap-3 rounded-lg border bg-muted/20 p-3 md:grid-cols-2">
-        <div className="space-y-1">
-          <Label htmlFor="exception-destination">Destination</Label>
-          <select id="exception-destination"
-            className="w-full rounded-md border bg-background px-3 py-2"
-            value={destination}
-            onChange={(event) => setDestination(event.target.value)}>
-            <option value="">All destinations</option>
-            <option value="HOLD">HOLD</option>
-            <option value="QUARANTINE">QUARANTINE</option>
-          </select>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="exception-status">Status</Label>
-          <select id="exception-status"
-            className="w-full rounded-md border bg-background px-3 py-2"
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}>
-            <option value="">All statuses</option>
-            <option value="pending_approval">Pending Approval</option>
-            <option value="open">Open</option>
-            <option value="approved">Approved</option>
-            <option value="released">Released</option>
-            <option value="closed">Closed</option>
-          </select>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="exception-note">Decision note (required for Return / Dispose)</Label>
-          <Textarea id="exception-note"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="Required when returning to sender or disposing"/>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="exception-item-id">Corrected SKU item ID (single release only)</Label>
-          <Input id="exception-item-id" value={itemId} onChange={(event) => setItemId(event.target.value)} placeholder="Optional item UUID" />
-        </div>
-      </div>
-
       {error && <p className="text-sm text-destructive">{error}</p>}
       {notice && <p className="text-sm text-emerald-600">{notice}</p>}
 
-      {canDispose && selected.size > 0 && (
-        <BulkActionBar count={selected.size} busy={anyBusy} onAction={disposeBulk} onClear={() => setSelected(new Set())} />
-      )}
+      <ExceptionTable isInitialLoading={loading && exceptions.length === 0}
+        rows={rows}
+        columns={columns}
+        canDispose={canDispose}
+        serverPagination={serverPagination}
+        pageSize={pageSize}
+        filtered={destination !== ALL_FILTERS || status !== ALL_FILTERS}
+        onClearFilters={clearFilters}
+        renderFilters={renderFilters}
+        renderBulkActions={renderBulkActions}
+        onTableReady={handleTableReady}/>
 
-      {loading && <p className="text-sm text-muted-foreground">Loading exception queue…</p>}
-      {!loading && exceptions.length === 0 && (
-        <p className="rounded-lg border py-8 text-center text-sm text-muted-foreground">No hold or quarantine exceptions.</p>
-      )}
+      <DispositionDialog target={target}
+        onOpenChange={(open) => {
+          if (!open) setTarget(null);
+        }}
+        onConfirm={submitDisposition}/>
+    </div>
+  );
+}
 
-      {exceptions.length > 0 && (
-        <ExceptionsTable exceptions={exceptions}
-          canDispose={canDispose}
-          selected={selected}
-          loading={loading}
-          busy={anyBusy}
-          onToggleAll={toggleAll}
-          onToggle={toggleOne}
-          onDispose={disposeOne}/>
-      )}
+const EXCEPTION_VIEWS = [
+  { key: 'queue', label: 'Hold / Quarantine Queue' },
+  { key: 'shortages', label: 'Shortage Ledger' },
+] as const;
 
-      <PaginationFooter pagination={pagination} page={page} loading={loading} onPrev={() => load(page - 1)} onNext={() => load(page + 1)} />
+type ExceptionView = (typeof EXCEPTION_VIEWS)[number]['key'];
+
+/**
+ * "Holds & Quarantine" holds two different problems: stock that physically needs
+ * a disposition decision, and stock that never arrived. They share a section
+ * because both are inbound discrepancies a supervisor has to clear.
+ */
+export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string }) {
+  const [view, setView] = React.useState<ExceptionView>('queue');
+
+  return (
+    <div className="space-y-4">
+      <div className="inline-flex gap-1 rounded-lg border bg-muted/20 p-1">
+        {EXCEPTION_VIEWS.map(({ key, label }) => (
+          <button key={key}
+            type="button"
+            onClick={() => setView(key)}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              view === key ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'queue' ? <ExceptionQueueView warehouseId={warehouseId}/> : <ShortageLedger/>}
     </div>
   );
 }

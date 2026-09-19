@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   CardContent,
-  ConfirmationDialog,
   EmptyState,
   Select,
   SelectContent,
@@ -23,7 +22,7 @@ import { useReceivingSlip, useReceivingSlips } from '../../hooks/useWMS';
 import type { ReceivingSlip, ReceivingSlipStatus, ReceivingSlipStatusCounts } from '../../types/wms.types';
 
 import { GeneratePutAwayDialog } from './GeneratePutAwayDialog';
-import { createReceivingSlipColumns, RejectSlipDialog, SlipDetailDialog } from './receiving-slips';
+import { ApproveSlipDialog, createReceivingSlipColumns, RejectSlipDialog, SlipDetailDialog } from './receiving-slips';
 
 interface ReceivingSlipListProps {
   warehouseId?: string;
@@ -57,10 +56,6 @@ const STATUS_FILTERS: { value: string; label: string; countKey: keyof ReceivingS
 ];
 
 const REJECT_ITEM_STATUSES: ReceivingSlipStatus[] = ['pending_review', 'pending_putaway'];
-
-function getApproveDescription(slip: ReceivingSlip | null): string {
-  return `Are you sure you want to approve ${slip?.slip_number}? This will move it to put-away.`;
-}
 
 function ReceivingSlipFilters({
   statusFilter,
@@ -351,20 +346,16 @@ export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onSta
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onRejectItem={canRejectItems ? handleRejectItem : undefined}
-        onExceptionCreated={async () => {
-          // The exception blocks an item, so both the detail and the list change.
+        onLineFlagged={async () => {
+          // A flag changes both the line and the list's discrepancy counts.
           await Promise.all([refetchViewSlip(), refetch()]);
-          toast({ title: 'Inbound exception created', description: 'Item is blocked from normal put-away.' });
         }}/>
 
-      <ConfirmationDialog open={!!confirmApproveSlip}
+      <ApproveSlipDialog slip={confirmApproveSlip}
+        submitting={actionLoading}
         onOpenChange={(open) => {
           if (!open) setConfirmApproveSlip(null);
         }}
-        title="Approve Receiving Slip"
-        description={getApproveDescription(confirmApproveSlip)}
-        confirmLabel="Approve"
-        loading={actionLoading}
         onConfirm={handleConfirmApprove}/>
 
       <RejectSlipDialog slip={rejectTarget}

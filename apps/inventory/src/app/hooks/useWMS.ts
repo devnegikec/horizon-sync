@@ -12,6 +12,7 @@ import type {
   GateSession,
   GateScanResult,
   GateSessionProgress,
+  InboundException,
   LocationTree,
   PaginatedLocations,
   PaginatedPickLists,
@@ -22,6 +23,7 @@ import type {
   PutAwayItem,
   PutAwayList,
   PutAwayListBatchResponse,
+  PutAwayExceptionRequest,
   ReceivingSlip,
   ScanResult,
   ScanSession,
@@ -465,6 +467,17 @@ export function usePutAwayList(listId: string | null) {
     [accessToken, listId, queryClient],
   );
 
+  const raiseException = React.useCallback(
+    async (itemId: string, data: PutAwayExceptionRequest): Promise<InboundException> => {
+      if (!listId || !accessToken) throw new Error('No list selected');
+      const result = await putAwayApi.raiseException(accessToken, listId, itemId, data);
+      // The excepted units leave the list, so its progress and counts move too.
+      queryClient.invalidateQueries({ queryKey: PUT_AWAY_LISTS_QUERY_KEY });
+      return result;
+    },
+    [accessToken, listId, queryClient],
+  );
+
   return {
     list: data ?? null,
     loading: isFetching,
@@ -472,6 +485,7 @@ export function usePutAwayList(listId: string | null) {
     refetch,
     completeItem,
     skipItem,
+    raiseException,
   };
 }
 
