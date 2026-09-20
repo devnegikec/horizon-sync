@@ -84,6 +84,28 @@ function itemToFormData(item: Item): Partial<ItemFormData> {
     packagingWeightGrams: item.packagingDetails?.weightGrams != null
       ? String(item.packagingDetails.weightGrams)
       : '',
+    masterPackUnitName: item.packagingDetails?.masterPackUnitName ?? '',
+    masterPackLengthMm: item.packagingDetails?.masterPackLengthMm != null
+      ? String(item.packagingDetails.masterPackLengthMm)
+      : '',
+    masterPackWidthMm: item.packagingDetails?.masterPackWidthMm != null
+      ? String(item.packagingDetails.masterPackWidthMm)
+      : '',
+    masterPackHeightMm: item.packagingDetails?.masterPackHeightMm != null
+      ? String(item.packagingDetails.masterPackHeightMm)
+      : '',
+    masterPackWeightGrams: item.packagingDetails?.masterPackWeightGrams != null
+      ? String(item.packagingDetails.masterPackWeightGrams)
+      : '',
+    masterPackFillFactor: item.packagingDetails?.masterPackFillFactor != null
+      ? String(item.packagingDetails.masterPackFillFactor)
+      : '0.75',
+    masterPackVoidFillPct: item.packagingDetails?.masterPackVoidFillPct != null
+      ? String(item.packagingDetails.masterPackVoidFillPct)
+      : '0.10',
+    masterPackWallThicknessMm: item.packagingDetails?.masterPackWallThicknessMm != null
+      ? String(item.packagingDetails.masterPackWallThicknessMm)
+      : '3',
   };
 }
 

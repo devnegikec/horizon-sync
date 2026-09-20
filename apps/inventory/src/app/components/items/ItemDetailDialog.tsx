@@ -71,6 +71,9 @@ interface ItemDetailResponse {
     height_mm: number | null;
     weight_grams: number | null;
     is_base_unit: boolean;
+    master_pack_fill_factor: number | null;
+    master_pack_void_fill_pct: number | null;
+    master_pack_wall_thickness_mm: number | null;
   }> | null;
   created_by: string | null;
   updated_by: string | null;
@@ -178,22 +181,43 @@ function PackagingDetailsCard({ detail }: { detail: ItemDetailResponse }) {
   }
 
   const base = units.find((u) => u.is_base_unit) ?? units[0];
+  const master = units.find((u) => !u.is_base_unit);
   const hasDimensions = base.length_mm != null && base.width_mm != null && base.height_mm != null;
+  const masterHasDimensions = master != null && master.length_mm != null && master.width_mm != null && master.height_mm != null;
 
   return (
-    <SectionCard title="Packaging Details">
-      <div className="grid grid-cols-2 gap-4">
-        <InfoRow icon={Box} label="Base Unit" value={base.unit_name} />
-        <InfoRow icon={Layers} label="Conversion Factor" value={base.conversion_factor} />
-        <InfoRow icon={Package} label="Items per Master Pack" value={base.items_per_master_pack} />
-        <InfoRow icon={Ruler}
-          label="Dimensions (L × W × H)"
-          value={hasDimensions ? `${base.length_mm} × ${base.width_mm} × ${base.height_mm} mm` : undefined}/>
-        <InfoRow icon={Weight}
-          label="Weight"
-          value={base.weight_grams != null ? `${base.weight_grams} g` : undefined}/>
-      </div>
-    </SectionCard>
+    <>
+      <SectionCard title="Packaging Details">
+        <div className="grid grid-cols-2 gap-4">
+          <InfoRow icon={Box} label="Base Unit" value={base.unit_name} />
+          <InfoRow icon={Layers} label="Conversion Factor" value={base.conversion_factor} />
+          <InfoRow icon={Package} label="Items per Master Pack" value={base.items_per_master_pack} />
+          <InfoRow icon={Ruler}
+            label="Dimensions (L × W × H)"
+            value={hasDimensions ? `${base.length_mm} × ${base.width_mm} × ${base.height_mm} mm` : undefined} />
+          <InfoRow icon={Weight}
+            label="Weight"
+            value={base.weight_grams != null ? `${base.weight_grams} g` : undefined} />
+        </div>
+      </SectionCard>
+
+      {master && (
+        <SectionCard title="Master Carton">
+          <div className="grid grid-cols-2 gap-4">
+            <InfoRow icon={Box} label="Unit Name" value={master.unit_name} />
+            <InfoRow icon={Ruler}
+              label="Dimensions (L × W × H)"
+              value={masterHasDimensions ? `${master.length_mm} × ${master.width_mm} × ${master.height_mm} mm` : undefined} />
+            <InfoRow icon={Weight}
+              label="Weight"
+              value={master.weight_grams != null ? `${master.weight_grams} g` : undefined} />
+            <InfoRow icon={Settings2} label="Fill Factor" value={master.master_pack_fill_factor ?? undefined} />
+            <InfoRow icon={Settings2} label="Void Fill %" value={master.master_pack_void_fill_pct ?? undefined} />
+            <InfoRow icon={Ruler} label="Wall Thickness (mm)" value={master.master_pack_wall_thickness_mm ?? undefined} />
+          </div>
+        </SectionCard>
+      )}
+    </>
   );
 }
 

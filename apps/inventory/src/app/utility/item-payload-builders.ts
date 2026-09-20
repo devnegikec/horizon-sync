@@ -63,8 +63,23 @@ export interface ItemFormData {
   packagingWidthMm: string;
   packagingHeightMm: string;
   packagingWeightGrams: string;
+
+  // Master Carton (packaging estimation)
+  masterPackUnitName: string;
+  masterPackLengthMm: string;
+  masterPackWidthMm: string;
+  masterPackHeightMm: string;
+  masterPackWeightGrams: string;
+  masterPackFillFactor: string;
+  masterPackVoidFillPct: string;
+  masterPackWallThicknessMm: string;
 }
 
+
+function toNumberDefault(value: string, fallback: number): number {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
 
 function buildPackagingDetailsPayload(formData: ItemFormData): PackagingDetailsPayload {
   return {
@@ -75,17 +90,32 @@ function buildPackagingDetailsPayload(formData: ItemFormData): PackagingDetailsP
     width_mm: parseFloat(formData.packagingWidthMm) || null,
     height_mm: parseFloat(formData.packagingHeightMm) || null,
     weight_grams: parseFloat(formData.packagingWeightGrams) || null,
+    master_pack_unit_name: formData.masterPackUnitName || null,
+    master_pack_length_mm: parseFloat(formData.masterPackLengthMm) || null,
+    master_pack_width_mm: parseFloat(formData.masterPackWidthMm) || null,
+    master_pack_height_mm: parseFloat(formData.masterPackHeightMm) || null,
+    master_pack_weight_grams: parseFloat(formData.masterPackWeightGrams) || null,
+    master_pack_fill_factor: toNumberDefault(formData.masterPackFillFactor, 0.75),
+    master_pack_void_fill_pct: toNumberDefault(formData.masterPackVoidFillPct, 0.1),
+    master_pack_wall_thickness_mm: toNumberDefault(formData.masterPackWallThicknessMm, 3),
   };
 }
 
 function hasPackagingDetails(formData: ItemFormData): boolean {
-  return !!(formData.packagingLengthMm ||
+  return !!(
+    formData.packagingLengthMm ||
     formData.packagingWidthMm ||
     formData.packagingHeightMm ||
     formData.packagingWeightGrams ||
     formData.packagingConversionFactor !== '1' ||
     formData.packagingItemsPerMasterPack ||
-    (formData.packagingUnitName && formData.packagingUnitName !== 'Each'));
+    (formData.packagingUnitName && formData.packagingUnitName !== 'Each') ||
+    formData.masterPackUnitName ||
+    formData.masterPackLengthMm ||
+    formData.masterPackWidthMm ||
+    formData.masterPackHeightMm ||
+    formData.masterPackWeightGrams
+  );
 }
 
 
