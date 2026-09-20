@@ -251,15 +251,16 @@ interface CapacityCardProps {
 function CapacityCard({ warehouseName, node }: CapacityCardProps) {
   const binding = toNumber(node?.binding_pct);
   const countPct = toNumber(node?.count_pct);
-  // Fall back to count-based utilisation when volume/weight capacity isn't
-  // configured (binding_pct is 0/null in that case) so put-away stock is still
-  // reflected on the card instead of showing "Empty".
-  const effectivePct = binding != null && binding > 0 ? binding : countPct;
-  const state = capacityStateForPct(effectivePct);
   const volPct = toNumber(node?.volume?.pct);
   const hasVolume = toNumber(node?.volume?.capacity_m3) != null;
   const wtPct = toNumber(node?.weight?.pct);
   const hasWeight = toNumber(node?.weight?.capacity_kg) != null;
+  // Prefer the volume/weight binding when that capacity is configured. Only
+  // fall back to count utilisation when neither volume nor weight capacity is
+  // configured, so a genuinely empty (0%) volume isn't masked by a nonzero
+  // unit count.
+  const effectivePct = hasVolume || hasWeight ? binding : countPct;
+  const state = capacityStateForPct(effectivePct);
   const unitCount = toNumber(node?.unit_count);
   const countCap = toNumber(node?.count_capacity);
   const hasCount = countCap != null;
