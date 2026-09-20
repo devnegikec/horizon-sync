@@ -6,6 +6,7 @@ import { Checkbox, Popover, PopoverContent, PopoverTrigger } from '@horizon-sync
 import { Button } from '@horizon-sync/ui/components/ui/button';
 
 import type { WMSWorker } from '../../types/wms.types';
+import type { NormalizedApiError } from '../../utility/api/core';
 
 /** Display name for a worker, falling back to the employee id and then the row id. */
 export function workerLabel(worker: WMSWorker): string {
@@ -13,6 +14,20 @@ export function workerLabel(worker: WMSWorker): string {
   const name = worker.display_name ?? (full.length > 0 ? full : null);
   if (!name) return worker.employee_id ?? worker.id;
   return worker.employee_id ? `${name} (${worker.employee_id})` : name;
+}
+
+/**
+ * Failure text for the worker picker. A load that failed must never look like
+ * "this warehouse has no workers", so each generator renders this beside the
+ * control instead of an unexplained empty list.
+ */
+export function WorkerLoadError({ error }: { error: NormalizedApiError | null }) {
+  if (!error) return null;
+  return (
+    <p className="text-xs text-destructive">
+      {error.message}{error.hint ? ` ${error.hint}` : ''}
+    </p>
+  );
 }
 
 /**

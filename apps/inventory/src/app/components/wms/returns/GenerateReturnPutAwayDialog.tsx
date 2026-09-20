@@ -16,7 +16,7 @@ import {
 import { useWarehouseWorkers } from '../../../hooks/useWMS';
 import type { GenerateReturnPutAwayRequest, GenerateReturnPutAwayResponse, ReturnReceiptNoteDetail } from '../../../types/wms.types';
 import { toNormalizedApiError, type NormalizedApiError } from '../../../utility/api/core';
-import { WorkerMultiSelect } from '../WorkerMultiSelect';
+import { WorkerLoadError, WorkerMultiSelect } from '../WorkerMultiSelect';
 
 import { ReturnDialogError } from './ReturnDialogError';
 import { EMPTY, noteLines } from './returnNotes';
@@ -53,7 +53,7 @@ export function GenerateReturnPutAwayDialog({ open, onOpenChange, note, onGenera
   const [error, setError] = React.useState<NormalizedApiError | null>(null);
 
   // Workers come from the note's own warehouse, not the header selection.
-  const { workers } = useWarehouseWorkers(note?.warehouse?.id, open);
+  const { workers, error: workersError } = useWarehouseWorkers(note?.warehouse?.id, open);
   const preview = putAwayPreview(note);
 
   React.useEffect(() => {
@@ -96,7 +96,8 @@ export function GenerateReturnPutAwayDialog({ open, onOpenChange, note, onGenera
 
           <div className="space-y-1.5">
             <Label>Assign workers (optional)</Label>
-            <WorkerMultiSelect workers={workers} selected={workerIds} onChange={setWorkerIds}/>
+            <WorkerMultiSelect workers={workers} selected={workerIds} onChange={setWorkerIds} />
+            <WorkerLoadError error={workersError} />
             <p className="text-xs text-muted-foreground">Selecting more than one worker splits the items across separate put-away lists.</p>
           </div>
 

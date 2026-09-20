@@ -14,7 +14,7 @@ import {
 } from '@horizon-sync/ui/components';
 
 import type { ReturnReceiptNoteDetail } from '../../../types/wms.types';
-import type { NormalizedApiError } from '../../../utility/api/core';
+import { toNormalizedApiError, type NormalizedApiError } from '../../../utility/api/core';
 
 import { ReturnDialogError } from './ReturnDialogError';
 import { EMPTY, groupQuantity } from './returnNotes';
@@ -70,7 +70,7 @@ export function ApproveReturnNoteDialog({ open, onOpenChange, note, onConfirm }:
       await onConfirm(approvalNote.trim() || undefined);
       onOpenChange(false);
     } catch (err) {
-      setError(err as NormalizedApiError);
+      setError(toNormalizedApiError(err));
     } finally {
       setBusy(false);
     }

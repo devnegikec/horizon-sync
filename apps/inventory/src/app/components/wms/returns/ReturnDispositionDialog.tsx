@@ -18,7 +18,7 @@ import {
 
 import { useExceptionReasons } from '../../../hooks/useExceptionReasons';
 import type { ReturnDispositionAction } from '../../../types/wms.types';
-import type { NormalizedApiError } from '../../../utility/api/core';
+import { toNormalizedApiError, type NormalizedApiError } from '../../../utility/api/core';
 
 import { ReturnConditionBadge } from './ReturnConditionBadge';
 import { ReturnDialogError } from './ReturnDialogError';
@@ -101,7 +101,7 @@ export function ReturnDispositionDialog({ open, onOpenChange, line, onConfirm }:
       await onConfirm(action, reasonCode || undefined, note.trim() || undefined);
       onOpenChange(false);
     } catch (err) {
-      setError(err as NormalizedApiError);
+      setError(toNormalizedApiError(err));
     } finally {
       setBusy(false);
     }

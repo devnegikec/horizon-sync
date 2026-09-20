@@ -1095,17 +1095,25 @@ export function useWarehouseWorkers(warehouseId: string | undefined, enabled: bo
   const accessToken = useUserStore((s) => s.accessToken);
   const [workers, setWorkers] = React.useState<WMSWorker[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<NormalizedApiError | null>(null);
 
   React.useEffect(() => {
     if (!enabled || !accessToken) return;
     let cancelled = false;
     setLoading(true);
+    setError(null);
+    // Drop the previous warehouse's list straight away: leaving it selectable while the
+    // new one loads lets a worker from the wrong warehouse be submitted.
+    setWorkers([]);
     fetchAllWarehouseWorkers(accessToken, warehouseId)
       .then((data) => {
         if (!cancelled) setWorkers(data);
       })
-      .catch(() => {
-        if (!cancelled) setWorkers([]);
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setWorkers([]);
+        // Reported rather than swallowed: an empty list on a 403 reads as "no workers".
+        setError(toNormalizedApiError(err));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -1115,7 +1123,7 @@ export function useWarehouseWorkers(warehouseId: string | undefined, enabled: bo
     };
   }, [enabled, accessToken, warehouseId]);
 
-  return { workers, loading };
+  return { workers, loading, error };
 }
 
 export function useWMSWorkers({

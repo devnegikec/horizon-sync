@@ -1,14 +1,10 @@
 import * as React from 'react';
 
-import { ChevronsUpDown, ClipboardList, Loader2, PackageOpen, TriangleAlert, X } from 'lucide-react';
+import { ClipboardList, Loader2, PackageOpen, TriangleAlert } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import {
   Button,
-  Checkbox,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Select,
   SelectContent,
   SelectItem,
@@ -20,8 +16,7 @@ import { useToast } from '@horizon-sync/ui/hooks';
 import { useInvalidateOutboundOrders, useWarehouseWorkers } from '../../../hooks/useWMS';
 import type { OutboundOrderListItem } from '../../../types/wms.types';
 import { outboundOrderApi } from '../../../utility/api/wms';
-import { WorkerMultiSelect } from '../WorkerMultiSelect';
-
+import { WorkerLoadError, WorkerMultiSelect } from '../WorkerMultiSelect';
 
 export interface GeneratePickListsDialogProps {
   /** Order to split into pick lists. `null` closes the dialog. */
@@ -39,7 +34,7 @@ export function GeneratePickListsDialog({ order, onClose, onGenerated }: Generat
   const [busy, setBusy] = React.useState(false);
 
   // Every assignable worker of the order's warehouse, loaded while the dialog is open.
-  const { workers } = useWarehouseWorkers(order?.warehouse_id, Boolean(order));
+  const { workers, error: workersError } = useWarehouseWorkers(order?.warehouse_id, Boolean(order));
 
   React.useEffect(() => {
     if (!order) return;
@@ -113,6 +108,7 @@ export function GeneratePickListsDialog({ order, onClose, onGenerated }: Generat
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Assign Workers (optional — select multiple to split the work)</p>
           <WorkerMultiSelect workers={workers} selected={workerIds} onChange={setWorkerIds} />
+          <WorkerLoadError error={workersError} />
           <p className="text-xs text-muted-foreground">
             Selecting more than one worker splits the order lines across separate pick lists. Leave empty to create a single unassigned pick list.
           </p>

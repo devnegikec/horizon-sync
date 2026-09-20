@@ -80,9 +80,9 @@ function ReferenceLookup({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            {/* Only an invoice resolves lines (§4.1), and a dealer/warehouse reference
+                would also need a party picker — neither mode is offered until then. */}
             <SelectItem value="invoice">Invoice</SelectItem>
-            <SelectItem value="dealer">Dealer</SelectItem>
-            <SelectItem value="warehouse">Warehouse</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -421,10 +421,15 @@ function RegistrationForm({
     return () => clearTimeout(timer);
   }, [invoiceNo]);
 
-  const { reference, loading: referenceLoading, error: referenceError, refetch } = useReturnReference({
+  const { reference: resolvedReference, loading: referenceLoading, error: referenceError, refetch } = useReturnReference({
     invoice_no: referenceType === 'invoice' ? lookupKey : undefined,
     warehouse_id: warehouseId,
   });
+
+  // The typed value outruns the debounced key, so until the two agree the resolved
+  // reference still belongs to the previous invoice and must not be submittable.
+  const lookupPending = invoiceNo.trim() !== lookupKey;
+  const reference = lookupPending ? null : resolvedReference;
 
   const lines = returnableLines(reference);
 
@@ -469,7 +474,7 @@ function RegistrationForm({
       <div className="space-y-4 text-sm">
         <ReferenceLookup type={referenceType}
           invoiceNo={invoiceNo}
-          loading={referenceLoading}
+          loading={referenceLoading || lookupPending}
           error={referenceError}
           onTypeChange={setReferenceType}
           onInvoiceChange={setInvoiceNo}

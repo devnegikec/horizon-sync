@@ -103,7 +103,7 @@ curl -s -o /dev/null -w '%{http_code}  GET /inbound/exception-reasons\n'  "$API/
 
 - All four `404` → run **Stage H + §2 + §6 (permission rows) + §7 partially**; everything else is blocked.
 - `401` → the endpoint exists; you are unauthenticated. Sign in and re-run.
-- `200` on the three returns calls → run the complete journey from §5.
+- `200` on all four calls — the three returns endpoints **and** `/inbound/exception-reasons`, which the reason pickers load from → run the complete journey from §5.
 
 ### 3.2 Freshness you must account for (avoid false bug reports)
 
@@ -148,9 +148,9 @@ Create this once per environment and record the actual values in your run sheet.
 | A5  | Priya | Type `INV-DOES-NOT-EXIST`                                                                         | Red block with the server's message **and its `hint`**; you stay on the form, nothing redirects (§8 behaviour)         |
 | A6  | Priya | Resolve a good invoice                                                                            | Summary shows invoice number, dealer and warehouse. **Lines to return** lists only lines with stock still returnable  |
 | A7  | Priya | Try to type quantity `0`, then a value above *returnable*                                          | Inline error *Enter a quantity greater than zero* / *Only N can be returned*; **Register** stays disabled              |
-| A8  | Priya | Tick one line, set qty 2, leave serials empty; pick a reason; set the return date                    | **Register 2 unit(s)** becomes enabled                                                                                |
-| A9  | Priya | Click **Register** and inspect the request in the Network tab 🟡                                  | `POST /returns/registrations` body contains **only the selected line(s)**, the capped quantity, `return_reason_code`, `warehouse_id`; **`serials` is absent entirely** when blank |
-| A10 | Priya | Re-run A8 but fill serials as `A1, A2\nA1`                                                         | Request carries `serials: ["A1","A2"]` — split on commas/spaces/newlines, de-duplicated                                 |
+| A8  | Priya | Tick the cooker line and set qty 2, tick the toaster line and set qty 1, leave serials empty; pick a reason; set the return date | **Register 3 unit(s)** becomes enabled — the 3 units Stage B/C expect (2 cookers + 1 toaster)                        |
+| A9  | Priya | Click **Register** and inspect the request in the Network tab 🟡                                  | `POST /returns/registrations` body contains **only the selected line(s)**, each capped quantity, `return_reason_code`, `warehouse_id`; **`serials` is absent entirely** when blank |
+| A10 | Priya | Re-run A8 with **only the cooker line** ticked, and fill its serials as `A1, A2\nA1`               | Request carries that line's `serials: ["A1","A2"]` — split on commas/spaces/newlines, de-duplicated                     |
 | A11 | Priya | Submit with no line ticked, or with no reason                                                      | **Register** stays disabled; no request is sent                                                                       |
 | A12 | Priya | After a successful create (🚧)                                                                     | Toast *Return registered — RR-… is ready for the dock.*; the registration detail opens; the queue row shows status *Ready* |
 | A13 | Priya | Cancel a `draft`/`ready` registration from the row **Cancel** or the detail footer                  | Dialog *Cancel return registration*; **Cancel registration** disabled until a reason is typed                          |

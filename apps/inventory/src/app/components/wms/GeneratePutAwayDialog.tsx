@@ -17,7 +17,7 @@ import { useWarehouseWorkers } from '../../hooks/useWMS';
 import type { PutAwayList, PutAwayListBatchResponse, ReceivingSlip } from '../../types/wms.types';
 import { DetailDialogContainer } from '../common';
 
-import { WorkerMultiSelect } from './WorkerMultiSelect';
+import { WorkerLoadError, WorkerMultiSelect } from './WorkerMultiSelect';
 
 export type PutAwayGenerationMode = 'default' | 'auto' | 'manual';
 
@@ -68,7 +68,7 @@ export function GeneratePutAwayDialog({ slip, open, onOpenChange, onGenerate }: 
   const [busy, setBusy] = React.useState(false);
 
   // Every assignable worker of the slip's warehouse, loaded while the dialog is open.
-  const { workers } = useWarehouseWorkers(slip?.warehouse_id, open);
+  const { workers, error: workersError } = useWarehouseWorkers(slip?.warehouse_id, open);
 
   // Reset form each time the dialog opens for a new slip.
   React.useEffect(() => {
@@ -130,6 +130,7 @@ export function GeneratePutAwayDialog({ slip, open, onOpenChange, onGenerate }: 
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Assign Workers (optional)</p>
           <WorkerMultiSelect workers={workers} selected={workerIds} onChange={setWorkerIds} />
+          <WorkerLoadError error={workersError} />
           <p className="text-xs text-muted-foreground">Selecting more than one worker splits the slip&apos;s items across separate put-away lists.</p>
         </div>
 
