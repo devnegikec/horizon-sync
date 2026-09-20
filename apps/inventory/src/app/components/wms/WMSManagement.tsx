@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   ScanLine,
   RefreshCw,
+  RotateCcw,
 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
@@ -39,6 +40,7 @@ import { LocationTreeView } from './LocationTreeView';
 import { OutboundManagement } from './OutboundManagement';
 import { PutAwayView } from './PutAwayView';
 import { ReceivingSlipList } from './ReceivingSlipList';
+import { ReturnsView } from './returns';
 import { VehicleArrivalManagement } from './VehicleArrivalManagement';
 import { Warehouse3DView } from './Warehouse3DView';
 import { WarehouseLayoutDesigner } from './WarehouseLayoutDesigner';
@@ -46,7 +48,7 @@ import { WorkersManagementPanel } from './WorkersManagementPanel';
 
 type WMSView = 'asn' | 'inbound' | 'outbound' | 'stock' | 'manage';
 type ManageSection = 'workers' | 'devices' | 'designer' | 'tree' | '3d' | 'location-qr';
-type InboundSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions';
+type InboundSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions' | 'returns';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -246,6 +248,10 @@ function InboundManagement({
   onPutawayStatusFilterChange,
 }: WMSContentProps) {
   const [refreshKey, setRefreshKey] = React.useState(0);
+  // Returns is a newer module with its own permission codes, so its tab only
+  // appears once the caller has been granted `return.read`.
+  const userPermissions = useUserStore((s) => s.permissions.permissions);
+  const canViewReturns = hasPermission(userPermissions, 'return.read');
   // Both count sets are produced by the list requests in `ReceivingSlipList` /
   // `PutAwayView` so the stat cards don't fetch the same endpoints a second time.
   const [receivingCounts, setReceivingCounts] = React.useState<ReceivingSlipStatusCounts | null>(null);
@@ -304,6 +310,12 @@ function InboundManagement({
             icon={AlertTriangle}
             label="Holds & Quarantine"
             onClick={() => onInboundSectionChange('exceptions')}/>
+          {canViewReturns && (
+            <SectionTab active={inboundSection === 'returns'}
+              icon={RotateCcw}
+              label="Returns"
+              onClick={() => onInboundSectionChange('returns')}/>
+          )}
         </div>
         <div className="p-4 space-y-4">
           <InboundSectionContent section={inboundSection}
@@ -366,6 +378,8 @@ function InboundSectionContent({
       return <VehicleArrivalManagement warehouseId={warehouseId || undefined} />;
     case 'exceptions':
       return <InboundExceptionQueue warehouseId={warehouseId || undefined} />;
+    case 'returns':
+      return <ReturnsView warehouseId={warehouseId || undefined} refreshKey={refreshKey} />;
   }
 }
 

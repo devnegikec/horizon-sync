@@ -68,6 +68,19 @@ import type {
   ShortBalance,
   ShortBalanceEvent,
   CloseShortBalanceRequest,
+  CancelReturnRegistrationRequest,
+  CreateReturnRegistrationRequest,
+  GenerateReturnPutAwayRequest,
+  GenerateReturnPutAwayResponse,
+  PaginatedReturnReceiptNotes,
+  PaginatedReturnRegistrations,
+  ReturnDispositionRequest,
+  ReturnNoteApprovalRequest,
+  ReturnNoteRejectionRequest,
+  ReturnReceiptNoteDetail,
+  ReturnReference,
+  ReturnRegistrationDetail,
+  ReturnSlip,
 } from '../../types/wms.types';
 
 const BASE = `${environment.apiCoreUrl}/api/v1`;
@@ -833,3 +846,111 @@ export const capacityApi = {
 
   getBinStates: (token: string, warehouseId: string) => req<BinStateResponse[]>(`${BASE}/capacity/warehouses/${warehouseId}/bin-states`, token),
 };
+
+// ============================================
+// RETURNS
+// ============================================
+
+/**
+ * Return receipt notes. The dock captures the units on the handheld and ends the
+ * session; everything here is the supervisor's review, disposition and sign-off.
+ * Approving moves stock, so no caller may treat these as optimistic.
+ */
+export const returnApi = {
+  /** Resolves the invoice/party/warehouse triple so the form picks real records (§4.1). */
+  getReferences: (token: string, params: { invoice_no?: string; party_id?: string; warehouse_id?: string }) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') p.append(key, String(value));
+    });
+    return req<ReturnReference>(`${BASE}/returns/references?${p}`, token);
+  },
+
+  listRegistrations: (
+    token: string,
+    params: {
+      status?: string;
+      warehouse_id?: string;
+      party_id?: string;
+      invoice_no?: string;
+      from?: string;
+      to?: string;
+      page?: number;
+      page_size?: number;
+    } = {},
+  ) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') p.append(key, String(value));
+    });
+    return req<PaginatedReturnRegistrations>(`${BASE}/returns/registrations?${p}`, token);
+  },
+
+  getRegistration: (token: string, registrationId: string) =>
+    req<ReturnRegistrationDetail>(`${BASE}/returns/registrations/${registrationId}`, token),
+
+  createRegistration: (token: string, data: CreateReturnRegistrationRequest) =>
+    req<ReturnRegistrationDetail>(`${BASE}/returns/registrations`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  cancelRegistration: (token: string, registrationId: string, data: CancelReturnRegistrationRequest) =>
+    req<unknown>(`${BASE}/returns/registrations/${registrationId}/cancel`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  listReceiptNotes: (
+    token: string,
+    params: { status?: string; warehouse_id?: string; registration_id?: string; page?: number; page_size?: number } = {},
+  ) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') p.append(key, String(value));
+    });
+    return req<PaginatedReturnReceiptNotes>(`${BASE}/returns/receipt-notes?${p}`, token);
+  },
+
+  getReceiptNote: (token: string, noteId: string) =>
+    req<ReturnReceiptNoteDetail>(`${BASE}/returns/receipt-notes/${noteId}`, token),
+
+  approveReceiptNote: (token: string, noteId: string, data: ReturnNoteApprovalRequest) =>
+    req<unknown>(`${BASE}/returns/receipt-notes/${noteId}/approve`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  rejectReceiptNote: (token: string, noteId: string, data: ReturnNoteRejectionRequest) =>
+    req<unknown>(`${BASE}/returns/receipt-notes/${noteId}/reject`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  disposeLine: (token: string, noteId: string, data: ReturnDispositionRequest) =>
+    req<unknown>(`${BASE}/returns/receipt-notes/${noteId}/disposition`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  generatePutAway: (token: string, noteId: string, data: GenerateReturnPutAwayRequest) =>
+    req<GenerateReturnPutAwayResponse>(`${BASE}/returns/receipt-notes/${noteId}/generate-put-away`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getSlip: (token: string, noteId: string) => req<ReturnSlip>(`${BASE}/returns/receipt-notes/${noteId}/slip`, token),
+
+  /** The slip as a file: it is not JSON, so it bypasses `req`. */
+  downloadSlipCsv: async (token: string, noteId: string): Promise<Blob> => {
+    const res = await fetch(`${BASE}/returns/receipt-notes/${noteId}/slip?format=csv`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw httpError(errorBodyMessage(parseJson(text), text || `HTTP ${res.status}`), res.status, parseJson(text));
+    }
+    return res.blob();
+  },
+};
+
