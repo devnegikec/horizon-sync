@@ -1583,3 +1583,144 @@ export interface PaginatedVehicleArrivals {
   vehicle_arrivals: VehicleArrivalListItem[];
   pagination: WMSPagination;
 }
+
+// ============================================
+// RETURNS (return receipt notes — supervisor review)
+// ============================================
+
+export type ReturnRegistrationStatus = 'draft' | 'ready' | 'receiving' | 'received' | 'closed' | 'cancelled';
+
+/** `draft → pending_approval → approved | rejected`. */
+export type ReturnNoteStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected';
+
+/** Captured on the handheld; `pending` blocks approval. */
+export type ReturnLineCondition = 'pending' | 'good' | 'damaged' | 'hold' | 'quarantine';
+
+/** The final routing decision taken per line at approval. */
+export const RETURN_DISPOSITION_ACTIONS = [
+  'release_to_stock',
+  'move_to_hold',
+  'move_to_quarantine',
+  'scrap',
+  'return_to_dealer',
+] as const;
+export type ReturnDispositionAction = (typeof RETURN_DISPOSITION_ACTIONS)[number];
+
+/**
+ * The dispositions a line's condition permits. The API rejects a mismatch with
+ * `RETURN_DISPOSITION_INVALID`, so the picker only ever offers these.
+ */
+export const RETURN_DISPOSITIONS_BY_CONDITION: Record<ReturnLineCondition, ReturnDispositionAction[]> = {
+  pending: [],
+  good: ['release_to_stock'],
+  damaged: ['move_to_hold', 'move_to_quarantine', 'scrap', 'return_to_dealer'],
+  hold: ['move_to_hold', 'return_to_dealer'],
+  quarantine: ['move_to_quarantine', 'scrap', 'return_to_dealer'],
+};
+
+/**
+ * Reason categories a line's condition accepts. Scrap and dealer returns always
+ * use the scrap list, so `dispositionReasonCategories` combines the two.
+ */
+export const RETURN_CONDITION_REASON_CATEGORIES: Record<ReturnLineCondition, string[]> = {
+  pending: [],
+  good: ['return_good'],
+  damaged: ['damage'],
+  hold: ['hold'],
+  quarantine: ['quarantine'],
+};
+
+/** Reason categories for one disposition: the scrap list, or the line's condition. */
+export function dispositionReasonCategories(condition: ReturnLineCondition, action: ReturnDispositionAction): string[] {
+  if (action === 'scrap' || action === 'return_to_dealer') return ['return_scrap'];
+  return RETURN_CONDITION_REASON_CATEGORIES[condition];
+}
+
+export interface ReturnConditionCounts {
+  good: number;
+  damaged: number;
+  hold: number;
+  quarantine: number;
+}
+
+/** Queue row: one expected-vs-received summary per return receipt note. */
+export interface ReturnReceiptNoteSummary {
+  id: string;
+  note_no: string;
+  status: ReturnNoteStatus;
+  registration_id?: string | null;
+  registration_no: string | null;
+  warehouse_id?: string | null;
+  warehouse_name: string | null;
+  expected_qty: number;
+  received_qty: number;
+  /** expected ≠ received — rendered as a badge, never hidden. */
+  mismatch: boolean;
+  damaged_qty: number;
+  open_exceptions: number;
+  created_at: string | null;
+}
+
+export interface PaginatedReturnReceiptNotes {
+  items: ReturnReceiptNoteSummary[];
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+  has_next?: boolean;
+  has_prev?: boolean;
+}
+
+/** One received unit (or serial) inside a note group. */
+export interface ReturnReceiptNoteItem {
+  id: string;
+  serial_number: string | null;
+  quantity: number;
+  condition: ReturnLineCondition;
+  reason_code: string | null;
+  note: string | null;
+  /** Set when the unit raised an inbound exception that must be disposed of. */
+  exception_id: string | null;
+  destination: string | null;
+  disposition: ReturnDispositionAction | null;
+}
+
+/** Note detail is grouped by product, mirroring the receiving-slip payload. */
+export interface ReturnReceiptNoteGroup {
+  product_name: string;
+  sku: string | null;
+  batch_number?: string | null;
+  items: ReturnReceiptNoteItem[];
+}
+
+export interface ReturnReceiptNoteDetail {
+  id: string;
+  note_no: string;
+  status: ReturnNoteStatus;
+  registration_id: string | null;
+  registration_no: string | null;
+  warehouse: { id: string; name: string } | null;
+  expected_qty: number;
+  received_qty: number;
+  short_qty: number;
+  groups: ReturnReceiptNoteGroup[];
+}
+
+/** Per-line final decision (§6.5) — safe to call for a single line. */
+export interface ReturnDispositionRequest {
+  line_id: string;
+  action: ReturnDispositionAction;
+  reason_code?: string;
+  note?: string;
+}
+
+/** Approval payload (§6.3). Omitting `dispositions` accepts the handheld's routing. */
+export interface ReturnNoteApprovalRequest {
+  note?: string;
+  dispositions?: { line_id: string; action: ReturnDispositionAction; reason_code?: string }[];
+}
+
+export interface ReturnNoteRejectionRequest {
+  reason: string;
+}
+

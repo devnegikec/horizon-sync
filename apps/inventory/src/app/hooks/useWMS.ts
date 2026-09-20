@@ -33,6 +33,10 @@ import type {
   WMSDashboardStats,
   PaginatedVehicleArrivals,
   VehicleArrival,
+  ReturnDispositionAction,
+  ReturnDispositionRequest,
+  ReturnNoteApprovalRequest,
+  ReturnReceiptNoteDetail,
 } from '../types/wms.types';
 import { queryErrorToMessage } from '../utility/api/error-utils';
 import { pickSettingsApi } from '../utility/api/pick-settings';
@@ -43,6 +47,7 @@ import {
   outboundOrderApi,
   packingSlipApi,
   putAwayApi,
+  returnApi,
   wmsWorkerApi,
   wmsDeviceApi,
   wmsDashboardApi,
@@ -1272,4 +1277,121 @@ export function useVehicleArrivals({
   );
 
   return { data, loading, error, refetch: fetch, register, linkAsns, unlinkAsn, update };
+}
+
+// ============================================
+// RETURN RECEIPT NOTES
+// ============================================
+
+/**
+ * Root key for return receipt-note queries. Approving or disposing a line changes
+ * the note, its queue row and - through generated exceptions - the inbound
+ * exception queue, so mutations invalidate this prefix.
+ */
+export const RETURN_NOTES_QUERY_KEY = ['wms', 'return-receipt-notes'] as const;
+
+/** Supervisor queue of return receipt notes (`GET /returns/receipt-notes`). */
+export function useReturnReceiptNotes({
+  warehouse_id,
+  status,
+  page,
+  page_size,
+}: {
+  warehouse_id?: string;
+  status?: string;
+  page?: number;
+  page_size?: number;
+}) {
+  const accessToken = useUserStore((s) => s.accessToken);
+
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: [...RETURN_NOTES_QUERY_KEY, { warehouse_id, status, page, page_size }],
+    queryFn: async () => {
+      if (!accessToken) throw new Error('Not authenticated');
+      return returnApi.listReceiptNotes(accessToken, { warehouse_id, status, page, page_size });
+    },
+    // Keep the previous page/filter's rows visible while the next one loads.
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    enabled: !!accessToken,
+  });
+
+  return {
+    data: data ?? null,
+    loading: isFetching,
+    error: queryErrorToMessage(error),
+    refetch,
+  };
+}
+
+/**
+ * One return receipt note plus its review actions. The key is nested under
+ * `RETURN_NOTES_QUERY_KEY` so a mutation here also refreshes the open queue, and
+ * every action re-reads the note instead of assuming the stock movement landed.
+ */
+export function useReturnReceiptNote(noteId: string | null) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
+
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: [...RETURN_NOTES_QUERY_KEY, 'detail', noteId],
+    queryFn: async () => {
+      if (!noteId) throw new Error('No note selected');
+      if (!accessToken) throw new Error('Not authenticated');
+      return returnApi.getReceiptNote(accessToken, noteId);
+    },
+    staleTime: 30_000,
+    enabled: !!noteId && !!accessToken,
+  });
+
+  const invalidate = React.useCallback(
+    () => queryClient.invalidateQueries({ queryKey: RETURN_NOTES_QUERY_KEY }),
+    [queryClient],
+  );
+
+  const requireNote = React.useCallback(() => {
+    if (!noteId) throw new Error('No note selected');
+    if (!accessToken) throw new Error('Not authenticated');
+    return { noteId, accessToken };
+  }, [noteId, accessToken]);
+
+  const approveNote = React.useCallback(
+    async (payload: ReturnNoteApprovalRequest): Promise<void> => {
+      const { noteId: id, accessToken: token } = requireNote();
+      await returnApi.approveReceiptNote(token, id, payload);
+      await invalidate();
+    },
+    [requireNote, invalidate],
+  );
+
+  const rejectNote = React.useCallback(
+    async (reason: string): Promise<void> => {
+      const { noteId: id, accessToken: token } = requireNote();
+      await returnApi.rejectReceiptNote(token, id, { reason });
+      await invalidate();
+    },
+    [requireNote, invalidate],
+  );
+
+  const disposeLine = React.useCallback(
+    async (lineId: string, action: ReturnDispositionAction, reasonCode?: string, note?: string): Promise<void> => {
+      const { noteId: id, accessToken: token } = requireNote();
+      const payload: ReturnDispositionRequest = { line_id: lineId, action };
+      if (reasonCode) payload.reason_code = reasonCode;
+      if (note) payload.note = note;
+      await returnApi.disposeLine(token, id, payload);
+      await invalidate();
+    },
+    [requireNote, invalidate],
+  );
+
+  return {
+    note: (data ?? null) as ReturnReceiptNoteDetail | null,
+    loading: isFetching,
+    error: queryErrorToMessage(error),
+    refetch,
+    approveNote,
+    rejectNote,
+    disposeLine,
+  };
 }

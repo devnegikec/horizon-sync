@@ -68,6 +68,11 @@ import type {
   ShortBalance,
   ShortBalanceEvent,
   CloseShortBalanceRequest,
+  PaginatedReturnReceiptNotes,
+  ReturnDispositionRequest,
+  ReturnNoteApprovalRequest,
+  ReturnNoteRejectionRequest,
+  ReturnReceiptNoteDetail,
 } from '../../types/wms.types';
 
 const BASE = `${environment.apiCoreUrl}/api/v1`;
@@ -832,4 +837,47 @@ export const capacityApi = {
   getTree: (token: string, warehouseId: string) => req<CapacityTreeNode>(`${BASE}/capacity/warehouses/${warehouseId}/tree`, token),
 
   getBinStates: (token: string, warehouseId: string) => req<BinStateResponse[]>(`${BASE}/capacity/warehouses/${warehouseId}/bin-states`, token),
+};
+
+// ============================================
+// RETURNS
+// ============================================
+
+/**
+ * Return receipt notes. The dock captures the units on the handheld and ends the
+ * session; everything here is the supervisor's review, disposition and sign-off.
+ * Approving moves stock, so no caller may treat these as optimistic.
+ */
+export const returnApi = {
+  listReceiptNotes: (
+    token: string,
+    params: { status?: string; warehouse_id?: string; registration_id?: string; page?: number; page_size?: number } = {},
+  ) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') p.append(key, String(value));
+    });
+    return req<PaginatedReturnReceiptNotes>(`${BASE}/returns/receipt-notes?${p}`, token);
+  },
+
+  getReceiptNote: (token: string, noteId: string) =>
+    req<ReturnReceiptNoteDetail>(`${BASE}/returns/receipt-notes/${noteId}`, token),
+
+  approveReceiptNote: (token: string, noteId: string, data: ReturnNoteApprovalRequest) =>
+    req<unknown>(`${BASE}/returns/receipt-notes/${noteId}/approve`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  rejectReceiptNote: (token: string, noteId: string, data: ReturnNoteRejectionRequest) =>
+    req<unknown>(`${BASE}/returns/receipt-notes/${noteId}/reject`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  disposeLine: (token: string, noteId: string, data: ReturnDispositionRequest) =>
+    req<unknown>(`${BASE}/returns/receipt-notes/${noteId}/disposition`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
