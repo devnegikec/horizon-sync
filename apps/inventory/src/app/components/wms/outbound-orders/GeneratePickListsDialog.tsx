@@ -17,94 +17,11 @@ import {
 } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks';
 
-import { useInvalidateOutboundOrders } from '../../../hooks/useWMS';
-import type { OutboundOrderListItem, WMSWorker } from '../../../types/wms.types';
-import { outboundOrderApi, wmsWorkerApi } from '../../../utility/api/wms';
+import { useInvalidateOutboundOrders, useWarehouseWorkers } from '../../../hooks/useWMS';
+import type { OutboundOrderListItem } from '../../../types/wms.types';
+import { outboundOrderApi } from '../../../utility/api/wms';
+import { WorkerMultiSelect } from '../WorkerMultiSelect';
 
-function workerLabel(worker: WMSWorker): string {
-  const full = `${worker.first_name} ${worker.last_name}`.trim();
-  const name = worker.display_name ?? (full.length > 0 ? full : null);
-  if (!name) return worker.employee_id ?? worker.id;
-  return worker.employee_id ? `${name} (${worker.employee_id})` : name;
-}
-
-async function fetchAllWorkers(accessToken: string, warehouseId?: string, pageSize = 100): Promise<WMSWorker[]> {
-  const all: WMSWorker[] = [];
-  let page = 1;
-  while (page > 0) {
-    const data = await wmsWorkerApi.list(accessToken, {
-      page,
-      page_size: pageSize,
-      warehouse_id: warehouseId,
-    });
-    all.push(...(data.workers ?? []));
-    page = data.page < data.total_pages ? page + 1 : 0;
-  }
-  return all;
-}
-
-function WorkerMultiSelect({ workers, selected, onChange }: { workers: WMSWorker[]; selected: string[]; onChange: (ids: string[]) => void }) {
-  const [open, setOpen] = React.useState(false);
-  const selectedWorkers = workers.filter((w) => selected.includes(w.id));
-
-  const toggle = (id: string) => {
-    onChange(selected.includes(id) ? selected.filter((w) => w !== id) : [...selected, id]);
-  };
-
-  const remove = (id: string) => {
-    onChange(selected.filter((w) => w !== id));
-  };
-
-  return (
-    <div className="space-y-2">
-      {selectedWorkers.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {selectedWorkers.map((w) => (
-            <span key={w.id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-              {workerLabel(w)}
-              <button type="button"
-                onClick={() => remove(w.id)}
-                aria-label={`Remove ${workerLabel(w)}`}
-                className="rounded-full p-0.5 hover:bg-primary/20 focus:outline-none">
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button type="button"
-            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
-            <span className={selectedWorkers.length === 0 ? 'truncate text-muted-foreground' : 'truncate'}>
-              {selectedWorkers.length === 0
-                ? 'No worker (unassigned)'
-                : `${selectedWorkers.length} worker${selectedWorkers.length > 1 ? 's' : ''} selected`}
-            </span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="p-1" align="start">
-          <label htmlFor="worker-multiselect-none"
-            className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent">
-            <Checkbox id="worker-multiselect-none" checked={selected.length === 0} onCheckedChange={() => onChange([])} className="mr-2" />
-            No worker (unassigned)
-          </label>
-          {workers.map((w) => {
-            const checked = selected.includes(w.id);
-            return (
-              <label key={w.id}
-                className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent">
-                <Checkbox checked={checked} onCheckedChange={() => toggle(w.id)} className="mr-2" />
-                {workerLabel(w)}
-              </label>
-            );
-          })}
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
 
 export interface GeneratePickListsDialogProps {
   /** Order to split into pick lists. `null` closes the dialog. */
@@ -119,30 +36,15 @@ export function GeneratePickListsDialog({ order, onClose, onGenerated }: Generat
   const invalidateOrders = useInvalidateOutboundOrders();
   const [mode, setMode] = React.useState<'default' | 'auto' | 'manual'>('default');
   const [workerIds, setWorkerIds] = React.useState<string[]>([]);
-  const [workers, setWorkers] = React.useState<WMSWorker[]>([]);
   const [busy, setBusy] = React.useState(false);
 
-  React.useEffect(() => {
-    if (!order || !accessToken) return;
-    let cancelled = false;
-    fetchAllWorkers(accessToken, order.warehouse_id)
-      .then((data) => {
-        if (!cancelled) setWorkers(data);
-      })
-      .catch(() => {
-        if (!cancelled) setWorkers([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [order, accessToken]);
+  // Every assignable worker of the order's warehouse, loaded while the dialog is open.
+  const { workers } = useWarehouseWorkers(order?.warehouse_id, Boolean(order));
 
   React.useEffect(() => {
-    if (order) {
-      setMode('default');
-      setWorkerIds([]);
-      setWorkers([]);
-    }
+    if (!order) return;
+    setMode('default');
+    setWorkerIds([]);
   }, [order]);
 
   if (!order) return null;

@@ -29,15 +29,22 @@ import type {
   ScanSession,
   SessionSummary,
   WMSWorkerListResponse,
+  WMSWorker,
   WMSDeviceListResponse,
   WMSDashboardStats,
   PaginatedVehicleArrivals,
   VehicleArrival,
+  CreateReturnRegistrationRequest,
+  GenerateReturnPutAwayRequest,
+  GenerateReturnPutAwayResponse,
   ReturnDispositionAction,
   ReturnDispositionRequest,
   ReturnNoteApprovalRequest,
   ReturnReceiptNoteDetail,
+  ReturnReference,
+  ReturnRegistrationDetail,
 } from '../types/wms.types';
+import { toNormalizedApiError, type NormalizedApiError } from '../utility/api/core';
 import { queryErrorToMessage } from '../utility/api/error-utils';
 import { pickSettingsApi } from '../utility/api/pick-settings';
 import {
@@ -1064,6 +1071,53 @@ export function useDispatches({ page, page_size, vehicle_number }: { page?: numb
 // WMS WORKERS HOOK
 // ============================================
 
+/**
+ * Every assignable worker of a warehouse, following pagination so warehouses
+ * with more than one page of workers are fully covered.
+ */
+async function fetchAllWarehouseWorkers(accessToken: string, warehouseId?: string, pageSize = 100): Promise<WMSWorker[]> {
+  const all: WMSWorker[] = [];
+  let page = 1;
+  while (page > 0) {
+    const data = await wmsWorkerApi.list(accessToken, { page, page_size: pageSize, warehouse_id: warehouseId });
+    all.push(...(data.workers ?? []));
+    page = data.page < data.total_pages ? page + 1 : 0;
+  }
+  return all;
+}
+
+/**
+ * Loads the warehouse's assignable workers while `enabled` (typically a dialog is
+ * open) and ignores a response that arrives after it closed. Shared by the
+ * put-away and pick-list generators so the pagination walk lives in one place.
+ */
+export function useWarehouseWorkers(warehouseId: string | undefined, enabled: boolean) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [workers, setWorkers] = React.useState<WMSWorker[]>([]);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!enabled || !accessToken) return;
+    let cancelled = false;
+    setLoading(true);
+    fetchAllWarehouseWorkers(accessToken, warehouseId)
+      .then((data) => {
+        if (!cancelled) setWorkers(data);
+      })
+      .catch(() => {
+        if (!cancelled) setWorkers([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, accessToken, warehouseId]);
+
+  return { workers, loading };
+}
+
 export function useWMSWorkers({
   warehouse_id,
   status,
@@ -1385,6 +1439,37 @@ export function useReturnReceiptNote(noteId: string | null) {
     [requireNote, invalidate],
   );
 
+  /**
+   * Creates put-away tasks for the `release_to_stock` lines and keeps the rest in
+   * the non-pickable bins, so the put-away lists are invalidated too.
+   */
+  const generatePutAway = React.useCallback(
+    async (payload: GenerateReturnPutAwayRequest): Promise<GenerateReturnPutAwayResponse> => {
+      const { noteId: id, accessToken: token } = requireNote();
+      const result = await returnApi.generatePutAway(token, id, payload);
+      await Promise.all([
+        invalidate(),
+        queryClient.invalidateQueries({ queryKey: PUT_AWAY_LISTS_QUERY_KEY }),
+      ]);
+      return result;
+    },
+    [requireNote, invalidate, queryClient],
+  );
+
+  /** Downloads the Return Slip document as CSV (§6.7). */
+  const downloadSlip = React.useCallback(async (): Promise<void> => {
+    const { noteId: id, accessToken: token } = requireNote();
+    const blob = await returnApi.downloadSlipCsv(token, id);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${data?.note_no ?? id}-slip.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [requireNote, data?.note_no]);
+
   return {
     note: (data ?? null) as ReturnReceiptNoteDetail | null,
     loading: isFetching,
@@ -1393,5 +1478,126 @@ export function useReturnReceiptNote(noteId: string | null) {
     approveNote,
     rejectNote,
     disposeLine,
+    generatePutAway,
+    downloadSlip,
+  };
+}
+
+// ============================================
+// RETURN REGISTRATIONS
+// ============================================
+
+/** Root key for return registration queries. */
+export const RETURN_REGISTRATIONS_QUERY_KEY = ['wms', 'return-registrations'] as const;
+
+/**
+ * Reference lookup behind the registration form (§4.1). It only fires once an
+ * invoice number or party is supplied, and a miss (`RETURNS_REFERENCE_NOT_FOUND`)
+ * is surfaced as a normalised error so the form can show the server's `hint`.
+ */
+export function useReturnReference(reference: { invoice_no?: string; party_id?: string; warehouse_id?: string }) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const enabled = Boolean(reference.invoice_no || reference.party_id);
+
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: [...RETURN_REGISTRATIONS_QUERY_KEY, 'reference', reference],
+    queryFn: async () => {
+      if (!accessToken) throw new Error('Not authenticated');
+      return returnApi.getReferences(accessToken, reference);
+    },
+    // A miss is a definitive answer, not a transient failure worth retrying.
+    retry: false,
+    staleTime: 30_000,
+    enabled: enabled && !!accessToken,
+  });
+
+  return {
+    reference: (data ?? null) as ReturnReference | null,
+    loading: isFetching,
+    error: error ? toNormalizedApiError(error) : null,
+    refetch,
+  };
+}
+
+/** Registration queue (§5.2) plus the create/cancel actions the screen needs. */
+export function useReturnRegistrations({
+  warehouse_id,
+  status,
+  page,
+  page_size,
+}: {
+  warehouse_id?: string;
+  status?: string;
+  page?: number;
+  page_size?: number;
+}) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const queryClient = useQueryClient();
+
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: [...RETURN_REGISTRATIONS_QUERY_KEY, { warehouse_id, status, page, page_size }],
+    queryFn: async () => {
+      if (!accessToken) throw new Error('Not authenticated');
+      return returnApi.listRegistrations(accessToken, { warehouse_id, status, page, page_size });
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    enabled: !!accessToken,
+  });
+
+  const invalidate = React.useCallback(
+    () => queryClient.invalidateQueries({ queryKey: RETURN_REGISTRATIONS_QUERY_KEY }),
+    [queryClient],
+  );
+
+  const createRegistration = React.useCallback(
+    async (payload: CreateReturnRegistrationRequest): Promise<ReturnRegistrationDetail> => {
+      if (!accessToken) throw new Error('Not authenticated');
+      const created = await returnApi.createRegistration(accessToken, payload);
+      await invalidate();
+      return created;
+    },
+    [accessToken, invalidate],
+  );
+
+  const cancelRegistration = React.useCallback(
+    async (registrationId: string, reason: string): Promise<void> => {
+      if (!accessToken) throw new Error('Not authenticated');
+      await returnApi.cancelRegistration(accessToken, registrationId, { reason });
+      await invalidate();
+    },
+    [accessToken, invalidate],
+  );
+
+  return {
+    data: data ?? null,
+    loading: isFetching,
+    error: queryErrorToMessage(error),
+    refetch,
+    createRegistration,
+    cancelRegistration,
+  };
+}
+
+/** One registration with its expected/received lines and dock sessions (§5.3). */
+export function useReturnRegistration(registrationId: string | null) {
+  const accessToken = useUserStore((s) => s.accessToken);
+
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: [...RETURN_REGISTRATIONS_QUERY_KEY, 'detail', registrationId],
+    queryFn: async () => {
+      if (!registrationId) throw new Error('No registration selected');
+      if (!accessToken) throw new Error('Not authenticated');
+      return returnApi.getRegistration(accessToken, registrationId);
+    },
+    staleTime: 30_000,
+    enabled: !!registrationId && !!accessToken,
+  });
+
+  return {
+    registration: (data ?? null) as ReturnRegistrationDetail | null,
+    loading: isFetching,
+    error: queryErrorToMessage(error),
+    refetch,
   };
 }

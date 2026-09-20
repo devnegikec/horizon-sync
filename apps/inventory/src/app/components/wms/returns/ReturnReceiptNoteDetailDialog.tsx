@@ -1,21 +1,25 @@
 import * as React from 'react';
 
-import { ShieldAlert } from 'lucide-react';
+import { Download, PackageCheck, ShieldAlert } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components';
 
 import { useReturnReceiptNote } from '../../../hooks/useWMS';
 import type {
+  GenerateReturnPutAwayRequest,
+  GenerateReturnPutAwayResponse,
   ReturnDispositionAction,
   ReturnReceiptNoteDetail,
   ReturnReceiptNoteGroup,
 } from '../../../types/wms.types';
+import { toNormalizedApiError } from '../../../utility/api/core';
 import { hasPermission } from '../../../utils/permissions';
 import { QRDetailDialog, type QRDetailColumn, type QRDetailRow } from '../QRDetailDialog';
 import { WMSStatusBadge } from '../WMSStatusBadge';
 
 import { ApproveReturnNoteDialog } from './ApproveReturnNoteDialog';
+import { GenerateReturnPutAwayDialog } from './GenerateReturnPutAwayDialog';
 import { RejectReturnNoteDialog } from './RejectReturnNoteDialog';
 import { ReturnConditionBadge } from './ReturnConditionBadge';
 import { ReturnDispositionDialog } from './ReturnDispositionDialog';
@@ -148,8 +152,6 @@ function NoteFooter({
   onApprove: () => void;
   onReject: () => void;
 }) {
-  if (note.status !== 'pending_approval') return null;
-
   const blocked = unclassifiedLines(note);
 
   return (
@@ -173,6 +175,47 @@ function NoteFooter({
   );
 }
 
+/**
+ * Footer for a note that is past approval: the slip document is always readable,
+ * while put-away generation only makes sense while nothing has been generated yet.
+ */
+function NoteDocumentFooter({
+  canGeneratePutAway,
+  slipBusy,
+  onDownloadSlip,
+  onGeneratePutAway,
+}: {
+  canGeneratePutAway: boolean;
+  slipBusy: boolean;
+  onDownloadSlip: () => void;
+  onGeneratePutAway: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+      <Button variant="outline" size="sm" className="gap-2" onClick={onDownloadSlip} disabled={slipBusy}>
+        <Download className="h-3.5 w-3.5" />
+        {slipBusy ? 'Preparing…' : 'Return slip (CSV)'}
+      </Button>
+      {canGeneratePutAway && (
+        <Button size="sm" className="gap-2" onClick={onGeneratePutAway}>
+          <PackageCheck className="h-3.5 w-3.5" />
+          Generate put-away
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** Records a download failure without a try/catch in the component body. */
+async function runDownload(download: () => Promise<void>, setError: (message: string | null) => void): Promise<void> {
+  setError(null);
+  try {
+    await download();
+  } catch (err) {
+    setError(toNormalizedApiError(err).message);
+  }
+}
+
 /* ---- Dialog ------------------------------------------------------------- */
 
 export interface ReturnReceiptNoteDetailDialogProps {
@@ -188,7 +231,7 @@ export interface ReturnReceiptNoteDetailDialogProps {
  * contract and surface 404s as ordinary errors.
  */
 export function ReturnReceiptNoteDetailDialog({ noteId, open, onOpenChange }: ReturnReceiptNoteDetailDialogProps) {
-  const { note, loading, error, approveNote, rejectNote, disposeLine } = useReturnReceiptNote(noteId);
+  const { note, loading, error, approveNote, rejectNote, disposeLine, generatePutAway, downloadSlip } = useReturnReceiptNote(noteId);
   const permissions = useUserStore((state) => state.permissions.permissions);
   const canApprove = hasPermission(permissions, 'return.approve');
   const canDispose = hasPermission(permissions, 'return.dispose');
@@ -196,6 +239,10 @@ export function ReturnReceiptNoteDetailDialog({ noteId, open, onOpenChange }: Re
   const [lineTarget, setLineTarget] = React.useState<ReturnNoteLine | null>(null);
   const [approveOpen, setApproveOpen] = React.useState(false);
   const [rejectOpen, setRejectOpen] = React.useState(false);
+  const [putAwayOpen, setPutAwayOpen] = React.useState(false);
+  const [slipBusy, setSlipBusy] = React.useState(false);
+  const [slipError, setSlipError] = React.useState<string | null>(null);
+  const [notice, setNotice] = React.useState<string | null>(null);
 
   const rows = React.useMemo(() => returnNoteRows(note), [note]);
 
@@ -210,11 +257,14 @@ export function ReturnReceiptNoteDetailDialog({ noteId, open, onOpenChange }: Re
     return built;
   }, [canDispose]);
 
-  // Never leave a child dialog open over a different note.
+  // Never leave a child dialog or a stale notice over a different note.
   React.useEffect(() => {
     setLineTarget(null);
     setApproveOpen(false);
     setRejectOpen(false);
+    setPutAwayOpen(false);
+    setNotice(null);
+    setSlipError(null);
   }, [noteId, open]);
 
   const handleDispose = React.useCallback(
@@ -228,8 +278,25 @@ export function ReturnReceiptNoteDetailDialog({ noteId, open, onOpenChange }: Re
   const handleApprove = React.useCallback(
     async (approvalNote?: string) => {
       await approveNote(approvalNote ? { note: approvalNote } : {});
+      setNotice('Note approved. Generate put-away for the lines released to stock.');
     },
     [approveNote],
+  );
+
+  const handleDownloadSlip = React.useCallback(async () => {
+    setSlipBusy(true);
+    await runDownload(downloadSlip, setSlipError);
+    setSlipBusy(false);
+  }, [downloadSlip]);
+
+  const handleGenerated = React.useCallback((result: GenerateReturnPutAwayResponse) => {
+    const lists = result.put_away_lists.map((list) => list.list_no).join(', ');
+    setNotice(`Put-away generated${lists ? `: ${lists}` : ''} — ${result.segregated_lines} line(s) stayed segregated.`);
+  }, []);
+
+  const handleGeneratePutAway = React.useCallback(
+    async (payload: GenerateReturnPutAwayRequest) => generatePutAway(payload),
+    [generatePutAway],
   );
 
   return (
@@ -244,12 +311,25 @@ export function ReturnReceiptNoteDetailDialog({ noteId, open, onOpenChange }: Re
         defaultExpanded
         emptyMessage="No received units on this note"
         subtitle={error ? <p className="text-sm text-destructive">{error}</p> : undefined}
-        summary={note ? <ReturnNoteSummary note={note}/> : undefined}
+        summary={note ? (
+          <>
+            <ReturnNoteSummary note={note}/>
+            {notice && <p className="text-sm text-emerald-600">{notice}</p>}
+            {slipError && <p className="text-sm text-destructive">{slipError}</p>}
+          </>
+        ) : undefined}
         footer={note ? (
-          <NoteFooter note={note}
-            canApprove={canApprove}
-            onApprove={() => setApproveOpen(true)}
-            onReject={() => setRejectOpen(true)}/>
+          note.status === 'pending_approval' ? (
+            <NoteFooter note={note}
+              canApprove={canApprove}
+              onApprove={() => setApproveOpen(true)}
+              onReject={() => setRejectOpen(true)}/>
+          ) : (
+            <NoteDocumentFooter canGeneratePutAway={canApprove && note.status === 'approved'}
+              slipBusy={slipBusy}
+              onDownloadSlip={handleDownloadSlip}
+              onGeneratePutAway={() => setPutAwayOpen(true)}/>
+          )
         ) : undefined}/>
 
       <ReturnDispositionDialog open={Boolean(lineTarget)}
@@ -262,6 +342,12 @@ export function ReturnReceiptNoteDetailDialog({ noteId, open, onOpenChange }: Re
       <ApproveReturnNoteDialog open={approveOpen} onOpenChange={setApproveOpen} note={note} onConfirm={handleApprove}/>
 
       <RejectReturnNoteDialog open={rejectOpen} onOpenChange={setRejectOpen} note={note} onConfirm={rejectNote}/>
+
+      <GenerateReturnPutAwayDialog open={putAwayOpen}
+        onOpenChange={setPutAwayOpen}
+        note={note}
+        onGenerate={handleGeneratePutAway}
+        onGenerated={handleGenerated}/>
     </>
   );
 }

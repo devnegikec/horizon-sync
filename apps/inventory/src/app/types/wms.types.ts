@@ -1724,3 +1724,170 @@ export interface ReturnNoteRejectionRequest {
   reason: string;
 }
 
+/* ---- Reference lookup (§4.1) -------------------------------------------- */
+
+export type ReturnReferenceType = 'invoice' | 'dealer' | 'warehouse';
+
+/** Every reason category a registration may be raised under (§7). */
+export const RETURN_REGISTRATION_REASON_CATEGORIES = ['return_good', 'return_damage', 'return_scrap'];
+
+export interface ReturnReferenceLine {
+  line_id: string;
+  item_id: string;
+  sku: string;
+  item_name: string | null;
+  uom: string | null;
+  invoiced_qty: number;
+  already_returned_qty: number;
+  /** `invoiced_qty − already_returned_qty`; the quantity input is capped at this. */
+  returnable_qty: number;
+}
+
+export interface ReturnReferenceInvoice {
+  id: string;
+  invoice_no: string;
+  invoice_type: string | null;
+  posting_date: string | null;
+  status: string | null;
+  grand_total: number | null;
+  currency: string | null;
+  party: { id: string; type: string; name: string } | null;
+  warehouse: { id: string; name: string } | null;
+}
+
+export interface ReturnReference {
+  invoice: ReturnReferenceInvoice | null;
+  lines: ReturnReferenceLine[];
+  suggested_warehouse_id: string | null;
+}
+
+/* ---- Registrations (§5) ------------------------------------------------- */
+
+export interface ReturnRegistrationListItem {
+  id: string;
+  registration_no: string;
+  status: ReturnRegistrationStatus;
+  reference_type: ReturnReferenceType | null;
+  invoice_no: string | null;
+  party_name: string | null;
+  warehouse_name: string | null;
+  expected_qty: number;
+  received_qty: number;
+  created_at: string | null;
+}
+
+export interface PaginatedReturnRegistrations {
+  items: ReturnRegistrationListItem[];
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+  has_next?: boolean;
+  has_prev?: boolean;
+}
+
+export interface ReturnRegistrationLine {
+  id: string;
+  item_id: string | null;
+  sku: string;
+  item_name: string | null;
+  uom: string | null;
+  expected_qty: number;
+  received_qty: number;
+  serials: string[] | null;
+  conditions: ReturnConditionCounts | null;
+}
+
+export interface ReturnRegistrationSession {
+  id: string;
+  status: string;
+  started_at: string | null;
+  worker_id: string | null;
+  worker_name?: string | null;
+}
+
+export interface ReturnRegistrationDetail {
+  id: string;
+  registration_no: string;
+  status: ReturnRegistrationStatus;
+  reference_type: ReturnReferenceType | null;
+  invoice_no: string | null;
+  party: { id: string; name: string } | null;
+  warehouse: { id: string; name: string } | null;
+  return_reason_code: string | null;
+  note: string | null;
+  return_date?: string | null;
+  expected_qty: number;
+  received_qty: number;
+  lines: ReturnRegistrationLine[];
+  sessions: ReturnRegistrationSession[];
+}
+
+export interface CreateReturnRegistrationLine {
+  sku: string;
+  quantity: number;
+  uom?: string | null;
+  /** Optional: when present the handheld validates each scanned unit against it. */
+  serials?: string[];
+}
+
+export interface CreateReturnRegistrationRequest {
+  reference_type: ReturnReferenceType;
+  invoice_no?: string;
+  party_id?: string;
+  warehouse_id: string;
+  return_reason_code: string;
+  return_date?: string;
+  note?: string;
+  lines: CreateReturnRegistrationLine[];
+}
+
+export interface CancelReturnRegistrationRequest {
+  reason: string;
+}
+
+/* ---- Put-away generation (§6.6) ---------------------------------------- */
+
+export interface GenerateReturnPutAwayRequest {
+  worker_ids?: string[];
+  note?: string;
+}
+
+export interface ReturnPutAwayListSummary {
+  id: string;
+  list_no: string;
+  assigned_to: string | null;
+  item_count: number;
+}
+
+export interface GenerateReturnPutAwayResponse {
+  put_away_lists: ReturnPutAwayListSummary[];
+  segregated_lines: number;
+  note_status: ReturnNoteStatus;
+}
+
+/* ---- Return Slip document (§6.7) --------------------------------------- */
+
+export interface ReturnSlipLine {
+  sku: string;
+  item_name?: string | null;
+  expected_qty: number;
+  received_qty: number;
+  conditions: ReturnConditionCounts | null;
+  reason_codes: string[];
+  serials: string[];
+}
+
+export interface ReturnSlip {
+  slip_no: string;
+  generated_at: string | null;
+  registration_no: string | null;
+  invoice_no: string | null;
+  party: { name: string } | null;
+  warehouse: { name: string } | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  lines: ReturnSlipLine[];
+  totals: { expected_qty: number; received_qty: number; short_qty: number };
+}
+

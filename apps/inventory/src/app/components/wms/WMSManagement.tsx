@@ -40,7 +40,7 @@ import { LocationTreeView } from './LocationTreeView';
 import { OutboundManagement } from './OutboundManagement';
 import { PutAwayView } from './PutAwayView';
 import { ReceivingSlipList } from './ReceivingSlipList';
-import { ReturnReceiptNoteQueue } from './returns';
+import { ReturnsView } from './returns';
 import { VehicleArrivalManagement } from './VehicleArrivalManagement';
 import { Warehouse3DView } from './Warehouse3DView';
 import { WarehouseLayoutDesigner } from './WarehouseLayoutDesigner';
@@ -379,7 +379,7 @@ function InboundSectionContent({
     case 'exceptions':
       return <InboundExceptionQueue warehouseId={warehouseId || undefined} />;
     case 'returns':
-      return <ReturnReceiptNoteQueue warehouseId={warehouseId || undefined} refreshKey={refreshKey} />;
+      return <ReturnsView warehouseId={warehouseId || undefined} refreshKey={refreshKey} />;
   }
 }
 
