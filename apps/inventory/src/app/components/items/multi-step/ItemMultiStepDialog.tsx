@@ -118,6 +118,14 @@ const getInitialFormData = (initialData?: Partial<ItemFormData>): ItemFormData =
   packagingWidthMm: '',
   packagingHeightMm: '',
   packagingWeightGrams: '',
+  masterPackUnitName: '',
+  masterPackLengthMm: '',
+  masterPackWidthMm: '',
+  masterPackHeightMm: '',
+  masterPackWeightGrams: '',
+  masterPackFillFactor: '0.75',
+  masterPackVoidFillPct: '0.10',
+  masterPackWallThicknessMm: '3',
   ...initialData,
 });
 
