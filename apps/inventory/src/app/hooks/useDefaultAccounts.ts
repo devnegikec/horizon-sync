@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
 
-import { accountApi } from '../utility/api/accounts';
 import type { DefaultAccountMapping } from '../types/account.types';
+import { accountApi } from '../utility/api/accounts';
 import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export function useDefaultAccounts() {

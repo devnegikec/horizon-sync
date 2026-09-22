@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Plus, Save, Upload, Trash2, RotateCcw, AlertCircle, Download, ChevronDown, FileDown, Loader2 } from 'lucide-react';
+import { Plus, Save, Upload, Trash2, RotateCcw, AlertCircle, Download, ChevronDown, FileDown, Loader2, Search, Check } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
@@ -20,9 +20,12 @@ import {
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@horizon-sync/ui/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
+
+import { useDebouncedValue } from '../../search/hooks/useDebouncedValue';
 
 import { UomService, type Uom } from '../../../services/uom.service';
 import { itemService, type ItemListItem } from '../../../services/item.service';
@@ -46,6 +49,15 @@ interface ConversionRow {
     to_uom_id: string | null;
     conversion_factor: string;
     isNew: boolean;
+    /** Server-side identity used to delete the original conversion when the
+     *  row's identifying fields are edited or the row is removed. */
+    original?: {
+        item_id: string;
+        from_uom: string;
+        to_uom: string;
+        from_uom_id: string | null;
+        to_uom_id: string | null;
+    };
 }
 
 let rowCounter = 0;
@@ -64,6 +76,15 @@ function rowFromConversion(c: UomConversion): ConversionRow {
         to_uom_id: c.to_uom_id,
         conversion_factor: String(c.conversion_factor ?? ''),
         isNew: false,
+        original: c.item_id
+            ? {
+                item_id: c.item_id,
+                from_uom: c.from_uom,
+                to_uom: c.to_uom,
+                from_uom_id: c.from_uom_id,
+                to_uom_id: c.to_uom_id,
+            }
+            : undefined,
     };
 }
 
@@ -162,6 +183,121 @@ function parseConversionCsv(text: string): BulkConversionRow[] {
     return result;
 }
 
+function ItemSearchCombobox({
+    value,
+    onValueChange,
+    disabled,
+    itemById,
+    searchItems,
+}: {
+    value: string | null;
+    onValueChange: (id: string) => void;
+    disabled: boolean;
+    itemById: Map<string, ItemListItem>;
+    searchItems: (query: string) => Promise<ItemListItem[]>;
+}) {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<ItemListItem[]>([]);
+    const [searching, setSearching] = useState(false);
+    const debouncedQuery = useDebouncedValue(query, 300);
+
+    useEffect(() => {
+        const q = debouncedQuery.trim();
+        if (q.length < 2) {
+            setResults([]);
+            setSearching(false);
+            return;
+        }
+        let cancelled = false;
+        setSearching(true);
+        searchItems(q)
+            .then((res) => {
+                if (!cancelled) {
+                    setResults(res);
+                    setSearching(false);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setResults([]);
+                    setSearching(false);
+                }
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [debouncedQuery, searchItems]);
+
+    const selected = value ? itemById.get(value) : undefined;
+    const label = selected
+        ? `${selected.item_name}${selected.item_code ? ` (${selected.item_code})` : ''}`
+        : 'Select item';
+
+    const handleSelect = (item: ItemListItem) => {
+        onValueChange(item.id);
+        setOpen(false);
+        setQuery('');
+        setResults([]);
+    };
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <button
+                    type="button"
+                    disabled={disabled}
+                    className="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    <span className={selected ? 'truncate' : 'truncate text-muted-foreground'}>{label}</span>
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2" align="start">
+                <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Search items..."
+                        className="pl-8"
+                        autoFocus
+                    />
+                </div>
+                <div className="mt-2 max-h-60 overflow-y-auto">
+                    {searching ? (
+                        <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Searching…
+                        </div>
+                    ) : query.trim().length < 2 ? (
+                        <p className="px-2 py-6 text-center text-sm text-muted-foreground">
+                            Type at least 2 characters to search
+                        </p>
+                    ) : results.length === 0 ? (
+                        <p className="px-2 py-6 text-center text-sm text-muted-foreground">No items found</p>
+                    ) : (
+                        results.map((it) => (
+                            <button
+                                key={it.id}
+                                type="button"
+                                onClick={() => handleSelect(it)}
+                                className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                            >
+                                <span>
+                                    {it.item_name}
+                                    {it.item_code ? ` (${it.item_code})` : ''}
+                                </span>
+                                {it.id === value && <Check className="h-4 w-4" />}
+                            </button>
+                        ))
+                    )}
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConversionsSettingsProps) {
     const { toast } = useToast();
     const [items, setItems] = useState<ItemListItem[]>([]);
@@ -175,6 +311,7 @@ export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConv
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isImporting, setIsImporting] = useState(false);
     const [exportFileName, setExportFileName] = useState('items-uom-export');
+    const [deletedRows, setDeletedRows] = useState<ConversionRow[]>([]);
 
     const itemById = useMemo(() => {
         const map = new Map<string, ItemListItem>();
@@ -192,14 +329,42 @@ export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConv
         setLoading(true);
         setError(null);
         try {
-            const [itemsData, uomsData, conversionsData] = await Promise.all([
-                itemService.list(accessToken),
+            const [uomsData, conversionsData, itemsData] = await Promise.all([
                 UomService.list(accessToken),
                 uomConversionService.list(accessToken),
+                itemService.list(accessToken),
             ]);
-            setItems(itemsData);
             setUoms(uomsData);
             setRows(conversionsData.map(rowFromConversion));
+            setDeletedRows([]);
+            // Hydrate item details for referenced items. The item list is
+            // capped at 100, so fetch any referenced items that fall outside
+            // the first page in a single parallel batch.
+            const listed = new Map(itemsData.map((i) => [i.id, i]));
+            const itemIds = Array.from(
+                new Set(conversionsData.map((c) => c.item_id).filter((id): id is string => !!id)),
+            );
+            const missingIds = itemIds.filter((id) => !listed.has(id));
+            if (missingIds.length === 0) {
+                setItems(itemsData);
+            } else {
+                const settled = await Promise.allSettled(missingIds.map((id) => itemService.get(accessToken, id)));
+                const hydrated = [...itemsData];
+                let failed = 0;
+                settled.forEach((r) => {
+                    if (r.status === 'fulfilled') {
+                        hydrated.push(r.value);
+                    } else {
+                        failed += 1;
+                    }
+                });
+                setItems(hydrated);
+                if (failed > 0) {
+                    setError(
+                        `Could not load details for ${failed} item${failed === 1 ? '' : 's'}; some conversions may show "Select item".`,
+                    );
+                }
+            }
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Failed to load items and conversions');
         } finally {
@@ -210,6 +375,16 @@ export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConv
     useEffect(() => {
         load();
     }, [load]);
+
+    const searchItems = useCallback(async (query: string): Promise<ItemListItem[]> => {
+        const results = await itemService.search(accessToken, query);
+        setItems((prev) => {
+            const map = new Map(prev.map((i) => [i.id, i]));
+            results.forEach((r) => map.set(r.id, r));
+            return Array.from(map.values());
+        });
+        return results;
+    }, [accessToken]);
 
     const addRow = () => {
         setRows((prev) => [
@@ -232,13 +407,57 @@ export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConv
     };
 
     const removeRow = (key: string) => {
+        const row = rows.find((r) => r.key === key);
+        if (row && !row.isNew) {
+            setDeletedRows((prev) => [...prev, row]);
+        }
         setRows((prev) => prev.filter((r) => r.key !== key));
     };
 
     const buildRows = (): { payload: BulkConversionRow[]; valid: boolean } => {
         const payload: BulkConversionRow[] = [];
         let valid = true;
+        // Rows removed from the UI must be explicitly deleted server-side;
+        // otherwise the next reload brings them back. Delete first so a
+        // re-added conversion of the same key is recreated after deletion.
+        for (const r of deletedRows) {
+            const itemId = r.original?.item_id ?? r.item_id;
+            const fromUom = r.original?.from_uom ?? r.from_uom;
+            const toUom = r.original?.to_uom ?? r.to_uom;
+            const fromUomId = r.original?.from_uom_id ?? r.from_uom_id;
+            const toUomId = r.original?.to_uom_id ?? r.to_uom_id;
+            if (!itemId || !fromUom || !toUom) continue;
+            payload.push({
+                item_id: itemId,
+                from_uom: fromUom,
+                to_uom: toUom,
+                from_uom_id: fromUomId || null,
+                to_uom_id: toUomId || null,
+                conversion_factor: Number(r.conversion_factor) || 1,
+                action: 'delete',
+            });
+        }
         for (const r of rows) {
+            // If an existing row's identifying fields changed, delete the
+            // original conversion so saving replaces it instead of leaving a
+            // stale duplicate on the server.
+            if (
+                !r.isNew &&
+                r.original?.item_id &&
+                (r.item_id !== r.original.item_id ||
+                    r.from_uom !== r.original.from_uom ||
+                    r.to_uom !== r.original.to_uom)
+            ) {
+                payload.push({
+                    item_id: r.original.item_id,
+                    from_uom: r.original.from_uom,
+                    to_uom: r.original.to_uom,
+                    from_uom_id: r.original.from_uom_id || null,
+                    to_uom_id: r.original.to_uom_id || null,
+                    conversion_factor: 1,
+                    action: 'delete',
+                });
+            }
             if (!r.item_id || !r.from_uom || !r.to_uom) {
                 valid = false;
                 continue;
@@ -455,23 +674,13 @@ export function ItemUomConversionsSettings({ accessToken, canEdit }: ItemUomConv
                             >
                                 <div className="space-y-1">
                                     <Label>Item</Label>
-                                    <Select
-                                        value={row.item_id ?? ''}
-                                        disabled={!canEdit}
+                                    <ItemSearchCombobox
+                                        value={row.item_id}
                                         onValueChange={(v) => updateRow(row.key, { item_id: v })}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select item" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {items.map((it) => (
-                                                <SelectItem key={it.id} value={it.id}>
-                                                    {it.item_name}
-                                                    {it.item_code ? ` (${it.item_code})` : ''}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                        disabled={!canEdit}
+                                        itemById={itemById}
+                                        searchItems={searchItems}
+                                    />
                                     {item && (
                                         <p className="text-xs text-muted-foreground">Base UOM: {item.uom ?? '—'}</p>
                                     )}

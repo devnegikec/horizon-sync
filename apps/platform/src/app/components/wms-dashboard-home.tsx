@@ -77,6 +77,10 @@ interface CapacityNode {
   full_path: string | null;
   volume: { occupied_m3: number | string; capacity_m3: number | string | null; pct: number | string | null };
   weight: { occupied_kg: number | string; capacity_kg: number | string | null; pct: number | string | null };
+  unit_count: number | string;
+  master_pack_count: number | string;
+  count_capacity: number | string | null;
+  count_pct: number | string | null;
   binding_pct: number | string | null;
   bin_state: string | null;
   is_available: boolean | null;
@@ -246,11 +250,20 @@ interface CapacityCardProps {
 
 function CapacityCard({ warehouseName, node }: CapacityCardProps) {
   const binding = toNumber(node?.binding_pct);
-  const state = capacityStateForPct(binding);
+  const countPct = toNumber(node?.count_pct);
   const volPct = toNumber(node?.volume?.pct);
   const hasVolume = toNumber(node?.volume?.capacity_m3) != null;
   const wtPct = toNumber(node?.weight?.pct);
   const hasWeight = toNumber(node?.weight?.capacity_kg) != null;
+  // Prefer the volume/weight binding when that capacity is configured. Only
+  // fall back to count utilisation when neither volume nor weight capacity is
+  // configured, so a genuinely empty (0%) volume isn't masked by a nonzero
+  // unit count.
+  const effectivePct = hasVolume || hasWeight ? binding : countPct;
+  const state = capacityStateForPct(effectivePct);
+  const unitCount = toNumber(node?.unit_count);
+  const countCap = toNumber(node?.count_capacity);
+  const hasCount = countCap != null;
 
   return (
     <div className="rounded-xl border border-border bg-card p-6">
@@ -269,10 +282,33 @@ function CapacityCard({ warehouseName, node }: CapacityCardProps) {
 
       {!node ? (
         <p className="text-sm text-muted-foreground">No capacity data available.</p>
-      ) : !hasVolume && !hasWeight ? (
-        <p className="text-sm text-muted-foreground">Capacity not configured for this warehouse.</p>
+      ) : !hasVolume && !hasWeight && !hasCount ? (
+        unitCount != null && unitCount > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{fmtNum(node.unit_count, 0)}</span> units stored · capacity not configured
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">Capacity not configured for this warehouse.</p>
+        )
       ) : (
         <div className="space-y-4">
+          {hasCount && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Units</span>
+                <span className="font-medium">
+                  {fmtNum(node.unit_count, 0)} / {fmtNum(node.count_capacity, 0)} units
+                  {countPct != null && <span className="ml-2 text-muted-foreground">{countPct.toFixed(1)}%</span>}
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
+                  style={{ width: `${Math.max(0, Math.min(100, countPct ?? 0))}%` }}
+                />
+              </div>
+            </div>
+          )}
           {hasVolume && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-sm">

@@ -3,7 +3,6 @@
  * Endpoints: /api/v1/qr-product-settings
  */
 
-import { apiRequest, buildPaginationParams } from '../utility/api/core';
 import type {
   QRProductSetting,
   QRProductSettingCreate,
@@ -11,6 +10,7 @@ import type {
   QRProductSettingListResponse,
   SettingType,
 } from '../types/qr-product-settings.types';
+import { apiRequest, buildPaginationParams } from '../utility/api/core';
 
 export const qrProductSettingApi = {
   list(

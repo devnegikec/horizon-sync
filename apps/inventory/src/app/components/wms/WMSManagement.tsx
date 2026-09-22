@@ -16,16 +16,18 @@ import {
   Truck,
   AlertTriangle,
   ScanLine,
+  RefreshCw,
+  RotateCcw,
 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Label } from '@horizon-sync/ui/components/ui/label';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { useMyWarehouses } from '../../hooks/useMyWarehouses';
+import { useSelectedWarehouse } from '../../hooks/useSelectedWarehouse';
+import type { PutAwayStatusCounts, ReceivingSlipStatusCounts } from '../../types/wms.types';
 import { hasPermission } from '../../utils/permissions';
+import { WarehouseSelect } from '../common';
 import { StockManagement } from '../stock';
 
 import { AsnManagement } from './AsnManagement';
@@ -38,6 +40,7 @@ import { LocationTreeView } from './LocationTreeView';
 import { OutboundManagement } from './OutboundManagement';
 import { PutAwayView } from './PutAwayView';
 import { ReceivingSlipList } from './ReceivingSlipList';
+import { ReturnsView } from './returns';
 import { VehicleArrivalManagement } from './VehicleArrivalManagement';
 import { Warehouse3DView } from './Warehouse3DView';
 import { WarehouseLayoutDesigner } from './WarehouseLayoutDesigner';
@@ -45,7 +48,7 @@ import { WorkersManagementPanel } from './WorkersManagementPanel';
 
 type WMSView = 'asn' | 'inbound' | 'outbound' | 'stock' | 'manage';
 type ManageSection = 'workers' | 'devices' | 'designer' | 'tree' | '3d' | 'location-qr';
-type InboundSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions';
+type InboundSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions' | 'returns';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -67,12 +70,15 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 
 export function WMSManagement() {
   const [activeView, setActiveView] = React.useState<WMSView>('asn');
-  const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('');
   const [manageSection, setManageSection] = React.useState<ManageSection>('workers');
   const [inboundSection, setInboundSection] = React.useState<InboundSection>('receiving');
   const [receivingStatusFilter, setReceivingStatusFilter] = React.useState<string>('all');
+  const [putawayStatusFilter, setPutawayStatusFilter] = React.useState<string>('all');
 
-  const { warehouses, loading: warehousesLoading, refetch: refetchWarehouses } = useMyWarehouses();
+  // App-wide warehouse selection, kept in a persisted store (not component state)
+  // so it survives tab switches, route changes and reloads instead of snapping
+  // back to the first assigned warehouse on every remount.
+  const { warehouses, loading: warehousesLoading, warehouseId: selectedWarehouseId, setWarehouseId: setSelectedWarehouseId, refetch: refetchWarehouses } = useSelectedWarehouse();
   const userPermissions = useUserStore((s) => s.permissions.permissions);
   const userType = useUserStore((s) => s.user?.user_type);
   const isAdmin = userType === 'system_admin' || userType === 'organization_admin';
@@ -84,13 +90,6 @@ export function WMSManagement() {
       setActiveView('asn');
     }
   }, [activeView, canManage]);
-
-  // Auto-select first warehouse
-  React.useEffect(() => {
-    if (!selectedWarehouseId && warehouses.length > 0) {
-      setSelectedWarehouseId(warehouses[0].id);
-    }
-  }, [warehouses, selectedWarehouseId]);
 
   // Refresh warehouse list when warehouses are created/imported elsewhere
   React.useEffect(() => {
@@ -117,17 +116,19 @@ export function WMSManagement() {
       <WMSHeader warehouses={warehouses}
         warehousesLoading={warehousesLoading}
         selectedWarehouseId={selectedWarehouseId}
-        onWarehouseChange={setSelectedWarehouseId} />
+        onWarehouseChange={setSelectedWarehouseId}/>
       <WMSNavigation activeView={activeView} canManage={canManage} onViewChange={setActiveView} />
       <WMSContent activeView={activeView}
         canManage={canManage}
         inboundSection={inboundSection}
         manageSection={manageSection}
         receivingStatusFilter={receivingStatusFilter}
+        putawayStatusFilter={putawayStatusFilter}
         selectedWarehouseId={selectedWarehouseId}
         onInboundSectionChange={setInboundSection}
         onManageSectionChange={setManageSection}
-        onReceivingStatusFilterChange={setReceivingStatusFilter} />
+        onReceivingStatusFilterChange={setReceivingStatusFilter}
+        onPutawayStatusFilterChange={setPutawayStatusFilter}/>
     </div>
   );
 }
@@ -146,21 +147,14 @@ function WMSHeader({ warehouses, warehousesLoading, selectedWarehouseId, onWareh
         <h1 className="text-3xl font-bold tracking-tight">Warehouse Management</h1>
         <p className="text-muted-foreground mt-1">Manage inbound receiving, put-away, outbound picking, and gate verification</p>
       </div>
-      <div className="flex items-center gap-3">
-        <Label className="text-sm font-medium shrink-0">Warehouse</Label>
-        <Select value={selectedWarehouseId} onValueChange={onWarehouseChange} disabled={warehousesLoading}>
-          <SelectTrigger className="w-[220px]">
-            <SelectValue placeholder={warehousesLoading ? 'Loading...' : 'Select warehouse'} />
-          </SelectTrigger>
-          <SelectContent>
-            {warehouses.map((warehouse) => (
-              <SelectItem key={warehouse.id} value={warehouse.id}>
-                {warehouse.name} ({warehouse.code})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <WarehouseSelect warehouses={warehouses}
+        value={selectedWarehouseId}
+        onChange={onWarehouseChange}
+        loading={warehousesLoading}
+        label="Warehouse"
+        htmlId="wms-warehouse"
+        triggerClassName="w-[220px]"
+        className="flex flex-row items-center gap-3 space-y-0"/>
     </div>
   );
 }
@@ -185,10 +179,12 @@ interface WMSContentProps {
   inboundSection: InboundSection;
   manageSection: ManageSection;
   receivingStatusFilter: string;
+  putawayStatusFilter: string;
   selectedWarehouseId: string;
   onInboundSectionChange: (section: InboundSection) => void;
   onManageSectionChange: (section: ManageSection) => void;
   onReceivingStatusFilterChange: (status: string) => void;
+  onPutawayStatusFilterChange: (status: string) => void;
 }
 
 const wmsViewComponents: Record<WMSView, React.ComponentType<WMSContentProps>> = {
@@ -246,36 +242,92 @@ function InboundManagement({
   inboundSection,
   selectedWarehouseId,
   receivingStatusFilter,
+  putawayStatusFilter,
   onInboundSectionChange,
   onReceivingStatusFilterChange,
+  onPutawayStatusFilterChange,
 }: WMSContentProps) {
+  const [refreshKey, setRefreshKey] = React.useState(0);
+  // Returns is a newer module with its own permission codes, so its tab only
+  // appears once the caller has been granted `return.read`.
+  const userPermissions = useUserStore((s) => s.permissions.permissions);
+  const canViewReturns = hasPermission(userPermissions, 'return.read');
+  // Both count sets are produced by the list requests in `ReceivingSlipList` /
+  // `PutAwayView` so the stat cards don't fetch the same endpoints a second time.
+  const [receivingCounts, setReceivingCounts] = React.useState<ReceivingSlipStatusCounts | null>(null);
+  const [putawayCounts, setPutawayCounts] = React.useState<PutAwayStatusCounts | null>(null);
+
   const openReceiving = (status: string) => {
     onReceivingStatusFilterChange(status);
     onInboundSectionChange('receiving');
   };
 
+  const openPutAway = (status: string) => {
+    onPutawayStatusFilterChange(status);
+    onInboundSectionChange('putaway');
+  };
+
+  const handleRefresh = React.useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  const heading: { title: string; subtitle: string } | undefined =
+    inboundSection === 'receiving'
+      ? {
+          title: 'Receiving Slips',
+          subtitle: 'Review and approve or reject receiving slips generated from inbound scan sessions.',
+        }
+      : inboundSection === 'putaway'
+        ? {
+            title: 'Put-Away Lists',
+            subtitle: 'Put-away lists are generated automatically when a receiving slip is approved.',
+          }
+        : undefined;
+
   return (
     <div className="space-y-4">
-      <InboundStats warehouseId={selectedWarehouseId || undefined} onSelectStatus={openReceiving} />
+      {heading && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">{heading.title}</h2>
+            <p className="text-sm text-muted-foreground">{heading.subtitle}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2 shrink-0 self-start sm:self-auto">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </Button>
+        </div>
+      )}
+      <InboundStats activeSection={inboundSection}
+        receivingCounts={receivingCounts}
+        putawayCounts={putawayCounts}
+        onSelectReceivingStatus={openReceiving}
+        onSelectPutAwayStatus={openPutAway}/>
       <div className="border rounded-lg overflow-hidden">
         <div className="flex border-b">
-          <SectionTab active={inboundSection === 'receiving'}
-            icon={Warehouse}
-            label="Receiving Slips"
-            onClick={() => openReceiving('all')} />
-          <SectionTab active={inboundSection === 'putaway'} icon={PackageCheck} label="Put-Away" onClick={() => onInboundSectionChange('putaway')} />
+          <SectionTab active={inboundSection === 'receiving'} icon={Warehouse} label="Receiving Slips" onClick={() => openReceiving('all')} />
+          <SectionTab active={inboundSection === 'putaway'} icon={PackageCheck} label="Put-Away" onClick={() => openPutAway('all')} />
           <SectionTab active={inboundSection === 'vehicle'} icon={Truck} label="Vehicle Arrivals" onClick={() => onInboundSectionChange('vehicle')} />
           <SectionTab active={inboundSection === 'exceptions'}
             icon={AlertTriangle}
             label="Holds & Quarantine"
-            onClick={() => onInboundSectionChange('exceptions')} />
+            onClick={() => onInboundSectionChange('exceptions')}/>
+          {canViewReturns && (
+            <SectionTab active={inboundSection === 'returns'}
+              icon={RotateCcw}
+              label="Returns"
+              onClick={() => onInboundSectionChange('returns')}/>
+          )}
         </div>
         <div className="p-4 space-y-4">
           <InboundSectionContent section={inboundSection}
             warehouseId={selectedWarehouseId}
             receivingStatusFilter={receivingStatusFilter}
+            putawayStatusFilter={putawayStatusFilter}
+            refreshKey={refreshKey}
             onReceivingStatusFilterChange={onReceivingStatusFilterChange}
-            onSlipGenerated={() => onInboundSectionChange('receiving')} />
+            onPutawayStatusFilterChange={onPutawayStatusFilterChange}
+            onReceivingCountsChange={setReceivingCounts}
+            onPutAwayCountsChange={setPutawayCounts}
+            onSlipGenerated={() => onInboundSectionChange('receiving')}/>
         </div>
       </div>
     </div>
@@ -286,13 +338,23 @@ function InboundSectionContent({
   section,
   warehouseId,
   receivingStatusFilter,
+  putawayStatusFilter,
+  refreshKey,
   onReceivingStatusFilterChange,
+  onPutawayStatusFilterChange,
+  onReceivingCountsChange,
+  onPutAwayCountsChange,
   onSlipGenerated,
 }: {
   section: InboundSection;
   warehouseId: string;
   receivingStatusFilter: string;
+  putawayStatusFilter: string;
+  refreshKey: number;
   onReceivingStatusFilterChange: (status: string) => void;
+  onPutawayStatusFilterChange: (status: string) => void;
+  onReceivingCountsChange: (counts: ReceivingSlipStatusCounts | null) => void;
+  onPutAwayCountsChange: (counts: PutAwayStatusCounts | null) => void;
   onSlipGenerated: () => void;
 }) {
   switch (section) {
@@ -300,14 +362,24 @@ function InboundSectionContent({
       return (
         <ReceivingSlipSection warehouseId={warehouseId}
           statusFilter={receivingStatusFilter}
-          onStatusFilterChange={onReceivingStatusFilterChange} />
+          refreshKey={refreshKey}
+          onStatusFilterChange={onReceivingStatusFilterChange}
+          onStatusCountsChange={onReceivingCountsChange}/>
       );
     case 'putaway':
-      return <PutAwaySection warehouseId={warehouseId} />;
+      return (
+        <PutAwaySection warehouseId={warehouseId}
+          statusFilter={putawayStatusFilter}
+          refreshKey={refreshKey}
+          onStatusFilterChange={onPutawayStatusFilterChange}
+          onStatusCountsChange={onPutAwayCountsChange}/>
+      );
     case 'vehicle':
       return <VehicleArrivalManagement warehouseId={warehouseId || undefined} />;
     case 'exceptions':
       return <InboundExceptionQueue warehouseId={warehouseId || undefined} />;
+    case 'returns':
+      return <ReturnsView warehouseId={warehouseId || undefined} refreshKey={refreshKey} />;
   }
 }
 
@@ -323,32 +395,47 @@ function InboundScanView({ warehouseId, onSlipGenerated }: { warehouseId: string
   );
 }
 
-function ReceivingSlipSection({ warehouseId, statusFilter, onStatusFilterChange }: { warehouseId: string; statusFilter: string; onStatusFilterChange: (status: string) => void }) {
+function ReceivingSlipSection({
+  warehouseId,
+  statusFilter,
+  refreshKey,
+  onStatusFilterChange,
+  onStatusCountsChange,
+}: {
+  warehouseId: string;
+  statusFilter: string;
+  refreshKey: number;
+  onStatusFilterChange: (status: string) => void;
+  onStatusCountsChange: (counts: ReceivingSlipStatusCounts | null) => void;
+}) {
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold">Receiving Slips</h2>
-        <p className="text-sm text-muted-foreground">Review and approve or reject receiving slips generated from inbound scan sessions.</p>
-      </div>
-      <ReceivingSlipList key={statusFilter}
-        warehouseId={warehouseId || undefined}
-        statusFilter={statusFilter}
-        onStatusFilterChange={onStatusFilterChange} />
-    </div>
+    <ReceivingSlipList warehouseId={warehouseId || undefined}
+      statusFilter={statusFilter}
+      refreshKey={refreshKey}
+      onStatusFilterChange={onStatusFilterChange}
+      onStatusCountsChange={onStatusCountsChange}/>
   );
 }
 
-function PutAwaySection({ warehouseId }: { warehouseId: string }) {
+function PutAwaySection({
+  warehouseId,
+  statusFilter,
+  refreshKey,
+  onStatusFilterChange,
+  onStatusCountsChange,
+}: {
+  warehouseId: string;
+  statusFilter: string;
+  refreshKey: number;
+  onStatusFilterChange: (status: string) => void;
+  onStatusCountsChange: (counts: PutAwayStatusCounts | null) => void;
+}) {
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold">Put-Away Lists</h2>
-        <p className="text-sm text-muted-foreground">
-          Put-away lists are generated automatically when a receiving slip is approved. Click a row to see its items.
-        </p>
-      </div>
-      <PutAwayView warehouseId={warehouseId || undefined} />
-    </div>
+    <PutAwayView warehouseId={warehouseId || undefined}
+      statusFilter={statusFilter}
+      refreshKey={refreshKey}
+      onStatusFilterChange={onStatusFilterChange}
+      onStatusCountsChange={onStatusCountsChange}/>
   );
 }
 
@@ -372,21 +459,24 @@ function ManageManagement({ manageSection, selectedWarehouseId, onManageSectionC
           <SectionTab active={manageSection === 'workers'} icon={Users} label="Workers" onClick={() => onManageSectionChange('workers')} />
           <SectionTab active={manageSection === 'devices'} icon={Monitor} label="Devices" onClick={() => onManageSectionChange('devices')} />
           {canManage && (
-            <SectionTab active={manageSection === 'designer'} icon={MapPin} label="Layout Designer" onClick={() => onManageSectionChange('designer')} />
+            <SectionTab active={manageSection === 'designer'}
+              icon={MapPin}
+              label="Layout Designer"
+              onClick={() => onManageSectionChange('designer')}/>
           )}
           <SectionTab active={manageSection === 'tree'} icon={Layers} label="Location Tree" onClick={() => onManageSectionChange('tree')} />
           <SectionTab active={manageSection === '3d'} icon={Box} label="3D View" onClick={() => onManageSectionChange('3d')} />
           <SectionTab active={manageSection === 'location-qr'}
             icon={QrCode}
             label="Location QR"
-            onClick={() => onManageSectionChange('location-qr')} />
+            onClick={() => onManageSectionChange('location-qr')}/>
         </div>
         <div className="p-4">
           <ManageSectionContent section={manageSection}
             warehouseId={selectedWarehouseId}
             canDesignLayout={canManage}
             treeKey={treeKey}
-            onLayoutChanged={handleLayoutChanged} />
+            onLayoutChanged={handleLayoutChanged}/>
         </div>
       </div>
     </div>
@@ -422,7 +512,15 @@ function ManageSectionContent({
   }
 }
 
-function DesignerContent({ warehouseId, canDesignLayout, onLayoutChanged }: { warehouseId: string; canDesignLayout: boolean; onLayoutChanged: () => void }) {
+function DesignerContent({
+  warehouseId,
+  canDesignLayout,
+  onLayoutChanged,
+}: {
+  warehouseId: string;
+  canDesignLayout: boolean;
+  onLayoutChanged: () => void;
+}) {
   if (!warehouseId || !canDesignLayout) {
     return <p className="text-sm text-muted-foreground">Select a warehouse to design its layout.</p>;
   }

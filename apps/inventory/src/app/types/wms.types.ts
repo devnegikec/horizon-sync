@@ -103,6 +103,8 @@ export interface BinStockLevelsResponse {
 export interface BinStockParentChild {
   serial_number: string;
   batch_number: string | null;
+  /** Not returned by every backend build — the SKU column renders `—` while absent. */
+  sku?: string | null;
   item_id: string;
   quantity_on_hand: number;
   inventory_status: string;
@@ -115,6 +117,8 @@ export interface BinStockParent {
   parent_id: string;
   parent_serial: string;
   parent_name: string;
+  /** Not returned by every backend build — the SKU column renders `—` while absent. */
+  sku?: string | null;
   capacity: number;
   child_units_in_bin: number;
   quantity_on_hand: number;
@@ -124,7 +128,25 @@ export interface BinStockParent {
 export interface BinStockParentsResponse {
   bin_id: string;
   total_parent_boxes: number;
-  parents: BinStockParent[];
+  /** One entry per QSeal parent (box) in the bin. */
+  groups?: BinStockGroup[];
+  /** Legacy flat shape, still served by older backend builds. */
+  parents?: BinStockParent[];
+}
+
+/**
+ * A serialised unit inside a bin. The bin-stock API returns the same item shape
+ * as a receiving-slip group, plus the bin-specific `inventory_status`.
+ */
+export interface BinStockGroupItem extends ReceivingSlipGroupItem {
+  inventory_status: string;
+}
+
+/** A QSeal parent (box) in a bin and the units stored inside it. */
+export interface BinStockGroup {
+  parent_qseal: ReceivingSlipParentQSeal | null;
+  product_name: string;
+  items: BinStockGroupItem[];
 }
 
 export interface BinStockInfo {
@@ -268,12 +290,7 @@ export interface AsnReceivingSummary {
   line_items: AsnReconciliationLineItem[];
 }
 
-export type ReceivingSlipStatus =
-  | 'pending_review'
-  | 'pending_putaway'
-  | 'putaway_in_progress'
-  | 'putaway_complete'
-  | 'rejected';
+export type ReceivingSlipStatus = 'pending_review' | 'pending_putaway' | 'putaway_in_progress' | 'putaway_complete' | 'rejected';
 
 /** Individual unit inside a receiving slip group */
 export interface ReceivingSlipGroupItem {
@@ -292,6 +309,8 @@ export interface ReceivingSlipGroupItem {
   exception_destination_location_id?: string | null;
   rejection_reason?: string | null;
   reason_code?: string | null;
+  /** Units missing against the ASN expectation; only set while `flag === 'short'`. */
+  short_qty?: number | null;
   notes: string | null;
 }
 
@@ -344,7 +363,7 @@ export interface ReceivingSlip {
   groups?: ReceivingSlipGroup[];
   /** Legacy flat format */
   items?: ReceivingSlipItem[];
-  created_at: string | null;
+  created_at: string;
   updated_at: string | null;
 }
 
@@ -368,6 +387,134 @@ export interface ReceivingSlipActionResult {
   slip_id: string;
   status: string;
   message: string;
+}
+
+// ============================================
+// SHORT RECEIPTS (inbound shortage ledger)
+// ============================================
+
+/** Every line flag the API can report. `ok`/`rejected` are read-only states. */
+export type LineFlag = 'ok' | 'short' | 'damaged' | 'excess' | 'hold' | 'quarantine' | 'rejected';
+
+/** The flags an operator may set through the flag endpoint, in picker order. */
+export const SETTABLE_LINE_FLAGS = ['short', 'damaged', 'excess', 'hold', 'quarantine'] as const;
+export type SettableLineFlag = (typeof SETTABLE_LINE_FLAGS)[number];
+
+/**
+ * Reason codes are categorised, and the flag endpoint rejects a code whose
+ * category does not match the flag. `short` only accepts `short`.
+ */
+export const FLAG_REASON_CATEGORIES: Record<SettableLineFlag, string[]> = {
+  short: ['short'],
+  damaged: ['damage'],
+  excess: ['excess', 'unexpected_sku'],
+  hold: ['hold'],
+  quarantine: ['quarantine'],
+};
+
+/** `'short'` is a ledger record only — it is never physically segregated. */
+export function flagNeedsDestination(flag: SettableLineFlag): boolean {
+  return flag !== 'short';
+}
+
+export type BalanceStatus = 'open' | 'resolved' | 'written_off';
+export type CloseOutcome = 'written_off' | 'resolved_by_receipt';
+
+export interface FlagLineRequest {
+  flag: SettableLineFlag;
+  reason_code: string;
+  /** Required for `short`; must be omitted for every other flag. */
+  short_qty?: number | null;
+  /** Required for segregation flags; must be omitted for `short`. */
+  destination?: 'HOLD' | 'QUARANTINE' | null;
+  notes?: string | null;
+}
+
+export interface FlagLineResponse {
+  id: string;
+  slip_id: string;
+  sku: string;
+  batch_number: string | null;
+  quantity: number;
+  box_count: number;
+  flag: LineFlag;
+  reason_code: string | null;
+  short_qty: number | null;
+  condition_code: string | null;
+  exception_id: string | null;
+  exception_status: string | null;
+  destination: 'HOLD' | 'QUARANTINE' | null;
+  destination_location_id: string | null;
+  notes: string | null;
+}
+
+export interface ShortBalance {
+  id: string;
+  asn_order_id: string;
+  asn_order_item_id: string;
+  receiving_slip_id: string | null;
+  item_id: string | null;
+  sku: string;
+  expected_qty: number;
+  received_qty: number;
+  short_qty: number;
+  status: BalanceStatus;
+  reason_code: string | null;
+  note: string | null;
+  close_reason_code: string | null;
+  close_note: string | null;
+  closed_by: string | null;
+  closed_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+/** Server-side totals — never aggregate the list client side. */
+export interface ShortBalanceSummary {
+  total: number;
+  open_count: number;
+  resolved_count: number;
+  written_off_count: number;
+  open_short_qty: number;
+  total_short_qty: number;
+}
+
+export interface PaginatedShortBalances {
+  balances: ShortBalance[];
+  pagination: WMSPagination;
+  summary: ShortBalanceSummary;
+}
+
+export type ShortBalanceEventType = 'created' | 'updated' | 'resolved' | 'written_off';
+
+export interface ShortBalanceEvent {
+  id: string;
+  balance_id: string;
+  receiving_slip_id: string | null;
+  event_type: ShortBalanceEventType;
+  from_status: BalanceStatus | null;
+  to_status: BalanceStatus;
+  expected_qty: number;
+  received_qty: number;
+  short_qty: number;
+  reason_code: string | null;
+  note: string | null;
+  actor_id: string | null;
+  created_at: string | null;
+}
+
+export interface CloseShortBalanceRequest {
+  outcome: CloseOutcome;
+  reason_code?: string | null;
+  note?: string | null;
+}
+
+export interface ShortBalanceFilters {
+  asn_order_id?: string;
+  status?: BalanceStatus;
+  sku?: string;
+  page?: number;
+  page_size?: number;
 }
 
 // ============================================
@@ -415,12 +562,7 @@ export interface InboundException {
   evidence: InboundExceptionEvidence[];
 }
 
-export type BulkDispositionAction =
-  | 'release_to_receiving'
-  | 'move_to_hold'
-  | 'move_to_quarantine'
-  | 'return_to_sender'
-  | 'dispose';
+export type BulkDispositionAction = 'release_to_receiving' | 'move_to_hold' | 'move_to_quarantine' | 'return_to_sender' | 'dispose';
 
 export interface PaginatedInboundExceptions {
   exceptions: InboundException[];
@@ -453,6 +595,7 @@ export interface PutAwayItem {
   item_name?: string | null;
   batch_number: string | null;
   serial_number?: string | null;
+  serial_nos?: string[] | null;
   manufacturing_date?: string | null;
   expiry_date?: string | null;
   quantity: number;
@@ -461,6 +604,35 @@ export interface PutAwayItem {
   suggested_bin_code: string | null;
   status: 'pending' | 'completed' | 'skipped';
   sort_order: number;
+}
+
+export interface PutAwayGroupItem {
+  id?: string;
+  item_id?: string;
+  item_name?: string | null;
+  serial_number: string;
+  sku: string;
+  batch_number: string | null;
+  manufacturing_date?: string | null;
+  expiry_date?: string | null;
+  quantity: number;
+  box_count?: number;
+}
+
+export interface PutAwayGroup {
+  parent_qseal?: {
+    id: string;
+    serial_number: string;
+    name: string;
+    qseal_type: string;
+    capacity: number;
+  } | null;
+  product_name: string;
+  bin_location_id: string | null;
+  bin_location_code: string | null;
+  status: PutAwayStatus;
+  sort_order: number;
+  items: PutAwayGroupItem[];
 }
 
 export interface PutAwayList {
@@ -480,14 +652,62 @@ export interface PutAwayList {
   warnings?: string[] | null;
   assigned_to: string | null;
   worker_name: string | null;
-  items: PutAwayItem[];
+  items?: PutAwayItem[];
+  groups?: PutAwayGroup[];
   completed_at: string | null;
-  created_at: string | null;
+  created_at: string;
   updated_at: string | null;
 }
 
 export interface PutAwayListBatchResponse {
   put_away_lists: PutAwayList[];
+}
+
+export interface PutAwayStatusCounts {
+  total: number;
+  pending: number;
+  in_progress: number;
+  completed: number;
+  cancelled?: number;
+}
+
+export interface PaginatedPutAwayLists {
+  put_away_lists: PutAwayList[];
+  pagination: WMSPagination;
+  status_counts?: PutAwayStatusCounts;
+}
+
+/**
+ * A put-away exception reuses the receipt classification vocabulary. `short`
+ * cannot apply here: a shortage is stock that never arrived, so there is
+ * nothing sitting on a put-away list to quarantine.
+ */
+export type PutAwayExceptionClassification = 'damaged' | 'excess' | 'hold' | 'quarantine';
+
+/** Picker order for the put-away exception classifications. */
+export const PUT_AWAY_EXCEPTION_CLASSIFICATIONS = ['damaged', 'excess', 'hold', 'quarantine'] as const;
+
+export type PutAwayExceptionDestination = 'HOLD' | 'QUARANTINE';
+
+/**
+ * `pack` raises one exception covering every unit inside a master pack; `item`
+ * covers a single unit.
+ */
+export type PutAwayExceptionScope = 'item' | 'pack';
+
+export interface PutAwayExceptionRequest {
+  classification: PutAwayExceptionClassification;
+  reason_code: string;
+  /** Both segregation bins are legal for every put-away classification. */
+  destination: PutAwayExceptionDestination;
+  note?: string | null;
+  scope: PutAwayExceptionScope;
+  /**
+   * The put-away item ids the exception covers. Sent explicitly so a pack
+   * request is self-describing rather than relying on the backend re-deriving
+   * which units were in the pack at the time.
+   */
+  item_ids: string[];
 }
 
 export interface PickListBatchResponse {
@@ -540,6 +760,33 @@ export interface PickSerialDetail {
   expiry_date?: string | null;
 }
 
+export interface PickListGroupItem {
+  serial_number: string | null;
+  sku: string;
+  batch_number: string | null;
+  manufacturing_date?: string | null;
+  expiry_date?: string | null;
+  quantity: number;
+  box_count?: number;
+}
+
+export interface PickListGroup {
+  parent_qseal: {
+    id: string;
+    serial_number: string;
+    name: string;
+    qseal_type: string;
+    capacity: number;
+  } | null;
+  product_name: string;
+  bin_location_id: string | null;
+  bin_location_path?: string | null;
+  handling_unit_id?: string | null;
+  sort_order: number;
+  picked_qty?: number;
+  items: PickListGroupItem[];
+}
+
 export interface PickListItem {
   id: string;
   item_id: string;
@@ -586,6 +833,7 @@ export interface PickList {
   age_minutes?: number;
   is_aging?: boolean;
   items: PickListItem[];
+  groups?: PickListGroup[];
   progress: PickListProgress | null;
 }
 
@@ -615,12 +863,7 @@ export interface PaginatedPickLists {
 
 export type OutboundOrderType = 'asn' | 'sap';
 
-export type OutboundOrderStatus =
-  | 'draft'
-  | 'confirmed'
-  | 'pending_picking'
-  | 'completed'
-  | 'cancelled';
+export type OutboundOrderStatus = 'draft' | 'confirmed' | 'pending_picking' | 'completed' | 'cancelled';
 
 export type OutboundOrderItemStockStatus = 'in_stock' | 'out_of_stock';
 
@@ -665,6 +908,19 @@ export interface OutboundOrderStatusCounts {
   pending_picking: number;
   completed: number;
   cancelled: number;
+}
+
+/**
+ * Order status counts published by the orders list, tagged with the warehouse
+ * they were fetched for. Consumers discard counts whose tag does not match the
+ * selected warehouse: the list is unmounted on the other outbound tabs, so it
+ * cannot republish them after a warehouse switch.
+ */
+export interface OutboundOrderCountsState {
+  warehouseId?: string;
+  counts: OutboundOrderStatusCounts | null;
+  /** True while the orders list request is in flight. */
+  loading: boolean;
 }
 
 export interface OutboundOrderListItem {
@@ -712,6 +968,35 @@ export interface PackingSlipItem {
   sort_order: number;
 }
 
+export interface PackingSlipGroupItem {
+  serial_number: string;
+  sku: string;
+  uom?: string | null;
+  batch_number: string | null;
+  manufacturing_date?: string | null;
+  expiry_date?: string | null;
+  quantity: number;
+  box_count?: number;
+}
+
+export interface PackingSlipGroup {
+  parent_qseal?: {
+    id: string;
+    serial_number: string;
+    name: string;
+    qseal_type: string;
+    capacity: number;
+  } | null;
+  product_name: string;
+  order_id: string;
+  pick_list_id: string;
+  bin_location_id: string | null;
+  bin_location_path?: string | null;
+  handling_unit_id: string | null;
+  sort_order: number;
+  items: PackingSlipGroupItem[];
+}
+
 export interface PackingSlip {
   id: string;
   organization_id: string;
@@ -722,7 +1007,9 @@ export interface PackingSlip {
   created_at: string | null;
   updated_at: string | null;
   order_ids: string[];
-  items: PackingSlipItem[];
+  invoice_reference?: string[];
+  items?: PackingSlipItem[];
+  groups?: PackingSlipGroup[];
 }
 
 export interface PackingSlipListItem {
@@ -732,6 +1019,7 @@ export interface PackingSlipListItem {
   status: PackingSlipStatus;
   item_count: number;
   order_ids: string[];
+  invoice_reference?: string[];
   created_at: string | null;
 }
 
@@ -1295,3 +1583,311 @@ export interface PaginatedVehicleArrivals {
   vehicle_arrivals: VehicleArrivalListItem[];
   pagination: WMSPagination;
 }
+
+// ============================================
+// RETURNS (return receipt notes — supervisor review)
+// ============================================
+
+export type ReturnRegistrationStatus = 'draft' | 'ready' | 'receiving' | 'received' | 'closed' | 'cancelled';
+
+/** `draft → pending_approval → approved | rejected`. */
+export type ReturnNoteStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected';
+
+/** Captured on the handheld; `pending` blocks approval. */
+export type ReturnLineCondition = 'pending' | 'good' | 'damaged' | 'hold' | 'quarantine';
+
+/** The final routing decision taken per line at approval. */
+export const RETURN_DISPOSITION_ACTIONS = [
+  'release_to_stock',
+  'move_to_hold',
+  'move_to_quarantine',
+  'scrap',
+  'return_to_dealer',
+] as const;
+export type ReturnDispositionAction = (typeof RETURN_DISPOSITION_ACTIONS)[number];
+
+/**
+ * The dispositions a line's condition permits. The API rejects a mismatch with
+ * `RETURN_DISPOSITION_INVALID`, so the picker only ever offers these.
+ */
+export const RETURN_DISPOSITIONS_BY_CONDITION: Record<ReturnLineCondition, ReturnDispositionAction[]> = {
+  pending: [],
+  good: ['release_to_stock'],
+  damaged: ['move_to_hold', 'move_to_quarantine', 'scrap', 'return_to_dealer'],
+  hold: ['move_to_hold', 'return_to_dealer'],
+  quarantine: ['move_to_quarantine', 'scrap', 'return_to_dealer'],
+};
+
+/**
+ * Reason categories a line's condition accepts. Scrap and dealer returns always
+ * use the scrap list, so `dispositionReasonCategories` combines the two.
+ */
+export const RETURN_CONDITION_REASON_CATEGORIES: Record<ReturnLineCondition, string[]> = {
+  pending: [],
+  good: ['return_good'],
+  damaged: ['damage'],
+  hold: ['hold'],
+  quarantine: ['quarantine'],
+};
+
+/** Reason categories for one disposition: the scrap list, or the line's condition. */
+export function dispositionReasonCategories(condition: ReturnLineCondition, action: ReturnDispositionAction): string[] {
+  if (action === 'scrap' || action === 'return_to_dealer') return ['return_scrap'];
+  return RETURN_CONDITION_REASON_CATEGORIES[condition];
+}
+
+export interface ReturnConditionCounts {
+  good: number;
+  damaged: number;
+  hold: number;
+  quarantine: number;
+}
+
+/** Queue row: one expected-vs-received summary per return receipt note. */
+export interface ReturnReceiptNoteSummary {
+  id: string;
+  note_no: string;
+  status: ReturnNoteStatus;
+  registration_id?: string | null;
+  registration_no: string | null;
+  warehouse_id?: string | null;
+  warehouse_name: string | null;
+  expected_qty: number;
+  received_qty: number;
+  /** expected ≠ received — rendered as a badge, never hidden. */
+  mismatch: boolean;
+  damaged_qty: number;
+  open_exceptions: number;
+  created_at: string | null;
+}
+
+export interface PaginatedReturnReceiptNotes {
+  items: ReturnReceiptNoteSummary[];
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+  has_next?: boolean;
+  has_prev?: boolean;
+}
+
+/** One received unit (or serial) inside a note group. */
+export interface ReturnReceiptNoteItem {
+  id: string;
+  serial_number: string | null;
+  quantity: number;
+  condition: ReturnLineCondition;
+  reason_code: string | null;
+  note: string | null;
+  /** Set when the unit raised an inbound exception that must be disposed of. */
+  exception_id: string | null;
+  destination: string | null;
+  disposition: ReturnDispositionAction | null;
+}
+
+/** Note detail is grouped by product, mirroring the receiving-slip payload. */
+export interface ReturnReceiptNoteGroup {
+  product_name: string;
+  sku: string | null;
+  batch_number?: string | null;
+  items: ReturnReceiptNoteItem[];
+}
+
+export interface ReturnReceiptNoteDetail {
+  id: string;
+  note_no: string;
+  status: ReturnNoteStatus;
+  registration_id: string | null;
+  registration_no: string | null;
+  warehouse: { id: string; name: string } | null;
+  expected_qty: number;
+  received_qty: number;
+  short_qty: number;
+  groups: ReturnReceiptNoteGroup[];
+}
+
+/** Per-line final decision (§6.5) — safe to call for a single line. */
+export interface ReturnDispositionRequest {
+  line_id: string;
+  action: ReturnDispositionAction;
+  reason_code?: string;
+  note?: string;
+}
+
+/** Approval payload (§6.3). Omitting `dispositions` accepts the handheld's routing. */
+export interface ReturnNoteApprovalRequest {
+  note?: string;
+  dispositions?: { line_id: string; action: ReturnDispositionAction; reason_code?: string }[];
+}
+
+export interface ReturnNoteRejectionRequest {
+  reason: string;
+}
+
+/* ---- Reference lookup (§4.1) -------------------------------------------- */
+
+export type ReturnReferenceType = 'invoice' | 'dealer' | 'warehouse';
+
+/** Every reason category a registration may be raised under (§7). */
+export const RETURN_REGISTRATION_REASON_CATEGORIES = ['return_good', 'return_damage', 'return_scrap'];
+
+export interface ReturnReferenceLine {
+  line_id: string;
+  item_id: string;
+  sku: string;
+  item_name: string | null;
+  uom: string | null;
+  invoiced_qty: number;
+  already_returned_qty: number;
+  /** `invoiced_qty − already_returned_qty`; the quantity input is capped at this. */
+  returnable_qty: number;
+}
+
+export interface ReturnReferenceInvoice {
+  id: string;
+  invoice_no: string;
+  invoice_type: string | null;
+  posting_date: string | null;
+  status: string | null;
+  grand_total: number | null;
+  currency: string | null;
+  party: { id: string; type: string; name: string } | null;
+  warehouse: { id: string; name: string } | null;
+}
+
+export interface ReturnReference {
+  invoice: ReturnReferenceInvoice | null;
+  lines: ReturnReferenceLine[];
+  suggested_warehouse_id: string | null;
+}
+
+/* ---- Registrations (§5) ------------------------------------------------- */
+
+export interface ReturnRegistrationListItem {
+  id: string;
+  registration_no: string;
+  status: ReturnRegistrationStatus;
+  reference_type: ReturnReferenceType | null;
+  invoice_no: string | null;
+  party_name: string | null;
+  warehouse_name: string | null;
+  expected_qty: number;
+  received_qty: number;
+  created_at: string | null;
+}
+
+export interface PaginatedReturnRegistrations {
+  items: ReturnRegistrationListItem[];
+  page: number;
+  page_size: number;
+  total_items: number;
+  total_pages: number;
+  has_next?: boolean;
+  has_prev?: boolean;
+}
+
+export interface ReturnRegistrationLine {
+  id: string;
+  item_id: string | null;
+  sku: string;
+  item_name: string | null;
+  uom: string | null;
+  expected_qty: number;
+  received_qty: number;
+  serials: string[] | null;
+  conditions: ReturnConditionCounts | null;
+}
+
+export interface ReturnRegistrationSession {
+  id: string;
+  status: string;
+  started_at: string | null;
+  worker_id: string | null;
+  worker_name?: string | null;
+}
+
+export interface ReturnRegistrationDetail {
+  id: string;
+  registration_no: string;
+  status: ReturnRegistrationStatus;
+  reference_type: ReturnReferenceType | null;
+  invoice_no: string | null;
+  party: { id: string; name: string } | null;
+  warehouse: { id: string; name: string } | null;
+  return_reason_code: string | null;
+  note: string | null;
+  return_date?: string | null;
+  expected_qty: number;
+  received_qty: number;
+  lines: ReturnRegistrationLine[];
+  sessions: ReturnRegistrationSession[];
+}
+
+export interface CreateReturnRegistrationLine {
+  sku: string;
+  quantity: number;
+  uom?: string | null;
+  /** Optional: when present the handheld validates each scanned unit against it. */
+  serials?: string[];
+}
+
+export interface CreateReturnRegistrationRequest {
+  reference_type: ReturnReferenceType;
+  invoice_no?: string;
+  party_id?: string;
+  warehouse_id: string;
+  return_reason_code: string;
+  return_date?: string;
+  note?: string;
+  lines: CreateReturnRegistrationLine[];
+}
+
+export interface CancelReturnRegistrationRequest {
+  reason: string;
+}
+
+/* ---- Put-away generation (§6.6) ---------------------------------------- */
+
+export interface GenerateReturnPutAwayRequest {
+  worker_ids?: string[];
+  note?: string;
+}
+
+export interface ReturnPutAwayListSummary {
+  id: string;
+  list_no: string;
+  assigned_to: string | null;
+  item_count: number;
+}
+
+export interface GenerateReturnPutAwayResponse {
+  put_away_lists: ReturnPutAwayListSummary[];
+  segregated_lines: number;
+  note_status: ReturnNoteStatus;
+}
+
+/* ---- Return Slip document (§6.7) --------------------------------------- */
+
+export interface ReturnSlipLine {
+  sku: string;
+  item_name?: string | null;
+  expected_qty: number;
+  received_qty: number;
+  conditions: ReturnConditionCounts | null;
+  reason_codes: string[];
+  serials: string[];
+}
+
+export interface ReturnSlip {
+  slip_no: string;
+  generated_at: string | null;
+  registration_no: string | null;
+  invoice_no: string | null;
+  party: { name: string } | null;
+  warehouse: { name: string } | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  lines: ReturnSlipLine[];
+  totals: { expected_qty: number; received_qty: number; short_qty: number };
+}
+

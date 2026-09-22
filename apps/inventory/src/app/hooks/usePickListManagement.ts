@@ -8,8 +8,8 @@ import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import type { PickList, PickListResponse } from '../types/pick-list.types';
-import { pickListApi } from '../utility/api/pick-lists';
 import { getFriendlyErrorMessage } from '../utility/api/core';
+import { pickListApi } from '../utility/api/pick-lists';
 
 export interface PickListFilters {
   search: string;

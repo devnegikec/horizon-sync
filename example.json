@@ -1,0 +1,106 @@
+{
+    "bin_id": "da6c40d0-7b79-49f2-ac86-8fa2fa97113d",
+    "total_parent_boxes": 20,
+    "parents": [
+        {
+            "parent_id": "c9d8fada-d363-4cc8-b590-7d3c192c5afc",
+            "parent_serial": "QSL129A9FB",
+            "parent_name": "MP-BT-SEP-15--1",
+            "capacity": 6,
+            "child_units_in_bin": 6,
+            "quantity_on_hand": "6.000",
+            "children": [
+                {
+                    "serial_number": "TTK-97QMA6",
+                    "batch_number": "TTK-97QMA6",
+                    "item_id": "18f62248-39a9-4def-8f6e-13369d16d5de",
+                    "quantity_on_hand": "1.000",
+                    "inventory_status": "available",
+                    "manufacturing_date": "2026-09-15",
+                    "expiry_date": "2026-09-15",
+                    "dispatch_batch": "BT-SEP-15-2LBW-1"
+                },
+                {
+                    "serial_number": "TTK-9GRM9V",
+                    "batch_number": "TTK-9GRM9V",
+                    "item_id": "18f62248-39a9-4def-8f6e-13369d16d5de",
+                    "quantity_on_hand": "1.000",
+                    "inventory_status": "available",
+                    "manufacturing_date": "2026-09-15",
+                    "expiry_date": "2026-09-15",
+                    "dispatch_batch": "BT-SEP-15-2LBW-1"
+                },
+                {
+                    "serial_number": "TTK-HM7ORZ",
+                    "batch_number": "TTK-HM7ORZ",
+                    "item_id": "18f62248-39a9-4def-8f6e-13369d16d5de",
+                    "quantity_on_hand": "1.000",
+                    "inventory_status": "available",
+                    "manufacturing_date": "2026-09-15",
+                    "expiry_date": "2026-09-15",
+                    "dispatch_batch": "BT-SEP-15-2LBW-1"
+                },
+                {
+                    "serial_number": "TTK-LB2A86",
+                    "batch_number": "TTK-LB2A86",
+                    "item_id": "18f62248-39a9-4def-8f6e-13369d16d5de",
+                    "quantity_on_hand": "1.000",
+                    "inventory_status": "available",
+                    "manufacturing_date": "2026-09-15",
+                    "expiry_date": "2026-09-15",
+                    "dispatch_batch": "BT-SEP-15-2LBW-1"
+                },
+                {
+                    "serial_number": "TTK-QK8VZM",
+                    "batch_number": "TTK-QK8VZM",
+                    "item_id": "18f62248-39a9-4def-8f6e-13369d16d5de",
+                    "quantity_on_hand": "1.000",
+                    "inventory_status": "available",
+                    "manufacturing_date": "2026-09-15",
+                    "expiry_date": "2026-09-15",
+                    "dispatch_batch": "BT-SEP-15-2LBW-1"
+                },
+                {
+                    "serial_number": "TTK-U5OTEQ",
+                    "batch_number": "TTK-U5OTEQ",
+                    "item_id": "18f62248-39a9-4def-8f6e-13369d16d5de",
+                    "quantity_on_hand": "1.000",
+                    "inventory_status": "available",
+                    "manufacturing_date": "2026-09-15",
+                    "expiry_date": "2026-09-15",
+                    "dispatch_batch": "BT-SEP-15-2LBW-1"
+                }
+            ]
+        },
+        {
+            "parent_id": "53f7dcaf-980b-4378-8c73-c36e97b22678",
+            "parent_serial": "QSL81C621F",
+            "parent_name": "MP-BT-SEP-15--1",
+            "capacity": 2,
+            "child_units_in_bin": 2,
+            "quantity_on_hand": "2.000",
+            "children": [
+                {
+                    "serial_number": "TTK-P06TDS",
+                    "batch_number": "TTK-P06TDS",
+                    "item_id": "ac04d92f-da84-4b08-8baf-1a6880271c30",
+                    "quantity_on_hand": "1.000",
+                    "inventory_status": "available",
+                    "manufacturing_date": "2026-09-15",
+                    "expiry_date": "2026-09-15",
+                    "dispatch_batch": "BT-SEP-15-Q6X6-1"
+                },
+                {
+                    "serial_number": "TTK-PW8V2J",
+                    "batch_number": "TTK-PW8V2J",
+                    "item_id": "ac04d92f-da84-4b08-8baf-1a6880271c30",
+                    "quantity_on_hand": "1.000",
+                    "inventory_status": "available",
+                    "manufacturing_date": "2026-09-15",
+                    "expiry_date": "2026-09-15",
+                    "dispatch_batch": "BT-SEP-15-Q6X6-1"
+                }
+            ]
+        }
+    ]
+}

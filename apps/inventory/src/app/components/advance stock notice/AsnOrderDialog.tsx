@@ -19,11 +19,13 @@ import type {
   AsnOrderUpdate,
   AsnOrderFormData,
   AsnOrderDialogProps,
+  AsnOrderWarehouseInfo,
 } from '../../types/asn-order.types';
 import type { Warehouse } from '../../types/warehouse.types';
 import { WarehousesResponse } from '../../types/warehouse.types';
 import { formatDate } from '../../utility';
 import { asnOrderApi } from '../../utility/api/asn-orders';
+import { itemApi } from '../../utility/api/items';
 import { warehouseApi } from '../../utility/api/warehouses';
 import { parseAsnEntryCsv, ASN_ENTRY_SAMPLE_CSV } from '../../utility/asnEntryCsvParser';
 import { convertAsnOrderToPDFData } from '../../utils/pdf/asnOrderToPDF';
@@ -42,6 +44,8 @@ const EMPTY_LINE: AsnEntryLineRow = {
   item_code: '',
   sku: '',
   qty: 0,
+  items_per_master_pack: 0,
+  no_of_cases: 0,
   uom: 'pcs',
   sort_order: 1,
 };
@@ -54,6 +58,21 @@ function toDateInputValue(isoDate: string | null | undefined): string {
   } catch {
     return '';
   }
+}
+
+/**
+ * The user's assigned warehouses plus the order's own warehouse, so an existing
+ * order still renders its warehouse even if the user is no longer assigned to it.
+ */
+function withOrderWarehouse(
+  assigned: Warehouse[],
+  orderWarehouse?: AsnOrderWarehouseInfo | null,
+): Warehouse[] {
+  if (!orderWarehouse?.id || assigned.some((w) => w.id === orderWarehouse.id)) return assigned;
+  return [
+    ...assigned,
+    { id: orderWarehouse.id, name: orderWarehouse.name, code: orderWarehouse.code ?? '' } as Warehouse,
+  ];
 }
 
 function buildFormFromEntry(entry: AsnOrder): AsnOrderFormData {
@@ -100,12 +119,35 @@ function normalizeLineNumbers(item: AsnOrder['items'][number]) {
 function mapItemsToCreate(rows: AsnEntryLineRow[]): AsnOrderItemCreate[] {
   return rows
     .filter((r) => !!r.item_id)
-    .map((r, i) => ({
-      item_id: r.item_id,
-      qty: Number(r.qty) || 0,
-      uom: r.uom || 'pcs',
-      sort_order: i + 1,
-    }));
+    .map((r, i) => {
+      const itemsPerMasterPack = Number(r.items_per_master_pack) || 0;
+      const noOfCases = Number(r.no_of_cases) || 0;
+      return {
+        item_id: r.item_id,
+        qty: Number(r.qty) || 0,
+        uom: r.uom || 'pcs',
+        sort_order: i + 1,
+        ...(itemsPerMasterPack > 0 || noOfCases > 0
+          ? { extra_data: { items_per_master_pack: itemsPerMasterPack, no_of_cases: noOfCases } }
+          : {}),
+      };
+    });
+}
+
+function numericExtra(item: AsnOrder['items'][number], key: string): number | undefined {
+  const value = item.extra_data?.[key] ?? item[key as keyof typeof item];
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function getImportedMasterPackSize(item: {
+  items_per_master_pack?: number | null;
+  packaging_units?: Array<{ items_per_master_pack?: number | null }> | null;
+}): number {
+  const direct = Number(item.items_per_master_pack);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  const nested = item.packaging_units?.find((unit) => Number(unit.items_per_master_pack) > 0)?.items_per_master_pack;
+  return Math.max(1, Number(nested) || 1);
 }
 
 function buildUpdatePayload(formData: AsnOrderFormData, items: AsnOrderItemCreate[]): AsnOrderUpdate {
@@ -312,52 +354,37 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   // Use API detail if available, otherwise fall back to prop
   const resolvedOrder = orderDetail || asnOrder;
 
-  const { data: allWarehousesData } = useQuery<WarehousesResponse>({
-    queryKey: ['warehouses-list', 'asn-all'],
-    queryFn: () => warehouseApi.list(accessToken || '', 1, 100, 'all') as Promise<WarehousesResponse>,
-    enabled: !!accessToken && open,
-  });
-
   const { data: assignedWarehousesData } = useQuery<WarehousesResponse>({
     queryKey: ['warehouses-list', 'asn-assigned'],
     queryFn: () => warehouseApi.list(accessToken || '', 1, 100, 'assigned') as Promise<WarehousesResponse>,
     enabled: !!accessToken && open,
   });
 
-  const allWarehouses = React.useMemo(() => allWarehousesData?.warehouses ?? [], [allWarehousesData?.warehouses]);
   const assignedWarehouses = React.useMemo(() => assignedWarehousesData?.warehouses ?? [], [assignedWarehousesData?.warehouses]);
 
-  // Merge from_warehouse and to_warehouse from API response into warehouse lists
-  // so they appear correctly in dropdowns even if not in the main warehouse lists
-  const warehousesFrom = React.useMemo(() => {
-    const list = [...allWarehouses];
-    if (resolvedOrder?.from_warehouse?.id && resolvedOrder?.from_warehouse?.name) {
-      const fromWh = resolvedOrder.from_warehouse;
-      const alreadyExists = list.some((w) => w.id === fromWh.id);
-      if (!alreadyExists) {
-        list.push({ id: fromWh.id, name: fromWh.name, code: fromWh.code ?? '' } as Warehouse);
-      }
-    }
-    return list;
-  }, [allWarehouses, resolvedOrder?.from_warehouse]);
+  // Only warehouses the user is actually assigned to may be selected. The order's
+  // own from/to warehouse is merged in so an existing order still displays its
+  // warehouse even when the viewer is no longer assigned to it.
+  const warehousesFrom = React.useMemo(
+    () => withOrderWarehouse(assignedWarehouses, resolvedOrder?.from_warehouse),
+    [assignedWarehouses, resolvedOrder?.from_warehouse],
+  );
 
-  const warehousesTo = React.useMemo(() => {
-    const list = [...allWarehouses];
-    if (resolvedOrder?.to_warehouse?.id && resolvedOrder?.to_warehouse?.name) {
-      const toWh = resolvedOrder.to_warehouse;
-      const alreadyExists = list.some((w) => w.id === toWh.id);
-      if (!alreadyExists) {
-        list.push({ id: toWh.id, name: toWh.name, code: toWh.code ?? '' } as Warehouse);
-      }
-    }
-    return list;
-  }, [allWarehouses, resolvedOrder?.to_warehouse]);
+  const warehousesTo = React.useMemo(
+    () => withOrderWarehouse(assignedWarehouses, resolvedOrder?.to_warehouse),
+    [assignedWarehouses, resolvedOrder?.to_warehouse],
+  );
 
-  const targetWarehouse = React.useMemo(() => {
-    const warehouseId = resolvedOrder?.warehouse_id_to;
-    if (!warehouseId) return null;
-    return allWarehouses.find((w) => w.id === warehouseId) || null;
-  }, [resolvedOrder?.warehouse_id_to, allWarehouses]);
+  // Only a complete `Warehouse` record may be handed to the PDF builder. The
+  // order's `to_warehouse` carries identity fields only (id/name/code), so it is
+  // used to match an assigned warehouse by id rather than cast into a partial
+  // `Warehouse`. When there is no match, `null` lets the PDF builder fall back to
+  // the order's own `warehouse` details (address, phone, email).
+  const targetWarehouseId = resolvedOrder?.to_warehouse?.id || resolvedOrder?.warehouse_id_to;
+  const targetWarehouse = React.useMemo(
+    () => assignedWarehouses.find((w) => w.id === targetWarehouseId) ?? null,
+    [assignedWarehouses, targetWarehouseId],
+  );
 
   const { loading: pdfLoading, handleDownload, handlePreview, handleGenerateBase64 } = useAsnOrderPDFActions(targetWarehouse);
   const { emailDialogOpen, pdfAttachment, openEmailWithPdf, handleEmailClose, handleEmailSuccess } = useEmailWithPdfAttachment();
@@ -404,17 +431,44 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
     if (open && resolvedOrder) {
       setFormData(buildFormFromEntry(resolvedOrder));
       if (resolvedOrder.items && resolvedOrder.items.length > 0) {
-        setLineItems(
-          resolvedOrder.items.map((item, i) => ({
-            item_id: item.item_id,
-            item_name: item.item_name || '',
-            item_code: item.item_code || item.item_sku || '',
-            sku: item.sku || item.item_sku || '',
-            qty: typeof item.qty === 'object' ? item.qty.qty : Number(item.qty) || 0,
-            uom: item.uom || 'pcs',
-            sort_order: item.sort_order || i + 1,
-          })),
-        );
+        const initialRows = resolvedOrder.items.map((item, i) => ({
+          item_id: item.item_id,
+          item_name: item.item_name || '',
+          item_code: item.item_code || item.item_sku || '',
+          sku: item.sku || item.item_sku || '',
+          qty: typeof item.qty === 'object' ? item.qty.qty : Number(item.qty) || 0,
+          items_per_master_pack: numericExtra(item, 'items_per_master_pack'),
+          no_of_cases: numericExtra(item, 'no_of_cases') ?? 0,
+          uom: item.uom || 'pcs',
+          sort_order: item.sort_order || i + 1,
+        }));
+        setLineItems(initialRows);
+
+        let cancelled = false;
+        const hydrateMasterPacks = async () => {
+          const hydrated = await Promise.all(initialRows.map(async (row) => {
+            if (!accessToken || !row.item_id || row.items_per_master_pack) return row;
+            try {
+              const item = await itemApi.get(accessToken, row.item_id) as {
+                items_per_master_pack?: number | null;
+                packaging_units?: Array<{ items_per_master_pack?: number | null }> | null;
+              };
+              const masterPack = getImportedMasterPackSize(item);
+              if (row.no_of_cases > 0) {
+                return { ...row, items_per_master_pack: masterPack, no_of_cases: row.no_of_cases, qty: masterPack * row.no_of_cases };
+              }
+              // Old line without packaging data: hydrate only the master-pack
+              // size and keep the original quantity untouched instead of
+              // silently rounding it into whole cases.
+              return { ...row, items_per_master_pack: masterPack };
+            } catch {
+              return row;
+            }
+          }));
+          if (!cancelled) setLineItems(hydrated);
+        };
+        void hydrateMasterPacks();
+        return () => { cancelled = true; };
       } else {
         setLineItems([{ ...EMPTY_LINE }]);
       }
@@ -498,9 +552,11 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
             // Require an exact SKU match; do not silently fall back to the
             // first search result (that would assign the wrong item).
             const match = data.items?.find(
-              (item: { sku?: string | null }) => item.sku?.toLowerCase() === lower,
+              (item: { sku?: string | null; items_per_master_pack?: number | null; packaging_units?: Array<{ items_per_master_pack?: number | null }> | null }) => item.sku?.toLowerCase() === lower,
             );
             if (match) {
+              const masterPack = getImportedMasterPackSize(match);
+              const noOfCases = Math.max(1, Number(row.no_of_cases) || 1);
               return {
                 ...row,
                 item_id: match.id,
@@ -508,6 +564,9 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                 item_code: match.item_code || '',
                 sku: match.sku || row.sku,
                 uom: match.uom || row.uom || 'pcs',
+                items_per_master_pack: masterPack,
+                no_of_cases: noOfCases,
+                qty: masterPack * noOfCases,
               };
             }
           } catch {
@@ -550,6 +609,23 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   const isReadOnly = viewMode || (isEdit && formData.status !== 'draft');
   const isLineItemEditingDisabled = isReadOnly;
   const availableStatuses = React.useMemo(() => getAvailableStatuses(isEdit, formData.status), [isEdit, formData.status]);
+  const fulfillmentItems = React.useMemo(
+    () => lineItems
+      .filter((row) => row.item_id)
+      .map((row, index) => {
+        const original = resolvedOrder?.items.find((item) => item.item_id === row.item_id);
+        return {
+          id: original?.id ?? `${row.item_id}-${index}`,
+          item_id: row.item_id,
+          item_name: row.item_name || original?.item_name,
+          item_code: row.item_code || original?.item_code,
+          sku: row.sku || original?.sku,
+          qty: Number(row.qty) || 0,
+          delivered_qty: original?.delivered_qty ?? 0,
+        };
+      }),
+    [lineItems, resolvedOrder?.items],
+  );
 
   // eslint-disable-next-line complexity
   const handleSubmit = async (e: React.FormEvent) => {
@@ -699,7 +775,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                   sampleFileName="asn-order-sample.csv"
                   previewColumns={[
                     { key: 'sku', label: 'SKU' },
-                    { key: 'qty', label: 'Qty' },
+                    { key: 'no_of_cases', label: 'Number of Cases' },
                     { key: 'uom', label: 'UOM' },
                   ]} />
                 {(lineItems.length > 1 || (lineItems.length === 1 && lineItems[0].item_id)) && (
@@ -728,7 +804,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                 warehouseIdTo={formData.warehouse_id_to}
                 renderFooter={() => (
                   <tr>
-                    <td colSpan={2} className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Total Quantity:</td>
+                    <td colSpan={4} className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Total Quantity:</td>
                     <td className="px-4 py-3 text-right text-sm font-semibold">{grandTotal}</td>
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3"></td>
@@ -737,7 +813,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
             )}
           </div>
 
-          {isEdit && resolvedOrder?.items && <FulfillmentStatusTable items={resolvedOrder.items} />}
+          {isEdit && <FulfillmentStatusTable items={fulfillmentItems} />}
 
           {viewMode && resolvedOrder && <VehicleDetails asnOrder={resolvedOrder} />}
         </form>

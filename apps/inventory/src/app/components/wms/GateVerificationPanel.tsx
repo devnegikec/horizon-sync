@@ -23,6 +23,12 @@ export function GateVerificationPanel({ pickListId, onDispatchCreated }: GateVer
   const [lastScanStatus, setLastScanStatus] = React.useState<'verified' | 'unauthorized' | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
+  // Focus the scan field on mount without the `autoFocus` attribute, which
+  // jsx-a11y/no-autofocus flags.
+  React.useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
   const handleStart = async () => {
     try {
       await startSession(pickListId, vehicleNumber || undefined, driverName || undefined);
@@ -105,15 +111,12 @@ export function GateVerificationPanel({ pickListId, onDispatchCreated }: GateVer
 
       {/* Scan input */}
       <div className="flex gap-2">
-        <Input
-          ref={inputRef}
+        <Input ref={inputRef}
           value={qrInput}
           onChange={(e) => setQrInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleScan()}
           placeholder="Scan item QR code..."
-          className="font-mono text-sm"
-          autoFocus
-        />
+          className="font-mono text-sm"/>
         <Button onClick={handleScan} className="gap-2 shrink-0">
           <ScanLine className="h-4 w-4" />
           Scan

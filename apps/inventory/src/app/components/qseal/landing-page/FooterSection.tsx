@@ -1,13 +1,16 @@
 import * as React from 'react';
+
 import { Layout, Plus, Trash2 } from 'lucide-react';
+
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Switch } from '@horizon-sync/ui/components/ui/switch';
 
+import type { FooterLink } from '../../../types/landing-page.types';
+
 import { CollapsibleSection } from './CollapsibleSection';
 import type { SectionProps } from './types';
-import type { FooterLink } from '../../../types/landing-page.types';
 
 /**
  * Custom Footer section: copyright text, "Powered by" toggle, and custom links.
@@ -43,22 +46,18 @@ export function FooterSection({ config, setConfig }: SectionProps) {
 
   return (
     <CollapsibleSection icon={Layout} title="Custom Footer">
-      <Input
-        value={config.footer.text}
+      <Input value={config.footer.text}
         onChange={(e) =>
           setConfig((c) => ({ ...c, footer: { ...c.footer, text: e.target.value } }))
         }
         placeholder="Footer copyright text"
-        className="h-8 text-xs"
-      />
+        className="h-8 text-xs"/>
       <div className="flex items-center justify-between">
-        <Label className="text-xs">Show "Powered by QSeal"</Label>
-        <Switch
-          checked={config.footer.show_powered_by}
+        <Label className="text-xs">Show &quot;Powered by QSeal&quot;</Label>
+        <Switch checked={config.footer.show_powered_by}
           onCheckedChange={(v) =>
             setConfig((c) => ({ ...c, footer: { ...c.footer, show_powered_by: v } }))
-          }
-        />
+          }/>
       </div>
 
       <div className="space-y-2">
@@ -71,24 +70,18 @@ export function FooterSection({ config, setConfig }: SectionProps) {
         </div>
         {config.footer.custom_links.map((link: FooterLink, i: number) => (
           <div key={i} className="flex items-center gap-2">
-            <Input
-              value={link.label}
+            <Input value={link.label}
               onChange={(e) => updateLink(i, 'label', e.target.value)}
               placeholder="Label"
-              className="h-7 text-xs flex-1"
-            />
-            <Input
-              value={link.url}
+              className="h-7 text-xs flex-1"/>
+            <Input value={link.url}
               onChange={(e) => updateLink(i, 'url', e.target.value)}
               placeholder="URL"
-              className="h-7 text-xs flex-1"
-            />
-            <Button
-              variant="ghost"
+              className="h-7 text-xs flex-1"/>
+            <Button variant="ghost"
               size="icon"
               className="h-7 w-7 shrink-0"
-              onClick={() => removeLink(i)}
-            >
+              onClick={() => removeLink(i)}>
               <Trash2 className="h-3 w-3 text-destructive" />
             </Button>
           </div>

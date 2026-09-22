@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { getFriendlyErrorMessage } from '../utility/api/core';
+
 
 import { useUserStore } from '@horizon-sync/store';
 
 import type { SendEmailRequest, SendEmailResponse } from '../types/communication.types';
 import { communicationApi } from '../utility/api/communications';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 
 export const useSendEmail = () => {

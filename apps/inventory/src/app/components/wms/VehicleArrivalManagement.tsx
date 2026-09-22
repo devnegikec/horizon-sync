@@ -2,18 +2,17 @@ import * as React from 'react';
 
 import { Plus, Truck, X, Loader2, Link2, Pencil } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
+import { Badge } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
-import { Badge } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks';
 
-import { useUserStore } from '@horizon-sync/store';
-
 import { useVehicleArrivals } from '../../hooks/useWMS';
-import { asnOrderApi } from '../../utility/api/asn-orders';
-import { formatDate } from '../../utility';
 import type { VehicleArrivalListItem } from '../../types/wms.types';
+import { formatDate } from '../../utility';
+import { asnOrderApi } from '../../utility/api/asn-orders';
 
 interface VehicleArrivalManagementProps {
   warehouseId?: string;
@@ -259,11 +258,9 @@ export function VehicleArrivalManagement({ warehouseId }: VehicleArrivalManageme
                 ) : (
                   asnOptions.map((asn) => (
                     <label key={asn.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                      <input
-                        type="checkbox"
+                      <input type="checkbox"
                         checked={selectedAsnIds.has(asn.id)}
-                        onChange={() => toggleAsn(asn.id, false)}
-                      />
+                        onChange={() => toggleAsn(asn.id, false)}/>
                       <span className="text-sm font-mono">{asn.asn_order_no}</span>
                     </label>
                   ))
@@ -318,11 +315,15 @@ export function VehicleArrivalManagement({ warehouseId }: VehicleArrivalManageme
                   <td className="px-3 py-2">{formatDate(a.arrived_at, 'DD-MMM-YY', { includeTime: true, timeFormat: 'HH:mm' })}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="outline" size="sm" className="gap-1"
+                      <Button variant="outline"
+size="sm"
+className="gap-1"
                         onClick={() => openEdit(a)}>
                         <Pencil className="h-3 w-3" /> Edit
                       </Button>
-                      <Button variant="outline" size="sm" className="gap-1"
+                      <Button variant="outline"
+size="sm"
+className="gap-1"
                         onClick={() => { setLinkingArrivalId(a.id); setLinkSelectedIds(new Set()); void fetchAsnOptions(); }}>
                         <Link2 className="h-3 w-3" /> Link ASN
                       </Button>
@@ -347,11 +348,9 @@ export function VehicleArrivalManagement({ warehouseId }: VehicleArrivalManageme
               <div className="space-y-1 max-h-64 overflow-y-auto border rounded-md p-2">
                 {asnOptions.map((asn) => (
                   <label key={asn.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <input type="checkbox"
                       checked={linkSelectedIds.has(asn.id)}
-                      onChange={() => toggleAsn(asn.id, true)}
-                    />
+                      onChange={() => toggleAsn(asn.id, true)}/>
                     <span className="text-sm font-mono">{asn.asn_order_no}</span>
                   </label>
                 ))}

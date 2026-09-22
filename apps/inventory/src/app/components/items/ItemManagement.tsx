@@ -8,9 +8,9 @@ import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-
 import { environment } from '../../../environments/environment';
 import { useItemManagement } from '../../hooks/useItemManagement';
 import { apiItemToItem } from '../../utility';
+import { CatalogImportDialog } from '../catalog-import/CatalogImportDialog';
 
 import { ItemDetailDialog } from './ItemDetailDialog';
-import { CatalogImportDialog } from '../catalog-import/CatalogImportDialog';
 // import { ItemDialog } from './ItemDialog';
 // import { ItemDialogSimple as ItemDialog } from './ItemDialog.simple';
 import { ItemDialogMultiStep as ItemDialog } from './ItemDialog.multistep';
@@ -183,8 +183,7 @@ export function ItemManagement() {
         onOpenChange={setDetailDialogOpen}
         item={selectedItemAsItem} />
 
-      <CatalogImportDialog
-        open={catalogImportOpen}
+      <CatalogImportDialog open={catalogImportOpen}
         onOpenChange={setCatalogImportOpen}
         onSuccess={refetch} />
 
@@ -195,15 +194,13 @@ export function ItemManagement() {
         description="You need to create an organization before you can manage inventory items." />
 
       {/* Toggle Status Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmToggleItem}
+      <ConfirmationDialog open={!!confirmToggleItem}
         onOpenChange={(open) => { if (!open) setConfirmToggleItem(null); }}
         title={confirmToggleItem?.status === 'active' ? 'Deactivate Item' : 'Activate Item'}
         description={`Are you sure you want to ${confirmToggleItem?.status === 'active' ? 'deactivate' : 'activate'} "${confirmToggleItem?.item_name || confirmToggleItem?.item_code}"?`}
         confirmLabel={confirmToggleItem?.status === 'active' ? 'Deactivate' : 'Activate'}
         variant={confirmToggleItem?.status === 'active' ? 'destructive' : 'default'}
-        onConfirm={executeToggleStatus}
-      />
+        onConfirm={executeToggleStatus}/>
     </div>
   );
 }

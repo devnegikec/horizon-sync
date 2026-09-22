@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useState } from 'react';
 
 import {
   Package,
@@ -17,9 +18,8 @@ import {
   X,
 } from 'lucide-react';
 
-import { Button, DataTableViewOptions, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { useUserStore } from '@horizon-sync/store';
-import { useToast } from '@horizon-sync/ui/hooks/use-toast';
+import { Button, DataTableViewOptions, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import {
@@ -36,27 +36,26 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
+import { Input } from '@horizon-sync/ui/components/ui/input';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@horizon-sync/ui/components/ui/popover';
-import { Input } from '@horizon-sync/ui/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { cn } from '@horizon-sync/ui/lib';
 
 
 
+import { useAsnOrderManagement } from '../../hooks/useAsnOrderManagement';
+import { useSelectedWarehouse } from '../../hooks/useSelectedWarehouse';
 import { useStockEntryMutations } from '../../hooks/useStock';
 import { useStockLevels } from '../../hooks/useStockLevels';
 import { useStockMovements } from '../../hooks/useStockMovements';
 import { useStockReconciliations } from '../../hooks/useStockReconciliations';
-import { useAsnOrderManagement } from '../../hooks/useAsnOrderManagement';
-import { useMyWarehouses } from '../../hooks/useMyWarehouses';
-import { asnOrderApi } from '../../utility/api/asn-orders';
 import type { AsnOrder } from '../../types/asn-order.types';
 import type { PaginationInfo } from '../../types/quotation.types';
-import { AsnOrdersTable } from '../advance stock notice/AsnOrdersTable';
 import type {
   StockEntry,
   StockLevel,
@@ -68,19 +67,20 @@ import type {
   StockReconciliationStats,
 } from '../../types/stock.types';
 import { formatQuantity } from '../../utility';
+import { asnOrderApi } from '../../utility/api/asn-orders';
 import { stockEntryApi, stockLevelApi, stockMovementApi } from '../../utility/api/stock';
+import { AsnOrderDialog } from '../advance stock notice/AsnOrderDialog';
+import { AsnOrdersTable } from '../advance stock notice/AsnOrdersTable';
 import { ReconciliationWizard, ReconciliationDetailDialog } from '../reconciliation';
 import { useStockEntries } from '../stock-entry';
 
 
+import { StockFilters } from './stock.types';
 import { StockEntriesTable } from './StockEntriesTable';
 import { StockEntryDialog } from './StockEntryDialog';
 import { StockLevelsTable } from './StockLevelsTable';
 import { StockMovementsTable } from './StockMovementsTable';
 import { StockReconciliationsTable } from './StockReconciliationsTable';
-import { StockFilters } from './stock.types';
-import { useState } from 'react';
-import { AsnOrderDialog } from '../advance stock notice/AsnOrderDialog';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -435,7 +435,8 @@ function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab,
       </div>
 
       {/* Stock Entry Import Dialog */}
-      <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+      <Dialog open={isImportDialogOpen}
+onOpenChange={(open) => {
         setIsImportDialogOpen(open);
         if (!open) setSelectedFile(null);
       }}>
@@ -461,10 +462,8 @@ function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab,
             <div className="flex flex-col gap-2">
               <label htmlFor="stock-file-upload" className="text-sm font-medium">Select File</label>
               {!selectedFile ? (
-                <label
-                  htmlFor="stock-file-upload"
-                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
+                <label htmlFor="stock-file-upload"
+                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors">
                   <Upload className="h-8 w-8 text-muted-foreground mb-2" />
                   <span className="text-sm font-medium text-primary">Click to select file</span>
                   <span className="text-xs text-muted-foreground mt-1">CSV or Excel (.csv, .xlsx)</span>
@@ -630,8 +629,7 @@ function TabPanels({
           }} />
       </TabsContent>
       <TabsContent value="asn" className="mt-4">
-        <AsnOrdersTable
-          asnOrders={asnData.asnOrders}
+        <AsnOrdersTable asnOrders={asnData.asnOrders}
           loading={asnData.loading}
           error={asnData.error}
           hasActiveFilters={false}
@@ -640,8 +638,7 @@ function TabPanels({
           onDelete={onDeleteAsn}
           onCreateOrder={onCreateAsn}
           serverPagination={asnPagination}
-          recentlyCreatedId={asnData.recentlyCreatedId}
-        />
+          recentlyCreatedId={asnData.recentlyCreatedId}/>
       </TabsContent>
     </>
   );
@@ -740,18 +737,23 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
   /* ---------- global filters ---------- */
   const [filters, setFilters] = useState<StockFilters>({
     search: '',
-    warehouseId: '',
     status: 'all',
   });
   const [warehouseSearch, setWarehouseSearch] = useState('');
   const [warehouseOpen, setWarehouseOpen] = useState(false);
+
+  /* ---------- warehouse selector ---------- */
+  // `autoSelectFirst: false`: unlike WMS, "all warehouses" is a valid choice here.
+  // The hook validates the app-wide selection, so a warehouse picked on another
+  // tab is still selected, and it is ignored once it is no longer assigned.
+  const { warehouses: allWarehouses, loading: warehousesLoading, warehouseId: selectedWarehouseId, setWarehouseId: setSharedWarehouseId } = useSelectedWarehouse({ autoSelectFirst: false });
 
   // When a warehouse is selected from the top-level WMS switcher, the filter is
   // locked to that warehouse. Derive the effective value directly from the prop
   // so the first fetch already uses the locked warehouse (no "all warehouses"
   // flash followed by a re-fetch).
   const isWarehouseLocked = Boolean(warehouseId);
-  const effectiveWarehouseId = isWarehouseLocked ? (warehouseId ?? '') : filters.warehouseId;
+  const effectiveWarehouseId = isWarehouseLocked ? (warehouseId ?? '') : selectedWarehouseId;
 
   const asnManagement = useAsnOrderManagement();
   const setAsnFilters = asnManagement.setFilters;
@@ -807,7 +809,6 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
   const { toast } = useToast();
 
   /* ---------- warehouse selector ---------- */
-  const { warehouses: allWarehouses, loading: warehousesLoading } = useMyWarehouses();
   const filteredWarehouses = React.useMemo(() => {
     const base = isWarehouseLocked
       ? allWarehouses.filter((w) => w.id === warehouseId)
@@ -1009,19 +1010,16 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <StockManagementHeader
-        onNewEntry={handleNewEntry}
+      <StockManagementHeader onNewEntry={handleNewEntry}
         onAsN={handleNewAsN}
         onReconciliation={handleNewReconciliation}
         activeTab={activeTab}
-        onImportSuccess={entriesData.refetch}
-      />
+        onImportSuccess={entriesData.refetch}/>
       <StatsGrid stats={activeStats} />
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <SearchInput
-            className="sm:w-80"
+          <SearchInput className="sm:w-80"
             placeholder={
               activeTab === 'levels'
                 ? 'Search by item name or code...'
@@ -1034,18 +1032,15 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
                       : 'Search by ASN order no...'
             }
             value={filters.search}
-            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}
-          />
+            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
           {/* Warehouse selector */}
           <Popover open={warehouseOpen} onOpenChange={setWarehouseOpen}>
             <PopoverTrigger asChild>
-              <Button
-                variant="outline"
+              <Button variant="outline"
                 role="combobox"
                 aria-expanded={warehouseOpen}
                 className="w-[220px] justify-between"
-                disabled={isWarehouseLocked}
-              >
+                disabled={isWarehouseLocked}>
                 <span className="flex items-center gap-2 truncate">
                   <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                   {selectedWarehouse ? selectedWarehouse.name : 'All Warehouses'}
@@ -1056,24 +1051,20 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
             <PopoverContent className="w-[220px] p-0">
               <div className="p-2">
                 {!isWarehouseLocked && (
-                  <Input
-                    placeholder="Search warehouses..."
+                  <Input placeholder="Search warehouses..."
                     value={warehouseSearch}
                     onChange={(e) => setWarehouseSearch(e.target.value)}
-                    className="mb-2"
-                  />
+                    className="mb-2"/>
                 )}
                 <div className="max-h-60 overflow-auto space-y-1">
                   {!isWarehouseLocked && (
-                    <button
-                      className="w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
+                    <button className="w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
                       onClick={() => {
-                        setFilters((prev) => ({ ...prev, warehouseId: '' }));
+                        setSharedWarehouseId('');
                         setWarehouseOpen(false);
-                      }}
-                    >
+                      }}>
                       <span className="h-4 w-4 flex items-center justify-center">
-                        {!filters.warehouseId && <Check className="h-4 w-4" />}
+                        {!selectedWarehouseId && <Check className="h-4 w-4" />}
                       </span>
                       All Warehouses
                     </button>
@@ -1082,16 +1073,14 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
                     <div className="px-2 py-1 text-sm text-muted-foreground">Loading...</div>
                   )}
                   {filteredWarehouses.map((w) => (
-                    <button
-                      key={w.id}
+                    <button key={w.id}
                       className="w-full text-left px-2 py-1.5 rounded-sm text-sm hover:bg-accent hover:text-accent-foreground flex items-center gap-2"
                       onClick={() => {
-                        setFilters((prev) => ({ ...prev, warehouseId: w.id }));
+                        setSharedWarehouseId(w.id);
                         setWarehouseOpen(false);
-                      }}
-                    >
+                      }}>
                       <span className="h-4 w-4 flex items-center justify-center">
-                        {filters.warehouseId === w.id && <Check className="h-4 w-4" />}
+                        {selectedWarehouseId === w.id && <Check className="h-4 w-4" />}
                       </span>
                       <span className="truncate">{w.name}</span>
                     </button>
@@ -1121,19 +1110,14 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
           )}
 
           {/* Clear all filters */}
-          {(filters.search || (!isWarehouseLocked && filters.warehouseId) || filters.status !== 'all') && (
-            <Button
-              variant="ghost"
+          {(filters.search || (!isWarehouseLocked && selectedWarehouseId) || filters.status !== 'all') && (
+            <Button variant="ghost"
               size="sm"
-              onClick={() =>
-                setFilters({
-                  search: '',
-                  warehouseId: isWarehouseLocked ? (warehouseId ?? '') : '',
-                  status: 'all',
-                })
-              }
-              className="gap-1 text-muted-foreground"
-            >
+              onClick={() => {
+                setFilters({ search: '', status: 'all' });
+                if (!isWarehouseLocked) setSharedWarehouseId('');
+              }}
+              className="gap-1 text-muted-foreground">
               <X className="h-3.5 w-3.5" />
               Clear
             </Button>
@@ -1222,26 +1206,22 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
         reconciliation={selectedReconciliation} />
 
       {/* Delete Stock Entry Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!entryActions.confirmDeleteEntry}
+      <ConfirmationDialog open={!!entryActions.confirmDeleteEntry}
         onOpenChange={(open) => { if (!open) entryActions.setConfirmDeleteEntry(null); }}
         title="Delete Stock Entry"
         description={`Delete stock entry "${entryActions.confirmDeleteEntry?.stock_entry_no}"?`}
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={entryActions.executeDeleteEntry}
-      />
+        onConfirm={entryActions.executeDeleteEntry}/>
 
       {/* Delete ASN Order Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmDeleteAsnOrder}
+      <ConfirmationDialog open={!!confirmDeleteAsnOrder}
         onOpenChange={(open) => { if (!open) setConfirmDeleteAsnOrder(null); }}
         title="Delete ASN Order"
         description={`Delete ASN order "${confirmDeleteAsnOrder?.asn_order_no}"?`}
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={executeDeleteAsn}
-      />
+        onConfirm={executeDeleteAsn}/>
     </div>
   );
 }

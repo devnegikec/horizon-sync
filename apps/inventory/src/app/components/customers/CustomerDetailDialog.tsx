@@ -14,14 +14,14 @@ import {
   FileText,
 } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
-import { useCurrencyStore } from '@horizon-sync/store';
 
-import type { Customer } from '../../types/customer.types';
 import { getCurrencySymbol } from '../../types/currency.types';
+import type { Customer } from '../../types/customer.types';
 
 interface CustomerDetailDialogProps {
   open: boolean;
@@ -134,12 +134,10 @@ export function CustomerDetailDialog({ open, onOpenChange, customer }: CustomerD
               <span className="font-semibold">{creditUtilization.toFixed(1)}%</span>
             </div>
             <div className="h-2 rounded-full bg-muted overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
+              <div className={`h-full rounded-full transition-all duration-500 ${
                   creditUtilization > 90 ? 'bg-destructive' : creditUtilization > 70 ? 'bg-amber-500' : 'bg-emerald-500'
                 }`}
-                style={{ width: `${Math.min(creditUtilization, 100)}%` }}
-              />
+                style={{ width: `${Math.min(creditUtilization, 100)}%` }}/>
             </div>
           </div>
         </div>
@@ -191,7 +189,9 @@ export function CustomerDetailDialog({ open, onOpenChange, customer }: CustomerD
               </h3>
               <div className="space-y-3.5">
                 <InfoItem icon={Hash} label="Tax Number" value={customer.tax_number} />
-                <InfoItem icon={Calendar} label="Member Since" value={
+                <InfoItem icon={Calendar}
+label="Member Since"
+value={
                   new Date(customer.created_at).toLocaleDateString(undefined, {
                     year: 'numeric',
                     month: 'long',

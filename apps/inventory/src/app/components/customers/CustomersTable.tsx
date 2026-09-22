@@ -11,8 +11,8 @@ import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import { TableSkeleton } from '@horizon-sync/ui/components/ui/table-skeleton';
 
-import type { Customer } from '../../types/customer.types';
 import { getCurrencySymbol } from '../../types/currency.types';
+import type { Customer } from '../../types/customer.types';
 
 import { createCustomerColumns } from './CustomerColumns';
 

@@ -1,8 +1,8 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import userEvent from '@testing-library/user-event';
 
 import { PaymentDialog } from '../../../../app/components/payments/PaymentDialog';
 import type { Payment, PaymentFormData } from '../../../../app/types/payment';
@@ -222,7 +222,7 @@ describe('PaymentDialog', () => {
 
   it('shows validation error when party is not selected', async () => {
     const user = userEvent.setup();
-    
+
     renderWithProviders(
       <PaymentDialog open={true}
         {...mockHandlers}

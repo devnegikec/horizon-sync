@@ -9,8 +9,8 @@ import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/da
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
-import type { Quotation } from '../../types/quotation.types';
 import { getCurrencySymbol } from '../../types/currency.types';
+import type { Quotation } from '../../types/quotation.types';
 import { formatDate } from '../../utility/formatDate';
 
 import { StatusBadge } from './StatusBadge';

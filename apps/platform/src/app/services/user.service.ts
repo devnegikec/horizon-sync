@@ -34,6 +34,7 @@ export interface User {
 
 export interface UsersResponse {
   items: User[];
+  users?: User[];
   total: number;
   page: number;
   page_size: number;

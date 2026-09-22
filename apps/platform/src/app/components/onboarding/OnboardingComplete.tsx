@@ -14,7 +14,7 @@ export function OnboardingComplete() {
       </div>
       <div className="space-y-2">
         <h2 className="text-2xl font-bold tracking-tight">All set!</h2>
-        <p className="text-muted-foreground">Your account is ready. You can now start using Horizon Sync.</p>
+        <p className="text-muted-foreground">Your account is ready. You can now start using Ciphercode.</p>
       </div>
       <Button onClick={() => { window.location.href = '/'; }} className="w-full bg-gradient-to-r from-[#3058EE] to-[#7D97F6] text-white">
         Go to Dashboard
