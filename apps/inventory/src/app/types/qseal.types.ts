@@ -95,6 +95,14 @@ export interface QSealProductListResponse {
   };
 }
 
+export interface QSealBlockOption {
+  id: string;
+  product_id: string;
+  product_name?: string | null;
+  batch: string;
+  qr_type: string | null;
+}
+
 export interface QSealPackagingDetailsPayload {
   unit_name: string;
   conversion_factor: number;
@@ -183,6 +191,126 @@ export interface ScanAnalyticsResponse {
 export interface AnalyticsFilters {
   date_from?: string;
   date_to?: string;
+  product_id?: string;
+  block_id?: string;
+  batch?: string;
+  qseal_type?: string;
+  serial_number?: string;
+  risk_filter?: 'all' | 'suspicious' | 'high_risk' | 'unreviewed';
+}
+
+export interface QSealAnalyticsSummary {
+  total_scans: number;
+  valid_scans: number;
+  invalid_scans: number;
+  unique_serials: number;
+  repeat_scans: number;
+  repeat_scan_rate: number;
+  suspicious_scans: number;
+  suspicious_rate: number;
+  high_risk_scans: number;
+  unreviewed_suspicious_scans: number;
+}
+
+export interface QSealScanTrendItem {
+  date: string;
+  total_scans: number;
+  valid_scans: number;
+  invalid_scans: number;
+  suspicious_scans: number;
+}
+
+export interface QSealProductAnalyticsItem {
+  product_id: string | null;
+  product_name: string;
+  batch: string | null;
+  total_scans: number;
+  valid_scans: number;
+  invalid_scans: number;
+  unique_serials: number;
+  last_scan: string | null;
+}
+
+export interface QSealGeographyAnalyticsItem {
+  country: string | null;
+  state: string | null;
+  city: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  total_scans: number;
+  valid_scans: number;
+  invalid_scans: number;
+}
+
+export interface QSealDeviceAnalyticsItem {
+  device_type: string;
+  total_scans: number;
+  valid_scans: number;
+  invalid_scans: number;
+}
+
+export interface QSealAnalyticsHistoryItem {
+  id: string;
+  organization_id: string;
+  serial_number: string | null;
+  product_item_id: string | null;
+  scan_timestamp: string;
+  device_type: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  street_address: string | null;
+  product_id: string | null;
+  block_id: string | null;
+  batch: string | null;
+  qseal_track_id: string | null;
+  qseal_parameter_id: string | null;
+  qseal_type: string | null;
+  verification_status: string | null;
+  is_suspicious: boolean;
+  risk_score: number;
+  suspicious_reasons: string[];
+  review_status: string;
+}
+
+export interface QSealAnalyticsHistoryResponse {
+  events: QSealAnalyticsHistoryItem[];
+  pagination: {
+    page: number;
+    page_size: number;
+    total_items: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+}
+
+export type QSealSuspiciousReviewStatus = 'new' | 'reviewed' | 'dismissed';
+
+export interface QSealSuspiciousScanItem {
+  id: string;
+  organization_id: string;
+  serial_number: string | null;
+  product_id: string | null;
+  product_name: string;
+  block_id: string | null;
+  batch: string | null;
+  scan_timestamp: string;
+  verification_status: string | null;
+  is_suspicious: boolean;
+  risk_score: number;
+  risk_level: 'normal' | 'review' | 'high';
+  suspicious_reasons: string[];
+  review_status: 'not_flagged' | 'new' | 'reviewed' | 'dismissed';
+  device_type: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+}
+
+export interface QSealSuspiciousScanResponse {
+  items: QSealSuspiciousScanItem[];
+  pagination: QSealAnalyticsHistoryResponse['pagination'];
 }
 
 export interface AnalyticsSummary {

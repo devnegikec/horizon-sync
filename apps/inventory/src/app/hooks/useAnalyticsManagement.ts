@@ -3,151 +3,253 @@ import * as React from 'react';
 import { useUserStore } from '@horizon-sync/store';
 
 import { analyticsApi } from '../api/analytics';
+import { qrProductApi } from '../api/qr-products';
+import { featureFlagApi } from '../utility/api/feature-flags';
 import type {
   AnalyticsFilters,
-  AnalyticsSummary,
-  AnalyticsCTABreakdown,
-  AnalyticsInteractionFunnel,
-  AnalyticsGeoPoint,
-  AnalyticsDeviceTimeline,
-  AnalyticsScanEvent,
-  AnalyticsScanListResponse,
+  QSealAnalyticsHistoryItem,
+  QSealAnalyticsHistoryResponse,
+  QSealAnalyticsSummary,
+  QSealBlockOption,
+  QSealDeviceAnalyticsItem,
+  QSealGeographyAnalyticsItem,
+  QSealProductAnalyticsItem,
+  QSealProductListItem,
+  QSealScanTrendItem,
+  QSealSuspiciousReviewStatus,
 } from '../types/qseal.types';
 import { getFriendlyErrorMessage } from '../utility/api/core';
 
-function defaultDateRange(): { date_from: string; date_to: string } {
+function defaultDateRange(): Pick<AnalyticsFilters, 'date_from' | 'date_to'> {
   const to = new Date();
   const from = new Date(Date.now() - 30 * 86400000);
-  return {
-    date_from: from.toISOString(),
-    date_to: to.toISOString(),
-  };
+  return { date_from: from.toISOString(), date_to: to.toISOString() };
 }
 
 export interface UseAnalyticsManagementResult {
-  // Filters
   filters: AnalyticsFilters;
   setFilters: React.Dispatch<React.SetStateAction<AnalyticsFilters>>;
-
-  // Data
-  summary: AnalyticsSummary | null;
-  ctaBreakdown: AnalyticsCTABreakdown | null;
-  interactionFunnel: AnalyticsInteractionFunnel | null;
-  geoPoints: AnalyticsGeoPoint[];
-  deviceTimeline: AnalyticsDeviceTimeline[];
-  scanEvents: AnalyticsScanEvent[];
-  scanPagination: AnalyticsScanListResponse['pagination'] | null;
-
-  // Loading / Error
+  summary: QSealAnalyticsSummary | null;
+  trends: QSealScanTrendItem[];
+  products: QSealProductAnalyticsItem[];
+  geography: QSealGeographyAnalyticsItem[];
+  devices: QSealDeviceAnalyticsItem[];
+  history: QSealAnalyticsHistoryItem[];
+  reviewSuspicious: (eventId: string, reviewStatus: QSealSuspiciousReviewStatus) => Promise<void>;
+  reviewingEventId: string | null;
+  productOptions: QSealProductListItem[];
+  blockOptions: QSealBlockOption[];
+  historyPagination: QSealAnalyticsHistoryResponse['pagination'] | null;
+  historyLoading: boolean;
+  historyPage: number;
+  setHistoryPage: (page: number) => void;
+  exportHistory: () => Promise<QSealAnalyticsHistoryItem[]>;
   loading: boolean;
   error: string | null;
-
-  // Scan log pagination
-  scanPage: number;
-  setScanPage: (page: number) => void;
-
-  // Actions
+  analyticsEnabled: boolean | null;
+  featureFlagLoading: boolean;
   refetch: () => void;
 }
 
 export function useAnalyticsManagement(): UseAnalyticsManagementResult {
   const accessToken = useUserStore((s) => s.accessToken);
   const [filters, setFilters] = React.useState<AnalyticsFilters>(defaultDateRange());
-
-  // Data states
-  const [summary, setSummary] = React.useState<AnalyticsSummary | null>(null);
-  const [ctaBreakdown, setCTABreakdown] = React.useState<AnalyticsCTABreakdown | null>(null);
-  const [interactionFunnel, setInteractionFunnel] = React.useState<AnalyticsInteractionFunnel | null>(null);
-  const [geoPoints, setGeoPoints] = React.useState<AnalyticsGeoPoint[]>([]);
-  const [deviceTimeline, setDeviceTimeline] = React.useState<AnalyticsDeviceTimeline[]>([]);
-  const [scanEvents, setScanEvents] = React.useState<AnalyticsScanEvent[]>([]);
-  const [scanPagination, setScanPagination] = React.useState<AnalyticsScanListResponse['pagination'] | null>(null);
-  const [scanPage, setScanPage] = React.useState(1);
-
+  const [summary, setSummary] = React.useState<QSealAnalyticsSummary | null>(null);
+  const [trends, setTrends] = React.useState<QSealScanTrendItem[]>([]);
+  const [products, setProducts] = React.useState<QSealProductAnalyticsItem[]>([]);
+  const [geography, setGeography] = React.useState<QSealGeographyAnalyticsItem[]>([]);
+  const [devices, setDevices] = React.useState<QSealDeviceAnalyticsItem[]>([]);
+  const [history, setHistory] = React.useState<QSealAnalyticsHistoryItem[]>([]);
+  const [productOptions, setProductOptions] = React.useState<QSealProductListItem[]>([]);
+  const [blockOptions, setBlockOptions] = React.useState<QSealBlockOption[]>([]);
+  const [historyPagination, setHistoryPagination] = React.useState<QSealAnalyticsHistoryResponse['pagination'] | null>(null);
+  const [historyPage, setHistoryPage] = React.useState(1);
+  const [historyLoading, setHistoryLoading] = React.useState(false);
+  const [reviewingEventId, setReviewingEventId] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [analyticsEnabled, setAnalyticsEnabled] = React.useState<boolean | null>(null);
+  const [featureFlagLoading, setFeatureFlagLoading] = React.useState(true);
+
+  // Request generations guard against stale responses overwriting newer state.
+  const featureFlagRequestId = React.useRef(0);
+  const dashboardRequestId = React.useRef(0);
+  const historyRequestId = React.useRef(0);
+
+  const fetchFeatureFlag = React.useCallback(async () => {
+    const requestId = ++featureFlagRequestId.current;
+    if (!accessToken) {
+      setAnalyticsEnabled(false);
+      setFeatureFlagLoading(false);
+      return;
+    }
+    setFeatureFlagLoading(true);
+    try {
+      const flag = await featureFlagApi.evaluate(accessToken, 'analytics_module_enabled');
+      if (requestId !== featureFlagRequestId.current) return;
+      setAnalyticsEnabled(flag.enabled && flag.visible);
+    } catch (err) {
+      if (requestId !== featureFlagRequestId.current) return;
+      setAnalyticsEnabled(false);
+      setError(getFriendlyErrorMessage(err));
+    } finally {
+      if (requestId === featureFlagRequestId.current) {
+        setFeatureFlagLoading(false);
+      }
+    }
+  }, [accessToken]);
+
+  const fetchProducts = React.useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const [productResponse, blockResponse] = await Promise.all([
+        qrProductApi.list(accessToken, 1, 100),
+        analyticsApi.getQSealBlocks(accessToken),
+      ]);
+      setProductOptions(productResponse.products || []);
+      setBlockOptions(blockResponse);
+    } catch {
+      // Product options are optional; the analytics page remains usable without them.
+    }
+  }, [accessToken]);
 
   const fetchAll = React.useCallback(async () => {
     if (!accessToken) {
       setLoading(false);
       return;
     }
+    if (analyticsEnabled !== true) {
+      setLoading(false);
+      return;
+    }
 
+    const requestId = ++dashboardRequestId.current;
     setLoading(true);
     setError(null);
-
-    const { date_from, date_to } = filters;
-
     try {
-      const [summaryData, ctaData, funnelData, geoData, deviceData] = await Promise.all([
-        analyticsApi.getSummary(accessToken, { date_from, date_to }),
-        analyticsApi.getCTABreakdown(accessToken, { date_from, date_to }),
-        analyticsApi.getInteractionFunnel(accessToken, { date_from, date_to }),
-        analyticsApi.getGeoHeatmap(accessToken, { date_from, date_to, limit: 500 }),
-        analyticsApi.getDeviceTimeline(accessToken, { date_from, date_to }),
+      const [summaryData, trendData, productData, geographyData, deviceData] = await Promise.all([
+        analyticsApi.getQSealSummary(accessToken, filters),
+        analyticsApi.getQSealTrends(accessToken, filters),
+        analyticsApi.getQSealProducts(accessToken, { ...filters, limit: 100 }),
+        analyticsApi.getQSealGeography(accessToken, { ...filters, limit: 500 }),
+        analyticsApi.getQSealDevices(accessToken, { ...filters, limit: 100 }),
       ]);
 
+      if (requestId !== dashboardRequestId.current) return;
       setSummary(summaryData);
-      setCTABreakdown(ctaData);
-      setInteractionFunnel(funnelData);
-      setGeoPoints(geoData);
-      setDeviceTimeline(Array.isArray(deviceData) ? deviceData : []);
+      setTrends(trendData);
+      setProducts(productData);
+      setGeography(geographyData);
+      setDevices(deviceData);
+    } catch (err) {
+      if (requestId !== dashboardRequestId.current) return;
+      setError(getFriendlyErrorMessage(err));
+    } finally {
+      if (requestId === dashboardRequestId.current) {
+        setLoading(false);
+      }
+    }
+  }, [accessToken, analyticsEnabled, filters]);
+
+  const fetchHistory = React.useCallback(async () => {
+    if (!accessToken || analyticsEnabled !== true) return;
+    const requestId = ++historyRequestId.current;
+    setHistoryLoading(true);
+    try {
+      const response = await analyticsApi.getQSealHistory(accessToken, historyPage, 25, filters);
+      if (requestId !== historyRequestId.current) return;
+      setHistory(response.events || []);
+      setHistoryPagination(response.pagination);
+    } catch (err) {
+      if (requestId !== historyRequestId.current) return;
+      console.error('Failed to fetch QSeal scan history:', err);
+      setHistory([]);
+      setHistoryPagination(null);
+    } finally {
+      if (requestId === historyRequestId.current) {
+        setHistoryLoading(false);
+      }
+    }
+  }, [accessToken, analyticsEnabled, filters, historyPage]);
+
+  const reviewSuspicious = React.useCallback(async (eventId: string, reviewStatus: QSealSuspiciousReviewStatus) => {
+    if (!accessToken) return;
+    setReviewingEventId(eventId);
+    setError(null);
+    try {
+      await analyticsApi.reviewQSealSuspicious(accessToken, eventId, reviewStatus);
+      setHistory((current) => current.map((event) => (
+        event.id === eventId ? { ...event, review_status: reviewStatus } : event
+      )));
     } catch (err) {
       setError(getFriendlyErrorMessage(err));
     } finally {
-      setLoading(false);
+      setReviewingEventId(null);
     }
-  }, [accessToken, filters]);
+  }, [accessToken]);
 
-  // Fetch scan events (paginated)
-  const fetchScans = React.useCallback(async () => {
-    if (!accessToken) return;
+  React.useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
-    const { date_from, date_to } = filters;
+  React.useEffect(() => {
+    fetchFeatureFlag();
+  }, [fetchFeatureFlag]);
 
-    try {
-      const data = await analyticsApi.getScans(accessToken, scanPage, 20, { date_from, date_to });
-      setScanEvents(data.events);
-      setScanPagination(data.pagination);
-    } catch (err) {
-      console.error('Failed to fetch scan events:', err);
-    }
-  }, [accessToken, filters, scanPage]);
-
-  // Fetch summary data on mount and when filters change
   React.useEffect(() => {
     fetchAll();
   }, [fetchAll]);
 
-  // Fetch scan events separately (paginated)
   React.useEffect(() => {
-    fetchScans();
-  }, [fetchScans]);
+    fetchHistory();
+  }, [fetchHistory]);
+
+  React.useEffect(() => {
+    setHistoryPage(1);
+  }, [filters]);
+
+  const exportHistory = React.useCallback(async () => {
+    if (!accessToken || analyticsEnabled !== true) return [];
+    const allEvents: QSealAnalyticsHistoryItem[] = [];
+    let page = 1;
+    let hasNext = true;
+    while (hasNext) {
+      const response = await analyticsApi.getQSealHistory(accessToken, page, 200, filters);
+      allEvents.push(...response.events);
+      hasNext = response.pagination.has_next;
+      page += 1;
+    }
+    return allEvents;
+  }, [accessToken, analyticsEnabled, filters]);
 
   const refetch = React.useCallback(() => {
     fetchAll();
-    fetchScans();
-  }, [fetchAll, fetchScans]);
-
-  // Reset scan page to 1 when filters change
-  React.useEffect(() => {
-    setScanPage(1);
-  }, [filters.date_from, filters.date_to]);
+    fetchHistory();
+    fetchProducts();
+  }, [fetchAll, fetchHistory, fetchProducts]);
 
   return {
     filters,
     setFilters,
     summary,
-    ctaBreakdown,
-    interactionFunnel,
-    geoPoints,
-    deviceTimeline,
-    scanEvents,
-    scanPagination,
+    trends,
+    products,
+    geography,
+    devices,
+    history,
+    reviewSuspicious,
+    reviewingEventId,
+    productOptions,
+    blockOptions,
+    historyPagination,
+    historyLoading,
+    historyPage,
+    setHistoryPage,
+    exportHistory,
     loading,
     error,
-    scanPage,
-    setScanPage,
+    analyticsEnabled,
+    featureFlagLoading,
     refetch,
   };
 }
