@@ -7,7 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { PermissionGuard } from './components/PermissionGuard';
 import { PlaceholderPage } from './components/PlaceholderPage';
 import BankingRoutes from './features/banking/BankingRoutes';
-import { RegisterPage, LoginPage, AcceptInvitationPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage } from './pages';
+import { RegisterPage, LoginPage, AcceptInvitationPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage, ReportsPage } from './pages';
 import { PublicQRValidation } from './pages/PublicQRValidation';
 import { AppLoading } from './components/AppLoading';
 
@@ -138,7 +138,7 @@ function ProtectedRouteWrapper() {
           } />
           <Route path="/reports" element={
             <PermissionGuard required={['report.read', 'report.*', '*.*']}>
-              <ReportsPlaceholder />
+              <ReportsPage />
             </PermissionGuard>
           } />
         </Routes>
@@ -149,10 +149,6 @@ function ProtectedRouteWrapper() {
 
 function AnalyticsPlaceholder() {
   return <PlaceholderPage title="Analytics" description="View detailed analytics and insights" />;
-}
-
-function ReportsPlaceholder() {
-  return <PlaceholderPage title="Reports" description="Generate and view reports" />;
 }
 
 function HelpPlaceholder() {
