@@ -191,10 +191,10 @@ export function AdminSidebar({
         {(!collapsed || isMobile) && (
           <div className="flex flex-col">
             <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-violet-600 to-fuchsia-600 dark:from-violet-400 dark:to-fuchsia-400 bg-clip-text text-transparent">
-              Horizon
+              Ciphercode
             </span>
             <span className="text-[10px] uppercase tracking-widest text-muted-foreground -mt-0.5">
-              Sync Admin
+              Admin
             </span>
           </div>
         )}
