@@ -71,7 +71,13 @@ export function useAnalyticsManagement(): UseAnalyticsManagementResult {
   const [analyticsEnabled, setAnalyticsEnabled] = React.useState<boolean | null>(null);
   const [featureFlagLoading, setFeatureFlagLoading] = React.useState(true);
 
+  // Request generations guard against stale responses overwriting newer state.
+  const featureFlagRequestId = React.useRef(0);
+  const dashboardRequestId = React.useRef(0);
+  const historyRequestId = React.useRef(0);
+
   const fetchFeatureFlag = React.useCallback(async () => {
+    const requestId = ++featureFlagRequestId.current;
     if (!accessToken) {
       setAnalyticsEnabled(false);
       setFeatureFlagLoading(false);
@@ -80,12 +86,16 @@ export function useAnalyticsManagement(): UseAnalyticsManagementResult {
     setFeatureFlagLoading(true);
     try {
       const flag = await featureFlagApi.evaluate(accessToken, 'analytics_module_enabled');
+      if (requestId !== featureFlagRequestId.current) return;
       setAnalyticsEnabled(flag.enabled && flag.visible);
     } catch (err) {
+      if (requestId !== featureFlagRequestId.current) return;
       setAnalyticsEnabled(false);
       setError(getFriendlyErrorMessage(err));
     } finally {
-      setFeatureFlagLoading(false);
+      if (requestId === featureFlagRequestId.current) {
+        setFeatureFlagLoading(false);
+      }
     }
   }, [accessToken]);
 
@@ -113,6 +123,7 @@ export function useAnalyticsManagement(): UseAnalyticsManagementResult {
       return;
     }
 
+    const requestId = ++dashboardRequestId.current;
     setLoading(true);
     setError(null);
     try {
@@ -124,31 +135,40 @@ export function useAnalyticsManagement(): UseAnalyticsManagementResult {
         analyticsApi.getQSealDevices(accessToken, { ...filters, limit: 100 }),
       ]);
 
+      if (requestId !== dashboardRequestId.current) return;
       setSummary(summaryData);
       setTrends(trendData);
       setProducts(productData);
       setGeography(geographyData);
       setDevices(deviceData);
     } catch (err) {
+      if (requestId !== dashboardRequestId.current) return;
       setError(getFriendlyErrorMessage(err));
     } finally {
-      setLoading(false);
+      if (requestId === dashboardRequestId.current) {
+        setLoading(false);
+      }
     }
   }, [accessToken, analyticsEnabled, filters]);
 
   const fetchHistory = React.useCallback(async () => {
     if (!accessToken || analyticsEnabled !== true) return;
+    const requestId = ++historyRequestId.current;
     setHistoryLoading(true);
     try {
       const response = await analyticsApi.getQSealHistory(accessToken, historyPage, 25, filters);
+      if (requestId !== historyRequestId.current) return;
       setHistory(response.events || []);
       setHistoryPagination(response.pagination);
     } catch (err) {
+      if (requestId !== historyRequestId.current) return;
       console.error('Failed to fetch QSeal scan history:', err);
       setHistory([]);
       setHistoryPagination(null);
     } finally {
-      setHistoryLoading(false);
+      if (requestId === historyRequestId.current) {
+        setHistoryLoading(false);
+      }
     }
   }, [accessToken, analyticsEnabled, filters, historyPage]);
 

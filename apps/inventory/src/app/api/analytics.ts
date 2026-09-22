@@ -109,10 +109,26 @@ export const analyticsApi = {
   },
 
   async getQSealBlocks(accessToken: string): Promise<QSealBlockOption[]> {
-    const response = await apiRequest<{ blocks: QSealBlockOption[] }>('/qr-products/blocks', accessToken, {
-      params: { page: 1, page_size: 100 },
-    });
-    return response.blocks || [];
+    // Paginate through every page so organizations with more than one page of
+    // blocks still see all of their batches in the filters.
+    const pageSize = 100;
+    const allBlocks: QSealBlockOption[] = [];
+    let page = 1;
+    let hasNext = true;
+
+    while (hasNext) {
+      const response = await apiRequest<{
+        blocks: QSealBlockOption[];
+        pagination?: { has_next?: boolean };
+      }>('/qr-products/blocks', accessToken, {
+        params: { page, page_size: pageSize },
+      });
+      allBlocks.push(...(response.blocks || []));
+      hasNext = Boolean(response.pagination?.has_next);
+      page += 1;
+    }
+
+    return allBlocks;
   },
 
   getQSealHistory(accessToken: string, page = 1, pageSize = 50, params?: QSealAnalyticsParams): Promise<QSealAnalyticsHistoryResponse> {
