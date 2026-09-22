@@ -116,6 +116,16 @@ function fmtPct(value: unknown): string {
     return n == null ? '—' : `${n.toFixed(1)}%`;
 }
 
+/** Local start-of-day ISO timestamp for a `YYYY-MM-DD` date input value. */
+function startOfDayIso(value: string): string {
+    return new Date(`${value}T00:00:00`).toISOString();
+}
+
+/** Local end-of-day ISO timestamp so the whole selected day is included in the range. */
+function endOfDayIso(value: string): string {
+    return new Date(`${value}T23:59:59.999`).toISOString();
+}
+
 function movementTypeBadge(type: unknown) {
     const label = String(type ?? '—').toUpperCase();
     const variant =
@@ -289,13 +299,13 @@ export function WMSReports() {
 
         if (reportType === 'stock-movements') {
             if (movementType !== 'all') params.set('movement_type', movementType);
-            if (dateFrom) params.set('date_from', new Date(dateFrom).toISOString());
-            if (dateTo) params.set('date_to', new Date(dateTo).toISOString());
+            if (dateFrom) params.set('date_from', startOfDayIso(dateFrom));
+            if (dateTo) params.set('date_to', endOfDayIso(dateTo));
         } else if (reportType === 'inventory-aging') {
             params.set('days_idle', daysIdle || '30');
         } else if (reportType === 'receiving-variance') {
-            if (dateFrom) params.set('date_from', new Date(dateFrom).toISOString());
-            if (dateTo) params.set('date_to', new Date(dateTo).toISOString());
+            if (dateFrom) params.set('date_from', startOfDayIso(dateFrom));
+            if (dateTo) params.set('date_to', endOfDayIso(dateTo));
         }
 
         return params;
@@ -373,6 +383,11 @@ export function WMSReports() {
         setMovementType('all');
         setDateFrom('');
         setDateTo('');
+        // Drop the previous report's payload so the new columns/KPI cards never
+        // render against rows that belong to a different report type.
+        setSummary(null);
+        setRows([]);
+        setPagination(null);
     };
 
     const columns = React.useMemo(() => getColumns(reportType), [reportType]);
@@ -390,8 +405,10 @@ export function WMSReports() {
             currentPage: page,
             pageSize,
             onPageChange: (nextPage: number, nextPageSize: number) => {
-                setPage(nextPage);
                 setPageSize(nextPageSize);
+                // A bigger page size shrinks the page count, so keep the current
+                // page in range instead of requesting a page that no longer exists.
+                setPage(nextPageSize === pageSize ? nextPage : 1);
             },
         };
     }, [pagination, page, pageSize]);
