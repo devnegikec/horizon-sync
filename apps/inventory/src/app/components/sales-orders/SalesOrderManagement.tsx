@@ -195,15 +195,13 @@ export function SalesOrderManagement({
         }}/>
 
       {/* Delete Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmAction}
+      <ConfirmationDialog open={!!confirmAction}
         onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
         title={confirmAction?.title || ''}
         description={confirmAction?.message || ''}
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={executeConfirmedAction}
-      />
+        onConfirm={executeConfirmedAction}/>
     </div>
   );
 }

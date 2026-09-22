@@ -1,10 +1,15 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- test mocks use untyped props */
+
 import * as React from 'react';
+
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
-import { SettingsPage } from '../settings';
-import { useAuth } from '../../hooks';
+
 import { useUserStore } from '@horizon-sync/store';
+
+import { useAuth } from '../../hooks';
+import { SettingsPage } from '../settings';
 
 // Mock dependencies
 jest.mock('../../hooks', () => ({
@@ -20,12 +25,32 @@ jest.mock('../../features/organization/utils/permissions', () => ({
   hasPermissionFromStore: jest.fn(() => true),
 }));
 
-jest.mock('../../features/organization/components/OrganizationConfigSettings', () => ({
-  OrganizationConfigSettings: ({ organizationId, canEdit }: any) => (
+jest.mock('../../features/organization/components/OrganizationProfileSettings', () => ({
+  OrganizationProfileSettings: ({ organizationId, canEdit }: any) => (
     <div data-testid="organization-config-settings" data-can-edit={canEdit}>
       Organization Config Settings - {organizationId}
     </div>
   ),
+}));
+
+jest.mock('../../features/organization/components/OrganizationSettings', () => ({
+  OrganizationSettings: ({ canEdit }: any) => (
+    <div data-testid="organization-settings" data-can-edit={canEdit}>
+      Organization Settings
+    </div>
+  ),
+}));
+
+jest.mock('../../features/organization/components/UomSettings', () => ({
+  UomSettings: () => <div>UOM Settings</div>,
+}));
+
+jest.mock('../../features/organization/components/ItemUomConversionsSettings', () => ({
+  ItemUomConversionsSettings: () => <div>Item UOM Conversions</div>,
+}));
+
+jest.mock('../../features/feature-flags/components/FeatureFlagsSettings', () => ({
+  FeatureFlagsSettings: () => <div>Feature Flags Settings</div>,
 }));
 
 // Mock banking components
@@ -115,7 +140,7 @@ describe('SettingsPage - Responsive Design', () => {
     render(
       <BrowserRouter>
         <SettingsPage />
-      </BrowserRouter>
+      </BrowserRouter>,
     );
 
   describe('Mobile Layout', () => {

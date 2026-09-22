@@ -2,12 +2,13 @@ import * as React from 'react';
 
 import { Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, DatePicker } from '@horizon-sync/ui/components';
 
-import { StatusSelect } from '../common';
 import { AsnOrderStatus } from '../../types/asn-order.types';
+import { StatusSelect } from '../common';
 
 interface AsnOrderFormFieldsProps {
   formData: {
     asn_order_no: string;
+    asn_type: 'purchase' | 'internal_transfer' | 'stock_receipt';
     warehouse_id_from: string;
     warehouse_id_to: string;
     order_date: string;
@@ -51,25 +52,42 @@ export function AsnOrderFormFields({
               className="cursor-not-allowed opacity-60" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="warehouse_id_from">By *</Label>
-            <Select value={formData.warehouse_id_from}
-              onValueChange={(v) => onFieldChange('warehouse_id_from', v)}
-              disabled={readOnly}
-              required>
+            <Label htmlFor="asn_type">ASN Type *</Label>
+            <Select value={formData.asn_type}
+              onValueChange={(v) => onFieldChange('asn_type', v)}
+              disabled={readOnly || isEdit}>
               <SelectTrigger>
-                <SelectValue placeholder="Select warehouse" />
+                <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                {warehousesFrom.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="purchase">Purchase</SelectItem>
+                <SelectItem value="internal_transfer">Internal Transfer</SelectItem>
+                <SelectItem value="stock_receipt">Stock Receipt</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {formData.asn_type !== 'stock_receipt' && (
+            <div className="space-y-2">
+              <Label htmlFor="warehouse_id_from">Source Warehouse *</Label>
+              <Select value={formData.warehouse_id_from}
+                onValueChange={(v) => onFieldChange('warehouse_id_from', v)}
+                disabled={readOnly}
+                required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select warehouse" />
+                </SelectTrigger>
+                <SelectContent>
+                  {warehousesFrom.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-2">
-            <Label htmlFor="warehouse_id_to">For *</Label>
+            <Label htmlFor="warehouse_id_to">Target Warehouse *</Label>
             <Select value={formData.warehouse_id_to}
               onValueChange={(v) => onFieldChange('warehouse_id_to', v)}
               disabled={readOnly}
@@ -106,8 +124,7 @@ export function AsnOrderFormFields({
               value={formData.delivery_date}
               onChange={(v) => onFieldChange('delivery_date', v)}
               disabled={readOnly}
-              min={formData.order_date || undefined}
-              required />
+              min={formData.order_date || undefined} />
           </div>
           {/* <div className="space-y-2">
             <Label htmlFor="currency">Currency *</Label>

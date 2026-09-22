@@ -13,7 +13,6 @@ export interface Brand {
   organization_id: string;
   name: string;
   short_code: string;
-  public_key: string;
   created_by: string | null;
   created_at: string;
   updated_at: string;

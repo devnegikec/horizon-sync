@@ -380,7 +380,7 @@ export class RoleService {
       }
 
       // Sort permissions within each resource group by action
-      const ACTION_ORDER = ['read', 'create', 'update', 'delete', 'manage', 'execute'];
+      const ACTION_ORDER = ['read', 'create', 'update', 'delete', 'manage', 'execute', 'scan', 'dispose'];
       for (const perms of Object.values(grouped)) {
         perms.sort((a, b) => {
           const aIdx = ACTION_ORDER.indexOf(a.action);

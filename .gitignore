@@ -8,8 +8,9 @@ out-tsc
 # dependencies
 node_modules
 .codeant-pr-comments.json
+.env.local
 .deploy
-
+.codeant-pr-comments.json
 # IDEs and editors
 /.idea
 .project
@@ -19,6 +20,7 @@ node_modules
 *.launch
 .settings/
 *.sublime-workspace
+codeant_pr_comments.py
 
 # IDE - VSCode
 .vscode/*
@@ -41,6 +43,8 @@ testem.log
 .DS_Store
 Thumbs.db
 .env
+.env.local
+.env.mobile
 
 .nx/cache
 .nx/workspace-data
@@ -50,3 +54,6 @@ vitest.config.*.timestamp*
 
 # prompt files
 *.prompt.md
+.vercel
+test-results
+

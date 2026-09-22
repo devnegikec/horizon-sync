@@ -1,23 +1,27 @@
 import * as React from 'react';
 
-import { Loader2, CheckCircle2, SkipForward, Search, MapPin, PackageOpen } from 'lucide-react';
+import { Loader2, CheckCircle2, ShieldAlert, SkipForward, Search, MapPin } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import { usePutAwayList } from '../../hooks/useWMS';
-import type { PutAwayItem, PutAwayList, WarehouseLocation } from '../../types/wms.types';
+import type {
+  PutAwayExceptionRequest,
+  PutAwayGroup,
+  PutAwayGroupItem,
+  PutAwayItem,
+  PutAwayList,
+  WarehouseLocation,
+} from '../../types/wms.types';
 import { layoutApi } from '../../utility/api/wms';
-import { DetailDialogContainer } from '../common';
+import { hasPermission } from '../../utils/permissions';
 
+import { PutAwayExceptionDialog, type PutAwayExceptionTarget } from './PutAwayExceptionDialog';
+import { QRDetailDialog, type QRDetailColumn, type QRDetailRow } from './QRDetailDialog';
 import { WMSStatusBadge } from './WMSStatusBadge';
 
 // ─── Complete Item Dialog (bin position selection) ───────────────────────────
@@ -27,7 +31,59 @@ interface CompleteItemDialogProps {
   onOpenChange: (open: boolean) => void;
   item: PutAwayItem;
   warehouseId: string;
-  onConfirm: (itemId: string, binId: string) => Promise<void>;
+  onConfirm: (itemId: string, binId: string) => Promise<unknown>;
+}
+
+function BinSearchResults({
+  searching,
+  query,
+  results,
+  selectedBin,
+  onSelect,
+}: {
+  searching: boolean;
+  query: string;
+  results: WarehouseLocation[];
+  selectedBin: WarehouseLocation | null;
+  onSelect: (location: WarehouseLocation) => void;
+}) {
+  if (searching) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (results.length > 0) {
+    return (
+      <div className="border rounded-lg max-h-[200px] overflow-y-auto">
+        {results.map((loc) => (
+          <button key={loc.id}
+            type="button"
+            className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${selectedBin?.id === loc.id ? 'bg-accent text-accent-foreground' : ''}`}
+            onClick={() => onSelect(loc)}>
+            <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="font-mono font-medium">{loc.code}</span>
+              {loc.full_path && <span className="text-xs text-muted-foreground ml-2 truncate">{loc.full_path}</span>}
+            </div>
+            {loc.available_capacity > 0 && (
+              <span className="text-xs text-muted-foreground shrink-0">
+                Cap: {loc.available_capacity}/{loc.total_capacity}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  if (query.length >= 1) {
+    return <p className="text-xs text-muted-foreground py-2">No bins found matching &quot;{query}&quot;</p>;
+  }
+
+  return null;
 }
 
 function CompleteItemDialog({ open, onOpenChange, item, warehouseId, onConfirm }: CompleteItemDialogProps) {
@@ -116,59 +172,20 @@ function CompleteItemDialog({ open, onOpenChange, item, warehouseId, onConfirm }
           )}
 
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Search Bin Location</label>
+            <p className="text-xs font-medium text-muted-foreground">Search Bin Location</p>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input className="pl-10"
-                placeholder="Type to search bins..."
-                value={query}
-                onChange={(e) => handleQueryChange(e.target.value)}/>
+              <Input className="pl-10" placeholder="Type to search bins..." value={query} onChange={(e) => handleQueryChange(e.target.value)} />
             </div>
 
-            {searching && (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              </div>
-            )}
-
-            {!searching && results.length > 0 && (
-              <div className="border rounded-lg max-h-[200px] overflow-y-auto">
-                {results.map((loc) => (
-                  <button key={loc.id}
-                    type="button"
-                    className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-muted transition-colors ${
-                      selectedBin?.id === loc.id ? 'bg-accent text-accent-foreground' : ''
-                    }`}
-                    onClick={() => setSelectedBin(loc)}>
-                    <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <span className="font-mono font-medium">{loc.code}</span>
-                      {loc.full_path && (
-                        <span className="text-xs text-muted-foreground ml-2 truncate">{loc.full_path}</span>
-                      )}
-                    </div>
-                    {loc.available_capacity > 0 && (
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        Cap: {loc.available_capacity}/{loc.total_capacity}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {!searching && query.length >= 1 && results.length === 0 && (
-              <p className="text-xs text-muted-foreground py-2">No bins found matching "{query}"</p>
-            )}
+            <BinSearchResults searching={searching} query={query} results={results} selectedBin={selectedBin} onSelect={setSelectedBin} />
           </div>
 
           {selectedBin && (
             <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm">
               <span className="font-medium text-green-700">Selected: </span>
               <span className="text-green-600 font-mono">{selectedBin.code}</span>
-              {selectedBin.full_path && (
-                <span className="text-green-500 text-xs ml-1">({selectedBin.full_path})</span>
-              )}
+              {selectedBin.full_path && <span className="text-green-500 text-xs ml-1">({selectedBin.full_path})</span>}
             </div>
           )}
 
@@ -187,39 +204,341 @@ function CompleteItemDialog({ open, onOpenChange, item, warehouseId, onConfirm }
   );
 }
 
-// ─── Item row with Complete / Skip actions ───────────────────────────────────
+// ─── Item row with Complete / Skip actions (serial sub-row) ──────────────────
 
-interface ItemRowProps {
-  item: PutAwayItem;
-  warehouseId: string;
-  onComplete: (itemId: string, binId?: string) => Promise<PutAwayItem>;
-  onSkip: (itemId: string, reason: string) => Promise<PutAwayItem>;
+interface PutAwayLineGroup {
+  itemId: string;
+  rows: PutAwayItem[];
 }
 
-function PutAwayItemRow({ item, warehouseId, onComplete, onSkip }: ItemRowProps) {
-  const [skipping, setSkipping] = React.useState(false);
-  const [skipReason, setSkipReason] = React.useState('');
-  const [completeDialogOpen, setCompleteDialogOpen] = React.useState(false);
-  const [busy, setBusy] = React.useState(false);
-  const { toast } = useToast();
+function groupPutAwayItems(items: PutAwayItem[]): PutAwayLineGroup[] {
+  const groups = new Map<string, PutAwayLineGroup>();
+  for (const it of items) {
+    const g = groups.get(it.item_id) ?? { itemId: it.item_id, rows: [] };
+    g.rows.push(it);
+    groups.set(it.item_id, g);
+  }
+  return Array.from(groups.values());
+}
 
-  const handleCompleteConfirm = async (itemId: string, binId: string) => {
-    setBusy(true);
-    try {
-      await onComplete(itemId, binId);
-    } finally {
+const EMPTY = '\u2014';
+
+/** Prefer the full serial list when present, else the single serial/batch. */
+function serialLabel(item: PutAwayItem): string | null {
+  if (item.serial_nos && item.serial_nos.length > 0) return item.serial_nos.join(', ');
+  return item.serial_number ?? item.batch_number ?? null;
+}
+
+/** The group's batch when every unit shares it, otherwise null (units differ). */
+function commonBatch(rows: { batch_number: string | null }[]): string | null {
+  const batches = rows.map((r) => r.batch_number).filter((b): b is string => Boolean(b));
+  const unique = [...new Set(batches)];
+  return unique.length === 1 ? unique[0] : null;
+}
+
+/** Aggregate a group's units into a put-away status. */
+function groupStatus(rows: PutAwayItem[]): string {
+  const done = rows.filter((r) => r.status === 'completed' || r.status === 'skipped').length;
+  if (done === 0) return 'pending';
+  if (done >= rows.length) return 'completed';
+  return 'in_progress';
+}
+
+function itemToChildRow(item: PutAwayItem, productName: string): QRDetailRow {
+  return {
+    id: item.id,
+    name: item.item_name ?? productName,
+    sku: item.sku,
+    batch: item.batch_number,
+    serialNumber: serialLabel(item),
+    manufacturingDate: item.manufacturing_date ?? null,
+    expiryDate: item.expiry_date ?? null,
+    quantity: item.quantity,
+    meta: { item },
+  };
+}
+
+function groupToRow(group: PutAwayLineGroup): QRDetailRow {
+  const first = group.rows[0];
+  const productName = first.item_name ?? first.sku;
+  return {
+    id: group.itemId,
+    name: productName,
+    sku: first.sku,
+    batch: commonBatch(group.rows),
+    serialNumber: null,
+    quantity: group.rows.reduce((sum, r) => sum + (r.quantity || 0), 0),
+    meta: { status: groupStatus(group.rows) },
+    children: group.rows.map((item) => legacyChildRow(item, productName)),
+  };
+}
+
+/* ---- Exception targets ------------------------------------------------- */
+
+/** One exception for one put-away unit. */
+function unitTarget(item: PutAwayItem, productName: string): PutAwayExceptionTarget {
+  return {
+    scope: 'item',
+    id: item.id,
+    sku: item.sku,
+    productName,
+    batchNumber: item.batch_number,
+    unitCount: 1,
+    quantity: item.quantity,
+    itemIds: [item.id],
+  };
+}
+
+/**
+ * One exception for a whole master pack. Only units the API gave an id to can be
+ * covered, so a pack without any addressable unit offers no pack target.
+ */
+function packTarget(group: PutAwayGroup, productName: string): PutAwayExceptionTarget | null {
+  const parentId = group.parent_qseal?.id;
+  const items = Array.isArray(group.items) ? group.items : [];
+  const covered = items.map((item) => item.id).filter((id): id is string => Boolean(id));
+  if (!parentId || covered.length === 0) return null;
+
+  return {
+    scope: 'pack',
+    id: parentId,
+    sku: items[0]?.sku ?? productName,
+    productName,
+    batchNumber: commonBatch(items),
+    unitCount: covered.length,
+    quantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
+    itemIds: covered,
+  };
+}
+
+/** Legacy flat payload: units are addressable, but there is no master pack. */
+function legacyChildRow(item: PutAwayItem, productName: string): QRDetailRow {
+  const row = itemToChildRow(item, productName);
+  return {
+    ...row,
+    meta: { ...row.meta, actionable: true, exceptionTarget: unitTarget(item, productName) },
+  };
+}
+
+/** Stable id fallback for a group item the API returned without an id. */
+function fallbackItemId(group: PutAwayGroup, index: number): string {
+  const groupId = group.parent_qseal?.id ?? group.sort_order;
+  return `${groupId}-${index}`;
+}
+
+/** Item ids fall back to the parent q-seal id, then the product name. */
+function resolveGroupItemId(group: PutAwayGroup, item: PutAwayGroupItem): string {
+  return item.item_id ?? group.parent_qseal?.id ?? group.product_name;
+}
+
+/** Group statuses that do not map 1:1 onto the per-item status vocabulary. */
+function itemStatusForGroup(group: PutAwayGroup): PutAwayItem['status'] {
+  if (group.status === 'in_progress') return 'pending';
+  if (group.status === 'cancelled') return 'skipped';
+  return group.status;
+}
+
+function groupedItemToPutAwayItem(group: PutAwayGroup, item: PutAwayGroupItem, index: number): PutAwayItem {
+  return {
+    id: item.id ?? fallbackItemId(group, index),
+    item_id: resolveGroupItemId(group, item),
+    sku: item.sku,
+    item_name: item.item_name ?? group.product_name,
+    batch_number: item.batch_number,
+    serial_number: item.serial_number,
+    manufacturing_date: item.manufacturing_date ?? null,
+    expiry_date: item.expiry_date ?? null,
+    quantity: item.quantity,
+    bin_location_id: group.bin_location_id,
+    bin_location_code: group.bin_location_code,
+    suggested_bin_code: group.bin_location_code,
+    status: itemStatusForGroup(group),
+    sort_order: group.sort_order,
+  };
+}
+
+function groupedToRow(group: PutAwayGroup, groupIndex: number): QRDetailRow {
+  const items = Array.isArray(group.items) ? group.items : [];
+  const first = items[0];
+  return {
+    id: group.parent_qseal?.id ?? `group-${groupIndex}`,
+    name: group.product_name,
+    sku: first?.sku ?? null,
+    batch: first?.batch_number ?? null,
+    serialNumber: group.parent_qseal?.serial_number ?? null,
+    quantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
+    meta: {
+      status: group.status,
+      bin: group.bin_location_code,
+      exceptionTarget: packTarget(group, group.product_name),
+    },
+    children: items.map((item, index) => groupedChildRow(group, item, index)),
+  };
+}
+
+/**
+ * Child row for the grouped payload. A unit the API returned without an id has
+ * no addressable identity, so it gets neither actions nor an exception target.
+ */
+function groupedChildRow(group: PutAwayGroup, item: PutAwayGroupItem, index: number): QRDetailRow {
+  const mappedItem = groupedItemToPutAwayItem(group, item, index);
+  const row = itemToChildRow(mappedItem, group.product_name);
+  return {
+    ...row,
+    meta: {
+      ...row.meta,
+      actionable: Boolean(item.id),
+      exceptionTarget: item.id ? unitTarget(mappedItem, group.product_name) : undefined,
+    },
+  };
+}
+
+/** Render the grouped response format, with a flat-item fallback for older APIs. */
+function listToRows(list: PutAwayList): QRDetailRow[] {
+  if (Array.isArray(list.groups) && list.groups.length > 0) {
+    return list.groups.map(groupedToRow);
+  }
+  const items = Array.isArray(list.items) ? list.items : [];
+  return groupPutAwayItems(items).map(groupToRow);
+}
+
+// ─── Extra columns / actions ─────────────────────────────────────────────────
+
+function BinCell({ row }: { row: QRDetailRow }) {
+  const item = row.meta?.item as PutAwayItem | undefined;
+  const bin = item?.suggested_bin_code ?? item?.bin_location_code ?? row.meta?.bin;
+  return <span className="font-mono text-[11px]">{typeof bin === 'string' && bin.length > 0 ? bin : EMPTY}</span>;
+}
+
+function StatusCell({ row }: { row: QRDetailRow }) {
+  const item = row.meta?.item as PutAwayItem | undefined;
+  const status = item?.status ?? (row.meta?.status as string | undefined);
+  if (!status) return null;
+  return <WMSStatusBadge status={status} />;
+}
+
+/** Manager-only affordance: excepting stock is more than a put-away decision. */
+function ExceptionAction({
+  target,
+  canException,
+  onException,
+}: {
+  target?: PutAwayExceptionTarget;
+  canException: boolean;
+  onException: (target: PutAwayExceptionTarget) => void;
+}) {
+  if (!canException || !target) return null;
+  return (
+    <Button size="sm"
+      variant="outline"
+      className="h-7 gap-1 border-amber-200 px-2 text-xs text-amber-600 hover:bg-amber-50"
+      onClick={() => onException(target)}>
+      <ShieldAlert className="h-3 w-3" />
+      Exception
+    </Button>
+  );
+}
+
+/** Actions cell for a row that has no put-away actions of its own. */
+function ExceptionOnly({ show, children }: { show: boolean; children: React.ReactNode }) {
+  if (!show) return null;
+  return <div className="flex justify-end">{children}</div>;
+}
+
+/** Finished work stays read-only: completed, cancelled and skipped rows are terminal. */
+function isTerminalStatus(status: string | undefined): boolean {
+  return status === 'completed' || status === 'cancelled' || status === 'skipped';
+}
+
+/** The row's own status, or its group's when the row is a parent pack. */
+function rowStatus(row: QRDetailRow): string | undefined {
+  const item = row.meta?.item as PutAwayItem | undefined;
+  return item?.status ?? (row.meta?.status as string | undefined);
+}
+
+/**
+ * Whether the exception affordance applies: the manager may except, the row has
+ * an addressable target, and the work is not already finished — a terminal row
+ * has nothing left to decide, so its parent pack is excluded too.
+ */
+function canExceptRow(row: QRDetailRow, canException: boolean): boolean {
+  if (!canException || !row.meta?.exceptionTarget) return false;
+  return !isTerminalStatus(rowStatus(row));
+}
+
+function ActionsCell({
+  row,
+  canException,
+  onException,
+  onComplete,
+  onSkip,
+}: {
+  row: QRDetailRow;
+  canException: boolean;
+  onException: (target: PutAwayExceptionTarget) => void;
+  onComplete: (item: PutAwayItem) => void;
+  onSkip: (item: PutAwayItem) => void;
+}) {
+  const item = row.meta?.item as PutAwayItem | undefined;
+  const target = row.meta?.exceptionTarget as PutAwayExceptionTarget | undefined;
+  const exception = <ExceptionAction target={target} canException={canException} onException={onException}/>;
+  const mayExcept = canExceptRow(row, canException);
+
+  // Parent (product) rows carry no put-away actions, but a manager can except
+  // the whole master pack from one.
+  if (!item) return <ExceptionOnly show={mayExcept}>{exception}</ExceptionOnly>;
+
+  // Finished units stay read-only; only pending ones can be excepted or skipped.
+  if (row.meta?.actionable === false || item.status !== 'pending') {
+    return <ExceptionOnly show={mayExcept}>{exception}</ExceptionOnly>;
+  }
+
+  return (
+    <div className="flex items-center justify-end gap-1">
+      {exception}
+      <Button size="sm"
+        variant="outline"
+        className="h-7 gap-1 border-green-200 px-2 text-xs text-green-600 hover:bg-green-50"
+        onClick={() => onComplete(item)}>
+        <CheckCircle2 className="h-3 w-3" />
+        Complete
+      </Button>
+      <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs text-muted-foreground" onClick={() => onSkip(item)}>
+        <SkipForward className="h-3 w-3" />
+        Skip
+      </Button>
+    </div>
+  );
+}
+
+// ─── Skip item dialog (replaces the old inline skip input row) ───────────────
+
+interface SkipItemDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  item: PutAwayItem;
+  onConfirm: (itemId: string, reason: string) => Promise<PutAwayItem>;
+}
+
+function SkipItemDialog({ open, onOpenChange, item, onConfirm }: SkipItemDialogProps) {
+  const { toast } = useToast();
+  const [reason, setReason] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) {
+      setReason('');
       setBusy(false);
     }
-  };
+  }, [open]);
 
-  const handleSkip = async () => {
-    if (!skipReason.trim()) return;
+  const handleConfirm = async () => {
+    if (!reason.trim()) return;
     setBusy(true);
     try {
-      await onSkip(item.id, skipReason);
+      await onConfirm(item.id, reason);
       toast({ title: 'Item skipped', description: item.sku });
-      setSkipping(false);
-      setSkipReason('');
+      onOpenChange(false);
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' });
     } finally {
@@ -227,66 +546,149 @@ function PutAwayItemRow({ item, warehouseId, onComplete, onSkip }: ItemRowProps)
     }
   };
 
-  const isDone = item.status === 'completed' || item.status === 'skipped';
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle>Skip Put-Away — {item.sku}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">This unit will not be put away. Provide a reason for skipping it.</p>
+          <Input placeholder="Skip reason..." value={reason} onChange={(e) => setReason(e.target.value)} />
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button variant="destructive" size="sm" disabled={!reason.trim() || busy} onClick={handleConfirm}>
+              Confirm Skip
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Summary block ───────────────────────────────────────────────────────────
+
+interface ParsedRemarks {
+  text: string | null;
+  warnings: string[];
+}
+
+/** Keys the backend may use for free-text remarks inside the JSON blob. */
+const REMARK_TEXT_KEYS = ['text', 'note', 'notes', 'message', 'remark', 'remarks'];
+
+const EMPTY_REMARKS: ParsedRemarks = { text: null, warnings: [] };
+
+/** Keep the string entries of a candidate warnings array, or null if unusable. */
+function asStringEntries(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  const entries = value.filter((entry): entry is string => typeof entry === 'string');
+  return entries.length > 0 ? entries : null;
+}
+
+/** First non-empty free-text value the backend stored alongside the warnings. */
+function firstRemarkText(record: Record<string, unknown>): string | null {
+  const found = REMARK_TEXT_KEYS.map((key) => record[key]).find(
+    (entry): entry is string => typeof entry === 'string',
+  );
+  return found?.trim() || null;
+}
+
+/** JSON.parse without throwing; a bare `null` is treated as "not JSON". */
+function tryParseJson(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+/** Interpret an already-parsed remark blob, or null when it carries nothing usable. */
+function readRemarkPayload(parsed: unknown): ParsedRemarks | null {
+  if (parsed === null || typeof parsed !== 'object') return null;
+
+  if (Array.isArray(parsed)) {
+    const warnings = asStringEntries(parsed);
+    return warnings ? { text: null, warnings } : null;
+  }
+
+  const record = parsed as Record<string, unknown>;
+  const warnings = asStringEntries(record.warnings) ?? [];
+  const text = firstRemarkText(record);
+  return warnings.length > 0 || text ? { text, warnings } : null;
+}
+
+function isJsonBlob(value: string): boolean {
+  return value.startsWith('{') || value.startsWith('[');
+}
+
+/**
+ * Remarks may arrive as plain text or as a JSON blob that carries warnings.
+ * Unwrap the blob so the UI shows readable text instead of raw JSON.
+ */
+function parseRemarks(raw: string | null | undefined): ParsedRemarks {
+  if (typeof raw !== 'string') return EMPTY_REMARKS;
+
+  const value = raw.trim();
+  if (!isJsonBlob(value)) return { text: value || null, warnings: [] };
+
+  // Unrecognised shape — show the raw value rather than silently hiding it.
+  return readRemarkPayload(tryParseJson(value)) ?? { text: value, warnings: [] };
+}
+
+function PutAwaySummary({ list }: { list: PutAwayList }) {
+  const remarks = React.useMemo(() => parseRemarks(list.remarks), [list.remarks]);
+  // Warnings live either in their own field or inside the remarks blob.
+  const warnings = React.useMemo(
+    () => [...new Set([...(Array.isArray(list.warnings) ? list.warnings : []), ...remarks.warnings])],
+    [list.warnings, remarks.warnings],
+  );
 
   return (
-    <>
-      <tr className={isDone ? 'opacity-50' : 'hover:bg-muted/20'}>
-        <td className="px-4 py-2 font-mono font-medium">{item.sku}</td>
-        <td className="px-4 py-2 text-muted-foreground text-xs">{item.batch_number ?? '—'}</td>
-        <td className="px-4 py-2 text-right">{item.quantity}</td>
-        <td className="px-4 py-2 font-mono text-xs">{item.suggested_bin_code ?? '—'}</td>
-        <td className="px-4 py-2">
-          <WMSStatusBadge status={item.status} />
-        </td>
-        <td className="px-4 py-2 text-right">
-          {!isDone && (
-            <div className="flex items-center justify-end gap-1">
-              <Button size="sm"
-                variant="outline"
-                className="text-green-600 border-green-200 hover:bg-green-50 gap-1 h-7 px-2 text-xs"
-                disabled={busy}
-                onClick={() => setCompleteDialogOpen(true)}>
-                <CheckCircle2 className="h-3 w-3" />
-                Complete
-              </Button>
-              <Button size="sm"
-                variant="outline"
-                className="text-muted-foreground gap-1 h-7 px-2 text-xs"
-                disabled={busy}
-                onClick={() => setSkipping((s) => !s)}>
-                <SkipForward className="h-3 w-3" />
-                Skip
-              </Button>
-            </div>
-          )}
-        </td>
-      </tr>
-      {skipping && (
-        <tr>
-          <td colSpan={6} className="px-4 py-2 bg-muted/30">
-            <div className="flex items-center gap-2">
-              <Input className="flex-1 h-8 text-sm"
-                placeholder="Skip reason..."
-                value={skipReason}
-                onChange={(e) => setSkipReason(e.target.value)}/>
-              <Button size="sm" variant="destructive" className="h-8" disabled={!skipReason.trim() || busy} onClick={handleSkip}>
-                Confirm Skip
-              </Button>
-              <Button size="sm" variant="ghost" className="h-8" onClick={() => { setSkipping(false); setSkipReason(''); }}>
-                Cancel
-              </Button>
-            </div>
-          </td>
-        </tr>
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-4 gap-3 text-sm">
+        <div className="rounded-lg border p-3">
+          <p className="mb-1 text-xs text-muted-foreground">Status</p>
+          <WMSStatusBadge status={list.status} />
+        </div>
+        <div className="rounded-lg border p-3">
+          <p className="mb-1 text-xs text-muted-foreground">Progress</p>
+          <p className="text-sm font-medium">
+            {list.completed_items} / {list.total_items} units
+          </p>
+        </div>
+        <div className="rounded-lg border p-3">
+          <p className="mb-1 text-xs text-muted-foreground">Worker</p>
+          <p className="text-sm font-medium">{list.worker_name ?? list.assigned_to ?? EMPTY}</p>
+        </div>
+        <div className="rounded-lg border p-3">
+          <p className="mb-1 text-xs text-muted-foreground">Receiving Slip</p>
+          <p className="font-mono text-sm font-medium">{list.receiving_slip_no ?? EMPTY}</p>
+        </div>
+      </div>
+
+      {remarks.text && (
+        <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Remarks: </span>
+          {remarks.text}
+        </div>
       )}
 
-      <CompleteItemDialog open={completeDialogOpen}
-        onOpenChange={setCompleteDialogOpen}
-        item={item}
-        warehouseId={warehouseId}
-        onConfirm={handleCompleteConfirm}/>
-    </>
+      {warnings.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-sm">
+          <span className="font-medium text-amber-700">Warnings: </span>
+          <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs text-amber-600">
+            {warnings.map((warning, index) => (
+              <li key={index}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <p className="text-xs text-muted-foreground">Created: {list.created_at ? new Date(list.created_at).toLocaleString() : EMPTY}</p>
+    </div>
   );
 }
 
@@ -299,93 +701,92 @@ interface PutAwayDetailDialogProps {
 }
 
 export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetailDialogProps) {
-  const { list, loading, error, completeItem, skipItem } = usePutAwayList(listId);
+  const { list, loading, error, refetch, completeItem, skipItem, raiseException } = usePutAwayList(listId);
+  const permissions = useUserStore((state) => state.permissions.permissions);
+  // Either permission is enough: dock staff hold `inbound_exception.create`,
+  // while a warehouse manager holds `inbound_exception.dispose`. Gating on
+  // `create` alone would hide the control from the manager who is expected to
+  // use it.
+  const canException = hasPermission(permissions, 'inbound_exception.create') || hasPermission(permissions, 'inbound_exception.dispose');
+
+  const [completeTarget, setCompleteTarget] = React.useState<PutAwayItem | null>(null);
+  const [skipTarget, setSkipTarget] = React.useState<PutAwayItem | null>(null);
+  const [exceptionTarget, setExceptionTarget] = React.useState<PutAwayExceptionTarget | null>(null);
+
+  const rows = React.useMemo(() => (list ? listToRows(list) : []), [list]);
+
+  // The dialog addresses a unit or a pack; the hook addresses the list's items.
+  const raiseExceptionFor = React.useCallback(
+    (target: PutAwayExceptionTarget, request: PutAwayExceptionRequest) => raiseException(target.id, request),
+    [raiseException],
+  );
+
+  const columns = React.useMemo<QRDetailColumn[]>(
+    () => [
+      { id: 'bin', header: 'Bin', cell: (row) => <BinCell row={row} /> },
+      { id: 'status', header: 'Status', cell: (row) => <StatusCell row={row} /> },
+      {
+        id: 'actions',
+        header: 'Actions',
+        align: 'right',
+        cell: (row) => (
+          <ActionsCell row={row}
+            canException={canException}
+            onException={setExceptionTarget}
+            onComplete={setCompleteTarget}
+            onSkip={setSkipTarget}/>
+        ),
+      },
+    ],
+    [canException],
+  );
+
+  // Drop any open item dialogs when a different list is loaded.
+  React.useEffect(() => {
+    setCompleteTarget(null);
+    setSkipTarget(null);
+    setExceptionTarget(null);
+  }, [listId]);
 
   return (
-    <DetailDialogContainer open={open}
-      onOpenChange={onOpenChange}
-      icon={PackageOpen}
-      title={list ? list.put_away_list_no : 'Loading...'}
-      status={list?.status ?? 'pending'}
-      statusBadge={list ? <WMSStatusBadge status={list.status} /> : undefined}
-      contentClassName="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] overflow-y-auto">
-      {loading && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+    <>
+      <QRDetailDialog open={open}
+        onOpenChange={onOpenChange}
+        title={list ? `Put-Away — ${list.put_away_list_no}` : 'Put-Away'}
+        loading={loading}
+        loadingMessage="Loading put-away details..."
+        rows={rows}
+        columns={columns}
+        emptyMessage="No items"
+        subtitle={error ? <p className="text-sm text-destructive">{error}</p> : undefined}
+        summary={list ? <PutAwaySummary list={list} /> : undefined} />
+
+      {list && completeTarget && (
+        <CompleteItemDialog open
+          onOpenChange={(next) => {
+            if (!next) setCompleteTarget(null);
+          }}
+          item={completeTarget}
+          warehouseId={list.warehouse_id}
+          onConfirm={completeItem} />
       )}
 
-      {error && <div className="text-sm text-destructive py-4">{error}</div>}
-
-      {!loading && !error && list && (
-        <div className="flex flex-col gap-4">
-          {/* Summary row */}
-          <div className="grid grid-cols-3 gap-3 text-sm">
-            <div className="rounded-lg border p-3">
-              <p className="text-xs text-muted-foreground mb-1">Status</p>
-              <WMSStatusBadge status={list.status} />
-            </div>
-            <div className="rounded-lg border p-3">
-              <p className="text-xs text-muted-foreground mb-1">Total Items</p>
-              <p className="font-semibold text-lg">{list.total_items}</p>
-            </div>
-            <div className="rounded-lg border p-3">
-              <p className="text-xs text-muted-foreground mb-1">Assigned To</p>
-              <p className="font-medium text-sm">{list.assigned_to ?? '—'}</p>
-            </div>
-          </div>
-
-          {list.reference_type && (
-            <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Reference: </span>
-              {list.reference_type} — {list.reference_id ?? '—'}
-            </div>
-          )}
-
-          {list.remarks && (
-            <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">Remarks: </span>{list.remarks}
-            </div>
-          )}
-
-          {/* Items table */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Line Items ({list.items.length})
-            </div>
-            <table className="w-full text-sm">
-              <thead className="bg-muted/30">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">SKU</th>
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Batch</th>
-                  <th className="text-right px-4 py-2 font-medium text-muted-foreground">Qty</th>
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Suggested Bin</th>
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">Status</th>
-                  <th className="text-right px-4 py-2 font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {list.items.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-4 text-center text-muted-foreground text-xs">No items</td>
-                  </tr>
-                )}
-                {list.items.map((item) => (
-                  <PutAwayItemRow key={item.id}
-                    item={item}
-                    warehouseId={list.warehouse_id}
-                    onComplete={completeItem}
-                    onSkip={skipItem}/>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            Created: {list.created_at ? new Date(list.created_at).toLocaleString() : '—'}
-          </p>
-        </div>
+      {skipTarget && (
+        <SkipItemDialog open
+          onOpenChange={(next) => {
+            if (!next) setSkipTarget(null);
+          }}
+          item={skipTarget}
+          onConfirm={skipItem} />
       )}
-    </DetailDialogContainer>
+
+      <PutAwayExceptionDialog open={Boolean(exceptionTarget)}
+        onOpenChange={(next) => {
+          if (!next) setExceptionTarget(null);
+        }}
+        target={exceptionTarget}
+        onConfirm={raiseExceptionFor}
+        onStale={refetch}/>
+    </>
   );
 }

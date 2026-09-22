@@ -15,3 +15,5 @@ export { StatusSelect } from './StatusSelect';
 export { TaxSummaryCollapsible } from './TaxSummaryCollapsible';
 export { DetailDialogContainer } from './DetailDialogContainer';
 export type { DetailDialogContainerProps } from './DetailDialogContainer';
+export { WarehouseSelect } from './WarehouseSelect';
+export type { WarehouseOption, WarehouseSelectProps } from './WarehouseSelect';

@@ -18,10 +18,10 @@ import type {
 } from '../types/sales-order.types';
 import type { StockLevelsResponse, StockLevel } from '../types/stock.types';
 import type { WarehousesResponse } from '../types/warehouse.types';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 import { salesOrderApi } from '../utility/api/sales-orders';
 import { stockLevelApi } from '../utility/api/stock';
 import { warehouseApi } from '../utility/api/warehouses';
-import { getFriendlyErrorMessage } from '../utility/api/core';
 
 export interface SalesOrderFilters {
   search: string;

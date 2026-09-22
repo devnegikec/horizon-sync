@@ -1,29 +1,54 @@
 import * as React from 'react';
 
-import { Warehouse, ArrowDownToLine, ArrowUpFromLine, Box, MapPin, PackageCheck, Boxes, Users, Monitor, Settings, Layers } from 'lucide-react';
+import {
+  Warehouse,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Box,
+  MapPin,
+  PackageCheck,
+  Boxes,
+  Users,
+  Monitor,
+  Settings,
+  Layers,
+  QrCode,
+  Truck,
+  AlertTriangle,
+  ScanLine,
+  RefreshCw,
+  RotateCcw,
+} from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Label } from '@horizon-sync/ui/components/ui/label';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { useMyWarehouses } from '../../hooks/useMyWarehouses';
+import { useSelectedWarehouse } from '../../hooks/useSelectedWarehouse';
+import type { PutAwayStatusCounts, ReceivingSlipStatusCounts } from '../../types/wms.types';
+import { hasPermission } from '../../utils/permissions';
+import { WarehouseSelect } from '../common';
 import { StockManagement } from '../stock';
 
+import { AsnManagement } from './AsnManagement';
 import { DeviceManagementPanel } from './DeviceManagementPanel';
+import { InboundExceptionQueue } from './InboundExceptionQueue';
+import { InboundScanPanel } from './InboundScanPanel';
+import { InboundStats } from './InboundStats';
 import { LocationQRPanel } from './LocationQRPanel';
 import { LocationTreeView } from './LocationTreeView';
 import { OutboundManagement } from './OutboundManagement';
 import { PutAwayView } from './PutAwayView';
 import { ReceivingSlipList } from './ReceivingSlipList';
+import { ReturnsView } from './returns';
+import { VehicleArrivalManagement } from './VehicleArrivalManagement';
 import { Warehouse3DView } from './Warehouse3DView';
 import { WarehouseLayoutDesigner } from './WarehouseLayoutDesigner';
 import { WorkersManagementPanel } from './WorkersManagementPanel';
 
-type WMSView = 'layout' | 'inbound' | 'outbound' | 'stock' | 'manage';
-type LayoutTab = 'tree' | 'designer' | '3d';
-type InboundSection = 'receiving' | 'putaway';
+type WMSView = 'asn' | 'inbound' | 'outbound' | 'stock' | 'manage';
+type ManageSection = 'workers' | 'devices' | 'designer' | 'tree' | '3d' | 'location-qr';
+type InboundSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions' | 'returns';
 
 interface NavItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -44,28 +69,27 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 }
 
 export function WMSManagement() {
-  const [activeView, setActiveView] = React.useState<WMSView>('layout');
-  const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('');
-  const [manageSection, setManageSection] = React.useState<'workers' | 'devices' | 'location-qr'>('workers');
+  const [activeView, setActiveView] = React.useState<WMSView>('asn');
+  const [manageSection, setManageSection] = React.useState<ManageSection>('workers');
   const [inboundSection, setInboundSection] = React.useState<InboundSection>('receiving');
+  const [receivingStatusFilter, setReceivingStatusFilter] = React.useState<string>('all');
+  const [putawayStatusFilter, setPutawayStatusFilter] = React.useState<string>('all');
 
-  const { warehouses, loading: warehousesLoading, refetch: refetchWarehouses } = useMyWarehouses();
+  // App-wide warehouse selection, kept in a persisted store (not component state)
+  // so it survives tab switches, route changes and reloads instead of snapping
+  // back to the first assigned warehouse on every remount.
+  const { warehouses, loading: warehousesLoading, warehouseId: selectedWarehouseId, setWarehouseId: setSelectedWarehouseId, refetch: refetchWarehouses } = useSelectedWarehouse();
   const userPermissions = useUserStore((s) => s.permissions.permissions);
-  const canManage = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
+  const userType = useUserStore((s) => s.user?.user_type);
+  const isAdmin = userType === 'system_admin' || userType === 'organization_admin';
+  const canManage = isAdmin || hasPermission(userPermissions, 'warehouse.manage');
 
   // Redirect away from manage view if user lacks permission
   React.useEffect(() => {
     if (activeView === 'manage' && !canManage) {
-      setActiveView('layout');
+      setActiveView('asn');
     }
   }, [activeView, canManage]);
-
-  // Auto-select first warehouse
-  React.useEffect(() => {
-    if (!selectedWarehouseId && warehouses.length > 0) {
-      setSelectedWarehouseId(warehouses[0].id);
-    }
-  }, [warehouses, selectedWarehouseId]);
 
   // Refresh warehouse list when warehouses are created/imported elsewhere
   React.useEffect(() => {
@@ -89,219 +113,430 @@ export function WMSManagement() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Warehouse Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage inbound receiving, put-away, outbound picking, and gate verification
-          </p>
-        </div>
+      <WMSHeader warehouses={warehouses}
+        warehousesLoading={warehousesLoading}
+        selectedWarehouseId={selectedWarehouseId}
+        onWarehouseChange={setSelectedWarehouseId}/>
+      <WMSNavigation activeView={activeView} canManage={canManage} onViewChange={setActiveView} />
+      <WMSContent activeView={activeView}
+        canManage={canManage}
+        inboundSection={inboundSection}
+        manageSection={manageSection}
+        receivingStatusFilter={receivingStatusFilter}
+        putawayStatusFilter={putawayStatusFilter}
+        selectedWarehouseId={selectedWarehouseId}
+        onInboundSectionChange={setInboundSection}
+        onManageSectionChange={setManageSection}
+        onReceivingStatusFilterChange={setReceivingStatusFilter}
+        onPutawayStatusFilterChange={setPutawayStatusFilter}/>
+    </div>
+  );
+}
 
-        {/* Warehouse selector */}
-        <div className="flex items-center gap-3">
-          <Label className="text-sm font-medium shrink-0">Warehouse</Label>
-          <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId} disabled={warehousesLoading}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder={warehousesLoading ? 'Loading...' : 'Select warehouse'} />
-            </SelectTrigger>
-            <SelectContent>
-              {warehouses.map((wh) => (
-                <SelectItem key={wh.id} value={wh.id}>
-                  {wh.name} ({wh.code})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+interface WMSHeaderProps {
+  warehouses: Array<{ id: string; name: string; code: string }>;
+  warehousesLoading: boolean;
+  selectedWarehouseId: string;
+  onWarehouseChange: (warehouseId: string) => void;
+}
 
-      {/* Sub-navigation */}
-      <div className="border-b">
-        <nav className="flex items-center gap-1 pb-0 overflow-x-auto">
-          <NavItem icon={MapPin} label="Layout" isActive={activeView === 'layout'} onClick={() => setActiveView('layout')} />
-          <NavItem icon={ArrowDownToLine} label="Inbound" isActive={activeView === 'inbound'} onClick={() => setActiveView('inbound')} />
-          <NavItem icon={ArrowUpFromLine} label="Outbound" isActive={activeView === 'outbound'} onClick={() => setActiveView('outbound')} />
-          <NavItem icon={Boxes} label="Stock" isActive={activeView === 'stock'} onClick={() => setActiveView('stock')} />
-          {canManage && (
-            <NavItem icon={Settings} label="Manage" isActive={activeView === 'manage'} onClick={() => setActiveView('manage')} />
-          )}
-        </nav>
-      </div>
-
-      {/* Content */}
+function WMSHeader({ warehouses, warehousesLoading, selectedWarehouseId, onWarehouseChange }: WMSHeaderProps) {
+  return (
+    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
-        {activeView === 'layout' && (
-          <LayoutView selectedWarehouseId={selectedWarehouseId} />
-        )}
+        <h1 className="text-3xl font-bold tracking-tight">Warehouse Management</h1>
+        <p className="text-muted-foreground mt-1">Manage inbound receiving, put-away, outbound picking, and gate verification</p>
+      </div>
+      <WarehouseSelect warehouses={warehouses}
+        value={selectedWarehouseId}
+        onChange={onWarehouseChange}
+        loading={warehousesLoading}
+        label="Warehouse"
+        htmlId="wms-warehouse"
+        triggerClassName="w-[220px]"
+        className="flex flex-row items-center gap-3 space-y-0"/>
+    </div>
+  );
+}
 
-        {activeView === 'inbound' && (
-          <div className="space-y-4">
-            <div className="border rounded-lg overflow-hidden">
-              <div className="flex border-b">
-                <button className={cn('px-4 py-2 text-sm font-medium', inboundSection === 'receiving' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
-                  onClick={() => setInboundSection('receiving')}>
-                  <span className="flex items-center gap-2">
-                    <Warehouse className="h-4 w-4" />
-                    Receiving Slips
-                  </span>
-                </button>
-                <button className={cn('px-4 py-2 text-sm font-medium', inboundSection === 'putaway' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
-                  onClick={() => setInboundSection('putaway')}>
-                  <span className="flex items-center gap-2">
-                    <PackageCheck className="h-4 w-4" />
-                    Put-Away
-                  </span>
-                </button>
-              </div>
-              <div className="p-4 space-y-4">
-                {inboundSection === 'receiving' && (
-                  <div className="space-y-4">
-                    <div>
-                      <h2 className="text-lg font-semibold">Receiving Slips</h2>
-                      <p className="text-sm text-muted-foreground">
-                        Review and approve or reject receiving slips generated from inbound scan sessions.
-                      </p>
-                    </div>
-                    <ReceivingSlipList warehouseId={selectedWarehouseId || undefined} />
-                  </div>
-                )}
-                {inboundSection === 'putaway' && (
-                  <div className="space-y-4">
-                    <div>
-                      <h2 className="text-lg font-semibold">Put-Away Lists</h2>
-                      <p className="text-sm text-muted-foreground">
-                        Put-away lists are generated automatically when a receiving slip is approved. Click a row to see its items.
-                      </p>
-                    </div>
-                    <PutAwayView warehouseId={selectedWarehouseId || undefined} />
-                  </div>
-                )}
-              </div>
-            </div>
+function WMSNavigation({ activeView, canManage, onViewChange }: { activeView: WMSView; canManage: boolean; onViewChange: (view: WMSView) => void }) {
+  return (
+    <div className="border-b">
+      <nav className="flex items-center gap-1 pb-0 overflow-x-auto">
+        <NavItem icon={Truck} label="Advance Stock Notice" isActive={activeView === 'asn'} onClick={() => onViewChange('asn')} />
+        <NavItem icon={ArrowDownToLine} label="Inbound" isActive={activeView === 'inbound'} onClick={() => onViewChange('inbound')} />
+        <NavItem icon={ArrowUpFromLine} label="Outbound" isActive={activeView === 'outbound'} onClick={() => onViewChange('outbound')} />
+        <NavItem icon={Boxes} label="Stock" isActive={activeView === 'stock'} onClick={() => onViewChange('stock')} />
+        {canManage && <NavItem icon={Settings} label="Manage" isActive={activeView === 'manage'} onClick={() => onViewChange('manage')} />}
+      </nav>
+    </div>
+  );
+}
+
+interface WMSContentProps {
+  activeView: WMSView;
+  canManage: boolean;
+  inboundSection: InboundSection;
+  manageSection: ManageSection;
+  receivingStatusFilter: string;
+  putawayStatusFilter: string;
+  selectedWarehouseId: string;
+  onInboundSectionChange: (section: InboundSection) => void;
+  onManageSectionChange: (section: ManageSection) => void;
+  onReceivingStatusFilterChange: (status: string) => void;
+  onPutawayStatusFilterChange: (status: string) => void;
+}
+
+const wmsViewComponents: Record<WMSView, React.ComponentType<WMSContentProps>> = {
+  asn: AsnContent,
+  inbound: InboundManagement,
+  outbound: OutboundContent,
+  stock: StockContent,
+  manage: ManageContent,
+};
+
+function WMSContent({ activeView, ...props }: WMSContentProps) {
+  const Content = wmsViewComponents[activeView];
+  return <Content activeView={activeView} {...props} />;
+}
+
+function AsnContent({ selectedWarehouseId }: WMSContentProps) {
+  return <AsnManagement warehouseId={selectedWarehouseId || undefined} />;
+}
+
+function OutboundContent({ selectedWarehouseId }: WMSContentProps) {
+  return <OutboundManagement warehouseId={selectedWarehouseId || null} />;
+}
+
+function StockContent({ selectedWarehouseId }: WMSContentProps) {
+  return <StockManagement warehouseId={selectedWarehouseId || undefined} />;
+}
+
+function ManageContent({ canManage, ...props }: WMSContentProps) {
+  return canManage ? <ManageManagement canManage={canManage} {...props} /> : null;
+}
+
+function SectionTab({
+  active,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button className={cn('px-4 py-2 text-sm font-medium', active ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
+      onClick={onClick}>
+      <span className="flex items-center gap-2">
+        <Icon className="h-4 w-4" />
+        {label}
+      </span>
+    </button>
+  );
+}
+
+function InboundManagement({
+  inboundSection,
+  selectedWarehouseId,
+  receivingStatusFilter,
+  putawayStatusFilter,
+  onInboundSectionChange,
+  onReceivingStatusFilterChange,
+  onPutawayStatusFilterChange,
+}: WMSContentProps) {
+  const [refreshKey, setRefreshKey] = React.useState(0);
+  // Returns is a newer module with its own permission codes, so its tab only
+  // appears once the caller has been granted `return.read`.
+  const userPermissions = useUserStore((s) => s.permissions.permissions);
+  const canViewReturns = hasPermission(userPermissions, 'return.read');
+  // Both count sets are produced by the list requests in `ReceivingSlipList` /
+  // `PutAwayView` so the stat cards don't fetch the same endpoints a second time.
+  const [receivingCounts, setReceivingCounts] = React.useState<ReceivingSlipStatusCounts | null>(null);
+  const [putawayCounts, setPutawayCounts] = React.useState<PutAwayStatusCounts | null>(null);
+
+  const openReceiving = (status: string) => {
+    onReceivingStatusFilterChange(status);
+    onInboundSectionChange('receiving');
+  };
+
+  const openPutAway = (status: string) => {
+    onPutawayStatusFilterChange(status);
+    onInboundSectionChange('putaway');
+  };
+
+  const handleRefresh = React.useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  const heading: { title: string; subtitle: string } | undefined =
+    inboundSection === 'receiving'
+      ? {
+          title: 'Receiving Slips',
+          subtitle: 'Review and approve or reject receiving slips generated from inbound scan sessions.',
+        }
+      : inboundSection === 'putaway'
+        ? {
+            title: 'Put-Away Lists',
+            subtitle: 'Put-away lists are generated automatically when a receiving slip is approved.',
+          }
+        : undefined;
+
+  return (
+    <div className="space-y-4">
+      {heading && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">{heading.title}</h2>
+            <p className="text-sm text-muted-foreground">{heading.subtitle}</p>
           </div>
-        )}
-
-        {activeView === 'outbound' && (
-          <OutboundManagement warehouseId={selectedWarehouseId || null} />
-        )}
-
-        {activeView === 'stock' && (
-          <StockManagement />
-        )}
-
-        {activeView === 'manage' && canManage && (
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold">Manage</h2>
-              <p className="text-sm text-muted-foreground">
-                Manage warehouse workers and devices.
-              </p>
-            </div>
-            <div className="border rounded-lg overflow-hidden">
-              <div className="flex border-b">
-                <button className={cn('px-4 py-2 text-sm font-medium', manageSection === 'workers' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
-                  onClick={() => setManageSection('workers')}>
-                  <span className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Workers
-                  </span>
-                </button>
-                <button className={cn('px-4 py-2 text-sm font-medium', manageSection === 'devices' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
-                  onClick={() => setManageSection('devices')}>
-                  <span className="flex items-center gap-2">
-                    <Monitor className="h-4 w-4" />
-                    Devices
-                  </span>
-                </button>
-                <button className={cn('px-4 py-2 text-sm font-medium', manageSection === 'location-qr' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
-                  onClick={() => setManageSection('location-qr')}>
-                  <span className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Location QR
-                  </span>
-                </button>
-              </div>
-              <div className="p-4">
-                {manageSection === 'workers' && <WorkersManagementPanel warehouseId={selectedWarehouseId || undefined} />}
-                {manageSection === 'devices' && <DeviceManagementPanel warehouseId={selectedWarehouseId || undefined} />}
-                {manageSection === 'location-qr' && <LocationQRPanel warehouseId={selectedWarehouseId || undefined} />}
-              </div>
-            </div>
-          </div>
-        )}
+          <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-2 shrink-0 self-start sm:self-auto">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </Button>
+        </div>
+      )}
+      <InboundStats activeSection={inboundSection}
+        receivingCounts={receivingCounts}
+        putawayCounts={putawayCounts}
+        onSelectReceivingStatus={openReceiving}
+        onSelectPutAwayStatus={openPutAway}/>
+      <div className="border rounded-lg overflow-hidden">
+        <div className="flex border-b">
+          <SectionTab active={inboundSection === 'receiving'} icon={Warehouse} label="Receiving Slips" onClick={() => openReceiving('all')} />
+          <SectionTab active={inboundSection === 'putaway'} icon={PackageCheck} label="Put-Away" onClick={() => openPutAway('all')} />
+          <SectionTab active={inboundSection === 'vehicle'} icon={Truck} label="Vehicle Arrivals" onClick={() => onInboundSectionChange('vehicle')} />
+          <SectionTab active={inboundSection === 'exceptions'}
+            icon={AlertTriangle}
+            label="Holds & Quarantine"
+            onClick={() => onInboundSectionChange('exceptions')}/>
+          {canViewReturns && (
+            <SectionTab active={inboundSection === 'returns'}
+              icon={RotateCcw}
+              label="Returns"
+              onClick={() => onInboundSectionChange('returns')}/>
+          )}
+        </div>
+        <div className="p-4 space-y-4">
+          <InboundSectionContent section={inboundSection}
+            warehouseId={selectedWarehouseId}
+            receivingStatusFilter={receivingStatusFilter}
+            putawayStatusFilter={putawayStatusFilter}
+            refreshKey={refreshKey}
+            onReceivingStatusFilterChange={onReceivingStatusFilterChange}
+            onPutawayStatusFilterChange={onPutawayStatusFilterChange}
+            onReceivingCountsChange={setReceivingCounts}
+            onPutAwayCountsChange={setPutawayCounts}
+            onSlipGenerated={() => onInboundSectionChange('receiving')}/>
+        </div>
       </div>
     </div>
   );
 }
 
-function LayoutView({ selectedWarehouseId }: { selectedWarehouseId: string | null }) {
-  const userPermissions = useUserStore((s) => s.permissions.permissions);
-  const canDesignLayout = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
-  const [layoutTab, setLayoutTab] = React.useState<LayoutTab>(canDesignLayout ? 'designer' : 'tree');
+function InboundSectionContent({
+  section,
+  warehouseId,
+  receivingStatusFilter,
+  putawayStatusFilter,
+  refreshKey,
+  onReceivingStatusFilterChange,
+  onPutawayStatusFilterChange,
+  onReceivingCountsChange,
+  onPutAwayCountsChange,
+  onSlipGenerated,
+}: {
+  section: InboundSection;
+  warehouseId: string;
+  receivingStatusFilter: string;
+  putawayStatusFilter: string;
+  refreshKey: number;
+  onReceivingStatusFilterChange: (status: string) => void;
+  onPutawayStatusFilterChange: (status: string) => void;
+  onReceivingCountsChange: (counts: ReceivingSlipStatusCounts | null) => void;
+  onPutAwayCountsChange: (counts: PutAwayStatusCounts | null) => void;
+  onSlipGenerated: () => void;
+}) {
+  switch (section) {
+    case 'receiving':
+      return (
+        <ReceivingSlipSection warehouseId={warehouseId}
+          statusFilter={receivingStatusFilter}
+          refreshKey={refreshKey}
+          onStatusFilterChange={onReceivingStatusFilterChange}
+          onStatusCountsChange={onReceivingCountsChange}/>
+      );
+    case 'putaway':
+      return (
+        <PutAwaySection warehouseId={warehouseId}
+          statusFilter={putawayStatusFilter}
+          refreshKey={refreshKey}
+          onStatusFilterChange={onPutawayStatusFilterChange}
+          onStatusCountsChange={onPutAwayCountsChange}/>
+      );
+    case 'vehicle':
+      return <VehicleArrivalManagement warehouseId={warehouseId || undefined} />;
+    case 'exceptions':
+      return <InboundExceptionQueue warehouseId={warehouseId || undefined} />;
+    case 'returns':
+      return <ReturnsView warehouseId={warehouseId || undefined} refreshKey={refreshKey} />;
+  }
+}
+
+function InboundScanView({ warehouseId, onSlipGenerated }: { warehouseId: string; onSlipGenerated: () => void }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold">Inbound Scan & Reconciliation</h2>
+        <p className="text-sm text-muted-foreground">Scan inbound items against an ASN and monitor the live expected-versus-received balance.</p>
+      </div>
+      <InboundScanPanel warehouseId={warehouseId} onSlipGenerated={onSlipGenerated} />
+    </div>
+  );
+}
+
+function ReceivingSlipSection({
+  warehouseId,
+  statusFilter,
+  refreshKey,
+  onStatusFilterChange,
+  onStatusCountsChange,
+}: {
+  warehouseId: string;
+  statusFilter: string;
+  refreshKey: number;
+  onStatusFilterChange: (status: string) => void;
+  onStatusCountsChange: (counts: ReceivingSlipStatusCounts | null) => void;
+}) {
+  return (
+    <ReceivingSlipList warehouseId={warehouseId || undefined}
+      statusFilter={statusFilter}
+      refreshKey={refreshKey}
+      onStatusFilterChange={onStatusFilterChange}
+      onStatusCountsChange={onStatusCountsChange}/>
+  );
+}
+
+function PutAwaySection({
+  warehouseId,
+  statusFilter,
+  refreshKey,
+  onStatusFilterChange,
+  onStatusCountsChange,
+}: {
+  warehouseId: string;
+  statusFilter: string;
+  refreshKey: number;
+  onStatusFilterChange: (status: string) => void;
+  onStatusCountsChange: (counts: PutAwayStatusCounts | null) => void;
+}) {
+  return (
+    <PutAwayView warehouseId={warehouseId || undefined}
+      statusFilter={statusFilter}
+      refreshKey={refreshKey}
+      onStatusFilterChange={onStatusFilterChange}
+      onStatusCountsChange={onStatusCountsChange}/>
+  );
+}
+
+function ManageManagement({ manageSection, selectedWarehouseId, onManageSectionChange, canManage }: WMSContentProps) {
   const [treeKey, setTreeKey] = React.useState(0);
 
   /** Refresh the location tree after a layout is applied/updated/deleted. */
   const handleLayoutChanged = React.useCallback(() => {
     setTreeKey((k) => k + 1);
-    setLayoutTab('tree');
-  }, []);
+    onManageSectionChange('tree');
+  }, [onManageSectionChange]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">Warehouse Layout</h2>
-          <p className="text-sm text-muted-foreground">
-            View the location hierarchy or design a new layout from scratch.
-          </p>
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold">Manage</h2>
+        <p className="text-sm text-muted-foreground">Manage warehouse layout, workers, devices, and location QR codes.</p>
       </div>
-
       <div className="border rounded-lg overflow-hidden">
         <div className="flex border-b">
-          {canDesignLayout && (
-            <button className={cn('px-4 py-2 text-sm font-medium', layoutTab === 'designer' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
-              onClick={() => setLayoutTab('designer')}>
-              <span className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Layout Designer
-              </span>
-            </button>
+          <SectionTab active={manageSection === 'workers'} icon={Users} label="Workers" onClick={() => onManageSectionChange('workers')} />
+          <SectionTab active={manageSection === 'devices'} icon={Monitor} label="Devices" onClick={() => onManageSectionChange('devices')} />
+          {canManage && (
+            <SectionTab active={manageSection === 'designer'}
+              icon={MapPin}
+              label="Layout Designer"
+              onClick={() => onManageSectionChange('designer')}/>
           )}
-          <button className={cn('px-4 py-2 text-sm font-medium', layoutTab === 'tree' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
-            onClick={() => setLayoutTab('tree')}>
-            <span className="flex items-center gap-2">
-              <Layers className="h-4 w-4" />
-              Location Tree
-            </span>
-          </button>
-          <button className={cn('px-4 py-2 text-sm font-medium', layoutTab === '3d' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted')}
-            onClick={() => setLayoutTab('3d')}>
-            <span className="flex items-center gap-2">
-              <Box className="h-4 w-4" />
-              3D View
-            </span>
-          </button>
+          <SectionTab active={manageSection === 'tree'} icon={Layers} label="Location Tree" onClick={() => onManageSectionChange('tree')} />
+          <SectionTab active={manageSection === '3d'} icon={Box} label="3D View" onClick={() => onManageSectionChange('3d')} />
+          <SectionTab active={manageSection === 'location-qr'}
+            icon={QrCode}
+            label="Location QR"
+            onClick={() => onManageSectionChange('location-qr')}/>
         </div>
         <div className="p-4">
-          {layoutTab === 'designer' && canDesignLayout && (
-            selectedWarehouseId
-              ? <WarehouseLayoutDesigner warehouseId={selectedWarehouseId} onApplied={handleLayoutChanged} />
-              : <p className="text-sm text-muted-foreground">Select a warehouse to use the Layout Designer.</p>
-          )}
-          {layoutTab === 'tree' && (
-            selectedWarehouseId
-              ? <LocationTreeView key={treeKey} warehouseId={selectedWarehouseId} />
-              : <p className="text-sm text-muted-foreground">Select a warehouse to view its layout.</p>
-          )}
-          {layoutTab === '3d' && (
-            selectedWarehouseId
-              ? <Warehouse3DView warehouseId={selectedWarehouseId} />
-              : <p className="text-sm text-muted-foreground">Select a warehouse to view the 3D layout.</p>
-          )}
+          <ManageSectionContent section={manageSection}
+            warehouseId={selectedWarehouseId}
+            canDesignLayout={canManage}
+            treeKey={treeKey}
+            onLayoutChanged={handleLayoutChanged}/>
         </div>
       </div>
     </div>
   );
+}
+
+function ManageSectionContent({
+  section,
+  warehouseId,
+  canDesignLayout,
+  treeKey,
+  onLayoutChanged,
+}: {
+  section: ManageSection;
+  warehouseId: string;
+  canDesignLayout: boolean;
+  treeKey: number;
+  onLayoutChanged: () => void;
+}) {
+  switch (section) {
+    case 'workers':
+      return <WorkersManagementPanel warehouseId={warehouseId || undefined} />;
+    case 'devices':
+      return <DeviceManagementPanel warehouseId={warehouseId || undefined} />;
+    case 'location-qr':
+      return <LocationQRPanel warehouseId={warehouseId || undefined} />;
+    case 'designer':
+      return <DesignerContent warehouseId={warehouseId} canDesignLayout={canDesignLayout} onLayoutChanged={onLayoutChanged} />;
+    case 'tree':
+      return <TreeContent warehouseId={warehouseId} treeKey={treeKey} />;
+    case '3d':
+      return <Warehouse3DContent warehouseId={warehouseId} />;
+  }
+}
+
+function DesignerContent({
+  warehouseId,
+  canDesignLayout,
+  onLayoutChanged,
+}: {
+  warehouseId: string;
+  canDesignLayout: boolean;
+  onLayoutChanged: () => void;
+}) {
+  if (!warehouseId || !canDesignLayout) {
+    return <p className="text-sm text-muted-foreground">Select a warehouse to design its layout.</p>;
+  }
+  return <WarehouseLayoutDesigner key={warehouseId} warehouseId={warehouseId} onApplied={onLayoutChanged} />;
+}
+
+function TreeContent({ warehouseId, treeKey }: { warehouseId: string; treeKey: number }) {
+  if (!warehouseId) {
+    return <p className="text-sm text-muted-foreground">Select a warehouse to view its location tree.</p>;
+  }
+  return <LocationTreeView key={treeKey} warehouseId={warehouseId} />;
+}
+
+function Warehouse3DContent({ warehouseId }: { warehouseId: string }) {
+  if (!warehouseId) {
+    return <p className="text-sm text-muted-foreground">Select a warehouse to view its 3D layout.</p>;
+  }
+  return <Warehouse3DView warehouseId={warehouseId} />;
 }

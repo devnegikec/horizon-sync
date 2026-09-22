@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import * as invoicesApi from '../../../app/api/invoices';
 import * as paymentsApi from '../../../app/api/payments';
@@ -79,7 +79,7 @@ describe('Invoice and Payment Integration Tests', () => {
 
       // Add line item
       await user.click(screen.getByText(/add item/i));
-      
+
       const itemInput = screen.getByLabelText(/item/i);
       await user.type(itemInput, 'Test Item');
 
@@ -372,7 +372,7 @@ describe('Invoice and Payment Integration Tests', () => {
 
       // Add allocations
       await user.click(screen.getByText(/add allocation/i));
-      
+
       const invoice1Select = screen.getByLabelText(/invoice 1/i);
       await user.click(invoice1Select);
       await user.click(screen.getByText('INV-001'));
@@ -381,7 +381,7 @@ describe('Invoice and Payment Integration Tests', () => {
       await user.type(allocation1Input, '220');
 
       await user.click(screen.getByText(/add allocation/i));
-      
+
       const invoice2Select = screen.getByLabelText(/invoice 2/i);
       await user.click(invoice2Select);
       await user.click(screen.getByText('INV-002'));

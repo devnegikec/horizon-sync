@@ -4,11 +4,11 @@ import { type CellContext, type ColumnDef } from '@tanstack/react-table';
 import { Trash2 } from 'lucide-react';
 
 
-import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
-import { Button, EditableDataTable, EditableNumberCell } from '@horizon-sync/ui/components';
+import { useUserStore } from '@horizon-sync/store';
+import { Button, EditableDataTable } from '@horizon-sync/ui/components';
 
 import { environment } from '../../../environments/environment';
-import { getCurrencySymbol } from '../../types/currency.types';
+import { itemApi } from '../../utility/api/items';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 
 /** Minimal item shape returned by the /items/picker endpoint */
@@ -18,6 +18,9 @@ interface PickerItem {
   item_name: string;
   uom: string | null;
   qty: number;
+  sku?: string | null;
+  items_per_master_pack?: number | null;
+  packaging_units?: Array<{ items_per_master_pack?: number | null; is_base_unit?: boolean }> | null;
 }
 
 interface PickerResponse {
@@ -27,7 +30,14 @@ interface PickerResponse {
 interface TableMeta {
   updateData?: (rowIndex: number, columnId: string, value: unknown) => void;
   deleteRow?: (rowIndex: number) => void;
+  /**
+   * Identity of the row currently at an index, or undefined when the row no
+   * longer exists. Two rows can carry the same item id (duplicate picks), so
+   * `sortOrder` (stable through local edits) disambiguates them.
+   */
+  getRowIdentity?: (rowIndex: number) => { itemId: string; sortOrder: number } | undefined;
   getItemData?: (itemId: string) => PickerItem | undefined;
+  fetchItemData?: (itemId: string) => Promise<PickerItem | null>;
   searchItems?: (query: string) => Promise<PickerItem[]>;
   itemLabelFormatter?: (item: PickerItem) => string;
   disabled?: boolean;
@@ -42,7 +52,10 @@ export interface AsnEntryLineRow {
   item_id: string;
   item_name?: string;
   item_code?: string;
+  sku?: string;
   qty: number;
+  items_per_master_pack?: number;
+  no_of_cases: number;
   uom: string;
   sort_order: number;
 }
@@ -60,46 +73,130 @@ interface AsnEntryLineItemsTableProps {
 const defaultLabelFormatter = (item: PickerItem) => item.item_name ?? '';
 const defaultSearchItems = async () => [] as PickerItem[];
 
-function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId: string) {
-  meta.updateData?.(rowIndex, 'item_id', newItemId);
-  const selectedItem = meta.getItemData?.(newItemId);
-  if (selectedItem) {
-    setTimeout(() => {
-      meta.updateData?.(rowIndex, 'uom', selectedItem.uom || 'pcs');
-      // meta.updateData?.(rowIndex, 'basic_rate', parseFloat(selectedItem.standard_rate || '0') || 0);
-    }, 0);
-  }
+function getMasterPackSize(item: PickerItem | null | undefined): number | null {
+  const direct = Number(item?.items_per_master_pack);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  const configuredUnit = item?.packaging_units?.find((unit) => Number(unit.items_per_master_pack) > 0);
+  const nested = Number(configuredUnit?.items_per_master_pack);
+  return Number.isFinite(nested) && nested > 0 ? nested : null;
 }
 
-function DisabledItemCell({ itemId, meta }: { itemId: string; meta: TableMeta }) {
-  const itemData = meta.getItemData?.(itemId);
-  if (itemData) {
-    const label = (meta.itemLabelFormatter ?? defaultLabelFormatter)(itemData);
+/** Row values derived from a picked item — blank strings fall back to defaults. */
+function selectedItemRowValues(item: PickerItem, masterPack: number): Record<string, unknown> {
+  return {
+    uom: item.uom || 'pcs',
+    item_name: item.item_name || '',
+    item_code: item.item_code || '',
+    sku: item.sku || '',
+    items_per_master_pack: masterPack,
+    no_of_cases: 1,
+    qty: masterPack,
+  };
+}
+
+function applyRowValues(meta: TableMeta, rowIndex: number, values: Record<string, unknown>): void {
+  Object.entries(values).forEach(([columnId, value]) => {
+    meta.updateData?.(rowIndex, columnId, value);
+  });
+}
+
+async function handleItemSelection(meta: TableMeta, rowIndex: number, newItemId: string) {
+  // Snapshot the row's identity before the async lookup: the row may have been
+  // removed or reordered meanwhile, and a duplicate item id would otherwise
+  // make the index ambiguous.
+  const identity = meta.getRowIdentity?.(rowIndex);
+  meta.updateData?.(rowIndex, 'item_id', newItemId);
+  let selectedItem = meta.getItemData?.(newItemId);
+  if (meta.fetchItemData) {
+    selectedItem = (await meta.fetchItemData(newItemId)) ?? selectedItem;
+  }
+  if (!selectedItem) return;
+  const masterPack = getMasterPackSize(selectedItem) ?? 1;
+  const values = selectedItemRowValues(selectedItem, masterPack);
+  // Writing by index is only safe while the row at that index is still the one
+  // we edited — same item id *and* same `sort_order`.
+  const rowStillMatches = () => {
+    if (!meta.getRowIdentity) return true;
+    const current = meta.getRowIdentity(rowIndex);
+    return !!current && current.itemId === newItemId && current.sortOrder === identity?.sortOrder;
+  };
+  if (!rowStillMatches()) return;
+  // Deferred so the grid's own state writes for this row settle first.
+  setTimeout(() => {
+    if (rowStillMatches()) applyRowValues(meta, rowIndex, values);
+  }, 0);
+}
+
+function QtyCellComponent({ getValue }: CellContext<AsnEntryLineRow, unknown>) {
+  const intValue = Math.trunc(Number(getValue()) || 0);
+  return <div className="px-2 py-1 text-right text-muted-foreground">{String(intValue)}</div>;
+}
+
+function MasterPackCellComponent({ getValue }: CellContext<AsnEntryLineRow, unknown>) {
+  return <div className="px-2 py-1 text-right text-muted-foreground">{String(Math.trunc(Number(getValue()) || 0))}</div>;
+}
+
+function CasesCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow, unknown>) {
+  const meta = table.options.meta as TableMeta | undefined;
+  if (meta?.disabled) return <div className="px-2 py-1 text-right">{String(getValue() ?? 0)}</div>;
+  return (
+    <input type="number"
+      min="1"
+      step="1"
+      value={Number(getValue()) > 0 ? String(getValue()) : ''}
+      className="h-8 w-20 rounded-md border bg-background px-2 py-1 text-center text-sm"
+      onChange={(event) => {
+        const noOfCases = Math.max(1, parseInt(event.target.value, 10) || 1);
+        const masterPack = Math.max(1, Number(row.original.items_per_master_pack) || 1);
+        meta?.updateData?.(row.index, 'no_of_cases', noOfCases);
+        meta?.updateData?.(row.index, 'qty', masterPack * noOfCases);
+      }}/>
+  );
+}
+
+/** "Name (code)" when the row carries item fields, else null. */
+function rowItemLabel(row: AsnEntryLineRow): string | null {
+  if (!row.item_name) return null;
+  const code = row.sku || row.item_code;
+  return code ? `${row.item_name} (${code})` : row.item_name;
+}
+
+/** Read-only cell for disabled/view mode: row fields first, then the item cache. */
+function DisabledItemPickerCell({ meta, row, itemId }: { meta?: TableMeta; row: AsnEntryLineRow; itemId: string }) {
+  const fromRow = rowItemLabel(row);
+  if (fromRow) return <div className="px-2 py-1">{fromRow}</div>;
+
+  const cached = meta?.getItemData?.(itemId);
+  if (cached) {
+    const label = (meta?.itemLabelFormatter ?? defaultLabelFormatter)(cached);
     return <div className="px-2 py-1">{label}</div>;
   }
-  // Fallback: check if the row has item_name via the table data
   return <div className="px-2 py-1 text-muted-foreground">{itemId ? '—' : ''}</div>;
 }
 
-function QtyCellComponent({ getValue, row, table, ...rest }: CellContext<AsnEntryLineRow, unknown>) {
-  const meta = table.options.meta as TableMeta | undefined;
-  const itemId = row.original.item_id;
-  // const stockLevels = itemId ? meta?.getItemData?.(itemId)?.stock_levels : undefined;
-
+function WarehouseRequiredHint() {
   return (
-    <div className="flex flex-col gap-0.5">
-      {meta?.disabled ? (
-        <div className="px-2 py-1">{String(getValue() ?? '')}</div>
-      ) : (
-        <EditableNumberCell getValue={getValue} row={row} table={table} {...rest} />
-      )}
-      {/* {stockLevels !== undefined && (
-        <span className="px-2 text-[10px] text-muted-foreground leading-tight">
-          Avail: {stockLevels.quantity_available}
-        </span>
-      )} */}
+    <div className="px-2 py-1.5 flex items-center gap-1.5 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+      <span className="text-xs font-medium text-amber-700 dark:text-amber-400">⚠ Please select a warehouse above to add items</span>
     </div>
   );
+}
+
+/**
+ * CSV-imported rows may carry item_name/item_code without an item_id; build a
+ * temporary PickerItem so the user sees what to search for.
+ */
+function buildCsvPlaceholderItem(row: AsnEntryLineRow, itemId: string): PickerItem | null {
+  if (itemId) return null;
+  if (!row.item_name && !row.item_code) return null;
+  return {
+    id: '',
+    item_code: row.item_code || '',
+    item_name: row.item_name || row.item_code || '',
+    uom: row.uom || null,
+    qty: row.qty || 0,
+    sku: row.sku || null,
+  };
 }
 
 function ItemPickerCellComponent({ getValue, row, table }: CellContext<AsnEntryLineRow, unknown>) {
@@ -107,46 +204,16 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<AsnEntryL
   const itemId = getValue() as string;
 
   if (!meta || meta.disabled) {
-    // In disabled/view mode, show item_name from row data directly
-    const rowItemName = row.original.item_name;
-    const rowItemCode = row.original.item_code;
-    if (rowItemName) {
-      const label = rowItemCode ? `${rowItemName} (${rowItemCode})` : rowItemName;
-      return <div className="px-2 py-1">{label}</div>;
-    }
-    // Fallback to cache
-    if (meta) {
-      const itemData = meta.getItemData?.(itemId);
-      if (itemData) {
-        const label = (meta.itemLabelFormatter ?? defaultLabelFormatter)(itemData);
-        return <div className="px-2 py-1">{label}</div>;
-      }
-    }
-    return <div className="px-2 py-1 text-muted-foreground">{itemId ? '—' : ''}</div>;
+    return <DisabledItemPickerCell meta={meta} row={row.original} itemId={itemId} />;
   }
 
   if (!meta.warehouseIdFrom) {
-    return (
-      <div className="px-2 py-1.5 flex items-center gap-1.5 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-        <span className="text-xs font-medium text-amber-700 dark:text-amber-400">⚠ Please select a warehouse above to add items</span>
-      </div>
-    );
+    return <WarehouseRequiredHint />;
   }
 
-  const itemData = meta.getItemData?.(itemId);
-
-  // CSV-imported rows may have item_name/item_code without an actual item_id.
-  // Build a temporary PickerItem so the user sees what to search for.
-  const csvPlaceholderItem: PickerItem | null =
-    !itemId && (row.original.item_name || row.original.item_code)
-      ? {
-        id: '',
-        item_code: row.original.item_code || '',
-        item_name: row.original.item_name || row.original.item_code || '',
-        uom: row.original.uom || null,
-        qty: row.original.qty || 0,
-      }
-      : null;
+  const csvPlaceholderItem = buildCsvPlaceholderItem(row.original, itemId);
+  const placeholder = csvPlaceholderItem ? 'Click to select item…' : 'Search items…';
+  const searchPlaceholder = csvPlaceholderItem ? `Search: ${csvPlaceholderItem.item_name}` : 'Search items…';
 
   return (
     <ItemPickerSelect value={itemId}
@@ -154,19 +221,33 @@ function ItemPickerCellComponent({ getValue, row, table }: CellContext<AsnEntryL
       searchItems={meta.searchItems ?? defaultSearchItems}
       labelFormatter={meta.itemLabelFormatter ?? defaultLabelFormatter}
       valueKey="id"
-      placeholder={csvPlaceholderItem ? 'Click to select item…' : 'Search items…'}
-      searchPlaceholder={csvPlaceholderItem ? `Search: ${csvPlaceholderItem.item_name}` : 'Search items…'}
+      placeholder={placeholder}
+      searchPlaceholder={searchPlaceholder}
       minSearchLength={2}
-      selectedItemData={itemData || csvPlaceholderItem} />
+      selectedItemData={meta.getItemData?.(itemId) || csvPlaceholderItem} />
   );
 }
 
 export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false, warehouseIdFrom, warehouseIdTo, renderFooter }: AsnEntryLineItemsTableProps) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
-  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
   const itemsCacheRef = React.useRef<Map<string, PickerItem>>(new Map());
   const [cacheVersion, setCacheVersion] = React.useState(0);
+  /* Latest rows, so a deferred item-selection write can confirm its index is still valid. */
+  const itemsRef = React.useRef(items);
+
+  React.useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  const getRowIdentity = React.useCallback(
+    (rowIndex: number) => {
+      const row = itemsRef.current[rowIndex];
+      // `sort_order` stays with the row through local edits/delete/reorder, so
+      // it disambiguates rows that share an item id.
+      return row ? { itemId: row.item_id, sortOrder: row.sort_order } : undefined;
+    },
+    []
+  );
 
   /* Clear items cache when warehouse changes (Asn levels are warehouse-specific) */
   React.useEffect(() => {
@@ -184,8 +265,9 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
           id: row.item_id,
           item_code: row.item_code || '',
           item_name: row.item_name,
-          qty: row.qty || 0,
+          qty: row.qty || 0.0,
           uom: row.uom || null,
+          items_per_master_pack: row.items_per_master_pack ?? null,
         });
         seeded = true;
       }
@@ -205,9 +287,20 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
     return data.items;
   }, [accessToken, warehouseIdFrom]);
 
+  const fetchItemData = React.useCallback(async (itemId: string): Promise<PickerItem | null> => {
+    if (!accessToken) return null;
+    try {
+      const item = await itemApi.get(accessToken, itemId) as PickerItem;
+      itemsCacheRef.current.set(item.id, item);
+      return item;
+    } catch {
+      return null;
+    }
+  }, [accessToken]);
+
   const itemLabelFormatter = React.useCallback(
     (item: PickerItem) => {
-      const code = item.item_code?.trim();
+      const code = (item.sku || item.item_code)?.trim();
       return code ? `${item.item_name} (${code})` : item.item_name;
     },
     []
@@ -221,9 +314,14 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
 
   const handleDataChange = React.useCallback(
     (newData: AsnEntryLineRow[]) => {
+      // Keep the guard's source current: `items` only catches up on the parent's
+      // next render, which may be after a deferred item-selection write.
+      itemsRef.current = newData;
       const updated = newData.map((item) => {
-        const qty = Number(item.qty) || 0;
-        return { ...item, qty };
+        const masterPack = Math.max(1, Number(item.items_per_master_pack) || 1);
+        const noOfCases = Math.max(1, Number(item.no_of_cases) || 1);
+        const qty = masterPack * noOfCases;
+        return { ...item, items_per_master_pack: masterPack, no_of_cases: noOfCases, qty };
       });
       onItemsChange(updated);
     },
@@ -233,14 +331,38 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
   const columns = React.useMemo<ColumnDef<AsnEntryLineRow, unknown>[]>(
     () => [
       { accessorKey: 'item_id', header: 'Item Name', cell: ItemPickerCellComponent, size: 250 },
-      { accessorKey: 'qty', header: 'Quantity', cell: QtyCellComponent, size: 100 },
+      {
+        accessorKey: 'sku', header: 'SKU', size: 130,
+        cell: ({ row }: CellContext<AsnEntryLineRow, unknown>) => (
+          <div className="px-2 py-1 text-sm font-mono text-muted-foreground">
+            {row.original.sku || row.original.item_code || '—'}
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'items_per_master_pack',
+        header: 'Items / Master Pack',
+        cell: MasterPackCellComponent,
+        size: 130,
+      },
+      {
+        accessorKey: 'no_of_cases',
+        header: 'Cases',
+        cell: CasesCellComponent,
+        size: 90,
+      },
+      {
+        accessorKey: 'qty',
+        header: () => <div className="space-y-1.5">Quantity</div>,
+        cell: QtyCellComponent,
+        size: 100,
+      },
       {
         accessorKey: 'uom', header: 'UOM', size: 80,
         cell: ({ getValue }: CellContext<AsnEntryLineRow, unknown>) => (
           <div className="px-2 py-1 text-sm text-muted-foreground">{String(getValue() ?? '')}</div>
         ),
       },
-
       {
         id: 'actions', header: '', size: 50,
         cell: ({ row, table: tbl }: CellContext<AsnEntryLineRow, unknown>) => {
@@ -254,27 +376,27 @@ export function AsnEntryLineItemsTable({ items, onItemsChange, disabled = false,
         },
       },
     ],
-    [disabled, currencySymbol]
+    [disabled]
   );
 
   const newRowTemplate: AsnEntryLineRow = React.useMemo(
-    () => ({ item_id: '', qty: 1, uom: 'pcs', sort_order: items.length + 1 }),
+    () => ({ item_id: '', qty: 0, items_per_master_pack: 0, no_of_cases: 0, uom: '-', sort_order: items.length + 1, sku: '' }),
     [items.length]
   );
 
   /* Disable "Add Item" until all existing rows have valid item_id and qty > 0 */
   const allRowsComplete = React.useMemo(() => {
     if (items.length === 0) return true;
-    return items.every((row) => !!row.item_id && row.qty > 0);
+    return items.every((row) => !!row.item_id && Number(row.items_per_master_pack) > 0 && row.no_of_cases > 0 && row.qty > 0);
   }, [items]);
 
   const tableConfig = React.useMemo(
     () => ({
       showPagination: false,
       enableColumnVisibility: false,
-      meta: { getItemData, searchItems, itemLabelFormatter, disabled, warehouseIdFrom },
+      meta: { getItemData, fetchItemData, searchItems, itemLabelFormatter, getRowIdentity, disabled, warehouseIdFrom },
     }),
-    [getItemData, searchItems, itemLabelFormatter, disabled, warehouseIdFrom]
+    [getItemData, fetchItemData, searchItems, itemLabelFormatter, getRowIdentity, disabled, warehouseIdFrom]
   );
 
   return (

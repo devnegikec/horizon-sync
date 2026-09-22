@@ -2,18 +2,18 @@ import * as React from 'react';
 
 import { Monitor, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks';
-import { useUserStore } from '@horizon-sync/store';
 
-import { wmsDeviceApi } from '../../utility/api/wms';
 import type { WMSDevice, WMSDeviceCreate, WMSDeviceUpdate } from '../../types/wms.types';
+import { wmsDeviceApi } from '../../utility/api/wms';
 
 interface DeviceManagementPanelProps {
   warehouseId?: string;

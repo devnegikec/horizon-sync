@@ -22,7 +22,24 @@ export const useBlockDownload = () => {
       if (res.status === 409) { setError('File is still generating. Please wait.'); return; }
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError((body as { detail?: string }).detail || 'Download failed');
+        const detail = (body as { detail?: unknown }).detail;
+        setError(typeof detail === 'string' ? detail : 'Download failed');
+        return;
+      }
+
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const body = await res.json() as { signed_url?: string };
+        if (!body.signed_url) {
+          setError('Download link was not returned by the server.');
+          return;
+        }
+        const link = document.createElement('a');
+        link.href = body.signed_url;
+        link.rel = 'noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         return;
       }
 

@@ -1,28 +1,37 @@
 import * as React from 'react';
+import { useState } from 'react';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { Download, Loader2, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Download, Loader2, AlertCircle, CheckCircle2, RefreshCw, Layers, QrCode } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
+import { DetailDialog } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
+import { Input } from '@horizon-sync/ui/components/ui/input';
 
+import { environment } from '../../../environments/environment';
 import { useBlockDownload } from '../../features/qr-management/hooks/useBlockDownload';
 import { useBlockStatus } from '../../features/qr-management/hooks/useBlockStatus';
 import { qrBlockService } from '../../features/qr-management/services/qrBlockService';
 import type { BlockStatus, ProductItem, QRBlock, QRType } from '../../features/qr-management/types/qrBlock.types';
+import { getApiErrorMessage } from '../../features/qr-management/utils/apiError';
 import { formatDate } from '../../utility/formatDate';
+
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
 const QR_TYPE_LABELS: Record<QRType, string> = {
-  D: 'Dynamic',
-  S: 'Static',
-  B: 'Dual',
-  O: 'OneTime',
-  SC: 'SecureCode',
+  dynamic: 'Dynamic',
+  static: 'Static',
+  dual: 'Dual',
+  secure_code: 'SecureCode',
+  one_time: 'OneTime',
+  post_activation: 'Post-activation',
 };
 
 const STATUS_BADGE: Record<BlockStatus, { label: string; className: string }> = {
@@ -32,21 +41,123 @@ const STATUS_BADGE: Record<BlockStatus, { label: string; className: string }> = 
   failed: { label: 'Failed', className: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' },
 };
 
+const ACTIVATION_BADGE = {
+  activated: {
+    label: 'Activated',
+    className: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+  },
+  deactivated: {
+    label: 'Deactivated',
+    className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+  },
+  partially_activated: {
+    label: 'Partially Activated',
+    className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400',
+  },
+};
+
+function ActivationSummary({ block }: { block: QRBlock }) {
+  if (!block.activation_status) return null;
+  const config = ACTIVATION_BADGE[block.activation_status];
+
+  return (
+    <div className="col-span-2">
+      <p className="text-muted-foreground">QR Activation State</p>
+      <div className="flex items-center gap-2 mt-1">
+        <Badge variant="secondary" className={config.className}>
+          {config.label}
+        </Badge>
+        <span className="text-xs text-muted-foreground">
+          {(block.activated_count ?? 0).toLocaleString()} activated · {(block.deactivated_count ?? 0).toLocaleString()} deactivated
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Download button — always fetches fresh signed URL                 */
 /* ------------------------------------------------------------------ */
 
-function DownloadButton({ blockId, batch }: { blockId: string; batch: string }) {
+function DownloadButton({ blockId, batch, disabled }: { blockId: string; batch: string; disabled?: boolean }) {
   const { download, loading, error } = useBlockDownload();
   return (
     <div className="space-y-1">
-      <Button variant="outline" size="sm" onClick={() => download(blockId, `qr_${batch}.xlsx`)} disabled={loading}>
-        {loading
-          ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Preparing…</>
-          : <><Download className="h-4 w-4 mr-2" />Download Excel</>}
+      <Button variant="outline" size="sm" onClick={() => download(blockId, `qr_${batch}.xlsx`)} disabled={disabled}>
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Preparing…
+          </>
+        ) : (
+          <>
+            <Download className="h-4 w-4 mr-2" />
+            Download Excel
+          </>
+        )}
       </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}
-      <p className="text-xs text-muted-foreground">Signed URL — valid for 60 min</p>
+      <p className="text-xs text-muted-foreground">A fresh, short-lived download link is generated each time.</p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Parent (Master Pack) download — calls new /qseal/blocks API      */
+/* ------------------------------------------------------------------ */
+
+function ParentBlockDownloadButton({ blockId, block, disabled }: { blockId: string; block: QRBlock; disabled?: boolean }) {
+  const accessToken = useUserStore((s) => s.accessToken);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  // const [isDisabled, setIsDisabled] = useState<boolean>(false);
+
+  const handleDownload = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${environment.apiCoreUrl}/api/v1/qseal/blocks/${blockId}/parents/download`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError((body as { detail?: string }).detail || 'Failed to download parent labels');
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `parent_${block.batch}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('Download failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      <Button variant="outline" size="sm" onClick={handleDownload} disabled={disabled}>
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Preparing…
+          </>
+        ) : (
+          <>
+            <Download className="h-4 w-4 mr-2" />
+            Download Parent Excel
+          </>
+        )}
+      </Button>
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }
@@ -55,7 +166,45 @@ function DownloadButton({ blockId, batch }: { blockId: string; batch: string }) 
 /*  Block info panel                                                   */
 /* ------------------------------------------------------------------ */
 
-function BlockInfoPanel({ block, onRetry }: { block: QRBlock; onRetry?: (block: QRBlock) => void }) {
+function FailedBlockActions({
+  block,
+  onRetry,
+  retrying,
+  retryError,
+}: {
+  block: QRBlock;
+  onRetry?: (block: QRBlock) => void;
+  retrying: boolean;
+  retryError: string | null;
+}) {
+  return (
+    <div className="col-span-2 space-y-2">
+      <div className="flex items-center gap-2 text-sm text-destructive">
+        <AlertCircle className="h-4 w-4" />
+        Generation failed. Reserved credits were returned.
+      </div>
+      {onRetry && (
+        <Button variant="outline" size="sm" disabled={retrying} onClick={() => onRetry(block)}>
+          {retrying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+          {retrying ? 'Queueing retry…' : 'Retry with same settings'}
+        </Button>
+      )}
+      {retryError && <p className="text-xs text-destructive">{retryError}</p>}
+    </div>
+  );
+}
+
+function BlockInfoPanel({
+  block,
+  onRetry,
+  retrying,
+  retryError,
+}: {
+  block: QRBlock;
+  onRetry?: (block: QRBlock) => void;
+  retrying: boolean;
+  retryError: string | null;
+}) {
   const cfg = STATUS_BADGE[block.status];
   return (
     <div className="grid grid-cols-2 gap-4 text-sm">
@@ -65,7 +214,9 @@ function BlockInfoPanel({ block, onRetry }: { block: QRBlock; onRetry?: (block: 
       </div>
       <div>
         <p className="text-muted-foreground">Status</p>
-        <Badge variant="secondary" className={cfg.className}>{cfg.label}</Badge>
+        <Badge variant="secondary" className={cfg.className}>
+          {cfg.label}
+        </Badge>
       </div>
       <div>
         <p className="text-muted-foreground">QR Type</p>
@@ -76,6 +227,14 @@ function BlockInfoPanel({ block, onRetry }: { block: QRBlock; onRetry?: (block: 
         <p className="font-medium">{block.quantity.toLocaleString()}</p>
       </div>
       <div>
+        <p className="text-muted-foreground">Distribution Channel</p>
+        <p className="font-medium">{block.distribution_channel || '—'}</p>
+      </div>
+      <div>
+        <p className="text-muted-foreground">Destination Market</p>
+        <p className="font-medium">{block.destination_market || '—'}</p>
+      </div>
+      <div>
         <p className="text-muted-foreground">Created</p>
         <p className="font-medium">{formatDate(block.created_at, 'DD-MMM-YY', { includeTime: true })}</p>
       </div>
@@ -83,6 +242,15 @@ function BlockInfoPanel({ block, onRetry }: { block: QRBlock; onRetry?: (block: 
         <div>
           <p className="text-muted-foreground">Completed</p>
           <p className="font-medium">{formatDate(block.completed_at, 'DD-MMM-YY', { includeTime: true })}</p>
+        </div>
+      )}
+
+      <ActivationSummary block={block} />
+
+      {block.status === 'pending' && (
+        <div className="col-span-2 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Waiting for an available QR generation worker…
         </div>
       )}
 
@@ -99,10 +267,7 @@ function BlockInfoPanel({ block, onRetry }: { block: QRBlock; onRetry?: (block: 
                 <span className="font-medium">{block.progress}%</span>
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${block.progress}%` }}
-                />
+                <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: `${block.progress}%` }} />
               </div>
             </div>
           )}
@@ -115,22 +280,57 @@ function BlockInfoPanel({ block, onRetry }: { block: QRBlock; onRetry?: (block: 
             <CheckCircle2 className="h-4 w-4" />
             Generation complete
           </div>
-          <DownloadButton blockId={block.id} batch={block.batch} />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <DownloadButton blockId={block.id} batch={block.batch} />
+
+            {/* Parent (Master Pack) download — shown when cascade was enabled */}
+            {block.master_pack_enabled && (
+              <div className="border rounded-md p-3 space-y-2 bg-muted/30">
+                <div className="flex items-center gap-1.5 text-sm font-medium">
+                  <Layers className="h-4 w-4" />
+                  Master Pack Parent Block
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {block.qseal_parent_count?.toLocaleString() ?? '—'} parent QR codes
+                  {block.master_pack_size ? ` (${block.master_pack_size} items per pack)` : ''}
+                </p>
+                <ParentBlockDownloadButton blockId={block.id} block={block} />
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {block.status === 'failed' && (
         <div className="col-span-2 space-y-2">
-          <div className="flex items-center gap-2 text-sm text-destructive">
+          <div className="flex items-center gap-2 text-sm text-red-600">
             <AlertCircle className="h-4 w-4" />
-            Generation failed. Credits were not deducted.
+            Generation failed. Reserved credits were returned.
           </div>
-          {onRetry && (
-            <Button variant="outline" size="sm" onClick={() => onRetry(block)}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry with same settings
-            </Button>
-          )}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <DownloadButton blockId={block.id} batch={block.batch} disabled={true} />
+
+            {block.master_pack_enabled && (
+              <div className="border rounded-md p-3 space-y-2 bg-muted/30">
+                <div className="flex items-center gap-1.5 text-sm font-medium">
+                  <Layers className="h-4 w-4" />
+                  Master Pack Parent Block
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {block.qseal_parent_count?.toLocaleString() ?? '—'} parent QR codes
+                  {block.master_pack_size ? ` (${block.master_pack_size} items per pack)` : ` (0 items per pack)`}
+                </p>
+                <ParentBlockDownloadButton blockId={block.id} block={block} disabled={true} />
+              </div>
+            )}
+            {onRetry && (
+              <Button variant="outline" size="sm" disabled={retrying} onClick={() => onRetry(block)}>
+                {retrying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                {retrying ? 'Queueing retry…' : 'Retry with same settings'}
+              </Button>
+            )}
+            {retryError && <p className="text-xs text-destructive">{retryError}</p>}
+          </div>
         </div>
       )}
     </div>
@@ -149,61 +349,76 @@ function BlockItemsTable({ blockId }: { blockId: string }) {
   const [totalItems, setTotalItems] = React.useState(0);
   const PAGE_SIZE = 20;
 
-  const fetchItems = React.useCallback(async (p: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await qrBlockService.getBlockItems(blockId, { page: p, page_size: PAGE_SIZE });
-      setItems(res.items);
-      setTotalItems(res.pagination.total_items);
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string } } };
-      setError(e.response?.data?.detail || 'Failed to load items');
-    } finally {
-      setLoading(false);
-    }
-  }, [blockId]);
+  const fetchItems = React.useCallback(
+    async (p: number) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await qrBlockService.getBlockItems(blockId, { page: p, page_size: PAGE_SIZE });
+        setItems(res.items);
+        setTotalItems(res.pagination.total_items);
+      } catch (err: unknown) {
+        setError(getApiErrorMessage(err, 'Failed to load items'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [blockId],
+  );
 
-  React.useEffect(() => { fetchItems(page); }, [fetchItems, page]);
+  React.useEffect(() => {
+    fetchItems(page);
+  }, [fetchItems, page]);
 
-  const columns: ColumnDef<ProductItem, unknown>[] = React.useMemo(() => [
-    {
-      accessorKey: 'serial_number',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Serial Number" />,
-      cell: ({ row }) => <span className="font-mono text-sm">{row.original.serial_number}</span>,
-    },
-    {
-      accessorKey: 'qr_active',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Active" />,
-      cell: ({ row }) => (
-        <Badge variant="secondary"
-className={row.original.qr_active
-          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-          : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'}>
-          {row.original.qr_active ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: 'scan_count',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Scans" />,
-      cell: ({ row }) => <span className="font-medium">{row.original.scan_count}</span>,
-    },
-    {
-      accessorKey: 'last_scanned_at',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Last Scanned" />,
-      cell: ({ row }) => row.original.last_scanned_at
-        ? <span className="text-sm text-muted-foreground">{formatDate(row.original.last_scanned_at, 'DD-MMM-YY', { includeTime: true })}</span>
-        : <span className="text-muted-foreground">—</span>,
-    },
-    {
-      accessorKey: 'secret_code',
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Secret Code" />,
-      cell: ({ row }) => row.original.secret_code
-        ? <span className="font-mono text-sm">{row.original.secret_code}</span>
-        : <span className="text-muted-foreground">—</span>,
-    },
-  ], []);
+  const columns: ColumnDef<ProductItem, unknown>[] = React.useMemo(
+    () => [
+      {
+        accessorKey: 'serial_number',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Serial Number" />,
+        cell: ({ row }) => <span className="font-mono text-sm">{row.original.serial_number}</span>,
+      },
+      {
+        accessorKey: 'qr_active',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Active" />,
+        cell: ({ row }) => (
+          <Badge variant="secondary"
+            className={
+              row.original.qr_active
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+            }>
+            {row.original.qr_active ? 'Active' : 'Inactive'}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: 'scan_count',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Scans" />,
+        cell: ({ row }) => <span className="font-medium">{row.original.scan_count}</span>,
+      },
+      {
+        accessorKey: 'last_scanned_at',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Last Scanned" />,
+        cell: ({ row }) =>
+          row.original.last_scanned_at ? (
+            <span className="text-sm text-muted-foreground">{formatDate(row.original.last_scanned_at, 'DD-MMM-YY', { includeTime: true })}</span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+      },
+      {
+        accessorKey: 'secret_code',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Secret Code" />,
+        cell: ({ row }) =>
+          row.original.secret_code ? (
+            <span className="font-mono text-sm">{row.original.secret_code}</span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+      },
+    ],
+    [],
+  );
 
   if (error) {
     return <p className="text-sm text-destructive p-4">{error}</p>;
@@ -244,9 +459,81 @@ className={row.original.qr_active
             },
           }}
           fixedHeader
-          maxHeight="300px" />
+          maxHeight="300px"/>
       </CardContent>
     </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Auto-link (automatic cascade / aggregation)                        */
+/* ------------------------------------------------------------------ */
+
+function MasterPackAutoLink({ block, onLinked }: { block: QRBlock; onLinked: () => Promise<void> | void }) {
+  const [linking, setLinking] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [packSize, setPackSize] = React.useState<string>(
+    block.master_pack_size ? String(block.master_pack_size) : '',
+  );
+
+  const requestAutoLink = () => {
+    const size = Number(packSize);
+    if (!Number.isInteger(size) || size <= 0) {
+      setError('Enter a valid master pack size (number of units per pack).');
+      return;
+    }
+    setError(null);
+    setMessage(null);
+    setConfirmOpen(true);
+  };
+
+  const performAutoLink = async () => {
+    setConfirmOpen(false);
+    const size = Number(packSize);
+    setLinking(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await qrBlockService.autoLinkBlock(block.id, size);
+      setMessage(result.message);
+      await onLinked();
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to auto-link block'));
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 text-sm font-medium">
+          <Layers className="h-4 w-4" />
+          Master Pack Aggregation
+        </div>
+        <Button variant="outline" size="sm" onClick={requestAutoLink} disabled={linking}>
+          {linking ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Layers className="h-4 w-4 mr-2" />}
+          {linking ? 'Linking…' : block.master_pack_enabled ? 'Re-run Auto-link' : 'Auto-link (Cascade)'}
+        </Button>
+      </div>
+      <div className="flex items-center gap-2">
+        <Input type="number" min={1} value={packSize} onChange={(e) => setPackSize(e.target.value)} placeholder="Pack size (units per parent)" className="h-8 max-w-[200px]" />
+        <p className="text-xs text-muted-foreground">units per master pack</p>
+      </div>
+      {message && <p className="text-xs text-green-600">{message}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+
+      <ConfirmationDialog open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Re-run master pack aggregation?"
+        description={`This will remove this block's existing parent links and re-aggregate its units into packs of ${Number(packSize) || '—'} items each.`}
+        confirmLabel="Aggregate"
+        variant="destructive"
+        loading={linking}
+        onConfirm={performAutoLink}/>
+    </div>
   );
 }
 
@@ -258,40 +545,71 @@ export interface BlockDetailDialogProps {
   blockId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onRetry?: (block: QRBlock) => void;
+  onRetry?: (block: QRBlock) => Promise<void>;
 }
 
 export function BlockDetailDialog({ blockId, open, onOpenChange, onRetry }: BlockDetailDialogProps) {
   // Use polling hook so status updates live while dialog is open
-  const { block, loading } = useBlockStatus(open ? blockId : null);
+  const { block, loading, refetch } = useBlockStatus(open ? blockId : null);
+  const [retrying, setRetrying] = React.useState(false);
+  const [retryError, setRetryError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setRetryError(null);
+    setRetrying(false);
+  }, [blockId, open]);
+
+  const retry = async (failedBlock: QRBlock) => {
+    if (!onRetry) return;
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      await onRetry(failedBlock);
+    } catch (error: unknown) {
+      setRetryError(getApiErrorMessage(error, 'Failed to retry QR Block'));
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+    <DetailDialog open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      contentClassName="max-w-4xl flex flex-col"
+      style={{ height: 'min(85vh, 820px)' }}
+      title={'Block Details'}
+      loading={loading}
+      loadingMessage="Loading details...">
+      {/* <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Block Details</DialogTitle>
-        </DialogHeader>
+        </DialogHeader> */}
 
-        {loading && !block && (
-          <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading block…
-          </div>
-        )}
+      {loading && !block && (
+        <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading block…
+        </div>
+      )}
 
-        {block && (
-          <div className="space-y-6">
-            <BlockInfoPanel block={block} onRetry={onRetry} />
+      {block && (
+        <div className="space-y-6">
+          <BlockInfoPanel block={block} onRetry={onRetry ? retry : undefined} retrying={retrying} retryError={retryError} />
 
-            {block.status === 'completed' && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold">Generated Items ({block.quantity.toLocaleString()})</h3>
-                <BlockItemsTable blockId={block.id} />
-              </div>
-            )}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          {block.status === 'completed' && (
+            <MasterPackAutoLink block={block} onLinked={refetch} />
+          )}
+
+          {block.status === 'completed' && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold">Generated Items ({block.quantity.toLocaleString()})</h3>
+              <BlockItemsTable blockId={block.id} />
+            </div>
+          )}
+        </div>
+      )}
+      {/* </DialogContent> */}
+    </DetailDialog>
   );
 }

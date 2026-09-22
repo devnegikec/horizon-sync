@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Plus, Printer, QrCode, RefreshCw, Trash2, UserCog, Download, Upload, ChevronDown, FileDown, Loader2 } from 'lucide-react';
+import { Plus, Printer, QrCode, RefreshCw, Trash2, UserCog, Download, Upload, ChevronDown, FileDown, Loader2, Eye } from 'lucide-react';
 import QRCode from 'qrcode';
 
 import { useUserStore } from '@horizon-sync/store';
@@ -63,7 +63,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
     });
   }, [organizationId]);
 
-  const canCreateWorkers = userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
+  const canCreateWorkers = user?.user_type === 'system_admin' || user?.user_type === 'organization_admin' || userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
   const canPrintQR = canCreateWorkers || userPermissions.includes('warehouse.read');
   const { toast } = useToast();
 
@@ -100,23 +100,24 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
   const [isRegenerating, setIsRegenerating] = React.useState(false);
 
   const [form, setForm] = React.useState<Partial<WMSWorkerCreate>>({
-    first_name: '', last_name: '', email: '', phone: '0000000000', login_username: '', employee_id: '', password: '', role: 'warehouse_worker', status: 'active',
+    first_name: '', last_name: '', email: '', phone: '', login_username: '', employee_id: '', password: '', role: 'warehouse_work_user', status: 'active',
   });
 
   const [formErrors, setFormErrors] = React.useState<Record<string, string>>({});
+  const [showPassword, setShowPassword] = React.useState(false);
 
   const fetchWorkers = React.useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
-      const result = await wmsWorkerApi.list(accessToken, { search: search || undefined });
+      const result = await wmsWorkerApi.list(accessToken, { search: search || undefined, warehouse_id: warehouseId || undefined });
       setWorkers(result.workers);
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to load workers', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, [accessToken, search, toast]);
+  }, [accessToken, search, warehouseId, toast]);
 
   React.useEffect(() => { fetchWorkers(); }, [fetchWorkers]);
 
@@ -182,7 +183,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
 
   const openCreate = () => {
     setEditingWorker(null);
-    setForm({ first_name: '', last_name: '', email: '', phone: '0000000000', login_username: '', employee_id: '', password: '', role: 'warehouse_worker', status: 'active' });
+    setForm({ first_name: '', last_name: '', email: '', phone: '', login_username: '', employee_id: '', password: '', role: 'warehouse_work_user', status: 'active' });
     setFormErrors({});
     setDialogOpen(true);
   };
@@ -196,10 +197,11 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
       phone: worker.phone,
       login_username: worker.login_username,
       employee_id: worker.employee_id ?? '',
-      password: '',
+      password: worker.login_password || '',
       role: worker.role,
       status: worker.status,
     });
+    setShowPassword(false);
     setFormErrors({});
     setDialogOpen(true);
   };
@@ -243,16 +245,16 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
           first_name: form.first_name || '',
           last_name: form.last_name || '',
           email: form.email || undefined,
-          phone: form.phone || '0000000000',
+          phone: form.phone || undefined,
           qr_code: qrCode,
           organization_id: organizationId,
           warehouse_id: warehouseId,
           warehouse_ids: [warehouseId],
-          warehouse_role: 'operator',
+          warehouse_role: form.role || 'warehouse_work_user',
           login_username: form.login_username || `${(form.first_name || 'w').toLowerCase()}.${(form.last_name || 'worker').toLowerCase()}`,
           employee_id: form.employee_id || dummyId,
           password: form.password || undefined,
-          role: form.role || 'warehouse_worker',
+          role: form.role || 'warehouse_work_user',
           status: form.status || 'active',
         } as WMSWorkerCreate;
         console.log('[Workers] Creating worker', create);
@@ -461,9 +463,9 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
         return obj;
       };
 
-      let created = 0;
       let failed = 0;
       const errors: string[] = [];
+      const batch: WMSWorkerCreate[] = [];
 
       for (let i = 1; i < lines.length; i++) {
         const row = parseRow(lines[i]);
@@ -481,28 +483,31 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
           errors.push(`Row ${i + 1}: missing required field(s)`);
           continue;
         }
-        try {
-          const payload: WMSWorkerCreate = {
-            warehouse_id: warehouseId,
-            first_name: firstName,
-            last_name: lastName,
-            display_name: row.display_name?.trim() || null,
-            email,
-            phone,
-            login_username: login,
-            employee_id: employeeId,
-            password,
-            role,
-            status,
-          };
-          console.log('[Workers Import] Creating worker row', i, payload);
-          await wmsWorkerApi.create(accessToken, payload);
-          console.log('[Workers Import] Worker created row', i);
-          created++;
-        } catch (err) {
-          failed++;
-          const msg = err instanceof Error ? err.message : 'Unknown error';
-          errors.push(`Row ${i + 1}: ${msg}`);
+        batch.push({
+          warehouse_id: warehouseId,
+          first_name: firstName,
+          last_name: lastName,
+          display_name: row.display_name?.trim() || null,
+          email,
+          phone,
+          login_username: login,
+          employee_id: employeeId,
+          password,
+          role,
+          status,
+        });
+      }
+
+      let created = 0;
+      if (batch.length > 0) {
+        const result = await wmsWorkerApi.importWorkers(accessToken, {
+          organization_id: organizationId,
+          workers: batch,
+        });
+        created = result.created ?? 0;
+        failed += result.failed ?? 0;
+        for (const e of result.errors ?? []) {
+          errors.push(`Row ${e.row}: ${e.error}`);
         }
       }
 
@@ -618,7 +623,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
         onPrintQR={(w) => handlePrintBarcode(getBarcode(w)!, w.display_name || `${w.first_name} ${w.last_name}`, w.employee_id)}
         onRegenerateQR={canCreateWorkers ? handleRegenerateBarcode : undefined}
         onCreateWorker={canCreateWorkers ? openCreate : undefined}
-        hasSearch={!!search}/>
+        hasSearch={!!search} />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
@@ -633,7 +638,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 <Input value={form.first_name || ''}
                   onChange={(e) => { setForm((p) => ({ ...p, first_name: e.target.value })); if (formErrors.first_name) setFormErrors((prev) => { const n = { ...prev }; delete n.first_name; return n; }); }}
                   className={formErrors.first_name ? 'border-destructive focus-visible:ring-destructive' : ''}
-                  maxLength={50}/>
+                  maxLength={50} />
                 {formErrors.first_name && <p className="text-xs text-destructive">{formErrors.first_name}</p>}
               </div>
               <div className="space-y-2">
@@ -641,7 +646,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 <Input value={form.last_name || ''}
                   onChange={(e) => { setForm((p) => ({ ...p, last_name: e.target.value })); if (formErrors.last_name) setFormErrors((prev) => { const n = { ...prev }; delete n.last_name; return n; }); }}
                   className={formErrors.last_name ? 'border-destructive focus-visible:ring-destructive' : ''}
-                  maxLength={50}/>
+                  maxLength={50} />
                 {formErrors.last_name && <p className="text-xs text-destructive">{formErrors.last_name}</p>}
               </div>
             </div>
@@ -651,17 +656,30 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 value={form.email || ''}
                 onChange={(e) => { setForm((p) => ({ ...p, email: e.target.value })); if (formErrors.email) setFormErrors((prev) => { const n = { ...prev }; delete n.email; return n; }); }}
                 className={formErrors.email ? 'border-destructive focus-visible:ring-destructive' : ''}
-                maxLength={100}/>
+                maxLength={100} />
               {formErrors.email && <p className="text-xs text-destructive">{formErrors.email}</p>}
             </div>
             {/* Phone, Login Username, Employee ID — auto-filled with dummy data */}
             <div className="space-y-2">
-              <Label>Password {editingWorker ? '(optional)' : '(optional)'}</Label>
-              <Input type="password"
-                value={form.password || ''}
-                onChange={(e) => { setForm((p) => ({ ...p, password: e.target.value })); if (formErrors.password) setFormErrors((prev) => { const n = { ...prev }; delete n.password; return n; }); }}
-                className={formErrors.password ? 'border-destructive focus-visible:ring-destructive' : ''}
-                maxLength={100}/>
+              <Label>Contact Number</Label>
+              <Input type="tel"
+                value={form.phone || ''}
+                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                placeholder="e.g. 9876543210"
+                maxLength={20} />
+            </div>
+            <div className="space-y-2">
+              <Label>Password {editingWorker ? '(leave blank to keep current)' : '(optional)'}</Label>
+              <div className="flex gap-2">
+                <Input type={showPassword ? 'text' : 'password'}
+                  value={form.password || ''}
+                  onChange={(e) => { setForm((p) => ({ ...p, password: e.target.value })); if (formErrors.password) setFormErrors((prev) => { const n = { ...prev }; delete n.password; return n; }); }}
+                  className={formErrors.password ? 'border-destructive focus-visible:ring-destructive' : ''}
+                  maxLength={100} />
+                <Button type="button" variant="outline" size="icon" className="shrink-0" onClick={() => setShowPassword((v) => !v)} title={showPassword ? 'Hide password' : 'Show password'}>
+                  <Eye className="h-4 w-4" />
+                </Button>
+              </div>
               {formErrors.password && <p className="text-xs text-destructive">{formErrors.password}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -669,9 +687,9 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 <Select value={form.role} onValueChange={(v) => setForm((p) => ({ ...p, role: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="warehouse_worker">Warehouse Worker</SelectItem>
-                    <SelectItem value="receiver">Receiver (Inbound)</SelectItem>
-                    <SelectItem value="picker">Picker (Outbound)</SelectItem>
+                    <SelectItem value="warehouse_work_user">Warehouse Work User</SelectItem>
+                    <SelectItem value="wms_operator">WMS Operator</SelectItem>
+                    <SelectItem value="asn_coordinator">ASN Coordinator</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -749,7 +767,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                 <div key={w.id} className={`flex items-center gap-3 p-2 rounded border ${!hasBarcode ? 'opacity-50 bg-muted/40' : 'hover:bg-muted/50'}`}>
                   <Checkbox checked={selectedPrintIds.has(w.id)}
                     onCheckedChange={() => togglePrintSelection(w.id)}
-                    disabled={!hasBarcode}/>
+                    disabled={!hasBarcode} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{name}</div>
                     <div className="text-xs text-muted-foreground">{w.role} · {w.status}</div>
@@ -783,7 +801,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
               <Input id="file-name"
                 value={exportFileName}
                 onChange={(e) => setExportFileName(e.target.value)}
-                placeholder="workers-export"/>
+                placeholder="workers-export" />
             </div>
             <div className="grid gap-3">
               <Label>Select Columns to Export</Label>
@@ -803,7 +821,7 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
                   <div key={column.id} className="flex items-center space-x-2">
                     <Checkbox id={column.id}
                       checked={selectedExportColumns.includes(column.id)}
-                      onCheckedChange={() => handleExportColumnToggle(column.id)}/>
+                      onCheckedChange={() => handleExportColumnToggle(column.id)} />
                     <Label htmlFor={column.id} className="text-sm font-normal cursor-pointer">
                       {column.label}
                     </Label>
@@ -825,10 +843,10 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
 
       {/* Import Dialog */}
       <Dialog open={isImportDialogOpen}
-onOpenChange={(open) => {
-        setIsImportDialogOpen(open);
-        if (!open) { setSelectedFile(null); }
-      }}>
+        onOpenChange={(open) => {
+          setIsImportDialogOpen(open);
+          if (!open) { setSelectedFile(null); }
+        }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Import Workers</DialogTitle>
@@ -893,7 +911,7 @@ onOpenChange={(open) => {
                 accept=".csv"
                 onChange={handleFileChange}
                 disabled={isImporting}
-                className="hidden"/>
+                className="hidden" />
             </div>
 
             {isImporting && (
@@ -935,7 +953,7 @@ onOpenChange={(open) => {
         confirmLabel="Disable"
         variant="destructive"
         loading={isDisabling}
-        onConfirm={executeDisableWorker}/>
+        onConfirm={executeDisableWorker} />
 
       {/* Regenerate QR Code Confirmation */}
       <ConfirmationDialog open={!!confirmRegenerateWorker}
@@ -945,7 +963,7 @@ onOpenChange={(open) => {
         confirmLabel="Regenerate"
         variant="destructive"
         loading={isRegenerating}
-        onConfirm={executeRegenerateBarcode}/>
+        onConfirm={executeRegenerateBarcode} />
     </div>
   );
 }

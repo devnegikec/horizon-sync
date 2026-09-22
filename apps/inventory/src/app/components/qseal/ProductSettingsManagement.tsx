@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Settings, Plus, RefreshCw, Pencil, Trash2, X, Check, KeyRound } from 'lucide-react';
+import { Settings, Plus, RefreshCw, Pencil, Trash2, X, Check, KeyRound, Globe, Coins, Zap } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -12,7 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/compo
 
 import { useQRProductSettings } from '../../hooks/useQRProductSettings';
 import type { SettingType, QRProductSetting } from '../../types/qr-product-settings.types';
+
+import { ActivationManagement } from './ActivationManagement';
 import { BrandManagement } from './BrandManagement';
+import { LandingPageTab } from './LandingPageTab';
+import { QRCreditSummary } from './QRCreditSummary';
 
 /* ------------------------------------------------------------------ */
 /*  Tab metadata                                                       */
@@ -52,11 +56,19 @@ interface SettingFormRowProps {
   onCancel: () => void;
 }
 
+const EMPTY_SETTING_FORM: SettingFormData = {
+  value: '',
+  label: '',
+  description: '',
+  sort_order: 0,
+};
+
 function SettingFormRow({ valuePlaceholder, labelPlaceholder, initial, saving, onSave, onCancel }: SettingFormRowProps) {
-  const [value, setValue] = React.useState(initial?.value ?? '');
-  const [label, setLabel] = React.useState(initial?.label ?? '');
-  const [description, setDescription] = React.useState(initial?.description ?? '');
-  const [sortOrder, setSortOrder] = React.useState(initial?.sort_order ?? 0);
+  const initialData = initial ?? EMPTY_SETTING_FORM;
+  const [value, setValue] = React.useState(initialData.value);
+  const [label, setLabel] = React.useState(initialData.label);
+  const [description, setDescription] = React.useState(initialData.description);
+  const [sortOrder, setSortOrder] = React.useState(initialData.sort_order);
   const isValid = value.trim().length > 0 && label.trim().length > 0;
 
   const handleSubmit = () => {
@@ -67,7 +79,12 @@ function SettingFormRow({ valuePlaceholder, labelPlaceholder, initial, saving, o
   return (
     <TableRow>
       <TableCell>
-        <Input value={value} onChange={(e) => setValue(e.target.value)} placeholder={valuePlaceholder} maxLength={100} className="h-8 text-sm" disabled={!!initial} />
+        <Input value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={valuePlaceholder}
+          maxLength={100}
+          className="h-8 text-sm"
+          disabled={!!initial}/>
       </TableCell>
       <TableCell>
         <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={labelPlaceholder} maxLength={150} className="h-8 text-sm" />
@@ -97,7 +114,13 @@ function SettingFormRow({ valuePlaceholder, labelPlaceholder, initial, saving, o
 /*  Setting row (read-only)                                            */
 /* ------------------------------------------------------------------ */
 
-function SettingRow({ setting, saving, onEdit, onDelete, onToggleActive }: {
+function SettingRow({
+  setting,
+  saving,
+  onEdit,
+  onDelete,
+  onToggleActive,
+}: {
   setting: QRProductSetting;
   saving: boolean;
   onEdit: () => void;
@@ -134,8 +157,7 @@ function SettingRow({ setting, saving, onEdit, onDelete, onToggleActive }: {
 /* ------------------------------------------------------------------ */
 
 function SettingTypeContent({ settingType, meta }: { settingType: SettingType; meta: TabMeta }) {
-  const { settings, loading, error, saving, refetch, createSetting, updateSetting, deleteSetting } =
-    useQRProductSettings(settingType);
+  const { settings, loading, error, saving, refetch, createSetting, updateSetting, deleteSetting } = useQRProductSettings(settingType);
 
   const [addingNew, setAddingNew] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -185,7 +207,9 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
     if (loading && settings.length === 0) {
       return (
         <TableRow>
-          <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Loading...</TableCell>
+          <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+            Loading...
+          </TableCell>
         </TableRow>
       );
     }
@@ -200,9 +224,23 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
     }
     return settings.map((setting) =>
       editingId === setting.id ? (
-        <SettingFormRow key={setting.id} valuePlaceholder={meta.valuePlaceholder} labelPlaceholder={meta.labelPlaceholder} initial={{ value: setting.value, label: setting.label, description: setting.description ?? '', sort_order: setting.sort_order }} saving={saving} onSave={(d) => handleUpdate(setting.id, d)} onCancel={() => setEditingId(null)} />
+        <SettingFormRow key={setting.id}
+          valuePlaceholder={meta.valuePlaceholder}
+          labelPlaceholder={meta.labelPlaceholder}
+          initial={{ value: setting.value, label: setting.label, description: setting.description ?? '', sort_order: setting.sort_order }}
+          saving={saving}
+          onSave={(d) => handleUpdate(setting.id, d)}
+          onCancel={() => setEditingId(null)}/>
       ) : (
-        <SettingRow key={setting.id} setting={setting} saving={saving} onEdit={() => { setEditingId(setting.id); setAddingNew(false); }} onDelete={() => handleDelete(setting)} onToggleActive={() => handleToggleActive(setting)} />
+        <SettingRow key={setting.id}
+          setting={setting}
+          saving={saving}
+          onEdit={() => {
+            setEditingId(setting.id);
+            setAddingNew(false);
+          }}
+          onDelete={() => handleDelete(setting)}
+          onToggleActive={() => handleToggleActive(setting)}/>
       ),
     );
   };
@@ -216,16 +254,19 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
             <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button size="sm" onClick={() => { setAddingNew(true); setEditingId(null); }} disabled={addingNew}>
+          <Button size="sm"
+            onClick={() => {
+              setAddingNew(true);
+              setEditingId(null);
+            }}
+            disabled={addingNew}>
             <Plus className="h-3.5 w-3.5 mr-1.5" />
             Add
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        {error && (
-          <div className="mb-4 rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>
-        )}
+        {error && <div className="mb-4 rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -240,7 +281,11 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
             </TableHeader>
             <TableBody>
               {addingNew && (
-                <SettingFormRow valuePlaceholder={meta.valuePlaceholder} labelPlaceholder={meta.labelPlaceholder} saving={saving} onSave={handleCreate} onCancel={() => setAddingNew(false)} />
+                <SettingFormRow valuePlaceholder={meta.valuePlaceholder}
+                  labelPlaceholder={meta.labelPlaceholder}
+                  saving={saving}
+                  onSave={handleCreate}
+                  onCancel={() => setAddingNew(false)}/>
               )}
               {renderRows()}
             </TableBody>
@@ -248,15 +293,15 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
         </div>
 
         {/* Delete Confirmation Dialog */}
-        <ConfirmationDialog
-          open={!!confirmDeleteSetting}
-          onOpenChange={(open) => { if (!open) setConfirmDeleteSetting(null); }}
+        <ConfirmationDialog open={!!confirmDeleteSetting}
+          onOpenChange={(open) => {
+            if (!open) setConfirmDeleteSetting(null);
+          }}
           title="Delete Setting"
           description={confirmDeleteSetting ? `Delete "${confirmDeleteSetting.label}"? This cannot be undone.` : ''}
           confirmLabel="Delete"
           variant="destructive"
-          onConfirm={executeDelete}
-        />
+          onConfirm={executeDelete}/>
       </CardContent>
     </Card>
   );
@@ -272,21 +317,36 @@ export function ProductSettingsManagement() {
       <div>
         <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <Settings className="h-6 w-6" />
-          Product Settings
+          Settings
         </h2>
         <p className="text-muted-foreground">
-          Configure allowed values for serial prefixes, channels, destinations, and shelf life. These appear as dropdown options during QR product and block creation.
+          Configure allowed values for serial prefixes, channels, destinations, and shelf life. These appear as dropdown options during QR product and
+          block creation.
         </p>
       </div>
 
       <Tabs defaultValue="serial_prefix" className="space-y-4">
         <TabsList>
           {SETTING_TABS.map((tab) => (
-            <TabsTrigger key={tab.key} value={tab.key}>{tab.label}</TabsTrigger>
+            <TabsTrigger key={tab.key} value={tab.key}>
+              {tab.label}
+            </TabsTrigger>
           ))}
           <TabsTrigger value="brands">
             <KeyRound className="h-3.5 w-3.5 mr-1.5" />
             Brands & Keys
+          </TabsTrigger>
+          <TabsTrigger value="landing-page">
+            <Globe className="h-3.5 w-3.5 mr-1.5" />
+            Landing Page
+          </TabsTrigger>
+          <TabsTrigger value="qr-credit">
+            <Coins className="h-3.5 w-3.5 mr-1.5" />
+            QR Credit
+          </TabsTrigger>
+          <TabsTrigger value="wms-activation">
+            <Zap className="h-3.5 w-3.5 mr-1.5" />
+            WMS Activation
           </TabsTrigger>
         </TabsList>
         {SETTING_TABS.map((tab) => (
@@ -296,6 +356,15 @@ export function ProductSettingsManagement() {
         ))}
         <TabsContent value="brands">
           <BrandManagement />
+        </TabsContent>
+        <TabsContent value="landing-page">
+          <LandingPageTab />
+        </TabsContent>
+        <TabsContent value="qr-credit">
+          <QRCreditSummary />
+        </TabsContent>
+        <TabsContent value="wms-activation">
+          <ActivationManagement />
         </TabsContent>
       </Tabs>
     </div>

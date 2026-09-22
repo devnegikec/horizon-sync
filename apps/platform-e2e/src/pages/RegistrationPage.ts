@@ -5,6 +5,7 @@ export class RegistrationPage {
   readonly emailInput: Locator;
   readonly firstNameInput: Locator;
   readonly lastNameInput: Locator;
+  readonly countrySelect: Locator;
   readonly phoneInput: Locator;
   readonly passwordInput: Locator;
   readonly confirmPasswordInput: Locator;
@@ -16,6 +17,7 @@ export class RegistrationPage {
     this.emailInput = page.getByTestId('registration-email');
     this.firstNameInput = page.getByTestId('registration-first-name');
     this.lastNameInput = page.getByTestId('registration-last-name');
+    this.countrySelect = page.getByTestId('registration-country');
     this.phoneInput = page.getByTestId('registration-phone');
     this.passwordInput = page.getByTestId('registration-password');
     this.confirmPasswordInput = page.getByTestId('registration-confirm-password');
@@ -31,6 +33,9 @@ export class RegistrationPage {
     await this.emailInput.fill(data.email);
     await this.firstNameInput.fill(data.firstName);
     await this.lastNameInput.fill(data.lastName);
+    // Select country first — the contact number input stays disabled until one is chosen.
+    await this.countrySelect.click();
+    await this.page.locator('[role="option"]', { hasText: data.country ?? 'India (+91)' }).click();
     await this.phoneInput.fill(data.phone);
     await this.passwordInput.fill(data.password);
     await this.confirmPasswordInput.fill(data.confirmPassword);

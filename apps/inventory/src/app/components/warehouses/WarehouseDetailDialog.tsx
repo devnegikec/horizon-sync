@@ -1,10 +1,9 @@
 import * as React from 'react';
 
-import { Warehouse as WarehouseIcon, MapPin, Phone, Mail, User, Calendar, Building2, Boxes } from 'lucide-react';
+import { Warehouse as WarehouseIcon, MapPin, Phone, Mail, User, Calendar, Building2, Boxes, Hash, Layers, Info } from 'lucide-react';
 
+import { DetailDialog } from '@horizon-sync/ui/components';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
-import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { cn } from '@horizon-sync/ui/lib';
 
 import type { Warehouse } from '../../types/warehouse.types';
@@ -48,107 +47,92 @@ function getWarehouseTypeBadge(type: string) {
   }
 }
 
+function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ className?: string }>; title: string }) {
+  return (
+    <div className="flex items-center gap-2 text-primary">
+      <Icon className="h-4 w-4" />
+      <h4 className="text-sm font-semibold">{title}</h4>
+    </div>
+  );
+}
+
 export function WarehouseDetailDialog({ open, onOpenChange, warehouse }: WarehouseDetailDialogProps) {
   if (!warehouse) return null;
 
   const typeBadge = getWarehouseTypeBadge(warehouse.warehouse_type);
-  const hasAddress = warehouse.address_line1 || warehouse.city || warehouse.state || warehouse.postal_code || warehouse.country;
-  const hasContact = warehouse.contact_name || warehouse.contact_phone || warehouse.contact_email;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-              <WarehouseIcon className="h-6 w-6 text-primary" />
-            </div>
-            <div className="flex-1 space-y-1">
-              <div className="flex items-center gap-2">
-                <DialogTitle className="text-xl">{warehouse.name}</DialogTitle>
-              </div>
-              <div className="flex items-center gap-2">
-                <code className="text-xs bg-muted px-2 py-0.5 rounded">{warehouse.code}</code>
-                <Badge variant={typeBadge.variant}>{typeBadge.label}</Badge>
-                <Badge variant={warehouse.is_active ? 'success' : 'secondary'}>{warehouse.is_active ? 'Active' : 'Inactive'}</Badge>
-                {warehouse.is_default && <Badge variant="outline">Default</Badge>}
-              </div>
-            </div>
+    <DetailDialog open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      contentClassName="max-w-4xl flex flex-col"
+      style={{ height: 'min(85vh, 820px)' }}
+      title={
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <WarehouseIcon className="h-5 w-5 text-primary" />
           </div>
-        </DialogHeader>
-
-        <div className="space-y-6 py-4">
-          {warehouse.description && <p className="text-sm text-muted-foreground">{warehouse.description}</p>}
-
-          {warehouse.parent && (
-            <>
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold">Parent Warehouse</h4>
-                <DetailRow icon={Building2} label="Parent" value={`${warehouse.parent.name} (${warehouse.parent.code})`} />
-              </div>
-              <Separator />
-            </>
-          )}
-
-          {hasAddress && (
-            <>
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold">Address</h4>
-                <DetailRow icon={MapPin}
-                  label="Location"
-                  value={
-                    <span className="whitespace-pre-line">
-                      {[
-                        warehouse.address_line1,
-                        warehouse.address_line2,
-                        [warehouse.city, warehouse.state].filter(Boolean).join(', '),
-                        warehouse.postal_code,
-                        warehouse.country,
-                      ]
-                        .filter(Boolean)
-                        .join('\n')}
-                    </span>
-                  }/>
-              </div>
-              <Separator />
-            </>
-          )}
-
-          {hasContact && (
-            <>
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold">Contact Information</h4>
-                <div className="grid gap-3">
-                  {warehouse.contact_name && <DetailRow icon={User} label="Contact Name" value={warehouse.contact_name} />}
-                  {warehouse.contact_phone && <DetailRow icon={Phone} label="Phone" value={warehouse.contact_phone} />}
-                  {warehouse.contact_email && <DetailRow icon={Mail} label="Email" value={warehouse.contact_email} />}
-                </div>
-              </div>
-              <Separator />
-            </>
-          )}
-
-          {(warehouse.total_capacity || warehouse.capacity_uom) && (
-            <>
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold">Capacity</h4>
-                <DetailRow icon={Boxes}
-                  label="Total Capacity"
-                  value={warehouse.total_capacity ? `${warehouse.total_capacity.toLocaleString()} ${warehouse.capacity_uom || ''}` : '—'}/>
-              </div>
-              <Separator />
-            </>
-          )}
-
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold">Timestamps</h4>
-            <div className="grid gap-3">
-              <DetailRow icon={Calendar} label="Created At" value={formatDate(warehouse.created_at, 'DD-MMM-YY', true)} />
-              {warehouse.updated_at && <DetailRow icon={Calendar} label="Updated At" value={formatDate(warehouse.updated_at, 'DD-MMM-YY', true)} />}
+          <div className="min-w-0">
+            <p className="font-semibold truncate">{warehouse.name}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <code className="text-xs bg-muted px-2 py-0.5 rounded">{warehouse.code}</code>
+              <Badge variant={typeBadge.variant}>{typeBadge.label}</Badge>
+              <Badge variant={warehouse.is_active ? 'success' : 'secondary'}>{warehouse.is_active ? 'Active' : 'Inactive'}</Badge>
+              {warehouse.is_default && <Badge variant="outline">Default</Badge>}
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      }>
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <SectionHeader icon={Info} title="Basic Information" />
+          <div className="grid grid-cols-2 gap-4">
+            <DetailRow icon={Hash} label="Warehouse Code" value={warehouse.code} />
+            <DetailRow icon={Layers} label="Type" value={typeBadge.label} />
+          </div>
+          {warehouse.description && <DetailRow icon={Info} label="Description" value={warehouse.description} />}
+          {warehouse.parent && <DetailRow icon={Building2} label="Parent Warehouse" value={`${warehouse.parent.name} (${warehouse.parent.code})`} />}
+        </div>
+
+        <div className="space-y-3">
+          <SectionHeader icon={MapPin} title="Address Information" />
+          <div className="grid grid-cols-2 gap-4">
+            <DetailRow icon={MapPin} label="Address Line 1" value={warehouse.address_line1} />
+            <DetailRow icon={MapPin} label="Address Line 2" value={warehouse.address_line2} />
+            <DetailRow icon={MapPin} label="City" value={warehouse.city} />
+            <DetailRow icon={MapPin} label="State" value={warehouse.state} />
+            <DetailRow icon={MapPin} label="Postal Code" value={warehouse.postal_code} />
+            <DetailRow icon={MapPin} label="Country" value={warehouse.country} />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <SectionHeader icon={User} title="Contact Information" />
+          <div className="grid grid-cols-2 gap-4">
+            <DetailRow icon={User} label="Contact Name" value={warehouse.contact_name} />
+            <DetailRow icon={Phone} label="Phone" value={warehouse.contact_phone} />
+            <DetailRow icon={Mail} label="Email" value={warehouse.contact_email} />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <SectionHeader icon={Boxes} title="Capacity" />
+          <div className="grid grid-cols-2 gap-4">
+            <DetailRow icon={Boxes}
+              label="Total Capacity"
+              value={warehouse.total_capacity != null ? warehouse.total_capacity.toLocaleString() : undefined}/>
+            <DetailRow icon={Boxes} label="Unit of Measure" value={warehouse.capacity_uom} />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <SectionHeader icon={Calendar} title="Timestamps" />
+          <div className="grid grid-cols-2 gap-4">
+            <DetailRow icon={Calendar} label="Created At" value={formatDate(warehouse.created_at, 'DD-MMM-YY', true)} />
+            {warehouse.updated_at && <DetailRow icon={Calendar} label="Updated At" value={formatDate(warehouse.updated_at, 'DD-MMM-YY', true)} />}
+          </div>
+        </div>
+      </div>
+    </DetailDialog>
   );
 }

@@ -42,6 +42,39 @@ export interface StockMovementsTableProps {
 export function StockMovementsTable({ stockMovements, loading, error, hasActiveFilters, onTableReady, serverPagination }: StockMovementsTableProps) {
   const [tableInstance, setTableInstance] = React.useState<Table<StockMovement> | null>(null);
 
+  /* Aggregate duplicate movements (same item + warehouse + type) into a single
+     row with summed quantity, so one item doesn't show as many 1-qty rows. */
+  const groupedMovements = React.useMemo(() => {
+    const groups = new Map<string, StockMovement>();
+    for (const m of stockMovements) {
+      const key = `${m.product_id}|${m.warehouse_id}|${m.movement_type}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.quantity = (existing.quantity || 0) + (m.quantity || 0);
+        if (
+          !existing.performed_at ||
+          (m.performed_at && new Date(m.performed_at) > new Date(existing.performed_at))
+        ) {
+          existing.performed_at = m.performed_at;
+        }
+        if ((existing.unit_cost === null || existing.unit_cost === undefined) && m.unit_cost != null) {
+          existing.unit_cost = m.unit_cost;
+        }
+        if (!existing.reference_type && !existing.reference_id && (m.reference_type || m.reference_id)) {
+          existing.reference_type = m.reference_type;
+          existing.reference_id = m.reference_id;
+        }
+        if (!existing.notes && m.notes) existing.notes = m.notes;
+        if (!existing.performed_by_name && m.performed_by_name) {
+          existing.performed_by_name = m.performed_by_name;
+        }
+      } else {
+        groups.set(key, { ...m });
+      }
+    }
+    return Array.from(groups.values());
+  }, [stockMovements]);
+
   // Call onTableReady when table instance changes
   React.useEffect(() => {
     if (tableInstance && onTableReady) {
@@ -159,16 +192,21 @@ export function StockMovementsTable({ stockMovements, loading, error, hasActiveF
         cell: ({ row }) => {
           const movement = row.original;
           const referenceType = movement.reference_type;
+          const referenceNo = movement.reference_no;
           const referenceId = movement.reference_id;
 
-          if (!referenceType && !referenceId) {
+          if (!referenceType && !referenceNo && !referenceId) {
             return <span className="text-muted-foreground text-sm">—</span>;
           }
 
           return (
             <div className="text-sm">
               {referenceType && <span className="text-muted-foreground">{referenceType}: </span>}
-              {referenceId && <code className="text-xs">{referenceId.substring(0, 8)}</code>}
+              {referenceNo ? (
+                <code className="text-xs">{referenceNo}</code>
+              ) : referenceId ? (
+                <code className="text-xs">{referenceId.substring(0, 8)}</code>
+              ) : null}
             </div>
           );
         },
@@ -251,7 +289,7 @@ export function StockMovementsTable({ stockMovements, loading, error, hasActiveF
     <Card>
       <CardContent className="p-0">
         <DataTable columns={columns}
-          data={stockMovements}
+          data={groupedMovements}
           config={{
             showSerialNumber: true,
             showPagination: true,

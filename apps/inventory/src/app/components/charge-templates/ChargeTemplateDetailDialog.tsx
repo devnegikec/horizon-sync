@@ -2,8 +2,8 @@ import * as React from 'react';
 
 import { Edit, DollarSign } from 'lucide-react';
 
-import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 import { useCurrencyStore } from '@horizon-sync/store';
+import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 
 import type { ChargeTemplate } from '../../types/charge-template.types';
 import { getCurrencySymbol } from '../../types/currency.types';

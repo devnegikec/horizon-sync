@@ -1,11 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- test mocks use untyped props */
+
 import * as React from 'react';
 
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 
-import { CurrencySettings } from '../CurrencySettings';
 import { CurrencyService } from '../../../../services/currency.service';
+import { CurrencySettings } from '../CurrencySettings';
 
 // Mock CurrencyService
 jest.mock('../../../../services/currency.service');
@@ -18,7 +20,7 @@ jest.mock('@horizon-sync/ui/hooks/use-toast', () => ({
 
 // Mock EditableDataTable with a simple table that exercises the component logic
 jest.mock('@horizon-sync/ui/components', () => ({
-  EditableDataTable: ({ data, onDataChange, enableAddRow, addRowLabel, newRowTemplate }: any) => (
+  EditableDataTable: ({ data, onDataChange, addRowLabel, newRowTemplate }: any) => (
     <div data-testid="editable-data-table">
       <table>
         <thead>
@@ -38,11 +40,9 @@ jest.mock('@horizon-sync/ui/components', () => ({
           ))}
         </tbody>
       </table>
-      {enableAddRow && (
-        <button
-          data-testid="add-row-btn"
-          onClick={() => onDataChange([...data, { ...newRowTemplate, code: 'NEW', name: 'New Currency', symbol: 'N', isNew: true }])}
-        >
+      {addRowLabel && (
+        <button data-testid="add-row-btn"
+          onClick={() => onDataChange([...data, { ...newRowTemplate, code: 'NEW', name: 'New Currency', symbol: 'N', isNew: true }])}>
           {addRowLabel}
         </button>
       )}
@@ -54,12 +54,14 @@ jest.mock('@horizon-sync/ui/components', () => ({
       <div data-testid="confirmation-dialog">
         <p>{title}</p>
         <p>{description}</p>
-        <button data-testid="confirm-delete-btn" onClick={onConfirm}>Confirm</button>
+        <button data-testid="confirm-delete-btn" onClick={onConfirm}>
+          Confirm
+        </button>
       </div>
     ) : null,
 }));
 
-const mockList = CurrencyService.list as jest.MockedFunction<typeof CurrencyService.list>;
+const mockList = CurrencyService.listWithBase as jest.MockedFunction<typeof CurrencyService.listWithBase>;
 const mockCreate = CurrencyService.create as jest.MockedFunction<typeof CurrencyService.create>;
 const mockDelete = CurrencyService.delete as jest.MockedFunction<typeof CurrencyService.delete>;
 
@@ -76,7 +78,7 @@ describe('CurrencySettings Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockList.mockResolvedValue(sampleCurrencies);
+    mockList.mockResolvedValue({ currencies: sampleCurrencies, base_currency: 'USD' });
   });
 
   describe('Display Current Currency', () => {
@@ -89,7 +91,10 @@ describe('CurrencySettings Component', () => {
     });
 
     it('should default to USD when no currency is configured', async () => {
-      mockList.mockResolvedValue([{ id: 'c1', code: 'USD', name: 'US Dollar', symbol: '$' }]);
+      mockList.mockResolvedValue({
+        currencies: [{ id: 'c1', code: 'USD', name: 'US Dollar', symbol: '$' }],
+        base_currency: 'USD',
+      });
       render(<CurrencySettings {...defaultProps} />);
 
       await waitFor(() => {
@@ -124,7 +129,7 @@ describe('CurrencySettings Component', () => {
         expect(screen.getByTestId('editable-data-table')).toBeInTheDocument();
       });
       // Add row button should not be present when disabled
-      expect(screen.queryByTestId('add-row-btn')).not.toBeInTheDocument();
+      expect(screen.queryByText('+ Add Currency')).not.toBeInTheDocument();
     });
 
     it('should populate dropdown with supported currencies', async () => {
@@ -153,10 +158,7 @@ describe('CurrencySettings Component', () => {
       await user.click(screen.getByTestId('add-row-btn'));
 
       await waitFor(() => {
-        expect(mockCreate).toHaveBeenCalledWith(
-          { code: 'NEW', name: 'New Currency', symbol: 'N' },
-          'token-abc'
-        );
+        expect(mockCreate).toHaveBeenCalledWith({ code: 'NEW', name: 'New Currency', symbol: 'N' }, 'token-abc');
       });
     });
 
@@ -173,9 +175,7 @@ describe('CurrencySettings Component', () => {
       await user.click(screen.getByTestId('add-row-btn'));
 
       await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith(
-          expect.objectContaining({ title: 'Success' })
-        );
+        expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Success' }));
       });
     });
 
@@ -196,7 +196,7 @@ describe('CurrencySettings Component', () => {
           expect.objectContaining({
             title: 'Error',
             variant: 'destructive',
-          })
+          }),
         );
       });
     });
@@ -223,7 +223,12 @@ describe('CurrencySettings Component', () => {
 
     it('should disable select during update', async () => {
       let resolveCreate!: (value: any) => void;
-      mockCreate.mockImplementation(() => new Promise((resolve) => { resolveCreate = resolve; }));
+      mockCreate.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveCreate = resolve;
+          }),
+      );
       const user = userEvent.setup();
 
       render(<CurrencySettings {...defaultProps} />);
@@ -264,7 +269,7 @@ describe('CurrencySettings Component', () => {
 
   describe('Edge Cases', () => {
     it('should handle null currentSettings', async () => {
-      mockList.mockResolvedValue([]);
+      mockList.mockResolvedValue({ currencies: [], base_currency: '' });
       render(<CurrencySettings {...defaultProps} />);
 
       await waitFor(() => {
@@ -273,7 +278,7 @@ describe('CurrencySettings Component', () => {
     });
 
     it('should handle empty currentSettings object', async () => {
-      mockList.mockResolvedValue([]);
+      mockList.mockResolvedValue({ currencies: [], base_currency: '' });
       render(<CurrencySettings {...defaultProps} />);
 
       await waitFor(() => {
@@ -282,7 +287,7 @@ describe('CurrencySettings Component', () => {
     });
 
     it('should update local state when currentSettings prop changes', async () => {
-      mockList.mockResolvedValue(sampleCurrencies);
+      mockList.mockResolvedValue({ currencies: sampleCurrencies, base_currency: 'USD' });
       render(<CurrencySettings {...defaultProps} />);
 
       await waitFor(() => {

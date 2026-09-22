@@ -3,14 +3,16 @@
  * Endpoints: /api/v1/qr-products
  */
 
-import { apiRequest, buildPaginationParams } from '../utility/api/core';
 import type {
   QSealProduct,
   QSealProductListResponse,
   CreateQSealProductPayload,
   UpdateQSealProductPayload,
   ScanAnalyticsResponse,
+  QSealProductImageResponse,
+  QSealProductImageType,
 } from '../types/qseal.types';
+import { apiRequest, buildPaginationParams } from '../utility/api/core';
 
 export const qrProductApi = {
   list(
@@ -49,6 +51,33 @@ export const qrProductApi = {
     return apiRequest<void>(`/qr-products/${productId}`, accessToken, {
       method: 'DELETE',
     });
+  },
+
+  uploadImage(
+    accessToken: string,
+    productId: string,
+    imageType: QSealProductImageType,
+    file: File,
+  ): Promise<QSealProductImageResponse> {
+    const body = new FormData();
+    body.append('file', file);
+    return apiRequest<QSealProductImageResponse>(
+      `/qr-products/${productId}/images/${imageType}`,
+      accessToken,
+      { method: 'POST', body },
+    );
+  },
+
+  removeImage(
+    accessToken: string,
+    productId: string,
+    imageType: QSealProductImageType,
+  ): Promise<QSealProductImageResponse> {
+    return apiRequest<QSealProductImageResponse>(
+      `/qr-products/${productId}/images/${imageType}`,
+      accessToken,
+      { method: 'DELETE' },
+    );
   },
 
   getAnalytics(accessToken: string, productId: string): Promise<ScanAnalyticsResponse> {

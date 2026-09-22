@@ -191,7 +191,8 @@ export function ItemGroupManagementHeader({ onCreateGroup, onImportSuccess, item
       </div>
 
       {/* Import Dialog */}
-      <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+      <Dialog open={isImportDialogOpen}
+onOpenChange={(open) => {
         setIsImportDialogOpen(open);
         if (!open) setSelectedFile(null);
       }}>
@@ -217,10 +218,8 @@ export function ItemGroupManagementHeader({ onCreateGroup, onImportSuccess, item
             <div className="flex flex-col gap-2">
               <Label htmlFor="ig-file-upload" className="text-sm font-medium">Select File</Label>
               {!selectedFile ? (
-                <label
-                  htmlFor="ig-file-upload"
-                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
+                <label htmlFor="ig-file-upload"
+                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors">
                   <Upload className="h-8 w-8 text-muted-foreground mb-2" />
                   <span className="text-sm font-medium text-primary">Click to select file</span>
                   <span className="text-xs text-muted-foreground mt-1">CSV (.csv)</span>

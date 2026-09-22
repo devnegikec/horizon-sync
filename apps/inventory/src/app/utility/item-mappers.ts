@@ -1,5 +1,36 @@
-import type { Item } from '../types/item.types';
+import type { Item, ItemPackagingDetails } from '../types/item.types';
 import type { ApiItem } from '../types/items-api.types';
+
+function toNullableNumber(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = parseFloat(String(v));
+  return Number.isFinite(n) ? n : null;
+}
+
+function mapPackagingDetails(units: unknown): ItemPackagingDetails | null {
+  if (!Array.isArray(units) || units.length === 0) return null;
+  const list = units as Array<Record<string, unknown>>;
+  const base = list.find((u) => u?.is_base_unit === true) ?? list[0];
+  if (!base) return null;
+  const master = list.find((u) => u?.is_base_unit === false);
+  return {
+    unitName: (base.unit_name as string) ?? 'Each',
+    conversionFactor: Number(base.conversion_factor ?? 1) || 1,
+    itemsPerMasterPack: toNullableNumber(base.items_per_master_pack),
+    lengthMm: toNullableNumber(base.length_mm),
+    widthMm: toNullableNumber(base.width_mm),
+    heightMm: toNullableNumber(base.height_mm),
+    weightGrams: toNullableNumber(base.weight_grams),
+    masterPackUnitName: (master?.unit_name as string | undefined) ?? null,
+    masterPackLengthMm: toNullableNumber(master?.length_mm),
+    masterPackWidthMm: toNullableNumber(master?.width_mm),
+    masterPackHeightMm: toNullableNumber(master?.height_mm),
+    masterPackWeightGrams: toNullableNumber(master?.weight_grams),
+    masterPackFillFactor: toNullableNumber(master?.master_pack_fill_factor),
+    masterPackVoidFillPct: toNullableNumber(master?.master_pack_void_fill_pct),
+    masterPackWallThicknessMm: toNullableNumber(master?.master_pack_wall_thickness_mm),
+  };
+}
 
 /**
  * Maps an API item response to the frontend Item type.
@@ -52,5 +83,6 @@ export function apiItemToItem(api: ApiItem): Item {
     tags: (api as any).tags ?? [],
     customFields: (api as any).custom_fields ?? {},
     extraData: (api as any).extra_data ?? {},
+    packagingDetails: mapPackagingDetails((api as any).packaging_units),
   };
 }

@@ -24,9 +24,10 @@ export default defineConfig({
   },
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'npx nx run platform:serve-static',
+    command: 'npx nx run platform:serve',
     url: 'http://localhost:4200',
     reuseExistingServer: true,
+    timeout: 600_000,
     cwd: workspaceRoot,
   },
   projects: [

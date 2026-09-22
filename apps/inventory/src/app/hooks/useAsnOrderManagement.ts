@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 
 import { useUserStore } from '@horizon-sync/store';
@@ -9,6 +10,7 @@ import type {
   AsnOrderCreate,
   AsnOrderUpdate,
   AsnOrderListResponse,
+  AsnOrderStatusCounts,
 } from '../types/asn-order.types';
 import { asnOrderApi } from '../utility/api/asn-orders';
 import { getFriendlyErrorMessage } from '../utility/api/core';
@@ -17,6 +19,11 @@ export interface AsnOrderFilters {
   search: string;
   status: string;
   warehouse_id: string;
+  source_warehouse_id: string;
+  delivery_date_from: string;
+  delivery_date_to: string;
+  vehicle_no: string;
+  asn_type: string;
 }
 
 const asnOrdersQueryKey = ['asn-orders'] as const;
@@ -24,12 +31,12 @@ const asnOrdersQueryKey = ['asn-orders'] as const;
 function useAsnOrders(
   initialPage: number,
   initialPageSize: number,
-  filters?: { search?: string; status?: string; warehouse_id?: string }
+  filters?: { search?: string; status?: string; warehouse_id?: string; source_warehouse_id?: string; delivery_date_from?: string; delivery_date_to?: string; vehicle_no?: string; asn_type?: string }
 ) {
   const accessToken = useUserStore((s) => s.accessToken);
   const memoizedFilters = React.useMemo(
     () => filters,
-    [filters?.search, filters?.status, filters?.warehouse_id]
+    [filters?.search, filters?.status, filters?.warehouse_id, filters?.source_warehouse_id, filters?.delivery_date_from, filters?.delivery_date_to, filters?.vehicle_no, filters?.asn_type]
   );
 
   const queryKey = React.useMemo(
@@ -39,9 +46,14 @@ function useAsnOrders(
       initialPageSize,
       memoizedFilters?.status ?? 'all',
       memoizedFilters?.warehouse_id ?? 'all',
+      memoizedFilters?.source_warehouse_id ?? 'all',
+      memoizedFilters?.delivery_date_from ?? 'all',
+      memoizedFilters?.delivery_date_to ?? 'all',
+      memoizedFilters?.vehicle_no ?? 'all',
+      memoizedFilters?.asn_type ?? 'all',
       memoizedFilters?.search ?? '',
     ] as const,
-    [initialPage, initialPageSize, memoizedFilters?.status, memoizedFilters?.warehouse_id, memoizedFilters?.search]
+    [initialPage, initialPageSize, memoizedFilters?.status, memoizedFilters?.warehouse_id, memoizedFilters?.source_warehouse_id, memoizedFilters?.delivery_date_from, memoizedFilters?.delivery_date_to, memoizedFilters?.vehicle_no, memoizedFilters?.asn_type, memoizedFilters?.search]
   );
 
   const {
@@ -60,7 +72,12 @@ function useAsnOrders(
         {
           status: memoizedFilters?.status !== 'all' ? memoizedFilters?.status : undefined,
           warehouse_id: memoizedFilters?.warehouse_id || undefined,
+          source_warehouse_id: memoizedFilters?.source_warehouse_id || undefined,
+          delivery_date_from: memoizedFilters?.delivery_date_from || undefined,
+          delivery_date_to: memoizedFilters?.delivery_date_to || undefined,
+          vehicle_no: memoizedFilters?.vehicle_no || undefined,
           search: memoizedFilters?.search || undefined,
+          asn_type: memoizedFilters?.asn_type || undefined,
         }
       ) as AsnOrderListResponse;
       return data;
@@ -70,9 +87,10 @@ function useAsnOrders(
 
   const asnOrders = (data?.asn_orders ?? []) as unknown as AsnOrder[];
   const pagination = data?.pagination ?? null;
+  const statusCounts: AsnOrderStatusCounts | null = (data as AsnOrderListResponse | undefined)?.status_counts ?? null;
   const error = queryError ? getFriendlyErrorMessage(queryError) : null;
 
-  return { asnOrders, pagination, loading, error, refetch };
+  return { asnOrders, pagination, statusCounts, loading, error, refetch };
 }
 
 export function useAsnOrderManagement() {
@@ -84,6 +102,11 @@ export function useAsnOrderManagement() {
     search: '',
     status: 'all',
     warehouse_id: '',
+    source_warehouse_id: '',
+    delivery_date_from: '',
+    delivery_date_to: '',
+    vehicle_no: '',
+    asn_type: '',
   });
 
   const [page, setPage] = React.useState(1);
@@ -95,7 +118,7 @@ export function useAsnOrderManagement() {
     setPage(1);
   }, [filters]);
 
-  const { asnOrders, pagination, loading, error, refetch } = useAsnOrders(page, pageSize, filters);
+  const { asnOrders, pagination, statusCounts, loading, error, refetch } = useAsnOrders(page, pageSize, filters);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => asnOrderApi.delete(accessToken || '', id),
@@ -162,6 +185,7 @@ export function useAsnOrderManagement() {
     setFilters,
     asnOrders,
     pagination,
+    statusCounts,
     loading,
     error,
     refetch,

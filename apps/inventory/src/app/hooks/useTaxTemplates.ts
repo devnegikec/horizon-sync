@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-import { useAuth } from '@platform/app/hooks/useAuth';
+import { useUserStore } from '@horizon-sync/store';
 
 import { taxTemplateApi } from '../api/tax-templates';
 import type { TaxTemplate } from '../types/tax-template.types';
@@ -14,7 +14,9 @@ interface UseTaxTemplatesResult {
 }
 
 export function useTaxTemplates(): UseTaxTemplatesResult {
-    const { accessToken } = useAuth();
+    // Same token the platform app's useAuth exposes, read straight from the
+    // shared store so this app does not import from another app.
+    const accessToken = useUserStore((s) => s.accessToken);
     const [salesTaxTemplates, setSalesTaxTemplates] = useState<TaxTemplate[]>([]);
     const [purchaseTaxTemplates, setPurchaseTaxTemplates] = useState<TaxTemplate[]>([]);
     const [isLoading, setIsLoading] = useState(false);

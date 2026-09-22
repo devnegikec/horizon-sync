@@ -1,11 +1,11 @@
- 
+
 import { useUserStore } from '@horizon-sync/store';
 
 import { useItemSubmission } from '../../hooks/useItemSubmission';
 import { useTaxTemplates } from '../../hooks/useTaxTemplates';
 import type { ApiItemGroup } from '../../types/item-groups.types';
-import type { ApiItem } from '../../types/items-api.types';
 import type { Item } from '../../types/item.types';
+import type { ApiItem } from '../../types/items-api.types';
 import type { ItemFormData } from '../../utility/item-payload-builders';
 
 import { ItemMultiStepDialog } from './multi-step/ItemMultiStepDialog';
@@ -65,6 +65,47 @@ function itemToFormData(item: Item): Partial<ItemFormData> {
     tags: item.tags ?? [],
     customFields: item.customFields ?? {},
     extraData: item.extraData ?? {},
+    packagingUnitName: item.packagingDetails?.unitName ?? 'Each',
+    packagingConversionFactor: item.packagingDetails?.conversionFactor != null
+      ? String(item.packagingDetails.conversionFactor)
+      : '1',
+    packagingItemsPerMasterPack: item.packagingDetails?.itemsPerMasterPack != null
+      ? String(item.packagingDetails.itemsPerMasterPack)
+      : '',
+    packagingLengthMm: item.packagingDetails?.lengthMm != null
+      ? String(item.packagingDetails.lengthMm)
+      : '',
+    packagingWidthMm: item.packagingDetails?.widthMm != null
+      ? String(item.packagingDetails.widthMm)
+      : '',
+    packagingHeightMm: item.packagingDetails?.heightMm != null
+      ? String(item.packagingDetails.heightMm)
+      : '',
+    packagingWeightGrams: item.packagingDetails?.weightGrams != null
+      ? String(item.packagingDetails.weightGrams)
+      : '',
+    masterPackUnitName: item.packagingDetails?.masterPackUnitName ?? '',
+    masterPackLengthMm: item.packagingDetails?.masterPackLengthMm != null
+      ? String(item.packagingDetails.masterPackLengthMm)
+      : '',
+    masterPackWidthMm: item.packagingDetails?.masterPackWidthMm != null
+      ? String(item.packagingDetails.masterPackWidthMm)
+      : '',
+    masterPackHeightMm: item.packagingDetails?.masterPackHeightMm != null
+      ? String(item.packagingDetails.masterPackHeightMm)
+      : '',
+    masterPackWeightGrams: item.packagingDetails?.masterPackWeightGrams != null
+      ? String(item.packagingDetails.masterPackWeightGrams)
+      : '',
+    masterPackFillFactor: item.packagingDetails?.masterPackFillFactor != null
+      ? String(item.packagingDetails.masterPackFillFactor)
+      : '0.75',
+    masterPackVoidFillPct: item.packagingDetails?.masterPackVoidFillPct != null
+      ? String(item.packagingDetails.masterPackVoidFillPct)
+      : '0.10',
+    masterPackWallThicknessMm: item.packagingDetails?.masterPackWallThicknessMm != null
+      ? String(item.packagingDetails.masterPackWallThicknessMm)
+      : '3',
   };
 }
 
@@ -104,6 +145,6 @@ export function ItemDialogMultiStep({
       isLoadingTaxTemplates={isLoadingTaxTemplates}
       onSave={handleSave}
       initialData={initialData}
-      isEditing={!!item}/>
+      isEditing={!!item} />
   );
 }

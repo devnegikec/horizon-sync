@@ -25,6 +25,7 @@ export function AppRoutes() {
     <Routes>
       {/* Public QR verification - no auth required, local component */}
       <Route path="/g/:gtin/s/:serial/:timestamp" element={<PublicQRValidation />} />
+      <Route path="/01/:gtin/21/:serial" element={<PublicQRValidation />} />
 
       {/* Public routes */}
       <Route path="/login" element={<PublicRouteWrapper element={<LoginPage />} />} />

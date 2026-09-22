@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+  DetailDialog,
   Button, Input, Label, Textarea,
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@horizon-sync/ui/components';
@@ -205,130 +205,134 @@ export function RoleDialog({ mode, role, isOpen, onClose, onSuccess }: RoleDialo
   const hasModules = modules.length > 0;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{getDialogTitle()}</DialogTitle>
-          <DialogDescription>
+    <DetailDialog
+      open={isOpen}
+      onOpenChange={onClose}
+      size="lg"
+      title={
+        <div className="space-y-1">
+          <span>{getDialogTitle()}</span>
+          <p className="text-sm font-normal text-muted-foreground">
             {mode === 'create' && 'Create a new role with specific permissions'}
             {mode === 'edit' && 'Update role details and permissions'}
             {mode === 'clone' && 'Create a new role based on an existing one'}
-          </DialogDescription>
-        </DialogHeader>
+          </p>
+        </div>
+      }
+      footer={
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="submit" form="role-form" disabled={loading}>
+            {loading ? 'Saving...' : mode === 'edit' ? 'Update Role' : 'Create Role'}
+          </Button>
+        </div>
+      }
+    >
+      <form id="role-form" onSubmit={handleSubmit} className="space-y-6">
+        {/* Name Field */}
+        <div className="space-y-2">
+          <Label htmlFor="name">
+            Role Name <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={e => setFormData({ ...formData, name: e.target.value })}
+            placeholder="Enter role name"
+            disabled={loading}
+          />
+          {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Name Field */}
-          <div className="space-y-2">
-            <Label htmlFor="name">
-              Role Name <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Enter role name"
-              disabled={loading}
-            />
-            {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+        {/* Description Field */}
+        <div className="space-y-2">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            value={formData.description}
+            onChange={e => setFormData({ ...formData, description: e.target.value })}
+            placeholder="Enter role description"
+            rows={2}
+            disabled={loading}
+          />
+        </div>
+
+        {/* Start from template (create/clone mode only) */}
+        {(mode === 'create' || mode === 'clone') && !permissionsLoading && allPermissionCodes.length > 0 && (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Start from template:</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" type="button" className="gap-1">
+                  Choose template <ChevronDown className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-72">
+                {ROLE_TEMPLATES.map(template => (
+                  <DropdownMenuItem
+                    key={template.code}
+                    onClick={() => applyTemplate(template)}
+                    className="flex flex-col items-start gap-0.5 py-2"
+                  >
+                    <span className="font-medium text-sm">{template.name}</span>
+                    <span className="text-xs text-muted-foreground">{template.description}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
+        )}
 
-          {/* Description Field */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={e => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Enter role description"
-              rows={2}
-              disabled={loading}
-            />
-          </div>
+        {/* Dangerous Permission Alert */}
+        {selectedPermissionsSet.size > 0 && (
+          <DangerousPermissionAlert
+            selectedPermissions={selectedPermissionsSet}
+            onConfirm={setFullAccessConfirmed}
+          />
+        )}
 
-          {/* Start from template (create/clone mode only) */}
-          {(mode === 'create' || mode === 'clone') && !permissionsLoading && allPermissionCodes.length > 0 && (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">Start from template:</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" type="button" className="gap-1">
-                    Choose template <ChevronDown className="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-72">
-                  {ROLE_TEMPLATES.map(template => (
-                    <DropdownMenuItem
-                      key={template.code}
-                      onClick={() => applyTemplate(template)}
-                      className="flex flex-col items-start gap-0.5 py-2"
-                    >
-                      <span className="font-medium text-sm">{template.name}</span>
-                      <span className="text-xs text-muted-foreground">{template.description}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          )}
+        {/* Permissions Section */}
+        <div className="space-y-2">
+          <Label>
+            Permissions{' '}
+            <span className="text-xs text-muted-foreground">
+              ({formData.permissions.length} selected)
+            </span>
+          </Label>
 
-          {/* Dangerous Permission Alert */}
-          {selectedPermissionsSet.size > 0 && (
-            <DangerousPermissionAlert
-              selectedPermissions={selectedPermissionsSet}
-              onConfirm={setFullAccessConfirmed}
-            />
-          )}
-
-          {/* Permissions Section */}
-          <div className="space-y-2">
-            <Label>
-              Permissions{' '}
-              <span className="text-xs text-muted-foreground">
-                ({formData.permissions.length} selected)
-              </span>
-            </Label>
-
-            {permissionsLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3058EE] mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">Loading permissions...</p>
-                </div>
+          {permissionsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3058EE] mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Loading permissions...</p>
               </div>
-            ) : hasModules ? (
-              <ModulePermissionMatrix
-                modules={modules}
-                selectedPermissions={selectedPermissionsSet}
-                onPermissionToggle={handlePermissionToggle}
-                onBulkSelect={handleBulkSelect}
-              />
-            ) : (
-              /* Fallback to legacy resource-grouped matrix */
-              <PermissionMatrix
-                permissions={permissions}
-                selectedPermissions={selectedPermissionsSet}
-                onPermissionToggle={handlePermissionToggle}
-                onBulkSelect={handleBulkSelect}
-                allPermissions={allPermissions}
-              />
-            )}
+            </div>
+          ) : hasModules ? (
+            <ModulePermissionMatrix
+              modules={modules}
+              selectedPermissions={selectedPermissionsSet}
+              onPermissionToggle={handlePermissionToggle}
+              onBulkSelect={handleBulkSelect}
+            />
+          ) : (
+            /* Fallback to legacy resource-grouped matrix */
+            <PermissionMatrix
+              permissions={permissions}
+              selectedPermissions={selectedPermissionsSet}
+              onPermissionToggle={handlePermissionToggle}
+              onBulkSelect={handleBulkSelect}
+              allPermissions={allPermissions}
+            />
+          )}
 
-            {errors.permissions && (
-              <p className="text-sm text-destructive">{errors.permissions}</p>
-            )}
-          </div>
+          {errors.permissions && (
+            <p className="text-sm text-destructive">{errors.permissions}</p>
+          )}
+        </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : mode === 'edit' ? 'Update Role' : 'Create Role'}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+      </form>
+    </DetailDialog>
   );
 }

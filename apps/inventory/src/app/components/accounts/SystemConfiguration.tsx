@@ -19,6 +19,7 @@ import {
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { useToast } from '@horizon-sync/ui/hooks';
 
+import { environment } from '../../../environments/environment';
 import type {
   DefaultAccountMapping,
   DefaultAccountUpdate,
@@ -29,7 +30,6 @@ import type {
   DefaultAccountUpdateResponse,
 } from '../../types/account.types';
 import { accountApi } from '../../utility/api/accounts';
-import { environment } from '../../../environments/environment';
 import { isSystemAdmin } from '../../utils/permissions';
 import { DeleteConfirmationDialog } from '../common/DeleteConfirmationDialog';
 
@@ -593,7 +593,7 @@ export const SystemConfiguration: React.FC = () => {
                   <li>Includes accounts for all types (Assets, Liabilities, Equity, Revenue, Expenses)</li>
                   <li>Creates default account mappings for common transaction types</li>
                   <li>Validates account codes against your configured format</li>
-                  <li>Idempotent - safe to call multiple times (won't create duplicates)</li>
+                  <li>Idempotent - safe to call multiple times (won&apos;t create duplicates)</li>
                   <li>Clear data will DELETE ALL accounts - use with caution!</li>
                   <li>Refresh the page after seeding to see the new accounts</li>
                 </ul>
@@ -631,7 +631,7 @@ export const SystemConfiguration: React.FC = () => {
           {defaultAccounts.length === 0 ? (
             <div className="rounded-lg border bg-muted/50 p-4">
               <p className="text-sm text-muted-foreground">
-                No default accounts configured. Click "Add Mapping" to create one.
+                No default accounts configured. Click &quot;Add Mapping&quot; to create one.
               </p>
             </div>
           ) : (
@@ -669,7 +669,7 @@ export const SystemConfiguration: React.FC = () => {
                         disabled={saving || !userIsSystemAdmin} />
                       {!config.scenario && (
                         <p className="text-xs text-muted-foreground">
-                          Standard mapping — add a scenario like "domestic" or "international" for variants
+                          Standard mapping — add a scenario like &quot;domestic&quot; or &quot;international&quot; for variants
                         </p>
                       )}
                     </div>
@@ -849,8 +849,7 @@ export const SystemConfiguration: React.FC = () => {
       </Card>
 
       {/* Delete Confirmation Dialog */}
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
+      <DeleteConfirmationDialog open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={confirmDelete}
         title="Delete Default Account Mapping"
@@ -859,19 +858,16 @@ export const SystemConfiguration: React.FC = () => {
           : ''
         }
         confirmText="Delete Mapping"
-        cancelText="Cancel"
-      />
+        cancelText="Cancel"/>
 
       {/* Clear All Accounts Confirmation Dialog */}
-      <ConfirmationDialog
-        open={confirmClearDataOpen}
+      <ConfirmationDialog open={confirmClearDataOpen}
         onOpenChange={setConfirmClearDataOpen}
         title="Delete All Accounts"
         description="Are you sure you want to delete ALL accounts? This action cannot be undone!"
         confirmLabel="Delete All"
         variant="destructive"
-        onConfirm={executeClearData}
-      />
+        onConfirm={executeClearData}/>
     </div>
   );
 };

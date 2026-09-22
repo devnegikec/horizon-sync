@@ -43,9 +43,9 @@ describe('RegistrationForm', () => {
   const renderForm = () => {
     return render(
       <BrowserRouter future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}>
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}>
         <RegistrationForm />
       </BrowserRouter>,
     );
@@ -57,7 +57,9 @@ describe('RegistrationForm', () => {
     await user.type(screen.getByLabelText(/last name/i), 'Doe');
     // Select country (auto-populates dial code)
     await user.click(screen.getByTestId('registration-country'));
-    await user.click(await screen.findByText(/India \(\+91\)/i));
+    const indiaOptions = await screen.findAllByText(/India \(\+91\)/i);
+    const indiaOption = indiaOptions.find((el) => el.tagName !== 'OPTION');
+    await user.click(indiaOption!);
     await user.type(screen.getByLabelText(/contact number/i), '9008750493');
     await user.type(screen.getByLabelText(/^password/i), 'Password123!');
     await user.type(screen.getByLabelText(/confirm password/i), 'Password123!');
@@ -122,9 +124,7 @@ describe('RegistrationForm', () => {
     await user.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
-      expect(AuthService.register).toHaveBeenCalledWith(
-        expect.objectContaining({ phone: '+919008750493' })
-      );
+      expect(AuthService.register).toHaveBeenCalledWith(expect.objectContaining({ phone: '+919008750493' }));
       expect(mockLogin).toHaveBeenCalledWith(
         'fake-access-token',
         'fake-refresh-token',
@@ -134,7 +134,7 @@ describe('RegistrationForm', () => {
           first_name: 'John',
           last_name: 'Doe',
           phone: '9008750493',
-        })
+        }),
       );
       expect(mockToast).toHaveBeenCalledWith({
         title: 'Registration successful!',

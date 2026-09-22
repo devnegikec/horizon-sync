@@ -24,6 +24,7 @@ interface ItemDetailResponse {
   organization_id: string;
   item_code: string;
   item_name: string;
+  sku: string | null;
   description: string;
   item_group_id: string | null;
   item_group: { id: string; code: string; name: string } | null;
@@ -64,6 +65,8 @@ interface ItemDetailResponse {
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  brand_id: string | null;
+  gtin: string | null;
 }
 
 // --- Mappers ---
@@ -71,6 +74,9 @@ interface ItemDetailResponse {
 function mapDetailToFormValues(detail: ItemDetailResponse): ItemFormSchemaType {
   return {
     ...mapFormBasicFields(detail),
+    sku: detail.sku || '',
+    brandId: detail.brand_id || '',
+    gtin: detail.gtin || '',
     ...mapFormStockFields(detail),
     ...mapFormPricingFields(detail),
     ...mapFormAdditionalFields(detail),
@@ -204,6 +210,8 @@ const DEFAULT_FORM_VALUES: ItemFormSchemaType = {
   tags: [],
   customFields: {},
   extraData: {},
+  brandId: '',
+  gtin: '',
 };
 
 // --- Component ---
@@ -315,7 +323,7 @@ export function ItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] h-[820px] max-h-[85vh] overflow-y-auto">
         <ItemDialogHeader isEditing={isEditing} />
 
         {fetchingDetail ? (
@@ -326,7 +334,7 @@ export function ItemDialog({
         ) : (
           <FormProvider {...methods}>
             <form onSubmit={methods.handleSubmit(onSubmit)}>
-              <ItemFormFields formData={formData} setFormData={setFormData} itemGroups={itemGroups} onItemGroupsRefresh={onItemGroupsRefresh} isLoading={isLoading} salesTaxTemplates={salesTaxTemplates} purchaseTaxTemplates={purchaseTaxTemplates} isLoadingTaxTemplates={isLoadingTaxTemplates}/>
+              <ItemFormFields formData={formData} setFormData={setFormData} itemGroups={itemGroups} onItemGroupsRefresh={onItemGroupsRefresh} isLoading={isLoading} salesTaxTemplates={salesTaxTemplates} purchaseTaxTemplates={purchaseTaxTemplates} isLoadingTaxTemplates={isLoadingTaxTemplates} />
             </form>
           </FormProvider>
         )}

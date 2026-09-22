@@ -1,15 +1,17 @@
 import * as React from 'react';
 
-import { User, Mail, Phone, Globe, Clock, Building2, Shield, CheckCircle2, Calendar } from 'lucide-react';
+import { User, Mail, Phone, Globe, Clock, Building2, Shield, CheckCircle2, Calendar, KeyRound } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
+import { Badge } from '@horizon-sync/ui/components/ui/badge';
 
 import { InfoRow, OrganizationCard, ProfileHeader } from '../components/profile';
-import { useAuth } from '../hooks';
+import { useAuth, usePermissions } from '../hooks';
 import { formatDate, getStatusBadge } from '../utility/profile-utils';
 
 export function ProfilePage() {
   const { user, accessToken } = useAuth();
+  const { roles, loading: rolesLoading } = usePermissions();
 
   if (!user) {
     return (
@@ -69,8 +71,33 @@ export function ProfilePage() {
             <InfoRow icon={CheckCircle2}
               label="Email Verification"
               value={user.email_verified ? 'Verified' : 'Not Verified'}
-              badge={user.email_verified ? { text: 'Verified', variant: 'success' } : { text: 'Pending', variant: 'warning' }}/>
+              badge={user.email_verified ? { text: 'Verified', variant: 'success' } : { text: 'Pending', variant: 'warning' }} />
             <InfoRow icon={Calendar} label="Email Verified At" value={user.email_verified_at ? formatDate(user.email_verified_at) : 'Not verified'} />
+          </CardContent>
+        </Card>
+
+        {/* Assigned Roles */}
+        <Card className="border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-sky-600">
+                <KeyRound className="h-5 w-5 text-white" />
+              </div>
+              Assigned Role
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {rolesLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {(roles && roles.length > 0 ? roles : [user.user_type]).map((role) => (
+                  <Badge key={role} variant="outline" className="text-sm px-3 py-1">
+                    {role}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

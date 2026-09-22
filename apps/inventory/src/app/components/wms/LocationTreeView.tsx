@@ -17,6 +17,7 @@ import { cn } from '@horizon-sync/ui/lib';
 import { useLocationTree } from '../../hooks/useWMS';
 import type { LocationTree } from '../../types/wms.types';
 
+import { BinStockDialog } from './BinStockDialog';
 import { LocationTypeBadge } from './WMSStatusBadge';
 
 // ============================================
@@ -238,6 +239,7 @@ interface LocationTreeViewProps {
 
 export function LocationTreeView({ warehouseId, onSelect }: LocationTreeViewProps) {
   const { tree, loading, error, refetch } = useLocationTree(warehouseId);
+  const [selectedBin, setSelectedBin] = React.useState<LocationTree | null>(null);
 
   // Enrich tree with derived capacity values
   const enrichedData = React.useMemo<FlatRow[]>(
@@ -245,9 +247,31 @@ export function LocationTreeView({ warehouseId, onSelect }: LocationTreeViewProp
     [tree],
   );
 
+  const columnsWithActions = React.useMemo<ColumnDef<FlatRow>[]>(
+    () => [
+      ...columns,
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) =>
+          row.original.location_type === 'bin' ? (
+            <Button variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedBin(row.original);
+              }}>
+              View
+            </Button>
+          ) : null,
+      },
+    ],
+    [],
+  );
+
   const table = useReactTable<FlatRow>({
     data: enrichedData,
-    columns,
+    columns: columnsWithActions,
     getSubRows: (row) => row.subRows,
     getCoreRowModel: getCoreRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
@@ -346,6 +370,12 @@ export function LocationTreeView({ warehouseId, onSelect }: LocationTreeViewProp
           </Table>
         </div>
       </div>
+
+      <BinStockDialog bin={selectedBin}
+        open={selectedBin !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setSelectedBin(null);
+        }} />
     </div>
   );
 }

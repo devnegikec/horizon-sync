@@ -10,6 +10,7 @@ const config: ModuleFederationConfig = {
     './TaxChargesPage': './src/app/pages/TaxChargesPage.tsx',
     './PaymentsPage': './src/app/pages/PaymentsPage.tsx',
     './QSealPage': './src/app/pages/QSealPage.tsx',
+    './WMSActivationPage': './src/app/pages/WMSActivationPage.tsx',
     './WMSPage': './src/app/pages/WMSPage.tsx',
   },
   shared: (libraryName, defaultConfig) => {
@@ -51,11 +52,7 @@ const config: ModuleFederationConfig = {
     }
 
     // Share form libraries as singletons
-    if (
-      libraryName === 'react-hook-form' ||
-      libraryName.startsWith('@hookform/') ||
-      libraryName === 'zod'
-    ) {
+    if (libraryName === 'react-hook-form' || libraryName.startsWith('@hookform/') || libraryName === 'zod') {
       return {
         ...defaultConfig,
         singleton: true,

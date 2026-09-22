@@ -16,6 +16,7 @@ import {
   Wand2,
 } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
@@ -23,9 +24,7 @@ import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { useUserStore } from '@horizon-sync/store';
 
-import { floorPlanApi } from '../../utility/api/floorplan';
 import type {
   AisleSpec,
   FloorPlanApplyResponse,
@@ -41,6 +40,7 @@ import {
   defaultZoneSpec,
   LAYOUT_TEMPLATES,
 } from '../../types/floorplan.types';
+import { floorPlanApi } from '../../utility/api/floorplan';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -81,8 +81,7 @@ function NumField({
   return (
     <div className={cn('space-y-1', className)}>
       <Label className="text-xs">{label}</Label>
-      <Input
-        type="number"
+      <Input type="number"
         value={localValue}
         min={min}
         step={step}
@@ -100,8 +99,7 @@ function NumField({
             onChange(fallback);
           }
         }}
-        className="h-8 text-xs"
-      />
+        className="h-8 text-xs"/>
     </div>
   );
 }
@@ -113,6 +111,7 @@ function AisleRow({
   index,
   zoneIndex,
   totalAisles,
+  capacityUom,
   onChange,
   onRemove,
 }: {
@@ -120,6 +119,7 @@ function AisleRow({
   index: number;
   zoneIndex: number;
   totalAisles: number;
+  capacityUom: 'units' | 'volume';
   onChange: (a: AisleSpec) => void;
   onRemove: () => void;
 }) {
@@ -134,9 +134,16 @@ function AisleRow({
 
   return (
     <div className="rounded-md border bg-background">
-      <div
-        className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none"
-        onClick={() => setOpen((o) => !o)}>
+      <div className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none"
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setOpen((o) => !o);
+          }
+        }}>
         {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
         <span className="text-xs font-medium flex-1 truncate">
           Aisle&nbsp;<span className="font-mono">{aisle.code || `Z${zoneIndex + 1}-A${index + 1}`}</span>
@@ -145,8 +152,7 @@ function AisleRow({
         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
           {bins} bins
         </Badge>
-        <Button
-          variant="ghost"
+        <Button variant="ghost"
           size="icon"
           className="h-6 w-6 shrink-0"
           onClick={(e) => { e.stopPropagation(); onRemove(); }}>
@@ -206,7 +212,11 @@ function AisleRow({
 
           {/* Capacity */}
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-            <NumField label="Bin capacity (units)" value={aisle.bin_capacity} min={1} step={10} onChange={(v) => onChange({ ...aisle, bin_capacity: v })} />
+            <NumField label={capacityUom === 'volume' ? 'Bin capacity (m³)' : 'Bin capacity (units)'}
+              value={aisle.bin_capacity}
+              min={1}
+              step={10}
+              onChange={(v) => onChange({ ...aisle, bin_capacity: v })}/>
           </div>
         </div>
       )}
@@ -219,11 +229,13 @@ function AisleRow({
 function ZoneCard({
   zone,
   index,
+  capacityUom,
   onChange,
   onRemove,
 }: {
   zone: ZoneSpec;
   index: number;
+  capacityUom: 'units' | 'volume';
   onChange: (z: ZoneSpec) => void;
   onRemove: () => void;
 }) {
@@ -262,8 +274,7 @@ function ZoneCard({
           <span className="font-mono">{zone.code || `Z${index + 1}`}</span>
         </span>
         <Badge variant="outline" className="text-[10px]">{totalBins} bins</Badge>
-        <Button
-          variant="ghost"
+        <Button variant="ghost"
           size="icon"
           className="h-6 w-6"
           onClick={onRemove}
@@ -275,42 +286,44 @@ function ZoneCard({
       <div className="grid grid-cols-2 gap-x-3 gap-y-2">
         <div className="space-y-1">
           <Label className="text-xs">Zone Code</Label>
-          <Input
-            value={zone.code}
+          <Input value={zone.code}
             onChange={(e) => onChange({ ...zone, code: e.target.value })}
             className="h-8 text-xs font-mono"
-            placeholder="A"
-          />
+            placeholder="A"/>
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Name (optional)</Label>
-          <Input
-            value={zone.name ?? ''}
+          <Input value={zone.name ?? ''}
             onChange={(e) => onChange({ ...zone, name: e.target.value || null })}
             className="h-8 text-xs"
-            placeholder="Ambient Storage"
-          />
+            placeholder="Ambient Storage"/>
         </div>
-        <NumField label="Distance from left wall (m)" value={zone.offset_x} step={1}
+        <NumField label="Distance from left wall (m)"
+value={zone.offset_x}
+step={1}
           onChange={(v) => onChange({ ...zone, offset_x: v })} />
-        <NumField label="Distance from front wall (m)" value={zone.offset_y} step={1}
+        <NumField label="Distance from front wall (m)"
+value={zone.offset_y}
+step={1}
           onChange={(v) => onChange({ ...zone, offset_y: v })} />
-        <NumField label="Spacing between aisles (m)" value={zone.aisle_spacing} min={2} step={0.5}
+        <NumField label="Spacing between aisles (m)"
+value={zone.aisle_spacing}
+min={2}
+step={0.5}
           onChange={(v) => onChange({ ...zone, aisle_spacing: v })} />
       </div>
 
       <div className="space-y-2">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Aisles</p>
         {zone.aisles.map((a, ai) => (
-          <AisleRow
-            key={ai}
+          <AisleRow key={ai}
             aisle={a}
             index={ai}
             zoneIndex={index}
             totalAisles={zone.aisles.length}
+            capacityUom={capacityUom}
             onChange={(updated) => updateAisle(ai, updated)}
-            onRemove={() => removeAisle(ai)}
-          />
+            onRemove={() => removeAisle(ai)}/>
         ))}
         <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs h-8" onClick={addAisle}>
           <Plus className="h-3.5 w-3.5" />
@@ -631,7 +644,8 @@ export function WarehouseLayoutDesigner({
             </div>
             <div className="grid grid-cols-2 gap-2">
               {LAYOUT_TEMPLATES.map((tpl) => (
-                <button key={tpl.id} onClick={() => startFromTemplate(tpl)}
+                <button key={tpl.id}
+onClick={() => startFromTemplate(tpl)}
                   className="text-left rounded-md border p-3 hover:bg-accent hover:border-primary/30 transition-all space-y-1 group">
                   <p className="text-xs font-medium group-hover:text-primary">{tpl.name}</p>
                   <p className="text-[10px] text-muted-foreground">{tpl.description}</p>
@@ -697,100 +711,104 @@ export function WarehouseLayoutDesigner({
 
       {mode === 'editor' ? (
         <>
-      {/* Editor header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={backToLanding}>
-            ← Back
-          </Button>
-          <div>
-            <h3 className="text-sm font-semibold">
-              {editingPlanId ? `Editing: ${planName}` : 'New Layout'}
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Configure zones and aisles below, then preview and apply.
+          {/* Editor header */}
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={backToLanding}>
+                ← Back
+              </Button>
+              <div>
+                <h3 className="text-sm font-semibold">
+                  {editingPlanId ? `Editing: ${planName}` : 'New Layout'}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Configure zones and aisles below, then preview and apply.
+                </p>
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-sm font-mono px-3 py-1 shrink-0">
+              {totalBins} bins total
+            </Badge>
+          </div>
+
+          {/* Global settings */}
+          <div className="flex items-end gap-4 flex-wrap">
+            <NumField label="Grid unit (world units)"
+              value={config.grid_unit}
+              min={0.1}
+              step={0.5}
+              className="w-48"
+              onChange={(v) => setConfig({ ...config, grid_unit: v })}/>
+            <div className="space-y-1 w-48">
+              <Label className="text-xs">Bin capacity unit</Label>
+              <Select value={config.capacity_uom ?? 'units'}
+                onValueChange={(v) => setConfig({ ...config, capacity_uom: v as 'units' | 'volume' })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="units">Units (eaches)</SelectItem>
+                  <SelectItem value="volume">Volume (m³)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground pb-1">
+              Grid unit controls scale for display purposes only.
             </p>
           </div>
-        </div>
-        <Badge variant="secondary" className="text-sm font-mono px-3 py-1 shrink-0">
-          {totalBins} bins total
-        </Badge>
-      </div>
 
-      {/* Global setting */}
-      <div className="flex items-end gap-4">
-        <NumField
-          label="Grid unit (world units)"
-          value={config.grid_unit}
-          min={0.1}
-          step={0.5}
-          className="w-48"
-          onChange={(v) => setConfig({ ...config, grid_unit: v })}
-        />
-        <p className="text-xs text-muted-foreground pb-1">
-          Controls scale for display purposes only.
-        </p>
-      </div>
+          {/* Zone list */}
+          <div className="space-y-3">
+            {config.zones.map((zone, zi) => (
+              <ZoneCard key={zi}
+                zone={zone}
+                index={zi}
+                capacityUom={config.capacity_uom ?? 'units'}
+                onChange={(z) => updateZone(zi, z)}
+                onRemove={() => removeZone(zi)}/>
+            ))}
+            <Button variant="outline" className="w-full gap-2" onClick={addZone}>
+              <Plus className="h-4 w-4" />
+              Add Zone
+            </Button>
+          </div>
 
-      {/* Zone list */}
-      <div className="space-y-3">
-        {config.zones.map((zone, zi) => (
-          <ZoneCard
-            key={zi}
-            zone={zone}
-            index={zi}
-            onChange={(z) => updateZone(zi, z)}
-            onRemove={() => removeZone(zi)}
-          />
-        ))}
-        <Button variant="outline" className="w-full gap-2" onClick={addZone}>
-          <Plus className="h-4 w-4" />
-          Add Zone
-        </Button>
-      </div>
+          {/* Error */}
+          {error && (
+            <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <Info className="h-4 w-4 mt-0.5 shrink-0" />
+              {error}
+            </div>
+          )}
 
-      {/* Error */}
-      {error && (
-        <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          <Info className="h-4 w-4 mt-0.5 shrink-0" />
-          {error}
-        </div>
-      )}
+          {/* Preview / Apply result */}
+          <SummaryBox preview={preview} />
+          <SummaryBox preview={applyResult} />
 
-      {/* Preview / Apply result */}
-      <SummaryBox preview={preview} />
-      <SummaryBox preview={applyResult} />
-
-      {/* Action bar */}
-      <div className="flex items-end gap-3 flex-wrap border-t pt-4">
-        <div className="flex-1 min-w-48 space-y-1">
-          <Label className="text-xs">Plan name (required to apply)</Label>
-          <Input
-            value={planName}
-            onChange={(e) => setPlanName(e.target.value)}
-            placeholder="My warehouse layout"
-            className="h-8 text-sm"
-          />
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          onClick={handlePreview}
-          disabled={previewing || config.zones.length === 0}>
-          {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-          Preview
-        </Button>
-        <Button
-          size="sm"
-          className="gap-1.5"
-          onClick={handleApply}
-          disabled={applying || !planName.trim() || config.zones.length === 0}>
-          {applying ? <Loader2 className="h-4 w-4 animate-spin" /> : editingPlanId ? <Save className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-          {editingPlanId ? 'Update Layout' : 'Apply Layout'}
-        </Button>
-      </div>
-      </>
+          {/* Action bar */}
+          <div className="flex items-end gap-3 flex-wrap border-t pt-4">
+            <div className="flex-1 min-w-48 space-y-1">
+              <Label className="text-xs">Plan name (required to apply)</Label>
+              <Input value={planName}
+                onChange={(e) => setPlanName(e.target.value)}
+                placeholder="My warehouse layout"
+                className="h-8 text-sm"/>
+            </div>
+            <Button variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={handlePreview}
+              disabled={previewing || config.zones.length === 0}>
+              {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+              Preview
+            </Button>
+            <Button size="sm"
+              className="gap-1.5"
+              onClick={handleApply}
+              disabled={applying || !planName.trim() || config.zones.length === 0}>
+              {applying ? <Loader2 className="h-4 w-4 animate-spin" /> : editingPlanId ? <Save className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+              {editingPlanId ? 'Update Layout' : 'Apply Layout'}
+            </Button>
+          </div>
+        </>
       ) : null}
     </div>
   );

@@ -107,16 +107,14 @@ function QuantityCellComponent({ getValue, row, column, table, cell, renderValue
 
   return (
     <div className="flex items-center gap-1">
-      <Input
-        type="number"
+      <Input type="number"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         className="h-8 w-20 min-w-[5rem] pr-6"
         step="0.01"
-        min="0"
-      />
+        min="0"/>
       <QtyInfoIcon qty={qty} itemData={itemData} />
     </div>
   );
@@ -144,16 +142,14 @@ function RateCellComponent({ getValue, row, column, table }: CellContext<Quotati
   };
 
   return (
-    <Input
-      type="number"
+    <Input type="number"
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       className="h-8 w-24 min-w-[6rem] pr-6"
       step="0.01"
-      min="0"
-    />
+      min="0"/>
   );
 }
 

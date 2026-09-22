@@ -10,6 +10,7 @@ import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 import { TableSkeleton } from '@horizon-sync/ui/components/ui/table-skeleton';
 
 import type { WMSWorker } from '../../types/wms.types';
+
 import { createWorkerColumns } from './WorkerColumns';
 
 export interface WorkersTableProps {
@@ -84,10 +85,10 @@ export function WorkersTable({
   const columns = React.useMemo(
     () =>
       createWorkerColumns({
-        onEdit: onEdit ?? (() => {}),
-        onDelete: onDelete ? handleDeleteClick : () => {},
+        onEdit: onEdit ?? (() => { /* no edit handler */ }),
+        onDelete: onDelete ? handleDeleteClick : () => { /* no delete handler */ },
         onPrintQR,
-        onRegenerateQR: onRegenerateQR ? handleRegenerateClick : () => {},
+        onRegenerateQR: onRegenerateQR ? handleRegenerateClick : () => { /* no regenerate handler */ },
         showEditAction: !!onEdit,
         showDeleteAction: !!onDelete,
         showRegenerateAction: !!onRegenerateQR,
@@ -110,8 +111,7 @@ export function WorkersTable({
       <Card>
         <CardContent className="p-0">
           <div className="p-6">
-            <EmptyState
-              icon={<Users className="h-12 w-12" />}
+            <EmptyState icon={<Users className="h-12 w-12" />}
               title="No workers found"
               description={hasSearch ? 'Try adjusting your search' : 'Get started by adding your first warehouse worker'}
               action={
@@ -121,8 +121,7 @@ export function WorkersTable({
                     Add Worker
                   </Button>
                 ) : undefined
-              }
-            />
+              }/>
           </div>
         </CardContent>
       </Card>
@@ -133,8 +132,7 @@ export function WorkersTable({
     <>
       <Card>
         <CardContent className="p-0">
-          <DataTable
-            columns={columns}
+          <DataTable columns={columns}
             data={workers}
             config={{
               showSerialNumber: true,
@@ -147,13 +145,11 @@ export function WorkersTable({
             }}
             filterPlaceholder="Search by name, email, username, or employee ID..."
             fixedHeader
-            maxHeight="600px"
-          />
+            maxHeight="600px"/>
         </CardContent>
       </Card>
 
-      <ConfirmationDialog
-        open={confirmDialog.open}
+      <ConfirmationDialog open={confirmDialog.open}
         onOpenChange={(open) => {
           if (!open) setConfirmDialog({ open: false, worker: null, action: null });
         }}
@@ -162,8 +158,7 @@ export function WorkersTable({
         confirmLabel={confirmMeta.confirmLabel}
         variant={confirmMeta.variant}
         loading={confirmLoading}
-        onConfirm={handleConfirm}
-      />
+        onConfirm={handleConfirm}/>
     </>
   );
 }

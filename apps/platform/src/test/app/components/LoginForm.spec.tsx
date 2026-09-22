@@ -158,7 +158,7 @@ describe('LoginForm', () => {
       await user.click(signInButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/password is required/i)).toBeInTheDocument();
+        expect(screen.getByText(/password field is required/i)).toBeInTheDocument();
       });
     });
 
@@ -245,11 +245,15 @@ describe('LoginForm', () => {
       await user.click(signInButton);
 
       await waitFor(() => {
-        expect(mockLogin).toHaveBeenCalledWith('test-token', 'test-refresh-token', expect.objectContaining({
-          id: 'user-123',
-          email: 'test@example.com',
-          organization_id: 'org-123',
-        }));
+        expect(mockLogin).toHaveBeenCalledWith(
+          'test-token',
+          'test-refresh-token',
+          expect.objectContaining({
+            id: 'user-123',
+            email: 'test@example.com',
+            organization_id: 'org-123',
+          }),
+        );
       });
     });
 

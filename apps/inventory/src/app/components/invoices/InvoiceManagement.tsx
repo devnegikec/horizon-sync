@@ -3,17 +3,17 @@ import * as React from 'react';
 import { Lock } from 'lucide-react';
 
 import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
+import { FEATURE_DISABLED_CODE } from '@horizon-sync/ui';
+import { InvoiceDetailDialog, InvoiceManagementFilters, InvoiceManagementHeader, InvoicesTable, InvoiceStats } from '@horizon-sync/ui';
 import { Card, CardContent, ConfirmationDialog } from '@horizon-sync/ui/components';
 
 import { useInvoiceManagement } from '../../hooks/useInvoiceManagement';
-import { FEATURE_DISABLED_CODE } from '@horizon-sync/ui';
 import type { Invoice } from '../../types/invoice.types';
 import { PaymentType, type CreatePaymentPayload } from '../../types/payment.types';
 import { invoiceApi } from '../../utility/api/invoices';
-import { PaymentDialog } from '../payments/PaymentDialog';
 import { ErrorBanner } from '../common';
+import { PaymentDialog } from '../payments/PaymentDialog';
 
-import { InvoiceDetailDialog, InvoiceManagementFilters, InvoiceManagementHeader, InvoicesTable, InvoiceStats } from '@horizon-sync/ui';
 
 export function InvoiceManagement() {
   const {

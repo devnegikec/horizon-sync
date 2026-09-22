@@ -3,16 +3,16 @@ import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { ShoppingCart, Plus, MoreHorizontal, Eye, Edit, Trash2, User, FileText, ClipboardList } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
-import type { SalesOrder } from '../../types/sales-order.types';
 import { getCurrencySymbol } from '../../types/currency.types';
+import type { SalesOrder } from '../../types/sales-order.types';
 import { formatDate } from '../../utility/formatDate';
 import { StatusBadge } from '../quotations/StatusBadge';
-import { useCurrencyStore } from '@horizon-sync/store';
 
 export interface SalesOrdersTableProps {
   salesOrders: SalesOrder[];

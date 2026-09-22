@@ -1,40 +1,15 @@
 import * as React from 'react';
 
-import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { FileText, MoreHorizontal, Eye, Edit, Trash2, Loader2 } from 'lucide-react';
+import { type Table } from '@tanstack/react-table';
+import { FileText, Loader2 } from 'lucide-react';
 
-import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
-import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@horizon-sync/ui/components/ui/dropdown-menu';
+import { Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
+import { DataTable } from '@horizon-sync/ui/components/data-table';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
-import type { AsnOrder, AsnOrderStatus } from '../../types/asn-order.types';
-import { formatDate } from '../../utility';
+import type { AsnOrder } from '../../types/asn-order.types';
 
-function getStatusBadge(status: AsnOrderStatus) {
-  switch (status) {
-    case 'draft':
-      return { variant: 'secondary' as const, label: 'Draft' };
-    case 'confirmed':
-      return { variant: 'success' as const, label: 'Confirmed' };
-    case 'partially_delivered':
-      return { variant: 'warning' as const, label: 'Partially Delivered' };
-    case 'delivered':
-      return { variant: 'success' as const, label: 'Delivered' };
-    case 'closed':
-      return { variant: 'outline' as const, label: 'Closed' };
-    case 'cancelled':
-      return { variant: 'destructive' as const, label: 'Cancelled' };
-    default:
-      return { variant: 'outline' as const, label: status };
-  }
-}
+import { createAsnOrderColumns } from './AsnOrderColumns';
 
 export interface AsnOrdersTableProps {
   asnOrders: AsnOrder[];
@@ -56,6 +31,33 @@ export interface AsnOrdersTableProps {
   recentlyCreatedId?: string | null;
 }
 
+function AsnOrdersEmptyState({ hasActiveFilters, onCreateOrder }: { hasActiveFilters: boolean; onCreateOrder?: () => void }) {
+  const canCreate = !hasActiveFilters && !!onCreateOrder;
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="p-6">
+          <EmptyState icon={<FileText className="h-12 w-12" />}
+            title="No ASN orders found"
+            description={
+              hasActiveFilters
+                ? 'Try adjusting your search or filters'
+                : 'Advance Stock Notice orders will appear here once you create them'
+            }
+            action={
+              canCreate ? (
+                <Button onClick={onCreateOrder} className="gap-2">
+                  Create ASN Order
+                </Button>
+              ) : undefined
+            } />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function AsnOrdersTable({
   asnOrders,
   loading,
@@ -69,14 +71,6 @@ export function AsnOrdersTable({
   serverPagination,
   recentlyCreatedId,
 }: AsnOrdersTableProps) {
-  const [tableInstance, setTableInstance] = React.useState<Table<AsnOrder> | null>(null);
-
-  React.useEffect(() => {
-    if (tableInstance && onTableReady) {
-      onTableReady(tableInstance);
-    }
-  }, [tableInstance, onTableReady]);
-
   const serverPaginationConfig = React.useMemo(() => {
     if (!serverPagination) return undefined;
 
@@ -90,120 +84,10 @@ export function AsnOrdersTable({
     };
   }, [serverPagination]);
 
-  const columns: ColumnDef<AsnOrder, unknown>[] = React.useMemo(
-    () => [
-      {
-        accessorKey: 'asn_order_no',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="ASN Order #" />,
-        cell: ({ row }) => {
-          const orderNo = row.original.asn_order_no;
-          const isNew = recentlyCreatedId && row.original.id === recentlyCreatedId;
-          return (
-            <div className="flex items-center gap-2">
-              <code className="text-sm font-medium">{orderNo}</code>
-              {isNew && (
-                <Badge variant="success" className="text-[10px] px-1.5 py-0">
-                  New
-                </Badge>
-              )}
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: 'status',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-        cell: ({ row }) => {
-          const status = row.original.status as AsnOrderStatus;
-          const statusBadge = getStatusBadge(status);
-          return <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>;
-        },
-      },
-      {
-        accessorKey: 'order_date',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Order Date" />,
-        cell: ({ row }) => {
-          const orderDate = row.original.order_date;
-          return <span className="text-sm">{formatDate(orderDate, 'DD-MMM-YY')}</span>;
-        },
-      },
-      {
-        accessorKey: 'to_warehouse',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Target Warehouse" />,
-        cell: ({ row }) => {
-          const toWarehouse = row.original.to_warehouse;
-          return toWarehouse?.name ? (
-            <span className="text-sm">{toWarehouse.name}</span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          );
-        },
-      },
-      {
-        accessorKey: 'grand_total',
-        header: () => <div className="text-right">Grand Total</div>,
-        cell: ({ row }) => {
-          const grandTotal = row.original.grand_total;
-          return grandTotal ? (
-            <div className="text-right font-medium">{Number(grandTotal).toFixed(2)}</div>
-          ) : (
-            <div className="text-right text-muted-foreground">—</div>
-          );
-        },
-      },
-      {
-        id: 'actions',
-        header: () => <span className="sr-only">Actions</span>,
-        cell: ({ row }) => {
-          const order = row.original;
-          const isDraft = order.status === 'draft';
-
-          return (
-            <div className="text-right">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onView?.(order)}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    View Details
-                  </DropdownMenuItem>
-                  {isDraft && (
-                    <>
-                      <DropdownMenuItem onClick={() => onEdit?.(order)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit Order
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => onDelete?.(order)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          );
-        },
-        enableSorting: false,
-      },
-    ],
+  const columns = React.useMemo(
+    () => createAsnOrderColumns({ onView, onEdit, onDelete, recentlyCreatedId }),
     [onView, onEdit, onDelete, recentlyCreatedId]
   );
-
-  const renderViewOptions = (table: Table<AsnOrder>) => {
-    if (table !== tableInstance) {
-      setTableInstance(table);
-    }
-    return null;
-  };
 
   const getRowClassName = React.useCallback((row: AsnOrder) => {
     if (recentlyCreatedId && row.id === recentlyCreatedId) {
@@ -237,37 +121,13 @@ export function AsnOrdersTable({
   }
 
   if (asnOrders.length === 0) {
-    return (
-      <Card>
-        <CardContent className="p-0">
-          <div className="p-6">
-            <EmptyState
-              icon={<FileText className="h-12 w-12" />}
-              title="No ASN orders found"
-              description={
-                hasActiveFilters
-                  ? 'Try adjusting your search or filters'
-                  : 'Advance Stock Notice orders will appear here once you create them'
-              }
-              action={
-                !hasActiveFilters && onCreateOrder ? (
-                  <Button onClick={onCreateOrder} className="gap-2">
-                    Create ASN Order
-                  </Button>
-                ) : undefined
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <AsnOrdersEmptyState hasActiveFilters={hasActiveFilters} onCreateOrder={onCreateOrder} />;
   }
 
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable
-          columns={columns}
+        <DataTable columns={columns}
           data={asnOrders}
           config={{
             showSerialNumber: true,
@@ -280,11 +140,10 @@ export function AsnOrdersTable({
             serverPagination: serverPaginationConfig,
           }}
           filterPlaceholder="Search by ASN order number..."
-          renderViewOptions={renderViewOptions}
+          onTableReady={onTableReady}
           getRowClassName={getRowClassName}
           fixedHeader
-          maxHeight="auto"
-        />
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );

@@ -11,18 +11,29 @@ import type {
   SessionSummary,
   ReceivingSlip,
   PaginatedReceivingSlips,
+  ReceivingSlipActionResult,
   PutAwayList,
+  PutAwayListBatchResponse,
+  PutAwayExceptionRequest,
+  PaginatedPutAwayLists,
   PutAwayItem,
   PickList,
   PaginatedPickLists,
   PickScanResult,
   SAPInvoicePayload,
+  UpdatePriorityRequest,
+  OutboundOrder,
+  PaginatedOutboundOrders,
+  PackingSlip,
+  PaginatedPackingSlips,
   GateSession,
   GateScanResult,
   GateSessionProgress,
   GateSessionRequest,
   DispatchRecord,
   DispatchListResponse,
+  ErpSyncListResponse,
+  ErpSyncFlushResponse,
   WMSWorker,
   WMSWorkerListResponse,
   WMSWorkerCreate,
@@ -34,7 +45,42 @@ import type {
   CopyStockRequest,
   StockImportRequest,
   StockImportResult,
+  BinStateResponse,
+  BinStockLevelsResponse,
+  BinStockParentsResponse,
+  CapacityTreeNode,
   WMSDashboardStats,
+  AsnReceivingSummary,
+  VehicleArrival,
+  VehicleArrivalCreate,
+  VehicleArrivalUpdate,
+  PaginatedVehicleArrivals,
+  InboundException,
+  InboundExceptionReason,
+  BulkDispositionAction,
+  BulkDispositionResponse,
+  PaginatedInboundExceptions,
+  PickListBatchResponse,
+  FlagLineRequest,
+  FlagLineResponse,
+  ShortBalanceFilters,
+  PaginatedShortBalances,
+  ShortBalance,
+  ShortBalanceEvent,
+  CloseShortBalanceRequest,
+  CancelReturnRegistrationRequest,
+  CreateReturnRegistrationRequest,
+  GenerateReturnPutAwayRequest,
+  GenerateReturnPutAwayResponse,
+  PaginatedReturnReceiptNotes,
+  PaginatedReturnRegistrations,
+  ReturnDispositionRequest,
+  ReturnNoteApprovalRequest,
+  ReturnNoteRejectionRequest,
+  ReturnReceiptNoteDetail,
+  ReturnReference,
+  ReturnRegistrationDetail,
+  ReturnSlip,
 } from '../../types/wms.types';
 
 const BASE = `${environment.apiCoreUrl}/api/v1`;
@@ -44,17 +90,88 @@ function headers(token: string) {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
+/**
+ * Build a deterministic idempotency key for an idempotent pick mutation
+ * (complete/cancel). Stable across retries of the same action.
+ */
+function idempotencyKey(operation: 'complete' | 'cancel', pickListId: string): string {
+  return `${operation}:${pickListId}`;
+}
+
+let scanNonceCounter = 0;
+
+/**
+ * Generate a unique idempotency key for a single scan *action*.
+ *
+ * Unlike the payload-derived key, this is distinct per scan so legitimate
+ * repeated scans of the same QR code in the same bin are NOT treated as
+ * duplicate retries. Callers must reuse the returned key for retries of the
+ * *same* scan (e.g. after a network failure).
+ */
+export function scanIdempotencyKey(pickListId: string): string {
+  scanNonceCounter += 1;
+  const nonce =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${scanNonceCounter}`;
+  return `scan:${pickListId}:${nonce}`;
+}
+
+/** `Error` that also carries the HTTP status and the parsed error body. */
+export type WmsHttpError = Error & { status: number; details?: unknown };
+
+function httpError(message: string, status: number, details?: unknown): WmsHttpError {
+  const error = new Error(message) as WmsHttpError;
+  error.status = status;
+  error.details = details;
+  return error;
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Not JSON — could be HTML (nginx 502) or plain text.
+    return undefined;
+  }
+}
+
+/**
+ * Displayable message from either envelope: the domain `{ message, hint, … }`
+ * one or FastAPI's `{ detail: { message } }` one. The full body travels on
+ * `details` so `toNormalizedApiError` can still read `hint`/`details[]`.
+ */
+function errorBodyMessage(body: unknown, fallback: string): string {
+  if (!body || typeof body !== 'object') return fallback;
+  const { message, detail } = body as { message?: unknown; detail?: unknown };
+  if (typeof message === 'string' && message) return message;
+  if (typeof detail === 'string' && detail) return detail;
+  if (detail && typeof detail === 'object' && 'message' in detail) {
+    return String((detail as { message: unknown }).message);
+  }
+  return fallback;
+}
+
 async function req<T>(url: string, token: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(url, { headers: headers(token), ...options });
+  const { headers: extraHeaders, body, ...rest } = options;
+  // Let the browser set the multipart boundary for file uploads; only JSON
+  // bodies get an explicit Content-Type.
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+  const baseHeaders: Record<string, string> = { Authorization: `Bearer ${token}` };
+  if (!isFormData) {
+    baseHeaders['Content-Type'] = 'application/json';
+  }
+  const res = await fetch(url, {
+    ...rest,
+    body,
+    headers: { ...baseHeaders, ...(extraHeaders as Record<string, string> | undefined) },
+  });
   if (!res.ok) {
     const text = await res.text();
-    let detail = text;
-    try {
-      detail = JSON.parse(text)?.detail ?? text;
-    } catch {
-      // not json
-    }
-    throw new Error(detail || `HTTP ${res.status}`);
+    const body = parseJson(text);
+    // `message` stays a displayable string so existing `err.message` callers keep
+    // working; `details` carries the whole body for the error normaliser.
+    throw httpError(errorBodyMessage(body, text || `HTTP ${res.status}`), res.status, body);
   }
   if (res.status === 204) return {} as T;
   return res.json();
@@ -71,8 +188,7 @@ export const layoutApi = {
       body: JSON.stringify(data),
     }),
 
-  getTree: (token: string, warehouseId: string) =>
-    req<LocationTree[]>(`${BASE}/warehouse-locations/tree/${warehouseId}`, token),
+  getTree: (token: string, warehouseId: string) => req<LocationTree[]>(`${BASE}/warehouse-locations/tree/${warehouseId}`, token),
 
   listLocations: (
     token: string,
@@ -93,8 +209,7 @@ export const layoutApi = {
     return req<PaginatedLocations>(`${BASE}/warehouse-locations?${p}`, token);
   },
 
-  getLocation: (token: string, id: string) =>
-    req<WarehouseLocation>(`${BASE}/warehouse-locations/${id}`, token),
+  getLocation: (token: string, id: string) => req<WarehouseLocation>(`${BASE}/warehouse-locations/${id}`, token),
 
   updateLocation: (token: string, id: string, data: UpdateLocationRequest) =>
     req<WarehouseLocation>(`${BASE}/warehouse-locations/${id}`, token, {
@@ -105,14 +220,10 @@ export const layoutApi = {
   deactivateLocation: (token: string, id: string) =>
     req<WarehouseLocation>(`${BASE}/warehouse-locations/${id}/deactivate`, token, { method: 'POST', body: '{}' }),
 
-  getLocationSummary: (token: string, id: string) =>
-    req<LocationSummary>(`${BASE}/warehouse-locations/${id}/summary`, token),
+  getLocationSummary: (token: string, id: string) => req<LocationSummary>(`${BASE}/warehouse-locations/${id}/summary`, token),
 
   searchLocations: (token: string, warehouseId: string, query: string, limit = 20) =>
-    req<WarehouseLocation[]>(
-      `${BASE}/warehouse-locations/search?warehouse_id=${warehouseId}&q=${encodeURIComponent(query)}&limit=${limit}`,
-      token,
-    ),
+    req<WarehouseLocation[]>(`${BASE}/warehouse-locations/search?warehouse_id=${warehouseId}&q=${encodeURIComponent(query)}&limit=${limit}`, token),
 };
 
 // ============================================
@@ -120,7 +231,7 @@ export const layoutApi = {
 // ============================================
 
 export const inboundApi = {
-  startSession: (token: string, data: { warehouse_id: string; dock_location?: string | null }) =>
+  startSession: (token: string, data: { warehouse_id: string; dock_location?: string | null; asn_order_id?: string | null }) =>
     req<ScanSession>(`${BASE}/inbound/sessions`, token, { method: 'POST', body: JSON.stringify(data) }),
 
   recordScan: (token: string, sessionId: string, data: { qr_data: string }) =>
@@ -132,8 +243,12 @@ export const inboundApi = {
   endSession: (token: string, sessionId: string) =>
     req<ReceivingSlip>(`${BASE}/inbound/sessions/${sessionId}/end`, token, { method: 'POST', body: '{}' }),
 
-  getSessionSummary: (token: string, sessionId: string) =>
-    req<SessionSummary>(`${BASE}/inbound/sessions/${sessionId}/summary`, token),
+  getSessionSummary: (token: string, sessionId: string) => req<SessionSummary>(`${BASE}/inbound/sessions/${sessionId}/summary`, token),
+
+  getAsnReceivingSummary: (token: string, asnOrderId: string, sessionId?: string) => {
+    const query = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : '';
+    return req<AsnReceivingSummary>(`${BASE}/asn-orders/${asnOrderId}/receiving-summary${query}`, token);
+  },
 
   listReceivingSlips: (token: string, params: { warehouse_id?: string; status?: string; page?: number; page_size?: number }) => {
     const p = new URLSearchParams();
@@ -143,25 +258,155 @@ export const inboundApi = {
     return req<PaginatedReceivingSlips>(`${BASE}/inbound/receiving-slips?${p}`, token);
   },
 
-  getReceivingSlip: (token: string, slipId: string) =>
-    req<ReceivingSlip>(`${BASE}/inbound/receiving-slips/${slipId}`, token),
+  getReceivingSlip: (token: string, slipId: string) => req<ReceivingSlip>(`${BASE}/inbound/receiving-slips/${slipId}`, token),
 
   approveSlip: (token: string, slipId: string, workerId?: string) =>
-    req<ReceivingSlip>(`${BASE}/inbound/receiving-slips/${slipId}/approve`, token, {
+    req<ReceivingSlipActionResult>(`${BASE}/inbound/receiving-slips/${slipId}/approve`, token, {
       method: 'POST',
       body: JSON.stringify(workerId ? { worker_id: workerId } : {}),
     }),
 
   rejectSlip: (token: string, slipId: string, reason: string) =>
-    req<ReceivingSlip>(`${BASE}/inbound/receiving-slips/${slipId}/reject`, token, {
+    req<ReceivingSlipActionResult>(`${BASE}/inbound/receiving-slips/${slipId}/reject`, token, {
       method: 'POST',
       body: JSON.stringify({ reason }),
     }),
 
-  flagLineItem: (token: string, slipId: string, itemId: string, flag: 'short' | 'damaged', notes?: string) =>
-    req<unknown>(`${BASE}/inbound/receiving-slips/${slipId}/items/${itemId}/flag`, token, {
+  /**
+   * Flags one receiving-slip line. `short_qty` is required for `short` and must
+   * be omitted otherwise; `destination` is the inverse — required for the
+   * segregation flags, rejected for `short`.
+   */
+  flagLineItem: (token: string, slipId: string, itemId: string, data: FlagLineRequest) =>
+    req<FlagLineResponse>(`${BASE}/inbound/receiving-slips/${slipId}/items/${itemId}/flag`, token, {
       method: 'POST',
-      body: JSON.stringify({ flag, notes }),
+      body: JSON.stringify(data),
+    }),
+
+  listShortBalances: (token: string, params: ShortBalanceFilters = {}) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') p.append(key, String(value));
+    });
+    return req<PaginatedShortBalances>(`${BASE}/inbound/short-balances?${p}`, token);
+  },
+
+  getShortBalance: (token: string, balanceId: string) =>
+    req<ShortBalance>(`${BASE}/inbound/short-balances/${balanceId}`, token),
+
+  getShortBalanceHistory: (token: string, balanceId: string) =>
+    req<ShortBalanceEvent[]>(`${BASE}/inbound/short-balances/${balanceId}/history`, token),
+
+  closeShortBalance: (token: string, balanceId: string, data: CloseShortBalanceRequest) =>
+    req<ShortBalance>(`${BASE}/inbound/short-balances/${balanceId}/close`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  rejectItem: (token: string, slipId: string, itemId: string, reason: string) =>
+    req<unknown>(`${BASE}/inbound/receiving-slips/${slipId}/items/${itemId}/reject`, token, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+
+  listExceptionReasons: (token: string) => req<InboundExceptionReason[]>(`${BASE}/inbound/exception-reasons`, token),
+
+  classifyException: (
+    token: string,
+    slipId: string,
+    itemId: string,
+    data: {
+      classification: 'short' | 'damaged' | 'excess' | 'hold' | 'quarantine';
+      reason_code: string;
+      destination?: 'HOLD' | 'QUARANTINE';
+      note?: string;
+    },
+  ) =>
+    req<InboundException>(`${BASE}/inbound/receiving-slips/${slipId}/items/${itemId}/exception`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  listExceptions: (
+    token: string,
+    params: { warehouse_id?: string; destination?: string; status?: string; page?: number; page_size?: number } = {},
+  ) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') p.append(key, String(value));
+    });
+    return req<PaginatedInboundExceptions>(`${BASE}/inbound/exceptions?${p}`, token);
+  },
+
+  bulkDisposeExceptions: (token: string, data: { exception_ids: string[]; action: BulkDispositionAction; note?: string }) =>
+    req<BulkDispositionResponse>(`${BASE}/inbound/exceptions/bulk-disposition`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  disposeException: (
+    token: string,
+    exceptionId: string,
+    data: {
+      action: 'release_to_receiving' | 'move_to_hold' | 'move_to_quarantine' | 'return_to_sender' | 'dispose';
+      note?: string;
+      item_id?: string;
+    },
+  ) =>
+    req<InboundException>(`${BASE}/inbound/exceptions/${exceptionId}/disposition`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  uploadExceptionEvidence: async (token: string, exceptionId: string, file: File): Promise<InboundException> => {
+    const body = new FormData();
+    body.append('file', file);
+    const res = await fetch(`${BASE}/inbound/exceptions/${exceptionId}/evidence`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body,
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => null))?.detail || 'Evidence upload failed');
+    return res.json();
+  },
+};
+
+// ============================================
+// VEHICLE ARRIVALS
+// ============================================
+
+export const vehicleArrivalApi = {
+  register: (token: string, data: VehicleArrivalCreate) =>
+    req<VehicleArrival>(`${BASE}/vehicle-arrivals`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  list: (token: string, params: { warehouse_id?: string; status?: string; search?: string; page?: number; page_size?: number }) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
+    });
+    return req<PaginatedVehicleArrivals>(`${BASE}/vehicle-arrivals?${p}`, token);
+  },
+
+  get: (token: string, id: string) => req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}`, token),
+
+  update: (token: string, id: string, data: VehicleArrivalUpdate) =>
+    req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}`, token, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  linkAsns: (token: string, id: string, asnOrderIds: string[]) =>
+    req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}/asns`, token, {
+      method: 'POST',
+      body: JSON.stringify({ asn_order_ids: asnOrderIds }),
+    }),
+
+  unlinkAsn: (token: string, id: string, asnOrderId: string) =>
+    req<VehicleArrival>(`${BASE}/vehicle-arrivals/${id}/asns/${asnOrderId}`, token, {
+      method: 'DELETE',
     }),
 };
 
@@ -175,11 +420,10 @@ export const putAwayApi = {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
     });
-    return req<{ put_away_lists: PutAwayList[]; pagination: unknown }>(`${BASE}/put-away?${p}`, token);
+    return req<PaginatedPutAwayLists>(`${BASE}/put-away?${p}`, token);
   },
 
-  getPutAwayList: (token: string, id: string) =>
-    req<PutAwayList>(`${BASE}/put-away/${id}`, token),
+  getPutAwayList: (token: string, id: string) => req<PutAwayList>(`${BASE}/put-away/${id}`, token),
 
   completeItem: (token: string, listId: string, itemId: string, binId?: string) =>
     req<PutAwayItem>(`${BASE}/put-away/${listId}/items/${itemId}/complete`, token, {
@@ -193,8 +437,27 @@ export const putAwayApi = {
       body: JSON.stringify({ reason }),
     }),
 
-  generateFromSlip: (token: string, slipId: string) =>
-    req<PutAwayList>(`${BASE}/put-away/generate-from-slip/${slipId}`, token, { method: 'POST', body: '{}' }),
+  /**
+   * Raises an inbound exception for stock found to be unfit while being put
+   * away. `itemId` is the put-away item id for `scope: 'item'`, and the master
+   * pack's q-seal id for `scope: 'pack'` — in which case the backend raises a
+   * single exception covering every unit covered by `item_ids`.
+   */
+  raiseException: (token: string, listId: string, itemId: string, data: PutAwayExceptionRequest) =>
+    req<InboundException>(`${BASE}/put-away/${listId}/items/${itemId}/exception`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  generateFromSlip: (
+    token: string,
+    slipId: string,
+    data?: { mode?: 'auto' | 'manual'; worker_id?: string; worker_ids?: string[] },
+  ) =>
+    req<PutAwayList | PutAwayListBatchResponse>(`${BASE}/put-away/generate-from-slip/${slipId}`, token, {
+      method: 'POST',
+      body: JSON.stringify(data ?? {}),
+    }),
 };
 
 // ============================================
@@ -207,7 +470,7 @@ export const outboundApi = {
 
   listPickLists: (
     token: string,
-    params: { status?: string; warehouse_id?: string; invoice_reference?: string; page?: number; page_size?: number },
+    params: { status?: string; warehouse_id?: string; invoice_reference?: string; sort_by?: string; page?: number; page_size?: number },
   ) => {
     const p = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
@@ -216,20 +479,94 @@ export const outboundApi = {
     return req<PaginatedPickLists>(`${BASE}/outbound?${p}`, token);
   },
 
-  getPickList: (token: string, id: string) =>
-    req<PickList>(`${BASE}/outbound/${id}`, token),
+  getPickList: (token: string, id: string) => req<PickList>(`${BASE}/outbound/${id}`, token),
 
-  recordPickScan: (token: string, pickListId: string, qrData: string) =>
+  recordPickScan: (token: string, pickListId: string, qrData: string, binLocationId?: string | null, idempotencyKeyOverride?: string) =>
     req<PickScanResult>(`${BASE}/outbound/${pickListId}/scan`, token, {
       method: 'POST',
-      body: JSON.stringify({ qr_data: qrData }),
+      body: JSON.stringify({ qr_data: qrData, bin_location_id: binLocationId ?? null }),
+      headers: {
+        'Idempotency-Key': idempotencyKeyOverride ?? scanIdempotencyKey(pickListId),
+      },
     }),
 
   completePickList: (token: string, id: string) =>
-    req<PickList>(`${BASE}/outbound/${id}/complete`, token, { method: 'POST', body: '{}' }),
+    req<PickList>(`${BASE}/outbound/${id}/complete`, token, {
+      method: 'POST',
+      body: '{}',
+      headers: { 'Idempotency-Key': idempotencyKey('complete', id) },
+    }),
 
   cancelPickList: (token: string, id: string) =>
-    req<PickList>(`${BASE}/outbound/${id}/cancel`, token, { method: 'POST', body: '{}' }),
+    req<PickList>(`${BASE}/outbound/${id}/cancel`, token, {
+      method: 'POST',
+      body: '{}',
+      headers: { 'Idempotency-Key': idempotencyKey('cancel', id) },
+    }),
+
+  assignWorker: (token: string, id: string, workerId: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/assign`, token, {
+      method: 'POST',
+      body: JSON.stringify({ worker_id: workerId }),
+    }),
+
+  acceptTask: (token: string, id: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/accept`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  confirm: (token: string, id: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/confirm`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  markReady: (token: string, id: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/mark-ready`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  markInTransit: (token: string, id: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/mark-in-transit`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  markDelivered: (token: string, id: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/mark-delivered`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  stageTransfer: (token: string, id: string, stagingLocationId: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/stage-transfer`, token, {
+      method: 'POST',
+      body: JSON.stringify({ staging_location_id: stagingLocationId }),
+    }),
+
+  stageScan: (token: string, id: string, stagingLocationId: string) =>
+    req<PickList>(`${BASE}/outbound/${id}/stage-scan`, token, {
+      method: 'POST',
+      body: JSON.stringify({ staging_location_id: stagingLocationId }),
+    }),
+
+  assignHandlingUnit: (token: string, pickListId: string, pickListItemId: string, handlingUnitId: string) =>
+    req<{ pick_list_item_id: string; handling_unit_id: string }>(
+      `${BASE}/outbound/${pickListId}/items/${pickListItemId}/handling-unit`,
+      token,
+      {
+        method: 'POST',
+        body: JSON.stringify({ handling_unit_id: handlingUnitId }),
+      },
+    ),
+
+  updatePriority: (token: string, id: string, data: UpdatePriorityRequest) =>
+    req<PickList>(`${BASE}/outbound/${id}/priority`, token, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 
   // Gate Verification
   startGateSession: (token: string, data: GateSessionRequest) =>
@@ -265,8 +602,131 @@ export const outboundApi = {
     return req<DispatchListResponse>(`${BASE}/outbound/dispatches?${p}`, token);
   },
 
-  getDispatch: (token: string, id: string) =>
-    req<DispatchRecord>(`${BASE}/outbound/dispatches/${id}`, token),
+  getDispatch: (token: string, id: string) => req<DispatchRecord>(`${BASE}/outbound/dispatches/${id}`, token),
+};
+
+// ============================================
+// OUTBOUND ORDERS (order-driven outbound flow)
+// ============================================
+
+export const outboundOrderApi = {
+  importOrders: (
+    token: string,
+    file: File,
+    warehouseId: string,
+    orderType: 'asn' | 'sap' = 'sap',
+  ) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return req<{ orders_created: number; total_items: number; errors: string[]; orders_parsed: number }>(
+      `${BASE}/outbound/import?warehouse_id=${encodeURIComponent(warehouseId)}&order_type=${orderType}`,
+      token,
+      { method: 'POST', body: formData },
+    );
+  },
+
+  listOrders: (
+    token: string,
+    params: { status?: string; order_type?: string; warehouse_id?: string; page?: number; page_size?: number },
+  ) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
+    });
+    return req<PaginatedOutboundOrders>(`${BASE}/outbound/orders?${p}`, token);
+  },
+
+  getOrder: (token: string, id: string) => req<OutboundOrder>(`${BASE}/outbound/orders/${id}`, token),
+
+  createOrder: (token: string, data: SAPInvoicePayload, orderType: 'asn' | 'sap' = 'sap') =>
+    req<OutboundOrder>(`${BASE}/outbound/orders?order_type=${orderType}`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  confirmOrder: (token: string, id: string) =>
+    req<OutboundOrder>(`${BASE}/outbound/orders/${id}/confirm`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  generatePickLists: (
+    token: string,
+    id: string,
+    data?: { mode?: 'auto' | 'manual'; worker_id?: string; worker_ids?: string[] }
+  ) =>
+    req<PickList[]>(`${BASE}/outbound/orders/${id}/generate-pick-lists`, token, {
+      method: 'POST',
+      body: JSON.stringify(data ?? {}),
+    }),
+};
+
+
+// ============================================
+// PACKING SLIPS (internal staging of picked goods)
+// ============================================
+
+export const packingSlipApi = {
+  createFromOrders: (token: string, orderIds: string[]) =>
+    req<PackingSlip>(`${BASE}/outbound/packing-slips/`, token, {
+      method: 'POST',
+      body: JSON.stringify({ order_ids: orderIds }),
+    }),
+
+  packPickLists: (token: string, pickListIds: string[], packingSlipId?: string) =>
+    req<PackingSlip>(`${BASE}/outbound/packing-slips/pick-lists`, token, {
+      method: 'POST',
+      body: JSON.stringify({ pick_list_ids: pickListIds, packing_slip_id: packingSlipId ?? null }),
+    }),
+
+  list: (
+    token: string,
+    params: { warehouse_id?: string; status?: string; page?: number; page_size?: number },
+  ) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
+    });
+    return req<PaginatedPackingSlips>(`${BASE}/outbound/packing-slips/?${p}`, token);
+  },
+
+  get: (token: string, id: string) =>
+    req<PackingSlip>(`${BASE}/outbound/packing-slips/${id}`, token),
+
+  markLoading: (token: string, id: string) =>
+    req<PackingSlip>(`${BASE}/outbound/packing-slips/${id}/mark-loading`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+
+  dispatch: (token: string, id: string) =>
+    req<DispatchRecord>(`${BASE}/outbound/packing-slips/${id}/dispatch`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
+};
+
+// ============================================
+// ERP SYNC QUEUE (WF-022 / ALT-009)
+// ============================================
+
+export const erpSyncApi = {
+  listMessages: (
+    token: string,
+    params: { status?: string; page?: number; page_size?: number },
+  ) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
+    });
+    return req<ErpSyncListResponse>(`${BASE}/outbound/erp-sync?${p}`, token);
+  },
+
+  flush: (token: string) =>
+    req<ErpSyncFlushResponse>(`${BASE}/outbound/erp-sync/flush`, token, {
+      method: 'POST',
+      body: '{}',
+    }),
 };
 
 // ============================================
@@ -286,14 +746,19 @@ export const wmsWorkerApi = {
     return req<WMSWorkerListResponse>(`${IDENTITY_BASE}/identity/workers?${p}`, token);
   },
 
-  get: (token: string, id: string) =>
-    req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}`, token),
+  get: (token: string, id: string) => req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}`, token),
 
   update: (token: string, id: string, data: WMSWorkerUpdate) =>
     req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}`, token, { method: 'PATCH', body: JSON.stringify(data) }),
 
-  delete: (token: string, id: string) =>
-    req<void>(`${IDENTITY_BASE}/identity/workers/${id}`, token, { method: 'DELETE' }),
+  delete: (token: string, id: string) => req<void>(`${IDENTITY_BASE}/identity/workers/${id}`, token, { method: 'DELETE' }),
+
+  importWorkers: (token: string, data: { organization_id?: string; workers: WMSWorkerCreate[] }) =>
+    req<{ created: number; failed: number; total: number; errors: { row: number; error: string }[] }>(
+      `${IDENTITY_BASE}/identity/workers/import`,
+      token,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
 
   regenerateBarcode: (token: string, id: string) =>
     req<WMSWorker>(`${IDENTITY_BASE}/identity/workers/${id}/regenerate-qr`, token, { method: 'POST', body: '{}' }),
@@ -311,8 +776,7 @@ export const wmsWorkerApi = {
 // ============================================
 
 export const wmsDeviceApi = {
-  create: (token: string, data: WMSDeviceCreate) =>
-    req<WMSDevice>(`${BASE}/wms-devices`, token, { method: 'POST', body: JSON.stringify(data) }),
+  create: (token: string, data: WMSDeviceCreate) => req<WMSDevice>(`${BASE}/wms-devices`, token, { method: 'POST', body: JSON.stringify(data) }),
 
   list: (token: string, params: { warehouse_id?: string; status?: string; search?: string; page?: number; page_size?: number }) => {
     const p = new URLSearchParams();
@@ -322,14 +786,12 @@ export const wmsDeviceApi = {
     return req<WMSDeviceListResponse>(`${BASE}/wms-devices?${p}`, token);
   },
 
-  get: (token: string, id: string) =>
-    req<WMSDevice>(`${BASE}/wms-devices/${id}`, token),
+  get: (token: string, id: string) => req<WMSDevice>(`${BASE}/wms-devices/${id}`, token),
 
   update: (token: string, id: string, data: WMSDeviceUpdate) =>
     req<WMSDevice>(`${BASE}/wms-devices/${id}`, token, { method: 'PATCH', body: JSON.stringify(data) }),
 
-  delete: (token: string, id: string) =>
-    req<void>(`${BASE}/wms-devices/${id}`, token, { method: 'DELETE' }),
+  delete: (token: string, id: string) => req<void>(`${BASE}/wms-devices/${id}`, token, { method: 'DELETE' }),
 };
 
 // ============================================
@@ -337,8 +799,13 @@ export const wmsDeviceApi = {
 // ============================================
 
 export const binStockApi = {
-  copy: (token: string, data: CopyStockRequest) =>
-    req<unknown>(`${BASE}/bin-stock/copy`, token, { method: 'POST', body: JSON.stringify(data) }),
+  getLevels: (token: string, binId: string) =>
+    req<BinStockLevelsResponse>(`${BASE}/bin-stock/${binId}`, token),
+
+  getParents: (token: string, binId: string) =>
+    req<BinStockParentsResponse>(`${BASE}/bin-stock/${binId}/parents`, token),
+
+  copy: (token: string, data: CopyStockRequest) => req<unknown>(`${BASE}/bin-stock/copy`, token, { method: 'POST', body: JSON.stringify(data) }),
 
   exportCsv: (token: string, params?: { warehouse_id?: string; item_id?: string; bin_id?: string }) => {
     const p = new URLSearchParams();
@@ -369,3 +836,121 @@ export const wmsDashboardApi = {
     return req<WMSDashboardStats>(`${BASE}/wms-dashboard/stats?${p}`, token);
   },
 };
+
+// ============================================
+// CAPACITY
+// ============================================
+
+export const capacityApi = {
+  getTree: (token: string, warehouseId: string) => req<CapacityTreeNode>(`${BASE}/capacity/warehouses/${warehouseId}/tree`, token),
+
+  getBinStates: (token: string, warehouseId: string) => req<BinStateResponse[]>(`${BASE}/capacity/warehouses/${warehouseId}/bin-states`, token),
+};
+
+// ============================================
+// RETURNS
+// ============================================
+
+/**
+ * Return receipt notes. The dock captures the units on the handheld and ends the
+ * session; everything here is the supervisor's review, disposition and sign-off.
+ * Approving moves stock, so no caller may treat these as optimistic.
+ */
+export const returnApi = {
+  /** Resolves the invoice/party/warehouse triple so the form picks real records (§4.1). */
+  getReferences: (token: string, params: { invoice_no?: string; party_id?: string; warehouse_id?: string }) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') p.append(key, String(value));
+    });
+    return req<ReturnReference>(`${BASE}/returns/references?${p}`, token);
+  },
+
+  listRegistrations: (
+    token: string,
+    params: {
+      status?: string;
+      warehouse_id?: string;
+      party_id?: string;
+      invoice_no?: string;
+      from?: string;
+      to?: string;
+      page?: number;
+      page_size?: number;
+    } = {},
+  ) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') p.append(key, String(value));
+    });
+    return req<PaginatedReturnRegistrations>(`${BASE}/returns/registrations?${p}`, token);
+  },
+
+  getRegistration: (token: string, registrationId: string) =>
+    req<ReturnRegistrationDetail>(`${BASE}/returns/registrations/${registrationId}`, token),
+
+  createRegistration: (token: string, data: CreateReturnRegistrationRequest) =>
+    req<ReturnRegistrationDetail>(`${BASE}/returns/registrations`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  cancelRegistration: (token: string, registrationId: string, data: CancelReturnRegistrationRequest) =>
+    req<unknown>(`${BASE}/returns/registrations/${registrationId}/cancel`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  listReceiptNotes: (
+    token: string,
+    params: { status?: string; warehouse_id?: string; registration_id?: string; page?: number; page_size?: number } = {},
+  ) => {
+    const p = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') p.append(key, String(value));
+    });
+    return req<PaginatedReturnReceiptNotes>(`${BASE}/returns/receipt-notes?${p}`, token);
+  },
+
+  getReceiptNote: (token: string, noteId: string) =>
+    req<ReturnReceiptNoteDetail>(`${BASE}/returns/receipt-notes/${noteId}`, token),
+
+  approveReceiptNote: (token: string, noteId: string, data: ReturnNoteApprovalRequest) =>
+    req<unknown>(`${BASE}/returns/receipt-notes/${noteId}/approve`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  rejectReceiptNote: (token: string, noteId: string, data: ReturnNoteRejectionRequest) =>
+    req<unknown>(`${BASE}/returns/receipt-notes/${noteId}/reject`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  disposeLine: (token: string, noteId: string, data: ReturnDispositionRequest) =>
+    req<unknown>(`${BASE}/returns/receipt-notes/${noteId}/disposition`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  generatePutAway: (token: string, noteId: string, data: GenerateReturnPutAwayRequest) =>
+    req<GenerateReturnPutAwayResponse>(`${BASE}/returns/receipt-notes/${noteId}/generate-put-away`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getSlip: (token: string, noteId: string) => req<ReturnSlip>(`${BASE}/returns/receipt-notes/${noteId}/slip`, token),
+
+  /** The slip as a file: it is not JSON, so it bypasses `req`. */
+  downloadSlipCsv: async (token: string, noteId: string): Promise<Blob> => {
+    const res = await fetch(`${BASE}/returns/receipt-notes/${noteId}/slip?format=csv`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw httpError(errorBodyMessage(parseJson(text), text || `HTTP ${res.status}`), res.status, parseJson(text));
+    }
+    return res.blob();
+  },
+};
+

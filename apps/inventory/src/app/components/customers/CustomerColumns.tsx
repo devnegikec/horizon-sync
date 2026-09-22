@@ -15,8 +15,8 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 import { cn } from '@horizon-sync/ui/lib';
 
-import type { Customer } from '../../types/customer.types';
 import { getCurrencySymbol } from '../../types/currency.types';
+import type { Customer } from '../../types/customer.types';
 
 interface CustomerColumnsProps {
   onViewCustomer: (customer: Customer) => void;

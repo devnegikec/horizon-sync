@@ -43,6 +43,7 @@ export default composePlugins(withNx(), withReact(), withModuleFederation(config
     new webpack.DefinePlugin({
       'process.env.NX_API_CORE_URL': JSON.stringify(process.env.NX_API_CORE_URL),
       'process.env.NX_API_BASE_URL': JSON.stringify(process.env.NX_API_BASE_URL),
+      'process.env.NX_API_IDENTITY_URL': JSON.stringify(process.env.NX_API_IDENTITY_URL),
       'process.env.NX_SEARCH_API_BASE_URL': JSON.stringify(process.env.NX_SEARCH_API_BASE_URL),
       'process.env.NX_NODE_ENV': JSON.stringify(process.env.NX_NODE_ENV),
     }),

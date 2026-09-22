@@ -6,11 +6,11 @@ import type { StockEntry, StockEntryStatus } from '../../../../app/types/stock.t
 
 /**
  * Property 9: Status-based action button rendering
- * 
+ *
  * For any stock entry record, the system should display edit and delete buttons
  * only when status is "draft", and display only view button when status is
  * "submitted" or "cancelled".
- * 
+ *
  * **Validates: Requirements 3.8, 3.9**
  */
 
@@ -60,7 +60,11 @@ jest.mock('@horizon-sync/ui/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: any) => <div data-testid="dropdown-menu">{children}</div>,
   DropdownMenuContent: ({ children }: any) => <div data-testid="dropdown-content">{children}</div>,
   DropdownMenuItem: ({ children, onClick }: any) => (
-    <div data-testid="dropdown-menu-item" onClick={onClick}>
+    <div data-testid="dropdown-menu-item"
+      role="menuitem"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={onClick}>
       {children}
     </div>
   ),
@@ -114,16 +118,16 @@ describe('Property 9: Status-based action button rendering', () => {
             // Count menu items - draft should have more items (View, Edit, Delete)
             // Non-draft should have fewer items (only View)
             const menuItems = container.querySelectorAll('[data-testid="dropdown-menu-item"]');
-            
+
             if (isDraft) {
               // Draft entries should have: View, Edit, Delete (3 items per entry)
               // Plus separators between them
               const separators = container.querySelectorAll('[data-testid="dropdown-menu-separator"]');
-              
+
               // Property: Draft entries must have edit and delete options available
               // We verify this by checking that there are more menu items than just "View"
               expect(menuItems.length).toBeGreaterThanOrEqual(entries.length);
-              
+
               // Property: Draft entries should have separators (indicating multiple action groups)
               const draftCount = entries.filter((e) => e.status === 'draft').length;
               if (draftCount > 0) {

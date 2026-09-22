@@ -59,12 +59,33 @@ const getInitialFormData = (): ItemFormData & { itemGroupName: string } => ({
   // Tax & Additional
   salesTaxTemplateId: null,
   purchaseTaxTemplateId: null,
+  brandId: '',
+  gtin: '',
   barcode: '',
   imageUrl: '',
   images: [],
   tags: [],
   customFields: {},
   extraData: {},
+
+  // Packaging Details
+  packagingUnitName: 'Each',
+  packagingConversionFactor: '1',
+  packagingItemsPerMasterPack: '',
+  packagingLengthMm: '',
+  packagingWidthMm: '',
+  packagingHeightMm: '',
+  packagingWeightGrams: '',
+
+  // Master Carton
+  masterPackUnitName: '',
+  masterPackLengthMm: '',
+  masterPackWidthMm: '',
+  masterPackHeightMm: '',
+  masterPackWeightGrams: '',
+  masterPackFillFactor: '0.75',
+  masterPackVoidFillPct: '0.10',
+  masterPackWallThicknessMm: '3',
 });
 
 export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult {
@@ -121,12 +142,33 @@ export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult
         // Tax & Additional
         salesTaxTemplateId: item.salesTaxTemplateId || null,
         purchaseTaxTemplateId: item.purchaseTaxTemplateId || null,
+        brandId: (item as Item & { brandId?: string }).brandId || '',
+        gtin: (item as Item & { gtin?: string }).gtin || '',
         barcode: item.barcode || '',
         imageUrl: item.imageUrl || '',
         images: item.images || [],
         tags: item.tags || [],
         customFields: item.customFields || {},
         extraData: item.extraData || {},
+
+        // Packaging Details
+        packagingUnitName: item.packagingDetails?.unitName || 'Each',
+        packagingConversionFactor: item.packagingDetails?.conversionFactor?.toString() || '1',
+        packagingItemsPerMasterPack: item.packagingDetails?.itemsPerMasterPack?.toString() || '',
+        packagingLengthMm: item.packagingDetails?.lengthMm?.toString() || '',
+        packagingWidthMm: item.packagingDetails?.widthMm?.toString() || '',
+        packagingHeightMm: item.packagingDetails?.heightMm?.toString() || '',
+        packagingWeightGrams: item.packagingDetails?.weightGrams?.toString() || '',
+
+        // Master Carton
+        masterPackUnitName: item.packagingDetails?.masterPackUnitName ?? '',
+        masterPackLengthMm: item.packagingDetails?.masterPackLengthMm?.toString() || '',
+        masterPackWidthMm: item.packagingDetails?.masterPackWidthMm?.toString() || '',
+        masterPackHeightMm: item.packagingDetails?.masterPackHeightMm?.toString() || '',
+        masterPackWeightGrams: item.packagingDetails?.masterPackWeightGrams?.toString() || '',
+        masterPackFillFactor: item.packagingDetails?.masterPackFillFactor?.toString() || '0.75',
+        masterPackVoidFillPct: item.packagingDetails?.masterPackVoidFillPct?.toString() || '0.10',
+        masterPackWallThicknessMm: item.packagingDetails?.masterPackWallThicknessMm?.toString() || '3',
       });
     } else {
       resetForm();

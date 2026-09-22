@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { getFriendlyErrorMessage } from '../utility/api/core';
+
 
 import type { ApiItemGroup } from '../types/item-groups.types';
 import type { Item } from '../types/item.types';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 import type { ItemFormData, buildCreateItemPayload, buildUpdateItemPayload } from '../utility/item-payload-builders';
 
 import { useCreateItem } from './useCreateItem';
@@ -26,9 +27,10 @@ export function useItemSubmission({ item, itemGroups, onCreated, onUpdated, onCl
   const { createItem, loading: createLoading } = useCreateItem();
   const { updateItem, loading: updateLoading } = useUpdateItem();
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const isEditing = !!item;
-  const isLoading = createLoading || updateLoading;
+  const isLoading = submitting || createLoading || updateLoading;
 
   const handleCreateSubmit = async (formData: ItemFormData) => {
     try {
@@ -64,11 +66,18 @@ export function useItemSubmission({ item, itemGroups, onCreated, onUpdated, onCl
 
   const handleSubmit = async (formData: ItemFormData) => {
     setError(null);
-
-    if (isEditing) {
-      await handleEditSubmit(formData);
-    } else {
-      await handleCreateSubmit(formData);
+    // Flip a local flag synchronously so the button disables immediately —
+    // the dynamic import of the payload builder below otherwise leaves the
+    // button clickable for a few hundred milliseconds.
+    setSubmitting(true);
+    try {
+      if (isEditing) {
+        await handleEditSubmit(formData);
+      } else {
+        await handleCreateSubmit(formData);
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 

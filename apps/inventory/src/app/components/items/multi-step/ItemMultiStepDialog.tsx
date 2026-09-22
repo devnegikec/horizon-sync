@@ -2,8 +2,8 @@ import * as React from 'react';
 
 import { Check } from 'lucide-react';
 
+import { DetailDialog } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@horizon-sync/ui/components/ui/dialog';
 import { cn } from '@horizon-sync/ui/lib';
 
 import type { ApiItemGroup } from '../../../types/item-groups.types';
@@ -73,6 +73,8 @@ function validateStep(step: number, formData: ItemFormData): boolean {
 const getInitialFormData = (initialData?: Partial<ItemFormData>): ItemFormData => ({
   itemCode: '',
   name: '',
+  brandId: '',
+  gtin: '',
   sku: '',
   description: '',
   itemGroupId: '',
@@ -109,6 +111,21 @@ const getInitialFormData = (initialData?: Partial<ItemFormData>): ItemFormData =
   images: [],
   tags: [],
   extraData: {},
+  packagingUnitName: 'Each',
+  packagingConversionFactor: '1',
+  packagingItemsPerMasterPack: '',
+  packagingLengthMm: '',
+  packagingWidthMm: '',
+  packagingHeightMm: '',
+  packagingWeightGrams: '',
+  masterPackUnitName: '',
+  masterPackLengthMm: '',
+  masterPackWidthMm: '',
+  masterPackHeightMm: '',
+  masterPackWeightGrams: '',
+  masterPackFillFactor: '0.75',
+  masterPackVoidFillPct: '0.10',
+  masterPackWallThicknessMm: '3',
   ...initialData,
 });
 
@@ -191,7 +208,9 @@ export function ItemMultiStepDialog({
       setFormData(getInitialFormData(initialData));
       setIsSubmitting(false);
     }
-  }, [open, initialData]);
+    // Only reset when the dialog opens, not on every parent re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const updateFormData = React.useCallback((updates: Partial<ItemFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -229,20 +248,32 @@ export function ItemMultiStepDialog({
   const isStepCurrent = (stepId: number) => stepId === currentStep;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Item' : 'Create New Item'}</DialogTitle>
-        </DialogHeader>
-
-        {/* Stepper */}
-        <div className="flex items-center justify-between px-4 py-6 border-b">
+    <DetailDialog open={open}
+      onOpenChange={onOpenChange}
+      size="lg"
+      contentClassName="max-w-4xl flex flex-col"
+      style={{ height: 'min(85vh, 820px)' }}
+      title={isEditing ? 'Edit Item' : 'Create New Item'}
+      showCloseButton={false}
+      footer={
+        <DialogFooterButtons currentStep={currentStep}
+          isSubmitting={isSubmitting}
+          isValid={validateStep(currentStep, formData)}
+          isEditing={isEditing}
+          onCancel={handleCancel}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+          onSubmit={handleSubmit} />
+      }>
+      <div className="flex h-full min-h-0 flex-col">
+        {/* Stepper (fixed) */}
+        <div className="flex items-center justify-between border-b pb-4 shrink-0">
           {STEPS.map((step, index) => (
             <React.Fragment key={step.id}>
               <div className="flex items-center gap-3">
                 <StepMarker stepId={step.id}
                   isComplete={isStepComplete(step.id)}
-                  isCurrent={isStepCurrent(step.id)}/>
+                  isCurrent={isStepCurrent(step.id)} />
                 <div className="hidden sm:block">
                   <p className={cn(
                     'text-sm font-medium',
@@ -255,47 +286,35 @@ export function ItemMultiStepDialog({
               </div>
               {index < STEPS.length - 1 && (
                 <div className={cn(
-                    'h-[2px] flex-1 mx-2 transition-all',
-                    isStepComplete(step.id + 1) ? 'bg-primary' : 'bg-muted-foreground/30'
-                  )}/>
+                  'h-[2px] flex-1 mx-2 transition-all',
+                  isStepComplete(step.id + 1) ? 'bg-primary' : 'bg-muted-foreground/30'
+                )} />
               )}
             </React.Fragment>
           ))}
         </div>
 
-        {/* Form Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        {/* Form Content (scrollable) */}
+        <div className="flex-1 min-h-0 overflow-y-auto py-4">
           {currentStep === 1 && (
             <Step1BasicInfo formData={formData}
               onUpdate={updateFormData}
               itemGroups={itemGroups}
-              accessToken={accessToken}/>
+              accessToken={accessToken} />
           )}
           {currentStep === 2 && (
             <Step2PricingStock formData={formData}
-              onUpdate={updateFormData}/>
+              onUpdate={updateFormData} />
           )}
           {currentStep === 3 && (
             <Step3TaxAdditional formData={formData}
               onUpdate={updateFormData}
               salesTaxTemplates={salesTaxTemplates}
               purchaseTaxTemplates={purchaseTaxTemplates}
-              isLoadingTaxTemplates={isLoadingTaxTemplates}/>
+              isLoadingTaxTemplates={isLoadingTaxTemplates} />
           )}
         </div>
-
-        {/* Footer */}
-        <DialogFooter className="border-t pt-4">
-          <DialogFooterButtons currentStep={currentStep}
-            isSubmitting={isSubmitting}
-            isValid={validateStep(currentStep, formData)}
-            isEditing={isEditing}
-            onCancel={handleCancel}
-            onPrevious={handlePrevious}
-            onNext={handleNext}
-            onSubmit={handleSubmit}/>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </DetailDialog>
   );
 }

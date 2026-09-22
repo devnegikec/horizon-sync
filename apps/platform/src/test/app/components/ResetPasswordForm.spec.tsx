@@ -23,6 +23,7 @@ describe('ResetPasswordForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useSearchParams as jest.Mock).mockReturnValue([new URLSearchParams('token=test-token'), jest.fn()]);
+    (AuthService.verifyResetToken as jest.Mock).mockResolvedValue({ valid: true });
     jest.useFakeTimers();
   });
 
@@ -45,14 +46,14 @@ describe('ResetPasswordForm', () => {
   it('1. should show invalid link state if token is missing', () => {
     (useSearchParams as jest.Mock).mockReturnValue([new URLSearchParams(''), jest.fn()]);
     renderForm();
-    expect(screen.getByText('Invalid Link')).toBeInTheDocument();
-    expect(screen.getByText(/the password reset link is invalid or has expired/i)).toBeInTheDocument();
+    expect(screen.getByText('Link expired')).toBeInTheDocument();
+    expect(screen.getByText(/this password reset link has already been used or has expired/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /request new link/i })).toBeInTheDocument();
   });
 
-  it('2. should render reset password form when token is present', () => {
+  it('2. should render reset password form when token is present', async () => {
     renderForm();
-    expect(screen.getByText('Reset Password', { selector: 'div' })).toBeInTheDocument();
+    expect(await screen.findByText('Reset Password', { selector: 'div' })).toBeInTheDocument();
     expect(screen.getByLabelText(/^new password/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/confirm new password/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /reset password/i })).toBeInTheDocument();
@@ -61,6 +62,7 @@ describe('ResetPasswordForm', () => {
   it('3. should show validation error when passwords do not match', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     renderForm();
+    await screen.findByLabelText(/^new password/i);
 
     await user.type(screen.getByLabelText(/^new password/i), 'Password123!');
     await user.type(screen.getByLabelText(/confirm new password/i), 'Mismatch123!');
@@ -76,6 +78,7 @@ describe('ResetPasswordForm', () => {
     (AuthService.resetPassword as jest.Mock).mockResolvedValue({});
 
     renderForm();
+    await screen.findByLabelText(/^new password/i);
     await user.type(screen.getByLabelText(/^new password/i), 'Password123!');
     await user.type(screen.getByLabelText(/confirm new password/i), 'Password123!');
     await user.click(screen.getByRole('button', { name: /reset password/i }));
@@ -98,6 +101,7 @@ describe('ResetPasswordForm', () => {
     (AuthService.resetPassword as jest.Mock).mockRejectedValue(new Error(errorMessage));
 
     renderForm();
+    await screen.findByLabelText(/^new password/i);
     await user.type(screen.getByLabelText(/^new password/i), 'Password123!');
     await user.type(screen.getByLabelText(/confirm new password/i), 'Password123!');
     await user.click(screen.getByRole('button', { name: /reset password/i }));
@@ -112,6 +116,7 @@ describe('ResetPasswordForm', () => {
     (AuthService.resetPassword as jest.Mock).mockRejectedValue('Unexpected error');
 
     renderForm();
+    await screen.findByLabelText(/^new password/i);
     await user.type(screen.getByLabelText(/^new password/i), 'Password123!');
     await user.type(screen.getByLabelText(/confirm new password/i), 'Password123!');
     await user.click(screen.getByRole('button', { name: /reset password/i }));
@@ -135,6 +140,7 @@ describe('ResetPasswordForm', () => {
   it('8. should show password validation error for invalid password format', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     renderForm();
+    await screen.findByLabelText(/^new password/i);
 
     await user.type(screen.getByLabelText(/^new password/i), 'weak');
     await user.type(screen.getByLabelText(/confirm new password/i), 'weak');
@@ -175,6 +181,7 @@ describe('ResetPasswordForm', () => {
     (useSearchParams as jest.Mock).mockReturnValue([mockSearchParams as unknown as URLSearchParams, jest.fn()]);
 
     renderForm();
+    await screen.findByLabelText(/^new password/i);
 
     // Fill in the form while token is still 'test-token'
     await user.type(screen.getByLabelText(/^new password/i), 'Password123!');

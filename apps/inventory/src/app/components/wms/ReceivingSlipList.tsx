@@ -1,338 +1,376 @@
 import * as React from 'react';
 
-import { RefreshCw, Eye, Loader2, PackageOpen } from 'lucide-react';
+import { type ColumnDef } from '@tanstack/react-table';
+import { PackageOpen } from 'lucide-react';
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
-import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@horizon-sync/ui/components/ui/dialog';
+  Button,
+  Card,
+  CardContent,
+  EmptyState,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  TableSkeleton,
+} from '@horizon-sync/ui/components';
+import { DataTable } from '@horizon-sync/ui/components/data-table';
 import { useToast } from '@horizon-sync/ui/hooks';
 
-import { useReceivingSlips } from '../../hooks/useWMS';
-import type { ReceivingSlip, ReceivingSlipItem } from '../../types/wms.types';
+import { useReceivingSlip, useReceivingSlips } from '../../hooks/useWMS';
+import type { ReceivingSlip, ReceivingSlipStatus, ReceivingSlipStatusCounts } from '../../types/wms.types';
 
-import { WMSStatusBadge } from './WMSStatusBadge';
+import { GeneratePutAwayDialog } from './GeneratePutAwayDialog';
+import { ApproveSlipDialog, createReceivingSlipColumns, RejectSlipDialog, SlipDetailDialog } from './receiving-slips';
 
 interface ReceivingSlipListProps {
   warehouseId?: string;
+  statusFilter: string;
+  /** Increment to trigger a refetch (e.g. from the panel-level Refresh button). */
+  refreshKey?: number;
+  onStatusFilterChange: (status: string) => void;
+  /**
+   * Publishes the list's status counts so sibling stat cards can reuse them
+   * instead of issuing a second request to the same endpoint.
+   */
+  onStatusCountsChange?: (counts: ReceivingSlipStatusCounts | null) => void;
 }
 
-// ─── Flag badge ──────────────────────────────────────────────────────────────
+type ServerPagination = {
+  totalItems: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number, pageSize: number) => void;
+};
 
-function FlagBadge({ flag }: { flag: string }) {
-  const map: Record<string, string> = {
-    ok: 'bg-green-100 text-green-700',
-    short: 'bg-yellow-100 text-yellow-700',
-    damaged: 'bg-red-100 text-red-700',
-  };
+// ─── Sub components ───────────────────────────────────────────────────────────
+
+const STATUS_FILTERS: { value: string; label: string; countKey: keyof ReceivingSlipStatusCounts }[] = [
+  { value: 'all', label: 'All Statuses', countKey: 'total' },
+  { value: 'pending_review', label: 'Pending Review', countKey: 'pending_review' },
+  { value: 'pending_putaway', label: 'Pending Put-Away', countKey: 'pending_putaway' },
+  { value: 'putaway_in_progress', label: 'Put-Away In Progress', countKey: 'putaway_in_progress' },
+  { value: 'putaway_complete', label: 'Put-Away Complete', countKey: 'putaway_complete' },
+  { value: 'rejected', label: 'Rejected', countKey: 'rejected' },
+];
+
+const REJECT_ITEM_STATUSES: ReceivingSlipStatus[] = ['pending_review', 'pending_putaway'];
+
+function ReceivingSlipFilters({
+  statusFilter,
+  statusCounts,
+  onStatusFilterChange,
+}: {
+  statusFilter: string;
+  statusCounts: ReceivingSlipStatusCounts | null;
+  onStatusFilterChange: (status: string) => void;
+}) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${map[flag] ?? 'bg-gray-100 text-gray-700'}`}>
-      {flag}
-    </span>
+    <div className="flex items-center gap-3">
+      <Select value={statusFilter} onValueChange={onStatusFilterChange}>
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder="All Statuses" />
+        </SelectTrigger>
+        <SelectContent>
+          {STATUS_FILTERS.map((filter) => (
+            <SelectItem key={filter.value} value={filter.value}>
+              {filter.label} ({statusCounts?.[filter.countKey] ?? 0})
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 
-// ─── Slip detail dialog ───────────────────────────────────────────────────────
-
-interface SlipDetailDialogProps {
-  slip: ReceivingSlip | null;
-  loading: boolean;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+function ReceivingSlipsEmpty({ filtered, onClearFilter }: { filtered: boolean; onClearFilter: () => void }) {
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="p-6">
+          <EmptyState icon={<PackageOpen className="h-12 w-12" />}
+            title="No receiving slips found"
+            description={
+              filtered ? 'No receiving slips match the selected status' : 'Receiving slips will appear here once an inbound scan session is ended'
+            }
+            action={
+              filtered ? (
+                <Button variant="outline" onClick={onClearFilter}>
+                  Clear filter
+                </Button>
+              ) : undefined
+            }/>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
-function SlipDetailDialog({ slip, loading, open, onOpenChange }: SlipDetailDialogProps) {
+function ReceivingSlipsTable({
+  isInitialLoading,
+  error,
+  slips,
+  columns,
+  serverPagination,
+  pageSize,
+  filtered,
+  onClearFilter,
+}: {
+  isInitialLoading: boolean;
+  error: string | null;
+  slips: ReceivingSlip[];
+  columns: ColumnDef<ReceivingSlip>[];
+  serverPagination?: ServerPagination;
+  pageSize: number;
+  filtered: boolean;
+  onClearFilter: () => void;
+}) {
+  const renderBody = () => {
+    if (isInitialLoading) {
+      return (
+        <Card>
+          <CardContent className="p-0">
+            <TableSkeleton columns={7} rows={8} showHeader={true} />
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (slips.length === 0) {
+      return <ReceivingSlipsEmpty filtered={filtered} onClearFilter={onClearFilter} />;
+    }
+
+    return (
+      <Card>
+        <CardContent className="p-0">
+          <DataTable columns={columns}
+            data={slips}
+            config={{
+              showSerialNumber: true,
+              showPagination: true,
+              enableRowSelection: false,
+              enableColumnVisibility: true,
+              enableSorting: false,
+              enableFiltering: false,
+              initialPageSize: pageSize,
+              serverPagination,
+            }}
+            fixedHeader
+            maxHeight="auto"/>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>
-            {slip ? `Receiving Slip — ${slip.slip_number}` : 'Loading...'}
-          </DialogTitle>
-        </DialogHeader>
-
-        {loading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        )}
-
-        {!loading && slip && (
-          <div className="flex flex-col gap-4 overflow-y-auto">
-            {/* Summary row */}
-            <div className="grid grid-cols-3 gap-3 text-sm">
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground mb-1">Status</p>
-                <WMSStatusBadge status={slip.status} />
-              </div>
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground mb-1">Total Boxes</p>
-                <p className="font-semibold text-lg">{slip.total_boxes}</p>
-              </div>
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground mb-1">Total Items</p>
-                <p className="font-semibold text-lg">{slip.total_items}</p>
-              </div>
-            </div>
-
-            {slip.rejection_reason && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                <span className="font-medium">Rejection reason: </span>{slip.rejection_reason}
-              </div>
-            )}
-
-            {slip.notes && (
-              <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">Notes: </span>{slip.notes}
-              </div>
-            )}
-
-            {/* Items table */}
-            <div className="border rounded-lg overflow-hidden">
-              <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Line Items ({slip.items.length})
-              </div>
-              <table className="w-full text-sm">
-                <thead className="bg-muted/30">
-                  <tr>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">SKU</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Batch</th>
-                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Qty</th>
-                    <th className="text-right px-4 py-2 font-medium text-muted-foreground">Boxes</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Flag</th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground">Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {slip.items.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground text-xs">
-                        No items
-                      </td>
-                    </tr>
-                  )}
-                  {slip.items.map((item: ReceivingSlipItem) => (
-                    <tr key={item.id} className="hover:bg-muted/20">
-                      <td className="px-4 py-2 font-mono font-medium">{item.sku}</td>
-                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{item.batch_number ?? '—'}</td>
-                      <td className="px-4 py-2 text-right">{item.quantity}</td>
-                      <td className="px-4 py-2 text-right">{item.box_count}</td>
-                      <td className="px-4 py-2"><FlagBadge flag={item.flag} /></td>
-                      <td className="px-4 py-2 text-xs text-muted-foreground">{item.notes ?? '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              Created: {slip.created_at ? new Date(slip.created_at).toLocaleString() : '—'}
-            </p>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+    <div className="space-y-4">
+      {error && <div className="text-sm text-destructive">{error}</div>}
+      {renderBody()}
+    </div>
   );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ReceivingSlipList({ warehouseId }: ReceivingSlipListProps) {
+export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onStatusFilterChange, onStatusCountsChange }: ReceivingSlipListProps) {
   const { toast } = useToast();
-  const [statusFilter, setStatusFilter] = React.useState('all');
   const [page, setPage] = React.useState(1);
-  const [rejectingId, setRejectingId] = React.useState<string | null>(null);
-  const [rejectReason, setRejectReason] = React.useState('');
-  const [viewSlip, setViewSlip] = React.useState<ReceivingSlip | null>(null);
-  const [viewLoading, setViewLoading] = React.useState(false);
+  const [pageSize, setPageSize] = React.useState(20);
+  const [viewSlipId, setViewSlipId] = React.useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [confirmApproveSlip, setConfirmApproveSlip] = React.useState<ReceivingSlip | null>(null);
+  const [confirmPutAwaySlip, setConfirmPutAwaySlip] = React.useState<ReceivingSlip | null>(null);
+  const [rejectTarget, setRejectTarget] = React.useState<ReceivingSlip | null>(null);
+  const [actionLoading, setActionLoading] = React.useState(false);
 
-  const { data, loading, error, refetch, approveSlip, rejectSlip, getSlip, generatePutAway } = useReceivingSlips({
+  const {
+    data,
+    statusCounts,
+    loading,
+    error,
+    refetch,
+    approveSlip,
+    rejectSlip: submitReject,
+    rejectItem,
+    generatePutAway,
+  } = useReceivingSlips({
     warehouse_id: warehouseId,
     status: statusFilter === 'all' ? undefined : statusFilter,
     page,
-    page_size: 20,
+    page_size: pageSize,
   });
 
-  const handleView = async (slip: ReceivingSlip) => {
+  // Cached detail for the open dialog. Mutations invalidate the receiving-slips
+  // prefix, so approving/rejecting/flagging refreshes this automatically.
+  const { slip: viewSlip, loading: viewLoading, error: viewError, refetch: refetchViewSlip } = useReceivingSlip(viewSlipId);
+
+  const slips = data?.receiving_slips ?? [];
+  const pagination = data?.pagination;
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [statusFilter]);
+
+  // Refetch when the panel-level Refresh button is pressed (skip the initial mount).
+  const lastRefreshKeyRef = React.useRef(refreshKey);
+  React.useEffect(() => {
+    if (lastRefreshKeyRef.current === refreshKey) return;
+    lastRefreshKeyRef.current = refreshKey;
+    refetch();
+  }, [refreshKey, refetch]);
+
+  // Share the counts returned with the list so the stat cards above don't need
+  // their own request to the same endpoint.
+  React.useEffect(() => {
+    onStatusCountsChange?.(statusCounts);
+  }, [statusCounts, onStatusCountsChange]);
+
+  const serverPagination = React.useMemo(() => {
+    if (!pagination) return undefined;
+
+    return {
+      totalItems: pagination.total_items,
+      currentPage: pagination.page,
+      pageSize: pagination.page_size,
+      onPageChange: (nextPage: number, nextPageSize: number) => {
+        if (nextPageSize !== pagination.page_size) {
+          setPageSize(nextPageSize);
+          setPage(1);
+          return;
+        }
+        setPage(nextPage);
+      },
+    };
+  }, [pagination]);
+
+  const handleView = React.useCallback((slip: ReceivingSlip) => {
+    setViewSlipId(slip.id);
     setDialogOpen(true);
-    setViewSlip(null);
-    setViewLoading(true);
+  }, []);
+
+  /**
+   * Show a toast in both trees: the in-app Toaster (standalone inventory) and
+   * the platform host's Toaster via `app:toast`, because when this remote is
+   * mounted by the host the two React trees do not share the toast store.
+   */
+  const notify = React.useCallback(
+    (payload: { title: string; description: string; variant?: 'default' | 'destructive'; className?: string }) => {
+      toast({ ...payload, duration: 4000 });
+      window.dispatchEvent(new CustomEvent('app:toast', { detail: { ...payload, duration: 4000 } }));
+    },
+    [toast],
+  );
+
+  const handleConfirmApprove = React.useCallback(async () => {
+    if (!confirmApproveSlip) return;
+    setActionLoading(true);
     try {
-      const detail = await getSlip(slip.id);
-      setViewSlip(detail);
+      const result = await approveSlip(confirmApproveSlip.id);
+      // The API owns the message/copy: green when success, red otherwise.
+      notify({
+        title: result.success ? 'Slip approved' : 'Approval failed',
+        description: result.message || `${confirmApproveSlip.slip_number} approval could not be completed.`,
+        variant: result.success ? undefined : 'destructive',
+        className: result.success ? 'border-emerald-600 bg-emerald-600 text-white' : undefined,
+      });
+      if (result.success) setConfirmApproveSlip(null);
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to load slip', variant: 'destructive' });
-      setDialogOpen(false);
+      notify({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to approve',
+        variant: 'destructive',
+      });
     } finally {
-      setViewLoading(false);
+      setActionLoading(false);
     }
-  };
+  }, [approveSlip, confirmApproveSlip, notify]);
 
-  const handleApprove = async (slip: ReceivingSlip) => {
-    if (!window.confirm(`Approve receiving slip ${slip.slip_number}?`)) return;
-    try {
-      await approveSlip(slip.id);
-      toast({ title: 'Slip approved', description: `${slip.slip_number} moved to put-away.` });
-    } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to approve', variant: 'destructive' });
-    }
-  };
+  const handleConfirmReject = React.useCallback(
+    async (reason: string) => {
+      if (!rejectTarget) return;
+      setActionLoading(true);
+      try {
+        await submitReject(rejectTarget.id, reason);
+        toast({ title: 'Slip rejected', description: rejectTarget.slip_number });
+        setRejectTarget(null);
+      } catch (err) {
+        toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to reject', variant: 'destructive' });
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [rejectTarget, submitReject, toast],
+  );
 
-  const handleReject = async (slip: ReceivingSlip) => {
-    if (!rejectReason.trim()) return;
-    try {
-      await rejectSlip(slip.id, rejectReason);
-      toast({ title: 'Slip rejected', description: slip.slip_number });
-      setRejectingId(null);
-      setRejectReason('');
-    } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to reject', variant: 'destructive' });
-    }
-  };
+  // Errors propagate to the caller (SlipDetailDialog owns the success/error toast).
+  const handleRejectItem = React.useCallback(
+    async (slipId: string, itemId: string, reason: string) => {
+      // `rejectItem` invalidates the receiving-slips prefix, which refreshes this
+      // slip's cached detail alongside the list.
+      await rejectItem(slipId, itemId, reason);
+    },
+    [rejectItem],
+  );
 
-  const handleGeneratePutAway = async (slip: ReceivingSlip) => {
-    if (!window.confirm(`Generate put-away list from ${slip.slip_number}?`)) return;
-    try {
-      await generatePutAway(slip.id);
-      toast({ title: 'Put-away generated', description: `Put-away list created from ${slip.slip_number}.` });
-    } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to generate put-away', variant: 'destructive' });
-    }
-  };
+  const columns = React.useMemo(
+    () =>
+      createReceivingSlipColumns({
+        onView: handleView,
+        onApprove: setConfirmApproveSlip,
+        onReject: setRejectTarget,
+        onPutAway: setConfirmPutAwaySlip,
+      }),
+    [handleView],
+  );
+
+  const isInitialLoading = loading && !data;
+  const canRejectItems = !!viewSlip && REJECT_ITEM_STATUSES.includes(viewSlip.status);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="pending_review">Pending Review</SelectItem>
-            <SelectItem value="pending_putaway">Pending Put-Away</SelectItem>
-            <SelectItem value="putaway_complete">Put-Away Complete</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button variant="outline" size="sm" onClick={refetch} className="gap-2">
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </Button>
-      </div>
+      <ReceivingSlipFilters statusFilter={statusFilter} statusCounts={statusCounts} onStatusFilterChange={onStatusFilterChange} />
 
-      {loading && <div className="text-sm text-muted-foreground animate-pulse">Loading receiving slips...</div>}
-      {error && <div className="text-sm text-destructive">{error}</div>}
-
-      {!loading && data && (
-        <>
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Slip #</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Boxes</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Items</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Created</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {data.receiving_slips.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                      No receiving slips found
-                    </td>
-                  </tr>
-                )}
-                {data.receiving_slips.map((slip) => (
-                  <React.Fragment key={slip.id}>
-                    <tr className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 font-mono font-medium">{slip.slip_number}</td>
-                      <td className="px-4 py-3">
-                        <WMSStatusBadge status={slip.status} />
-                      </td>
-                      <td className="px-4 py-3 text-right">{slip.total_boxes}</td>
-                      <td className="px-4 py-3 text-right">{slip.total_items}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {slip.created_at ? new Date(slip.created_at).toLocaleDateString() : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-
-                          {slip.status === 'pending_review' && (
-                            <>
-                              <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:bg-green-50 h-7 px-2 text-xs" onClick={() => handleApprove(slip)}>
-                                Approve
-                              </Button>
-                              <Button size="sm" variant="outline" className="text-destructive border-destructive/20 hover:bg-destructive/10 h-7 px-2 text-xs" onClick={() => setRejectingId(slip.id)}>
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                          <Button size="sm" variant="ghost" className="gap-1 h-7 px-2 text-xs" onClick={() => handleView(slip)}>
-                            <Eye className="h-3.5 w-3.5" />
-                            View
-                          </Button>
-                          {slip.status === 'pending_putaway' && (
-                            <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50 h-7 px-2 text-xs" onClick={() => handleGeneratePutAway(slip)}>
-                              <PackageOpen className="h-3.5 w-3.5 mr-1" />
-                              Put-Away
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                    {rejectingId === slip.id && (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-3 bg-muted/30">
-                          <div className="flex items-center gap-2">
-                            <input className="flex-1 border rounded px-3 py-1.5 text-sm bg-background"
-                              placeholder="Rejection reason..."
-                              value={rejectReason}
-                              onChange={(e) => setRejectReason(e.target.value)}/>
-                            <Button size="sm" variant="destructive" onClick={() => handleReject(slip)} disabled={!rejectReason.trim()}>
-                              Confirm Reject
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => { setRejectingId(null); setRejectReason(''); }}>
-                              Cancel
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {data.pagination.total_pages > 1 && (
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Page {data.pagination.page} of {data.pagination.total_pages}</span>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={!data.pagination.has_prev} onClick={() => setPage((p) => p - 1)}>
-                  Previous
-                </Button>
-                <Button variant="outline" size="sm" disabled={!data.pagination.has_next} onClick={() => setPage((p) => p + 1)}>
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
+      <ReceivingSlipsTable isInitialLoading={isInitialLoading}
+        error={error}
+        slips={slips}
+        columns={columns}
+        serverPagination={serverPagination}
+        pageSize={pageSize}
+        filtered={statusFilter !== 'all'}
+        onClearFilter={() => onStatusFilterChange('all')}/>
 
       <SlipDetailDialog slip={viewSlip}
         loading={viewLoading}
+        error={viewError}
         open={dialogOpen}
-        onOpenChange={setDialogOpen}/>
+        onOpenChange={setDialogOpen}
+        onRejectItem={canRejectItems ? handleRejectItem : undefined}
+        onLineFlagged={async () => {
+          // A flag changes both the line and the list's discrepancy counts.
+          await Promise.all([refetchViewSlip(), refetch()]);
+        }}/>
+
+      <ApproveSlipDialog slip={confirmApproveSlip}
+        submitting={actionLoading}
+        onOpenChange={(open) => {
+          if (!open) setConfirmApproveSlip(null);
+        }}
+        onConfirm={handleConfirmApprove}/>
+
+      <RejectSlipDialog slip={rejectTarget}
+        loading={actionLoading}
+        onOpenChange={(open) => {
+          if (!open) setRejectTarget(null);
+        }}
+        onConfirm={handleConfirmReject}/>
+
+      <GeneratePutAwayDialog slip={confirmPutAwaySlip}
+        open={!!confirmPutAwaySlip}
+        onOpenChange={(open) => {
+          if (!open) setConfirmPutAwaySlip(null);
+        }}
+        onGenerate={generatePutAway}/>
     </div>
   );
 }

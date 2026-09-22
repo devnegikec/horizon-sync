@@ -2,14 +2,14 @@ import * as React from 'react';
 
 import { ArrowLeft, ArrowRight, Package, TrendingDown, TrendingUp, Users, Warehouse } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 import { useToast } from '@horizon-sync/ui/hooks';
-import { useUserStore } from '@horizon-sync/store';
 
-import { wmsDashboardApi } from '../../utility/api/wms';
 import type { WMSDashboardStats } from '../../types/wms.types';
+import { wmsDashboardApi } from '../../utility/api/wms';
 
 interface DashboardPanelProps {
   warehouseId?: string;
@@ -102,8 +102,7 @@ export function DashboardPanel({ warehouseId }: DashboardPanelProps) {
           <Button variant="outline" size="sm" onClick={prevPeriod}><ArrowLeft className="h-4 w-4" /></Button>
           <div className="flex border rounded-md overflow-hidden">
             {(['week', 'month', 'year'] as const).map((p) => (
-              <button
-                key={p}
+              <button key={p}
                 className={`px-3 py-1 text-sm capitalize ${period === p ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}
                 onClick={() => setPeriod(p)}>
                 {p}

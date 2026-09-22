@@ -75,6 +75,7 @@ export interface StockMovement {
   unit_cost?: number | string | null;
   reference_type?: string | null;
   reference_id?: string | null;
+  reference_no?: string | null;
   notes?: string | null;
   performed_by?: string | null;
   performed_by_name?: string | null;
@@ -123,6 +124,7 @@ export interface StockEntryItem {
   qty: number;
   uom?: string;
   basic_rate?: number;
+  basic_amount?: number;
   valuation_rate?: number;
   batch_no?: string;
   serial_nos?: string[];

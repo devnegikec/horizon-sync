@@ -1,3 +1,34 @@
+/** Packaging unit returned inside an item detail response */
+export interface ApiPackagingUnit {
+  id: string;
+  unit_name: string;
+  conversion_factor: number;
+  length_mm: number | null;
+  width_mm: number | null;
+  height_mm: number | null;
+  weight_grams: number | null;
+  is_base_unit: boolean;
+}
+
+/** Nested packaging details accepted on create/update item payloads */
+export interface PackagingDetailsPayload {
+  unit_name: string;
+  conversion_factor: number;
+  items_per_master_pack?: number | null;
+  length_mm: number | null;
+  width_mm: number | null;
+  height_mm: number | null;
+  weight_grams: number | null;
+  master_pack_unit_name?: string | null;
+  master_pack_length_mm?: number | null;
+  master_pack_width_mm?: number | null;
+  master_pack_height_mm?: number | null;
+  master_pack_weight_grams?: number | null;
+  master_pack_fill_factor?: number;
+  master_pack_void_fill_pct?: number;
+  master_pack_wall_thickness_mm?: number;
+}
+
 /** API item shape from core service GET /items */
 export interface ApiItem {
   id: string;
@@ -14,6 +45,13 @@ export interface ApiItem {
   barcode: string | null;
   image_url: string | null;
   created_at: string | null;
+  packaging_units?: ApiPackagingUnit[] | null;
+  base_uom_id?: string | null;
+  product_id?: string | null;
+  product_sku_id?: string | null;
+  submitted_at?: string | null;
+  approved_at?: string | null;
+  rejection_reason?: string | null;
 }
 
 export interface ItemsPagination {
@@ -32,8 +70,11 @@ export interface ItemsResponse {
 
 /** Payload for POST /items (create item) */
 export interface CreateItemPayload {
+  packaging_details?: PackagingDetailsPayload | null;
   item_code: string;
   item_name: string;
+  brand_id?: string | null;
+  gtin?: string | null;
   sku?: string | null;
   description: string;
   item_group_id: string;
@@ -81,10 +122,15 @@ export interface UpdateItemGroupRef {
 
 /** Payload for PUT /items/:id (update item) */
 export interface UpdateItemPayload {
+  packaging_details?: PackagingDetailsPayload | null;
   organization_id?: string;
   item_code: string;
   item_name: string;
+  brand_id?: string | null;
+  gtin?: string | null;
   sku?: string | null;
+  base_uom_id?: string | null;
+  product_sku_id?: string | null;
   description: string;
   item_group_id: string;
   item_group: UpdateItemGroupRef;

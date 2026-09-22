@@ -60,7 +60,7 @@ export function ItemDialogSimple({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh]">
+      <DialogContent className="sm:max-w-[800px] h-[820px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? 'Edit Item' : 'Create New Item'}
@@ -73,7 +73,7 @@ export function ItemDialogSimple({
             itemGroups={itemGroups}
             salesTaxTemplates={salesTaxTemplates}
             purchaseTaxTemplates={purchaseTaxTemplates}
-            isLoadingTaxTemplates={isLoadingTaxTemplates}/>
+            isLoadingTaxTemplates={isLoadingTaxTemplates} />
 
           {error && (
             <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-3 rounded-md">

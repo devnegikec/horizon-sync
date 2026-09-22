@@ -70,6 +70,23 @@ interface DashboardStats {
   activity_pagination?: { page: number; page_size: number; total: number; total_pages: number; has_next: boolean; has_prev: boolean };
 }
 
+interface CapacityNode {
+  node: string;
+  level: string;
+  code: string;
+  full_path: string | null;
+  volume: { occupied_m3: number | string; capacity_m3: number | string | null; pct: number | string | null };
+  weight: { occupied_kg: number | string; capacity_kg: number | string | null; pct: number | string | null };
+  unit_count: number | string;
+  master_pack_count: number | string;
+  count_capacity: number | string | null;
+  count_pct: number | string | null;
+  binding_pct: number | string | null;
+  bin_state: string | null;
+  is_available: boolean | null;
+  children: CapacityNode[];
+}
+
 // ─── Dummy data (matches owner dashboard style) ──────────────────────────────
 
 const DUMMY_INBOUND_CHART: ChartBucket[] = [
@@ -126,6 +143,26 @@ function relativeTime(iso: string | null): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h} hour${h > 1 ? 's' : ''} ago`;
   return `${Math.floor(h / 24)}d ago`;
+}
+
+/** Coerce a backend value to a number (Decimal fields are serialized as strings). */
+function toNumber(value: unknown): number | null {
+  if (value == null) return null;
+  const n = typeof value === 'number' ? value : Number.parseFloat(String(value));
+  return Number.isFinite(n) ? n : null;
+}
+
+function fmtNum(value: unknown, digits = 2): string {
+  const n = toNumber(value);
+  return n == null ? '—' : n.toFixed(digits);
+}
+
+function capacityStateForPct(pct: number | null): { label: string; badgeClass: string } {
+  if (pct == null) return { label: 'Not configured', badgeClass: 'bg-muted text-muted-foreground' };
+  if (pct >= 90) return { label: 'Full', badgeClass: 'bg-red-500/15 text-red-500' };
+  if (pct >= 70) return { label: 'Almost full', badgeClass: 'bg-amber-500/15 text-amber-500' };
+  if (pct > 0) return { label: 'Available', badgeClass: 'bg-emerald-500/15 text-emerald-500' };
+  return { label: 'Empty', badgeClass: 'bg-muted text-muted-foreground' };
 }
 
 // ─── Stat Card (mirrors Owner/Admin style) ────────────────────────────────────
@@ -185,6 +222,133 @@ interface WarehouseOption {
   code: string;
 }
 
+function CapacityCardSkeleton() {
+  return (
+    <div className="rounded-xl border border-border bg-card p-6">
+      <div className="flex items-start justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="h-11 w-11 rounded-xl bg-muted animate-pulse" />
+          <div className="space-y-2">
+            <div className="h-4 w-32 rounded bg-muted animate-pulse" />
+            <div className="h-3 w-24 rounded bg-muted animate-pulse" />
+          </div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="h-3 w-full rounded-full bg-muted animate-pulse" />
+        <div className="h-3 w-2/3 rounded-full bg-muted animate-pulse" />
+        <div className="h-3 w-1/2 rounded-full bg-muted animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
+interface CapacityCardProps {
+  warehouseName: string;
+  node: CapacityNode | null;
+}
+
+function CapacityCard({ warehouseName, node }: CapacityCardProps) {
+  const binding = toNumber(node?.binding_pct);
+  const countPct = toNumber(node?.count_pct);
+  const volPct = toNumber(node?.volume?.pct);
+  const hasVolume = toNumber(node?.volume?.capacity_m3) != null;
+  const wtPct = toNumber(node?.weight?.pct);
+  const hasWeight = toNumber(node?.weight?.capacity_kg) != null;
+  // Prefer the volume/weight binding when that capacity is configured. Only
+  // fall back to count utilisation when neither volume nor weight capacity is
+  // configured, so a genuinely empty (0%) volume isn't masked by a nonzero
+  // unit count.
+  const effectivePct = hasVolume || hasWeight ? binding : countPct;
+  const state = capacityStateForPct(effectivePct);
+  const unitCount = toNumber(node?.unit_count);
+  const countCap = toNumber(node?.count_capacity);
+  const hasCount = countCap != null;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-6">
+      <div className="flex items-start justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400">
+            <Warehouse className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">{warehouseName}</p>
+            <p className="text-xs text-muted-foreground">Warehouse Capacity</p>
+          </div>
+        </div>
+        <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', state.badgeClass)}>{state.label}</span>
+      </div>
+
+      {!node ? (
+        <p className="text-sm text-muted-foreground">No capacity data available.</p>
+      ) : !hasVolume && !hasWeight && !hasCount ? (
+        unitCount != null && unitCount > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{fmtNum(node.unit_count, 0)}</span> units stored · capacity not configured
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">Capacity not configured for this warehouse.</p>
+        )
+      ) : (
+        <div className="space-y-4">
+          {hasCount && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Units</span>
+                <span className="font-medium">
+                  {fmtNum(node.unit_count, 0)} / {fmtNum(node.count_capacity, 0)} units
+                  {countPct != null && <span className="ml-2 text-muted-foreground">{countPct.toFixed(1)}%</span>}
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
+                  style={{ width: `${Math.max(0, Math.min(100, countPct ?? 0))}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {hasVolume && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Volume</span>
+                <span className="font-medium">
+                  {fmtNum(node.volume?.occupied_m3, 2)} / {fmtNum(node.volume?.capacity_m3, 2)} m³
+                  {volPct != null && <span className="ml-2 text-muted-foreground">{volPct.toFixed(1)}%</span>}
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                  style={{ width: `${Math.max(0, Math.min(100, volPct ?? 0))}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {hasWeight && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Weight</span>
+                <span className="font-medium">
+                  {fmtNum(node.weight?.occupied_kg, 2)} / {fmtNum(node.weight?.capacity_kg, 2)} kg
+                  {wtPct != null && <span className="ml-2 text-muted-foreground">{wtPct.toFixed(1)}%</span>}
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400"
+                  style={{ width: `${Math.max(0, Math.min(100, wtPct ?? 0))}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function WMSDashboardHome() {
   const accessToken = useUserStore((s) => s.accessToken);
   const [period, setPeriod] = React.useState<'week' | 'month' | 'year'>('week');
@@ -200,6 +364,10 @@ export function WMSDashboardHome() {
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('all');
   const [warehousesLoading, setWarehousesLoading] = React.useState(false);
 
+  // Warehouse capacity (per-warehouse rollup trees)
+  const [capacityByWarehouse, setCapacityByWarehouse] = React.useState<Record<string, CapacityNode>>({});
+  const [capacityLoading, setCapacityLoading] = React.useState(false);
+
   // Fetch user's accessible warehouses
   React.useEffect(() => {
     if (!accessToken) return;
@@ -212,6 +380,44 @@ export function WMSDashboardHome() {
       .catch(() => setWarehouses([]))
       .finally(() => setWarehousesLoading(false));
   }, [accessToken]);
+
+  // Fetch capacity trees for the selected warehouse scope
+  React.useEffect(() => {
+    if (!accessToken) return;
+    const targets = selectedWarehouseId === 'all'
+      ? warehouses
+      : warehouses.filter((w) => w.id === selectedWarehouseId);
+    if (targets.length === 0) {
+      setCapacityByWarehouse({});
+      return;
+    }
+    let cancelled = false;
+    setCapacityLoading(true);
+    Promise.all(
+      targets.map((wh) =>
+        fetch(`${environment.apiCoreUrl}/api/v1/capacity/warehouses/${wh.id}/tree`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        })
+          .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+          .then((data: CapacityNode) => ({ id: wh.id, data }))
+          .catch(() => ({ id: wh.id, data: null }))
+      )
+    )
+      .then((results) => {
+        if (cancelled) return;
+        const map: Record<string, CapacityNode> = {};
+        for (const r of results) {
+          if (r.data) map[r.id] = r.data;
+        }
+        setCapacityByWarehouse(map);
+      })
+      .finally(() => {
+        if (!cancelled) setCapacityLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, selectedWarehouseId, warehouses]);
 
   const fetchStats = React.useCallback(async () => {
     if (!accessToken) return;
@@ -294,6 +500,66 @@ export function WMSDashboardHome() {
   const outboundChart = overview.outbound.chart;
   const maxInbound = Math.max(...inboundChart.map((b) => b.qty), 1);
   const maxOutbound = Math.max(...outboundChart.map((b) => b.qty), 1);
+
+  const capacityWarehouses = selectedWarehouseId === 'all'
+    ? warehouses
+    : warehouses.filter((w) => w.id === selectedWarehouseId);
+  const capacityCols = capacityWarehouses.length === 1
+    ? 'grid gap-4'
+    : 'grid gap-4 md:grid-cols-2';
+
+  // Show a loading skeleton until the first real stats response arrives, so
+  // dummy/stale fallback data never flashes before the user's actual data.
+  if (loading && !stats) {
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Warehouse Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Loading your warehouse operations…</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-40 rounded-md bg-muted animate-pulse" />
+            <div className="h-9 w-32 rounded-md bg-muted animate-pulse" />
+          </div>
+        </div>
+
+        {/* Stat card skeletons */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-6">
+              <div className="h-4 w-24 rounded bg-muted animate-pulse" />
+              <div className="mt-3 h-8 w-16 rounded bg-muted animate-pulse" />
+              <div className="mt-3 h-3 w-32 rounded bg-muted animate-pulse" />
+            </div>
+          ))}
+        </div>
+
+        {/* Capacity skeletons */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-3 w-3 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400" />
+            <h2 className="text-lg font-semibold">Warehouse Capacity</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <CapacityCardSkeleton />
+            <CapacityCardSkeleton />
+          </div>
+        </div>
+
+        {/* Chart skeletons */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-6">
+              <div className="h-5 w-32 rounded bg-muted animate-pulse" />
+              <div className="mt-4 h-40 w-full rounded bg-muted animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -388,6 +654,29 @@ export function WMSDashboardHome() {
         />
       </div>
 
+      {/* Warehouse Capacity — per-warehouse volume/weight rollups */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-3 w-3 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400" />
+          <h2 className="text-lg font-semibold">Warehouse Capacity</h2>
+        </div>
+        {capacityLoading && Object.keys(capacityByWarehouse).length === 0 ? (
+          <div className={capacityCols}>
+            {capacityWarehouses.length > 0
+              ? capacityWarehouses.map((wh) => <CapacityCardSkeleton key={wh.id} />)
+              : [0, 1].map((i) => <CapacityCardSkeleton key={i} />)}
+          </div>
+        ) : capacityWarehouses.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No warehouses available.</p>
+        ) : (
+          <div className={capacityCols}>
+            {capacityWarehouses.map((wh) => (
+              <CapacityCard key={wh.id} warehouseName={wh.name} node={capacityByWarehouse[wh.id] ?? null} />
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Charts — modern interactive layout */}
       <div className="grid gap-6 lg:grid-cols-2">
 
@@ -429,43 +718,43 @@ export function WMSDashboardHome() {
                   No inbound stock data for this period
                 </div>
               ) : (
-              <div className="h-[180px] flex items-end gap-1.5 border-l border-b border-border/50 pl-2 pb-1">
-                {inboundChart.map((b, i) => {
-                  const pct = maxInbound > 0 ? (b.qty / maxInbound) * 100 : 0;
-                  return (
-                    <div key={i} className="flex-1 group relative flex flex-col items-center justify-end h-full">
-                      {/* Value label on top */}
-                      <span className="text-[10px] font-medium text-emerald-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {b.qty > 0 ? b.qty.toLocaleString() : ''}
-                      </span>
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
-                        <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
-                          <div className="font-semibold">{b.label}</div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-emerald-600 font-medium">{b.qty.toLocaleString()} units</span>
-                            <span className="text-muted-foreground">·</span>
-                            <span>{formatCurrency(b.value)}</span>
+                <div className="h-[180px] flex items-end gap-1.5 border-l border-b border-border/50 pl-2 pb-1">
+                  {inboundChart.map((b, i) => {
+                    const pct = maxInbound > 0 ? (b.qty / maxInbound) * 100 : 0;
+                    return (
+                      <div key={i} className="flex-1 group relative flex flex-col items-center justify-end h-full">
+                        {/* Value label on top */}
+                        <span className="text-[10px] font-medium text-emerald-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {b.qty > 0 ? b.qty.toLocaleString() : ''}
+                        </span>
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                          <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
+                            <div className="font-semibold">{b.label}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-emerald-600 font-medium">{b.qty.toLocaleString()} units</span>
+                              <span className="text-muted-foreground">·</span>
+                              <span>{formatCurrency(b.value)}</span>
+                            </div>
                           </div>
                         </div>
+                        {/* Bar */}
+                        <div
+                          className="w-full bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-105 origin-bottom"
+                          style={{ height: `${Math.max(pct, 2)}%` }}
+                        />
                       </div>
-                      {/* Bar */}
-                      <div
-                        className="w-full bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-105 origin-bottom"
-                        style={{ height: `${Math.max(pct, 2)}%` }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
               )}
               {/* X-axis labels */}
               {inboundChart.length > 0 && (
-              <div className="flex mt-2 pl-2">
-                {inboundChart.map((b) => (
-                  <span key={b.label} className="flex-1 text-center text-[11px] text-muted-foreground font-medium">{b.label}</span>
-                ))}
-              </div>
+                <div className="flex mt-2 pl-2">
+                  {inboundChart.map((b) => (
+                    <span key={b.label} className="flex-1 text-center text-[11px] text-muted-foreground font-medium">{b.label}</span>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -509,43 +798,43 @@ export function WMSDashboardHome() {
                   No outbound stock data for this period
                 </div>
               ) : (
-              <div className="h-[180px] flex items-end gap-1.5 border-l border-b border-border/50 pl-2 pb-1">
-                {outboundChart.map((b, i) => {
-                  const pct = maxOutbound > 0 ? (b.qty / maxOutbound) * 100 : 0;
-                  return (
-                    <div key={i} className="flex-1 group relative flex flex-col items-center justify-end h-full">
-                      {/* Value label on top */}
-                      <span className="text-[10px] font-medium text-rose-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {b.qty > 0 ? b.qty.toLocaleString() : ''}
-                      </span>
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
-                        <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
-                          <div className="font-semibold">{b.label}</div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-rose-600 font-medium">{b.qty.toLocaleString()} units</span>
-                            <span className="text-muted-foreground">·</span>
-                            <span>{formatCurrency(b.value)}</span>
+                <div className="h-[180px] flex items-end gap-1.5 border-l border-b border-border/50 pl-2 pb-1">
+                  {outboundChart.map((b, i) => {
+                    const pct = maxOutbound > 0 ? (b.qty / maxOutbound) * 100 : 0;
+                    return (
+                      <div key={i} className="flex-1 group relative flex flex-col items-center justify-end h-full">
+                        {/* Value label on top */}
+                        <span className="text-[10px] font-medium text-rose-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {b.qty > 0 ? b.qty.toLocaleString() : ''}
+                        </span>
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                          <div className="bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 shadow-lg border whitespace-nowrap">
+                            <div className="font-semibold">{b.label}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-rose-600 font-medium">{b.qty.toLocaleString()} units</span>
+                              <span className="text-muted-foreground">·</span>
+                              <span>{formatCurrency(b.value)}</span>
+                            </div>
                           </div>
                         </div>
+                        {/* Bar */}
+                        <div
+                          className="w-full bg-gradient-to-t from-rose-500 to-orange-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-rose-500/20 hover:scale-105 origin-bottom"
+                          style={{ height: `${Math.max(pct, 2)}%` }}
+                        />
                       </div>
-                      {/* Bar */}
-                      <div
-                        className="w-full bg-gradient-to-t from-rose-500 to-orange-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-rose-500/20 hover:scale-105 origin-bottom"
-                        style={{ height: `${Math.max(pct, 2)}%` }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
               )}
               {/* X-axis labels */}
               {outboundChart.length > 0 && (
-              <div className="flex mt-2 pl-2">
-                {outboundChart.map((b) => (
-                  <span key={b.label} className="flex-1 text-center text-[11px] text-muted-foreground font-medium">{b.label}</span>
-                ))}
-              </div>
+                <div className="flex mt-2 pl-2">
+                  {outboundChart.map((b) => (
+                    <span key={b.label} className="flex-1 text-center text-[11px] text-muted-foreground font-medium">{b.label}</span>
+                  ))}
+                </div>
               )}
             </div>
           </div>
