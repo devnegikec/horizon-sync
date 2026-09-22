@@ -71,7 +71,7 @@ export function LoginPage() {
       brandingTitle="Admin Portal"
       brandingSubtitle="Manage your platform, users, and features from a single control center"
       features={ADMIN_FEATURES}
-      brandingFooter="Horizon Sync — System Administration"
+      brandingFooter="Ciphercode — System Administration"
     >
       <Card className="w-full max-w-md shadow-xl border-0">
         <CardHeader className="space-y-1 pb-6">
@@ -80,7 +80,7 @@ export function LoginPage() {
               <Zap className="h-5 w-5 text-white" />
             </div>
             <span className="font-bold text-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 dark:from-violet-400 dark:to-fuchsia-400 bg-clip-text text-transparent">
-              Horizon Sync
+              Ciphercode
             </span>
           </div>
           <CardTitle className="text-2xl">Welcome back</CardTitle>
