@@ -2,6 +2,7 @@ import type {
   AsnOrderSerialsResponse,
   AsnOrder856Response,
   AsnOrderEpcisResponse,
+  AsnOrderTransferVerification,
 } from '../../types/asn-order.types';
 import type { AsnReceivingSummary } from '../../types/wms.types';
 
@@ -44,6 +45,9 @@ export const asnOrderApi = {
 
   getSerials: (accessToken: string, id: string) =>
     apiRequest<AsnOrderSerialsResponse>(`/asn-orders/${id}/serials`, accessToken),
+
+  getTransferVerification: (accessToken: string, id: string) =>
+    apiRequest<AsnOrderTransferVerification>(`/asn-orders/${id}/transfer-verification`, accessToken),
 
   export856: (accessToken: string, id: string) =>
     apiRequest<AsnOrder856Response>(`/asn-orders/${id}/asn-856`, accessToken),

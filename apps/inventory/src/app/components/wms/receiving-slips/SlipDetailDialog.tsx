@@ -33,6 +33,8 @@ function itemToChildRow(item: ReceivingSlipGroupItem, productName: string): QRDe
     meta: {
       flag: item.flag,
       conditionCode: item.condition_code ?? null,
+      serialNos: item.serial_nos ?? null,
+      receivedSerialCount: item.received_serial_count ?? null,
       item,
     },
   };
@@ -91,6 +93,8 @@ function legacyToRow(item: ReceivingSlipItem): QRDetailRow {
     meta: {
       flag: item.flag,
       conditionCode: item.condition_code ?? null,
+      serialNos: item.serial_nos ?? null,
+      receivedSerialCount: item.received_serial_count ?? null,
       item: legacyActionItem(item),
     },
   };
@@ -149,6 +153,28 @@ function ConditionCell({ row }: { row: QRDetailRow }) {
   return <ConditionBadge code={(row.meta?.conditionCode as string | null) ?? null} />;
 }
 
+/** Serials captured for the line, plus the server's received count when present. */
+// eslint-disable-next-line complexity
+function SerialsCell({ row }: { row: QRDetailRow }) {
+  const serialNos = (row.meta?.serialNos as string[] | null | undefined) ?? null;
+  const received = (row.meta?.receivedSerialCount as number | null | undefined) ?? null;
+
+  if (!serialNos && received == null) return <span className="text-xs text-muted-foreground">{'\u2014'}</span>;
+
+  const count = received ?? serialNos?.length ?? 0;
+  return (
+    <div className="max-w-[220px] space-y-0.5 text-xs">
+      <p className="font-medium">{count} serial(s)</p>
+      {serialNos && serialNos.length > 0 && (
+        <p className="truncate font-mono text-muted-foreground">
+          {serialNos.slice(0, 4).join(', ')}
+          {serialNos.length > 4 ? '…' : ''}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /**
  * Flagging is only legal while the slip is pending review; afterwards the API
  * answers `409 SLIP_NOT_PENDING_REVIEW`. It also needs `warehouse.update` or
@@ -196,12 +222,12 @@ function FlagControl({
   const packItems = row.meta?.packItems as ReceivingSlipGroupItem[] | undefined;
 
   if (!canFlag) return null;
-  if (item) return <FlagButton label="Flag" onFlag={() => onFlag(item)}/>;
+  if (item) return <FlagButton label="Flag" onFlag={() => onFlag(item)} />;
   if (!packItems?.length) return null;
 
   // A pack row has no line of its own, and the flag endpoint is line-scoped, so
   // the dialog fans the flag out across the pack.
-  return <FlagButton label={`Flag pack (${packItems.length})`} onFlag={() => onFlagPack(packItems)}/>;
+  return <FlagButton label={`Flag pack (${packItems.length})`} onFlag={() => onFlagPack(packItems)} />;
 }
 
 /** Reject is a per-line decision, so it never appears on a pack row. */
@@ -247,8 +273,8 @@ function ActionsCell({
 
   return (
     <div className="flex items-center justify-end gap-2">
-      <FlagControl row={row} canFlag={canFlag} onFlag={onFlag} onFlagPack={onFlagPack}/>
-      <RejectControl item={item} onReject={onReject}/>
+      <FlagControl row={row} canFlag={canFlag} onFlag={onFlag} onFlagPack={onFlagPack} />
+      <RejectControl item={item} onReject={onReject} />
     </div>
   );
 }
@@ -295,7 +321,7 @@ function SlipSummary({ slip, totalUnits, flagBlocked }: { slip: ReceivingSlip; t
         </div>
       )}
 
-      <FlagBlockedNote reason={flagBlocked}/>
+      <FlagBlockedNote reason={flagBlocked} />
 
       {slip.rejection_reason && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -384,6 +410,7 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
     () => [
       { id: 'flag', header: 'Flag', cell: (row) => <FlagCell row={row} /> },
       { id: 'condition', header: 'Condition', cell: (row) => <ConditionCell row={row} /> },
+      { id: 'serials', header: 'Serials', cell: (row) => <SerialsCell row={row} /> },
       {
         id: 'actions',
         header: 'Actions',
@@ -393,7 +420,7 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
             canFlag={canFlag}
             onFlag={(item) => setFlagTarget([item])}
             onFlagPack={setFlagTarget}
-            onReject={onRejectItem ? setRejectTarget : undefined}/>
+            onReject={onRejectItem ? setRejectTarget : undefined} />
         ),
       },
     ],
@@ -410,7 +437,7 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
         rows={rows}
         columns={columns}
         emptyMessage={error ?? 'No items'}
-        summary={slip ? <SlipSummary slip={slip} totalUnits={countUnits(slip)} flagBlocked={flagBlocked}/> : undefined}/>
+        summary={slip ? <SlipSummary slip={slip} totalUnits={countUnits(slip)} flagBlocked={flagBlocked} /> : undefined} />
 
       {slip && (
         <FlagLineDialog open={Boolean(flagTarget)}
@@ -420,7 +447,7 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
           slipId={slip.id}
           lines={flagTarget}
           onFlagged={handleFlagged}
-          onStale={onLineFlagged}/>
+          onStale={onLineFlagged} />
       )}
 
       <RejectItemDialog item={rejectTarget}
@@ -429,7 +456,7 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
         onOpenChange={(next) => {
           if (!next) setRejectTarget(null);
         }}
-        onConfirm={confirmReject}/>
+        onConfirm={confirmReject} />
     </>
   );
 }

@@ -26,6 +26,7 @@ import type {
   PutAwayExceptionRequest,
   ReceivingSlip,
   ScanResult,
+  CartonScanSummary,
   ScanSession,
   SessionSummary,
   WMSWorkerListResponse,
@@ -244,6 +245,21 @@ export function useInboundSession() {
     [accessToken, session],
   );
 
+  const scanCarton = React.useCallback(
+    async (qrData: string): Promise<CartonScanSummary> => {
+      if (!session || !accessToken) throw new Error('No active session');
+      setError(null);
+      try {
+        return await inboundApi.scanCarton(accessToken, session.id, { qr_data: qrData });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Carton scan failed';
+        setError(msg);
+        throw new Error(msg);
+      }
+    },
+    [accessToken, session],
+  );
+
   const endSession = React.useCallback(async (): Promise<ReceivingSlip> => {
     if (!session || !accessToken) throw new Error('No active session');
     setLoading(true);
@@ -270,7 +286,7 @@ export function useInboundSession() {
     }
   }, [accessToken, session]);
 
-  return { session, loading, error, startSession, recordScan, endSession, getSummary };
+  return { session, loading, error, startSession, recordScan, scanCarton, endSession, getSummary };
 }
 
 // ============================================

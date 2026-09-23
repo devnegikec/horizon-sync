@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, PackageX } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components';
 import { DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -20,12 +20,14 @@ import { isResolvedStatus } from '../exceptionGroups';
 import { WMSStatusBadge } from '../WMSStatusBadge';
 
 import { DISPOSITION_ACTIONS } from './DispositionDialog';
-import { EMPTY, exceptionIdentity, rowExceptions, type ExceptionTableRow } from './exceptionRows';
+import { EMPTY, exceptionIdentity, isMissingSerial, reasonCodeLabel, rowExceptions, type ExceptionTableRow } from './exceptionRows';
 
 export interface InboundExceptionColumnsOptions {
   /** Without the dispose permission the row menu is hidden entirely. */
   canDispose: boolean;
   onDispose: (row: ExceptionTableRow, action: BulkDispositionAction) => void;
+  /** Routes a `MISSING_SERIAL` exception (a shortage, not a move) to the shortage ledger. */
+  onShortClose?: (row: ExceptionTableRow) => void;
 }
 
 /* ---- Cells ------------------------------------------------------------- */
@@ -61,7 +63,7 @@ function ReasonCell({ row }: { row: ExceptionTableRow }) {
   const { reason_code, condition_code, note, evidence } = row.exception;
   return (
     <div className="max-w-[220px] space-y-0.5">
-      <p className="text-xs font-medium">{reason_code}</p>
+      <p className="text-xs font-medium">{reasonCodeLabel(reason_code)}</p>
       {condition_code && <p className="text-xs text-muted-foreground">{condition_code}</p>}
       {note && <p className="truncate text-xs text-muted-foreground">{note}</p>}
       {evidence.length > 0 && <p className="text-xs text-muted-foreground">{evidence.length} evidence file(s)</p>}
@@ -95,12 +97,17 @@ function CreatedCell({ row }: { row: ExceptionTableRow }) {
 
 /* ---- Actions ----------------------------------------------------------- */
 
-function ExceptionActionsCell({ row, onDispose }: { row: ExceptionTableRow } & Pick<InboundExceptionColumnsOptions, 'onDispose'>) {
+function ExceptionActionsCell({
+  row,
+  onDispose,
+  onShortClose,
+}: { row: ExceptionTableRow } & Pick<InboundExceptionColumnsOptions, 'onDispose' | 'onShortClose'>) {
   const exceptions = rowExceptions(row);
   const resolved = exceptions.every((exception) => isResolvedStatus(exception.status));
   if (resolved) return <div className="text-right text-xs text-muted-foreground">Resolved</div>;
 
   const [first] = exceptions;
+  const shortCloseOnly = exceptions.length > 0 && exceptions.every(isMissingSerial);
 
   return (
     <div className="flex justify-end">
@@ -115,21 +122,28 @@ function ExceptionActionsCell({ row, onDispose }: { row: ExceptionTableRow } & P
             {row.kind === 'group' ? `All ${row.exceptions.length} units` : 'This unit'}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {DISPOSITION_ACTIONS.map(({ value, label, icon: Icon, destructive }) => (
-            <DropdownMenuItem key={value}
-              className={destructive ? 'text-destructive focus:text-destructive' : undefined}
-              onClick={() => onDispose(row, value)}>
-              <Icon className="mr-2 h-4 w-4" />
-              {label}
+          {shortCloseOnly ? (
+            <DropdownMenuItem onClick={() => onShortClose?.(row)}>
+              <PackageX className="mr-2 h-4 w-4" />
+              Short-close (shortage ledger)
             </DropdownMenuItem>
-          ))}
+          ) : (
+            DISPOSITION_ACTIONS.map(({ value, label, icon: Icon, destructive }) => (
+              <DropdownMenuItem key={value}
+                className={destructive ? 'text-destructive focus:text-destructive' : undefined}
+                onClick={() => onDispose(row, value)}>
+                <Icon className="mr-2 h-4 w-4" />
+                {label}
+              </DropdownMenuItem>
+            ))
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
   );
 }
 
-export function createInboundExceptionColumns({ canDispose, onDispose }: InboundExceptionColumnsOptions): ColumnDef<ExceptionTableRow>[] {
+export function createInboundExceptionColumns({ canDispose, onDispose, onShortClose }: InboundExceptionColumnsOptions): ColumnDef<ExceptionTableRow>[] {
   const columns: ColumnDef<ExceptionTableRow>[] = [
     {
       id: 'item',
@@ -172,7 +186,7 @@ export function createInboundExceptionColumns({ canDispose, onDispose }: Inbound
     columns.push({
       id: 'actions',
       header: () => <div className="text-right">Actions</div>,
-      cell: ({ row }) => <ExceptionActionsCell row={row.original} onDispose={onDispose} />,
+      cell: ({ row }) => <ExceptionActionsCell row={row.original} onDispose={onDispose} onShortClose={onShortClose} />,
       enableSorting: false,
     });
   }

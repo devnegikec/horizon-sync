@@ -33,6 +33,7 @@ import {
   DISPOSITION_ACTIONS,
   exceptionRows,
   exceptionSubRows,
+  isMissingSerial,
   selectedExceptions,
   type DispositionSubmission,
   type DispositionTarget,
@@ -138,7 +139,7 @@ function ExceptionQueueEmpty({ filtered, onClearFilters }: { filtered: boolean; 
                   Clear filters
                 </Button>
               ) : undefined
-            }/>
+            } />
         </div>
       </CardContent>
     </Card>
@@ -246,7 +247,7 @@ function ExceptionTable({
           renderBulkActions={renderBulkActions}
           onTableReady={onTableReady}
           fixedHeader
-          maxHeight="auto"/>
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );
@@ -256,7 +257,7 @@ function ExceptionTable({
 /*  Queue                                                              */
 /* ------------------------------------------------------------------ */
 
-function ExceptionQueueView({ warehouseId }: { warehouseId?: string }) {
+function ExceptionQueueView({ warehouseId, onShortClose }: { warehouseId?: string; onShortClose: () => void }) {
   const token = useUserStore((state) => state.accessToken);
   const permissions = useUserStore((state) => state.permissions.permissions);
   const canDispose = hasPermission(permissions, 'inbound_exception.dispose');
@@ -342,8 +343,8 @@ function ExceptionQueueView({ warehouseId }: { warehouseId?: string }) {
   }, []);
 
   const columns = React.useMemo(
-    () => createInboundExceptionColumns({ canDispose, onDispose: openDisposition }),
-    [canDispose, openDisposition],
+    () => createInboundExceptionColumns({ canDispose, onDispose: openDisposition, onShortClose: () => onShortClose() }),
+    [canDispose, openDisposition, onShortClose],
   );
 
   const submitDisposition = React.useCallback(
@@ -371,15 +372,29 @@ function ExceptionQueueView({ warehouseId }: { warehouseId?: string }) {
 
   const renderBulkActions = React.useCallback(
     (selectedRows: ExceptionTableRow[]) => {
-      const actionable = selectedExceptions(selectedRows);
+      const selected = selectedExceptions(selectedRows);
+      const missingSerials = selected.filter(isMissingSerial);
+      const actionable = selected.filter((exception) => !isMissingSerial(exception));
       return (
-        <BulkActionBar exceptions={actionable}
-          busy={submitting || loading}
-          onAction={(action) => setTarget({ exceptions: actionable, action })}
-          onClear={() => table?.resetRowSelection()}/>
+        <div className="space-y-2">
+          {actionable.length > 0 && (
+            <BulkActionBar exceptions={actionable}
+              busy={submitting || loading}
+              onAction={(action) => setTarget({ exceptions: actionable, action })}
+              onClear={() => table?.resetRowSelection()} />
+          )}
+          {missingSerials.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/5 px-3 py-2">
+              <span className="text-sm font-medium">{missingSerials.length} shortage(s) — no physical unit</span>
+              <Button size="sm" disabled={submitting || loading} onClick={onShortClose}>
+                Short-close in shortage ledger
+              </Button>
+            </div>
+          )}
+        </div>
       );
     },
-    [submitting, loading, table],
+    [submitting, loading, table, onShortClose],
   );
 
   const renderFilters = React.useCallback(
@@ -388,7 +403,7 @@ function ExceptionQueueView({ warehouseId }: { warehouseId?: string }) {
         status={status}
         loading={loading}
         onDestinationChange={setDestination}
-        onStatusChange={setStatus}/>
+        onStatusChange={setStatus} />
     ),
     [destination, status, loading],
   );
@@ -427,13 +442,13 @@ function ExceptionQueueView({ warehouseId }: { warehouseId?: string }) {
         onClearFilters={clearFilters}
         renderFilters={renderFilters}
         renderBulkActions={renderBulkActions}
-        onTableReady={handleTableReady}/>
+        onTableReady={handleTableReady} />
 
       <DispositionDialog target={target}
         onOpenChange={(open) => {
           if (!open) setTarget(null);
         }}
-        onConfirm={submitDisposition}/>
+        onConfirm={submitDisposition} />
     </div>
   );
 }
@@ -460,15 +475,18 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
           <button key={key}
             type="button"
             onClick={() => setView(key)}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              view === key ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}>
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${view === key ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}>
             {label}
           </button>
         ))}
       </div>
 
-      {view === 'queue' ? <ExceptionQueueView warehouseId={warehouseId}/> : <ShortageLedger/>}
+      {view === 'queue' ? (
+        <ExceptionQueueView warehouseId={warehouseId} onShortClose={() => setView('shortages')} />
+      ) : (
+        <ShortageLedger />
+      )}
     </div>
   );
 }

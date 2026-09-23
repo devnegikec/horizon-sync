@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { useQuery } from '@tanstack/react-query';
-import { Truck, Trash2, Mail, Eye, Download, Loader2 } from 'lucide-react';
+import { Truck, Trash2, Mail, Eye, Download, Loader2, ScanLine } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Badge, Button, DetailDialog, Separator } from '@horizon-sync/ui/components';
@@ -32,6 +32,7 @@ import { convertAsnOrderToPDFData } from '../../utils/pdf/asnOrderToPDF';
 import { EmailComposer } from '../common';
 import { StatusBadge } from '../quotations/StatusBadge';
 import { CsvImporter } from '../shared/CsvImporter';
+import { TransferVerificationScreen } from '../wms/TransferVerificationScreen';
 
 import type { AsnEntryLineRow } from './AsnEntryLineItemsTable';
 import { AsnEntryLineItemsTable } from './AsnEntryLineItemsTable';
@@ -342,6 +343,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
   const [importStatus, setImportStatus] = React.useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [importing, setImporting] = React.useState(false);
   const [clearKey, setClearKey] = React.useState(0);
+  const [serialMatchOpen, setSerialMatchOpen] = React.useState(false);
   const { toast } = useToast();
 
   // Fetch full ASN order detail when dialog opens in view/edit mode
@@ -724,6 +726,10 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                     </Button>
                     {formData.asn_type === 'internal_transfer' && (
                       <>
+                        <Button type="button" variant="outline" onClick={() => setSerialMatchOpen(true)} className="gap-2">
+                          <ScanLine className="h-4 w-4" />
+                          Serial Match
+                        </Button>
                         <Button type="button" variant="outline" onClick={handleExport856} className="gap-2">
                           <Download className="h-4 w-4" />
                           Export 856
@@ -827,6 +833,10 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
           onOpenChange={handleEmailClose}
           onSuccess={handleEmailSuccess} />
       )}
+
+      <TransferVerificationScreen open={serialMatchOpen}
+        onOpenChange={setSerialMatchOpen}
+        asnOrder={resolvedOrder} />
     </>
   );
 }
