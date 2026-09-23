@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
+import { ManagementContainer } from '@horizon-sync/ui/components';
 
 import { useSelectedWarehouse } from '../../../hooks/useSelectedWarehouse';
 import { hasPermission } from '../../../utils/permissions';
@@ -60,7 +61,7 @@ export function WMSManagement() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <ManagementContainer>
       <WMSHeader warehouses={warehouses}
         warehousesLoading={warehousesLoading}
         selectedWarehouseId={selectedWarehouseId}
@@ -77,6 +78,6 @@ export function WMSManagement() {
         onManageSectionChange={setManageSection}
         onReceivingStatusFilterChange={setReceivingStatusFilter}
         onPutawayStatusFilterChange={setPutawayStatusFilter}/>
-    </div>
+    </ManagementContainer>
   );
 }
