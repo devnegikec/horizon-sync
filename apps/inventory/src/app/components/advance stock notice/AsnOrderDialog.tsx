@@ -724,7 +724,7 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                       <Mail className="h-4 w-4" />
                       Send Email
                     </Button>
-                    {formData.asn_type === 'internal_transfer' && (
+                    {formData.asn_type === 'internal_transfer' && resolvedOrder?.serialization_mode !== 'quantity_only' && (
                       <>
                         <Button type="button" variant="outline" onClick={() => setSerialMatchOpen(true)} className="gap-2">
                           <ScanLine className="h-4 w-4" />

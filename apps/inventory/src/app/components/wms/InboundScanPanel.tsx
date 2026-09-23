@@ -384,12 +384,18 @@ export function InboundScanPanel({ warehouseId, onSlipGenerated }: InboundScanPa
       }
       const result = await recordScan(qrInput.trim());
       setScans((prev) => [result, ...prev]);
+      setCartonSummary(null);
       setQrInput('');
       inputRef.current?.focus();
       await reconciliation.refresh();
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'Scan failed');
     }
+  };
+
+  const handleModeChange = (mode: 'unit' | 'carton') => {
+    setScanMode(mode);
+    setCartonSummary(null);
   };
 
   const handleEnd = async () => {
@@ -456,12 +462,12 @@ export function InboundScanPanel({ warehouseId, onSlipGenerated }: InboundScanPa
       <div className="flex items-center gap-2">
         <div className="flex gap-1 rounded-md border p-0.5 text-xs font-medium">
           <button type="button"
-            onClick={() => setScanMode('unit')}
+            onClick={() => handleModeChange('unit')}
             className={`rounded px-2.5 py-1 transition-colors ${scanMode === 'unit' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
             Unit
           </button>
           <button type="button"
-            onClick={() => setScanMode('carton')}
+            onClick={() => handleModeChange('carton')}
             className={`rounded px-2.5 py-1 transition-colors ${scanMode === 'carton' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
             Master Carton
           </button>

@@ -34,6 +34,7 @@ import {
   exceptionRows,
   exceptionSubRows,
   isMissingSerial,
+  rowExceptions,
   selectedExceptions,
   type DispositionSubmission,
   type DispositionTarget,
@@ -257,7 +258,7 @@ function ExceptionTable({
 /*  Queue                                                              */
 /* ------------------------------------------------------------------ */
 
-function ExceptionQueueView({ warehouseId, onShortClose }: { warehouseId?: string; onShortClose: () => void }) {
+function ExceptionQueueView({ warehouseId, onShortClose }: { warehouseId?: string; onShortClose: (exceptions: InboundException[]) => void }) {
   const token = useUserStore((state) => state.accessToken);
   const permissions = useUserStore((state) => state.permissions.permissions);
   const canDispose = hasPermission(permissions, 'inbound_exception.dispose');
@@ -343,7 +344,7 @@ function ExceptionQueueView({ warehouseId, onShortClose }: { warehouseId?: strin
   }, []);
 
   const columns = React.useMemo(
-    () => createInboundExceptionColumns({ canDispose, onDispose: openDisposition, onShortClose: () => onShortClose() }),
+    () => createInboundExceptionColumns({ canDispose, onDispose: openDisposition, onShortClose: (row) => onShortClose(rowExceptions(row)) }),
     [canDispose, openDisposition, onShortClose],
   );
 
@@ -386,7 +387,7 @@ function ExceptionQueueView({ warehouseId, onShortClose }: { warehouseId?: strin
           {missingSerials.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/5 px-3 py-2">
               <span className="text-sm font-medium">{missingSerials.length} shortage(s) — no physical unit</span>
-              <Button size="sm" disabled={submitting || loading} onClick={onShortClose}>
+              <Button size="sm" disabled={submitting || loading} onClick={() => onShortClose(missingSerials)}>
                 Short-close in shortage ledger
               </Button>
             </div>
@@ -467,6 +468,12 @@ type ExceptionView = (typeof EXCEPTION_VIEWS)[number]['key'];
  */
 export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string }) {
   const [view, setView] = React.useState<ExceptionView>('queue');
+  const [shortageSku, setShortageSku] = React.useState<string | null>(null);
+
+  const openShortageLedger = React.useCallback((exceptions: InboundException[]) => {
+    setShortageSku(exceptions[0]?.sku ?? null);
+    setView('shortages');
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -474,7 +481,10 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
         {EXCEPTION_VIEWS.map(({ key, label }) => (
           <button key={key}
             type="button"
-            onClick={() => setView(key)}
+            onClick={() => {
+              setShortageSku(null);
+              setView(key);
+            }}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${view === key ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}>
             {label}
@@ -483,9 +493,9 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
       </div>
 
       {view === 'queue' ? (
-        <ExceptionQueueView warehouseId={warehouseId} onShortClose={() => setView('shortages')} />
+        <ExceptionQueueView warehouseId={warehouseId} onShortClose={openShortageLedger} />
       ) : (
-        <ShortageLedger />
+        <ShortageLedger initialSku={shortageSku} />
       )}
     </div>
   );

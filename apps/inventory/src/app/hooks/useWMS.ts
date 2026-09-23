@@ -250,7 +250,11 @@ export function useInboundSession() {
       if (!session || !accessToken) throw new Error('No active session');
       setError(null);
       try {
-        return await inboundApi.scanCarton(accessToken, session.id, { qr_data: qrData });
+        const result = await inboundApi.scanCarton(accessToken, session.id, { qr_data: qrData });
+        setSession((prev) =>
+          prev ? { ...prev, total_boxes_scanned: result.total_boxes_scanned ?? prev.total_boxes_scanned + 1 } : prev,
+        );
+        return result;
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Carton scan failed';
         setError(msg);

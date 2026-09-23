@@ -17,7 +17,7 @@ export function CartonSummary({ summary }: { summary: CartonScanSummary }) {
         ['Unexpected', summary.unexpected],
     ];
 
-    const hasDiscrepancy = summary.unexpected > 0 || summary.duplicate > 0;
+    const hasDiscrepancy = summary.unexpected > 0 || summary.duplicate > 0 || summary.received < summary.expected;
 
     return (
         <div className="space-y-3 rounded-lg border p-4" aria-live="polite">

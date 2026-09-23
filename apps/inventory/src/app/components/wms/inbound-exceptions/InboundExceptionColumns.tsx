@@ -58,7 +58,10 @@ function SerialCell({ row }: { row: ExceptionTableRow }) {
 }
 
 function ReasonCell({ row }: { row: ExceptionTableRow }) {
-  if (row.kind === 'group') return <span className="text-xs text-muted-foreground">{row.reasons}</span>;
+  if (row.kind === 'group') {
+    const labels = [...new Set(row.exceptions.map((exception) => reasonCodeLabel(exception.reason_code)))];
+    return <span className="text-xs text-muted-foreground">{labels.join(', ')}</span>;
+  }
 
   const { reason_code, condition_code, note, evidence } = row.exception;
   return (

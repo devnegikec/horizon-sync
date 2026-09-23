@@ -226,6 +226,8 @@ export interface CartonScanSummary {
   received: number;
   duplicate: number;
   unexpected: number;
+  /** Updated session box count, when the backend returns it. */
+  total_boxes_scanned?: number;
   serials: CartonScanLine[];
 }
 
