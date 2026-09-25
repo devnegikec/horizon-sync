@@ -189,6 +189,8 @@ export interface ScanSession {
   dock_location: string | null;
   asn_order_id?: string | null;
   asn_order_no?: string | null;
+  /** `quantity_only` sessions verify by quantity without capturing unit serials. */
+  serialization_mode?: string | null;
   status: 'open' | 'closed';
   total_boxes_scanned: number;
   started_at: string | null;
@@ -205,6 +207,28 @@ export interface ScanResult {
   batch_number: string;
   scanned_at: string | null;
   total_boxes_scanned: number;
+}
+
+/** Per-unit result returned inside a master-carton scan summary. */
+export type CartonScanLineStatus = 'received' | 'duplicate' | 'unexpected';
+
+export interface CartonScanLine {
+  serial_number: string;
+  sku?: string | null;
+  status: CartonScanLineStatus;
+  message?: string | null;
+}
+
+/** Result of `POST /inbound/sessions/{id}/scan-carton`. */
+export interface CartonScanSummary {
+  carton_serial?: string | null;
+  expected: number;
+  received: number;
+  duplicate: number;
+  unexpected: number;
+  /** Updated session box count, when the backend returns it. */
+  total_boxes_scanned?: number;
+  serials: CartonScanLine[];
 }
 
 export interface BatchBreakdown {
@@ -288,6 +312,11 @@ export interface AsnReceivingSummary {
     total_items: number;
   }>;
   line_items: AsnReconciliationLineItem[];
+  /** Serial-level reconciliation counts (serialised transfers only). */
+  expected_serials?: number;
+  received_serials?: number;
+  missing_serials?: number;
+  unexpected_serials?: number;
 }
 
 export type ReceivingSlipStatus = 'pending_review' | 'pending_putaway' | 'putaway_in_progress' | 'putaway_complete' | 'rejected';
@@ -311,6 +340,9 @@ export interface ReceivingSlipGroupItem {
   reason_code?: string | null;
   /** Units missing against the ASN expectation; only set while `flag === 'short'`. */
   short_qty?: number | null;
+  /** Unit serials captured for this slip line (serialised receipts). */
+  serial_nos?: string[] | null;
+  received_serial_count?: number | null;
   notes: string | null;
 }
 
@@ -342,6 +374,9 @@ export interface ReceivingSlipItem {
   exception_status?: string | null;
   notes: string | null;
   parent_qseal?: ReceivingSlipParentQSeal;
+  /** Unit serials captured for this slip line (serialised receipts). */
+  serial_nos?: string[] | null;
+  received_serial_count?: number | null;
 }
 
 export interface ReceivingSlip {
