@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { Loader2, Plus, RefreshCw, Truck, X } from 'lucide-react';
+import { Loader2, Truck } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button, Card, CardContent, EmptyState, Input, Label, TableSkeleton } from '@horizon-sync/ui/components';
@@ -19,6 +19,13 @@ interface VehicleArrivalManagementProps {
   warehouseId?: string;
   /** Increment to trigger a refetch (e.g. from the panel-level Refresh button). */
   refreshKey?: number;
+  /**
+   * The panel heading (above the stat cards) owns the "Register Arrival" button,
+   * so the register form's visibility is controlled by the parent.
+   */
+  registerFormOpen?: boolean;
+  /** Called after a successful registration so the panel heading button resets. */
+  onRegisterFormClose?: () => void;
 }
 
 interface AsnOption {
@@ -101,39 +108,6 @@ function updatePayload(fields: VehicleFields): VehicleArrivalUpdate {
 
 // ─── Sub components ───────────────────────────────────────────────────────────
 
-function VehicleArrivalHeader({
-  showForm,
-  refreshing,
-  onToggleForm,
-  onRefresh,
-}: {
-  showForm: boolean;
-  refreshing: boolean;
-  onToggleForm: () => void;
-  onRefresh: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h2 className="text-lg font-semibold">Vehicle Arrivals</h2>
-        <p className="text-sm text-muted-foreground">
-          Register vehicles arriving at the dock and associate them with one or more ASNs.
-        </p>
-      </div>
-      <div className="flex shrink-0 gap-2 self-start sm:self-auto">
-        <Button variant="outline" size="sm" className="gap-2" onClick={onRefresh} disabled={refreshing}>
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </Button>
-        <Button size="sm" className="gap-2" onClick={onToggleForm}>
-          {showForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-          {showForm ? 'Cancel' : 'Register Arrival'}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function VehicleFieldGrid({
   idPrefix,
   values,
@@ -207,7 +181,8 @@ function RegisterArrivalForm({
   asnOptions: AsnOption[];
   loadingAsns: boolean;
   onLoadAsns: () => void;
-  onRegistered: () => void;
+  /** Optional: only needed to reset a parent-owned toggle when the form is not self-contained. */
+  onRegistered?: () => void;
 }) {
   const { toast } = useToast();
   const [fields, setFields] = React.useState<VehicleFields>(EMPTY_VEHICLE_FIELDS);
@@ -231,7 +206,7 @@ function RegisterArrivalForm({
     try {
       await register(arrivalPayload(fields, warehouseId, selectedAsnIds));
       toast({ title: 'Arrival registered', description: `Vehicle ${fields.vehicle_no.trim()} checked in.` });
-      onRegistered();
+      onRegistered?.();
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to register arrival', variant: 'destructive' });
     } finally {
@@ -430,11 +405,15 @@ function VehicleArrivalTable({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function VehicleArrivalManagement({ warehouseId, refreshKey }: VehicleArrivalManagementProps) {
+export function VehicleArrivalManagement({
+  warehouseId,
+  refreshKey,
+  registerFormOpen,
+  onRegisterFormClose,
+}: VehicleArrivalManagementProps) {
   const { toast } = useToast();
   const accessToken = useUserStore((s) => s.accessToken);
 
-  const [showForm, setShowForm] = React.useState(false);
   const [linkingArrivalId, setLinkingArrivalId] = React.useState<string | null>(null);
   const [editingArrival, setEditingArrival] = React.useState<VehicleArrivalListItem | null>(null);
   const [asnOptions, setAsnOptions] = React.useState<AsnOption[]>([]);
@@ -467,8 +446,6 @@ export function VehicleArrivalManagement({ warehouseId, refreshKey }: VehicleArr
       setLoadingAsns(false);
     }
   }, [accessToken, warehouseId, toast]);
-
-  const closeForm = React.useCallback(() => setShowForm(false), []);
 
   const handleEdit = React.useCallback((arrival: VehicleArrivalListItem) => setEditingArrival(arrival), []);
   const handleLinkAsn = React.useCallback((arrival: VehicleArrivalListItem) => setLinkingArrivalId(arrival.id), []);
@@ -533,18 +510,13 @@ export function VehicleArrivalManagement({ warehouseId, refreshKey }: VehicleArr
 
   return (
     <div className="space-y-4">
-      <VehicleArrivalHeader showForm={showForm}
-        refreshing={loading}
-        onToggleForm={() => setShowForm((v) => !v)}
-        onRefresh={() => refetch()}/>
-
-      {showForm && (
+      {registerFormOpen && (
         <RegisterArrivalForm warehouseId={warehouseId}
           register={register}
           asnOptions={asnOptions}
           loadingAsns={loadingAsns}
           onLoadAsns={loadAsns}
-          onRegistered={closeForm}/>
+          onRegistered={onRegisterFormClose}/>
       )}
 
       <VehicleArrivalTable isInitialLoading={loading && !data}

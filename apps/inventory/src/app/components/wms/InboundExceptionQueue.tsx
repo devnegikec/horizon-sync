@@ -38,7 +38,6 @@ import {
   type DispositionTarget,
   type ExceptionTableRow,
 } from './inbound-exceptions';
-import { ShortageLedger } from './shortage';
 
 const PAGE_SIZE = 20;
 
@@ -256,7 +255,11 @@ function ExceptionTable({
 /*  Queue                                                              */
 /* ------------------------------------------------------------------ */
 
-function ExceptionQueueView({ warehouseId }: { warehouseId?: string }) {
+/**
+ * The hold/quarantine worklist. A shortage creates no exception row — nothing
+ * needs disposing of — so `ShortageLedger` is its own panel section instead.
+ */
+export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string }) {
   const token = useUserStore((state) => state.accessToken);
   const permissions = useUserStore((state) => state.permissions.permissions);
   const canDispose = hasPermission(permissions, 'inbound_exception.dispose');
@@ -434,41 +437,6 @@ function ExceptionQueueView({ warehouseId }: { warehouseId?: string }) {
           if (!open) setTarget(null);
         }}
         onConfirm={submitDisposition}/>
-    </div>
-  );
-}
-
-const EXCEPTION_VIEWS = [
-  { key: 'queue', label: 'Hold / Quarantine Queue' },
-  { key: 'shortages', label: 'Shortage Ledger' },
-] as const;
-
-type ExceptionView = (typeof EXCEPTION_VIEWS)[number]['key'];
-
-/**
- * "Holds & Quarantine" holds two different problems: stock that physically needs
- * a disposition decision, and stock that never arrived. They share a section
- * because both are inbound discrepancies a supervisor has to clear.
- */
-export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string }) {
-  const [view, setView] = React.useState<ExceptionView>('queue');
-
-  return (
-    <div className="space-y-4">
-      <div className="inline-flex gap-1 rounded-lg border bg-muted/20 p-1">
-        {EXCEPTION_VIEWS.map(({ key, label }) => (
-          <button key={key}
-            type="button"
-            onClick={() => setView(key)}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              view === key ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {view === 'queue' ? <ExceptionQueueView warehouseId={warehouseId}/> : <ShortageLedger/>}
     </div>
   );
 }
