@@ -18,9 +18,12 @@ export interface ExceptionReasonsState {
  * Tenant-configurable reason codes for the exception and flag pickers.
  *
  * Loaded only while a dialog is open, and reloadable so a `REASON_CODE_INVALID`
- * response can be recovered from without closing the form.
+ * response can be recovered from without closing the form. Pass `category`
+ * (e.g. `'short'`) to ask the server for a single section — the list is also
+ * filtered locally, so a server that ignores the query param can't leak codes
+ * from another category into the picker.
  */
-export function useExceptionReasons(open: boolean): ExceptionReasonsState {
+export function useExceptionReasons(open: boolean, category?: string): ExceptionReasonsState {
   const token = useUserStore((state) => state.accessToken);
 
   const [reasons, setReasons] = React.useState<InboundExceptionReason[]>([]);
@@ -34,9 +37,9 @@ export function useExceptionReasons(open: boolean): ExceptionReasonsState {
     setLoading(true);
     setError(null);
     inboundApi
-      .listExceptionReasons(token)
+      .listExceptionReasons(token, category)
       .then((data) => {
-        if (!cancelled) setReasons(data);
+        if (!cancelled) setReasons(category ? data.filter((reason) => reason.category === category) : data);
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -50,7 +53,7 @@ export function useExceptionReasons(open: boolean): ExceptionReasonsState {
     return () => {
       cancelled = true;
     };
-  }, [open, token, reloadKey]);
+  }, [open, token, reloadKey, category]);
 
   const reload = React.useCallback(() => setReloadKey((key) => key + 1), []);
 

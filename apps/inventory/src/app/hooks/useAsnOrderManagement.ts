@@ -7,6 +7,7 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import type {
   AsnOrder,
+  AsnOrderClosePayload,
   AsnOrderCreate,
   AsnOrderUpdate,
   AsnOrderListResponse,
@@ -112,6 +113,7 @@ export function useAsnOrderManagement() {
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
   const [saving, setSaving] = React.useState(false);
+  const [closing, setClosing] = React.useState(false);
   const [recentlyCreatedId, setRecentlyCreatedId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -180,6 +182,32 @@ export function useAsnOrderManagement() {
     }
   }), [page, pageSize, pagination?.total_items]);
 
+  /**
+   * Formally close an ASN, accepting any outstanding shortfall.
+   *
+   * Errors are deliberately NOT toasted here: the close dialog renders the
+   * documented states itself (`SHORTAGE_REASON_REQUIRED`,
+   * `ASN_CLOSE_APPROVAL_REQUIRED`, `ASN_ALREADY_CLOSED`, `ASN_NOT_CLOSABLE`), so
+   * the operator keeps the form and its context. The rejection is re-thrown for
+   * the dialog to branch on, and the list is only refreshed on success — a
+   * failed close must never look like it succeeded.
+   */
+  const closeOrder = React.useCallback(async (id: string, payload: AsnOrderClosePayload = {}) => {
+    if (!accessToken) throw new Error('Not authenticated');
+    setClosing(true);
+    try {
+      const closed = await asnOrderApi.close(accessToken, id, payload);
+      // Closing also writes off the ASN's open shortage balances, so anything
+      // keyed on shortages is stale afterwards.
+      queryClient.invalidateQueries({ queryKey: ['asn-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['short-balances'] });
+      refetch();
+      return closed;
+    } finally {
+      setClosing(false);
+    }
+  }, [accessToken, queryClient, refetch]);
+
   return {
     filters,
     setFilters,
@@ -194,6 +222,8 @@ export function useAsnOrderManagement() {
     pageSize,
     setPageSize,
     handleSave,
+    closeOrder,
+    closing,
     deleteMutation,
     serverPaginationConfig,
     saving,
