@@ -183,7 +183,10 @@ function PackingSlipGroupRow({ group }: { group: PackingSlipGroup }) {
 
 interface PackingSlipSection {
   key: string;
+  /** Human-readable number (pick-list or order) when available, otherwise a short id. */
   label: string;
+  /** Sections are keyed by pick-list when present, otherwise by order. */
+  kind: 'pick_list' | 'order';
   groups: PackingSlipGroup[];
 }
 
@@ -200,8 +203,11 @@ function packingSlipSections(groups: PackingSlipGroup[]): PackingSlipSection[] {
       existing.groups.push(group);
       return;
     }
-    const label = group.pick_list_no || (key !== '__unassigned__' ? key.slice(0, 8) : 'Unassigned');
-    sections.set(key, { key, label, groups: [group] });
+    const label =
+      group.pick_list_no ||
+      group.order_no ||
+      (key !== '__unassigned__' ? key.slice(0, 8) : 'Unassigned');
+    sections.set(key, { key, label, kind: group.pick_list_id ? 'pick_list' : 'order', groups: [group] });
   });
   return [...sections.values()];
 }
@@ -234,7 +240,8 @@ function PackingSlipLineItemsTable({ slip }: { slip: PackingSlip }) {
                 <React.Fragment key={section.key}>
                   <tr className="bg-muted/30 border-t">
                     <td colSpan={5} className="px-4 py-1.5 text-xs font-medium text-muted-foreground">
-                      Pick List <span className="font-mono text-foreground">{section.label}</span>
+                      {section.kind === 'pick_list' ? 'Pick List' : 'Order'}{' '}
+                      <span className="font-mono text-foreground">{section.label}</span>
                     </td>
                   </tr>
                   {section.groups.map((group, groupIndex) => (
