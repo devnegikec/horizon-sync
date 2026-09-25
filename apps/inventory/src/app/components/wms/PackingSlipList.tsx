@@ -181,9 +181,36 @@ function PackingSlipGroupRow({ group }: { group: PackingSlipGroup }) {
   );
 }
 
+interface PackingSlipSection {
+  key: string;
+  label: string;
+  groups: PackingSlipGroup[];
+}
+
+/**
+ * Buckets a slip's groups by pick-list (falling back to order) so a slip that
+ * packs several pick-lists reads as labelled sections instead of one flat list.
+ */
+function packingSlipSections(groups: PackingSlipGroup[]): PackingSlipSection[] {
+  const sections = new Map<string, PackingSlipSection>();
+  groups.forEach((group) => {
+    const key = group.pick_list_id || group.order_id || '__unassigned__';
+    const existing = sections.get(key);
+    if (existing) {
+      existing.groups.push(group);
+      return;
+    }
+    const label = group.pick_list_no || (key !== '__unassigned__' ? key.slice(0, 8) : 'Unassigned');
+    sections.set(key, { key, label, groups: [group] });
+  });
+  return [...sections.values()];
+}
+
 function PackingSlipLineItemsTable({ slip }: { slip: PackingSlip }) {
   const groups = slip.groups && slip.groups.length > 0 ? slip.groups : null;
   const totalUnits = packingSlipUnits(slip);
+  const sections = groups ? packingSlipSections(groups) : [];
+  const showSections = sections.length > 1;
 
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -202,9 +229,24 @@ function PackingSlipLineItemsTable({ slip }: { slip: PackingSlip }) {
         </thead>
         <tbody className="divide-y">
           {groups ? (
-            groups.map((group, groupIndex) => (
-              <PackingSlipGroupRow key={`${group.parent_qseal?.id ?? 'unpacked'}-${groupIndex}`} group={group} />
-            ))
+            showSections ? (
+              sections.map((section) => (
+                <React.Fragment key={section.key}>
+                  <tr className="bg-muted/30 border-t">
+                    <td colSpan={5} className="px-4 py-1.5 text-xs font-medium text-muted-foreground">
+                      Pick List <span className="font-mono text-foreground">{section.label}</span>
+                    </td>
+                  </tr>
+                  {section.groups.map((group, groupIndex) => (
+                    <PackingSlipGroupRow key={`${group.parent_qseal?.id ?? 'unpacked'}-${groupIndex}`} group={group} />
+                  ))}
+                </React.Fragment>
+              ))
+            ) : (
+              groups.map((group, groupIndex) => (
+                <PackingSlipGroupRow key={`${group.parent_qseal?.id ?? 'unpacked'}-${groupIndex}`} group={group} />
+              ))
+            )
           ) : (slip.items ?? []).length === 0 ? (
             <tr>
               <td colSpan={5} className="px-4 py-4 text-center text-muted-foreground text-xs">
