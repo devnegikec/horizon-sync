@@ -12,9 +12,11 @@ export interface WMSContentProps {
   manageSection: ManageSection;
   receivingStatusFilter: string;
   putawayStatusFilter: string;
+  shortageStatusFilter: string;
   selectedWarehouseId: string;
   onInboundSectionChange: (section: InboundSection) => void;
   onManageSectionChange: (section: ManageSection) => void;
   onReceivingStatusFilterChange: (status: string) => void;
   onPutawayStatusFilterChange: (status: string) => void;
+  onShortageStatusFilterChange: (status: string) => void;
 }

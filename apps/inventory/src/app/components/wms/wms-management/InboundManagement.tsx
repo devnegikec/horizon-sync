@@ -5,7 +5,7 @@ import { AlertTriangle, PackageCheck, PackageX, Plus, RefreshCw, RotateCcw, Truc
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 
-import type { PutAwayStatusCounts, ReceivingSlipStatusCounts } from '../../../types/wms.types';
+import type { InboundException, PutAwayStatusCounts, ReceivingSlipStatusCounts, ShortBalanceSummary } from '../../../types/wms.types';
 import { hasPermission } from '../../../utils/permissions';
 import { InboundExceptionQueue } from '../InboundExceptionQueue';
 import { InboundStats } from '../InboundStats';
@@ -23,9 +23,11 @@ export function InboundManagement({
   selectedWarehouseId,
   receivingStatusFilter,
   putawayStatusFilter,
+  shortageStatusFilter,
   onInboundSectionChange,
   onReceivingStatusFilterChange,
   onPutawayStatusFilterChange,
+  onShortageStatusFilterChange,
 }: WMSContentProps) {
   const [refreshKey, setRefreshKey] = React.useState(0);
   // Returns is a newer module with its own permission codes, so its tab only
@@ -36,9 +38,12 @@ export function InboundManagement({
   // `PutAwayView` so the stat cards don't fetch the same endpoints a second time.
   const [receivingCounts, setReceivingCounts] = React.useState<ReceivingSlipStatusCounts | null>(null);
   const [putawayCounts, setPutawayCounts] = React.useState<PutAwayStatusCounts | null>(null);
+  const [shortageSummary, setShortageSummary] = React.useState<ShortBalanceSummary | null>(null);
   // The Vehicle Arrivals register form is toggled from the panel heading (above
   // the stat cards), so its open state is owned here and passed to the section.
   const [vehicleFormOpen, setVehicleFormOpen] = React.useState(false);
+  // Set by the queue's "Short-close" action so the shortage ledger opens prefiltered.
+  const [shortageSku, setShortageSku] = React.useState<string | undefined>(undefined);
 
   const openReceiving = (status: string) => {
     onReceivingStatusFilterChange(status);
@@ -50,7 +55,42 @@ export function InboundManagement({
     onInboundSectionChange('putaway');
   };
 
+  const openShortage = (status: string) => {
+    onShortageStatusFilterChange(status);
+    onInboundSectionChange('shortages');
+  };
+
   const handleRefresh = React.useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  // Switching tabs from the tab bar starts the shortage ledger unfiltered — only
+  // the queue's short-close action pre-applies a SKU (see `openShortageLedger`).
+  const handleSectionChange = React.useCallback(
+    (section: InboundSection) => {
+      setShortageSku(undefined);
+      onInboundSectionChange(section);
+    },
+    [onInboundSectionChange],
+  );
+
+  // The tab is reached from any section, so it clears the SKU and status filters
+  // that a previous shortage visit (or a stat card) may have left behind.
+  const openShortageTab = () => {
+    setShortageSku(undefined);
+    openShortage('all');
+  };
+
+  // A `MISSING_SERIAL` exception has no unit to dispose of: the short is closed in
+  // the shortage ledger, prefiltered when the whole selection is one SKU.
+  const openShortageLedger = React.useCallback(
+    (exceptions: InboundException[]) => {
+      const skus = [
+        ...new Set(exceptions.map((exception) => exception.sku).filter((sku): sku is string => Boolean(sku))),
+      ];
+      setShortageSku(skus.length === 1 ? skus[0] : undefined);
+      onInboundSectionChange('shortages');
+    },
+    [onInboundSectionChange],
+  );
 
   const heading = inboundHeading(inboundSection);
   const vehicleActions = inboundSection === 'vehicle' ? (
@@ -71,14 +111,17 @@ export function InboundManagement({
       <InboundStats activeSection={inboundSection}
         receivingCounts={receivingCounts}
         putawayCounts={putawayCounts}
+        shortageCounts={shortageSummary}
         onSelectReceivingStatus={openReceiving}
-        onSelectPutAwayStatus={openPutAway}/>
+        onSelectPutAwayStatus={openPutAway}
+        onSelectShortageStatus={openShortage}/>
       <div className="border rounded-lg overflow-hidden">
         <InboundTabs active={inboundSection}
           canViewReturns={canViewReturns}
           onSelectReceiving={() => openReceiving('all')}
           onSelectPutAway={() => openPutAway('all')}
-          onSelect={onInboundSectionChange}/>
+          onSelectShortages={openShortageTab}
+          onSelect={handleSectionChange}/>
         <div className="p-4 space-y-4">
           <InboundSectionContent section={inboundSection}
             warehouseId={selectedWarehouseId}
@@ -89,8 +132,13 @@ export function InboundManagement({
             onPutawayStatusFilterChange={onPutawayStatusFilterChange}
             onReceivingCountsChange={setReceivingCounts}
             onPutAwayCountsChange={setPutawayCounts}
+            shortageStatusFilter={shortageStatusFilter}
+            onShortageStatusFilterChange={onShortageStatusFilterChange}
+            onShortageSummaryChange={setShortageSummary}
             vehicleFormOpen={vehicleFormOpen}
-            onVehicleFormClose={() => setVehicleFormOpen(false)}/>
+            onVehicleFormClose={() => setVehicleFormOpen(false)}
+            onShortClose={openShortageLedger}
+            shortageSku={shortageSku}/>
         </div>
       </div>
     </div>
@@ -103,12 +151,14 @@ function InboundTabs({
   canViewReturns,
   onSelectReceiving,
   onSelectPutAway,
+  onSelectShortages,
   onSelect,
 }: {
   active: InboundSection;
   canViewReturns: boolean;
   onSelectReceiving: () => void;
   onSelectPutAway: () => void;
+  onSelectShortages: () => void;
   onSelect: (section: InboundSection) => void;
 }) {
   return (
@@ -117,7 +167,7 @@ function InboundTabs({
       <SectionTab active={active === 'putaway'} icon={PackageCheck} label="Put-Away" onClick={onSelectPutAway} />
       <SectionTab active={active === 'vehicle'} icon={Truck} label="Vehicle Arrivals" onClick={() => onSelect('vehicle')} />
       <SectionTab active={active === 'exceptions'} icon={AlertTriangle} label="Hold / Quarantine" onClick={() => onSelect('exceptions')} />
-      <SectionTab active={active === 'shortages'} icon={PackageX} label="Shortage Ledger" onClick={() => onSelect('shortages')} />
+      <SectionTab active={active === 'shortages'} icon={PackageX} label="Shortage Ledger" onClick={onSelectShortages} />
       {canViewReturns && (
         <SectionTab active={active === 'returns'} icon={RotateCcw} label="Returns" onClick={() => onSelect('returns')}/>
       )}
@@ -149,7 +199,7 @@ function inboundHeading(section: InboundSection): { title: string; subtitle: str
     return {
       title: 'Hold / Quarantine Queue',
       subtitle:
-        'Non-pickable inbound stock awaiting a manager decision. Exceptions sharing a SKU and batch — for example the units of one excepted master pack — are grouped into one expandable row.',
+        'Non-pickable inbound stock awaiting a manager decision.',
     };
   }
   if (section === 'shortages') {
@@ -201,8 +251,14 @@ interface InboundSectionContentProps {
   onPutawayStatusFilterChange: (status: string) => void;
   onReceivingCountsChange: (counts: ReceivingSlipStatusCounts | null) => void;
   onPutAwayCountsChange: (counts: PutAwayStatusCounts | null) => void;
+  shortageStatusFilter: string;
+  onShortageStatusFilterChange: (status: string) => void;
+  onShortageSummaryChange: (summary: ShortBalanceSummary | null) => void;
   vehicleFormOpen: boolean;
   onVehicleFormClose: () => void;
+  onShortClose: (exceptions: InboundException[]) => void;
+  /** SKU to prefilter the shortage ledger with; cleared when switching tabs. */
+  shortageSku?: string;
 }
 
 function InboundSectionContent({
@@ -215,8 +271,13 @@ function InboundSectionContent({
   onPutawayStatusFilterChange,
   onReceivingCountsChange,
   onPutAwayCountsChange,
+  shortageStatusFilter,
+  onShortageStatusFilterChange,
+  onShortageSummaryChange,
   vehicleFormOpen,
   onVehicleFormClose,
+  onShortClose,
+  shortageSku,
 }: InboundSectionContentProps) {
   switch (section) {
     case 'receiving':
@@ -243,9 +304,19 @@ function InboundSectionContent({
           onRegisterFormClose={onVehicleFormClose}/>
       );
     case 'exceptions':
-      return <InboundExceptionQueue warehouseId={warehouseId || undefined} refreshKey={refreshKey} />;
+      return (
+        <InboundExceptionQueue warehouseId={warehouseId || undefined}
+          refreshKey={refreshKey}
+          onShortClose={onShortClose}/>
+      );
     case 'shortages':
-      return <ShortageLedger refreshKey={refreshKey} />;
+      return (
+        <ShortageLedger refreshKey={refreshKey}
+          initialSku={shortageSku}
+          statusFilter={shortageStatusFilter}
+          onStatusFilterChange={onShortageStatusFilterChange}
+          onSummaryChange={onShortageSummaryChange}/>
+      );
     case 'returns':
       return <ReturnsView warehouseId={warehouseId || undefined} refreshKey={refreshKey} />;
   }

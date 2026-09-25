@@ -262,7 +262,19 @@ function ExceptionTable({
  * The hold/quarantine worklist. A shortage creates no exception row — nothing
  * needs disposing of — so `ShortageLedger` is its own panel section instead.
  */
-export function InboundExceptionQueue({ warehouseId, refreshKey }: { warehouseId?: string; refreshKey?: number }) {
+export function InboundExceptionQueue({
+  warehouseId,
+  refreshKey,
+  onShortClose,
+}: {
+  warehouseId?: string;
+  refreshKey?: number;
+  /**
+   * A `MISSING_SERIAL` exception has no physical unit to dispose of, so it is
+   * closed in the shortage ledger instead. The parent routes the selection there.
+   */
+  onShortClose: (exceptions: InboundException[]) => void;
+}) {
   const token = useUserStore((state) => state.accessToken);
   const permissions = useUserStore((state) => state.permissions.permissions);
   const canDispose = hasPermission(permissions, 'inbound_exception.dispose');
@@ -354,9 +366,14 @@ export function InboundExceptionQueue({ warehouseId, refreshKey }: { warehouseId
     setTarget({ exceptions: selectedExceptions([row]), action });
   }, []);
 
+  const shortCloseRow = React.useCallback(
+    (row: ExceptionTableRow) => onShortClose(rowExceptions(row)),
+    [onShortClose],
+  );
+
   const columns = React.useMemo(
-    () => createInboundExceptionColumns({ canDispose, onDispose: openDisposition, onShortClose: (row) => onShortClose(rowExceptions(row)) }),
-    [canDispose, openDisposition, onShortClose],
+    () => createInboundExceptionColumns({ canDispose, onDispose: openDisposition, onShortClose: shortCloseRow }),
+    [canDispose, openDisposition, shortCloseRow],
   );
 
   const submitDisposition = React.useCallback(
