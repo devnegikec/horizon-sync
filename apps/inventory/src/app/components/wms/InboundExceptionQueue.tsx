@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import {
@@ -18,6 +18,7 @@ import {
 } from '@horizon-sync/ui/components';
 import { DataTable } from '@horizon-sync/ui/components/data-table';
 
+import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
 import type {
   BulkDispositionAction,
   InboundException,
@@ -259,7 +260,7 @@ function ExceptionTable({
  * The hold/quarantine worklist. A shortage creates no exception row — nothing
  * needs disposing of — so `ShortageLedger` is its own panel section instead.
  */
-export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string }) {
+export function InboundExceptionQueue({ warehouseId, refreshKey }: { warehouseId?: string; refreshKey?: number }) {
   const token = useUserStore((state) => state.accessToken);
   const permissions = useUserStore((state) => state.permissions.permissions);
   const canDispose = hasPermission(permissions, 'inbound_exception.dispose');
@@ -313,6 +314,13 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
   React.useEffect(() => {
     load(1);
   }, [load]);
+
+  // The panel Refresh button (above the stat cards) re-requests the current page.
+  const refresh = React.useCallback(() => {
+    void load(page);
+  }, [load, page]);
+
+  useRefreshOnKey(refreshKey, refresh);
 
   // Newest first, so the exception just raised is the first thing a manager sees.
   const rows = React.useMemo(() => exceptionRows(exceptions), [exceptions]);
@@ -403,20 +411,6 @@ export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string })
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">Hold / Quarantine Queue</h2>
-          <p className="text-sm text-muted-foreground">
-            Non-pickable inbound stock awaiting a manager decision. Exceptions sharing a SKU and batch — for example the
-            units of one excepted master pack — are grouped into one expandable row.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => load(page)} disabled={loading}>
-          <RefreshCw className="mr-1 h-3.5 w-3.5" />
-          Refresh
-        </Button>
-      </div>
-
       {error && <p className="text-sm text-destructive">{error}</p>}
       {notice && <p className="text-sm text-emerald-600">{notice}</p>}
 

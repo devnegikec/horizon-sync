@@ -6,6 +6,7 @@ import { useUserStore } from '@horizon-sync/store';
 import { Button, Input, Label } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks';
 
+import { useRefreshOnKey } from '../../../hooks/useRefreshOnKey';
 import type {
   BalanceStatus,
   CloseOutcome,
@@ -349,7 +350,7 @@ function LedgerBody({
  * hold/quarantine exception — nothing needs disposing of — so residuals are
  * tracked here instead and closed with a manager-approved write-off.
  */
-export function ShortageLedger() {
+export function ShortageLedger({ refreshKey }: { refreshKey?: number }) {
   const token = useUserStore((state) => state.accessToken);
   const permissions = useUserStore((state) => state.permissions.permissions);
   const { toast } = useToast();
@@ -404,6 +405,13 @@ export function ShortageLedger() {
     void load(1);
   }, [load]);
 
+  // The panel Refresh button (above the stat cards) re-requests the current page.
+  const refresh = React.useCallback(() => {
+    void load(page);
+  }, [load, page]);
+
+  useRefreshOnKey(refreshKey, refresh);
+
   const groups = React.useMemo(() => groupByAsn(balances), [balances]);
   const expandedAll = groups.length > 0 && groups.every((group) => expanded.has(group.asnOrderId));
 
@@ -447,20 +455,6 @@ export function ShortageLedger() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">Shortage Ledger</h2>
-          <p className="text-sm text-muted-foreground">
-            Units missing against an ASN. Nothing is segregated — a residual short stays open until a later receipt covers it or a
-            manager writes it off.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => void load(page)} disabled={loading}>
-          <RefreshCw className="mr-1 h-3.5 w-3.5" />
-          Refresh
-        </Button>
-      </div>
-
       {summary && <SummaryTiles summary={summary}/>}
 
       <form className="flex flex-wrap items-end gap-3 rounded-lg border bg-muted/20 p-3" onSubmit={applySkuFilter}>

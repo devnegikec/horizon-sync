@@ -145,6 +145,20 @@ function inboundHeading(section: InboundSection): { title: string; subtitle: str
       subtitle: 'Register vehicles arriving at the dock and associate them with one or more ASNs.',
     };
   }
+  if (section === 'exceptions') {
+    return {
+      title: 'Hold / Quarantine Queue',
+      subtitle:
+        'Non-pickable inbound stock awaiting a manager decision. Exceptions sharing a SKU and batch — for example the units of one excepted master pack — are grouped into one expandable row.',
+    };
+  }
+  if (section === 'shortages') {
+    return {
+      title: 'Shortage Ledger',
+      subtitle:
+        'Units missing against an ASN. Nothing is segregated — a residual short stays open until a later receipt covers it or a manager writes it off.',
+    };
+  }
   return undefined;
 }
 
@@ -229,9 +243,9 @@ function InboundSectionContent({
           onRegisterFormClose={onVehicleFormClose}/>
       );
     case 'exceptions':
-      return <InboundExceptionQueue warehouseId={warehouseId || undefined} />;
+      return <InboundExceptionQueue warehouseId={warehouseId || undefined} refreshKey={refreshKey} />;
     case 'shortages':
-      return <ShortageLedger />;
+      return <ShortageLedger refreshKey={refreshKey} />;
     case 'returns':
       return <ReturnsView warehouseId={warehouseId || undefined} refreshKey={refreshKey} />;
   }
