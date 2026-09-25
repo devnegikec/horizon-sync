@@ -34,6 +34,8 @@ import {
   DISPOSITION_ACTIONS,
   exceptionRows,
   exceptionSubRows,
+  isMissingSerial,
+  rowExceptions,
   selectedExceptions,
   type DispositionSubmission,
   type DispositionTarget,
@@ -138,7 +140,7 @@ function ExceptionQueueEmpty({ filtered, onClearFilters }: { filtered: boolean; 
                   Clear filters
                 </Button>
               ) : undefined
-            }/>
+            } />
         </div>
       </CardContent>
     </Card>
@@ -246,7 +248,7 @@ function ExceptionTable({
           renderBulkActions={renderBulkActions}
           onTableReady={onTableReady}
           fixedHeader
-          maxHeight="auto"/>
+          maxHeight="auto" />
       </CardContent>
     </Card>
   );
@@ -353,8 +355,8 @@ export function InboundExceptionQueue({ warehouseId, refreshKey }: { warehouseId
   }, []);
 
   const columns = React.useMemo(
-    () => createInboundExceptionColumns({ canDispose, onDispose: openDisposition }),
-    [canDispose, openDisposition],
+    () => createInboundExceptionColumns({ canDispose, onDispose: openDisposition, onShortClose: (row) => onShortClose(rowExceptions(row)) }),
+    [canDispose, openDisposition, onShortClose],
   );
 
   const submitDisposition = React.useCallback(
@@ -382,15 +384,29 @@ export function InboundExceptionQueue({ warehouseId, refreshKey }: { warehouseId
 
   const renderBulkActions = React.useCallback(
     (selectedRows: ExceptionTableRow[]) => {
-      const actionable = selectedExceptions(selectedRows);
+      const selected = selectedExceptions(selectedRows);
+      const missingSerials = selected.filter(isMissingSerial);
+      const actionable = selected.filter((exception) => !isMissingSerial(exception));
       return (
-        <BulkActionBar exceptions={actionable}
-          busy={submitting || loading}
-          onAction={(action) => setTarget({ exceptions: actionable, action })}
-          onClear={() => table?.resetRowSelection()}/>
+        <div className="space-y-2">
+          {actionable.length > 0 && (
+            <BulkActionBar exceptions={actionable}
+              busy={submitting || loading}
+              onAction={(action) => setTarget({ exceptions: actionable, action })}
+              onClear={() => table?.resetRowSelection()} />
+          )}
+          {missingSerials.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/5 px-3 py-2">
+              <span className="text-sm font-medium">{missingSerials.length} shortage(s) — no physical unit</span>
+              <Button size="sm" disabled={submitting || loading} onClick={() => onShortClose(missingSerials)}>
+                Short-close in shortage ledger
+              </Button>
+            </div>
+          )}
+        </div>
       );
     },
-    [submitting, loading, table],
+    [submitting, loading, table, onShortClose],
   );
 
   const renderFilters = React.useCallback(
@@ -399,7 +415,7 @@ export function InboundExceptionQueue({ warehouseId, refreshKey }: { warehouseId
         status={status}
         loading={loading}
         onDestinationChange={setDestination}
-        onStatusChange={setStatus}/>
+        onStatusChange={setStatus} />
     ),
     [destination, status, loading],
   );
@@ -424,13 +440,13 @@ export function InboundExceptionQueue({ warehouseId, refreshKey }: { warehouseId
         onClearFilters={clearFilters}
         renderFilters={renderFilters}
         renderBulkActions={renderBulkActions}
-        onTableReady={handleTableReady}/>
+        onTableReady={handleTableReady} />
 
       <DispositionDialog target={target}
         onOpenChange={(open) => {
           if (!open) setTarget(null);
         }}
-        onConfirm={submitDisposition}/>
+        onConfirm={submitDisposition} />
     </div>
   );
 }

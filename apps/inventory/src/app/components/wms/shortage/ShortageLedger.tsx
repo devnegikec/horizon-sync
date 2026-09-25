@@ -135,7 +135,7 @@ function LedgerRow({
       <td className="px-4 py-2 text-center align-top tabular-nums">{balance.expected_qty}</td>
       <td className="px-4 py-2 text-center align-top tabular-nums">{balance.received_qty}</td>
       <td className="px-4 py-2 text-center align-top font-medium tabular-nums text-amber-600">{balance.short_qty}</td>
-      <td className="px-4 py-2 align-top"><StatusPill status={balance.status}/></td>
+      <td className="px-4 py-2 align-top"><StatusPill status={balance.status} /></td>
       <td className="px-4 py-2 align-top text-xs text-muted-foreground">{balance.reason_code ?? EMPTY}</td>
       <td className="px-4 py-2 align-top text-xs text-muted-foreground">{closureCode}</td>
       <td className="px-4 py-2 text-right align-top">
@@ -176,7 +176,7 @@ function AsnGroupRows({
       <tr className="border-t bg-muted/40">
         <td colSpan={COLUMN_COUNT} className="px-3 py-2">
           <button type="button" className="flex w-full items-center gap-2 text-left" onClick={() => onToggle(group.asnOrderId)}>
-            <Chevron className="h-3.5 w-3.5 shrink-0"/>
+            <Chevron className="h-3.5 w-3.5 shrink-0" />
             <span className="font-mono text-xs font-medium" title={group.asnOrderId}>ASN {shortId(group.asnOrderId)}</span>
             <span className="text-xs text-muted-foreground">{group.balances.length} line(s) on this page</span>
           </button>
@@ -188,7 +188,7 @@ function AsnGroupRows({
             balance={balance}
             canClose={canClose}
             onHistory={onHistory}
-            onClose={onClose}/>
+            onClose={onClose} />
         ))}
     </>
   );
@@ -222,7 +222,7 @@ function LedgerTable({
           <tr>
             <th className="px-4 py-2 text-left font-medium text-muted-foreground">
               <button type="button" className="flex items-center gap-1" onClick={onToggleAll}>
-                <ExpandIcon className="h-3.5 w-3.5"/>
+                <ExpandIcon className="h-3.5 w-3.5" />
                 SKU
               </button>
             </th>
@@ -243,7 +243,7 @@ function LedgerTable({
               canClose={canClose}
               onToggle={onToggle}
               onHistory={onHistory}
-              onClose={onClose}/>
+              onClose={onClose} />
           ))}
         </tbody>
       </table>
@@ -323,11 +323,11 @@ function LedgerBody({
   onHistory: (balance: ShortBalance) => void;
   onClose: (balance: ShortBalance) => void;
 }) {
-  if (error) return <LedgerError error={error} onRetry={onRetry}/>;
+  if (error) return <LedgerError error={error} onRetry={onRetry} />;
   if (loading && balances.length === 0) {
     return <p className="py-6 text-center text-sm text-muted-foreground">Loading shortage ledger…</p>;
   }
-  if (balances.length === 0) return <EmptyLedger filterActive={filterActive}/>;
+  if (balances.length === 0) return <EmptyLedger filterActive={filterActive} />;
 
   return (
     <LedgerTable groups={groups}
@@ -337,7 +337,7 @@ function LedgerBody({
       onToggle={onToggle}
       onToggleAll={onToggleAll}
       onHistory={onHistory}
-      onClose={onClose}/>
+      onClose={onClose} />
   );
 }
 
@@ -361,8 +361,8 @@ export function ShortageLedger({ refreshKey }: { refreshKey?: number }) {
   const [summary, setSummary] = React.useState<ShortBalanceSummary | null>(null);
   const [page, setPage] = React.useState(1);
   const [status, setStatus] = React.useState<BalanceStatus | ''>('');
-  const [skuDraft, setSkuDraft] = React.useState('');
-  const [sku, setSku] = React.useState('');
+  const [skuDraft, setSkuDraft] = React.useState(initialSku ?? '');
+  const [sku, setSku] = React.useState(initialSku ?? '');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<NormalizedApiError | null>(null);
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
@@ -475,7 +475,7 @@ export function ShortageLedger({ refreshKey }: { refreshKey?: number }) {
             className="w-56"
             value={skuDraft}
             onChange={(event) => setSkuDraft(event.target.value)}
-            placeholder="Exact SKU, e.g. PTK-DUK-M009"/>
+            placeholder="Exact SKU, e.g. PTK-DUK-M009" />
         </div>
         <Button type="submit" size="sm" variant="secondary">Apply</Button>
         {filterActive && (
@@ -495,19 +495,19 @@ export function ShortageLedger({ refreshKey }: { refreshKey?: number }) {
         onToggle={toggleGroup}
         onToggleAll={toggleAll}
         onHistory={setHistoryBalance}
-        onClose={setCloseBalance}/>
+        onClose={setCloseBalance} />
 
       <LedgerPagination pagination={pagination}
         page={page}
         loading={loading}
         onPrev={() => void load(page - 1)}
-        onNext={() => void load(page + 1)}/>
+        onNext={() => void load(page + 1)} />
 
-      <ShortageHistoryDialog balance={historyBalance} onOpenChange={(open) => !open && setHistoryBalance(null)}/>
+      <ShortageHistoryDialog balance={historyBalance} onOpenChange={(open) => !open && setHistoryBalance(null)} />
       <CloseShortageDialog balance={closeBalance}
         onOpenChange={(open) => !open && setCloseBalance(null)}
         onClosed={handleClosed}
-        onStale={() => void load(page)}/>
+        onStale={() => void load(page)} />
     </div>
   );
 }

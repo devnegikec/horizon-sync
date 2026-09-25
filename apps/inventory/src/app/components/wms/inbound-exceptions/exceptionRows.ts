@@ -10,6 +10,31 @@ import {
 
 export const EMPTY = '\u2014';
 
+/** Serial-match reason codes introduced by the dispatch ↔ inbound match feature. */
+export const MISSING_SERIAL_CODE = 'MISSING_SERIAL';
+export const UNEXPECTED_SERIAL_CODE = 'UNEXPECTED_SERIAL';
+export const WRONG_ITEM_CODE = 'WRONG_ITEM';
+
+const REASON_CODE_LABELS: Record<string, string> = {
+  [MISSING_SERIAL_CODE]: 'Missing serial',
+  [UNEXPECTED_SERIAL_CODE]: 'Unexpected serial',
+  [WRONG_ITEM_CODE]: 'Wrong item',
+};
+
+/** Human-friendly label for a reason code; unknown codes render unchanged. */
+export function reasonCodeLabel(code: string | null): string {
+  if (!code) return EMPTY;
+  return REASON_CODE_LABELS[code] ?? code;
+}
+
+/**
+ * A `MISSING_SERIAL` exception has no physical unit — it is a shortage that is
+ * closed through the shortage ledger, never moved to hold/quarantine.
+ */
+export function isMissingSerial(exception: InboundException): boolean {
+  return exception.reason_code === MISSING_SERIAL_CODE;
+}
+
 /** A single exception, rendered as its own row. */
 export interface ExceptionUnitRow {
   kind: 'unit';

@@ -9,7 +9,7 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { environment } from '../../../../environments/environment';
 import { UserService, type User, type UsersResponse } from '../../../services/user.service';
-import { dataSyncService, type FeatureSummary, type ReceiveAsnStep, type SyncableFeature, type WarehouseUserAssignment } from '../services/dataSyncService';
+import { dataSyncService, type FeatureSummary, type OutboundOrderOption, type PickListOption, type ReceiveAsnStep, type ResetPickListOptions, type SyncableFeature, type WarehouseUserAssignment } from '../services/dataSyncService';
 
 export interface DataSyncSettingsProps {
   accessToken: string;
@@ -179,6 +179,10 @@ function syncResultBadge(summary?: FeatureSummary): string {
   if (!summary) return 'done';
   if (summary.put_away_count !== undefined) {
     return putAwaySummaryLabel(summary.put_away_count, summary.put_away_status);
+  }
+  if (summary.reset !== undefined) {
+    const plural = summary.reset === 1 ? '' : 's';
+    return `${summary.reset} pick list${plural} reset${summary.orders_reset ? ` · ${summary.orders_reset} order(s)` : ''}`;
   }
   return `${summary.created ?? 0} created · ${summary.skipped ?? 0} skipped`;
 }
@@ -386,6 +390,14 @@ function featureResultFrom(feature: SyncableFeature, result: Awaited<ReturnType<
   };
 }
 
+/** Reset-PickList block of the sync request, shaped for the data-sync service. */
+function buildResetPicklistSyncInput(orderNo: string, pickListNo: string): ResetPickListOptions {
+  const options: ResetPickListOptions = {};
+  if (orderNo.trim()) options.order_no = orderNo.trim();
+  if (pickListNo.trim()) options.pick_list_no = pickListNo.trim();
+  return options;
+}
+
 interface WarehouseOption {
   id: string;
   name: string;
@@ -486,7 +498,7 @@ function QrBlocksFields({
         <Checkbox id="receive-asn-qr-image"
           checked={qrImage}
           disabled={locked}
-          onCheckedChange={(value) => onQrImageChange(value === true)}/>
+          onCheckedChange={(value) => onQrImageChange(value === true)} />
         <Label htmlFor="receive-asn-qr-image" className="cursor-pointer text-sm">
           Generate QR image after QR codes are created
         </Label>
@@ -554,7 +566,7 @@ function QrBlocksFields({
               type="file"
               accept=".csv,text/csv"
               onChange={onImportCsv}
-              className="hidden"/>
+              className="hidden" />
           </div>
         </div>
       ) : (
@@ -565,7 +577,7 @@ function QrBlocksFields({
             onChange={(e) => onBlockIdsChange(e.target.value)}
             placeholder="uuid1, uuid2, ..."
             disabled={locked}
-            className="font-mono"/>
+            className="font-mono" />
         </div>
       )}
     </div>
@@ -675,7 +687,7 @@ function WorkerPickerList({
         return (
           <label key={assignment.user_id} className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted">
             <Checkbox checked={selectedWorker}
-              onCheckedChange={(checked) => onToggleWorker(assignment.user_id, checked === true)}/>
+              onCheckedChange={(checked) => onToggleWorker(assignment.user_id, checked === true)} />
             <span>{workerNames[assignment.user_id] ?? assignment.user_id}</span>
             {selectedWorker && <Check className="ml-auto h-4 w-4" />}
           </label>
@@ -721,7 +733,7 @@ function PutAwayFields({
             hasTarget={Boolean(targetWarehouseId)}
             selectedWorkerIds={selectedWorkerIds}
             onToggleWorker={onToggleWorker}
-            workerNames={workerNames}/>
+            workerNames={workerNames} />
         </PopoverContent>
       </Popover>
       {workersError && (
@@ -819,7 +831,7 @@ function StockOptions({ selected, locked, warehouses, selectedWarehouseId, onWar
             value={stockBoostQty}
             onChange={(e) => onStockBoostChange(e.target.value)}
             disabled={locked}
-            className="w-full"/>
+            className="w-full" />
         </div>
       )}
     </>
@@ -866,7 +878,7 @@ function SyncActions({ results, locked, selectedCount, syncDisabled, syncing, on
 }
 
 export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps) {
-  const { toast } = useToast();  const [features, setFeatures] = React.useState<SyncableFeature[]>([]);
+  const { toast } = useToast(); const [features, setFeatures] = React.useState<SyncableFeature[]>([]);
   const [selected, setSelected] = React.useState<Record<string, boolean>>({});
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -887,7 +899,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   const [receiveAsnItems, setReceiveAsnItems] = React.useState<ReceiveAsnRow[]>([]);
   const [receiveAsnQrType, setReceiveAsnQrType] = React.useState('dynamic');
   const [receiveAsnBlockIds, setReceiveAsnBlockIds] = React.useState('');
-  const [receiveAsnType, setReceiveAsnType] = React.useState('purchase');
+  const [receiveAsnType, setReceiveAsnType] = React.useState('stock_receipt');
   const [receiveAsnTargetWarehouseId, setReceiveAsnTargetWarehouseId] = React.useState('');
   const [receiveAsnSourceWarehouseId, setReceiveAsnSourceWarehouseId] = React.useState('');
   const [warehouseUserAssignments, setWarehouseUserAssignments] = React.useState<WarehouseUserAssignment[]>([]);
@@ -896,6 +908,10 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   const [workersLoading, setWorkersLoading] = React.useState(false);
   const [workersError, setWorkersError] = React.useState<string | null>(null);
   const receiveAsnCsvInputRef = React.useRef<HTMLInputElement>(null);
+  const [resetPicklistOrderNo, setResetPicklistOrderNo] = React.useState('');
+  const [resetPicklistPickListNo, setResetPicklistPickListNo] = React.useState('');
+  const [orderOptions, setOrderOptions] = React.useState<OutboundOrderOption[]>([]);
+  const [pickListOptions, setPickListOptions] = React.useState<PickListOption[]>([]);
   const locked = !canEdit || syncing;
 
   const load = React.useCallback(async () => {
@@ -1003,6 +1019,17 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
     void fetchItems();
   }, [accessToken]);
 
+  React.useEffect(() => {
+    if (!accessToken) return;
+    void Promise.allSettled([
+      dataSyncService.listOutboundOrders(accessToken),
+      dataSyncService.listPickLists(accessToken),
+    ]).then(([ordersResult, pickListsResult]) => {
+      if (ordersResult.status === 'fulfilled') setOrderOptions(ordersResult.value);
+      if (pickListsResult.status === 'fulfilled') setPickListOptions(pickListsResult.value);
+    });
+  }, [accessToken]);
+
   const selectedKeys = features.filter((feature) => selected[feature.key]).map((feature) => feature.key);
 
   const toggleFeature = (key: string, checked: boolean) => {
@@ -1094,7 +1121,10 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
             sourceWarehouseId: receiveAsnSourceWarehouseId,
             workerIds: selectedPutAwayWorkerIds,
           })
-          : undefined
+          : undefined,
+        selected['reset_picklist']
+          ? buildResetPicklistSyncInput(resetPicklistOrderNo, resetPicklistPickListNo)
+          : undefined,
       );
       setResults(features.filter((feature) => selected[feature.key]).map((feature) => featureResultFrom(feature, result)));
       toast({
@@ -1113,7 +1143,8 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   };
 
   const putAwayRequiresWorker = selected['receive_asn'] && receiveAsnSteps.put_away;
-  const syncDisabled = !canEdit || syncing || selectedKeys.length === 0 || Boolean(putAwayRequiresWorker && selectedPutAwayWorkerIds.length === 0);
+  const resetPicklistRequiresId = selected['reset_picklist'] && !resetPicklistOrderNo.trim() && !resetPicklistPickListNo.trim();
+  const syncDisabled = !canEdit || syncing || selectedKeys.length === 0 || Boolean(putAwayRequiresWorker && selectedPutAwayWorkerIds.length === 0) || resetPicklistRequiresId;
 
   return (
     <Card>
@@ -1150,7 +1181,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
               selectedWarehouseId={selectedWarehouseId}
               onWarehouseChange={setSelectedWarehouseId}
               stockBoostQty={stockBoostQty}
-              onStockBoostChange={setStockBoostQty}/>
+              onStockBoostChange={setStockBoostQty} />
 
             {selected['receive_asn'] && (
               <div className="space-y-3 rounded-md border border-border p-3">
@@ -1169,7 +1200,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                           checked={stepSelected}
                           disabled={!canEdit || syncing || !previousSelected}
                           onCheckedChange={(value) => toggleInboundStep(step.key, value === true)}
-                          className="mt-0.5"/>
+                          className="mt-0.5" />
                         <Label htmlFor={`inbound-step-${step.key}`} className="flex cursor-pointer flex-col gap-0.5">
                           <span className="text-sm font-medium">
                             Step {index + 1}: {step.title}
@@ -1210,7 +1241,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
                           selectedWorkerIds={selectedPutAwayWorkerIds}
                           onToggleWorker={togglePutAwayWorker}
                           workerNames={workerNames}
-                          requiresWorker={putAwayRequiresWorker}/>
+                          requiresWorker={putAwayRequiresWorker} />
                       )}
 
 
@@ -1222,6 +1253,65 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
               </div>
             )}
 
+            {selected['reset_picklist'] && (
+              <div className="space-y-3 rounded-md border border-destructive/40 p-3">
+                <p className="text-xs font-semibold text-destructive">Reset PickList</p>
+                <p className="text-xs text-muted-foreground">
+                  Destructive test helper — wipes the pick list (and any dispatch/ASN artifacts) so the order can
+                  be re-picked from scratch. Provide one of the two identifiers below.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="reset-picklist-order-no" className="text-xs">Order</Label>
+                    <Select
+                      value={resetPicklistOrderNo}
+                      onValueChange={(value) => {
+                        setResetPicklistOrderNo(value === '__none__' ? '' : value);
+                        setResetPicklistPickListNo('');
+                      }}
+                      disabled={locked}>
+                      <SelectTrigger id="reset-picklist-order-no" className="w-full">
+                        <SelectValue placeholder="Select an order" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— Select an order —</SelectItem>
+                        {orderOptions.map((order) => (
+                          <SelectItem key={order.id} value={order.order_no}>
+                            {order.order_no} · {order.status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="reset-picklist-pick-list-no" className="text-xs">Pick List</Label>
+                    <Select
+                      value={resetPicklistPickListNo}
+                      onValueChange={(value) => {
+                        setResetPicklistPickListNo(value === '__none__' ? '' : value);
+                        setResetPicklistOrderNo('');
+                      }}
+                      disabled={locked}>
+                      <SelectTrigger id="reset-picklist-pick-list-no" className="w-full">
+                        <SelectValue placeholder="Select a pick list" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— Select a pick list —</SelectItem>
+                        {pickListOptions.map((pl) => (
+                          <SelectItem key={pl.id} value={pl.pick_list_no}>
+                            {pl.pick_list_no} · {pl.status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Select an order to wipe every pick list generated from it, or a single pick list.
+                </p>
+              </div>
+            )}
+
             <SyncActions results={results}
               locked={locked}
               selectedCount={selectedKeys.length}
@@ -1229,7 +1319,7 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
               syncing={syncing}
               onSelectAll={selectAll}
               onClearAll={clearAll}
-              onSync={() => void handleSync()}/>
+              onSync={() => void handleSync()} />
           </>
         </SyncBody>
       </CardContent>

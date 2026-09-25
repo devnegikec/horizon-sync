@@ -8,6 +8,7 @@ import type {
   UpdateLocationRequest,
   ScanSession,
   ScanResult,
+  CartonScanSummary,
   SessionSummary,
   ReceivingSlip,
   PaginatedReceivingSlips,
@@ -236,6 +237,13 @@ export const inboundApi = {
 
   recordScan: (token: string, sessionId: string, data: { qr_data: string }) =>
     req<ScanResult>(`${BASE}/inbound/sessions/${sessionId}/scan`, token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  /** Receives a master carton (parent QR) in one call instead of scanning each linked unit. */
+  scanCarton: (token: string, sessionId: string, data: { qr_data: string }) =>
+    req<CartonScanSummary>(`${BASE}/inbound/sessions/${sessionId}/scan-carton`, token, {
       method: 'POST',
       body: JSON.stringify(data),
     }),

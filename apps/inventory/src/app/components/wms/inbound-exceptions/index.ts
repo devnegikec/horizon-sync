@@ -7,7 +7,10 @@ export {
   exceptionIdentity,
   exceptionRows,
   exceptionSubRows,
+  isMissingSerial,
+  reasonCodeLabel,
   rowExceptions,
   selectedExceptions,
 } from './exceptionRows';
+export { MISSING_SERIAL_CODE, UNEXPECTED_SERIAL_CODE, WRONG_ITEM_CODE } from './exceptionRows';
 export type { ExceptionGroupRow, ExceptionTableRow, ExceptionUnitRow } from './exceptionRows';

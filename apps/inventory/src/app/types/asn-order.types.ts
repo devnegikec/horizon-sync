@@ -145,6 +145,8 @@ export interface AsnOrder extends AsnOrderClosureFields {
         received_serials: number;
         in_transit_serials: number;
     } | null;
+    /** `quantity_only` orders verify by quantity without capturing unit serials. */
+    serialization_mode?: string | null;
     remarks?: string | null;
     items: AsnOrderLineItem[];
     submitted_at?: string | null;
@@ -314,6 +316,38 @@ export interface AsnOrderEpcisEvent {
 export interface AsnOrderEpcisResponse {
     context: { schema: string; asn_number: string };
     events: AsnOrderEpcisEvent[];
+}
+
+// ============================================
+// TRANSFER SERIAL VERIFICATION
+// ============================================
+
+export type TransferSerialStatus = 'received' | 'in_transit' | 'missing' | 'unexpected';
+
+export interface TransferSerialLine {
+    serial_no: string;
+    sku?: string | null;
+    item_name?: string | null;
+    status: TransferSerialStatus;
+    received_at?: string | null;
+}
+
+export interface TransferCartonRollup {
+    carton_serial?: string | null;
+    expected?: number;
+    received?: number;
+}
+
+/** `GET /asn-orders/{id}/transfer-verification` response. */
+export interface AsnOrderTransferVerification {
+    asn_order_id: string;
+    asn_order_no: string;
+    dispatched_serials: number;
+    received_serials: number;
+    missing_serials: number;
+    unexpected_serials?: number;
+    cartons?: TransferCartonRollup[];
+    serials: TransferSerialLine[];
 }
 
 

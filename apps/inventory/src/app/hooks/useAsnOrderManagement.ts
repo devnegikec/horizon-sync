@@ -146,7 +146,14 @@ export function useAsnOrderManagement() {
     setSaving(true);
     try {
       if (id) {
-        await asnOrderApi.update(accessToken, id, data);
+        const update = data as AsnOrderUpdate;
+        if (update.status === 'closed') {
+          // Closing is a status transition. The dedicated endpoint rejects the
+          // close with 422 while unreceived transfer serials remain.
+          await asnOrderApi.updateStatus(accessToken, id, { status: 'closed' });
+        } else {
+          await asnOrderApi.update(accessToken, id, data);
+        }
         toast({ title: 'Success', description: 'ASN order updated successfully' });
       } else {
         const created = await asnOrderApi.create(accessToken, data) as { id?: string; asn_order_no?: string };
@@ -161,9 +168,14 @@ export function useAsnOrderManagement() {
       queryClient.invalidateQueries({ queryKey: ['asn-orders'] });
       refetch();
     } catch (err) {
+      const status = (err as { status?: number } | null)?.status;
+      const closing = (data as AsnOrderUpdate).status === 'closed';
       toast({
         title: 'Error',
-        description: getFriendlyErrorMessage(err),
+        description:
+          closing && status === 422
+            ? `${getFriendlyErrorMessage(err)} Resolve the unreceived serials (short-close in the Shortage Ledger) before closing.`
+            : getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;
