@@ -1025,6 +1025,9 @@ export interface PackingSlipGroup {
   product_name: string;
   order_id: string;
   pick_list_id: string;
+  /** Human-readable pick-list / order numbers, when the backend includes them. */
+  pick_list_no?: string | null;
+  order_no?: string | null;
   bin_location_id: string | null;
   bin_location_path?: string | null;
   handling_unit_id: string | null;
