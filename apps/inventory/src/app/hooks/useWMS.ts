@@ -1280,18 +1280,24 @@ export function useVehicleArrivals({
   const [data, setData] = React.useState<PaginatedVehicleArrivals | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const latestRequestRef = React.useRef(0);
 
   const fetch = React.useCallback(async () => {
     if (!accessToken) return;
+    const requestId = ++latestRequestRef.current;
     setLoading(true);
     setError(null);
     try {
       const result = await vehicleArrivalApi.list(accessToken, { warehouse_id, status, search, page, page_size });
-      setData(result);
+      // Ignore a response that lands after a newer one (e.g. two quick page changes),
+      // otherwise the table can end up showing the previous page's rows.
+      if (requestId === latestRequestRef.current) setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load vehicle arrivals');
+      if (requestId === latestRequestRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load vehicle arrivals');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestRef.current) setLoading(false);
     }
   }, [accessToken, warehouse_id, status, search, page, page_size]);
 

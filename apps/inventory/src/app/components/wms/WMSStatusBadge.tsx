@@ -38,6 +38,9 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   // Gate
   open: { label: 'Open', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-white' },
   verified: { label: 'Verified', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },
+  // Vehicle arrival
+  arrived: { label: 'Arrived', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },
+  unloaded: { label: 'Unloaded', className: 'bg-amber-100 text-amber-800 dark:bg-amber-700 dark:text-white' },
   // Worker task
   assigned: { label: 'Assigned', className: 'bg-purple-100 text-purple-800 dark:bg-purple-700 dark:text-white' },
   // Scan result

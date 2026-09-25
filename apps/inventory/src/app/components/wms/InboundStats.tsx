@@ -8,12 +8,12 @@ import { cn } from '@horizon-sync/ui/lib';
 import type { PutAwayStatusCounts, ReceivingSlipStatusCounts } from '../../types/wms.types';
 import { formatQuantity } from '../../utility';
 
-type InboundStatsSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions' | 'returns';
+type InboundStatsSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions' | 'shortages' | 'returns';
 
 interface InboundStatsProps {
   /**
    * Active inbound sub-tab. Stats switch for 'receiving' and 'putaway';
-   * any other tab (vehicle/exceptions/returns) keeps showing the previous stats.
+   * any other tab (vehicle/exceptions/shortages/returns) keeps showing the previous stats.
    */
   activeSection: InboundStatsSection;
   /** Called when a receiving-slip status card is clicked, with the status to filter by ('all' clears the filter). */

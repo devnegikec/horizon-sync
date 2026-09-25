@@ -317,7 +317,11 @@ export const inboundApi = {
       body: JSON.stringify({ reason }),
     }),
 
-  listExceptionReasons: (token: string) => req<InboundExceptionReason[]>(`${BASE}/inbound/exception-reasons`, token),
+  listExceptionReasons: (token: string, category?: string) =>
+    req<InboundExceptionReason[]>(
+      `${BASE}/inbound/exception-reasons${category ? `?category=${encodeURIComponent(category)}` : ''}`,
+      token,
+    ),
 
   classifyException: (
     token: string,

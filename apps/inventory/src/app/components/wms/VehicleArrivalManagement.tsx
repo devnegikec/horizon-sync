@@ -1,21 +1,31 @@
 import * as React from 'react';
 
-import { Plus, Truck, X, Loader2, Link2, Pencil } from 'lucide-react';
+import { type ColumnDef } from '@tanstack/react-table';
+import { Loader2, Truck } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Badge } from '@horizon-sync/ui/components';
-import { Button } from '@horizon-sync/ui/components/ui/button';
-import { Input } from '@horizon-sync/ui/components/ui/input';
-import { Label } from '@horizon-sync/ui/components/ui/label';
+import { Button, Card, CardContent, EmptyState, Input, Label, TableSkeleton } from '@horizon-sync/ui/components';
+import { DataTable } from '@horizon-sync/ui/components/data-table';
 import { useToast } from '@horizon-sync/ui/hooks';
 
+import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
 import { useVehicleArrivals } from '../../hooks/useWMS';
-import type { VehicleArrivalListItem } from '../../types/wms.types';
-import { formatDate } from '../../utility';
+import type { VehicleArrivalCreate, VehicleArrivalListItem, VehicleArrivalUpdate } from '../../types/wms.types';
 import { asnOrderApi } from '../../utility/api/asn-orders';
+
+import { createVehicleArrivalColumns } from './VehicleArrivalColumns';
 
 interface VehicleArrivalManagementProps {
   warehouseId?: string;
+  /** Increment to trigger a refetch (e.g. from the panel-level Refresh button). */
+  refreshKey?: number;
+  /**
+   * The panel heading (above the stat cards) owns the "Register Arrival" button,
+   * so the register form's visibility is controlled by the parent.
+   */
+  registerFormOpen?: boolean;
+  /** Called after a successful registration so the panel heading button resets. */
+  onRegisterFormClose?: () => void;
 }
 
 interface AsnOption {
@@ -24,50 +34,404 @@ interface AsnOption {
   status: string;
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const variant = status === 'arrived' ? 'success' : status === 'unloaded' ? 'warning' : 'outline';
-  return <Badge variant={variant as 'success' | 'warning' | 'outline'}>{status}</Badge>;
+type ServerPagination = {
+  totalItems: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number, pageSize: number) => void;
+};
+
+/** The vehicle details captured both on registration and when editing. */
+type VehicleFields = {
+  vehicle_no: string;
+  driver_name: string;
+  driver_contact: string;
+  transporter: string;
+  dock: string;
+  notes: string;
+};
+
+const DEFAULT_PAGE_SIZE = 20;
+const DASH = '\u2014';
+
+const EMPTY_VEHICLE_FIELDS: VehicleFields = {
+  vehicle_no: '',
+  driver_name: '',
+  driver_contact: '',
+  transporter: '',
+  dock: '',
+  notes: '',
+};
+
+/** Inputs shared by the register form and the edit dialog, in display order. */
+const VEHICLE_FIELD_DEFS: { key: keyof VehicleFields; label: string; placeholder: string }[] = [
+  { key: 'vehicle_no', label: 'Vehicle Number *', placeholder: 'e.g., KA01AB1234' },
+  { key: 'driver_name', label: 'Driver Name', placeholder: 'Driver name' },
+  { key: 'driver_contact', label: 'Driver Contact', placeholder: 'Phone' },
+  { key: 'transporter', label: 'Transporter', placeholder: 'Transporter name' },
+  { key: 'dock', label: 'Dock', placeholder: 'e.g., Dock-A' },
+  { key: 'notes', label: 'Notes', placeholder: 'Optional notes' },
+];
+
+/** Add or remove an id without mutating the previous set. */
+function toggled(set: Set<string>, id: string): Set<string> {
+  const next = new Set(set);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  return next;
 }
 
-export function VehicleArrivalManagement({ warehouseId }: VehicleArrivalManagementProps) {
+/** Blank inputs mean "not provided", so they are sent as null to clear the field. */
+function arrivalPayload(fields: VehicleFields, warehouseId: string | undefined, asnOrderIds: Set<string>): VehicleArrivalCreate {
+  return {
+    vehicle_no: fields.vehicle_no.trim(),
+    driver_name: fields.driver_name.trim() || null,
+    driver_contact: fields.driver_contact.trim() || null,
+    transporter: fields.transporter.trim() || null,
+    warehouse_id: warehouseId || null,
+    dock: fields.dock.trim() || null,
+    notes: fields.notes.trim() || null,
+    asn_order_ids: Array.from(asnOrderIds),
+  };
+}
+
+function updatePayload(fields: VehicleFields): VehicleArrivalUpdate {
+  return {
+    vehicle_no: fields.vehicle_no.trim(),
+    driver_name: fields.driver_name.trim() || null,
+    driver_contact: fields.driver_contact.trim() || null,
+    transporter: fields.transporter.trim() || null,
+    dock: fields.dock.trim() || null,
+    notes: fields.notes.trim() || null,
+  };
+}
+
+// ─── Sub components ───────────────────────────────────────────────────────────
+
+function VehicleFieldGrid({
+  idPrefix,
+  values,
+  onChange,
+}: {
+  idPrefix: string;
+  values: VehicleFields;
+  onChange: (key: keyof VehicleFields, value: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {VEHICLE_FIELD_DEFS.map((field) => (
+        <div key={field.key} className="space-y-1">
+          <Label htmlFor={`${idPrefix}-${field.key}`}>{field.label}</Label>
+          <Input id={`${idPrefix}-${field.key}`}
+            value={values[field.key]}
+            onChange={(e) => onChange(field.key, e.target.value)}
+            placeholder={field.placeholder}/>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AsnOptionList({
+  options,
+  loading,
+  selectedIds,
+  onToggle,
+}: {
+  options: AsnOption[];
+  loading: boolean;
+  selectedIds: Set<string>;
+  onToggle: (id: string) => void;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-4 justify-center text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading ASNs…
+      </div>
+    );
+  }
+
+  if (options.length === 0) {
+    return <p className="text-sm text-muted-foreground py-4 text-center">No confirmed ASNs found.</p>;
+  }
+
+  return (
+    <div className="space-y-1 max-h-64 overflow-y-auto border rounded-md p-2">
+      {options.map((asn) => (
+        <label key={asn.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
+          <input type="checkbox" checked={selectedIds.has(asn.id)} onChange={() => onToggle(asn.id)}/>
+          <span className="text-sm font-mono">{asn.asn_order_no}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function RegisterArrivalForm({
+  warehouseId,
+  register,
+  asnOptions,
+  loadingAsns,
+  onLoadAsns,
+  onRegistered,
+}: {
+  warehouseId?: string;
+  register: (payload: VehicleArrivalCreate) => Promise<unknown>;
+  asnOptions: AsnOption[];
+  loadingAsns: boolean;
+  onLoadAsns: () => void;
+  /** Optional: only needed to reset a parent-owned toggle when the form is not self-contained. */
+  onRegistered?: () => void;
+}) {
+  const { toast } = useToast();
+  const [fields, setFields] = React.useState<VehicleFields>(EMPTY_VEHICLE_FIELDS);
+  const [selectedAsnIds, setSelectedAsnIds] = React.useState<Set<string>>(new Set());
+  const [pickerOpen, setPickerOpen] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+
+  const setField = (key: keyof VehicleFields, value: string) => setFields((prev) => ({ ...prev, [key]: value }));
+
+  const togglePicker = () => {
+    onLoadAsns();
+    setPickerOpen((v) => !v);
+  };
+
+  const handleRegister = async () => {
+    if (!fields.vehicle_no.trim()) {
+      toast({ title: 'Error', description: 'Vehicle number is required', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      await register(arrivalPayload(fields, warehouseId, selectedAsnIds));
+      toast({ title: 'Arrival registered', description: `Vehicle ${fields.vehicle_no.trim()} checked in.` });
+      onRegistered?.();
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to register arrival', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="border rounded-lg p-4 space-y-3 bg-muted/20">
+      <VehicleFieldGrid idPrefix="va" values={fields} onChange={setField}/>
+
+      <div className="space-y-1">
+        <p className="text-sm font-medium">ASN Orders ({selectedAsnIds.size} selected)</p>
+        <Button variant="outline" size="sm" className="gap-2" onClick={togglePicker}>
+          <Truck className="h-4 w-4" />
+          {pickerOpen ? 'Close ASN picker' : 'Select ASN(s)'}
+        </Button>
+        {pickerOpen && (
+          <AsnOptionList options={asnOptions}
+            loading={loadingAsns}
+            selectedIds={selectedAsnIds}
+            onToggle={(id) => setSelectedAsnIds((prev) => toggled(prev, id))}/>
+        )}
+      </div>
+
+      <div className="flex justify-end">
+        <Button onClick={handleRegister} disabled={saving}>
+          {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          Register Arrival
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function LinkAsnDialog({
+  asnOptions,
+  loadingAsns,
+  onLoadAsns,
+  saving,
+  onCancel,
+  onConfirm,
+}: {
+  asnOptions: AsnOption[];
+  loadingAsns: boolean;
+  onLoadAsns: () => void;
+  saving: boolean;
+  onCancel: () => void;
+  onConfirm: (ids: string[]) => void;
+}) {
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const loadedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    onLoadAsns();
+  }, [onLoadAsns]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-background rounded-lg shadow-lg p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <h3 className="text-lg font-semibold mb-2">Link ASN Orders</h3>
+        <p className="text-sm text-muted-foreground mb-4">Select ASN order(s) to link to this vehicle arrival.</p>
+        <AsnOptionList options={asnOptions}
+          loading={loadingAsns}
+          selectedIds={selectedIds}
+          onToggle={(id) => setSelectedIds((prev) => toggled(prev, id))}/>
+        <div className="flex justify-end gap-3 mt-4">
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button onClick={() => onConfirm(Array.from(selectedIds))} disabled={saving || selectedIds.size === 0}>
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Link ({selectedIds.size})
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditVehicleDialog({
+  arrival,
+  saving,
+  onCancel,
+  onSave,
+}: {
+  arrival: VehicleArrivalListItem;
+  saving: boolean;
+  onCancel: () => void;
+  onSave: (payload: VehicleArrivalUpdate) => void;
+}) {
+  const [fields, setFields] = React.useState<VehicleFields>(() => ({
+    vehicle_no: arrival.vehicle_no ?? '',
+    driver_name: arrival.driver_name ?? '',
+    driver_contact: arrival.driver_contact ?? '',
+    transporter: arrival.transporter ?? '',
+    dock: arrival.dock ?? '',
+    notes: arrival.notes ?? '',
+  }));
+
+  const setField = (key: keyof VehicleFields, value: string) => setFields((prev) => ({ ...prev, [key]: value }));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-background rounded-lg shadow-lg p-6 max-w-lg w-full mx-4 max-h-[85vh] overflow-y-auto">
+        <h3 className="text-lg font-semibold mb-2">Edit Vehicle Details</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Update vehicle, driver and dock details for arrival <span className="font-mono">{arrival.vehicle_no ?? DASH}</span>.
+        </p>
+        <VehicleFieldGrid idPrefix="ev" values={fields} onChange={setField}/>
+        <div className="flex justify-end gap-3 mt-4">
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button onClick={() => onSave(updatePayload(fields))} disabled={saving}>
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Save Changes
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VehicleArrivalsEmpty() {
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="p-6">
+          <EmptyState icon={<Truck className="h-12 w-12" />}
+            title="No vehicle arrivals found"
+            description="Register the first arriving vehicle using the button above."/>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function VehicleArrivalTable({
+  isInitialLoading,
+  error,
+  arrivals,
+  columns,
+  serverPagination,
+  pageSize,
+}: {
+  isInitialLoading: boolean;
+  error: string | null;
+  arrivals: VehicleArrivalListItem[];
+  columns: ColumnDef<VehicleArrivalListItem>[];
+  serverPagination?: ServerPagination;
+  pageSize: number;
+}) {
+  const renderBody = () => {
+    if (isInitialLoading) {
+      return (
+        <Card>
+          <CardContent className="p-0">
+            <TableSkeleton columns={8} rows={8} showHeader={true} />
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (arrivals.length === 0) {
+      return <VehicleArrivalsEmpty />;
+    }
+
+    return (
+      <Card>
+        <CardContent className="p-0">
+          <DataTable columns={columns}
+            data={arrivals}
+            config={{
+              showSerialNumber: true,
+              showPagination: true,
+              enableRowSelection: false,
+              enableColumnVisibility: true,
+              enableSorting: false,
+              enableFiltering: false,
+              initialPageSize: pageSize,
+              serverPagination,
+            }}
+            fixedHeader
+            maxHeight="auto"/>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {error && <div className="text-sm text-destructive">{error}</div>}
+      {renderBody()}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export function VehicleArrivalManagement({
+  warehouseId,
+  refreshKey,
+  registerFormOpen,
+  onRegisterFormClose,
+}: VehicleArrivalManagementProps) {
   const { toast } = useToast();
   const accessToken = useUserStore((s) => s.accessToken);
 
-  const [showForm, setShowForm] = React.useState(false);
-  const [vehicleNo, setVehicleNo] = React.useState('');
-  const [driverName, setDriverName] = React.useState('');
-  const [driverContact, setDriverContact] = React.useState('');
-  const [transporter, setTransporter] = React.useState('');
-  const [dock, setDock] = React.useState('');
-  const [notes, setNotes] = React.useState('');
-  const [selectedAsnIds, setSelectedAsnIds] = React.useState<Set<string>>(new Set());
+  const [linkingArrivalId, setLinkingArrivalId] = React.useState<string | null>(null);
+  const [editingArrival, setEditingArrival] = React.useState<VehicleArrivalListItem | null>(null);
   const [asnOptions, setAsnOptions] = React.useState<AsnOption[]>([]);
-  const [asnPickerOpen, setAsnPickerOpen] = React.useState(false);
   const [loadingAsns, setLoadingAsns] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(DEFAULT_PAGE_SIZE);
 
-  // Linking additional ASNs to an existing arrival
-  const [linkingArrivalId, setLinkingArrivalId] = React.useState<string | null>(null);
-  const [linkSelectedIds, setLinkSelectedIds] = React.useState<Set<string>>(new Set());
-
-  // Editing an existing arrival's vehicle details
-  const [editingArrival, setEditingArrival] = React.useState<VehicleArrivalListItem | null>(null);
-  const [editForm, setEditForm] = React.useState({
-    vehicle_no: '',
-    driver_name: '',
-    driver_contact: '',
-    transporter: '',
-    dock: '',
-    notes: '',
-  });
-
-  const { data, loading, error, refetch, register, linkAsns, unlinkAsn, update } = useVehicleArrivals({
+  const { data, loading, error, refetch, register, linkAsns, update } = useVehicleArrivals({
     warehouse_id: warehouseId,
-    page: 1,
-    page_size: 50,
+    page,
+    page_size: pageSize,
   });
 
-  const fetchAsnOptions = React.useCallback(async () => {
+  // Refetch when the panel-level Refresh button is pressed (skip the initial mount).
+  useRefreshOnKey(refreshKey, refetch);
+
+  const loadAsns = React.useCallback(async () => {
     if (!accessToken) return;
     setLoadingAsns(true);
     try {
@@ -83,62 +447,21 @@ export function VehicleArrivalManagement({ warehouseId }: VehicleArrivalManageme
     }
   }, [accessToken, warehouseId, toast]);
 
-  const toggleAsn = (id: string, isLinkMode: boolean) => {
-    const setter = isLinkMode ? setLinkSelectedIds : setSelectedAsnIds;
-    setter((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const handleEdit = React.useCallback((arrival: VehicleArrivalListItem) => setEditingArrival(arrival), []);
+  const handleLinkAsn = React.useCallback((arrival: VehicleArrivalListItem) => setLinkingArrivalId(arrival.id), []);
 
-  const handleRegister = async () => {
-    if (!vehicleNo.trim()) {
-      toast({ title: 'Error', description: 'Vehicle number is required', variant: 'destructive' });
-      return;
-    }
-    setSaving(true);
-    try {
-      await register({
-        vehicle_no: vehicleNo.trim(),
-        driver_name: driverName.trim() || null,
-        driver_contact: driverContact.trim() || null,
-        transporter: transporter.trim() || null,
-        warehouse_id: warehouseId || null,
-        dock: dock.trim() || null,
-        notes: notes.trim() || null,
-        asn_order_ids: Array.from(selectedAsnIds),
-      });
-      toast({ title: 'Arrival registered', description: `Vehicle ${vehicleNo.trim()} checked in.` });
-      resetForm();
-    } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to register arrival', variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
-  };
+  const columns = React.useMemo(
+    () => createVehicleArrivalColumns({ onEdit: handleEdit, onLinkAsn: handleLinkAsn }),
+    [handleEdit, handleLinkAsn],
+  );
 
-  const resetForm = () => {
-    setShowForm(false);
-    setVehicleNo('');
-    setDriverName('');
-    setDriverContact('');
-    setTransporter('');
-    setDock('');
-    setNotes('');
-    setSelectedAsnIds(new Set());
-    setAsnPickerOpen(false);
-  };
-
-  const handleLinkAsns = async () => {
+  const handleLinkAsns = async (ids: string[]) => {
     if (!linkingArrivalId) return;
     setSaving(true);
     try {
-      await linkAsns(linkingArrivalId, Array.from(linkSelectedIds));
+      await linkAsns(linkingArrivalId, ids);
       toast({ title: 'ASNs linked', description: 'Vehicle arrival updated.' });
       setLinkingArrivalId(null);
-      setLinkSelectedIds(new Set());
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to link ASNs', variant: 'destructive' });
     } finally {
@@ -146,47 +469,16 @@ export function VehicleArrivalManagement({ warehouseId }: VehicleArrivalManageme
     }
   };
 
-  const handleUnlink = async (arrivalId: string, asnOrderId: string) => {
-    try {
-      await unlinkAsn(arrivalId, asnOrderId);
-      toast({ title: 'ASN unlinked', description: 'Vehicle arrival updated.' });
-    } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to unlink ASN', variant: 'destructive' });
-    }
-  };
-
-  const openEdit = (a: VehicleArrivalListItem) => {
-    setEditingArrival(a);
-    setEditForm({
-      vehicle_no: a.vehicle_no ?? '',
-      driver_name: a.driver_name ?? '',
-      driver_contact: a.driver_contact ?? '',
-      transporter: a.transporter ?? '',
-      dock: a.dock ?? '',
-      notes: a.notes ?? '',
-    });
-  };
-
-  const setEditField = (key: keyof typeof editForm, value: string) =>
-    setEditForm((prev) => ({ ...prev, [key]: value }));
-
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = async (payload: VehicleArrivalUpdate) => {
     if (!editingArrival) return;
-    if (!editForm.vehicle_no.trim()) {
+    if (!payload.vehicle_no) {
       toast({ title: 'Error', description: 'Vehicle number is required', variant: 'destructive' });
       return;
     }
     setSaving(true);
     try {
-      await update(editingArrival.id, {
-        vehicle_no: editForm.vehicle_no.trim(),
-        driver_name: editForm.driver_name.trim() || null,
-        driver_contact: editForm.driver_contact.trim() || null,
-        transporter: editForm.transporter.trim() || null,
-        dock: editForm.dock.trim() || null,
-        notes: editForm.notes.trim() || null,
-      });
-      toast({ title: 'Vehicle updated', description: `Vehicle ${editForm.vehicle_no.trim()} updated.` });
+      await update(editingArrival.id, payload);
+      toast({ title: 'Vehicle updated', description: `Vehicle ${payload.vehicle_no} updated.` });
       setEditingArrival(null);
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to update vehicle', variant: 'destructive' });
@@ -196,221 +488,58 @@ export function VehicleArrivalManagement({ warehouseId }: VehicleArrivalManageme
   };
 
   const arrivals = data?.vehicle_arrivals ?? [];
+  const pagination = data?.pagination;
+
+  const serverPagination = React.useMemo<ServerPagination | undefined>(() => {
+    if (!pagination) return undefined;
+
+    return {
+      totalItems: pagination.total_items,
+      currentPage: pagination.page,
+      pageSize: pagination.page_size,
+      onPageChange: (nextPage: number, nextPageSize: number) => {
+        if (nextPageSize !== pagination.page_size) {
+          setPageSize(nextPageSize);
+          setPage(1);
+          return;
+        }
+        setPage(nextPage);
+      },
+    };
+  }, [pagination]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Vehicle Arrivals</h2>
-          <p className="text-sm text-muted-foreground">
-            Register vehicles arriving at the dock and associate them with one or more ASNs.
-          </p>
-        </div>
-        <Button onClick={() => { setShowForm((v) => !v); }} className="gap-2">
-          {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          {showForm ? 'Cancel' : 'Register Arrival'}
-        </Button>
-      </div>
-
-      {showForm && (
-        <div className="border rounded-lg p-4 space-y-3 bg-muted/20">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="va-vehicle-no">Vehicle Number *</Label>
-              <Input id="va-vehicle-no" value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value)} placeholder="e.g., KA01AB1234" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="va-driver">Driver Name</Label>
-              <Input id="va-driver" value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Driver name" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="va-driver-contact">Driver Contact</Label>
-              <Input id="va-driver-contact" value={driverContact} onChange={(e) => setDriverContact(e.target.value)} placeholder="Phone" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="va-transporter">Transporter</Label>
-              <Input id="va-transporter" value={transporter} onChange={(e) => setTransporter(e.target.value)} placeholder="Transporter name" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="va-dock">Dock</Label>
-              <Input id="va-dock" value={dock} onChange={(e) => setDock(e.target.value)} placeholder="e.g., Dock-A" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="va-notes">Notes</Label>
-              <Input id="va-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes" />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label>ASN Orders ({selectedAsnIds.size} selected)</Label>
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => { void fetchAsnOptions(); setAsnPickerOpen((v) => !v); }}>
-              <Truck className="h-4 w-4" />
-              {asnPickerOpen ? 'Close ASN picker' : 'Select ASN(s)'}
-            </Button>
-            {asnPickerOpen && (
-              <div className="border rounded-md p-2 max-h-56 overflow-y-auto bg-background">
-                {loadingAsns ? (
-                  <div className="flex items-center gap-2 py-4 justify-center text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading ASNs…
-                  </div>
-                ) : asnOptions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">No confirmed ASNs found.</p>
-                ) : (
-                  asnOptions.map((asn) => (
-                    <label key={asn.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                      <input type="checkbox"
-                        checked={selectedAsnIds.has(asn.id)}
-                        onChange={() => toggleAsn(asn.id, false)}/>
-                      <span className="text-sm font-mono">{asn.asn_order_no}</span>
-                    </label>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end">
-            <Button onClick={handleRegister} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Register Arrival
-            </Button>
-          </div>
-        </div>
+      {registerFormOpen && (
+        <RegisterArrivalForm warehouseId={warehouseId}
+          register={register}
+          asnOptions={asnOptions}
+          loadingAsns={loadingAsns}
+          onLoadAsns={loadAsns}
+          onRegistered={onRegisterFormClose}/>
       )}
 
-      {loading ? (
-        <div className="flex items-center gap-2 py-8 justify-center text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading arrivals…
-        </div>
-      ) : error ? (
-        <p className="text-sm text-destructive">{error}</p>
-      ) : arrivals.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">
-          No vehicle arrivals yet. Register the first arriving vehicle above.
-        </p>
-      ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left">
-              <tr>
-                <th className="px-3 py-2 font-medium">Vehicle #</th>
-                <th className="px-3 py-2 font-medium">Driver</th>
-                <th className="px-3 py-2 font-medium">Dock</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium">ASNs</th>
-                <th className="px-3 py-2 font-medium">Slips</th>
-                <th className="px-3 py-2 font-medium">Arrived At</th>
-                <th className="px-3 py-2 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {arrivals.map((a: VehicleArrivalListItem) => (
-                <tr key={a.id} className="border-t">
-                  <td className="px-3 py-2 font-mono">{a.vehicle_no ?? '—'}</td>
-                  <td className="px-3 py-2">{a.driver_name ?? '—'}</td>
-                  <td className="px-3 py-2">{a.dock ?? '—'}</td>
-                  <td className="px-3 py-2"><StatusBadge status={a.status} /></td>
-                  <td className="px-3 py-2">{a.asn_order_count}</td>
-                  <td className="px-3 py-2">{a.receiving_slip_count}</td>
-                  <td className="px-3 py-2">{formatDate(a.arrived_at, 'DD-MMM-YY', { includeTime: true, timeFormat: 'HH:mm' })}</td>
-                  <td className="px-3 py-2 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button variant="outline"
-size="sm"
-className="gap-1"
-                        onClick={() => openEdit(a)}>
-                        <Pencil className="h-3 w-3" /> Edit
-                      </Button>
-                      <Button variant="outline"
-size="sm"
-className="gap-1"
-                        onClick={() => { setLinkingArrivalId(a.id); setLinkSelectedIds(new Set()); void fetchAsnOptions(); }}>
-                        <Link2 className="h-3 w-3" /> Link ASN
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <VehicleArrivalTable isInitialLoading={loading && !data}
+        error={error}
+        arrivals={arrivals}
+        columns={columns}
+        serverPagination={serverPagination}
+        pageSize={pageSize}/>
 
-      {/* Link ASN modal */}
       {linkingArrivalId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg shadow-lg p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-2">Link ASN Orders</h3>
-            <p className="text-sm text-muted-foreground mb-4">Select ASN order(s) to link to this vehicle arrival.</p>
-            {asnOptions.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No confirmed ASNs available.</p>
-            ) : (
-              <div className="space-y-1 max-h-64 overflow-y-auto border rounded-md p-2">
-                {asnOptions.map((asn) => (
-                  <label key={asn.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
-                    <input type="checkbox"
-                      checked={linkSelectedIds.has(asn.id)}
-                      onChange={() => toggleAsn(asn.id, true)}/>
-                    <span className="text-sm font-mono">{asn.asn_order_no}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-            <div className="flex justify-end gap-3 mt-4">
-              <Button variant="outline" onClick={() => setLinkingArrivalId(null)}>Cancel</Button>
-              <Button onClick={handleLinkAsns} disabled={saving || linkSelectedIds.size === 0}>
-                {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Link ({linkSelectedIds.size})
-              </Button>
-            </div>
-          </div>
-        </div>
+        <LinkAsnDialog asnOptions={asnOptions}
+          loadingAsns={loadingAsns}
+          onLoadAsns={loadAsns}
+          saving={saving}
+          onCancel={() => setLinkingArrivalId(null)}
+          onConfirm={handleLinkAsns}/>
       )}
 
-      {/* Edit vehicle modal */}
       {editingArrival && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background rounded-lg shadow-lg p-6 max-w-lg w-full mx-4 max-h-[85vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-2">Edit Vehicle Details</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Update vehicle, driver and dock details for arrival{' '}
-              <span className="font-mono">{editingArrival.vehicle_no ?? '—'}</span>.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="ev-vehicle-no">Vehicle Number *</Label>
-                <Input id="ev-vehicle-no" value={editForm.vehicle_no} onChange={(e) => setEditField('vehicle_no', e.target.value)} placeholder="e.g., KA01AB1234" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="ev-driver">Driver Name</Label>
-                <Input id="ev-driver" value={editForm.driver_name} onChange={(e) => setEditField('driver_name', e.target.value)} placeholder="Driver name" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="ev-driver-contact">Driver Contact</Label>
-                <Input id="ev-driver-contact" value={editForm.driver_contact} onChange={(e) => setEditField('driver_contact', e.target.value)} placeholder="Phone" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="ev-transporter">Transporter</Label>
-                <Input id="ev-transporter" value={editForm.transporter} onChange={(e) => setEditField('transporter', e.target.value)} placeholder="Transporter name" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="ev-dock">Dock</Label>
-                <Input id="ev-dock" value={editForm.dock} onChange={(e) => setEditField('dock', e.target.value)} placeholder="e.g., Dock-A" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="ev-notes">Notes</Label>
-                <Input id="ev-notes" value={editForm.notes} onChange={(e) => setEditField('notes', e.target.value)} placeholder="Optional notes" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 mt-4">
-              <Button variant="outline" onClick={() => setEditingArrival(null)}>Cancel</Button>
-              <Button onClick={handleSaveEdit} disabled={saving}>
-                {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save Changes
-              </Button>
-            </div>
-          </div>
-        </div>
+        <EditVehicleDialog arrival={editingArrival}
+          saving={saving}
+          onCancel={() => setEditingArrival(null)}
+          onSave={handleSaveEdit}/>
       )}
     </div>
   );

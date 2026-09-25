@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef, type Table } from '@tanstack/react-table';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import {
@@ -18,6 +18,7 @@ import {
 } from '@horizon-sync/ui/components';
 import { DataTable } from '@horizon-sync/ui/components/data-table';
 
+import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
 import type {
   BulkDispositionAction,
   InboundException,
@@ -40,7 +41,6 @@ import {
   type DispositionTarget,
   type ExceptionTableRow,
 } from './inbound-exceptions';
-import { ShortageLedger } from './shortage';
 
 const PAGE_SIZE = 20;
 
@@ -258,7 +258,11 @@ function ExceptionTable({
 /*  Queue                                                              */
 /* ------------------------------------------------------------------ */
 
-function ExceptionQueueView({ warehouseId, onShortClose }: { warehouseId?: string; onShortClose: (exceptions: InboundException[]) => void }) {
+/**
+ * The hold/quarantine worklist. A shortage creates no exception row — nothing
+ * needs disposing of — so `ShortageLedger` is its own panel section instead.
+ */
+export function InboundExceptionQueue({ warehouseId, refreshKey }: { warehouseId?: string; refreshKey?: number }) {
   const token = useUserStore((state) => state.accessToken);
   const permissions = useUserStore((state) => state.permissions.permissions);
   const canDispose = hasPermission(permissions, 'inbound_exception.dispose');
@@ -312,6 +316,13 @@ function ExceptionQueueView({ warehouseId, onShortClose }: { warehouseId?: strin
   React.useEffect(() => {
     load(1);
   }, [load]);
+
+  // The panel Refresh button (above the stat cards) re-requests the current page.
+  const refresh = React.useCallback(() => {
+    void load(page);
+  }, [load, page]);
+
+  useRefreshOnKey(refreshKey, refresh);
 
   // Newest first, so the exception just raised is the first thing a manager sees.
   const rows = React.useMemo(() => exceptionRows(exceptions), [exceptions]);
@@ -416,20 +427,6 @@ function ExceptionQueueView({ warehouseId, onShortClose }: { warehouseId?: strin
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">Hold / Quarantine Queue</h2>
-          <p className="text-sm text-muted-foreground">
-            Non-pickable inbound stock awaiting a manager decision. Exceptions sharing a SKU and batch — for example the
-            units of one excepted master pack — are grouped into one expandable row.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => load(page)} disabled={loading}>
-          <RefreshCw className="mr-1 h-3.5 w-3.5" />
-          Refresh
-        </Button>
-      </div>
-
       {error && <p className="text-sm text-destructive">{error}</p>}
       {notice && <p className="text-sm text-emerald-600">{notice}</p>}
 
@@ -450,53 +447,6 @@ function ExceptionQueueView({ warehouseId, onShortClose }: { warehouseId?: strin
           if (!open) setTarget(null);
         }}
         onConfirm={submitDisposition} />
-    </div>
-  );
-}
-
-const EXCEPTION_VIEWS = [
-  { key: 'queue', label: 'Hold / Quarantine Queue' },
-  { key: 'shortages', label: 'Shortage Ledger' },
-] as const;
-
-type ExceptionView = (typeof EXCEPTION_VIEWS)[number]['key'];
-
-/**
- * "Holds & Quarantine" holds two different problems: stock that physically needs
- * a disposition decision, and stock that never arrived. They share a section
- * because both are inbound discrepancies a supervisor has to clear.
- */
-export function InboundExceptionQueue({ warehouseId }: { warehouseId?: string }) {
-  const [view, setView] = React.useState<ExceptionView>('queue');
-  const [shortageSku, setShortageSku] = React.useState<string | null>(null);
-
-  const openShortageLedger = React.useCallback((exceptions: InboundException[]) => {
-    setShortageSku(exceptions[0]?.sku ?? null);
-    setView('shortages');
-  }, []);
-
-  return (
-    <div className="space-y-4">
-      <div className="inline-flex gap-1 rounded-lg border bg-muted/20 p-1">
-        {EXCEPTION_VIEWS.map(({ key, label }) => (
-          <button key={key}
-            type="button"
-            onClick={() => {
-              setShortageSku(null);
-              setView(key);
-            }}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${view === key ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {view === 'queue' ? (
-        <ExceptionQueueView warehouseId={warehouseId} onShortClose={openShortageLedger} />
-      ) : (
-        <ShortageLedger initialSku={shortageSku} />
-      )}
     </div>
   );
 }
