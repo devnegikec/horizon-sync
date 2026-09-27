@@ -16,7 +16,7 @@
 import * as React from 'react';
 
 import { Html, OrbitControls, Grid } from '@react-three/drei';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { AlertTriangle, Clock, Flame, Info, Loader2, Lock, RefreshCw, Sparkles, Target, X } from 'lucide-react';
 import * as THREE from 'three';
 
@@ -33,12 +33,20 @@ import type { BinStockItem, FlatBin, Suggestion } from '../../types/wms3d.types'
 import { wms3dApi } from '../../utility/api/wms3d';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 
+import { deriveBinMetrics, type BinMetrics } from './binMetrics';
+import { LayoutMiniMap } from './LayoutMiniMap';
+
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
 
 // ─── Color mapping ────────────────────────────────────────────────────────────
 
 const STATUS_COLORS = {
-  empty: '#475569',
+  /**
+   * The designer's default bin tone. A stock-free warehouse is mostly "empty" bins, so
+   * this is the colour the whole rack face takes: a dark value here reads as unlit rock
+   * rather than as racking.
+   */
+  empty: '#7c8ba1',
   inStock: '#10b981',
   lowStock: '#f59e0b',
   expiring: '#ef4444',
@@ -64,85 +72,165 @@ function getBinColor(bin: FlatBin, suggestedIds: Set<string>): string {
   return STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.inStock;
 }
 
-// ─── Rack Frame (structural steel per aisle) ──────────────────────────────────
+// ─── Scene palette & geometry ─────────────────────────────────────────────────
 
-interface RackFrameProps {
-  bins: FlatBin[];
+/**
+ * Scene palette.
+ *
+ * Mirrors `src/design/theme.ts` in the warehouse designer so the two canvases agree on
+ * what "floor", "rack steel" and "selected" look like. Keep them in step.
+ */
+const SCENE = {
+  background: '#0b1220',
+  floor: '#132033',
+  floorEdge: '#334155',
+  grid: '#1b2942',
+  gridSection: '#2a3d5c',
+  /** Painted uprights and bare beams, as the designer's racking draws them. */
+  upright: '#94a3b8',
+  beam: '#64748b',
+  /** Bins excluded by the active inventory filter. */
+  dimmed: '#1e293b',
+  /** Hover reads amber, selection reads cyan: the designer's convention, not the inverse. */
+  hover: '#f59e0b',
+  selected: '#22d3ee',
+} as const;
+
+/**
+ * Rack steel cross-sections, matching the warehouse designer's racking.
+ *
+ * The bin size is deliberately NOT a constant here. A fixed cube cannot match every
+ * warehouse's bay pitch, so the footprint is measured per layout by `deriveBinMetrics` -
+ * see that module for why a 0.8 m cube leaves holes in a 2.7 m bay.
+ */
+const UPRIGHT_WIDTH = 0.12;
+const BEAM_HEIGHT = 0.08;
+const BEAM_DEPTH = 0.12;
+
+// ─── Rack Frame (instanced structural steel) ──────────────────────────────────
+
+interface Member {
+  position: [number, number, number];
+  scale: [number, number, number];
 }
 
-function RackFrame({ bins }: RackFrameProps) {
-  if (bins.length === 0) return null;
+interface RackMembers {
+  uprights: Member[];
+  beams: Member[];
+}
 
-  const xs = bins.map((b) => b.position.x);
-  const ys = bins.map((b) => b.position.y);
-  const zs = bins.map((b) => b.position.z);
+interface BayColumn {
+  worldX: number;
+  worldZ: number;
+  heights: number[];
+}
 
-  const minX = Math.min(...xs) - 0.8;
-  const maxX = Math.max(...xs) + 0.8;
-  const minY = Math.min(...ys) - 0.8;
-  const maxY = Math.max(...ys) + 0.8;
-  const maxZ = Math.max(...zs) + 1.2;
+/** One column per distinct plan position - i.e. one bay of stacked levels. */
+function collectBayColumns(bins: FlatBin[]): BayColumn[] {
+  const byKey = new Map<string, BayColumn>();
 
-  // Vertical uprights at corners
-  const uprightHeight = maxZ;
-  const uprights: React.ReactElement[] = [];
-  const beams: React.ReactElement[] = [];
-
-  // Place uprights at min/max x and y boundaries
-  const xPositions = [minX, maxX];
-  const yPositions = [minY, maxY];
-
-  // Add intermediate uprights every ~3 units along Y
-  const ySpan = maxY - minY;
-  const ySteps = Math.max(2, Math.ceil(ySpan / 3));
-  const yStep = ySpan / ySteps;
-  for (let i = 0; i <= ySteps; i++) {
-    const yPos = minY + i * yStep;
-    if (!yPositions.includes(yPos)) yPositions.push(yPos);
+  for (const bin of bins) {
+    const key = `${bin.position.x.toFixed(3)}/${bin.position.y.toFixed(3)}`;
+    const column = byKey.get(key);
+    // `position.z` is already the centre of the bin's level, so it needs no lift.
+    if (column) column.heights.push(bin.position.z);
+    else byKey.set(key, { worldX: bin.position.x, worldZ: bin.position.y, heights: [bin.position.z] });
   }
 
-  for (const x of xPositions) {
-    for (const y of yPositions) {
-      uprights.push(
-        <mesh key={`up-${x}-${y}`} position={[x, uprightHeight / 2, y]}>
-          <boxGeometry args={[0.08, uprightHeight, 0.08]} />
-          <meshStandardMaterial color="#64748b" roughness={0.7} metalness={0.5} />
-        </mesh>,
-      );
+  return [...byKey.values()];
+}
+
+/** Four uprights at the bay's corners, running the full height of its stack. */
+function appendUprights(column: BayColumn, top: number, metrics: BinMetrics, out: Member[]): void {
+  for (const dx of [-metrics.sizeX / 2, metrics.sizeX / 2]) {
+    for (const dz of [-metrics.sizeZ / 2, metrics.sizeZ / 2]) {
+      out.push({
+        position: [column.worldX + dx, top / 2, column.worldZ + dz],
+        scale: [UPRIGHT_WIDTH, top, UPRIGHT_WIDTH],
+      });
     }
+  }
+}
+
+/** Two beams under each level, spanning the bay front and back. */
+function appendBeams(column: BayColumn, levels: number[], metrics: BinMetrics, out: Member[]): void {
+  for (const level of levels) {
+    const bottom = level - metrics.sizeY / 2;
+    for (const dz of [-metrics.sizeZ / 2, metrics.sizeZ / 2]) {
+      out.push({
+        position: [column.worldX, bottom, column.worldZ + dz],
+        scale: [metrics.sizeX, BEAM_HEIGHT, BEAM_DEPTH],
+      });
+    }
+  }
+}
+
+/**
+ * Uprights and beams derived from the bins themselves.
+ *
+ * The previous version framed the aisle's bounding box, so the steel floated outside the
+ * racking whenever the bins did not fill that box. This frames each bay from its own
+ * footprint instead. Both sets go into a single `InstancedMesh` each - two draw calls and
+ * two materials regardless of bay or level count, where the per-member version issued one
+ * draw call and one material per member (~250 on a realistic warehouse).
+ */
+function buildRackFrame(bins: FlatBin[], metrics: BinMetrics): RackMembers {
+  const uprights: Member[] = [];
+  const beams: Member[] = [];
+
+  for (const column of collectBayColumns(bins)) {
+    const levels = [...new Set(column.heights)].sort((a, b) => a - b);
+    appendUprights(column, Math.max(...levels) + metrics.sizeY / 2, metrics, uprights);
+    appendBeams(column, levels, metrics, beams);
   }
 
-  // Horizontal beams at each level
-  const levels = [...new Set(zs)].sort((a, b) => a - b);
-  for (const z of levels) {
-    // Beams along X direction
-    const midX = (minX + maxX) / 2;
-    const spanX = maxX - minX;
-    for (const y of yPositions) {
-      beams.push(
-        <mesh key={`bx-${z}-${y}`} position={[midX, z, y]}>
-          <boxGeometry args={[spanX, 0.06, 0.06]} />
-          <meshStandardMaterial color="#475569" roughness={0.8} metalness={0.4} />
-        </mesh>,
-      );
-    }
-    // Beams along Y direction
-    const midY = (minY + maxY) / 2;
-    const spanY = maxY - minY;
-    for (const x of xPositions) {
-      beams.push(
-        <mesh key={`by-${z}-${x}`} position={[x, z, midY]}>
-          <boxGeometry args={[0.06, 0.06, spanY]} />
-          <meshStandardMaterial color="#475569" roughness={0.8} metalness={0.4} />
-        </mesh>,
-      );
-    }
-  }
+  return { uprights, beams };
+}
+
+interface RackInstancesProps {
+  members: Member[];
+  color: string;
+  roughness: number;
+  metalness: number;
+}
+
+function RackInstances({ members, color, roughness, metalness }: RackInstancesProps) {
+  const meshRef = React.useRef<THREE.InstancedMesh>(null);
+
+  React.useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+
+    const object = new THREE.Object3D();
+    members.forEach((member, index) => {
+      object.position.set(member.position[0], member.position[1], member.position[2]);
+      object.scale.set(member.scale[0], member.scale[1], member.scale[2]);
+      object.updateMatrix();
+      mesh.setMatrixAt(index, object.matrix);
+    });
+
+    mesh.instanceMatrix.needsUpdate = true;
+    // Bounds are computed once from the identity matrix, so a wide rack gets frustum-culled.
+    mesh.computeBoundingSphere();
+  }, [members]);
+
+  if (members.length === 0) return null;
+
+  return (
+    <instancedMesh ref={meshRef} key={members.length} args={[undefined, undefined, members.length]}>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
+    </instancedMesh>
+  );
+}
+
+function RackFrame({ bins, metrics }: { bins: FlatBin[]; metrics: BinMetrics }) {
+  const frame = React.useMemo(() => buildRackFrame(bins, metrics), [bins, metrics]);
 
   return (
     <group>
-      {uprights}
-      {beams}
+      <RackInstances members={frame.uprights} color={SCENE.upright} roughness={0.75} metalness={0.4} />
+      <RackInstances members={frame.beams} color={SCENE.beam} roughness={0.75} metalness={0.4} />
     </group>
   );
 }
@@ -151,6 +239,7 @@ function RackFrame({ bins }: RackFrameProps) {
 
 interface InstancedBinsProps {
   bins: FlatBin[];
+  metrics: BinMetrics;
   suggestedIds: Set<string>;
   selectedBinId: string | null;
   hoveredBinId: string | null;
@@ -159,35 +248,50 @@ interface InstancedBinsProps {
   onHover: (binId: string | null) => void;
 }
 
-function InstancedBins({ bins, suggestedIds, selectedBinId, hoveredBinId, activeFilter, onSelect, onHover }: InstancedBinsProps) {
+function InstancedBins({ bins, metrics, suggestedIds, selectedBinId, hoveredBinId, activeFilter, onSelect, onHover }: InstancedBinsProps) {
   const meshRef = React.useRef<THREE.InstancedMesh>(null);
   const tempObject = React.useMemo(() => new THREE.Object3D(), []);
   const tempColor = React.useMemo(() => new THREE.Color(), []);
 
+  // Id-keyed lookup so the highlight overlays never index into a stale array.
+  const binsById = React.useMemo(() => new Map(bins.map((bin) => [bin.id, bin] as const)), [bins]);
+
+  // Matrices depend on the bin set alone: filtering must not rewrite 100k transforms.
   React.useEffect(() => {
-    if (!meshRef.current || bins.length === 0) return;
+    const mesh = meshRef.current;
+    if (!mesh || bins.length === 0) return;
 
     bins.forEach((bin, index) => {
-      // Position: x maps to X, y maps to Z (depth), z maps to Y (height)
-      tempObject.position.set(bin.position.x, bin.position.z + 0.5, bin.position.y);
+      // x maps to world X, y maps to world Z (depth), z is the height of the centre.
+      tempObject.position.set(bin.position.x, bin.position.z, bin.position.y);
       tempObject.updateMatrix();
-      meshRef.current!.setMatrixAt(index, tempObject.matrix);
+      mesh.setMatrixAt(index, tempObject.matrix);
+    });
 
-      // Color based on status + filter
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.computeBoundingSphere();
+  }, [bins, tempObject]);
+
+  // Colours are a separate pass, so a filter change only updates the colour buffer.
+  React.useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh || bins.length === 0) return;
+
+    bins.forEach((bin, index) => {
       const status = getBinStatus(bin, suggestedIds);
       if (activeFilter !== 'all' && status !== activeFilter) {
-        tempColor.set('#1e293b'); // dimmed
+        tempColor.set(SCENE.dimmed);
       } else {
         tempColor.set(getBinColor(bin, suggestedIds));
       }
-      meshRef.current!.setColorAt(index, tempColor);
+      mesh.setColorAt(index, tempColor);
     });
 
-    meshRef.current.instanceMatrix.needsUpdate = true;
-    if (meshRef.current.instanceColor) {
-      meshRef.current.instanceColor.needsUpdate = true;
-    }
-  }, [bins, suggestedIds, activeFilter, tempObject, tempColor]);
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }, [bins, suggestedIds, activeFilter, tempColor]);
+
+  const hoveredBin = hoveredBinId ? binsById.get(hoveredBinId) : undefined;
+  const selectedBin = selectedBinId ? binsById.get(selectedBinId) : undefined;
 
   return (
     <>
@@ -214,38 +318,45 @@ function InstancedBins({ bins, suggestedIds, selectedBinId, hoveredBinId, active
           onHover(null);
           document.body.style.cursor = 'auto';
         }}>
-        <boxGeometry args={[0.8, 0.85, 0.8]} />
+        <boxGeometry args={[metrics.sizeX, metrics.sizeY, metrics.sizeZ]} />
         <meshStandardMaterial roughness={0.45} metalness={0.15} />
       </instancedMesh>
 
-      {/* Hover highlight */}
-      {hoveredBinId && hoveredBinId !== selectedBinId && (
-        <HighlightBin bin={bins.find((b) => b.id === hoveredBinId)!} color="#3b82f6" pulse={false} />
-      )}
-
-      {/* Selected highlight */}
-      {selectedBinId && <HighlightBin bin={bins.find((b) => b.id === selectedBinId)!} color="#f59e0b" pulse={true} />}
+      {/*
+        Hover and selection are drawn *over* the instances, not written into their colour
+        buffer: the buffer is the inventory status, and overwriting it would lose state on
+        the next colour pass.
+      */}
+      {hoveredBin && hoveredBin.id !== selectedBinId && <HighlightBin bin={hoveredBin} metrics={metrics} color={SCENE.hover} scale={1.04} emissiveIntensity={0.35} opacity={0.55} />}
+      {selectedBin && <HighlightBin bin={selectedBin} metrics={metrics} color={SCENE.selected} scale={1.06} emissiveIntensity={0.4} opacity={0.7} />}
     </>
   );
 }
 
 // ─── Highlight Bin (hover/selected overlay) ───────────────────────────────────
 
-function HighlightBin({ bin, color, pulse }: { bin: FlatBin | undefined; color: string; pulse: boolean }) {
-  const meshRef = React.useRef<THREE.Mesh>(null);
+interface HighlightBinProps {
+  bin: FlatBin;
+  metrics: BinMetrics;
+  color: string;
+  /** Multiplier applied to the bin footprint so the overlay reads as a shell. */
+  scale: number;
+  emissiveIntensity: number;
+  opacity: number;
+}
 
-  useFrame(({ clock }) => {
-    if (!meshRef.current || !pulse) return;
-    const t = clock.getElapsedTime();
-    (meshRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.4 + Math.sin(t * 3) * 0.3;
-  });
-
-  if (!bin) return null;
-
+function HighlightBin({ bin, metrics, color, scale, emissiveIntensity, opacity }: HighlightBinProps) {
   return (
-    <mesh ref={meshRef} position={[bin.position.x, bin.position.z + 0.5, bin.position.y]}>
-      <boxGeometry args={[0.9, 0.95, 0.9]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} roughness={0.3} metalness={0.2} transparent opacity={0.92} />
+    <mesh position={[bin.position.x, bin.position.z, bin.position.y]}>
+      <boxGeometry args={[metrics.sizeX * scale, metrics.sizeY * scale, metrics.sizeZ * scale]} />
+      <meshStandardMaterial color={color}
+        emissive={color}
+        emissiveIntensity={emissiveIntensity}
+        roughness={0.7}
+        metalness={0.15}
+        transparent
+        opacity={opacity}
+        depthWrite={false} />
     </mesh>
   );
 }
@@ -301,85 +412,84 @@ function BinTooltip({ bin, suggestedIds }: { bin: FlatBin; suggestedIds: Set<str
 
 // ─── Floor + Grid ─────────────────────────────────────────────────────────────
 
-function WarehouseFloor({ bins }: { bins: FlatBin[] }) {
+/** Floor apron beyond the outermost bin, in scene units. */
+const FLOOR_MARGIN = 3;
+
+interface FloorBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  cx: number;
+  cy: number;
+  w: number;
+  d: number;
+}
+
+function measureFloor(bins: FlatBin[]): FloorBounds | null {
   if (bins.length === 0) return null;
+
   const xs = bins.map((b) => b.position.x);
   const ys = bins.map((b) => b.position.y);
-  const minX = Math.min(...xs) - 3;
-  const maxX = Math.max(...xs) + 3;
-  const minY = Math.min(...ys) - 3;
-  const maxY = Math.max(...ys) + 3;
-  const cx = (minX + maxX) / 2;
-  const cy = (minY + maxY) / 2;
-  const w = maxX - minX;
-  const d = maxY - minY;
-  const wallH = 0.3;
-  const wallThick = 0.08;
+  const minX = Math.min(...xs) - FLOOR_MARGIN;
+  const maxX = Math.max(...xs) + FLOOR_MARGIN;
+  const minY = Math.min(...ys) - FLOOR_MARGIN;
+  const maxY = Math.max(...ys) + FLOOR_MARGIN;
+
+  return { minX, maxX, minY, maxY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2, w: maxX - minX, d: maxY - minY };
+}
+
+/**
+ * The floor, grid and warehouse outline.
+ *
+ * The coloured boundary walls and their FRONT/BACK/LEFT/RIGHT labels are deliberately gone:
+ * in a real warehouse those edges are the set of the scene, not props, and four saturated
+ * slabs plus four floating tags dominated the frame. A hairline outline keeps the extent
+ * legible without competing with the racks.
+ */
+function WarehouseFloor({ bins }: { bins: FlatBin[] }) {
+  const bounds = React.useMemo(() => measureFloor(bins), [bins]);
+
+  const outline = React.useMemo(() => {
+    if (!bounds) return null;
+    return new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(bounds.minX, 0, bounds.minY),
+      new THREE.Vector3(bounds.maxX, 0, bounds.minY),
+      new THREE.Vector3(bounds.maxX, 0, bounds.maxY),
+      new THREE.Vector3(bounds.minX, 0, bounds.maxY),
+    ]);
+  }, [bounds]);
+
+  React.useEffect(() => () => outline?.dispose(), [outline]);
+
+  if (!bounds || !outline) return null;
+  const { cx, cy, w, d } = bounds;
 
   return (
     <>
-      {/* Floor */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, -0.02, cy]} receiveShadow>
-        <planeGeometry args={[w, d]} />
-        <meshStandardMaterial color="#0f172a" roughness={0.8} />
+      {/* Floor slab - a box, so the apron reads as a plinth from a low camera */}
+      <mesh position={[cx, -0.1, cy]} receiveShadow>
+        <boxGeometry args={[w, 0.2, d]} />
+        <meshStandardMaterial color={SCENE.floor} roughness={0.95} metalness={0} />
       </mesh>
 
-      {/* Grid */}
+      {/* 1 m cell / 5 m section survey grid */}
       <Grid position={[cx, 0, cy]}
         args={[w, d]}
-        cellSize={1.5}
-        cellThickness={0.4}
-        cellColor="#1e3a5f"
-        sectionSize={6}
-        sectionThickness={0.8}
-        sectionColor="#1e40af"
-        fadeDistance={80}
+        cellSize={1}
+        cellThickness={0.6}
+        cellColor={SCENE.grid}
+        sectionSize={5}
+        sectionThickness={1.2}
+        sectionColor={SCENE.gridSection}
+        fadeDistance={180}
         fadeStrength={1}
         infiniteGrid={false}/>
 
-      {/* Walls — thin colored strips along boundaries */}
-      {/* Front wall (Z-min, facing viewer) — Blue */}
-      <mesh position={[cx, wallH / 2, minY - wallThick / 2]}>
-        <boxGeometry args={[w, wallH, wallThick]} />
-        <meshStandardMaterial color="#3b82f6" roughness={0.5} />
-      </mesh>
-      {/* Back wall (Z-max) — Orange */}
-      <mesh position={[cx, wallH / 2, maxY + wallThick / 2]}>
-        <boxGeometry args={[w, wallH, wallThick]} />
-        <meshStandardMaterial color="#f97316" roughness={0.5} />
-      </mesh>
-      {/* Left wall (X-min) — Green */}
-      <mesh position={[minX - wallThick / 2, wallH / 2, cy]}>
-        <boxGeometry args={[wallThick, wallH, d]} />
-        <meshStandardMaterial color="#22c55e" roughness={0.5} />
-      </mesh>
-      {/* Right wall (X-max) — Purple */}
-      <mesh position={[maxX + wallThick / 2, wallH / 2, cy]}>
-        <boxGeometry args={[wallThick, wallH, d]} />
-        <meshStandardMaterial color="#a855f7" roughness={0.5} />
-      </mesh>
-
-      {/* Direction labels */}
-      <Html position={[cx, 0.6, minY - 1]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
-        <div style={{ background: '#3b82f6', color: '#fff', padding: '2px 10px', borderRadius: 4, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-          FRONT WALL
-        </div>
-      </Html>
-      <Html position={[cx, 0.6, maxY + 1]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
-        <div style={{ background: '#f97316', color: '#fff', padding: '2px 10px', borderRadius: 4, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-          BACK WALL
-        </div>
-      </Html>
-      <Html position={[minX - 1, 0.6, cy]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
-        <div style={{ background: '#22c55e', color: '#fff', padding: '2px 10px', borderRadius: 4, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-          LEFT WALL
-        </div>
-      </Html>
-      <Html position={[maxX + 1, 0.6, cy]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
-        <div style={{ background: '#a855f7', color: '#fff', padding: '2px 10px', borderRadius: 4, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-          RIGHT WALL
-        </div>
-      </Html>
+      {/* Footprint outline */}
+      <lineLoop geometry={outline} position={[0, 0.02, 0]}>
+        <lineBasicMaterial color={SCENE.floorEdge} />
+      </lineLoop>
     </>
   );
 }
@@ -388,6 +498,7 @@ function WarehouseFloor({ bins }: { bins: FlatBin[] }) {
 
 interface SceneProps {
   bins: FlatBin[];
+  metrics: BinMetrics;
   suggestedIds: Set<string>;
   selectedBinId: string | null;
   hoveredBinId: string | null;
@@ -396,7 +507,7 @@ interface SceneProps {
   onHover: (binId: string | null) => void;
 }
 
-function Scene({ bins, suggestedIds, selectedBinId, hoveredBinId, activeFilter, onSelect, onHover }: SceneProps) {
+function Scene({ bins, metrics, suggestedIds, selectedBinId, hoveredBinId, activeFilter, onSelect, onHover }: SceneProps) {
   // Compute center for orbit target
   const center = React.useMemo<[number, number, number]>(() => {
     if (bins.length === 0) return [0, 0, 0];
@@ -418,7 +529,6 @@ function Scene({ bins, suggestedIds, selectedBinId, hoveredBinId, activeFilter, 
     }
     return Array.from(map.values());
   }, [bins]);
-
   // Compute zone labels (centered above each zone's bins)
   const zoneLabels = React.useMemo(() => {
     const map = new Map<string, { code: string; name: string | null; xs: number[]; ys: number[]; zs: number[] }>();
@@ -457,12 +567,39 @@ function Scene({ bins, suggestedIds, selectedBinId, hoveredBinId, activeFilter, 
     }));
   }, [bins]);
 
+  // Longest plan edge - scales the fog and the sun's shadow frustum to the real building.
+  const span = React.useMemo(() => {
+    if (bins.length === 0) return 20;
+    const xs = bins.map((b) => b.position.x);
+    const ys = bins.map((b) => b.position.y);
+    return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 5);
+  }, [bins]);
+
+  // Without explicit bounds the shadow camera defaults to +/-5, so only the middle of the
+  // warehouse ever received a shadow.
+  const shadowReach = Math.max(span, 24);
+
   return (
     <>
+      <color attach="background" args={[SCENE.background]} />
+      {/* Fades the far apron into the background instead of ending on a hard floor edge */}
+      <fog attach="fog" args={[SCENE.background, span * 1.4, span * 3.2]} />
+
       {/* Lighting */}
       <ambientLight intensity={0.5} />
-      <directionalLight position={[30, 50, 30]} intensity={1.4} castShadow shadow-mapSize={[2048, 2048]} />
-      <directionalLight position={[-20, 30, -20]} intensity={0.4} color="#bfdbfe" />
+      <hemisphereLight args={['#dbeafe', SCENE.background, 0.8]} />
+      <directionalLight position={[span * 0.6, span * 0.9 + 20, span * 0.7]}
+        intensity={1.1}
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-left={-shadowReach}
+        shadow-camera-right={shadowReach}
+        shadow-camera-top={shadowReach}
+        shadow-camera-bottom={-shadowReach}
+        shadow-camera-near={1}
+        shadow-camera-far={shadowReach * 4}/>
+      <directionalLight position={[-span * 0.4, span * 0.5, -span * 0.4]} intensity={0.4} color="#bfdbfe" />
       <pointLight position={[center[0], 8, center[2]]} intensity={0.3} color="#e0f2fe" />
 
       {/* Floor + Grid */}
@@ -470,7 +607,7 @@ function Scene({ bins, suggestedIds, selectedBinId, hoveredBinId, activeFilter, 
 
       {/* Rack frames per aisle */}
       {aisleGroups.map((aisleBins, i) => (
-        <RackFrame key={i} bins={aisleBins} />
+        <RackFrame key={i} bins={aisleBins} metrics={metrics} />
       ))}
 
       {/* Zone labels */}
@@ -511,6 +648,7 @@ function Scene({ bins, suggestedIds, selectedBinId, hoveredBinId, activeFilter, 
 
       {/* Instanced bins */}
       <InstancedBins bins={bins}
+        metrics={metrics}
         suggestedIds={suggestedIds}
         selectedBinId={selectedBinId}
         hoveredBinId={hoveredBinId}
@@ -520,13 +658,13 @@ function Scene({ bins, suggestedIds, selectedBinId, hoveredBinId, activeFilter, 
 
       {/* Hover tooltip */}
       {hoveredBin && (
-        <group position={[hoveredBin.position.x, hoveredBin.position.z + 1.2, hoveredBin.position.y]}>
+        <group position={[hoveredBin.position.x, hoveredBin.position.z + metrics.sizeY, hoveredBin.position.y]}>
           <BinTooltip bin={hoveredBin} suggestedIds={suggestedIds} />
         </group>
       )}
 
       {/* Camera controls */}
-      <OrbitControls makeDefault target={center} minDistance={3} maxDistance={80} maxPolarAngle={Math.PI / 2.1} enableDamping dampingFactor={0.1} />
+      <OrbitControls makeDefault target={center} minDistance={3} maxDistance={span * 3} maxPolarAngle={Math.PI / 2.1} enableDamping dampingFactor={0.1} />
     </>
   );
 }
@@ -807,6 +945,24 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
 
   const selectedBin = selectedBinId ? (activeBins.find((b) => b.id === selectedBinId) ?? null) : null;
 
+  /**
+   * Bin footprint measured from the layout rather than assumed.
+   *
+   * Every geometric consumer reads its size from here - the bin instances, the highlight
+   * overlays, the rack steel and the plan view - so they cannot disagree about how big a
+   * bay is, and none of them can draw a hole where the racking should be.
+   */
+  const metrics = React.useMemo(() => deriveBinMetrics(activeBins), [activeBins]);
+
+  // Counts for the footer strip. One bay column is one vertical stack of levels.
+  const planStats = React.useMemo(() => {
+    const aisles = new Set(activeBins.map((bin) => bin.aisle_id));
+    const bays = new Set(
+      activeBins.map((bin) => `${bin.position.x.toFixed(3)}|${bin.position.y.toFixed(3)}`),
+    );
+    return { aisles: aisles.size, bays: bays.size, bins: activeBins.length };
+  }, [activeBins]);
+
   // Camera position based on warehouse extent
   const cameraPosition = React.useMemo<[number, number, number]>(() => {
     if (activeBins.length === 0) return [15, 15, 25];
@@ -815,7 +971,7 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
     const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 5);
     const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
     const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-    return [cx + span * 0.7, span * 0.6 + 5, cy + span * 0.9];
+    return [cx + span * 0.75, span * 0.65 + 5, cy + span * 0.95];
   }, [activeBins]);
 
   if (loading) {
@@ -874,9 +1030,10 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
       {/* Canvas + Side panels */}
       <div className="flex gap-3 items-start">
         {/* 3D Canvas with dark background */}
-        <div className="flex-1 min-w-0 rounded-lg border overflow-hidden relative" style={{ height: 580, backgroundColor: '#0f172a' }}>
-          <Canvas camera={{ position: cameraPosition, fov: 50 }} shadows onPointerMissed={() => setSelectedBinId(null)}>
+        <div className="flex-1 min-w-0 rounded-lg border overflow-hidden relative" style={{ height: 580, backgroundColor: SCENE.background }}>
+          <Canvas camera={{ position: cameraPosition, fov: 42 }} shadows dpr={[1, 2]} onPointerMissed={() => setSelectedBinId(null)}>
             <Scene bins={activeBins}
+              metrics={metrics}
               suggestedIds={suggestedIds}
               selectedBinId={selectedBinId}
               hoveredBinId={hoveredBinId}
@@ -908,9 +1065,17 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
             ))}
           </div>
 
-          {/* Bottom hint */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/75 backdrop-blur px-4 py-1.5 rounded-full border border-slate-700 text-[11px] text-slate-500 pointer-events-none whitespace-nowrap">
-            Hover to preview · Click to inspect · Drag to orbit · Scroll to zoom
+          {/* Plan view (top-right): the same footprints, without the perspective */}
+          <LayoutMiniMap bins={activeBins} metrics={metrics} className="absolute right-4 top-4 w-56" />
+
+          {/* Footer strip: layout totals, then the interaction hint */}
+          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full border border-slate-700 bg-slate-900/75 px-4 py-1.5 pointer-events-none">
+            <span className="text-[11px] text-slate-400">
+              {planStats.aisles} aisles · {planStats.bays} bays · {planStats.bins} bins
+            </span>
+            <span className="text-[11px] text-slate-500">
+              Hover to preview · Click to inspect · Drag to orbit · Scroll to zoom
+            </span>
           </div>
         </div>
 
