@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { AlertTriangle, PackageCheck, PackageX, Plus, RefreshCw, RotateCcw, Truck, Warehouse, X } from 'lucide-react';
+import { AlertTriangle, ClipboardCheck, PackageCheck, PackageX, Plus, RefreshCw, RotateCcw, Truck, Warehouse, X } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -11,7 +11,7 @@ import { InboundExceptionQueue } from '../InboundExceptionQueue';
 import { InboundStats } from '../InboundStats';
 import { PutAwayView } from '../PutAwayView';
 import { ReceivingSlipList } from '../ReceivingSlipList';
-import { ReturnsView } from '../returns';
+import { ReturnReceiptNoteQueue, ReturnRegistrationList } from '../returns';
 import { ShortageLedger } from '../shortage';
 import { VehicleArrivalManagement } from '../VehicleArrivalManagement';
 
@@ -34,6 +34,8 @@ export function InboundManagement({
   // appears once the caller has been granted `return.read`.
   const userPermissions = useUserStore((s) => s.permissions.permissions);
   const canViewReturns = hasPermission(userPermissions, 'return.read');
+  // Registering a return is gated further, and its button lives in the panel heading.
+  const canRegisterReturns = hasPermission(userPermissions, 'return.register');
   // Both count sets are produced by the list requests in `ReceivingSlipList` /
   // `PutAwayView` so the stat cards don't fetch the same endpoints a second time.
   const [receivingCounts, setReceivingCounts] = React.useState<ReceivingSlipStatusCounts | null>(null);
@@ -42,6 +44,9 @@ export function InboundManagement({
   // The Vehicle Arrivals register form is toggled from the panel heading (above
   // the stat cards), so its open state is owned here and passed to the section.
   const [vehicleFormOpen, setVehicleFormOpen] = React.useState(false);
+  // The Return tab's "Register Return" dialog is toggled from the panel heading
+  // too, so its open state is owned here and passed to the list.
+  const [returnFormOpen, setReturnFormOpen] = React.useState(false);
   // Set by the queue's "Short-close" action so the shortage ledger opens prefiltered.
   const [shortageSku, setShortageSku] = React.useState<string | undefined>(undefined);
 
@@ -72,6 +77,12 @@ export function InboundManagement({
     [onInboundSectionChange],
   );
 
+  // Leaving a return tab closes its create dialog, so coming back later does not
+  // reopen a form the operator had abandoned.
+  React.useEffect(() => {
+    setReturnFormOpen(false);
+  }, [inboundSection]);
+
   // The tab is reached from any section, so it clears the SKU and status filters
   // that a previous shortage visit (or a stat card) may have left behind.
   const openShortageTab = () => {
@@ -99,6 +110,12 @@ export function InboundManagement({
       {vehicleFormOpen ? 'Cancel' : 'Register Arrival'}
     </Button>
   ) : undefined;
+  const returnActions = inboundSection === 'returns' && canRegisterReturns ? (
+    <Button size="sm" className="gap-2" onClick={() => setReturnFormOpen((open) => !open)}>
+      {returnFormOpen ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+      {returnFormOpen ? 'Cancel' : 'Register Return'}
+    </Button>
+  ) : undefined;
 
   return (
     <div className="space-y-4">
@@ -106,7 +123,7 @@ export function InboundManagement({
         <SectionHeading title={heading.title}
           subtitle={heading.subtitle}
           onRefresh={handleRefresh}
-          actions={vehicleActions}/>
+          actions={vehicleActions ?? returnActions}/>
       )}
       <InboundStats activeSection={inboundSection}
         receivingCounts={receivingCounts}
@@ -137,6 +154,8 @@ export function InboundManagement({
             onShortageSummaryChange={setShortageSummary}
             vehicleFormOpen={vehicleFormOpen}
             onVehicleFormClose={() => setVehicleFormOpen(false)}
+            returnFormOpen={returnFormOpen}
+            onReturnFormOpenChange={setReturnFormOpen}
             onShortClose={openShortageLedger}
             shortageSku={shortageSku}/>
         </div>
@@ -169,7 +188,10 @@ function InboundTabs({
       <SectionTab active={active === 'exceptions'} icon={AlertTriangle} label="Hold / Quarantine" onClick={() => onSelect('exceptions')} />
       <SectionTab active={active === 'shortages'} icon={PackageX} label="Shortage Ledger" onClick={onSelectShortages} />
       {canViewReturns && (
-        <SectionTab active={active === 'returns'} icon={RotateCcw} label="Returns" onClick={() => onSelect('returns')}/>
+        <>
+          <SectionTab active={active === 'returns'} icon={RotateCcw} label="Return" onClick={() => onSelect('returns')} />
+          <SectionTab active={active === 'return-notes'} icon={ClipboardCheck} label="Return Notes" onClick={() => onSelect('return-notes')}/>
+        </>
       )}
     </div>
   );
@@ -207,6 +229,20 @@ function inboundHeading(section: InboundSection): { title: string; subtitle: str
       title: 'Shortage Ledger',
       subtitle:
         'Units missing against an ASN. Nothing is segregated — a residual short stays open until a later receipt covers it or a manager writes it off.',
+    };
+  }
+  if (section === 'returns') {
+    return {
+      title: 'Return Registrations',
+      subtitle:
+        'Returns the dealer is sending back. Register it here, then the dock receives and classifies the units.',
+    };
+  }
+  if (section === 'return-notes') {
+    return {
+      title: 'Return Receipt Notes',
+      subtitle:
+        'What the dock received against what the dealer returned. Review the conditions, route each line, then approve or reject — approving moves stock.',
     };
   }
   return undefined;
@@ -256,6 +292,8 @@ interface InboundSectionContentProps {
   onShortageSummaryChange: (summary: ShortBalanceSummary | null) => void;
   vehicleFormOpen: boolean;
   onVehicleFormClose: () => void;
+  returnFormOpen: boolean;
+  onReturnFormOpenChange: (open: boolean) => void;
   onShortClose: (exceptions: InboundException[]) => void;
   /** SKU to prefilter the shortage ledger with; cleared when switching tabs. */
   shortageSku?: string;
@@ -276,6 +314,8 @@ function InboundSectionContent({
   onShortageSummaryChange,
   vehicleFormOpen,
   onVehicleFormClose,
+  returnFormOpen,
+  onReturnFormOpenChange,
   onShortClose,
   shortageSku,
 }: InboundSectionContentProps) {
@@ -318,8 +358,35 @@ function InboundSectionContent({
           onSummaryChange={onShortageSummaryChange}/>
       );
     case 'returns':
-      return <ReturnsView warehouseId={warehouseId || undefined} refreshKey={refreshKey} />;
+      return (
+        <ReturnSection warehouseId={warehouseId}
+          refreshKey={refreshKey}
+          createFormOpen={returnFormOpen}
+          onCreateFormOpenChange={onReturnFormOpenChange}/>
+      );
+    case 'return-notes':
+      return <ReturnNotesSection warehouseId={warehouseId} refreshKey={refreshKey} />;
   }
+}
+
+interface ReturnSectionProps {
+  warehouseId: string;
+  refreshKey: number;
+  createFormOpen: boolean;
+  onCreateFormOpenChange: (open: boolean) => void;
+}
+
+function ReturnSection({ warehouseId, refreshKey, createFormOpen, onCreateFormOpenChange }: ReturnSectionProps) {
+  return (
+    <ReturnRegistrationList warehouseId={warehouseId || undefined}
+      refreshKey={refreshKey}
+      createFormOpen={createFormOpen}
+      onCreateFormOpenChange={onCreateFormOpenChange}/>
+  );
+}
+
+function ReturnNotesSection({ warehouseId, refreshKey }: { warehouseId: string; refreshKey: number }) {
+  return <ReturnReceiptNoteQueue warehouseId={warehouseId || undefined} refreshKey={refreshKey} />;
 }
 
 interface ReceivingSlipSectionProps {

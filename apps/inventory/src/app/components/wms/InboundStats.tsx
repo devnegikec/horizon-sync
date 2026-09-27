@@ -8,7 +8,7 @@ import { cn } from '@horizon-sync/ui/lib';
 import type { PutAwayStatusCounts, ReceivingSlipStatusCounts, ShortBalanceSummary } from '../../types/wms.types';
 import { formatQuantity } from '../../utility';
 
-type InboundStatsSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions' | 'shortages' | 'returns';
+type InboundStatsSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions' | 'shortages' | 'returns' | 'return-notes';
 
 interface InboundStatsProps {
   /**
