@@ -24,7 +24,7 @@ import type { PaginatedLocations, WarehouseLocation, WMSPagination } from '../..
 import { layoutApi } from '../../utility/api/wms';
 
 import { createLocationQRColumns } from './LocationQRColumns';
-import { buildQrPayload, generateQRDataUrl, qrShortCode } from './locationQrShared';
+import { buildQrPayload, escapeHtml, generateQRDataUrls, qrShortCode } from './locationQrShared';
 
 interface LocationQRPanelProps {
   warehouseId?: string;
@@ -74,16 +74,18 @@ function readLocationPage(res: PaginatedLocations, fallbackPage: number): Locati
  * One label per sheet, each centred and sized for a shelf sticker.
  *
  * The page break goes on every label but the last, so printing a single location does
- * not append a blank sheet.
+ * not append a blank sheet. Both interpolated values come from the API and are escaped:
+ * this markup is written into the print iframe as HTML.
  */
 function printableLabels(locations: WarehouseLocation[], dataUrls: string[]): string {
   const pages = locations.map((loc, index) => {
     const breakStyle = index < locations.length - 1 ? 'page-break-after:always;' : '';
-    const label = loc.full_path || loc.code;
+    const label = escapeHtml(loc.full_path || loc.code);
+    const code = escapeHtml(qrShortCode(loc));
     return `<div style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;${breakStyle}">
           <div style="text-align:center;border:1px dashed #ccc;padding:24px;max-width:280px;">
             <div style="font-size:18px;font-weight:700;margin-bottom:2px;">${label}</div>
-            <div style="font-size:22px;font-weight:700;color:#1A73E8;margin-bottom:4px;font-family:monospace;">${qrShortCode(loc)}</div>
+            <div style="font-size:22px;font-weight:700;color:#1A73E8;margin-bottom:4px;font-family:monospace;">${code}</div>
             <div style="font-size:11px;color:#666;margin-bottom:8px;">Bin Location</div>
             <div style="margin:8px 0;"><img src="${dataUrls[index]}" alt="QR" width="200" height="200" style="max-width:100%;height:auto;" /></div>
             <div style="font-size:9px;color:#999;margin-top:4px;">Scan for put-away / picking</div>
@@ -268,9 +270,11 @@ function LocationQrEmpty({ filtered, onClearFilters }: { filtered: boolean; onCl
   );
 }
 
-function LocationQrTable({ isInitialLoading, rows, columns, serverPagination, pageSize, filtered, onClearFilters, renderFilters, renderBulkActions, onTableReady }: {
+function LocationQrTable({ isInitialLoading, rows, hasLoadedRows, columns, serverPagination, pageSize, filtered, onClearFilters, renderFilters, renderBulkActions, onTableReady }: {
   isInitialLoading: boolean;
   rows: WarehouseLocation[];
+  /** Whether the fetch returned anything, as opposed to a filter emptying the page. */
+  hasLoadedRows: boolean;
   columns: ColumnDef<WarehouseLocation>[];
   serverPagination?: ServerPagination;
   pageSize: number;
@@ -290,32 +294,41 @@ function LocationQrTable({ isInitialLoading, rows, columns, serverPagination, pa
     );
   }
 
-  if (rows.length === 0) return <LocationQrEmpty filtered={filtered} onClearFilters={onClearFilters} />;
+  // The empty card is for a warehouse with nothing to label. A filter that merely empties
+  // the page keeps the table - and its pager - so the other pages stay reachable.
+  if (rows.length === 0 && !hasLoadedRows) return <LocationQrEmpty filtered={filtered} onClearFilters={onClearFilters} />;
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <DataTable columns={columns}
-          data={rows}
-          config={{
-            showSerialNumber: true,
-            showPagination: true,
-            enableRowSelection: true,
-            enableColumnVisibility: true,
-            enableSorting: false,
-            // Off: the search box below filters the loaded rows itself, because the
-            // endpoint has no query parameter to send.
-            enableFiltering: false,
-            initialPageSize: pageSize,
-            serverPagination,
-          }}
-          renderFilters={renderFilters}
-          renderBulkActions={renderBulkActions}
-          onTableReady={onTableReady}
-          fixedHeader
-          maxHeight="auto"/>
-      </CardContent>
-    </Card>
+    <div className="space-y-2">
+      {rows.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          Nothing on this page matches. Use the pager for another page, or clear the filter.
+        </p>
+      )}
+      <Card>
+        <CardContent className="p-0">
+          <DataTable columns={columns}
+            data={rows}
+            config={{
+              showSerialNumber: true,
+              showPagination: true,
+              enableRowSelection: true,
+              enableColumnVisibility: true,
+              enableSorting: false,
+              // Off: the search box below filters the loaded rows itself, because the
+              // endpoint has no query parameter to send.
+              enableFiltering: false,
+              initialPageSize: pageSize,
+              serverPagination,
+            }}
+            renderFilters={renderFilters}
+            renderBulkActions={renderBulkActions}
+            onTableReady={onTableReady}
+            fixedHeader
+            maxHeight="auto"/>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -411,7 +424,7 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
       }
       setPrinting(true);
       try {
-        const dataUrls = await Promise.all(targets.map((loc) => generateQRDataUrl(buildQrPayload(loc))));
+        const dataUrls = await generateQRDataUrls(targets.map((loc) => buildQrPayload(loc)));
         await printHTML(printableLabels(targets, dataUrls));
         toast({ title: 'Print Ready', description: `${targets.length} QR code(s) sent to printer.` });
       } catch {
@@ -501,6 +514,7 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
 
       <LocationQrTable isInitialLoading={loading && locations.length === 0}
         rows={visibleLocations}
+        hasLoadedRows={locations.length > 0}
         columns={columns}
         serverPagination={serverPagination}
         pageSize={pageSize}

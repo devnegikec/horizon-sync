@@ -52,6 +52,9 @@ const LazyQrCode = React.memo(function LazyQrCode({ value, size }: { value: stri
   React.useEffect(() => {
     if (!inView) return;
     let cancelled = false;
+    // Clear first: the pager reuses this component for a new row, so without this the
+    // previous location's image sits under the new row's caption until the next one lands.
+    setImg('');
     generateQRDataUrl(value, size)
       .then((url) => {
         if (!cancelled) setImg(url);
@@ -90,13 +93,14 @@ function CapacityCell({ loc }: { loc: WarehouseLocation }) {
 }
 
 function QrCell({ loc }: { loc: WarehouseLocation }) {
-  // The image encodes the resolvable JSON payload; the caption is the readable code.
+  // The image encodes the resolvable JSON payload; the caption repeats the short code so
+  // the cell agrees with the Bin Code column rather than showing a second identifier.
   const payload = React.useMemo(() => buildQrPayload(loc), [loc]);
 
   return (
     <div className="flex flex-col items-center gap-1">
       <LazyQrCode value={payload} size={120} />
-      <span className="font-mono text-[10px] text-muted-foreground">{loc.code}</span>
+      <span className="font-mono text-[10px] text-muted-foreground">{qrShortCode(loc)}</span>
     </div>
   );
 }

@@ -33,3 +33,43 @@ export function buildQrPayload(loc: WarehouseLocation): string {
 export async function generateQRDataUrl(data: string, size = 200): Promise<string> {
   return QRCode.toDataURL(data, { width: size, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
 }
+
+/** How many QR images to draw before handing the main thread back to the browser. */
+const QR_BATCH_SIZE = 10;
+
+/**
+ * One data URL per payload, drawn a few at a time.
+ *
+ * `QRCode.toDataURL` does its drawing synchronously before the promise settles, so a
+ * whole print run through `Promise.all` is one unbroken burst of work that freezes the
+ * tab. Batching yields between chunks, which costs nothing and keeps the run responsive.
+ */
+export async function generateQRDataUrls(payloads: string[], size = 200): Promise<string[]> {
+  const dataUrls: string[] = [];
+
+  for (let index = 0; index < payloads.length; index += QR_BATCH_SIZE) {
+    const batch = payloads.slice(index, index + QR_BATCH_SIZE);
+    dataUrls.push(...(await Promise.all(batch.map((payload) => generateQRDataUrl(payload, size)))));
+    if (index + QR_BATCH_SIZE < payloads.length) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
+
+  return dataUrls;
+}
+
+/**
+ * Escape a value for interpolation into the print document's markup.
+ *
+ * Location codes are authored - an imported layout document may carry any string - and
+ * the label markup is written into an iframe with `document.write`, so an unescaped code
+ * is stored cross-site scripting, not just a broken label.
+ */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
