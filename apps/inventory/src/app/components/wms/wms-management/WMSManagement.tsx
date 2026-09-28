@@ -23,6 +23,7 @@ export function WMSManagement() {
   const [inboundSection, setInboundSection] = React.useState<InboundSection>('receiving');
   const [receivingStatusFilter, setReceivingStatusFilter] = React.useState<string>('all');
   const [putawayStatusFilter, setPutawayStatusFilter] = React.useState<string>('all');
+  const [shortageStatusFilter, setShortageStatusFilter] = React.useState<string>('all');
 
   // App-wide warehouse selection, kept in a persisted store (not component state)
   // so it survives tab switches, route changes and reloads instead of snapping
@@ -73,11 +74,13 @@ export function WMSManagement() {
         manageSection={manageSection}
         receivingStatusFilter={receivingStatusFilter}
         putawayStatusFilter={putawayStatusFilter}
+        shortageStatusFilter={shortageStatusFilter}
         selectedWarehouseId={selectedWarehouseId}
         onInboundSectionChange={setInboundSection}
         onManageSectionChange={setManageSection}
         onReceivingStatusFilterChange={setReceivingStatusFilter}
-        onPutawayStatusFilterChange={setPutawayStatusFilter}/>
+        onPutawayStatusFilterChange={setPutawayStatusFilter}
+        onShortageStatusFilterChange={setShortageStatusFilter}/>
     </ManagementContainer>
   );
 }

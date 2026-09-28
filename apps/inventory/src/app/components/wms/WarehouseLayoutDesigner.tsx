@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   Edit3,
+  FileJson,
   FilePlus,
   Info,
   LayoutTemplate,
@@ -25,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@horizon-sync/ui/lib';
 
 
+import { ImportLayoutDialog } from '../../features/layout-designer/components/ImportLayoutDialog';
 import type {
   AisleSpec,
   FloorPlanApplyResponse,
@@ -408,6 +410,9 @@ export function WarehouseLayoutDesigner({
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
 
+  // JSON import state (the dialog owns the document until the server accepts it)
+  const [importOpen, setImportOpen] = React.useState(false);
+
   const totalBins = countBins(config);
 
   // Fetch saved layouts on mount and when warehouse changes
@@ -706,8 +711,22 @@ onClick={() => startFromTemplate(tpl)}
               <Loader2 className="h-3 w-3 animate-spin" /> Loading layouts…
             </div>
           )}
+
+          {/* Import an existing layout document (JSON) */}
+          <Button variant="outline" className="w-full gap-2" onClick={() => setImportOpen(true)}>
+            <FileJson className="h-4 w-4" /> Import Layout JSON
+          </Button>
         </>
       ) : null}
+
+      {/* Rendered outside the mode switch so it survives the landing/editor split. */}
+      <ImportLayoutDialog open={importOpen}
+        onOpenChange={setImportOpen}
+        warehouseId={warehouseId}
+        onApplied={() => {
+          fetchLayouts();
+          onApplied?.();
+        }}/>
 
       {mode === 'editor' ? (
         <>

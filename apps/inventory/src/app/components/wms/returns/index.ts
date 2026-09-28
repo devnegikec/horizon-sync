@@ -12,8 +12,6 @@ export { ReturnRegistrationDetailDialog } from './ReturnRegistrationDetailDialog
 export type { ReturnRegistrationDetailDialogProps } from './ReturnRegistrationDetailDialog';
 export { ReturnRegistrationList } from './ReturnRegistrationList';
 export type { ReturnRegistrationListProps } from './ReturnRegistrationList';
-export { ReturnsView } from './ReturnsView';
-export type { ReturnsViewProps } from './ReturnsView';
 export {
   buildRegistrationLines,
   canCancelRegistration,

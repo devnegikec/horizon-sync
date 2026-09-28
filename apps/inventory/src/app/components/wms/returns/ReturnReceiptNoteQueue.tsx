@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { PackageOpen, RefreshCw } from 'lucide-react';
+import { PackageOpen } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import {
@@ -134,6 +134,9 @@ export interface ReturnReceiptNoteQueueProps {
  * Supervisor queue of return receipt notes (§6.1). The dock captures and
  * classifies the units; this screen is where a supervisor reviews the draft and
  * decides. Hidden unless the caller holds `return.read`.
+ *
+ * The panel heading above the stat cards owns the title, subtitle and Refresh
+ * button, so this component renders the filters and table only.
  */
 export function ReturnReceiptNoteQueue({ warehouseId, refreshKey }: ReturnReceiptNoteQueueProps) {
   const permissions = useUserStore((state) => state.permissions.permissions);
@@ -206,20 +209,6 @@ export function ReturnReceiptNoteQueue({ warehouseId, refreshKey }: ReturnReceip
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Return Receipt Notes</h2>
-          <p className="text-sm text-muted-foreground">
-            What the dock received against what the dealer returned. Review the conditions, route each line, then approve
-            or reject — approving moves stock.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" className="shrink-0 gap-2 self-start sm:self-auto" onClick={() => refetch()} disabled={loading}>
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </Button>
-      </div>
-
       <div className="flex items-center gap-3">
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="w-[200px]">

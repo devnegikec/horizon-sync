@@ -1,25 +1,27 @@
 import * as React from 'react';
 
-import { CheckCircle2, ClipboardList, Clock, Loader, PackageCheck } from 'lucide-react';
+import { CheckCircle2, ClipboardList, Clock, Loader, PackageCheck, PackageX } from 'lucide-react';
 
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { cn } from '@horizon-sync/ui/lib';
 
-import type { PutAwayStatusCounts, ReceivingSlipStatusCounts } from '../../types/wms.types';
+import type { PutAwayStatusCounts, ReceivingSlipStatusCounts, ShortBalanceSummary } from '../../types/wms.types';
 import { formatQuantity } from '../../utility';
 
-type InboundStatsSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions' | 'shortages' | 'returns';
+type InboundStatsSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions' | 'shortages' | 'returns' | 'return-notes';
 
 interface InboundStatsProps {
   /**
-   * Active inbound sub-tab. Stats switch for 'receiving' and 'putaway';
-   * any other tab (vehicle/exceptions/shortages/returns) keeps showing the previous stats.
+   * Active inbound sub-tab. Stats switch for 'receiving', 'putaway' and 'shortages';
+   * any other tab (vehicle/exceptions/returns) keeps showing the previous stats.
    */
   activeSection: InboundStatsSection;
   /** Called when a receiving-slip status card is clicked, with the status to filter by ('all' clears the filter). */
   onSelectReceivingStatus: (status: string) => void;
   /** Called when a put-away status card is clicked, with the status to filter by ('all' clears the filter). */
   onSelectPutAwayStatus: (status: string) => void;
+  /** Called when a shortage status card is clicked, with the status to filter by ('all' clears the filter). */
+  onSelectShortageStatus: (status: string) => void;
   /**
    * Receiving-slip status counts, supplied by `ReceivingSlipList`'s list request
    * so this component does not need a second call to the same endpoint.
@@ -30,6 +32,11 @@ interface InboundStatsProps {
    * component does not need a second call to the same endpoint.
    */
   putawayCounts?: PutAwayStatusCounts | null;
+  /**
+   * Shortage ledger summary, supplied by `ShortageLedger`'s list request so this
+   * component does not need a second call to the same endpoint.
+   */
+  shortageCounts?: ShortBalanceSummary | null;
 }
 
 interface StatDef {
@@ -37,6 +44,9 @@ interface StatDef {
   title: string;
   filter: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** Optional secondary metric shown under the count (e.g. outstanding units). */
+  hintKey?: string;
+  hintSuffix?: string;
 }
 
 const STAT_COLORS = [
@@ -62,12 +72,27 @@ const PUTAWAY_STATS: StatDef[] = [
   { key: 'completed', title: 'Completed', filter: 'completed', icon: CheckCircle2 },
 ];
 
-const STAT_SECTIONS = ['receiving', 'putaway'] as const;
+const SHORTAGE_STATS: StatDef[] = [
+  { key: 'total', title: 'Total Shortages', filter: 'all', icon: ClipboardList },
+  {
+    key: 'open_count',
+    title: 'Open',
+    filter: 'open',
+    icon: Clock,
+    hintKey: 'open_short_qty',
+    hintSuffix: 'unit(s) outstanding',
+  },
+  { key: 'resolved_count', title: 'Resolved by Receipt', filter: 'resolved', icon: CheckCircle2 },
+  { key: 'written_off_count', title: 'Written Off', filter: 'written_off', icon: PackageX },
+];
+
+const STAT_SECTIONS = ['receiving', 'putaway', 'shortages'] as const;
 type StatsSection = (typeof STAT_SECTIONS)[number];
 
 const STATS_BY_SECTION: Record<StatsSection, StatDef[]> = {
   receiving: RECEIVING_STATS,
   putaway: PUTAWAY_STATS,
+  shortages: SHORTAGE_STATS,
 };
 
 function StatCard({
@@ -95,6 +120,11 @@ function StatCard({
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
               <p className="text-3xl font-bold tracking-tight">{formatQuantity(counts?.[stat.key] ?? 0)}</p>
+              {stat.hintKey && (
+                <p className="text-xs text-muted-foreground">
+                  {formatQuantity(counts?.[stat.hintKey] ?? 0)} {stat.hintSuffix}
+                </p>
+              )}
             </div>
             <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl', colors.bg)}>
               <Icon className={cn('h-6 w-6', colors.fg)} />
@@ -106,7 +136,15 @@ function StatCard({
   );
 }
 
-export function InboundStats({ activeSection, onSelectReceivingStatus, onSelectPutAwayStatus, receivingCounts, putawayCounts }: InboundStatsProps) {
+export function InboundStats({
+  activeSection,
+  onSelectReceivingStatus,
+  onSelectPutAwayStatus,
+  onSelectShortageStatus,
+  receivingCounts,
+  putawayCounts,
+  shortageCounts,
+}: InboundStatsProps) {
   // Remember the last stats section so vehicle/exceptions keep showing the
   // previous stats rather than clearing.
   const [statsSection, setStatsSection] = React.useState<StatsSection>('receiving');
@@ -118,9 +156,18 @@ export function InboundStats({ activeSection, onSelectReceivingStatus, onSelectP
   }, [activeSection]);
 
   const stats = STATS_BY_SECTION[statsSection];
-  const counts: ReceivingSlipStatusCounts | PutAwayStatusCounts | null =
-    statsSection === 'putaway' ? (putawayCounts ?? null) : (receivingCounts ?? null);
-  const onSelect = statsSection === 'putaway' ? onSelectPutAwayStatus : onSelectReceivingStatus;
+  const counts: ReceivingSlipStatusCounts | PutAwayStatusCounts | ShortBalanceSummary | null =
+    statsSection === 'putaway'
+      ? (putawayCounts ?? null)
+      : statsSection === 'shortages'
+        ? (shortageCounts ?? null)
+        : (receivingCounts ?? null);
+  const onSelect =
+    statsSection === 'putaway'
+      ? onSelectPutAwayStatus
+      : statsSection === 'shortages'
+        ? onSelectShortageStatus
+        : onSelectReceivingStatus;
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

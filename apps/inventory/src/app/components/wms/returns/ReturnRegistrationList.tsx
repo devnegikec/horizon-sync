@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Plus, RefreshCw, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import {
@@ -47,7 +47,17 @@ type ServerPagination = {
   onPageChange: (page: number, pageSize: number) => void;
 };
 
-function RegistrationsEmpty({ filtered, onClearFilter, onCreate }: { filtered: boolean; onClearFilter: () => void; onCreate: () => void }) {
+function RegistrationsEmpty({
+  filtered,
+  canCreate,
+  onClearFilter,
+  onCreate,
+}: {
+  filtered: boolean;
+  canCreate: boolean;
+  onClearFilter: () => void;
+  onCreate: () => void;
+}) {
   return (
     <Card>
       <CardContent className="p-0">
@@ -62,9 +72,9 @@ function RegistrationsEmpty({ filtered, onClearFilter, onCreate }: { filtered: b
                 <Button variant="outline" onClick={onClearFilter}>
                   Show all statuses
                 </Button>
-              ) : (
+              ) : canCreate ? (
                 <Button onClick={onCreate}>Register a return</Button>
-              )
+              ) : undefined
             }/>
         </div>
       </CardContent>
@@ -80,6 +90,7 @@ function RegistrationsTable({
   serverPagination,
   pageSize,
   filtered,
+  canCreate,
   onClearFilter,
   onCreate,
 }: {
@@ -90,6 +101,7 @@ function RegistrationsTable({
   serverPagination?: ServerPagination;
   pageSize: number;
   filtered: boolean;
+  canCreate: boolean;
   onClearFilter: () => void;
   onCreate: () => void;
 }) {
@@ -104,7 +116,7 @@ function RegistrationsTable({
   }
 
   if (registrations.length === 0) {
-    return <RegistrationsEmpty filtered={filtered} onClearFilter={onClearFilter} onCreate={onCreate} />;
+    return <RegistrationsEmpty filtered={filtered} canCreate={canCreate} onClearFilter={onClearFilter} onCreate={onCreate} />;
   }
 
   return (
@@ -136,13 +148,27 @@ export interface ReturnRegistrationListProps {
   warehouseId?: string;
   /** Increment to trigger a refetch (e.g. from the panel-level Refresh button). */
   refreshKey?: number;
+  /**
+   * Controlled "Register Return" dialog. The panel heading (above the stat
+   * cards) owns its button, so the open state lives there when provided.
+   */
+  createFormOpen?: boolean;
+  onCreateFormOpenChange?: (open: boolean) => void;
 }
 
 /**
  * Return registrations (§5.2): what a dealer is sending back, before the dock has
  * touched it. Creating and cancelling need `return.register`.
+ *
+ * The panel heading above the stat cards owns the title, subtitle, Refresh and
+ * "Register Return" buttons, so this component renders the filters and table only.
  */
-export function ReturnRegistrationList({ warehouseId, refreshKey }: ReturnRegistrationListProps) {
+export function ReturnRegistrationList({
+  warehouseId,
+  refreshKey,
+  createFormOpen,
+  onCreateFormOpenChange,
+}: ReturnRegistrationListProps) {
   const { toast } = useToast();
   const permissions = useUserStore((state) => state.permissions.permissions);
   const canRegister = hasPermission(permissions, 'return.register');
@@ -150,7 +176,10 @@ export function ReturnRegistrationList({ warehouseId, refreshKey }: ReturnRegist
   const [status, setStatus] = React.useState<string>(ALL_STATUSES);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(PAGE_SIZE);
-  const [createOpen, setCreateOpen] = React.useState(false);
+  // Falls back to local state when the panel heading is not driving the dialog.
+  const [internalCreateOpen, setInternalCreateOpen] = React.useState(false);
+  const createOpen = createFormOpen ?? internalCreateOpen;
+  const setCreateOpen = onCreateFormOpenChange ?? setInternalCreateOpen;
   const [viewId, setViewId] = React.useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = React.useState<ReturnRegistrationTarget | null>(null);
 
@@ -223,27 +252,6 @@ export function ReturnRegistrationList({ warehouseId, refreshKey }: ReturnRegist
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Return Registrations</h2>
-          <p className="text-sm text-muted-foreground">
-            Returns the dealer is sending back. Register it here, then the dock receives and classifies the units.
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-2 self-start sm:self-auto">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => refetch()} disabled={loading}>
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </Button>
-          {canRegister && (
-            <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-3.5 w-3.5" />
-              Register a return
-            </Button>
-          )}
-        </div>
-      </div>
-
       <div className="flex items-center gap-3">
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="w-[200px]">
@@ -266,6 +274,7 @@ export function ReturnRegistrationList({ warehouseId, refreshKey }: ReturnRegist
         serverPagination={serverPagination}
         pageSize={pageSize}
         filtered={filtered}
+        canCreate={canRegister}
         onClearFilter={() => setStatus(ALL_STATUSES)}
         onCreate={() => setCreateOpen(true)}/>
 
