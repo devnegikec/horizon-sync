@@ -98,9 +98,13 @@ export function InboundManagement({
         ...new Set(exceptions.map((exception) => exception.sku).filter((sku): sku is string => Boolean(sku))),
       ];
       setShortageSku(skus.length === 1 ? skus[0] : undefined);
+      // Clear the status filter on the way in: a card-selected "resolved" or "written
+      // off" would otherwise stay active and hide the open shortage this action routed
+      // here to close.
+      onShortageStatusFilterChange('all');
       onInboundSectionChange('shortages');
     },
-    [onInboundSectionChange],
+    [onInboundSectionChange, onShortageStatusFilterChange],
   );
 
   const heading = inboundHeading(inboundSection);

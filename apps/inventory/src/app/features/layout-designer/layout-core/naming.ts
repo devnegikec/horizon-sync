@@ -47,12 +47,28 @@ const TYPE_CODE_PREFIX: Record<string, string> = { zone: 'Z', aisle: 'A', bay: '
 
 const SEGMENT_WIDTH = 2;
 const BIN_SEGMENT_WIDTH = 3;
+/**
+ * Ceiling on `{bay:03}`-style zero padding.
+ *
+ * The width comes out of a user-authored document, and `padStart` on an unbounded one
+ * either allocates an enormous string or throws a RangeError part-way through a compile.
+ */
+const MAX_PAD_WIDTH = 64;
 
-/** True when `pattern` has at least one placeholder and only known tokens. */
+/**
+ * True when `pattern` has at least one placeholder, only known tokens, and no other
+ * brace-shaped text.
+ *
+ * The recogniser alone is not enough: it only ever sees the tokens it recognises, so
+ * `{warehouse}{` and `{warehouse}/{Bogus}` both satisfied it, and `formatBinCode` then
+ * carried the stray text into every generated label.
+ */
 export function isValidCodePattern(pattern: string): boolean {
   const matches = [...pattern.matchAll(CODE_TOKEN_RE)];
   if (matches.length === 0) return false;
-  return matches.every((match) => VALID_CODE_PATTERN_TOKENS.has(match[1]));
+  if (!matches.every((match) => VALID_CODE_PATTERN_TOKENS.has(match[1]))) return false;
+
+  return !/[{}]/.test(pattern.replace(CODE_TOKEN_RE, ''));
 }
 
 /**
@@ -65,7 +81,7 @@ export function formatBinCode(pattern: string, values: Record<string, string | n
   const effective = isValidCodePattern(pattern) ? pattern : DEFAULT_BIN_CODE_PATTERN;
   return effective.replace(CODE_TOKEN_RE, (_match, token: string, padding?: string) => {
     const text = String(values[token] ?? '');
-    return padding ? text.padStart(Number(padding), '0') : text;
+    return padding ? text.padStart(Math.min(Number(padding), MAX_PAD_WIDTH), '0') : text;
   });
 }
 

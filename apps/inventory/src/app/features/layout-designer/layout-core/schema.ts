@@ -145,7 +145,8 @@ export const layoutOptionsSchema = z
   .object({
     namingScheme: z.enum(NAMING_SCHEMES).default('wms_typed'),
     defaultZoneCode: z.string().min(1).default(DEFAULT_ZONE_CODE),
-    utilization: z.number().positive().default(DEFAULT_UTILIZATION),
+    // A fraction of the bay's volume: above 1 the "usable" volume would exceed the bay.
+    utilization: z.number().positive().max(1).default(DEFAULT_UTILIZATION),
   })
   .default(() => ({ namingScheme: 'wms_typed' as const, defaultZoneCode: DEFAULT_ZONE_CODE, utilization: DEFAULT_UTILIZATION }));
 

@@ -245,11 +245,22 @@ export function ImportLayoutDialog({ open, onOpenChange, warehouseId, onApplied 
   } = useLayoutImport({ warehouseId, onApplied });
 
   const [planName, setPlanName] = React.useState('Imported layout');
-  const [replaceExisting, setReplaceExisting] = React.useState(true);
+  // Off by default: it deactivates locations, and Apply submits whatever is ticked in the
+  // same click, so enabling it by default made one ordinary click destructive.
+  const [replaceExisting, setReplaceExisting] = React.useState(false);
   const [pasted, setPasted] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement | null>(null);
 
-  useDialogLifecycle(open, refreshExamples, reset);
+  // The apply options belong to the draft, so they go when it goes - otherwise a
+  // destructive tick from one import survives into the next one.
+  const resetDraft = React.useCallback(() => {
+    reset();
+    setPlanName('Imported layout');
+    setReplaceExisting(false);
+    setPasted('');
+  }, [reset]);
+
+  useDialogLifecycle(open, refreshExamples, resetDraft);
 
   const handleFileChange = fileChangeHandler(loadFile);
   const canApply = canApplyDocument(analysis, planName, applying);

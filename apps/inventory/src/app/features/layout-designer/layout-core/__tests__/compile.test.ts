@@ -19,6 +19,7 @@ import {
   generateQrCodes,
   isApplyable,
   isValidCodePattern,
+  layoutDocSchema,
   sampleBinPaths,
   summaryOf,
   trailingDigits,
@@ -164,6 +165,19 @@ describe('naming helpers', () => {
     expect(isValidCodePattern('{warehouse}/{lane}/B{bay:03}')).toBe(true);
     expect(isValidCodePattern('no-placeholders')).toBe(false);
     expect(isValidCodePattern('{unknown}')).toBe(false);
+  });
+
+  it('rejects brace-shaped text that is not a known token', () => {
+    // Both of these passed the recogniser and then rendered literally in every label.
+    expect(isValidCodePattern('{warehouse}{')).toBe(false);
+    expect(isValidCodePattern('{warehouse}/{Bogus}')).toBe(false);
+  });
+
+  it('clamps an absurd padding width instead of allocating it', () => {
+    const label = formatBinCode('BN{bay:900000}', { bay: 7 });
+
+    expect(label).toHaveLength(2 + 64);
+    expect(label.endsWith('7')).toBe(true);
   });
 
   it('pads pattern tokens', () => {
@@ -393,5 +407,14 @@ describe('rule registry', () => {
       expect(RULES[diagnostic.code]).toBeDefined();
       expect(diagnostic.severity).toBe(RULES[diagnostic.code].severity);
     }
+  });
+});
+
+describe('layout document schema', () => {
+  it('refuses a utilization above the bay it is a fraction of', () => {
+    // Above 1 the "usable" volume would exceed the bin's physical capacity.
+    expect(() => layoutDocSchema.parse({ ...clone(MINIMAL), layout: { utilization: 1.4 } })).toThrow();
+
+    expect(layoutDocSchema.parse({ ...clone(MINIMAL), layout: { utilization: 1 } }).layout.utilization).toBe(1);
   });
 });

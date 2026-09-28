@@ -81,4 +81,13 @@ describe('ImportLayoutDialog', () => {
     expect(screen.getByText('AISLE_NOT_AXIS_ALIGNED')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /apply layout/i })).toBeDisabled();
   });
+
+  it('leaves the destructive replace option off until the operator asks for it', async () => {
+    renderDialog();
+
+    await pasteDocument(JSON.stringify(CROSS_AISLE_TWO_WAY));
+
+    // Apply submits whatever is ticked in the same click, so it must not start ticked.
+    expect(screen.getByRole('checkbox', { name: /deactivate locations/i })).not.toBeChecked();
+  });
 });

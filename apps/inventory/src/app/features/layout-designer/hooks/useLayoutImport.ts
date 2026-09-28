@@ -56,7 +56,18 @@ export function useLayoutImport({ warehouseId, onApplied }: UseLayoutImportOptio
   const [error, setError] = React.useState<string | null>(null);
   const [examples, setExamples] = React.useState<LayoutExample[]>([]);
 
+  /**
+   * Generation of the draft on screen, bumped whenever it changes.
+   *
+   * Loading an example and applying a layout are both async, and the controls that change
+   * the draft stay live while they are in flight. A response whose generation has moved on
+   * describes a document that is no longer open, so it is dropped rather than written into
+   * the one that is.
+   */
+  const draftGeneration = React.useRef(0);
+
   const loadText = React.useCallback((text: string, name: string | null = null) => {
+    draftGeneration.current += 1;
     setResult(null);
     setServerDiagnostics([]);
     setError(null);
@@ -78,6 +89,12 @@ export function useLayoutImport({ warehouseId, onApplied }: UseLayoutImportOptio
     async (file: File) => {
       const problem = describeFileProblem(file);
       if (problem) {
+        draftGeneration.current += 1;
+        // A file that was never read must not leave the previous run's apply on screen
+        // beside its error - `loadText` clears the same three on every other path.
+        setResult(null);
+        setServerDiagnostics([]);
+        setError(null);
         setFileName(file.name);
         setAnalysis(null);
         setParseError(problem);
@@ -101,10 +118,15 @@ export function useLayoutImport({ warehouseId, onApplied }: UseLayoutImportOptio
   const loadExample = React.useCallback(
     async (name: string) => {
       if (!accessToken) return;
+      // Claim a generation up front: it invalidates any example request still in flight, and
+      // any draft the operator loads while this one is on the wire invalidates this.
+      const generation = (draftGeneration.current += 1);
       try {
         const example = await layoutDesignApi.getExample(accessToken, name);
+        if (generation !== draftGeneration.current) return;
         loadText(JSON.stringify(example.document, null, 2), `${name}.json`);
       } catch (err) {
+        if (generation !== draftGeneration.current) return;
         setError(err instanceof Error ? err.message : 'Could not load the example layout');
       }
     },
@@ -112,6 +134,7 @@ export function useLayoutImport({ warehouseId, onApplied }: UseLayoutImportOptio
   );
 
   const reset = React.useCallback(() => {
+    draftGeneration.current += 1;
     setFileName(null);
     setAnalysis(null);
     setParseError(null);
@@ -124,6 +147,7 @@ export function useLayoutImport({ warehouseId, onApplied }: UseLayoutImportOptio
   const apply = React.useCallback(
     async (name: string, replaceExisting: boolean) => {
       if (!accessToken || !analysis) return;
+      const generation = draftGeneration.current;
       setApplying(true);
       setError(null);
       setServerDiagnostics([]);
@@ -134,9 +158,14 @@ export function useLayoutImport({ warehouseId, onApplied }: UseLayoutImportOptio
           name,
           replace_existing: replaceExisting,
         });
-        setResult(response);
+        // The server applied something either way, so the warehouse view refreshes either
+        // way; the result only belongs on screen if it still describes the open draft.
+        if (generation === draftGeneration.current) setResult(response);
         onApplied?.();
       } catch (err) {
+        // A refusal or failure belongs to the document that was sent, so it is not shown
+        // against a draft that has since been replaced.
+        if (generation !== draftGeneration.current) return;
         if (err instanceof LayoutApplyRefusedError) {
           // The server refused it: show the server's rules, not the local ones.
           setServerDiagnostics(err.diagnostics);

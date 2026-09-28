@@ -246,7 +246,10 @@ function LayoutDocumentPreview3D({ document, height = 260, className }: LayoutDo
         <RackRuns compiled={compiled} />
         <Obstacles boxes={boxes} />
         <Grid args={[framing.radius * 2, framing.radius * 2]} cellSize={1} sectionSize={5} position={framing.center} fadeDistance={framing.radius * 4} />
-        <OrbitControls makeDefault />
+        {/* The camera is placed around the building's centre, so the orbit must target it
+            too: left at its default the controls pivot on the origin and a warehouse away
+            from the origin opens off-centre or off-screen. */}
+        <OrbitControls makeDefault target={framing.center} />
       </Canvas>
       <div className="absolute left-2 top-2 rounded bg-black/50 px-2 py-1 text-[10px] font-mono text-slate-200">
         {compiled.bins.length} bins · {compiled.bays.length} bays · {doc.obstacles.length} obstacles
