@@ -49,6 +49,13 @@ export interface BinMetrics {
   sizeZ: number;
   /** True when the run pitch came from the layout rather than from a default. */
   measured: boolean;
+  /**
+   * Axis the bays step along, or null when no pitch was measurable.
+   *
+   * Which axis is the run is not otherwise recoverable from the two sizes: the cross axis
+   * is a constant rack depth, and a warehouse could legitimately have a 1.1 m bay.
+   */
+  runAxis: 'x' | 'z' | null;
 }
 
 const planX = (bin: FlatBin): number => bin.position.x;
@@ -169,15 +176,16 @@ export function deriveBinMetrics(bins: FlatBin[]): BinMetrics {
     level === null ? DEFAULT_BIN_HEIGHT : Math.max(level - BEAM_CLEARANCE, MIN_BIN_HEIGHT);
 
   if (alongX && pitchX !== null) {
-    return { sizeX: pitchX, sizeY, sizeZ: DEFAULT_BIN_DEPTH, measured: true };
+    return { sizeX: pitchX, sizeY, sizeZ: DEFAULT_BIN_DEPTH, measured: true, runAxis: 'x' };
   }
   if (pitchZ !== null) {
-    return { sizeX: DEFAULT_BIN_DEPTH, sizeY, sizeZ: pitchZ, measured: true };
+    return { sizeX: DEFAULT_BIN_DEPTH, sizeY, sizeZ: pitchZ, measured: true, runAxis: 'z' };
   }
   return {
     sizeX: DEFAULT_BIN_DEPTH,
     sizeY,
     sizeZ: DEFAULT_BIN_DEPTH,
     measured: false,
+    runAxis: null,
   };
 }

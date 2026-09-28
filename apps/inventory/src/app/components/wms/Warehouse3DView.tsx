@@ -33,6 +33,7 @@ import type { BinStockItem, FlatBin, Suggestion } from '../../types/wms3d.types'
 import { wms3dApi } from '../../utility/api/wms3d';
 import { ItemPickerSelect } from '../quotations/ItemPickerSelect';
 
+import { deriveAisleBands, type AisleBand } from './aisleBands';
 import { deriveBinMetrics, type BinMetrics } from './binMetrics';
 import { LayoutMiniMap } from './LayoutMiniMap';
 
@@ -91,6 +92,13 @@ const SCENE = {
   beam: '#64748b',
   /** Bins excluded by the active inventory filter. */
   dimmed: '#1e293b',
+  /**
+   * The walkway, painted like the floor tape a real warehouse marks its aisles with.
+   * Deliberately the one warm surface in the scene: it is the part of the plan that is
+   * empty, and on a dark floor an unlit grey band reads as more racking.
+   */
+  aisle: '#8a5a0d',
+  aisleEdge: '#fbbf24',
   /** Hover reads amber, selection reads cyan: the designer's convention, not the inverse. */
   hover: '#f59e0b',
   selected: '#22d3ee',
@@ -494,11 +502,38 @@ function WarehouseFloor({ bins }: { bins: FlatBin[] }) {
   );
 }
 
+// ─── Aisle Floor (painted walkways) ───────────────────────────────────────────
+
+/**
+ * The walkways, laid on the floor between the rack faces.
+ *
+ * A slab rather than a decal: it sits proud of the floor by a few centimetres, which reads
+ * from a low camera as painted floor tape and cannot z-fight with the slab beneath it. The
+ * grid passes under it, so a walkway hides the survey grid exactly where the aisle is —
+ * which is the point.
+ */
+function AisleFloor({ bands }: { bands: AisleBand[] }) {
+  return (
+    <>
+      {bands.map((band) => {
+        const run = band.end - band.start;
+        return (
+          <mesh key={band.id} position={[band.centerX, 0.02, band.centerZ]} receiveShadow>
+            <boxGeometry args={[band.alongX ? run : band.widthM, 0.04, band.alongX ? band.widthM : run]} />
+            <meshStandardMaterial color={SCENE.aisle} roughness={0.95} metalness={0} />
+          </mesh>
+        );
+      })}
+    </>
+  );
+}
+
 // ─── 3D Scene Content ─────────────────────────────────────────────────────────
 
 interface SceneProps {
   bins: FlatBin[];
   metrics: BinMetrics;
+  aisleBands: AisleBand[];
   suggestedIds: Set<string>;
   selectedBinId: string | null;
   hoveredBinId: string | null;
@@ -507,7 +542,7 @@ interface SceneProps {
   onHover: (binId: string | null) => void;
 }
 
-function Scene({ bins, metrics, suggestedIds, selectedBinId, hoveredBinId, activeFilter, onSelect, onHover }: SceneProps) {
+function Scene({ bins, metrics, aisleBands, suggestedIds, selectedBinId, hoveredBinId, activeFilter, onSelect, onHover }: SceneProps) {
   // Compute center for orbit target
   const center = React.useMemo<[number, number, number]>(() => {
     if (bins.length === 0) return [0, 0, 0];
@@ -535,25 +570,6 @@ function Scene({ bins, metrics, suggestedIds, selectedBinId, hoveredBinId, activ
     for (const bin of bins) {
       if (!map.has(bin.zone_id)) map.set(bin.zone_id, { code: bin.zone_code, name: bin.zone_name, xs: [], ys: [], zs: [] });
       const g = map.get(bin.zone_id)!;
-      g.xs.push(bin.position.x);
-      g.ys.push(bin.position.y);
-      g.zs.push(bin.position.z);
-    }
-    return Array.from(map.values()).map((g) => ({
-      code: g.code,
-      name: g.name,
-      x: (Math.min(...g.xs) + Math.max(...g.xs)) / 2,
-      y: (Math.min(...g.ys) + Math.max(...g.ys)) / 2,
-      z: Math.max(...g.zs),
-    }));
-  }, [bins]);
-
-  // Compute aisle labels (centered above each aisle's bins)
-  const aisleLabels = React.useMemo(() => {
-    const map = new Map<string, { code: string; name: string | null; xs: number[]; ys: number[]; zs: number[] }>();
-    for (const bin of bins) {
-      if (!map.has(bin.aisle_id)) map.set(bin.aisle_id, { code: bin.aisle_code, name: bin.aisle_name, xs: [], ys: [], zs: [] });
-      const g = map.get(bin.aisle_id)!;
       g.xs.push(bin.position.x);
       g.ys.push(bin.position.y);
       g.zs.push(bin.position.z);
@@ -605,6 +621,9 @@ function Scene({ bins, metrics, suggestedIds, selectedBinId, hoveredBinId, activ
       {/* Floor + Grid */}
       <WarehouseFloor bins={bins} />
 
+      {/* Walkways, painted between the rack faces */}
+      <AisleFloor bands={aisleBands} />
+
       {/* Rack frames per aisle */}
       {aisleGroups.map((aisleBins, i) => (
         <RackFrame key={i} bins={aisleBins} metrics={metrics} />
@@ -628,23 +647,38 @@ function Scene({ bins, metrics, suggestedIds, selectedBinId, hoveredBinId, activ
         </Html>
       ))}
 
-      {/* Aisle labels */}
-      {aisleLabels.map((al) => (
-        <Html key={`aisle-${al.code}`} position={[al.x, al.z + 1.5, al.y]} center distanceFactor={20} style={{ pointerEvents: 'none' }}>
-          <div style={{
-              background: 'rgba(30, 41, 59, 0.9)',
-              color: '#94a3b8',
-              padding: '2px 8px',
-              borderRadius: 4,
-              fontSize: 10,
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-              border: '1px solid #334155',
-            }}>
-            {al.name || al.code}
-          </div>
-        </Html>
-      ))}
+      {/* Aisle labels — hung over the walkway, and carrying its measured width */}
+      {aisleBands.map((band) => {
+        const midRun = (band.start + band.end) / 2;
+        return (
+          <Html key={`aisle-${band.id}`}
+            position={[band.alongX ? midRun : band.centerX, band.topZ + 1.2, band.alongX ? band.centerZ : midRun]}
+            center
+            distanceFactor={20}
+            style={{ pointerEvents: 'none' }}>
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                background: 'rgba(30, 41, 59, 0.9)',
+                color: '#e2e8f0',
+                padding: '2px 8px',
+                borderRadius: 4,
+                fontSize: 10,
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                border: `1px solid ${SCENE.aisleEdge}55`,
+              }}>
+              <span className="inline-block" style={{ width: 7, height: 7, borderRadius: 2, background: SCENE.aisleEdge }} />
+              {band.name || band.code}
+              <span style={{ color: SCENE.aisleEdge, fontWeight: 700 }}>
+                {band.measured ? '' : '≈'}
+                {band.widthM.toFixed(1)} m
+              </span>
+            </div>
+          </Html>
+        );
+      })}
 
       {/* Instanced bins */}
       <InstancedBins bins={bins}
@@ -954,6 +988,14 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
    */
   const metrics = React.useMemo(() => deriveBinMetrics(activeBins), [activeBins]);
 
+  /**
+   * Walkways, measured from the racks that flank them.
+   *
+   * Derived from `activeBins` alongside the metrics rather than inside the canvas, so the
+   * 3D scene and the plan view band the same aisles the same way.
+   */
+  const aisleBands = React.useMemo(() => deriveAisleBands(activeBins, metrics), [activeBins, metrics]);
+
   // Counts for the footer strip. One bay column is one vertical stack of levels.
   const planStats = React.useMemo(() => {
     const aisles = new Set(activeBins.map((bin) => bin.aisle_id));
@@ -1034,6 +1076,7 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
           <Canvas camera={{ position: cameraPosition, fov: 42 }} shadows dpr={[1, 2]} onPointerMissed={() => setSelectedBinId(null)}>
             <Scene bins={activeBins}
               metrics={metrics}
+              aisleBands={aisleBands}
               suggestedIds={suggestedIds}
               selectedBinId={selectedBinId}
               hoveredBinId={hoveredBinId}
@@ -1066,10 +1109,14 @@ export function Warehouse3DView({ warehouseId }: { warehouseId: string }) {
           </div>
 
           {/* Plan view (top-right): the same footprints, without the perspective */}
-          <LayoutMiniMap bins={activeBins} metrics={metrics} className="absolute right-4 top-4 w-56" />
+          <LayoutMiniMap bins={activeBins} metrics={metrics} aisleBands={aisleBands} className="absolute right-4 top-4 w-56" />
 
           {/* Footer strip: layout totals, then the interaction hint */}
           <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full border border-slate-700 bg-slate-900/75 px-4 py-1.5 pointer-events-none">
+            <span className="flex items-center gap-1.5 text-[11px] text-slate-300">
+              <span className="h-2 w-2 rounded-sm" style={{ background: SCENE.aisleEdge }} />
+              {aisleBands.length} walkway{aisleBands.length === 1 ? '' : 's'}
+            </span>
             <span className="text-[11px] text-slate-400">
               {planStats.aisles} aisles · {planStats.bays} bays · {planStats.bins} bins
             </span>
