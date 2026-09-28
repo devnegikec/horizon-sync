@@ -1,0 +1,54 @@
+# Railway-only Dockerfile — builds all three UIs and serves them from one nginx.
+#
+# Deliberately separate from the root `Dockerfile`, which is used by the ECS
+# pipeline (.deploy/deploy-frontend.sh) and expects a prebuilt dist/ to COPY.
+#
+# Serves:  platform  -> /            (module-federation host)
+#          inventory -> /inventory/  (remote; host loads /inventory/remoteEntry.js)
+#          admin     -> /admin/      (standalone SPA)
+
+# ---------- build ----------
+FROM node:20-alpine AS build
+WORKDIR /app
+
+ENV CI=true \
+    NX_DAEMON=false \
+    NX_SKIP_NX_CACHE=true
+
+# API URLs are baked into the bundles at BUILD time (webpack DefinePlugin reads
+# process.env.NX_* — see apps/*/src/environments/environment.prod.ts).
+# On Railway these come from the service variables; changing a domain means
+# rebuilding (the deploy-stage workflow does that on every merge).
+ARG NX_API_BASE_URL
+ARG NX_API_CORE_URL
+ARG NX_API_IDENTITY_URL
+ARG NX_SEARCH_API_BASE_URL
+ENV NX_API_BASE_URL=${NX_API_BASE_URL} \
+    NX_API_CORE_URL=${NX_API_CORE_URL} \
+    NX_API_IDENTITY_URL=${NX_API_IDENTITY_URL} \
+    NX_SEARCH_API_BASE_URL=${NX_SEARCH_API_BASE_URL}
+
+COPY package.json package-lock.json nx.json tsconfig.base.json ./
+COPY apps ./apps
+COPY libs ./libs
+RUN npm ci --no-audit --no-fund
+
+RUN npx nx build platform  --configuration=production \
+    && npx nx build inventory --configuration=production \
+    && npx nx build admin     --configuration=production \
+    && cp -r dist/apps/inventory dist/apps/platform/inventory \
+    && cp -r dist/apps/admin     dist/apps/platform/admin
+
+# ---------- serve ----------
+FROM nginx:alpine
+
+COPY --from=build /app/dist/apps/platform /usr/share/nginx/html
+
+# The official nginx image runs envsubst over /etc/nginx/templates/*.template at
+# startup, substituting only variables that actually exist in the environment —
+# so nginx directives like $uri / $host are left untouched.
+# This lets nginx listen on Railway's injected $PORT (ENV PORT=80 as fallback).
+COPY nginx.railway.conf /etc/nginx/templates/default.conf.template
+ENV PORT=80
+
+EXPOSE 80
