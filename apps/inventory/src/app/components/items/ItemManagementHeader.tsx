@@ -267,7 +267,7 @@ export function ItemManagementHeader({ onCreateItem, onImportSuccess }: ItemMana
     <>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Item Management</h1>
+          <h2 className="text-2xl font-bold tracking-tight">Item Management</h2>
           <p className="text-muted-foreground mt-1">Manage your product catalog, pricing, and inventory levels</p>
         </div>
         <div className="flex items-center gap-3">
