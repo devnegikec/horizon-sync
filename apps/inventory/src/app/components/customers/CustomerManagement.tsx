@@ -280,11 +280,11 @@ export function CustomerManagement() {
   const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Customer Management</h1>
+          <h2 className="text-2xl font-bold tracking-tight">Customer Management</h2>
           <p className="text-muted-foreground mt-1">Manage customer information, credit terms, and pricing</p>
         </div>
         <div className="flex items-center gap-3">
