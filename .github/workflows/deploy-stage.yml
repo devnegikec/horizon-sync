@@ -8,23 +8,12 @@ name: Deploy UI to Railway (Stage)
 # so CI only uploads source — no Node build runs in Actions.
 #
 # Requires repo secret: RAILWAY_TOKEN_STAGE (a BW-staging *project* token).
+# Trigger: ANY push/merge to `stage` (no path filter) + manual workflow_dispatch.
 
 on:
   push:
     branches:
       - stage
-    paths:
-      - "apps/**"
-      - "libs/**"
-      - "Dockerfile.railway"
-      - "nginx.railway.conf"
-      - ".dockerignore"
-      - "railway.toml"
-      - "package.json"
-      - "package-lock.json"
-      - "nx.json"
-      - "tsconfig.base.json"
-      - ".github/workflows/deploy-stage.yml"
   workflow_dispatch:
 
 concurrency:
