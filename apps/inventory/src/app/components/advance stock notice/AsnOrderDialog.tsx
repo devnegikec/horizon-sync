@@ -708,32 +708,30 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
                 {formData.status !== 'draft' && (
                   <>
                     {formData.asn_type === 'internal_transfer' && resolvedOrder?.serialization_mode !== 'quantity_only' && (
-                      <>
-                        <Button type="button" variant="outline" onClick={() => setSerialMatchOpen(true)} className="gap-2">
-                          <ScanLine className="h-4 w-4" />
-                          Serial Match
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button type="button" variant="outline" className="gap-1.5">
-                              <Download className="h-4 w-4" />
-                              Export
-                              <ChevronDown className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={handleExport856}>
-                              <Download className="mr-2 h-4 w-4" />
-                              Export 856
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleExportEpcis}>
-                              <Download className="mr-2 h-4 w-4" />
-                              Export EPCIS
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </>
+                      <Button type="button" variant="outline" onClick={() => setSerialMatchOpen(true)} className="gap-2">
+                        <ScanLine className="h-4 w-4" />
+                        Serial Match
+                      </Button>
                     )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" variant="outline" className="gap-1.5">
+                          <Download className="h-4 w-4" />
+                          Export
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleExport856}>
+                          <Download className="mr-2 h-4 w-4" />
+                          Export 856
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleExportEpcis}>
+                          <Download className="mr-2 h-4 w-4" />
+                          Export EPCIS
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <div className="flex items-center">
                       <Button type="button"
                         variant="outline"
