@@ -5,6 +5,7 @@ import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { TooltipProvider } from '@horizon-sync/ui/components/ui/tooltip';
 
 import { environment } from '../../environments/environment';
+
 import { OrganizationGuard } from './OrganizationGuard';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
@@ -64,7 +65,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     <ThemeProvider>
       <TooltipProvider>
         <OrganizationGuard>
-          <div className="flex h-screen overflow-hidden bg-background">
+          <div className="app-shell flex h-full overflow-hidden bg-background">
           {/* Backdrop for mobile */}
           {isMobile && sidebarOpen && (
             <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity" onClick={handleCloseSidebar} aria-hidden="true" />
@@ -74,11 +75,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <Sidebar open={sidebarOpen} collapsed={sidebarCollapsed} isMobile={isMobile} onToggle={handleToggleSidebar} onClose={handleCloseSidebar} />
 
           {/* Main Content Area */}
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <Topbar sidebarCollapsed={sidebarCollapsed} onToggleSidebar={handleToggleSidebar} />
 
             {/* Page Content */}
-            <main className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <main className="min-h-0 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               <div className="p-6">{children}</div>
             </main>
           </div>

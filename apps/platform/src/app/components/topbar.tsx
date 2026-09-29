@@ -16,9 +16,10 @@ import {
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 
-import { useAuth } from '../hooks';
 import { GlobalSearch } from '../features/search/components/GlobalSearch';
 import { useKeyboardShortcut } from '../features/search/hooks/useKeyboardShortcut';
+import { useAuth } from '../hooks';
+
 import { NotificationBell } from './notifications/NotificationBell';
 
 interface TopbarProps {
@@ -77,7 +78,7 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
       .slice(0, 2)
     : 'U';
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4 gap-4">
+    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4 gap-4">
       {/* Left Section */}
       <div className="flex items-center gap-3">
         {/* Desktop Toggle */}
@@ -96,11 +97,9 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
         </Button>
 
         {/* Search */}
-        <button
-          onClick={() => setIsSearchOpen(true)}
+        <button onClick={() => setIsSearchOpen(true)}
           className="hidden sm:flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-muted-foreground transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-          aria-label="Open search"
-        >
+          aria-label="Open search">
           <Search className="h-4 w-4" />
           <span className="text-sm w-[200px] lg:w-[300px] text-left">Search anything...</span>
           <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border bg-background px-1.5 text-[10px] font-medium text-muted-foreground">
@@ -148,11 +147,9 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
       </div>
 
       {/* Global Search Modal */}
-      <GlobalSearch
-        isOpen={isSearchOpen}
+      <GlobalSearch isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        onNavigate={handleNavigate}
-      />
+        onNavigate={handleNavigate}/>
     </header>
   );
 }
