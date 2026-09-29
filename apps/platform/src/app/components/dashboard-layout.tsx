@@ -80,7 +80,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Page Content */}
             <main className="min-h-0 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              <div className="p-6">{children}</div>
+              <div className="px-12 py-6">{children}</div>
             </main>
           </div>
         </div>
