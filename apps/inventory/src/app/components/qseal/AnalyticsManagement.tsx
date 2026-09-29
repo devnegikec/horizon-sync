@@ -318,7 +318,7 @@ export function AnalyticsManagement() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6">
       <AnalyticsHeader onRefresh={refetch} isLoading={loading} />
       <AnalyticsFilters filters={filters} setFilters={setFilters} productOptions={productOptions} blockOptions={blockOptions} />
 

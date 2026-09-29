@@ -15,7 +15,13 @@ import { ErrorBanner } from '../common';
 import { PaymentDialog } from '../payments/PaymentDialog';
 
 
-export function InvoiceManagement() {
+export function InvoiceManagement({
+  pendingInvoiceId,
+  onClearPendingInvoiceId,
+}: {
+  pendingInvoiceId?: string | null;
+  onClearPendingInvoiceId?: () => void;
+}) {
   const {
     filters,
     setFilters,
@@ -53,6 +59,15 @@ export function InvoiceManagement() {
 
   const accessToken = useUserStore((s) => s.accessToken);
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+
+  // Handle pending invoice ID from cross-document navigation
+  React.useEffect(() => {
+    if (pendingInvoiceId) {
+      // The invoice may not be on the loaded page, so open it by id directly.
+      void handleView({ id: pendingInvoiceId });
+      onClearPendingInvoiceId?.();
+    }
+  }, [pendingInvoiceId, handleView, onClearPendingInvoiceId]);
 
   // Export all invoices to CSV
   const handleExport = React.useCallback(async () => {
@@ -119,7 +134,7 @@ export function InvoiceManagement() {
   // Feature disabled — show informational banner instead of the full page
   if (error === FEATURE_DISABLED_CODE) {
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="space-y-6">
         <div className="flex flex-col items-center justify-center py-16 px-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
             <Lock className="h-8 w-8 text-muted-foreground" />
@@ -135,7 +150,7 @@ export function InvoiceManagement() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6">
       {/* Header */}
       <InvoiceManagementHeader onRefresh={refetch} onCreateInvoice={handleCreate} onExport={handleExport} isLoading={loading} />
 

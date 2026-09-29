@@ -424,7 +424,7 @@ function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab,
     <>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Stock Management</h1>
+          <h2 className="text-2xl font-bold tracking-tight">Stock Management</h2>
           <p className="text-muted-foreground mt-1">
             Monitor stock levels, movements, and maintain accurate records
           </p>
@@ -1101,7 +1101,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6">
       <StockManagementHeader onNewEntry={handleNewEntry}
         onAsN={handleNewAsN}
         onReconciliation={handleNewReconciliation}
