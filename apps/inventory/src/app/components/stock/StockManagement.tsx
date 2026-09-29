@@ -101,17 +101,28 @@ const ALL_TABS: ActiveTab[] = ['levels', 'movements', 'entries', 'reconciliation
 
 /**
  * Read permission required to view each tab.
- * `stock_entry.read` / `asn_order.read` are defined in the WMS permission
- * reference; the `levels`, `movements` and `reconciliations` codes must match
- * the identity-service permission seed — verify them if those tabs are ever
- * unexpectedly hidden.
+ *
+ * There are no dedicated `stock_level.*` / `stock_movement.*` /
+ * `stock_reconciliation.*` codes in the WMS permission seed, so the stock
+ * read tabs are gated by `stock_entry.read` — the stock-module read permission
+ * every WMS role already carries. `asn_order.read` gates the ASN tab.
  */
 const TAB_PERMISSIONS: Partial<Record<ActiveTab, string[]>> = {
-  levels: ['stock_level.read'],
-  movements: ['stock_movement.read'],
+  levels: ['stock_entry.read'],
+  movements: ['stock_entry.read'],
   entries: ['stock_entry.read'],
-  reconciliations: ['stock_reconciliation.read'],
+  reconciliations: ['stock_entry.read'],
   asn: ['asn_order.read'],
+};
+
+/**
+ * Write permission required for each "New" action. These are create actions,
+ * so they must never be shown to read-only users.
+ */
+const CREATE_PERMISSIONS: Partial<Record<ActiveTab, string[]>> = {
+  entries: ['stock_entry.create'],
+  reconciliations: ['stock_entry.manage'],
+  asn: ['asn_order.create'],
 };
 
 /* ------------------------------------------------------------------ */
@@ -210,10 +221,12 @@ interface HeaderProps {
   activeTab: ActiveTab;
   /** Tabs the current user may view, so the header hides forbidden New actions. */
   visibleTabs: ActiveTab[];
+  /** Write permissions for each New action (read-only users get none). */
+  canCreate: { entries: boolean; reconciliations: boolean; asn: boolean };
   onImportSuccess?: () => void;
 }
 
-function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab, visibleTabs, onImportSuccess }: HeaderProps) {
+function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab, visibleTabs, canCreate, onImportSuccess }: HeaderProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [isExporting, setIsExporting] = React.useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
@@ -437,19 +450,19 @@ function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab,
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {visibleTabs.includes('entries') && (
+              {visibleTabs.includes('entries') && canCreate.entries && (
                 <DropdownMenuItem onSelect={onNewEntry}>
                   <FileText className="mr-2 h-4 w-4" />
                   Stock Entry
                 </DropdownMenuItem>
               )}
-              {visibleTabs.includes('asn') && (
+              {visibleTabs.includes('asn') && canCreate.asn && (
                 <DropdownMenuItem onSelect={onAsN}>
                   <FileText className="mr-2 h-4 w-4" />
                   Advance Stock Notice
                 </DropdownMenuItem>
               )}
-              {visibleTabs.includes('reconciliations') && (
+              {visibleTabs.includes('reconciliations') && canCreate.reconciliations && (
                 <DropdownMenuItem onSelect={onReconciliation}>
                   <ArrowRightLeft className="mr-2 h-4 w-4" />
                   Reconciliation
@@ -925,6 +938,15 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
     }
   }, [activeTab, visibleTabs]);
 
+  const canCreate = React.useMemo(
+    () => ({
+      entries: hasAnyPermission(userPermissions, CREATE_PERMISSIONS.entries ?? []),
+      reconciliations: hasAnyPermission(userPermissions, CREATE_PERMISSIONS.reconciliations ?? []),
+      asn: hasAnyPermission(userPermissions, CREATE_PERMISSIONS.asn ?? []),
+    }),
+    [userPermissions],
+  );
+
   const makePaginationHandler = React.useCallback(
     (setter: React.Dispatch<React.SetStateAction<typeof DEFAULT_PAGINATION>>) =>
       (pageIndex: number, pageSize: number) => setter({ page: pageIndex + 1, pageSize }),
@@ -1054,6 +1076,20 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
     movementsData.refetch();
   }, [entryActions, entriesData, levelsData, movementsData]);
 
+  // Edge case: the user has no stock read permission at all. Show a clear
+  // no-access state instead of an empty tab strip with stray content.
+  if (permissionsLoaded && visibleTabs.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-center">
+        <Package className="h-10 w-10 text-muted-foreground" />
+        <p className="text-lg font-semibold">No access to stock</p>
+        <p className="text-sm text-muted-foreground">
+          You don&apos;t have permission to view stock levels, movements, entries or reconciliations.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <StockManagementHeader onNewEntry={handleNewEntry}
@@ -1061,6 +1097,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
         onReconciliation={handleNewReconciliation}
         activeTab={activeTab}
         visibleTabs={visibleTabs}
+        canCreate={canCreate}
         onImportSuccess={entriesData.refetch} />
       <StatsGrid stats={activeStats} />
       {/* Filters */}
