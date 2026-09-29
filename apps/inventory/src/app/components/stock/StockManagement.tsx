@@ -54,7 +54,7 @@ import { useStockEntryMutations } from '../../hooks/useStock';
 import { useStockLevels } from '../../hooks/useStockLevels';
 import { useStockMovements } from '../../hooks/useStockMovements';
 import { useStockReconciliations } from '../../hooks/useStockReconciliations';
-import type { AsnOrder } from '../../types/asn-order.types';
+import type { AsnOrder, AsnOrderStatusCounts } from '../../types/asn-order.types';
 import type { PaginationInfo } from '../../types/quotation.types';
 import type {
   StockEntry,
@@ -162,6 +162,15 @@ function buildReconciliationsStats(s: StockReconciliationStats | null | undefine
     { title: 'Pending', value: formatQuantity(s?.pending_count || 0), icon: AlertTriangle },
     { title: 'Completed', value: formatQuantity(s?.completed_count || 0), icon: ClipboardCheck },
     { title: 'Total Adjustments', value: formatQuantity(s?.total_adjustments || 0), icon: FileText },
+  ];
+}
+
+function buildAsnStats(s: AsnOrderStatusCounts | null | undefined): StatDef[] {
+  return [
+    { title: 'Total ASNs', value: formatQuantity(s?.total ?? 0), icon: FileText },
+    { title: 'Confirmed', value: formatQuantity(s?.confirmed ?? 0), icon: ClipboardCheck },
+    { title: 'Partially Delivered', value: formatQuantity(s?.partially_delivered ?? 0), icon: AlertTriangle },
+    { title: 'Delivered', value: formatQuantity(s?.delivered ?? 0), icon: Package },
   ];
 }
 
@@ -957,8 +966,9 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
     if (activeTab === 'levels') return buildLevelsStats(levelsData.stats);
     if (activeTab === 'movements') return buildMovementsStats(movementsData.stats);
     if (activeTab === 'entries') return buildEntriesStats(entriesData.stats);
+    if (activeTab === 'asn') return buildAsnStats(asnManagement.statusCounts);
     return buildReconciliationsStats(reconciliationsData.stats);
-  }, [activeTab, levelsData.stats, movementsData.stats, entriesData.stats, reconciliationsData.stats]);
+  }, [activeTab, levelsData.stats, movementsData.stats, entriesData.stats, reconciliationsData.stats, asnManagement.statusCounts]);
 
   const handleNewEntry = React.useCallback(() => {
     entryActions.clearSelected();

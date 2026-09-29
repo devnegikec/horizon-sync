@@ -1,10 +1,16 @@
 import * as React from 'react';
 
 import { useQuery } from '@tanstack/react-query';
-import { Truck, Trash2, Mail, Eye, Download, Loader2, ScanLine } from 'lucide-react';
+import { Truck, Trash2, Mail, Eye, Download, ChevronDown, Loader2, ScanLine } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Badge, Button, DetailDialog, Separator } from '@horizon-sync/ui/components';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { environment } from '../../../environments/environment';
@@ -696,52 +702,72 @@ export function AsnOrderDialog({ open, viewMode, asnOrder, saving, onSave, onOpe
           </div>
         }
         footer={
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {viewMode ? (
               <>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  Close
-                </Button>
                 {formData.status !== 'draft' && (
                   <>
-                    <Button type="button"
-                      variant="outline"
-                      onClick={() => resolvedOrder && handlePreview(resolvedOrder)}
-                      disabled={pdfLoading}
-                      className="gap-2">
-                      <Eye className="h-4 w-4" />
-                      Preview PDF
-                    </Button>
-                    <Button type="button"
-                      variant="outline"
-                      onClick={() => resolvedOrder && handleDownload(resolvedOrder)}
-                      disabled={pdfLoading}
-                      className="gap-2">
-                      <Download className="h-4 w-4" />
-                      Download PDF
-                    </Button>
-                    <Button type="button" variant="outline" onClick={handleSendEmail} disabled={pdfLoading} className="gap-2">
-                      <Mail className="h-4 w-4" />
-                      Send Email
-                    </Button>
                     {formData.asn_type === 'internal_transfer' && resolvedOrder?.serialization_mode !== 'quantity_only' && (
-                      <>
-                        <Button type="button" variant="outline" onClick={() => setSerialMatchOpen(true)} className="gap-2">
-                          <ScanLine className="h-4 w-4" />
-                          Serial Match
-                        </Button>
-                        <Button type="button" variant="outline" onClick={handleExport856} className="gap-2">
-                          <Download className="h-4 w-4" />
-                          Export 856
-                        </Button>
-                        <Button type="button" variant="outline" onClick={handleExportEpcis} className="gap-2">
-                          <Download className="h-4 w-4" />
-                          Export EPCIS
-                        </Button>
-                      </>
+                      <Button type="button" variant="outline" onClick={() => setSerialMatchOpen(true)} className="gap-2">
+                        <ScanLine className="h-4 w-4" />
+                        Serial Match
+                      </Button>
                     )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button type="button" variant="outline" className="gap-1.5">
+                          <Download className="h-4 w-4" />
+                          Export
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleExport856}>
+                          <Download className="mr-2 h-4 w-4" />
+                          Export 856
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleExportEpcis}>
+                          <Download className="mr-2 h-4 w-4" />
+                          Export EPCIS
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <div className="flex items-center">
+                      <Button type="button"
+                        variant="outline"
+                        className="gap-1.5 rounded-r-none"
+                        disabled={pdfLoading}
+                        onClick={() => resolvedOrder && handleDownload(resolvedOrder)}>
+                        <Download className="h-4 w-4" />
+                        Download PDF
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button type="button"
+                            variant="outline"
+                            className="rounded-l-none border-l-0 px-2"
+                            disabled={pdfLoading}>
+                            <ChevronDown className="h-4 w-4" />
+                            <span className="sr-only">More PDF actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => resolvedOrder && handlePreview(resolvedOrder)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Preview PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={handleSendEmail}>
+                            <Mail className="mr-2 h-4 w-4" />
+                            Send Email
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </>
                 )}
+                <Button type="button" onClick={() => onOpenChange(false)}>
+                  Close
+                </Button>
               </>
             ) : (
               <>

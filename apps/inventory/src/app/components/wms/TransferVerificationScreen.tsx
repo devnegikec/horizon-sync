@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2, ScanLine } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Badge, Button, Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components';
+import { Badge, Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components';
 
 import type {
     AsnOrder,
@@ -159,6 +159,12 @@ export function TransferVerificationScreen({ open, onOpenChange, asnOrder }: Tra
                         <SerialTable serials={data.serials ?? []} />
                     </div>
                 ) : null}
+
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                        Close
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
