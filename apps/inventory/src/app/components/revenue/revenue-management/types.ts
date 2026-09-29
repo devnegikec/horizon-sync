@@ -15,9 +15,11 @@ export interface RevenueContentProps {
   /** False while the invoices feature flag is still loading, or when it is hidden. */
   showInvoices: boolean;
   pendingSalesOrderId: string | null;
+  pendingInvoiceId: string | null;
   pendingPaymentId: string | null;
   preSelectedInvoice: Invoice | null;
   onClearPendingSalesOrderId: () => void;
+  onClearPendingInvoiceId: () => void;
   onClearPendingPaymentId: () => void;
   onNavigateToInvoice: (invoiceId: string) => void;
 }

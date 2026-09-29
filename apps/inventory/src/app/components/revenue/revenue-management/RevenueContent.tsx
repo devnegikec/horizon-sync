@@ -31,11 +31,12 @@ function SalesOrdersContent({ pendingSalesOrderId, onClearPendingSalesOrderId, o
   );
 }
 
-function InvoicesContent({ showInvoices }: RevenueContentProps) {
+function InvoicesContent({ showInvoices, pendingInvoiceId, onClearPendingInvoiceId }: RevenueContentProps) {
   if (!showInvoices) return null;
   return (
     <React.Suspense fallback={<LoadingState message="Loading invoices..." />}>
-      <InvoiceManagement />
+      <InvoiceManagement pendingInvoiceId={pendingInvoiceId}
+        onClearPendingInvoiceId={onClearPendingInvoiceId}/>
     </React.Suspense>
   );
 }

@@ -27,6 +27,13 @@ export function QSealManagement() {
     || hasPermission(userPermissions, 'qr_product.read');
   const management = useQSealManagement();
 
+  // Redirect away from analytics if the user loses access to it
+  React.useEffect(() => {
+    if (activeView === 'analytics' && !canViewAnalytics) {
+      setActiveView('products');
+    }
+  }, [activeView, canViewAnalytics]);
+
   return (
     <ManagementContainer>
       <QSealHeader onRefresh={management.refetch}

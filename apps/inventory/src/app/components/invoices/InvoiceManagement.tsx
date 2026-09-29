@@ -15,7 +15,13 @@ import { ErrorBanner } from '../common';
 import { PaymentDialog } from '../payments/PaymentDialog';
 
 
-export function InvoiceManagement() {
+export function InvoiceManagement({
+  pendingInvoiceId,
+  onClearPendingInvoiceId,
+}: {
+  pendingInvoiceId?: string | null;
+  onClearPendingInvoiceId?: () => void;
+}) {
   const {
     filters,
     setFilters,
@@ -53,6 +59,15 @@ export function InvoiceManagement() {
 
   const accessToken = useUserStore((s) => s.accessToken);
   const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+
+  // Handle pending invoice ID from cross-document navigation
+  React.useEffect(() => {
+    if (pendingInvoiceId) {
+      // The invoice may not be on the loaded page, so open it by id directly.
+      void handleView({ id: pendingInvoiceId });
+      onClearPendingInvoiceId?.();
+    }
+  }, [pendingInvoiceId, handleView, onClearPendingInvoiceId]);
 
   // Export all invoices to CSV
   const handleExport = React.useCallback(async () => {

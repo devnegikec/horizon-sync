@@ -47,10 +47,15 @@ export function RevenueManagement() {
     setActiveView('sales_orders');
   }, []);
 
+  const handleClearPendingInvoice = React.useCallback(() => setPendingInvoiceId(null), []);
+
   const handleNavigateToInvoice = React.useCallback((invoiceId: string) => {
+    // Invoices can be hidden by the feature flag — never switch to a view that
+    // would render nothing.
+    if (!showInvoices) return;
     setPendingInvoiceId(invoiceId);
     setActiveView('invoices');
-  }, []);
+  }, [showInvoices]);
 
   const handleNavigateToPayment = React.useCallback((paymentId: string) => {
     setPendingPaymentId(paymentId);
@@ -64,6 +69,13 @@ export function RevenueManagement() {
     }
   }, [activeView]);
 
+  // Fall back to Customers if Invoices becomes unavailable while it is active
+  React.useEffect(() => {
+    if (activeView === 'invoices' && !showInvoices) {
+      setActiveView('customers');
+    }
+  }, [activeView, showInvoices]);
+
   return (
     <ManagementContainer>
       <RevenueHeader />
@@ -71,9 +83,11 @@ export function RevenueManagement() {
       <RevenueContent activeView={activeView}
         showInvoices={showInvoices}
         pendingSalesOrderId={pendingSalesOrderId}
+        pendingInvoiceId={pendingInvoiceId}
         pendingPaymentId={pendingPaymentId}
         preSelectedInvoice={preSelectedInvoice}
         onClearPendingSalesOrderId={() => setPendingSalesOrderId(null)}
+        onClearPendingInvoiceId={handleClearPendingInvoice}
         onClearPendingPaymentId={() => setPendingPaymentId(null)}
         onNavigateToInvoice={handleNavigateToInvoice}/>
     </ManagementContainer>

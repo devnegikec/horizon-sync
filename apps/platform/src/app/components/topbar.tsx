@@ -48,15 +48,15 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
   const handleNavigate = (entityType: string, entityId: string) => {
     console.log('[Topbar] Navigating to:', { entityType, entityId });
 
-    // Map entity types to routes
-    // Note: Detail pages may not exist yet, so we navigate to the list page
+    // Map entity types to the list page that owns the entity — detail pages do
+    // not exist yet, so results land on the tab that contains them.
     const routeMap: Record<string, string> = {
-      items: '/inventory', // Navigate to inventory page (detail page not implemented yet)
-      customers: '/customers',
-      suppliers: '/suppliers',
-      invoices: '/invoices',
-      warehouses: '/warehouses',
+      items: '/inventory',
       stock_entries: '/inventory',
+      warehouses: '/inventory',
+      customers: '/revenue',
+      invoices: '/revenue',
+      suppliers: '/sourcing',
     };
 
     const route = routeMap[entityType] || `/${entityType}`;
