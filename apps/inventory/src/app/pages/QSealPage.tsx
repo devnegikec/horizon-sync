@@ -1,90 +1,24 @@
 import * as React from 'react';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Package, QrCode, Palette, BarChart3, Zap, Settings, Layers } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
-import { Button } from '@horizon-sync/ui/components/ui/button';
-import { cn } from '@horizon-sync/ui/lib';
 
-import {
-  QSealManagement,
-  BlocksManagement,
-  AggregationManagement,
-  SkuCustomizationManagement,
-  AnalyticsManagement,
-  QSealActivationManagement,
-  ProductSettingsManagement,
-} from '../components/qseal';
-import { hasPermission } from '../utils/permissions';
+import { QSealManagement } from '../components/qseal';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 });
 
-type ActiveView = 'products' | 'blocks' | 'sku_customization' | 'analytics' | 'activation' | 'aggregation' | 'product_settings';
-
-interface NavItemProps {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
-}
-
-function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
-  return (
-    <Button variant={isActive ? 'default' : 'ghost'}
-      className={cn('gap-2 justify-start', isActive && 'bg-primary text-primary-foreground')}
-      onClick={onClick}>
-      <Icon className="h-4 w-4" />
-      {label}
-    </Button>
-  );
-}
-
 export function QSealPage() {
-  const [activeView, setActiveView] = React.useState<ActiveView>('products');
-  const user = useUserStore((state) => state.user);
-  const userPermissions = useUserStore((state) => state.permissions?.permissions || []);
-  const canViewAnalytics = user?.user_type === 'system_admin'
-    || user?.user_type === 'organization_admin'
-    || hasPermission(userPermissions, 'qr_product.read');
-
+  // No page-padding wrapper here on purpose: the host `DashboardLayout` already
+  // renders page content inside a `p-6` container. Adding `container px-4 py-8`
+  // here double-padded QSeal and made it look inset compared to sibling screens
+  // such as User Management or WMS.
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <div className="min-h-screen bg-background">
-          <header className="sticky top-0 z-50 w-full border-b bg-background">
-            <div className="container flex h-16 items-center px-4">
-              <nav className="flex items-center gap-2">
-                <NavItem icon={Package} label="Products" isActive={activeView === 'products'} onClick={() => setActiveView('products')} />
-                <NavItem icon={QrCode} label="QR Blocks" isActive={activeView === 'blocks'} onClick={() => setActiveView('blocks')} />
-                <NavItem icon={Palette}
-                  label="SKU Customization"
-                  isActive={activeView === 'sku_customization'}
-                  onClick={() => setActiveView('sku_customization')} />
-                {canViewAnalytics && <NavItem icon={BarChart3} label="Analytics" isActive={activeView === 'analytics'} onClick={() => setActiveView('analytics')} />}
-                <NavItem icon={Zap} label="Activation" isActive={activeView === 'activation'} onClick={() => setActiveView('activation')} />
-                <NavItem icon={Layers} label="Aggregation" isActive={activeView === 'aggregation'} onClick={() => setActiveView('aggregation')} />
-                <NavItem icon={Settings}
-                  label="Settings"
-                  isActive={activeView === 'product_settings'}
-                  onClick={() => setActiveView('product_settings')} />
-              </nav>
-            </div>
-          </header>
-
-          <main className="container px-4 py-8">
-            {activeView === 'products' && <QSealManagement />}
-            {activeView === 'blocks' && <BlocksManagement />}
-            {activeView === 'sku_customization' && <SkuCustomizationManagement />}
-            {activeView === 'analytics' && canViewAnalytics && <AnalyticsManagement />}
-            {activeView === 'activation' && <QSealActivationManagement />}
-            {activeView === 'aggregation' && <AggregationManagement />}
-            {activeView === 'product_settings' && <ProductSettingsManagement />}
-          </main>
-        </div>
+        <QSealManagement />
       </ThemeProvider>
     </QueryClientProvider>
   );

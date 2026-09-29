@@ -313,7 +313,7 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
 
 export function ProductSettingsManagement() {
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <Settings className="h-6 w-6" />

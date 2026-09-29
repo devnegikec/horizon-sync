@@ -1,24 +1,26 @@
 import * as React from 'react';
 
-import { useQSealManagement } from '../../hooks/useQSealManagement';
+import { QSealDetailDialog } from '../QSealDetailDialog';
+import { QSealFilters } from '../QSealFilters';
+import { QSealProductDialog } from '../QSealProductDialog';
+import { QSealStats } from '../QSealStats';
+import { QSealTable } from '../QSealTable';
 
-import { QSealDetailDialog } from './QSealDetailDialog';
-import { QSealFilters } from './QSealFilters';
-import { QSealHeader } from './QSealHeader';
-import { QSealProductDialog } from './QSealProductDialog';
-import { QSealStats } from './QSealStats';
-import { QSealTable } from './QSealTable';
+import type { QSealContentProps } from './types';
 
-export function QSealManagement() {
+/**
+ * Products view. Renders inside the `QSealManagement` shell, which owns the page
+ * header (title, QR credits, Refresh, New Product) and the view switcher, so this
+ * component only renders the products list itself.
+ */
+export function ProductsManagement({ management }: QSealContentProps) {
   const {
     filters,
     setFilters,
     products,
     loading,
     error,
-    refetch,
     stats,
-    creditInfo,
     productDialogOpen,
     setProductDialogOpen,
     detailDialogOpen,
@@ -31,14 +33,12 @@ export function QSealManagement() {
     saving,
     handleToggleStatus,
     serverPaginationConfig,
-  } = useQSealManagement();
+  } = management;
 
   const hasActiveFilters = !!filters.search || (!!filters.status && filters.status !== 'all');
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <QSealHeader onRefresh={refetch} onCreateProduct={handleCreateProduct} isLoading={loading} creditInfo={creditInfo} />
-
+    <div className="space-y-6">
       <QSealStats total={stats.total} active={stats.active} totalQRCodes={stats.totalQRCodes} totalScans={stats.totalScans} />
 
       <QSealFilters filters={filters} setFilters={setFilters} />
