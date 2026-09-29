@@ -69,6 +69,7 @@ import type {
 import { formatQuantity } from '../../utility';
 import { asnOrderApi } from '../../utility/api/asn-orders';
 import { stockEntryApi, stockLevelApi, stockMovementApi } from '../../utility/api/stock';
+import { hasAnyPermission } from '../../utils/permissions';
 import { AsnOrderDialog } from '../advance stock notice/AsnOrderDialog';
 import { AsnOrdersTable } from '../advance stock notice/AsnOrdersTable';
 import { ReconciliationWizard, ReconciliationDetailDialog } from '../reconciliation';
@@ -95,6 +96,23 @@ interface StatDef {
 }
 
 const DEFAULT_PAGINATION = { page: 1, pageSize: 20 };
+
+const ALL_TABS: ActiveTab[] = ['levels', 'movements', 'entries', 'reconciliations', 'asn'];
+
+/**
+ * Read permission required to view each tab.
+ * `stock_entry.read` / `asn_order.read` are defined in the WMS permission
+ * reference; the `levels`, `movements` and `reconciliations` codes must match
+ * the identity-service permission seed — verify them if those tabs are ever
+ * unexpectedly hidden.
+ */
+const TAB_PERMISSIONS: Partial<Record<ActiveTab, string[]>> = {
+  levels: ['stock_level.read'],
+  movements: ['stock_movement.read'],
+  entries: ['stock_entry.read'],
+  reconciliations: ['stock_reconciliation.read'],
+  asn: ['asn_order.read'],
+};
 
 /* ------------------------------------------------------------------ */
 /*  Pure helper: build stats array per tab                             */
@@ -190,10 +208,12 @@ interface HeaderProps {
   onAsN: () => void;
   onReconciliation: () => void;
   activeTab: ActiveTab;
+  /** Tabs the current user may view, so the header hides forbidden New actions. */
+  visibleTabs: ActiveTab[];
   onImportSuccess?: () => void;
 }
 
-function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab, onImportSuccess }: HeaderProps) {
+function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab, visibleTabs, onImportSuccess }: HeaderProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [isExporting, setIsExporting] = React.useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
@@ -417,18 +437,24 @@ function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab,
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={onNewEntry}>
-                <FileText className="mr-2 h-4 w-4" />
-                Stock Entry
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={onAsN}>
-                <FileText className="mr-2 h-4 w-4" />
-                Advance Stock Notice
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={onReconciliation}>
-                <ArrowRightLeft className="mr-2 h-4 w-4" />
-                Reconciliation
-              </DropdownMenuItem>
+              {visibleTabs.includes('entries') && (
+                <DropdownMenuItem onSelect={onNewEntry}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Stock Entry
+                </DropdownMenuItem>
+              )}
+              {visibleTabs.includes('asn') && (
+                <DropdownMenuItem onSelect={onAsN}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Advance Stock Notice
+                </DropdownMenuItem>
+              )}
+              {visibleTabs.includes('reconciliations') && (
+                <DropdownMenuItem onSelect={onReconciliation}>
+                  <ArrowRightLeft className="mr-2 h-4 w-4" />
+                  Reconciliation
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -436,10 +462,10 @@ function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab,
 
       {/* Stock Entry Import Dialog */}
       <Dialog open={isImportDialogOpen}
-onOpenChange={(open) => {
-        setIsImportDialogOpen(open);
-        if (!open) setSelectedFile(null);
-      }}>
+        onOpenChange={(open) => {
+          setIsImportDialogOpen(open);
+          if (!open) setSelectedFile(null);
+        }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Import Stock Entries</DialogTitle>
@@ -638,7 +664,7 @@ function TabPanels({
           onDelete={onDeleteAsn}
           onCreateOrder={onCreateAsn}
           serverPagination={asnPagination}
-          recentlyCreatedId={asnData.recentlyCreatedId}/>
+          recentlyCreatedId={asnData.recentlyCreatedId} />
       </TabsContent>
     </>
   );
@@ -806,6 +832,8 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
 
   const entryActions = useStockEntryActions(entriesData.refetch);
   const accessToken = useUserStore((s) => s.accessToken);
+  const userPermissions = useUserStore((s) => s.permissions.permissions);
+  const permissionsLoaded = useUserStore((s) => s.permissions.lastFetched) !== null;
   const { toast } = useToast();
 
   /* ---------- warehouse selector ---------- */
@@ -878,6 +906,24 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
     };
     setters[newTab]?.(reset);
   }, [setFilters]);
+
+  const visibleTabs = React.useMemo(() => {
+    // Until permissions have loaded, keep every tab visible so the screen never
+    // flashes empty; tabs are pruned as soon as permissions are known.
+    if (!permissionsLoaded) return ALL_TABS;
+    return ALL_TABS.filter((tab) => {
+      const required = TAB_PERMISSIONS[tab];
+      return !required || required.length === 0 || hasAnyPermission(userPermissions, required);
+    });
+  }, [permissionsLoaded, userPermissions]);
+
+  // If the active tab loses permission (or the first render landed on a
+  // forbidden tab), move to the first permitted tab instead of showing a 403.
+  React.useEffect(() => {
+    if (visibleTabs.length > 0 && !visibleTabs.includes(activeTab)) {
+      setActiveTab(visibleTabs[0]);
+    }
+  }, [activeTab, visibleTabs]);
 
   const makePaginationHandler = React.useCallback(
     (setter: React.Dispatch<React.SetStateAction<typeof DEFAULT_PAGINATION>>) =>
@@ -1014,7 +1060,8 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
         onAsN={handleNewAsN}
         onReconciliation={handleNewReconciliation}
         activeTab={activeTab}
-        onImportSuccess={entriesData.refetch}/>
+        visibleTabs={visibleTabs}
+        onImportSuccess={entriesData.refetch} />
       <StatsGrid stats={activeStats} />
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1032,7 +1079,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
                       : 'Search by ASN order no...'
             }
             value={filters.search}
-            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
+            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))} />
           {/* Warehouse selector */}
           <Popover open={warehouseOpen} onOpenChange={setWarehouseOpen}>
             <PopoverTrigger asChild>
@@ -1054,7 +1101,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
                   <Input placeholder="Search warehouses..."
                     value={warehouseSearch}
                     onChange={(e) => setWarehouseSearch(e.target.value)}
-                    className="mb-2"/>
+                    className="mb-2" />
                 )}
                 <div className="max-h-60 overflow-auto space-y-1">
                   {!isWarehouseLocked && (
@@ -1127,26 +1174,36 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
-          <TabsTrigger value="levels" className="gap-1.5">
-            Stock Levels
-            {activeTab === 'levels' && levelsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-          </TabsTrigger>
-          <TabsTrigger value="movements" className="gap-1.5">
-            Movements
-            {activeTab === 'movements' && movementsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-          </TabsTrigger>
-          <TabsTrigger value="entries" className="gap-1.5">
-            Stock Entries
-            {activeTab === 'entries' && entriesData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-          </TabsTrigger>
-          <TabsTrigger value="reconciliations" className="gap-1.5">
-            Reconciliations
-            {activeTab === 'reconciliations' && reconciliationsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-          </TabsTrigger>
-          <TabsTrigger value="asn" className="gap-1.5">
-            Advance Stock Notice
-            {activeTab === 'asn' && asnManagement.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-          </TabsTrigger>
+          {visibleTabs.includes('levels') && (
+            <TabsTrigger value="levels" className="gap-1.5">
+              Stock Levels
+              {activeTab === 'levels' && levelsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes('movements') && (
+            <TabsTrigger value="movements" className="gap-1.5">
+              Movements
+              {activeTab === 'movements' && movementsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes('entries') && (
+            <TabsTrigger value="entries" className="gap-1.5">
+              Stock Entries
+              {activeTab === 'entries' && entriesData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes('reconciliations') && (
+            <TabsTrigger value="reconciliations" className="gap-1.5">
+              Reconciliations
+              {activeTab === 'reconciliations' && reconciliationsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes('asn') && (
+            <TabsTrigger value="asn" className="gap-1.5">
+              Advance Stock Notice
+              {activeTab === 'asn' && asnManagement.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabPanels levelsData={levelsData}
           levelsFilters={levelsFilters}
@@ -1212,7 +1269,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
         description={`Delete stock entry "${entryActions.confirmDeleteEntry?.stock_entry_no}"?`}
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={entryActions.executeDeleteEntry}/>
+        onConfirm={entryActions.executeDeleteEntry} />
 
       {/* Delete ASN Order Confirmation Dialog */}
       <ConfirmationDialog open={!!confirmDeleteAsnOrder}
@@ -1221,7 +1278,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
         description={`Delete ASN order "${confirmDeleteAsnOrder?.asn_order_no}"?`}
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={executeDeleteAsn}/>
+        onConfirm={executeDeleteAsn} />
     </div>
   );
 }
