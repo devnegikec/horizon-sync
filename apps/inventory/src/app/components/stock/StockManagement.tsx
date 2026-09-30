@@ -102,16 +102,18 @@ const ALL_TABS: ActiveTab[] = ['levels', 'movements', 'entries', 'reconciliation
 /**
  * Read permission required to view each tab.
  *
- * There are no dedicated `stock_level.*` / `stock_movement.*` /
- * `stock_reconciliation.*` codes in the WMS permission seed, so the stock
- * read tabs are gated by `stock_entry.read` — the stock-module read permission
- * every WMS role already carries. `asn_order.read` gates the ASN tab.
+ * The backend gates each stock resource with its own permission code:
+ *   - Stock Levels    → `stock_level.read`
+ *   - Movements       → `stock_entry.read` (movements reuse stock-entry read)
+ *   - Stock Entries   → `stock_entry.read`
+ *   - Reconciliations → `stock_reconciliation.read`
+ *   - ASN             → `asn_order.read`
  */
 const TAB_PERMISSIONS: Partial<Record<ActiveTab, string[]>> = {
-  levels: ['stock_entry.read'],
+  levels: ['stock_level.read'],
   movements: ['stock_entry.read'],
   entries: ['stock_entry.read'],
-  reconciliations: ['stock_entry.read'],
+  reconciliations: ['stock_reconciliation.read'],
   asn: ['asn_order.read'],
 };
 
@@ -121,7 +123,7 @@ const TAB_PERMISSIONS: Partial<Record<ActiveTab, string[]>> = {
  */
 const CREATE_PERMISSIONS: Partial<Record<ActiveTab, string[]>> = {
   entries: ['stock_entry.create'],
-  reconciliations: ['stock_entry.manage'],
+  reconciliations: ['stock_reconciliation.create'],
   asn: ['asn_order.create'],
 };
 
