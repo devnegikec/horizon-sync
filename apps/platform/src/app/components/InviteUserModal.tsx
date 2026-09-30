@@ -5,18 +5,20 @@ import { Info, Send, UserPlus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
+import { DetailDialog } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
-import { DetailDialog } from '@horizon-sync/ui/components';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
+import { useToast } from '@horizon-sync/ui/hooks';
 
-import { useAuth } from '../hooks';
 import { environment } from '../../environments/environment';
+import { useAuth } from '../hooks';
 import { RoleService } from '../services/role.service';
 import { UserService, InviteUserPayload } from '../services/user.service';
 import type { Role, ModuleGroup } from '../types/role.types';
+
 import { ModulePermissionMatrix } from './roles/ModulePermissionMatrix';
 
 interface WarehouseOption {
@@ -29,6 +31,47 @@ const SCOPED_WMS_ROLE_NAMES = ['WMS Manager', 'WMS Operator', 'ASN Coordinator']
 const GLOBAL_WMS_ROLE_NAMES = ['WMS Admin'];
 
 const namePattern = /^[A-Za-z][A-Za-z' -]*[A-Za-z]$/;
+
+// Matches backend messages for an email that is already part of the organization,
+// e.g. "User with email 'x@y.com' is already a member of this organization".
+const DUPLICATE_USER_PATTERN = /already\s+(?:a\s+member|exist|registered|invited|been\s+invited|pending|in\s+use)/i;
+const DUPLICATE_EMAIL_FIELD_MESSAGE = 'A user with this email already exists in this organization.';
+
+function isDuplicateUserError(message: string): boolean {
+  return DUPLICATE_USER_PATTERN.test(message);
+}
+
+interface PendingAssignmentParams {
+  email: string;
+  warehouseIds: string[];
+  role: string;
+  isPrimary: boolean;
+  token: string;
+}
+
+async function createPendingWarehouseAssignments({
+  email,
+  warehouseIds,
+  role,
+  isPrimary,
+  token,
+}: PendingAssignmentParams): Promise<void> {
+  if (warehouseIds.length === 0) return;
+  const url = `${environment.apiCoreUrl}/api/v1/warehouse-users/pending`;
+  await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      email,
+      warehouse_ids: warehouseIds,
+      role,
+      is_primary: isPrimary,
+    }),
+  });
+}
 
 const inviteUserSchema = z.object({
   email: z.string()
@@ -62,6 +105,7 @@ interface InviteUserModalProps {
 // eslint-disable-next-line complexity
 export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserModalProps) {
   const { accessToken, user } = useAuth();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
   const [roles, setRoles] = React.useState<Role[]>([]);
@@ -83,6 +127,8 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     formState: { errors },
     reset,
     setValue,
+    setError,
+    clearErrors,
   } = useForm<InviteUserFormData>({
     resolver: zodResolver(inviteUserSchema),
   });
@@ -183,6 +229,26 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
   const isScopedWmsRole = selectedRole ? SCOPED_WMS_ROLE_NAMES.includes(selectedRole.name) : false;
   const isGlobalWmsRole = selectedRole ? GLOBAL_WMS_ROLE_NAMES.includes(selectedRole.name) : false;
 
+  const handleInviteError = React.useCallback((error: unknown) => {
+    const message =
+      error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.';
+    if (isDuplicateUserError(message)) {
+      setError('email', { type: 'manual', message: DUPLICATE_EMAIL_FIELD_MESSAGE });
+      toast({
+        title: 'User already exists',
+        description: message,
+        variant: 'destructive',
+      });
+      return;
+    }
+    setErrorMessage(message);
+    toast({
+      title: 'Failed to send invitation',
+      description: message,
+      variant: 'destructive',
+    });
+  }, [setError, toast]);
+
   const handleFormSubmit = React.useCallback(async (data: InviteUserFormData) => {
     if (!accessToken) {
       setErrorMessage('You must be logged in to invite users');
@@ -195,6 +261,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     }
     setIsSubmitting(true);
     setErrorMessage('');
+    clearErrors('email');
     try {
       const payload: InviteUserPayload = {
         email: data.email,
@@ -210,39 +277,25 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
       };
       await UserService.inviteUser(payload, accessToken);
 
-      // Create pending warehouse assignments
-      if (isScopedWmsRole && selectedWarehouseIds.size > 0) {
-        const pendingUrl = `${environment.apiCoreUrl}/api/v1/warehouse-users/pending`;
-        await fetch(pendingUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            email: data.email,
-            warehouse_ids: Array.from(selectedWarehouseIds),
-            role: warehouseRole,
-            is_primary: false,
-          }),
+      // Scoped WMS roles: assign only the selected warehouses
+      if (isScopedWmsRole) {
+        await createPendingWarehouseAssignments({
+          email: data.email,
+          warehouseIds: Array.from(selectedWarehouseIds),
+          role: warehouseRole,
+          isPrimary: false,
+          token: accessToken,
         });
       }
 
       // WMS Admin: auto-assign ALL warehouses with is_primary=true (global access)
-      if (isGlobalWmsRole && warehouses.length > 0) {
-        const pendingUrl = `${environment.apiCoreUrl}/api/v1/warehouse-users/pending`;
-        await fetch(pendingUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            email: data.email,
-            warehouse_ids: warehouses.map((w) => w.id),
-            role: 'supervisor',
-            is_primary: true,
-          }),
+      if (isGlobalWmsRole) {
+        await createPendingWarehouseAssignments({
+          email: data.email,
+          warehouseIds: warehouses.map((w) => w.id),
+          role: 'supervisor',
+          isPrimary: true,
+          token: accessToken,
         });
       }
 
@@ -253,7 +306,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.');
+      handleInviteError(error);
     } finally {
       setIsSubmitting(false);
     }
@@ -264,9 +317,12 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     onSuccess,
     user?.organization_id,
     isScopedWmsRole,
+    isGlobalWmsRole,
     selectedWarehouseIds,
+    warehouses,
     warehouseRole,
-    selectedRole?.name,
+    clearErrors,
+    handleInviteError,
   ]);
 
   const handleClose = () => {
@@ -309,8 +365,7 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
   };
 
   return (
-    <DetailDialog
-      open={open}
+    <DetailDialog open={open}
       onOpenChange={handleClose}
       size="md"
       title={
@@ -329,12 +384,10 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
           <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button
-            type="submit"
+          <Button type="submit"
             form="invite-form"
             disabled={isSubmitting}
-            className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white"
-          >
+            className="bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white">
             {isSubmitting ? (
               'Sending...'
             ) : (
@@ -345,21 +398,18 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
             )}
           </Button>
         </div>
-      }
-    >
+      }>
       <form id="invite-form" onSubmit={handleSubmit(handleFormSubmit)} noValidate className="space-y-6">
         {/* Email */}
         <div className="space-y-2">
           <Label htmlFor="email">
             Email Address <span className="text-destructive">*</span>
           </Label>
-          <Input
-            id="email"
+          <Input id="email"
             type="email"
             placeholder="user@example.com"
-            {...register('email')}
-            className={errors.email ? 'border-destructive' : ''}
-          />
+            {...register('email', { onChange: () => clearErrors('email') })}
+            className={errors.email ? 'border-destructive' : ''}/>
           {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           <p className="text-xs text-muted-foreground">Invitation will be sent to this email</p>
         </div>
@@ -370,24 +420,20 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
             <Label htmlFor="first_name">
               First Name <span className="text-destructive">*</span>
             </Label>
-            <Input
-              id="first_name"
+            <Input id="first_name"
               placeholder="John"
               {...register('first_name')}
-              className={errors.first_name ? 'border-destructive' : ''}
-            />
+              className={errors.first_name ? 'border-destructive' : ''}/>
             {errors.first_name && <p className="text-sm text-destructive">{errors.first_name.message}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="last_name">
               Last Name <span className="text-destructive">*</span>
             </Label>
-            <Input
-              id="last_name"
+            <Input id="last_name"
               placeholder="Doe"
               {...register('last_name')}
-              className={errors.last_name ? 'border-destructive' : ''}
-            />
+              className={errors.last_name ? 'border-destructive' : ''}/>
             {errors.last_name && <p className="text-sm text-destructive">{errors.last_name.message}</p>}
           </div>
         </div>
@@ -447,14 +493,10 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
             ) : (
               <div className="max-h-[200px] overflow-y-auto rounded-lg border p-2 space-y-1">
                 {warehouses.map((wh) => (
-                  <label
-                    key={wh.id}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={selectedWarehouseIds.has(wh.id)}
-                      onCheckedChange={() => toggleWarehouse(wh.id)}
-                    />
+                  <label key={wh.id}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer">
+                    <Checkbox checked={selectedWarehouseIds.has(wh.id)}
+                      onCheckedChange={() => toggleWarehouse(wh.id)}/>
                     <span className="text-sm">
                       {wh.name} {wh.code ? `(${wh.code})` : ''}
                     </span>
@@ -492,13 +534,11 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
               </div>
             ) : roleModules.length > 0 ? (
               <div className="max-h-[320px] overflow-y-auto rounded-lg border p-1">
-                <ModulePermissionMatrix
-                  modules={roleModules}
+                <ModulePermissionMatrix modules={roleModules}
                   selectedPermissions={rolePermissionCodes}
                   onPermissionToggle={() => { /* read-only */ }}
                   onBulkSelect={() => { /* read-only */ }}
-                  readOnly
-                />
+                  readOnly/>
               </div>
             ) : null}
           </div>
