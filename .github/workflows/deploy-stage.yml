@@ -49,12 +49,10 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGE }}
         run: |
           echo "token_length=${#RAILWAY_TOKEN}"
-          if [[ "$RAILWAY_TOKEN" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then echo "token_is_uuid=yes"; else echo "token_is_uuid=no"; fi
-          curl -s -X POST https://backboard.railway.com/graphql/v2 \
-            -H "Project-Access-Token: $RAILWAY_TOKEN" \
-            -H 'Content-Type: application/json' \
-            -d '{"query":"query { projectToken { projectId environmentId } }"}'
-          echo
+          echo "which_railway=$(command -v railway)"
+          railway --version 2>&1 | tail -1
+          echo "--- railway status -p/-e ---"
+          railway status -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_ENV" 2>&1 | head -20
 
       - name: Deploy horizon-ui
         env:
