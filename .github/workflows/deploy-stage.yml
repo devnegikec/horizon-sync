@@ -50,9 +50,18 @@ jobs:
         run: |
           echo "token_length=${#RAILWAY_TOKEN}"
           echo "which_railway=$(command -v railway)"
-          railway --version 2>&1 | tail -1
+          echo "--- version ---"; railway --version 2>&1 || echo "version_exit=$?"
+          echo "--- whoami ---"; railway whoami 2>&1 || echo "whoami_exit=$?"
+          echo "--- RAILWAY_* env names (values redacted) ---"
+          env | grep -i '^railway' | sed 's/=.*/=<redacted>/' | sort || echo "(none)"
+          echo "--- curl control (raw API, same token) ---"
+          curl -s -X POST https://backboard.railway.com/graphql/v2 \
+            -H "Project-Access-Token: $RAILWAY_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"query":"query { projectToken { projectId environmentId } }"}'
+          echo
           echo "--- railway status -p/-e ---"
-          railway status -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_ENV" 2>&1 | head -20
+          railway status -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_ENV" 2>&1 | head -20 || true
 
       - name: Deploy horizon-ui
         env:
