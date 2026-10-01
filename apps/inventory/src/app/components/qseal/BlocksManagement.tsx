@@ -41,6 +41,20 @@ const STATUS_BADGE: Record<BlockStatus, { label: string; className: string }> = 
   failed: { label: 'Failed', className: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' },
 };
 
+/**
+ * Whether a block has master-pack (parent) QR codes to download.
+ *
+ * The blocks LIST payload does not reliably include `master_pack_enabled` (it is
+ * only guaranteed on the block detail endpoint), so the MC QR action is hidden
+ * only when the API explicitly reports that no master pack exists — otherwise
+ * the button stays available for blocks we cannot classify.
+ */
+function hasMasterPackQr(block: QRBlock): boolean {
+  if (block.master_pack_enabled) return true;
+  if ((block.qseal_parent_count ?? 0) > 0) return true;
+  return block.master_pack_enabled !== false;
+}
+
 /** Child block ("IC QR") download — fetches a fresh signed URL each time. */
 function BlockDownloadButton({ block }: { block: QRBlock }) {
   const { download, loading, error } = useBlockDownload();
@@ -323,7 +337,9 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
           return (
             <div className="flex gap-2">
               <div>{b.download_available && <BlockDownloadButton block={b} />}</div>
-              <div><ParentBlockDownloadButton block={b} /></div>
+              {hasMasterPackQr(b) && (
+                <div><ParentBlockDownloadButton block={b} /></div>
+              )}
             </div>
           );
         },

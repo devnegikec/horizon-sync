@@ -41,6 +41,55 @@ function isDuplicateUserError(message: string): boolean {
   return DUPLICATE_USER_PATTERN.test(message);
 }
 
+const WAREHOUSE_PAGE_SIZE = 100;
+/** Safety cap so a malformed pagination response cannot loop forever. */
+const MAX_WAREHOUSE_PAGES = 50;
+
+interface WarehouseListResponse {
+  warehouses?: WarehouseOption[];
+  pagination?: { has_next?: boolean };
+}
+
+/**
+ * Fetches every active warehouse page-by-page so a WMS Admin is assigned *all*
+ * warehouses, not just the first page.
+ */
+async function fetchAllWarehouses(token: string): Promise<WarehouseOption[]> {
+  const all: WarehouseOption[] = [];
+  for (let page = 1; page <= MAX_WAREHOUSE_PAGES; page += 1) {
+    const url = `${environment.apiCoreUrl}/api/v1/warehouses?page=${page}&page_size=${WAREHOUSE_PAGE_SIZE}&is_active=true&scope=all`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Failed to fetch warehouses: ${response.status} ${errText}`);
+    }
+    const data: WarehouseListResponse = await response.json();
+    const batch = data.warehouses ?? [];
+    all.push(...batch);
+    const hasNext = data.pagination?.has_next ?? batch.length === WAREHOUSE_PAGE_SIZE;
+    if (batch.length === 0 || !hasNext) break;
+  }
+  return all;
+}
+
+/**
+ * Message shown when a WMS Admin invite is blocked because the warehouse list is
+ * unknown/empty — sending it would create a user without the promised access.
+ */
+function warehousePreflightMessage(loadError: string, warehouseCount: number): string {
+  if (!loadError && warehouseCount === 0) {
+    return 'No active warehouses exist yet. Create a warehouse first — no invitation was sent.';
+  }
+  const suffix = loadError ? ` (${loadError})` : '';
+  return `Could not load warehouses${suffix}. WMS Admin must be assigned every warehouse, so no invitation was sent — please retry.`;
+}
+
 interface PendingAssignmentParams {
   email: string;
   warehouseIds: string[];
@@ -49,6 +98,10 @@ interface PendingAssignmentParams {
   token: string;
 }
 
+/**
+ * Creates pending warehouse assignments. Throws with the backend message on
+ * failure so the caller can report a partial result instead of a silent success.
+ */
 async function createPendingWarehouseAssignments({
   email,
   warehouseIds,
@@ -58,7 +111,7 @@ async function createPendingWarehouseAssignments({
 }: PendingAssignmentParams): Promise<void> {
   if (warehouseIds.length === 0) return;
   const url = `${environment.apiCoreUrl}/api/v1/warehouse-users/pending`;
-  await fetch(url, {
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -71,6 +124,13 @@ async function createPendingWarehouseAssignments({
       is_primary: isPrimary,
     }),
   });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const detail = (body as { detail?: unknown }).detail;
+    throw new Error(
+      typeof detail === 'string' ? detail : `Failed to assign warehouses (${response.status})`
+    );
+  }
 }
 
 const inviteUserSchema = z.object({
@@ -95,6 +155,28 @@ const inviteUserSchema = z.object({
 });
 
 type InviteUserFormData = z.infer<typeof inviteUserSchema>;
+
+interface InvitePayloadInput {
+  data: InviteUserFormData;
+  organizationId?: string | null;
+  warehouseIds: string[];
+  warehouseRole: string;
+}
+
+function buildInvitePayload({ data, organizationId, warehouseIds, warehouseRole }: InvitePayloadInput): InviteUserPayload {
+  return {
+    email: data.email,
+    first_name: data.first_name,
+    last_name: data.last_name,
+    role_id: data.role_id,
+    message: data.message,
+    organization_id: organizationId ?? undefined,
+    extra_data: {
+      warehouse_ids: warehouseIds,
+      warehouse_role: warehouseRole,
+    },
+  };
+}
 
 interface InviteUserModalProps {
   open: boolean;
@@ -153,21 +235,9 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
   const fetchWarehouses = React.useCallback(async () => {
     if (!accessToken) return;
     setWarehousesLoading(true);
+    setWarehouseError('');
     try {
-      const url = `${environment.apiCoreUrl}/api/v1/warehouses?page=1&page_size=100&is_active=true&scope=all`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Failed to fetch warehouses: ${response.status} ${errText}`);
-      }
-      const data = await response.json();
-      setWarehouses(data.warehouses || []);
+      setWarehouses(await fetchAllWarehouses(accessToken));
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to fetch warehouses';
       console.error(msg);
@@ -249,6 +319,62 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
     });
   }, [setError, toast]);
 
+  /**
+   * Runs the warehouse-assignment step. Returns a warning message on failure so
+   * the caller can finish the invite flow (the invitation already exists) instead
+   * of reporting a hard failure that would prompt a duplicate retry.
+   */
+  const assignWarehouses = React.useCallback(async (email: string): Promise<string> => {
+    if (!accessToken) return 'You must be logged in to assign warehouses.';
+    try {
+      if (isScopedWmsRole) {
+        await createPendingWarehouseAssignments({
+          email,
+          warehouseIds: Array.from(selectedWarehouseIds),
+          role: warehouseRole,
+          isPrimary: false,
+          token: accessToken,
+        });
+      }
+      if (isGlobalWmsRole) {
+        await createPendingWarehouseAssignments({
+          email,
+          warehouseIds: warehouses.map((w) => w.id),
+          role: 'supervisor',
+          isPrimary: true,
+          token: accessToken,
+        });
+      }
+      return '';
+    } catch (error) {
+      return error instanceof Error ? error.message : 'Failed to assign warehouses.';
+    }
+  }, [accessToken, isScopedWmsRole, isGlobalWmsRole, selectedWarehouseIds, warehouses, warehouseRole]);
+
+  /** Closes the modal, refreshes the list and reports the outcome. */
+  const finishInvite = React.useCallback((email: string, assignmentWarning: string) => {
+    reset();
+    setSelectedRoleId('');
+    setRoleModules([]);
+    setSelectedWarehouseIds(new Set());
+    onOpenChange(false);
+    onSuccess?.();
+
+    if (assignmentWarning) {
+      toast({
+        title: 'Invitation sent, but warehouse assignment failed',
+        description: `${assignmentWarning} You can assign warehouses later from the user list.`,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Invitation sent',
+        description: `An invitation email was sent to ${email}.`,
+        variant: 'default',
+      });
+    }
+  }, [reset, onOpenChange, onSuccess, toast]);
+
   const handleFormSubmit = React.useCallback(async (data: InviteUserFormData) => {
     if (!accessToken) {
       setErrorMessage('You must be logged in to invite users');
@@ -259,70 +385,48 @@ export function InviteUserModal({ open, onOpenChange, onSuccess }: InviteUserMod
       setErrorMessage('Please select at least one warehouse for this role');
       return;
     }
+    // Never create a WMS Admin without the warehouse access it promises.
+    if (isGlobalWmsRole && warehouses.length === 0) {
+      setErrorMessage(warehousePreflightMessage(warehouseError, warehouses.length));
+      return;
+    }
     setIsSubmitting(true);
     setErrorMessage('');
     clearErrors('email');
     try {
-      const payload: InviteUserPayload = {
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        role_id: data.role_id,
-        message: data.message,
-        organization_id: user?.organization_id ?? undefined,
-        extra_data: {
-          warehouse_ids: Array.from(selectedWarehouseIds),
-          warehouse_role: warehouseRole,
-        },
-      };
-      await UserService.inviteUser(payload, accessToken);
-
-      // Scoped WMS roles: assign only the selected warehouses
-      if (isScopedWmsRole) {
-        await createPendingWarehouseAssignments({
-          email: data.email,
+      try {
+        const payload = buildInvitePayload({
+          data,
+          organizationId: user?.organization_id,
           warehouseIds: Array.from(selectedWarehouseIds),
-          role: warehouseRole,
-          isPrimary: false,
-          token: accessToken,
+          warehouseRole,
         });
+        await UserService.inviteUser(payload, accessToken);
+      } catch (error) {
+        handleInviteError(error);
+        return;
       }
 
-      // WMS Admin: auto-assign ALL warehouses with is_primary=true (global access)
-      if (isGlobalWmsRole) {
-        await createPendingWarehouseAssignments({
-          email: data.email,
-          warehouseIds: warehouses.map((w) => w.id),
-          role: 'supervisor',
-          isPrimary: true,
-          token: accessToken,
-        });
-      }
-
-      reset();
-      setSelectedRoleId('');
-      setRoleModules([]);
-      setSelectedWarehouseIds(new Set());
-      onOpenChange(false);
-      onSuccess?.();
-    } catch (error) {
-      handleInviteError(error);
+      // The invitation already exists, so an assignment failure is a partial
+      // success — report it as a warning rather than a failed invite.
+      const assignmentWarning = await assignWarehouses(data.email);
+      finishInvite(data.email, assignmentWarning);
     } finally {
       setIsSubmitting(false);
     }
   }, [
     accessToken,
-    reset,
-    onOpenChange,
-    onSuccess,
     user?.organization_id,
     isScopedWmsRole,
     isGlobalWmsRole,
     selectedWarehouseIds,
     warehouses,
+    warehouseError,
     warehouseRole,
     clearErrors,
     handleInviteError,
+    assignWarehouses,
+    finishInvite,
   ]);
 
   const handleClose = () => {
