@@ -49,7 +49,7 @@ function BlockDownloadButton({ block }: { block: QRBlock }) {
     <div className="space-y-1">
       <Button variant="outline" size="sm" disabled={loading} onClick={() => download(block.id, `qr_${block.batch}.xlsx`)}>
         {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-        {loading ? 'Preparing…' : 'IC QR'}
+        {loading ? 'Preparing…' : 'IC'}
       </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
@@ -74,6 +74,10 @@ function ParentBlockDownloadButton({ block }: { block: QRBlock }) {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) {
+        if (res.status === 404) {
+          setError('No master pack QR codes for this block.');
+          return;
+        }
         const body = await res.json().catch(() => ({}));
         const detail = (body as { detail?: unknown }).detail;
         setError(typeof detail === 'string' ? detail : 'Download failed');
@@ -99,8 +103,8 @@ function ParentBlockDownloadButton({ block }: { block: QRBlock }) {
   return (
     <div className="space-y-1">
       <Button variant="outline" size="sm" onClick={handleDownload} disabled={loading}>
-        {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-        {loading ? 'Preparing…' : 'MC QR'}
+        {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Layers className="h-4 w-4 mr-2" />}
+        {loading ? 'Preparing…' : 'MC'}
       </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
@@ -316,13 +320,10 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
         cell: ({ row }) => {
           const b = row.original;
           if (b.status !== 'completed') return null;
-          const showIcQr = b.download_available;
-          const showMcQr = !!b.master_pack_enabled;
-          if (!showIcQr && !showMcQr) return null;
           return (
-            <div className="flex flex-wrap items-start gap-2">
-              {showIcQr && <BlockDownloadButton block={b} />}
-              {showMcQr && <ParentBlockDownloadButton block={b} />}
+            <div className="flex gap-2">
+              <div>{b.download_available && <BlockDownloadButton block={b} />}</div>
+              <div><ParentBlockDownloadButton block={b} /></div>
             </div>
           );
         },
