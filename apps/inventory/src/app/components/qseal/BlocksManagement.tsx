@@ -41,6 +41,7 @@ const STATUS_BADGE: Record<BlockStatus, { label: string; className: string }> = 
   failed: { label: 'Failed', className: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' },
 };
 
+/** Child block ("IC QR") download — fetches a fresh signed URL each time. */
 function BlockDownloadButton({ block }: { block: QRBlock }) {
   const { download, loading, error } = useBlockDownload();
 
@@ -48,7 +49,7 @@ function BlockDownloadButton({ block }: { block: QRBlock }) {
     <div className="space-y-1">
       <Button variant="outline" size="sm" disabled={loading} onClick={() => download(block.id, `qr_${block.batch}.xlsx`)}>
         {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-        {loading ? 'Preparing…' : 'Download'}
+        {loading ? 'Preparing…' : 'IC QR'}
       </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
@@ -59,17 +60,25 @@ function BlockDownloadButton({ block }: { block: QRBlock }) {
 /*  Parent (Master Pack) download helper                              */
 /* ------------------------------------------------------------------ */
 
-function ParentBlockDownloadLink({ block }: { block: QRBlock }) {
+/** Master-pack / parent block ("MC QR") download. */
+function ParentBlockDownloadButton({ block }: { block: QRBlock }) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const handleDownload = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${environment.apiCoreUrl}/api/v1/qseal/blocks/${block.id}/parents/download`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!res.ok) throw new Error('Failed to fetch parent labels');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const detail = (body as { detail?: unknown }).detail;
+        setError(typeof detail === 'string' ? detail : 'Download failed');
+        return;
+      }
 
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -81,31 +90,32 @@ function ParentBlockDownloadLink({ block }: { block: QRBlock }) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      // Silently fail — the main download is the child block
+      setError('Download failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
+    <div className="space-y-1">
+      <Button variant="outline" size="sm" onClick={handleDownload} disabled={loading}>
+        {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+        {loading ? 'Preparing…' : 'MC QR'}
+      </Button>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+/** Tracker variant of the MC QR download: labelled with the master-pack size. */
+function ParentBlockDownloadLink({ block }: { block: QRBlock }) {
+  return (
     <div className="space-y-1 pt-1 border-t">
       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         <Layers className="h-3.5 w-3.5" />
         Master Pack{block.qseal_parent_count ? ` (${block.qseal_parent_count})` : ''}
       </div>
-      <Button variant="outline" size="sm" onClick={handleDownload} disabled={loading}>
-        {loading ? (
-          <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Preparing…
-          </>
-        ) : (
-          <>
-            <Download className="h-4 w-4 mr-2" />
-            Download Parent Block
-          </>
-        )}
-      </Button>
+      <ParentBlockDownloadButton block={block} />
     </div>
   );
 }
@@ -301,12 +311,20 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
       },
       {
         id: 'download',
-        header: () => <span className="sr-only">Download</span>,
+        header: () => <span>QR Files</span>,
         enableSorting: false,
         cell: ({ row }) => {
           const b = row.original;
-          if (b.status !== 'completed' || !b.download_available) return null;
-          return <BlockDownloadButton block={b} />;
+          if (b.status !== 'completed') return null;
+          const showIcQr = b.download_available;
+          const showMcQr = !!b.master_pack_enabled;
+          if (!showIcQr && !showMcQr) return null;
+          return (
+            <div className="flex flex-wrap items-start gap-2">
+              {showIcQr && <BlockDownloadButton block={b} />}
+              {showMcQr && <ParentBlockDownloadButton block={b} />}
+            </div>
+          );
         },
       },
       {
