@@ -2,13 +2,15 @@ name: Deploy UI to Railway (Dev)
 
 # Builds and deploys the single nginx image that serves all three UIs
 # (platform at /, inventory at /inventory/, admin at /admin/) to the
-# BW-dev project's `dev` environment.
+# `dev` environment of the BW-2.0 project (fd8e8c06-a0a1-4592-9d6e-9a63c6cfb090),
+# which is a replica of `staging` and deploys from this `dev` branch.
 #
 # The actual `nx build` happens INSIDE the Railway Docker build (multi-stage),
 # so CI only uploads source — no Node build runs in Actions.
 #
 # Trigger: ANY push/merge to `dev`.
-# Requires repo secret: RAILWAY_TOKEN_DEV (a BW-dev *project* token for the `dev` environment)
+# Requires repo secret: RAILWAY_TOKEN_DEV
+#   (a project token for BW-2.0 scoped to its `dev` environment)
 #
 # The API URLs the UI calls are baked in at image-build time from the service
 # variables NX_API_BASE_URL / NX_API_CORE_URL / NX_API_IDENTITY_URL, so changing
@@ -27,7 +29,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  RW_PROJECT_ID: d567a56d-48b5-4a48-8a2b-250cb88c4217
+  RW_PROJECT_ID: fd8e8c06-a0a1-4592-9d6e-9a63c6cfb090
   RW_ENVIRONMENT: dev
   RW_SERVICE: horizon-ui
 
@@ -81,7 +83,7 @@ jobs:
       - name: Smoke test public entry points
         continue-on-error: true
         run: |
-          for url in https://pollux.ciphercode.ai/ https://pollux.ciphercode.ai/healthz https://dev-admin.ciphercode.ai/; do
+          for url in https://horizon-ui-dev.up.railway.app/ https://horizon-ui-dev.up.railway.app/healthz; do
             code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url" || echo 000)
             echo "$url -> $code"
           done
