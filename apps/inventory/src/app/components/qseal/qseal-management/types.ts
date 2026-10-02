@@ -4,9 +4,9 @@ import type { useQSealManagement } from '../../../hooks/useQSealManagement';
 export type QSealView = 'products' | 'blocks' | 'sku_customization' | 'analytics' | 'activation' | 'aggregation' | 'product_settings';
 
 /**
- * Products-managment state. The shell owns this hook (rather than the Products
- * view) so the page-level header can drive Refresh / New Product / the QR-credit
- * summary, mirroring how `WMSManagement` owns the selected warehouse for
+ * Products-managment state. The shell owns this hook so the QR-credit summary in
+ * `QSealHeader` and the Products actions in `ProductsManagement` share one source
+ * of truth, mirroring how `WMSManagement` owns the selected warehouse for
  * `WMSHeader`.
  */
 export type QSealManagementState = ReturnType<typeof useQSealManagement>;

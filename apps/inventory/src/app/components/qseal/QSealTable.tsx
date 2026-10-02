@@ -52,12 +52,6 @@ export function QSealTable({
   onTableReady,
   serverPagination,
 }: QSealTableProps) {
-  const [tableInstance, setTableInstance] = React.useState<Table<QSealProductListItem> | null>(null);
-
-  React.useEffect(() => {
-    if (tableInstance && onTableReady) onTableReady(tableInstance);
-  }, [tableInstance, onTableReady]);
-
   const serverPaginationConfig = React.useMemo(() => {
     if (!serverPagination) return undefined;
     return {
@@ -239,10 +233,7 @@ export function QSealTable({
             initialPageSize: serverPagination?.pageSize ?? 20,
             serverPagination: serverPaginationConfig,
           }}
-          renderViewOptions={(table) => {
-            if (table !== tableInstance) setTableInstance(table);
-            return null;
-          }}
+          onTableReady={onTableReady}
           fixedHeader
           maxHeight="auto"/>
       </CardContent>

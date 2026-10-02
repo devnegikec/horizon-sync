@@ -1,24 +1,15 @@
-import { Plus, RefreshCw } from 'lucide-react';
-
-import { Button } from '@horizon-sync/ui/components/ui/button';
-
 import type { QSealCreditInfo } from '../../../types/qseal.types';
 
 interface QSealHeaderProps {
-  onRefresh: () => void;
-  onCreateProduct: () => void;
-  /**
-   * Refresh / New Product act on the products list, so they are only rendered on
-   * the Products view. The QR-credit summary applies to every view and always
-   * shows.
-   */
-  showProductActions?: boolean;
-  isLoading?: boolean;
   creditInfo?: QSealCreditInfo;
 }
 
-/** Page title block plus the QR-credit summary and the Products actions. */
-export function QSealHeader({ onRefresh, onCreateProduct, showProductActions = false, isLoading = false, creditInfo }: QSealHeaderProps) {
+/**
+ * Page title block plus the QR-credit summary. The per-view actions
+ * (Refresh / New Product) live with the view that owns them — e.g.
+ * `ProductsManagement` renders the Products actions in its own section heading.
+ */
+export function QSealHeader({ creditInfo }: QSealHeaderProps) {
   const creditPct = creditInfo ? Math.round((creditInfo.used_this_month / creditInfo.monthly_quota) * 100) : null;
 
   const creditColor =
@@ -37,28 +28,14 @@ export function QSealHeader({ onRefresh, onCreateProduct, showProductActions = f
         <p className="text-muted-foreground mt-1">Manage QR-enabled products, blocks, and activation tracking</p>
       </div>
 
-      <div className="flex items-center gap-3">
-        {creditInfo && (
-          <div className="hidden md:flex flex-col items-end text-sm">
-            <span className="text-muted-foreground">Monthly QR Credits</span>
-            <span className={`font-semibold ${creditColor}`}>
-              {creditInfo.remaining.toLocaleString()} / {creditInfo.monthly_quota.toLocaleString()} remaining
-            </span>
-          </div>
-        )}
-        {showProductActions && (
-          <>
-            <Button variant="outline" size="sm" onClick={onRefresh} disabled={isLoading} className="gap-2">
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            <Button variant="default" onClick={onCreateProduct} className="gap-2 shadow-sm">
-              <Plus className="h-4 w-4" />
-              New Product
-            </Button>
-          </>
-        )}
-      </div>
+      {creditInfo && (
+        <div className="hidden md:flex flex-col items-end text-sm">
+          <span className="text-muted-foreground">Monthly QR Credits</span>
+          <span className={`font-semibold ${creditColor}`}>
+            {creditInfo.remaining.toLocaleString()} / {creditInfo.monthly_quota.toLocaleString()} remaining
+          </span>
+        </div>
+      )}
     </div>
   );
 }

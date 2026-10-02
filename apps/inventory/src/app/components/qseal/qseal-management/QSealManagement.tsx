@@ -36,11 +36,7 @@ export function QSealManagement() {
 
   return (
     <ManagementContainer>
-      <QSealHeader onRefresh={management.refetch}
-        onCreateProduct={management.handleCreateProduct}
-        showProductActions={activeView === 'products'}
-        isLoading={management.loading}
-        creditInfo={management.creditInfo}/>
+      <QSealHeader creditInfo={management.creditInfo}/>
       <QSealNavigation activeView={activeView} canViewAnalytics={canViewAnalytics} onViewChange={setActiveView} />
       <QSealContent activeView={activeView}
         canViewAnalytics={canViewAnalytics}
