@@ -8,7 +8,6 @@ out-tsc
 # dependencies
 node_modules
 .codeant-pr-comments.json
-.env.local
 .deploy
 .codeant-pr-comments.json
 # IDEs and editors
@@ -56,4 +55,9 @@ vitest.config.*.timestamp*
 *.prompt.md
 .vercel
 test-results
+
+# env files
+.env.dev
+.env.stage
+.env.local
 

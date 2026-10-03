@@ -125,7 +125,7 @@ export function OrganizationStep() {
         <div className="text-center space-y-2">
           <p className="text-lg font-semibold">Setting up your organization...</p>
           <p className="text-sm text-muted-foreground">
-            Configuring currencies, chart of accounts, and default settings
+            Configuring currencies, and default settings
           </p>
         </div>
       </div>
