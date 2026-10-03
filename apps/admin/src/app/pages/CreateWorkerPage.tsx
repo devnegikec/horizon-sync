@@ -111,6 +111,7 @@ export function CreateWorkerPage() {
           data?: {
             error?: string;
             message?: string;
+            details?: { field: string; message: string }[];
             detail?: string | { field: string; message: string }[];
           };
         };
@@ -144,12 +145,27 @@ export function CreateWorkerPage() {
               setError('email', { message: serverMessage || 'A worker with this email already exists.' });
             }
           }
-        } else if (err.status === 422 && Array.isArray(err.data?.detail)) {
-          for (const fieldErr of err.data.detail) {
-            const fieldName = fieldErr.field as keyof WorkerCreateFormValues;
-            if (fieldName in workerCreateSchema.shape) {
-              setError(fieldName, { message: fieldErr.message });
+        } else if (err.status === 422) {
+          // Identity validation contract: { error: VALIDATION_ERROR, message, details: [...] }.
+          // Legacy FastAPI contract: { detail: [{ field, message }] }.
+          const fieldErrors = Array.isArray(err.data?.details)
+            ? err.data.details
+            : Array.isArray(err.data?.detail)
+              ? err.data.detail
+              : null;
+          if (fieldErrors) {
+            for (const fieldErr of fieldErrors) {
+              const fieldName = fieldErr.field as keyof WorkerCreateFormValues;
+              if (fieldName in workerCreateSchema.shape) {
+                setError(fieldName, { message: fieldErr.message });
+              }
             }
+          } else {
+            toast({
+              variant: 'destructive',
+              title: 'Error',
+              description: err.data?.message ?? 'The submitted data is invalid. Please check your input.',
+            });
           }
         } else {
           toast({
