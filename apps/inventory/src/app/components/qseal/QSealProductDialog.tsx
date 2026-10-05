@@ -29,6 +29,18 @@ interface FormValues {
   width_mm: string;
   height_mm: string;
   weight_grams: string;
+  items_per_ic_pack: string;
+  ic_pack_unit_name: string;
+  ic_pack_length_mm: string;
+  ic_pack_width_mm: string;
+  ic_pack_height_mm: string;
+  ic_pack_weight_grams: string;
+  items_per_master_pack: string;
+  master_pack_unit_name: string;
+  master_pack_length_mm: string;
+  master_pack_width_mm: string;
+  master_pack_height_mm: string;
+  master_pack_weight_grams: string;
   landing_page: string;
   client_product_auth_url: string;
   activation_method: string;
@@ -84,6 +96,18 @@ const DEFAULT_VALUES: FormValues = {
   width_mm: '',
   height_mm: '',
   weight_grams: '',
+  items_per_ic_pack: '',
+  ic_pack_unit_name: '',
+  ic_pack_length_mm: '',
+  ic_pack_width_mm: '',
+  ic_pack_height_mm: '',
+  ic_pack_weight_grams: '',
+  items_per_master_pack: '',
+  master_pack_unit_name: '',
+  master_pack_length_mm: '',
+  master_pack_width_mm: '',
+  master_pack_height_mm: '',
+  master_pack_weight_grams: '',
   landing_page: '',
   client_product_auth_url: '',
   activation_method: 'pre',
@@ -437,6 +461,110 @@ function PackagingDetailsSection({ register, errors }: PackagingDetailsSectionPr
   );
 }
 
+// ─── Inner Carton (IC) & Master Pack (MC) ─────────────────────────────────────
+
+interface PackFieldsProps {
+  register: ReturnType<typeof useForm<FormValues>>['register'];
+  unitField: keyof FormValues;
+  itemsField: keyof FormValues;
+  lengthField: keyof FormValues;
+  widthField: keyof FormValues;
+  heightField: keyof FormValues;
+  weightField: keyof FormValues;
+  itemsLabel: string;
+  unitPlaceholder: string;
+}
+
+/** Shared dimension/weight inputs for an inner-carton or master-pack group. */
+function PackFields({
+  register,
+  unitField,
+  itemsField,
+  lengthField,
+  widthField,
+  heightField,
+  weightField,
+  itemsLabel,
+  unitPlaceholder,
+}: PackFieldsProps) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor={unitField}
+            label="Unit Name"
+            hint="Name of this packaging unit, e.g. Inner Carton, Master Pack" />
+          <Input id={unitField} placeholder={unitPlaceholder} {...register(unitField)} />
+        </div>
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor={itemsField}
+            label={itemsLabel}
+            hint="Number of base units contained in one pack" />
+          <Input id={itemsField} type="number" min={1} placeholder="e.g. 10" {...register(itemsField)} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor={lengthField} label="Length (mm)" hint="Length of the pack in millimeters" />
+          <Input id={lengthField} type="number" min={0} placeholder="e.g. 100" {...register(lengthField)} />
+        </div>
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor={widthField} label="Width (mm)" hint="Width of the pack in millimeters" />
+          <Input id={widthField} type="number" min={0} placeholder="e.g. 50" {...register(widthField)} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor={heightField} label="Height (mm)" hint="Height of the pack in millimeters" />
+          <Input id={heightField} type="number" min={0} placeholder="e.g. 30" {...register(heightField)} />
+        </div>
+        <div className="space-y-1">
+          <LabelWithTooltip htmlFor={weightField} label="Weight (g)" hint="Gross weight of the pack in grams" />
+          <Input id={weightField} type="number" min={0} placeholder="e.g. 250" {...register(weightField)} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+interface PackSectionProps {
+  register: ReturnType<typeof useForm<FormValues>>['register'];
+}
+
+function InnerCartonSection({ register }: PackSectionProps) {
+  return (
+    <div className="space-y-3">
+      <SectionHeader icon={Package} title="Inner Carton (IC) Pack" />
+      <PackFields register={register}
+        unitField="ic_pack_unit_name"
+        itemsField="items_per_ic_pack"
+        lengthField="ic_pack_length_mm"
+        widthField="ic_pack_width_mm"
+        heightField="ic_pack_height_mm"
+        weightField="ic_pack_weight_grams"
+        itemsLabel="Items per IC Pack"
+        unitPlaceholder="e.g. Inner Carton" />
+    </div>
+  );
+}
+
+function MasterPackSection({ register }: PackSectionProps) {
+  return (
+    <div className="space-y-3">
+      <SectionHeader icon={Package} title="Master Pack (MC)" />
+      <PackFields register={register}
+        unitField="master_pack_unit_name"
+        itemsField="items_per_master_pack"
+        lengthField="master_pack_length_mm"
+        widthField="master_pack_width_mm"
+        heightField="master_pack_height_mm"
+        weightField="master_pack_weight_grams"
+        itemsLabel="Items per Master Pack"
+        unitPlaceholder="e.g. Master Pack" />
+    </div>
+  );
+}
+
 // ─── Product URLs ─────────────────────────────────────────────────────────────
 
 interface ProductUrlsSectionProps {
@@ -625,6 +753,7 @@ function normalizeSerialNumberType(value: string | null | undefined): string {
   return legacyTypes[normalized ?? ''] ?? normalized ?? 'R6DAN';
 }
 
+// eslint-disable-next-line complexity
 function buildPayload(data: FormValues): CreateQSealProductPayload {
   const n = emptyToNull;
   return {
@@ -637,6 +766,18 @@ function buildPayload(data: FormValues): CreateQSealProductPayload {
       width_mm: data.width_mm ? Number(data.width_mm) : null,
       height_mm: data.height_mm ? Number(data.height_mm) : null,
       weight_grams: data.weight_grams ? Number(data.weight_grams) : null,
+      items_per_ic_pack: data.items_per_ic_pack ? Number(data.items_per_ic_pack) : null,
+      ic_pack_unit_name: n(data.ic_pack_unit_name),
+      ic_pack_length_mm: data.ic_pack_length_mm ? Number(data.ic_pack_length_mm) : null,
+      ic_pack_width_mm: data.ic_pack_width_mm ? Number(data.ic_pack_width_mm) : null,
+      ic_pack_height_mm: data.ic_pack_height_mm ? Number(data.ic_pack_height_mm) : null,
+      ic_pack_weight_grams: data.ic_pack_weight_grams ? Number(data.ic_pack_weight_grams) : null,
+      items_per_master_pack: data.items_per_master_pack ? Number(data.items_per_master_pack) : null,
+      master_pack_unit_name: n(data.master_pack_unit_name),
+      master_pack_length_mm: data.master_pack_length_mm ? Number(data.master_pack_length_mm) : null,
+      master_pack_width_mm: data.master_pack_width_mm ? Number(data.master_pack_width_mm) : null,
+      master_pack_height_mm: data.master_pack_height_mm ? Number(data.master_pack_height_mm) : null,
+      master_pack_weight_grams: data.master_pack_weight_grams ? Number(data.master_pack_weight_grams) : null,
     },
     brand_id: n(data.brand_id),
     gtin: n(data.gtin),
@@ -661,6 +802,7 @@ function optionalNumber(value: number | null | undefined, fallback: string): str
   return value != null ? String(value) : fallback;
 }
 
+// eslint-disable-next-line complexity
 function getInitialValues(product: QSealProduct): FormValues {
   const pd = product.packaging_details;
   return {
@@ -675,6 +817,18 @@ function getInitialValues(product: QSealProduct): FormValues {
     width_mm: optionalNumber(pd?.width_mm, ''),
     height_mm: optionalNumber(pd?.height_mm, ''),
     weight_grams: optionalNumber(pd?.weight_grams, ''),
+    items_per_ic_pack: optionalNumber(pd?.items_per_ic_pack, ''),
+    ic_pack_unit_name: optionalString(pd?.ic_pack_unit_name, ''),
+    ic_pack_length_mm: optionalNumber(pd?.ic_pack_length_mm, ''),
+    ic_pack_width_mm: optionalNumber(pd?.ic_pack_width_mm, ''),
+    ic_pack_height_mm: optionalNumber(pd?.ic_pack_height_mm, ''),
+    ic_pack_weight_grams: optionalNumber(pd?.ic_pack_weight_grams, ''),
+    items_per_master_pack: optionalNumber(pd?.items_per_master_pack, ''),
+    master_pack_unit_name: optionalString(pd?.master_pack_unit_name, ''),
+    master_pack_length_mm: optionalNumber(pd?.master_pack_length_mm, ''),
+    master_pack_width_mm: optionalNumber(pd?.master_pack_width_mm, ''),
+    master_pack_height_mm: optionalNumber(pd?.master_pack_height_mm, ''),
+    master_pack_weight_grams: optionalNumber(pd?.master_pack_weight_grams, ''),
     landing_page: nullToEmpty(product.landing_page),
     client_product_auth_url: nullToEmpty(product.client_product_auth_url),
     activation_method: optionalString(product.activation_method, 'pre'),
@@ -941,6 +1095,10 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
           shelfLifeError={shelfLifeError} />
         <Separator />
         <PackagingDetailsSection register={register} errors={errors} />
+        <Separator />
+        <InnerCartonSection register={register} />
+        <Separator />
+        <MasterPackSection register={register} />
         <Separator />
         <ProductUrlsSection register={register} errors={errors} />
         <Separator />
