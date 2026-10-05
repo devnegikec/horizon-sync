@@ -9,7 +9,7 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { environment } from '../../../../environments/environment';
 import { UserService, type User, type UsersResponse } from '../../../services/user.service';
-import { dataSyncService, type FeatureSummary, type OutboundOrderOption, type PickListOption, type ReceiveAsnStep, type ResetPickListOptions, type SyncableFeature, type WarehouseUserAssignment } from '../services/dataSyncService';
+import { dataSyncService, type FeatureSummary, type OutboundAutomationOptions, type OutboundAutomationStep, type OutboundOrderOption, type PickListOption, type ReceiveAsnStep, type ResetPickListOptions, type SyncableFeature, type WarehouseUserAssignment } from '../services/dataSyncService';
 
 export interface DataSyncSettingsProps {
   accessToken: string;
@@ -31,6 +31,14 @@ interface FeatureRowProps {
 }
 
 interface ReceiveAsnRow {
+  item_id: string;
+  batch: string;
+  master_pack_size: string;
+  no_of_cases: string;
+  quantity: string;
+}
+
+interface OutboundAutomationRow {
   item_id: string;
   batch: string;
   master_pack_size: string;
@@ -152,6 +160,29 @@ const INBOUND_STEPS: Array<{ key: ReceiveAsnStep; title: string; description: st
   },
 ];
 
+const OUTBOUND_STEPS: Array<{ key: OutboundAutomationStep; title: string; description: string }> = [
+  {
+    key: 'asn',
+    title: 'Create internal-transfer ASN',
+    description: 'Create and confirm an internal-transfer ASN (source → target warehouse). Confirming auto-creates the source outbound order.',
+  },
+  {
+    key: 'order_decision',
+    title: 'Confirm or reject order',
+    description: 'Confirm the auto-created outbound order, or reject (cancel) it.',
+  },
+  {
+    key: 'pick_lists',
+    title: 'Create pick lists & assign workers',
+    description: 'Generate pick lists from the confirmed order — one per selected worker.',
+  },
+  {
+    key: 'pick_confirm',
+    title: 'Confirm pick lists',
+    description: 'Accept each generated pick list for its assigned worker.',
+  },
+];
+
 function FeatureRow({ feature, checked, disabled, onToggle }: FeatureRowProps) {
   const inputId = `data-sync-${feature.key}`;
   return (
@@ -181,10 +212,22 @@ function syncResultBadge(summary?: FeatureSummary): string {
     return putAwaySummaryLabel(summary.put_away_count, summary.put_away_status);
   }
   if (summary.reset !== undefined) {
-    const plural = summary.reset === 1 ? '' : 's';
-    return `${summary.reset} pick list${plural} reset${summary.orders_reset ? ` · ${summary.orders_reset} order(s)` : ''}`;
+    return `${summary.reset} pick list${summary.reset === 1 ? '' : 's'} reset${summary.orders_reset ? ` · ${summary.orders_reset} order(s)` : ''}`;
+  }
+  if (summary.order_no !== undefined) {
+    return outboundSummaryLabel(summary);
   }
   return `${summary.created ?? 0} created · ${summary.skipped ?? 0} skipped`;
+}
+
+/** Badge copy for an Outbound Automation sync result. */
+function outboundSummaryLabel(summary: FeatureSummary): string {
+  const parts = [summary.order_no];
+  if (summary.order_status) parts.push(summary.order_status);
+  if (summary.pick_list_count !== undefined) {
+    parts.push(`${summary.pick_list_count} pick list${summary.pick_list_count === 1 ? '' : 's'}`);
+  }
+  return parts.filter(Boolean).join(' · ');
 }
 
 function hasPutAwayLists(summary?: FeatureSummary): boolean {
@@ -396,6 +439,27 @@ function buildResetPicklistSyncInput(orderNo: string, pickListNo: string): Reset
   if (orderNo.trim()) options.order_no = orderNo.trim();
   if (pickListNo.trim()) options.pick_list_no = pickListNo.trim();
   return options;
+}
+
+interface OutboundAutomationSyncInput {
+  steps: Record<string, boolean>;
+  rows: OutboundAutomationRow[];
+  sourceWarehouseId: string;
+  targetWarehouseId: string;
+  decision: 'confirm' | 'reject';
+  workerIds: string[];
+}
+
+/** Outbound-Automation block of the sync request, shaped for the data-sync service. */
+function buildOutboundAutomationSyncInput(input: OutboundAutomationSyncInput): OutboundAutomationOptions {
+  return {
+    steps: OUTBOUND_STEPS.filter((step) => input.steps[step.key]).map((step) => step.key),
+    items: syncItemRows(input.rows),
+    source_warehouse_id: input.sourceWarehouseId || undefined,
+    target_warehouse_id: input.targetWarehouseId || undefined,
+    decision: input.decision,
+    worker_ids: input.workerIds,
+  };
 }
 
 interface WarehouseOption {
@@ -758,6 +822,240 @@ function InboundStepFields(props: InboundStepFieldsProps) {
   return null;
 }
 
+/** Everything the outbound-automation panels need, threaded from DataSyncSettings. */
+interface OutboundStepFieldsProps {
+  stepKey: OutboundAutomationStep;
+  canEdit: boolean;
+  syncing: boolean;
+  itemOptions: ReceiveAsnItemOption[];
+  rows: OutboundAutomationRow[];
+  onUpdateRow: (idx: number, field: keyof OutboundAutomationRow, value: string) => void;
+  onAddRow: () => void;
+  onRemoveRow: (idx: number) => void;
+  onImportCsv: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  csvInputRef: React.RefObject<HTMLInputElement | null>;
+  warehouses: WarehouseOption[];
+  sourceWarehouseId: string;
+  onSourceWarehouseChange: (value: string) => void;
+  targetWarehouseId: string;
+  onTargetWarehouseChange: (value: string) => void;
+  decision: 'confirm' | 'reject';
+  onDecisionChange: (value: 'confirm' | 'reject') => void;
+  workersLoading: boolean;
+  workersError: string | null;
+  assignments: WarehouseUserAssignment[];
+  selectedWorkerIds: string[];
+  onToggleWorker: (userId: string, checked: boolean) => void;
+  workerNames: Record<string, string>;
+  requiresWorker: boolean;
+}
+
+function OutboundAsnFields({
+  canEdit,
+  syncing,
+  itemOptions,
+  rows,
+  onUpdateRow,
+  onAddRow,
+  onRemoveRow,
+  onImportCsv,
+  csvInputRef,
+  warehouses,
+  sourceWarehouseId,
+  onSourceWarehouseChange,
+  targetWarehouseId,
+  onTargetWarehouseChange,
+}: OutboundStepFieldsProps) {
+  const locked = !canEdit || syncing;
+
+  return (
+    <div className="mt-3 space-y-3 border-t border-border pt-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Source Warehouse</Label>
+          <Select value={sourceWarehouseId} onValueChange={onSourceWarehouseChange} disabled={locked}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select source warehouse" />
+            </SelectTrigger>
+            <SelectContent>
+              {warehouses.map((wh) => (
+                <SelectItem key={wh.id} value={wh.id}>
+                  {wh.name} ({wh.code ?? wh.id.slice(0, 8)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Target Warehouse</Label>
+          <Select value={targetWarehouseId} onValueChange={onTargetWarehouseChange} disabled={locked}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select target warehouse" />
+            </SelectTrigger>
+            <SelectContent>
+              {warehouses.map((wh) => (
+                <SelectItem key={wh.id} value={wh.id}>
+                  {wh.name} ({wh.code ?? wh.id.slice(0, 8)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {rows.map((row, idx) => (
+          <div key={idx} className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.3fr)_64px_64px_72px_36px] items-end gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Item</Label>
+              <Select value={row.item_id} onValueChange={(v) => onUpdateRow(idx, 'item_id', v)} disabled={locked}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {itemOptions.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.item_name} ({itemOptionSuffix(option)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Batch</Label>
+              <Input value={row.batch} onChange={(e) => onUpdateRow(idx, 'batch', e.target.value)} disabled={locked} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Pack</Label>
+              <Input type="number" value={row.master_pack_size} placeholder="Auto" disabled />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Box</Label>
+              <Input type="number" min={1} value={row.no_of_cases} onChange={(e) => onUpdateRow(idx, 'no_of_cases', e.target.value)} disabled={locked} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Qty</Label>
+              <Input type="number" min={1} value={row.quantity} onChange={(e) => onUpdateRow(idx, 'quantity', e.target.value)} disabled={locked} />
+            </div>
+            <button type="button"
+              onClick={() => onRemoveRow(idx)}
+              disabled={locked}
+              aria-label="Remove item"
+              title="Remove item"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive disabled:pointer-events-none disabled:opacity-40">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={onAddRow} disabled={locked} className="gap-1">
+            <Plus className="h-3.5 w-3.5" />
+            Add item
+          </Button>
+          <Button variant="outline"
+            size="sm"
+            onClick={() => csvInputRef.current?.click()}
+            disabled={locked || itemOptions.length === 0}
+            className="gap-1">
+            <FileUp className="h-3.5 w-3.5" />
+            Import CSV
+          </Button>
+          <Input ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            onChange={onImportCsv}
+            className="hidden" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OutboundDecisionFields({
+  canEdit,
+  syncing,
+  decision,
+  onDecisionChange,
+}: OutboundStepFieldsProps) {
+  const locked = !canEdit || syncing;
+
+  return (
+    <div className="mt-3 space-y-2 border-t border-border pt-3">
+      <Label htmlFor="outbound-order-decision">Order decision</Label>
+      <Select value={decision} onValueChange={(value) => onDecisionChange(value === 'reject' ? 'reject' : 'confirm')} disabled={locked}>
+        <SelectTrigger id="outbound-order-decision" className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="confirm">Confirm</SelectItem>
+          <SelectItem value="reject">Reject</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function OutboundWorkersFields({
+  canEdit,
+  syncing,
+  sourceWarehouseId,
+  workersLoading,
+  workersError,
+  assignments,
+  selectedWorkerIds,
+  onToggleWorker,
+  workerNames,
+  requiresWorker,
+}: OutboundStepFieldsProps) {
+  const locked = !canEdit || syncing;
+  const count = selectedWorkerIds.length;
+  const triggerDisabled = locked || workersLoading || !sourceWarehouseId;
+
+  return (
+    <div className="mt-3 space-y-2 border-t border-border pt-3">
+      <Label htmlFor="outbound-pick-workers">Pick workers *</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button id="outbound-pick-workers"
+            type="button"
+            variant="outline"
+            className="w-full justify-between font-normal"
+            disabled={triggerDisabled}>
+            <span className="truncate">{workerTriggerLabel(workersLoading, count)}</span>
+            <span className="ml-2 text-muted-foreground">⌄</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2" align="start">
+          <WorkerPickerList workersError={workersError}
+            assignments={assignments}
+            hasTarget={Boolean(sourceWarehouseId)}
+            selectedWorkerIds={selectedWorkerIds}
+            onToggleWorker={onToggleWorker}
+            workerNames={workerNames} />
+        </PopoverContent>
+      </Popover>
+      {workersError && (
+        <p className="text-xs text-destructive">{workersError}</p>
+      )}
+      {requiresWorker && count === 0 && (
+        <p className="text-xs text-destructive">Select at least one active worker before syncing.</p>
+      )}
+      <p className="text-xs text-muted-foreground">
+        Select one or more active workers from the source warehouse. Each worker receives a separate pick list.
+      </p>
+    </div>
+  );
+}
+
+/** The step-specific fields shown under a selected outbound step. */
+function OutboundStepFields(props: OutboundStepFieldsProps) {
+  const { stepKey } = props;
+  if (stepKey === 'asn') return <OutboundAsnFields {...props} />;
+  if (stepKey === 'order_decision') return <OutboundDecisionFields {...props} />;
+  if (stepKey === 'pick_lists') return <OutboundWorkersFields {...props} />;
+  return null;
+}
+
 /** Loading / error / empty states for the sync settings body. */
 function SyncBody({ loading, error, isEmpty, onRetry, children }: {
   loading: boolean;
@@ -908,10 +1206,26 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   const [workersLoading, setWorkersLoading] = React.useState(false);
   const [workersError, setWorkersError] = React.useState<string | null>(null);
   const receiveAsnCsvInputRef = React.useRef<HTMLInputElement>(null);
+  const outboundCsvInputRef = React.useRef<HTMLInputElement>(null);
   const [resetPicklistOrderNo, setResetPicklistOrderNo] = React.useState('');
   const [resetPicklistPickListNo, setResetPicklistPickListNo] = React.useState('');
   const [orderOptions, setOrderOptions] = React.useState<OutboundOrderOption[]>([]);
   const [pickListOptions, setPickListOptions] = React.useState<PickListOption[]>([]);
+  const [outboundSteps, setOutboundSteps] = React.useState<Record<string, boolean>>({
+    asn: true,
+    order_decision: true,
+    pick_lists: true,
+    pick_confirm: false,
+  });
+  const [outboundItems, setOutboundItems] = React.useState<OutboundAutomationRow[]>([]);
+  const [outboundSourceWarehouseId, setOutboundSourceWarehouseId] = React.useState('');
+  const [outboundTargetWarehouseId, setOutboundTargetWarehouseId] = React.useState('');
+  const [outboundDecision, setOutboundDecision] = React.useState<'confirm' | 'reject'>('confirm');
+  const [outboundAssignments, setOutboundAssignments] = React.useState<WarehouseUserAssignment[]>([]);
+  const [outboundSelectedWorkerIds, setOutboundSelectedWorkerIds] = React.useState<string[]>([]);
+  const [outboundWorkerNames, setOutboundWorkerNames] = React.useState<Record<string, string>>({});
+  const [outboundWorkersLoading, setOutboundWorkersLoading] = React.useState(false);
+  const [outboundWorkersError, setOutboundWorkersError] = React.useState<string | null>(null);
   const locked = !canEdit || syncing;
 
   const load = React.useCallback(async () => {
@@ -944,19 +1258,23 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
           const data = await response.json();
           const list: Array<{ id: string; name: string; code?: string }> = data.warehouses || [];
           setWarehouses(list);
-          if (!selectedWarehouseId && list.length > 0) {
-            setSelectedWarehouseId(list[0].id);
-          }
-          if (!receiveAsnTargetWarehouseId && list.length > 0) {
-            setReceiveAsnTargetWarehouseId(list[0].id);
-          }
         }
       } catch {
         // warehouse selector is best-effort
       }
     };
     void fetchWarehouses();
-  }, [accessToken]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [accessToken]);
+
+  // Default the four warehouse selectors once the list is loaded. Functional
+  // updates keep this effect independent of the individual selector state.
+  React.useEffect(() => {
+    if (warehouses.length === 0) return;
+    setSelectedWarehouseId((prev) => prev || warehouses[0].id);
+    setReceiveAsnTargetWarehouseId((prev) => prev || warehouses[0].id);
+    setOutboundTargetWarehouseId((prev) => prev || warehouses[0].id);
+    setOutboundSourceWarehouseId((prev) => prev || (warehouses[1]?.id ?? warehouses[0].id));
+  }, [warehouses]);
 
   React.useEffect(() => {
     setSelectedPutAwayWorkerIds([]);
@@ -988,6 +1306,37 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
 
     return () => { cancelled = true; };
   }, [accessToken, receiveAsnTargetWarehouseId]);
+
+  React.useEffect(() => {
+    setOutboundSelectedWorkerIds([]);
+    setOutboundAssignments([]);
+    setOutboundWorkersError(null);
+    if (!accessToken || !outboundSourceWarehouseId) return;
+
+    let cancelled = false;
+    setOutboundWorkersLoading(true);
+    void Promise.allSettled([
+      dataSyncService.listWarehouseUsers(accessToken, outboundSourceWarehouseId),
+      UserService.getUsers(1, 100, accessToken),
+    ]).then(([assignmentsResult, usersResult]) => {
+      if (cancelled) return;
+      if (assignmentsResult.status === 'rejected') {
+        setOutboundWorkersError(loadFailureMessage(assignmentsResult.reason, 'Failed to load workers for the selected warehouse.'));
+        return;
+      }
+      const assignments = Array.isArray(assignmentsResult.value) ? assignmentsResult.value : [];
+      const users = usersFromResult(usersResult);
+      setOutboundAssignments(assignments.filter((assignment) => assignment.user_id));
+      setOutboundWorkerNames(Object.fromEntries(users.map((user) => [user.id, workerNameFrom(user)])));
+      if (usersResult.status === 'rejected') {
+        setOutboundWorkersError('Workers loaded, but their names could not be loaded. User IDs are shown instead.');
+      }
+    }).finally(() => {
+      if (!cancelled) setOutboundWorkersLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [accessToken, outboundSourceWarehouseId]);
 
   React.useEffect(() => {
     const fetchItems = async () => {
@@ -1097,6 +1446,58 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
     });
   };
 
+  const toggleOutboundStep = (key: string, checked: boolean) => {
+    setOutboundSteps((prev) => {
+      const next = { ...prev, [key]: checked };
+      if (!checked) {
+        const idx = OUTBOUND_STEPS.findIndex((step) => step.key === key);
+        for (let i = idx + 1; i < OUTBOUND_STEPS.length; i++) {
+          next[OUTBOUND_STEPS[i].key] = false;
+        }
+      }
+      return next;
+    });
+  };
+
+  const updateOutboundItem = (idx: number, field: keyof OutboundAutomationRow, value: string) => {
+    setOutboundItems((prev) => prev.map((row, i) => (i === idx ? applyReceiveAsnItemChange(row, field, value, items) : row)));
+  };
+
+  const addOutboundItem = () => {
+    setOutboundItems((prev) => [...prev, { item_id: '', batch: '', master_pack_size: '', no_of_cases: '1', quantity: '' }]);
+  };
+
+  const removeOutboundItem = (idx: number) => {
+    setOutboundItems((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const importOutboundItems = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const importedRows = parseReceiveAsnCsv(String(reader.result ?? ''));
+        const rows = importedRows.map((csvRow, index) => receiveAsnRowFromCsv(csvRow, index + 2, items));
+        setOutboundItems(rows);
+        toast({ title: 'Transfer items imported', description: `${rows.length} item${rows.length === 1 ? '' : 's'} loaded from ${file.name}.` });
+      } catch (err) {
+        toast({
+          title: 'Transfer CSV import failed',
+          description: err instanceof Error ? err.message : 'Could not import transfer items.',
+          variant: 'destructive',
+        });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const toggleOutboundWorker = (userId: string, checked: boolean) => {
+    setOutboundSelectedWorkerIds((current) => (checked ? [...current, userId] : current.filter((id) => id !== userId)));
+  };
+
   const handleSync = async () => {
     if (selectedKeys.length === 0) return;
     setSyncing(true);
@@ -1125,6 +1526,16 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
         selected['reset_picklist']
           ? buildResetPicklistSyncInput(resetPicklistOrderNo, resetPicklistPickListNo)
           : undefined,
+        selected['outbound_automation']
+          ? buildOutboundAutomationSyncInput({
+            steps: outboundSteps,
+            rows: outboundItems,
+            sourceWarehouseId: outboundSourceWarehouseId,
+            targetWarehouseId: outboundTargetWarehouseId,
+            decision: outboundDecision,
+            workerIds: outboundSelectedWorkerIds,
+          })
+          : undefined,
       );
       setResults(features.filter((feature) => selected[feature.key]).map((feature) => featureResultFrom(feature, result)));
       toast({
@@ -1144,7 +1555,9 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
 
   const putAwayRequiresWorker = selected['receive_asn'] && receiveAsnSteps.put_away;
   const resetPicklistRequiresId = selected['reset_picklist'] && !resetPicklistOrderNo.trim() && !resetPicklistPickListNo.trim();
-  const syncDisabled = !canEdit || syncing || selectedKeys.length === 0 || Boolean(putAwayRequiresWorker && selectedPutAwayWorkerIds.length === 0) || resetPicklistRequiresId;
+  const outboundRequiresWorker = selected['outbound_automation'] && outboundSteps.pick_lists;
+  const outboundRequiresItems = selected['outbound_automation'] && outboundSteps.asn && outboundItems.filter((row) => row.item_id).length === 0;
+  const syncDisabled = !canEdit || syncing || selectedKeys.length === 0 || Boolean(putAwayRequiresWorker && selectedPutAwayWorkerIds.length === 0) || resetPicklistRequiresId || Boolean(outboundRequiresWorker && outboundSelectedWorkerIds.length === 0) || outboundRequiresItems;
 
   return (
     <Card>
@@ -1247,6 +1660,64 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
 
 
 
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {selected['outbound_automation'] && (
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <p className="text-xs text-muted-foreground">
+                  Outbound Automation runs the selected steps in sequence — each step depends on the previous one.
+                </p>
+
+                {OUTBOUND_STEPS.map((step, index) => {
+                  const stepSelected = Boolean(outboundSteps[step.key]);
+                  const previousSelected =
+                    index === 0 || Boolean(outboundSteps[OUTBOUND_STEPS[index - 1].key]);
+                  return (
+                    <div key={step.key} className="rounded-md border border-border bg-muted/20 p-3">
+                      <div className="flex items-start gap-3">
+                        <Checkbox id={`outbound-step-${step.key}`}
+                          checked={stepSelected}
+                          disabled={!canEdit || syncing || !previousSelected}
+                          onCheckedChange={(value) => toggleOutboundStep(step.key, value === true)}
+                          className="mt-0.5" />
+                        <Label htmlFor={`outbound-step-${step.key}`} className="flex cursor-pointer flex-col gap-0.5">
+                          <span className="text-sm font-medium">
+                            Step {index + 1}: {step.title}
+                          </span>
+                          <span className="text-xs font-normal text-muted-foreground">{step.description}</span>
+                        </Label>
+                      </div>
+
+                      {stepSelected && (
+                        <OutboundStepFields stepKey={step.key}
+                          canEdit={canEdit}
+                          syncing={syncing}
+                          itemOptions={items}
+                          rows={outboundItems}
+                          onUpdateRow={updateOutboundItem}
+                          onAddRow={addOutboundItem}
+                          onRemoveRow={removeOutboundItem}
+                          onImportCsv={importOutboundItems}
+                          csvInputRef={outboundCsvInputRef}
+                          warehouses={warehouses}
+                          sourceWarehouseId={outboundSourceWarehouseId}
+                          onSourceWarehouseChange={setOutboundSourceWarehouseId}
+                          targetWarehouseId={outboundTargetWarehouseId}
+                          onTargetWarehouseChange={setOutboundTargetWarehouseId}
+                          decision={outboundDecision}
+                          onDecisionChange={setOutboundDecision}
+                          workersLoading={outboundWorkersLoading}
+                          workersError={outboundWorkersError}
+                          assignments={outboundAssignments}
+                          selectedWorkerIds={outboundSelectedWorkerIds}
+                          onToggleWorker={toggleOutboundWorker}
+                          workerNames={outboundWorkerNames}
+                          requiresWorker={outboundRequiresWorker} />
+                      )}
                     </div>
                   );
                 })}
