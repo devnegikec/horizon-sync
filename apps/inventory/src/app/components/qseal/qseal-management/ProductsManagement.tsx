@@ -10,16 +10,18 @@ import { QSealProductDialog } from '../QSealProductDialog';
 import { QSealStats } from '../QSealStats';
 import { QSealTable } from '../QSealTable';
 
+import { ProductsBulkActions } from './ProductsBulkActions';
 import type { QSealContentProps } from './types';
 
 interface ProductsHeadingProps {
   loading: boolean;
   onRefresh: () => void;
   onCreateProduct: () => void;
+  bulkActions?: React.ReactNode;
 }
 
 /** Section heading: title and subtitle on the left, Refresh and New Product on the right. */
-function ProductsHeading({ loading, onRefresh, onCreateProduct }: ProductsHeadingProps) {
+function ProductsHeading({ loading, onRefresh, onCreateProduct, bulkActions }: ProductsHeadingProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -31,6 +33,7 @@ function ProductsHeading({ loading, onRefresh, onCreateProduct }: ProductsHeadin
           <RefreshCw className={loading ? 'h-3.5 w-3.5 animate-spin' : 'h-3.5 w-3.5'} />
           Refresh
         </Button>
+        {bulkActions}
         <Button size="sm" className="gap-2" onClick={onCreateProduct}>
           <Plus className="h-4 w-4" />
           New Product
@@ -73,7 +76,8 @@ export function ProductsManagement({ management }: QSealContentProps) {
     <div className="space-y-6">
       <ProductsHeading loading={loading}
         onRefresh={management.refetch}
-        onCreateProduct={handleCreateProduct}/>
+        onCreateProduct={handleCreateProduct}
+        bulkActions={<ProductsBulkActions filters={filters} onImported={management.refetch} />}/>
 
       <QSealStats total={stats.total} active={stats.active} totalQRCodes={stats.totalQRCodes} totalScans={stats.totalScans} />
 
