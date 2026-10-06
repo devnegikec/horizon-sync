@@ -19,6 +19,11 @@ export interface FeatureSummary {
   put_away_status?: string;
   reset?: number;
   orders_reset?: number;
+  asn_no?: string;
+  order_no?: string;
+  order_status?: string;
+  pick_list_count?: number;
+  pick_list_nos?: string[];
   details?: Array<{ pick_list_no: string; status: string }>;
 }
 
@@ -58,6 +63,26 @@ export interface ResetPickListOptions {
   pick_list_id?: string;
   order_no?: string;
   pick_list_no?: string;
+}
+
+export interface OutboundAutomationItemConfig {
+  item_id?: string;
+  sku?: string;
+  batch?: string;
+  quantity: number;
+  no_of_cases?: number;
+  master_pack_size?: number;
+}
+
+export type OutboundAutomationStep = 'asn' | 'order_decision' | 'pick_lists' | 'pick_confirm';
+
+export interface OutboundAutomationOptions {
+  steps: OutboundAutomationStep[];
+  items: OutboundAutomationItemConfig[];
+  source_warehouse_id?: string;
+  target_warehouse_id?: string;
+  decision: 'confirm' | 'reject';
+  worker_ids: string[];
 }
 
 export interface OutboundOrderOption {
@@ -153,6 +178,7 @@ export const dataSyncService = {
     stockBoostQty?: number,
     receiveAsnOptions?: ReceiveAsnOptions,
     resetPicklistOptions?: ResetPickListOptions,
+    outboundAutomationOptions?: OutboundAutomationOptions,
   ): Promise<DataSyncResult> {
     const res = await fetch(`${DATA_SYNC_URL}/sync`, {
       method: 'POST',
@@ -167,6 +193,7 @@ export const dataSyncService = {
         stock_boost_qty: stockBoostQty || null,
         receive_asn: receiveAsnOptions || null,
         reset_picklist: resetPicklistOptions || null,
+        outbound_automation: outboundAutomationOptions || null,
       }),
     });
     if (!res.ok) {
