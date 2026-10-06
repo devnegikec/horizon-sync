@@ -867,6 +867,8 @@ function OutboundAsnFields({
   onTargetWarehouseChange,
 }: OutboundStepFieldsProps) {
   const locked = !canEdit || syncing;
+  const sameWarehouse = Boolean(sourceWarehouseId && targetWarehouseId && sourceWarehouseId === targetWarehouseId);
+  const hasInvalidQuantity = rows.some((row) => row.item_id && !(parseInt(row.quantity, 10) > 0));
 
   return (
     <div className="mt-3 space-y-3 border-t border-border pt-3">
@@ -879,7 +881,7 @@ function OutboundAsnFields({
             </SelectTrigger>
             <SelectContent>
               {warehouses.map((wh) => (
-                <SelectItem key={wh.id} value={wh.id}>
+                <SelectItem key={wh.id} value={wh.id} disabled={wh.id === targetWarehouseId && wh.id !== sourceWarehouseId}>
                   {wh.name} ({wh.code ?? wh.id.slice(0, 8)})
                 </SelectItem>
               ))}
@@ -894,7 +896,7 @@ function OutboundAsnFields({
             </SelectTrigger>
             <SelectContent>
               {warehouses.map((wh) => (
-                <SelectItem key={wh.id} value={wh.id}>
+                <SelectItem key={wh.id} value={wh.id} disabled={wh.id === sourceWarehouseId && wh.id !== targetWarehouseId}>
                   {wh.name} ({wh.code ?? wh.id.slice(0, 8)})
                 </SelectItem>
               ))}
@@ -902,6 +904,12 @@ function OutboundAsnFields({
           </Select>
         </div>
       </div>
+      {sameWarehouse && (
+        <p className="text-xs text-destructive">Source and target warehouses must be different.</p>
+      )}
+      {hasInvalidQuantity && (
+        <p className="text-xs text-destructive">Every item needs a valid quantity — select an item with a master-pack size or enter a quantity.</p>
+      )}
 
       <div className="space-y-3">
         {rows.map((row, idx) => (
@@ -1273,7 +1281,9 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
     setSelectedWarehouseId((prev) => prev || warehouses[0].id);
     setReceiveAsnTargetWarehouseId((prev) => prev || warehouses[0].id);
     setOutboundTargetWarehouseId((prev) => prev || warehouses[0].id);
-    setOutboundSourceWarehouseId((prev) => prev || (warehouses[1]?.id ?? warehouses[0].id));
+    // Only default the source when a second, distinct warehouse exists. Falling
+    // back to warehouses[0] here would set source === target, an invalid transfer.
+    setOutboundSourceWarehouseId((prev) => prev || (warehouses[1]?.id ?? ''));
   }, [warehouses]);
 
   React.useEffect(() => {
@@ -1556,8 +1566,11 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
   const putAwayRequiresWorker = selected['receive_asn'] && receiveAsnSteps.put_away;
   const resetPicklistRequiresId = selected['reset_picklist'] && !resetPicklistOrderNo.trim() && !resetPicklistPickListNo.trim();
   const outboundRequiresWorker = selected['outbound_automation'] && outboundSteps.pick_lists;
-  const outboundRequiresItems = selected['outbound_automation'] && outboundSteps.asn && outboundItems.filter((row) => row.item_id).length === 0;
-  const syncDisabled = !canEdit || syncing || selectedKeys.length === 0 || Boolean(putAwayRequiresWorker && selectedPutAwayWorkerIds.length === 0) || resetPicklistRequiresId || Boolean(outboundRequiresWorker && outboundSelectedWorkerIds.length === 0) || outboundRequiresItems;
+  const outboundAsnActive = selected['outbound_automation'] && outboundSteps.asn;
+  const outboundRequiresItems = outboundAsnActive && outboundItems.filter((row) => row.item_id).length === 0;
+  const outboundHasInvalidQuantity = outboundAsnActive && outboundItems.some((row) => row.item_id && !(parseInt(row.quantity, 10) > 0));
+  const outboundSameWarehouse = outboundAsnActive && Boolean(outboundSourceWarehouseId && outboundSourceWarehouseId === outboundTargetWarehouseId);
+  const syncDisabled = !canEdit || syncing || selectedKeys.length === 0 || Boolean(putAwayRequiresWorker && selectedPutAwayWorkerIds.length === 0) || resetPicklistRequiresId || Boolean(outboundRequiresWorker && outboundSelectedWorkerIds.length === 0) || outboundRequiresItems || outboundHasInvalidQuantity || outboundSameWarehouse;
 
   return (
     <Card>
