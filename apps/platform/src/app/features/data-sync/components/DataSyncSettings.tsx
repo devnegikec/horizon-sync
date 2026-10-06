@@ -183,6 +183,18 @@ const OUTBOUND_STEPS: Array<{ key: OutboundAutomationStep; title: string; descri
   },
 ];
 
+/**
+ * Features offered in the UI even when the backend catalog does not advertise
+ * them. Each entry must match a key the sync payload already supports.
+ */
+const ALWAYS_AVAILABLE_FEATURES: SyncableFeature[] = [
+  {
+    key: 'outbound_automation',
+    label: 'Outbound Automation',
+    description: 'Internal-transfer automation — create the transfer ASN, confirm the outbound order, generate and confirm pick lists.',
+  },
+];
+
 function FeatureRow({ feature, checked, disabled, onToggle }: FeatureRowProps) {
   const inputId = `data-sync-${feature.key}`;
   return (
@@ -1241,8 +1253,12 @@ export function DataSyncSettings({ accessToken, canEdit }: DataSyncSettingsProps
     setError(null);
     try {
       const catalog = await dataSyncService.listFeatures(accessToken);
-      setFeatures(catalog);
-      setSelected(Object.fromEntries(catalog.map((feature) => [feature.key, false])));
+      const merged = [
+        ...catalog,
+        ...ALWAYS_AVAILABLE_FEATURES.filter((feature) => !catalog.some((c) => c.key === feature.key)),
+      ];
+      setFeatures(merged);
+      setSelected(Object.fromEntries(merged.map((feature) => [feature.key, false])));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data sync features');
     } finally {
