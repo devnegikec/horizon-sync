@@ -23,6 +23,9 @@ export const AUTO_CREATE_VARIANT_AXES = 'auto_create_variant_axes';
 export const REQUIRE_ITEM_APPROVAL = 'require_item_approval';
 export const AUTO_APPROVE_SINGLE_CREATE = 'auto_approve_single_create';
 
+// WMS bin stock
+export const BIN_STOCK_SHOW_PARENT_QR = 'bin_stock_show_parent_qr';
+
 // Error codes returned by the backend
 export const FEATURE_DISABLED_CODE = 'FEATURE_DISABLED';
 
