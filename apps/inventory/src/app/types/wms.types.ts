@@ -94,6 +94,8 @@ export interface BinStockLevel {
   batch_number: string | null;
   created_at: string;
   updated_at: string;
+  /** Public scan URL for this level's parent box; null when the QR feature flag is off. */
+  parent_qr_code_url?: string | null;
 }
 
 export interface BinStockLevelsResponse {
@@ -344,6 +346,8 @@ export interface ReceivingSlipGroupItem {
   serial_nos?: string[] | null;
   received_serial_count?: number | null;
   notes: string | null;
+  /** Public scan URL for this unit's parent box; null when the QR feature flag is off. */
+  parent_qr_code_url?: string | null;
 }
 
 /** QSeal parent summary embedded in a receiving slip group */
@@ -353,6 +357,8 @@ export interface ReceivingSlipParentQSeal {
   name: string;
   qseal_type: string;
   capacity: number;
+  /** Public scan URL for the parent box; null when the QR feature flag is off. */
+  qr_code_url?: string | null;
 }
 
 /** A group of items under one QSeal parent (box) */
@@ -1025,6 +1031,7 @@ export interface PackingSlipGroup {
   product_name: string;
   order_id: string;
   pick_list_id: string;
+  invoice_ref: string | null;
   /** Human-readable pick-list / order numbers, when the backend includes them. */
   pick_list_no?: string | null;
   order_no?: string | null;
