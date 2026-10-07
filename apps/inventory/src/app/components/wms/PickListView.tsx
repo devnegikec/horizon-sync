@@ -146,36 +146,57 @@ function groupPickItems(items: PickListItem[]): PickLineGroup[] {
   return Array.from(groups.values());
 }
 
+/**
+ * Derive the case/loose split for a master-pack group from its total quantity
+ * and box capacity, matching the backend semantics:
+ * ``case_qty = qty // per_case`` and ``loose_qty = qty % per_case``.
+ */
+function groupPackaging(group: PickListGroup): { perCase: number | null; caseQty: number | null; looseQty: number } {
+  const capacity = group.parent_qseal?.capacity ?? null;
+  const totalQty = (Array.isArray(group.items) ? group.items : []).reduce(
+    (sum, item) => sum + (item.quantity || 0),
+    0,
+  );
+  if (capacity == null || capacity <= 0) {
+    return { perCase: null, caseQty: null, looseQty: totalQty };
+  }
+  const caseQty = Math.floor(totalQty / capacity);
+  return { perCase: capacity, caseQty, looseQty: totalQty - caseQty * capacity };
+}
+
 function groupedPickItems(groups: PickListGroup[]): PickLineGroup[] {
-  return groups.map((group, groupIndex) => ({
-    itemId: `group-${groupIndex}`,
-    parentQseal: group.parent_qseal,
-    productName: group.product_name,
-    rows: (Array.isArray(group.items) ? group.items : []).map((item, itemIndex) => ({
-      id: '',
-      item_id: `${groupIndex}-${item.sku}`,
-      item_name: group.product_name,
-      sku: item.sku,
-      warehouse_id: '',
-      qty: item.quantity || 0,
-      picked_qty: itemIndex === 0 ? group.picked_qty ?? 0 : 0,
-      uom: '',
-      per_case_qty: group.parent_qseal?.capacity ?? null,
-      case_qty: group.parent_qseal ? 1 : null,
-      loose_qty: item.quantity || 0,
-      batch_no: item.batch_number,
-      bin_location_id: group.bin_location_id,
-      bin_location_path: group.bin_location_path,
-      handling_unit_id: group.handling_unit_id ?? null,
-      sort_order: itemIndex,
-      serials: item.serial_number ? [{
-        serial_number: item.serial_number,
+  return groups.map((group, groupIndex) => {
+    const { perCase, caseQty, looseQty } = groupPackaging(group);
+    return {
+      itemId: `group-${groupIndex}`,
+      parentQseal: group.parent_qseal,
+      productName: group.product_name,
+      rows: (Array.isArray(group.items) ? group.items : []).map((item, itemIndex) => ({
+        id: '',
+        item_id: `${groupIndex}-${item.sku}`,
+        item_name: group.product_name,
         sku: item.sku,
-        manufacturing_date: item.manufacturing_date ?? null,
-        expiry_date: item.expiry_date ?? null,
-      }] : [],
-    })),
-  }));
+        warehouse_id: '',
+        qty: item.quantity || 0,
+        picked_qty: itemIndex === 0 ? group.picked_qty ?? 0 : 0,
+        uom: '',
+        per_case_qty: perCase,
+        case_qty: caseQty,
+        loose_qty: looseQty,
+        batch_no: item.batch_number,
+        bin_location_id: group.bin_location_id,
+        bin_location_path: group.bin_location_path,
+        handling_unit_id: group.handling_unit_id ?? null,
+        sort_order: itemIndex,
+        serials: item.serial_number ? [{
+          serial_number: item.serial_number,
+          sku: item.sku,
+          manufacturing_date: item.manufacturing_date ?? null,
+          expiry_date: item.expiry_date ?? null,
+        }] : [],
+      })),
+    };
+  });
 }
 
 /** First non-null value from a list, or null. */
@@ -487,6 +508,8 @@ interface PickListCaps {
   canMarkDelivered: boolean;
   /** Handling-unit association is only available once the task has been accepted. */
   canAssignHu: boolean;
+  /** Worker assignment is only allowed before the pick list is completed/closed. */
+  canAssignWorker: boolean;
 }
 
 /** Which lifecycle actions are available for a given pick list. */
@@ -501,6 +524,7 @@ function pickListCaps(pickList: PickList | null): PickListCaps {
     canMarkInTransit: status === 'ready_for_dispatch',
     canMarkDelivered: status === 'in_transit',
     canAssignHu: !!pickList?.accepted_at,
+    canAssignWorker: !!status && !CLOSED_STATUSES.includes(status),
   };
 }
 
@@ -634,7 +658,7 @@ function PickListFooter({
           </Button>
         );
       })}
-      <Button size="sm" variant="outline" className="gap-2" onClick={onAssignClick}>
+      <Button size="sm" variant="outline" className="gap-2" disabled={!caps.canAssignWorker} onClick={onAssignClick}>
         <UserRound className="h-4 w-4" />
         {hasWorker ? 'Re-assign Worker' : 'Assign Worker'}
       </Button>
