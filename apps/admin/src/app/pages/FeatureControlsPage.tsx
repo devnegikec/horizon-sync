@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, ToggleLeft } from 'lucide-react';
+import { Plus, ToggleLeft, Trash2 } from 'lucide-react';
 
 import {
   Card,
@@ -8,6 +8,11 @@ import {
   Input,
   Label,
   Switch,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Table,
   TableBody,
   TableCell,
@@ -23,8 +28,88 @@ import {
 } from '@horizon-sync/ui/components';
 import { toast } from '@horizon-sync/ui';
 
+import { AdminOrganizationService } from '../services/admin-organization.service';
 import { FeatureFlagService } from '../services/feature-flag.service';
 import type { FeatureFlag, FeatureFlagCreateData } from '../services/feature-flag.service';
+
+/** Sentinel value for the "Global flags" option in the org selector. */
+const GLOBAL_SELECT_VALUE = '__global__';
+
+function formatDate(ts: string): string {
+  return new Date(ts).toLocaleDateString();
+}
+
+interface TenantFlagsTableProps {
+  flags: FeatureFlag[];
+  loading: boolean;
+  toggling: string | null;
+  removing: string | null;
+  onToggle: (flag: FeatureFlag) => void;
+  onRemove: (flag: FeatureFlag) => void;
+}
+
+function TenantFlagsTable({ flags, loading, toggling, removing, onToggle, onRemove }: TenantFlagsTableProps) {
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Enabled</TableHead>
+              <TableHead>Visible</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">Loading tenant flags...</TableCell>
+              </TableRow>
+            ) : flags.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  <div className="flex flex-col items-center gap-2">
+                    <ToggleLeft className="h-8 w-8 text-muted-foreground" />
+                    <p className="text-muted-foreground">No tenant overrides for this organization.</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              flags.map((flag) => (
+                <TableRow key={flag.id}>
+                  <TableCell className="font-medium font-mono text-sm">{flag.name}</TableCell>
+                  <TableCell className="text-muted-foreground max-w-xs truncate">{flag.description || '—'}</TableCell>
+                  <TableCell>
+                    <Switch checked={flag.enabled}
+                      disabled={toggling === flag.name}
+                      onCheckedChange={() => onToggle(flag)}
+                      aria-label={`Toggle ${flag.name}`} />
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-muted-foreground">{flag.visible ? 'Visible' : 'Hidden'}</span>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(flag.created_at)}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost"
+                      size="sm"
+                      disabled={removing === flag.name}
+                      onClick={() => onRemove(flag)}
+                      aria-label={`Remove ${flag.name} override`}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function FeatureControlsPage() {
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
@@ -33,6 +118,14 @@ export function FeatureControlsPage() {
   const [togglingVisibleId, setTogglingVisibleId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  // Org-scoped (TENANT) control state
+  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedOrgId, setSelectedOrgId] = useState('');
+  const [tenantFlags, setTenantFlags] = useState<FeatureFlag[]>([]);
+  const [tenantLoading, setTenantLoading] = useState(false);
+  const [tenantToggling, setTenantToggling] = useState<string | null>(null);
+  const [tenantRemoving, setTenantRemoving] = useState<string | null>(null);
 
   // Create form state
   const [formName, setFormName] = useState('');
@@ -55,6 +148,70 @@ export function FeatureControlsPage() {
   useEffect(() => {
     fetchFlags();
   }, [fetchFlags]);
+
+  // Load the organization list for the org selector.
+  useEffect(() => {
+    let cancelled = false;
+    AdminOrganizationService.getOrganizations({ page_size: 100 })
+      .then((res) => {
+        if (!cancelled) setOrganizations(res.organizations ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) toast({ title: 'Error', description: 'Failed to load organizations', variant: 'destructive' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Load the selected org's TENANT-scoped flags.
+  useEffect(() => {
+    if (!selectedOrgId) {
+      setTenantFlags([]);
+      return;
+    }
+    let cancelled = false;
+    setTenantLoading(true);
+    FeatureFlagService.listTenantFlags(selectedOrgId)
+      .then((res) => {
+        if (!cancelled) setTenantFlags(res.flags);
+      })
+      .catch(() => {
+        if (!cancelled) toast({ title: 'Error', description: 'Failed to load tenant flags', variant: 'destructive' });
+      })
+      .finally(() => {
+        if (!cancelled) setTenantLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedOrgId]);
+
+  const handleTenantToggle = async (flag: FeatureFlag) => {
+    setTenantToggling(flag.name);
+    try {
+      const updated = await FeatureFlagService.upsertTenantFlag(selectedOrgId, flag.name, { enabled: !flag.enabled });
+      setTenantFlags((prev) => prev.map((f) => (f.name === updated.name ? updated : f)));
+    } catch {
+      toast({ title: 'Error', description: `Failed to toggle "${flag.name}"`, variant: 'destructive' });
+    } finally {
+      setTenantToggling(null);
+    }
+  };
+
+  const handleTenantRemove = async (flag: FeatureFlag) => {
+    if (!window.confirm(`Remove the "${flag.name}" override for this organization?`)) return;
+    setTenantRemoving(flag.name);
+    try {
+      await FeatureFlagService.deleteTenantFlag(selectedOrgId, flag.name);
+      setTenantFlags((prev) => prev.filter((f) => f.name !== flag.name));
+      toast({ title: 'Override removed', description: `"${flag.name}" now falls back to the global value.` });
+    } catch {
+      toast({ title: 'Error', description: `Failed to remove "${flag.name}"`, variant: 'destructive' });
+    } finally {
+      setTenantRemoving(null);
+    }
+  };
 
   const handleToggle = async (flag: FeatureFlag) => {
     setTogglingId(flag.id);
@@ -113,8 +270,6 @@ export function FeatureControlsPage() {
     }
   };
 
-  const formatDate = (ts: string) => new Date(ts).toLocaleDateString();
-
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
@@ -123,16 +278,41 @@ export function FeatureControlsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Feature Controls</h1>
           <p className="text-muted-foreground mt-1">Manage feature flags across the platform</p>
         </div>
-        <Button
-          onClick={() => setCreateOpen(true)}
-          className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25"
-        >
-          <Plus className="h-4 w-4" />
-          Create Flag
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select value={selectedOrgId || GLOBAL_SELECT_VALUE}
+            onValueChange={(v) => setSelectedOrgId(v === GLOBAL_SELECT_VALUE ? '' : v)}>
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Select organization" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={GLOBAL_SELECT_VALUE}>Global flags</SelectItem>
+              {organizations.map((org) => (
+                <SelectItem key={org.id} value={org.id}>
+                  {org.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setCreateOpen(true)}
+            className="gap-2 bg-gradient-to-r from-[#3058EE] to-[#7D97F6] hover:opacity-90 text-white shadow-lg shadow-[#3058EE]/25">
+            <Plus className="h-4 w-4" />
+            Create Flag
+          </Button>
+        </div>
       </div>
 
-      {/* Flags Table */}
+      {/* Tenant flags for the selected organization */}
+      {selectedOrgId && (
+        <TenantFlagsTable flags={tenantFlags}
+          loading={tenantLoading}
+          toggling={tenantToggling}
+          removing={tenantRemoving}
+          onToggle={handleTenantToggle}
+          onRemove={handleTenantRemove} />
+      )}
+
+      {/* Flags Table (global view) */}
+      {!selectedOrgId && (
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -197,6 +377,7 @@ export function FeatureControlsPage() {
           </Table>
         </CardContent>
       </Card>
+      )}
 
       {/* Create Flag Dialog */}
       <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) resetForm(); }}>
