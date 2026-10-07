@@ -37,6 +37,12 @@ export interface FeatureFlagUpdateData {
   visible?: boolean;
 }
 
+export interface FeatureFlagTenantUpdateData {
+  enabled?: boolean;
+  visible?: boolean;
+  description?: string | null;
+}
+
 export interface FeatureFlagEvaluation {
   feature_name: string;
   enabled: boolean;
@@ -121,5 +127,31 @@ export class FeatureFlagService {
 
   static async evaluateFlag(name: string): Promise<FeatureFlagEvaluation> {
     return this.request<FeatureFlagEvaluation>(`/evaluate/${name}`);
+  }
+
+  static async listTenantFlags(
+    organizationId: string
+  ): Promise<FeatureFlagListResponse> {
+    return this.request<FeatureFlagListResponse>(`/tenants/${organizationId}`);
+  }
+
+  static async upsertTenantFlag(
+    organizationId: string,
+    name: string,
+    data: FeatureFlagTenantUpdateData
+  ): Promise<FeatureFlag> {
+    return this.request<FeatureFlag>(`/tenants/${organizationId}/${name}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  static async deleteTenantFlag(
+    organizationId: string,
+    name: string
+  ): Promise<void> {
+    return this.request<void>(`/tenants/${organizationId}/${name}`, {
+      method: 'DELETE',
+    });
   }
 }
