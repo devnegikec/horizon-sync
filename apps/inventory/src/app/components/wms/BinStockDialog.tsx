@@ -154,13 +154,41 @@ function StatusCell({ row }: { row: QRDetailRow }) {
 /**
  * Generates the scannable parent-box QR for a row. The value is already a
  * public scan URL (`https://pollux.ciphercode.ai/qseal/{serial}`), so it is
- * encoded as-is. Memoised so a parent re-render never remounts the row and
- * regenerates the image. Clicking the thumbnail opens the enlarged view.
+ * encoded as-is.
+ *
+ * QR encoding is CPU-heavy and runs synchronously, so like the location-QR
+ * table we defer generation until the row is near the viewport; the detail
+ * dialog has no pagination, and eagerly encoding every parent/child row of a
+ * large bin would freeze the tab. Memoised so a parent re-render never
+ * remounts the row and restarts the observer or QR generation.
  */
 const ParentQrCode = React.memo(function ParentQrCode({ value, onOpen }: { value: string; onOpen: (value: string) => void }) {
+  const ref = React.useRef<HTMLButtonElement | null>(null);
+  const [inView, setInView] = React.useState(false);
   const [img, setImg] = React.useState<string>('');
 
   React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setInView(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  React.useEffect(() => {
+    if (!inView) return;
     let cancelled = false;
     setImg('');
     generateQRDataUrl(value, 64)
@@ -173,10 +201,11 @@ const ParentQrCode = React.memo(function ParentQrCode({ value, onOpen }: { value
     return () => {
       cancelled = true;
     };
-  }, [value]);
+  }, [inView, value]);
 
   return (
     <button type="button"
+      ref={ref}
       onClick={() => onOpen(value)}
       className="rounded border p-0.5 transition-shadow hover:ring-2 hover:ring-primary/40"
       title="View QR code"
