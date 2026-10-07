@@ -26,7 +26,6 @@ function PackingSlipActionsCell({ slip, busyId, onView, onMarkLoading, onDispatc
     <div className="flex items-center justify-end gap-1.5">
       <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => onView(slip)}>
         <Eye className="h-3.5 w-3.5" />
-        View
       </Button>
       {slip.status === 'draft' && (
         <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" disabled={busy} onClick={() => onMarkLoading(slip)}>

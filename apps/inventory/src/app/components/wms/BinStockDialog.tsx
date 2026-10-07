@@ -65,7 +65,7 @@ function groupToRow(group: BinStockGroup, index: number): QRDetailRow {
     sku: first?.sku ?? null,
     batch: first?.batch_number ?? null,
     serialNumber: box.serialNumber,
-    quantity: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
+    quantity: items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0),
     meta: {
       flag: getGroupFlag(group),
       conditionCode: getGroupCondition(group),
@@ -114,7 +114,8 @@ function binStockToRows(data: BinStockParentsResponse): QRDetailRow[] {
 
 /** Total units across every box in the bin. */
 function countUnits(rows: QRDetailRow[]): number {
-  return rows.reduce((sum, row) => sum + (row.quantity ?? 0), 0);
+  // Quantities arrive from the API as strings, so coerce before summing.
+  return rows.reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
 }
 
 // ─── Extra columns ────────────────────────────────────────────────────────────
