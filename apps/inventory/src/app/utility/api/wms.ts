@@ -197,6 +197,8 @@ export const layoutApi = {
       warehouse_id: string;
       location_type?: string;
       parent_location_id?: string;
+      /** Partial/exact bin path, e.g. `Z01-A03`. Matched server-side. */
+      full_path?: string;
       is_active?: boolean;
       has_stock?: boolean;
       page?: number;

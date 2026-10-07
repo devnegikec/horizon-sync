@@ -33,6 +33,9 @@ interface LocationQRPanelProps {
 /** The largest page the table's own size selector offers. */
 const PAGE_SIZE = 50;
 
+/** Wait for a pause in typing before the search box issues a request. */
+const SEARCH_DEBOUNCE_MS = 300;
+
 /** Radix rejects an empty string as an item value, so "no filter" needs a sentinel. */
 const ALL_FILTERS = 'all';
 
@@ -67,6 +70,20 @@ function readLocationPage(res: PaginatedLocations, fallbackPage: number): Locati
     locations: res.locations ?? [],
     pagination: res.pagination ?? null,
     page: res.pagination?.page ?? fallbackPage,
+  };
+}
+
+/**
+ * Maps the panel's filters onto the endpoint's optional query parameters.
+ *
+ * `ALL_FILTERS` means "any", which is expressed by leaving the parameter off the
+ * query entirely, hence the `undefined` values.
+ */
+function locationQueryFilters(search: string, activeFilter: string, stockFilter: string) {
+  return {
+    full_path: search.trim() || undefined,
+    is_active: activeFilter === ALL_FILTERS ? undefined : activeFilter === 'active',
+    has_stock: stockFilter === ALL_FILTERS ? undefined : stockFilter === 'with',
   };
 }
 
@@ -186,9 +203,9 @@ function LocationQrFilters({ stock, active, search, loading, filtered, onStockCh
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Input className="h-8 w-56"
-        aria-label="Filter the loaded bin locations"
-        placeholder="Filter loaded bins…"
-        title="The locations endpoint has no search parameter, so this narrows the rows already loaded"
+        aria-label="Search bin locations by path"
+        placeholder="Search by bin path…"
+        title="Matched server-side via the full_path query parameter"
         value={search}
         onChange={(event) => onSearchChange(event.target.value)}/>
       <Select value={stock} onValueChange={onStockChange} disabled={loading}>
@@ -315,8 +332,7 @@ function LocationQrTable({ isInitialLoading, rows, hasLoadedRows, columns, serve
               enableRowSelection: true,
               enableColumnVisibility: true,
               enableSorting: false,
-              // Off: the search box below filters the loaded rows itself, because the
-              // endpoint has no query parameter to send.
+              // Off: the search box above drives the server-side `full_path` query.
               enableFiltering: false,
               initialPageSize: pageSize,
               serverPagination,
@@ -342,6 +358,7 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
   const [stockFilter, setStockFilter] = React.useState<string>(ALL_FILTERS);
   const [activeFilter, setActiveFilter] = React.useState<string>('active');
   const [search, setSearch] = React.useState('');
+  const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [printing, setPrinting] = React.useState(false);
@@ -360,9 +377,7 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
         const res = await layoutApi.listLocations(accessToken, {
           warehouse_id: warehouseId,
           location_type: 'bin',
-          // `undefined` leaves the parameter off the query, which is what "any" means.
-          is_active: activeFilter === ALL_FILTERS ? undefined : activeFilter === 'active',
-          has_stock: stockFilter === ALL_FILTERS ? undefined : stockFilter === 'with',
+          ...locationQueryFilters(debouncedSearch, activeFilter, stockFilter),
           page: targetPage,
           page_size: pageSize,
         });
@@ -378,8 +393,15 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
         if (seq === requestSeqRef.current) setLoading(false);
       }
     },
-    [accessToken, warehouseId, activeFilter, stockFilter, pageSize],
+    [accessToken, warehouseId, activeFilter, stockFilter, debouncedSearch, pageSize],
   );
+
+  // The search box is a server query parameter, so wait for a pause in typing
+  // before it rewrites the request.
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Every filter (or page size) change restarts from the first page.
   React.useEffect(() => {
@@ -391,26 +413,11 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
     void load(page);
   }, [load, page]);
 
-  /**
-   * Narrowing the rows is client-side: `GET /warehouse-locations` takes no query
-   * parameter, so there is nothing to send the server. It filters the loaded page.
-   */
-  const visibleLocations = React.useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return locations;
-    return locations.filter(
-      (loc) =>
-        loc.code?.toLowerCase().includes(query) ||
-        loc.full_path?.toLowerCase().includes(query) ||
-        loc.name?.toLowerCase().includes(query),
-    );
-  }, [locations, search]);
-
   // A new set of rows replaces the selection: keys for rows that are gone are dropped by
   // the table, so a stale count would print nothing.
   React.useEffect(() => {
     tableRef.current?.resetRowSelection();
-  }, [visibleLocations]);
+  }, [locations]);
 
   const handleTableReady = React.useCallback((table: Table<WarehouseLocation>) => {
     tableRef.current = table;
@@ -513,7 +520,7 @@ export function LocationQRPanel({ warehouseId }: LocationQRPanelProps) {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <LocationQrTable isInitialLoading={loading && locations.length === 0}
-        rows={visibleLocations}
+        rows={locations}
         hasLoadedRows={locations.length > 0}
         columns={columns}
         serverPagination={serverPagination}

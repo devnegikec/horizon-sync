@@ -8,7 +8,7 @@ import {
   getExpandedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { ChevronDown, ChevronRight, Minus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Eye, Minus } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
@@ -255,13 +255,16 @@ export function LocationTreeView({ warehouseId, onSelect }: LocationTreeViewProp
         header: 'Actions',
         cell: ({ row }) =>
           row.original.location_type === 'bin' ? (
-            <Button variant="outline"
-              size="sm"
+            <Button variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              aria-label="View bin stock"
+              title="View bin stock"
               onClick={(e) => {
                 e.stopPropagation();
                 setSelectedBin(row.original);
               }}>
-              View
+              <Eye className="h-4 w-4" />
             </Button>
           ) : null,
       },

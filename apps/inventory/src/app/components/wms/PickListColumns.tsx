@@ -55,7 +55,6 @@ function PickListActionsCell({ pickList, onPack, onView }: { pickList: PickList 
       )}
       <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => onView(pickList)}>
         <Eye className="h-3.5 w-3.5" />
-        View
       </Button>
     </div>
   );
