@@ -44,7 +44,6 @@ function PutAwayActionsCell({ list, onView }: { list: PutAwayList } & PutAwayCol
     <div className="flex items-center justify-end">
       <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => onView(list)}>
         <Eye className="h-3.5 w-3.5" />
-        View
       </Button>
     </div>
   );

@@ -193,7 +193,6 @@ function OrderActionsCell({
       )}
       <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" disabled={viewLoading} onClick={() => onView(order)}>
         {viewLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
-        View
       </Button>
     </div>
   );

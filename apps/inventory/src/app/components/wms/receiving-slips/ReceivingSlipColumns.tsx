@@ -61,7 +61,6 @@ function ReceivingSlipActionsCell({ slip, onView, onApprove, onReject, onPutAway
       )}
       <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => onView(slip)}>
         <Eye className="h-3.5 w-3.5" />
-        View
       </Button>
     </div>
   );
