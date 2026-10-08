@@ -25,7 +25,7 @@ import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
 import { useInvalidateOutboundOrders, usePickList, usePickLists, usePickSettings } from '../../hooks/useWMS';
-import type { PickList, PickListGroup, PickListItem, PickSerialDetail, PickListProgress, WMSWorker, PackingSlipListItem } from '../../types/wms.types';
+import type { PickList, PickListGroup, PickListGroupItem, PickListItem, PickSerialDetail, PickListProgress, WMSWorker, PackingSlipListItem } from '../../types/wms.types';
 import { wmsWorkerApi, packingSlipApi } from '../../utility/api/wms';
 
 import { createPickListColumns } from './PickListColumns';
@@ -40,6 +40,19 @@ function workerDisplayName(w: WMSWorker | undefined): string | null {
 function workerQrValue(w: WMSWorker | null | undefined): string | null {
   if (!w) return null;
   return w.qr_code || w.barcode || null;
+}
+
+/** Fetches every assignable worker for a warehouse, following pagination. */
+async function fetchAllWorkers(accessToken: string, warehouseId?: string): Promise<WMSWorker[]> {
+  const all: WMSWorker[] = [];
+  let page = 1;
+  for (;;) {
+    const data = await wmsWorkerApi.list(accessToken, { page, page_size: 100, warehouse_id: warehouseId });
+    all.push(...(data.workers ?? []));
+    if (page >= (data.total_pages ?? 1)) break;
+    page += 1;
+  }
+  return all;
 }
 
 function WorkerQrCode({ value, size = 64 }: { value: string | null; size?: number }) {
@@ -108,10 +121,9 @@ function useWorkers(enabled: boolean, warehouseId?: string): WMSWorker[] {
   React.useEffect(() => {
     if (!enabled || !accessToken) return;
     let cancelled = false;
-    wmsWorkerApi
-      .list(accessToken, { page: 1, page_size: 100, warehouse_id: warehouseId })
+    fetchAllWorkers(accessToken, warehouseId)
       .then((data) => {
-        if (!cancelled) setWorkers(data.workers ?? []);
+        if (!cancelled) setWorkers(data);
       })
       .catch(() => {
         if (!cancelled) setWorkers([]);
@@ -143,20 +155,23 @@ function groupPickItems(items: PickListItem[]): PickLineGroup[] {
     g.rows.push(it);
     groups.set(key, g);
   }
-  return Array.from(groups.values());
+  return Array.from(groups.values()).sort((a, b) => pickGroupRank(a) - pickGroupRank(b));
+}
+
+/** Rank a display line: complete master packs first, broken packs last. */
+function pickGroupRank(group: PickLineGroup): number {
+  const capacity = firstValue(group.rows.map((row) => row.per_case_qty));
+  const looseQty = firstValue(group.rows.map((row) => row.loose_qty));
+  if (capacity == null || capacity <= 0) return 1; // unboxed / loose-only
+  return looseQty != null && looseQty > 0 ? 2 : 0; // broken vs complete pack
 }
 
 /**
- * Derive the case/loose split for a master-pack group from its total quantity
- * and box capacity, matching the backend semantics:
- * ``case_qty = qty // per_case`` and ``loose_qty = qty % per_case``.
+ * Derive the case/loose split for a quantity against a box capacity, matching
+ * the backend semantics: ``case_qty = qty // per_case`` and
+ * ``loose_qty = qty % per_case``.
  */
-function groupPackaging(group: PickListGroup): { perCase: number | null; caseQty: number | null; looseQty: number } {
-  const capacity = group.parent_qseal?.capacity ?? null;
-  const totalQty = (Array.isArray(group.items) ? group.items : []).reduce(
-    (sum, item) => sum + (item.quantity || 0),
-    0,
-  );
+function packagingFor(totalQty: number, capacity: number | null): { perCase: number | null; caseQty: number | null; looseQty: number } {
   if (capacity == null || capacity <= 0) {
     return { perCase: null, caseQty: null, looseQty: totalQty };
   }
@@ -164,39 +179,86 @@ function groupPackaging(group: PickListGroup): { perCase: number | null; caseQty
   return { perCase: capacity, caseQty, looseQty: totalQty - caseQty * capacity };
 }
 
+interface GroupItemRowContext {
+  itemId: string;
+  group: PickListGroup;
+  packaging: { perCase: number | null; caseQty: number | null; looseQty: number };
+  firstBucket: boolean;
+}
+
+/** Serial detail for one child of a pick-list group, if it has a serial. */
+function groupItemSerials(item: PickListGroupItem): PickSerialDetail[] {
+  if (!item.serial_number) return [];
+  return [{
+    serial_number: item.serial_number,
+    sku: item.sku,
+    manufacturing_date: item.manufacturing_date ?? null,
+    expiry_date: item.expiry_date ?? null,
+  }];
+}
+
+/**
+ * Maps one child of a pick-list group to a display row. The case/loose split
+ * is a line-level total, so it is attached to the first child row only — the
+ * row renderer reads it via ``firstValue``, and repeating the same totals on
+ * every child would imply each unit carries them individually.
+ */
+function groupItemToRow(item: PickListGroupItem, itemIndex: number, ctx: GroupItemRowContext): PickListItem {
+  const isFirst = itemIndex === 0;
+  return {
+    id: '',
+    item_id: `${ctx.itemId}-${item.sku}`,
+    item_name: ctx.group.product_name,
+    sku: item.sku,
+    warehouse_id: '',
+    qty: item.quantity || 0,
+    picked_qty: ctx.firstBucket && isFirst ? ctx.group.picked_qty ?? 0 : 0,
+    uom: '',
+    per_case_qty: isFirst ? ctx.packaging.perCase : null,
+    case_qty: isFirst ? ctx.packaging.caseQty : null,
+    loose_qty: isFirst ? ctx.packaging.looseQty : null,
+    batch_no: item.batch_number,
+    bin_location_id: ctx.group.bin_location_id,
+    bin_location_path: ctx.group.bin_location_path,
+    handling_unit_id: ctx.group.handling_unit_id ?? null,
+    sort_order: itemIndex,
+    serials: groupItemSerials(item),
+  };
+}
+
 function groupedPickItems(groups: PickListGroup[]): PickLineGroup[] {
-  return groups.map((group, groupIndex) => {
-    const { perCase, caseQty, looseQty } = groupPackaging(group);
-    return {
-      itemId: `group-${groupIndex}`,
-      parentQseal: group.parent_qseal,
-      productName: group.product_name,
-      rows: (Array.isArray(group.items) ? group.items : []).map((item, itemIndex) => ({
-        id: '',
-        item_id: `${groupIndex}-${item.sku}`,
-        item_name: group.product_name,
-        sku: item.sku,
-        warehouse_id: '',
-        qty: item.quantity || 0,
-        picked_qty: itemIndex === 0 ? group.picked_qty ?? 0 : 0,
-        uom: '',
-        per_case_qty: perCase,
-        case_qty: caseQty,
-        loose_qty: looseQty,
-        batch_no: item.batch_number,
-        bin_location_id: group.bin_location_id,
-        bin_location_path: group.bin_location_path,
-        handling_unit_id: group.handling_unit_id ?? null,
-        sort_order: itemIndex,
-        serials: item.serial_number ? [{
-          serial_number: item.serial_number,
-          sku: item.sku,
-          manufacturing_date: item.manufacturing_date ?? null,
-          expiry_date: item.expiry_date ?? null,
-        }] : [],
-      })),
-    };
+  const result: PickLineGroup[] = [];
+  groups.forEach((group) => {
+    const items = Array.isArray(group.items) ? group.items : [];
+    const capacity = group.parent_qseal?.capacity ?? null;
+    // Bucket children by SKU + batch so mixed lines don't collapse into one
+    // display row whose SKU/batch shows only the first child while summing
+    // every child's quantity.
+    const buckets = new Map<string, PickListGroupItem[]>();
+    for (const item of items) {
+      const key = `${item.sku ?? ''}::${item.batch_number ?? ''}`;
+      const bucket = buckets.get(key);
+      if (bucket) bucket.push(item);
+      else buckets.set(key, [item]);
+    }
+
+    let firstBucket = true;
+    buckets.forEach((bucketItems) => {
+      const totalQty = bucketItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      const packaging = packagingFor(totalQty, capacity);
+      const itemId = `group-${result.length}`;
+      result.push({
+        itemId,
+        parentQseal: group.parent_qseal,
+        productName: group.product_name,
+        rows: bucketItems.map((item, itemIndex) =>
+          groupItemToRow(item, itemIndex, { itemId, group, packaging, firstBucket }),
+        ),
+      });
+      firstBucket = false;
+    });
   });
+  return result.sort((a, b) => pickGroupRank(a) - pickGroupRank(b));
 }
 
 /** First non-null value from a list, or null. */
@@ -362,9 +424,8 @@ function AssignWorkerDialog({ open, onOpenChange, currentWorkerId, warehouseId, 
   React.useEffect(() => {
     if (!open || !accessToken) return;
     setLoading(true);
-    wmsWorkerApi
-      .list(accessToken, { page: 1, page_size: 100, warehouse_id: warehouseId })
-      .then((data) => setWorkers(data.workers ?? []))
+    fetchAllWorkers(accessToken, warehouseId)
+      .then((data) => setWorkers(data))
       .catch(() => setWorkers([]))
       .finally(() => setLoading(false));
   }, [open, accessToken, warehouseId]);
