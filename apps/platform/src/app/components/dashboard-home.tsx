@@ -1,13 +1,14 @@
 import * as React from 'react';
 
-import { ArrowUpRight, ArrowDownRight, Package, Users, DollarSign, Activity, TrendingUp, Calendar } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Package, Users, Activity, TrendingUp, Calendar } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
+import { CurrencyIcon } from '@horizon-sync/ui';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { cn } from '@horizon-sync/ui/lib';
-import { CurrencyIcon } from '@horizon-sync/ui';
-import { useUserStore } from '@horizon-sync/store';
 
+import { DashboardSection } from './dashboard';
 import { WMSDashboardHome } from './wms-dashboard-home';
 
 // ── WMS role detection ────────────────────────────────────────────────────────
@@ -140,7 +141,12 @@ export function DashboardHome() {
   const isWms = useIsWmsRole();
 
   if (isWms) {
-    return <WMSDashboardHome />;
+    return (
+      <div className="space-y-8">
+        <WMSDashboardHome />
+        <DashboardSection />
+      </div>
+    );
   }
 
   return (
@@ -172,6 +178,8 @@ export function DashboardHome() {
           </div>
         ))}
       </div>
+
+      <DashboardSection />
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-7">
