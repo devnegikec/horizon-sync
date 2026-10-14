@@ -182,9 +182,9 @@ export function DashboardHome() {
       <DashboardSection />
 
       {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-7">
+      <div className="space-y-6">
         {/* Chart Area */}
-        <div className="lg:col-span-4 rounded-xl border border-border bg-card p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-lg font-semibold">Revenue Overview</h2>
@@ -219,7 +219,7 @@ export function DashboardHome() {
         </div>
 
         {/* Recent Activity */}
-        <div className="lg:col-span-3 rounded-xl border border-border bg-card p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-lg font-semibold">Recent Activity</h2>

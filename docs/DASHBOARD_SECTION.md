@@ -90,10 +90,12 @@ Graphical widgets use [`recharts`](https://recharts.org) (added to the root
 
 ## Notes & follow-ups
 
-- The example widgets call `GET /api/v1/wms-dashboard/stats` (permission
-  `warehouse.read`). Extend to the other endpoints in `DASHBOARD_DOC.md`
-  (aging, receiving variance, capacity tree, QSeal analytics) by adding
-  widgets — the section itself is endpoint-agnostic.
+- All 8 widgets from the recommended layout in `DASHBOARD_DOC.md` are
+  implemented (KPI strip, inbound/outbound, space utilization, put-away/pick
+  backlog, aging capital, receiving variance, zone utilization, live activity),
+  each self-fetching from its documented endpoint and gated by `warehouse.read`.
+  Extend further (QSeal analytics, stock movements) by adding registry entries —
+  the section itself is endpoint-agnostic.
 - `ANALYTICS_MODULE_ENABLED` gates `/analytics/*` and `/qseal/analytics/*`
   routes, so QSeal widgets will return 404 when the flag is off.
 - Widgets are currently filtered by permission only. To make the layout

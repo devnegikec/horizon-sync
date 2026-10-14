@@ -36,7 +36,7 @@ export function KpiStripWidget({ filters, refreshToken }: DashboardWidgetProps) 
 
   if (loading && !data) {
     return (
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3">
         {Array.from({ length: 5 }).map((_, index) => (
           <Skeleton key={index} className="h-[76px] w-full rounded-lg" />
         ))}
@@ -58,7 +58,7 @@ export function KpiStripWidget({ filters, refreshToken }: DashboardWidgetProps) 
   ];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3">
       {tiles.map((tile) => (
         <Kpi key={tile.label} tile={tile} />
       ))}

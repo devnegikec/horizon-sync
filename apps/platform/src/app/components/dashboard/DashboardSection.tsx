@@ -10,18 +10,10 @@ import { usePermissions } from '../../hooks/usePermissions';
 
 import { DashboardFiltersContext } from './DashboardFiltersContext';
 import { dashboardWidgets } from './registry';
-import type { DashboardFilters, DashboardPeriod, WidgetSize } from './types';
+import type { DashboardFilters, DashboardPeriod } from './types';
 import { WidgetErrorBoundary } from './WidgetErrorBoundary';
 
 const PERIODS: DashboardPeriod[] = ['week', 'month', 'year'];
-
-/** Grid spans per widget size (grid is 1 / 2 / 12 columns at base / sm / lg). */
-const SIZE_SPAN: Record<WidgetSize, string> = {
-  sm: 'sm:col-span-1 lg:col-span-4',
-  md: 'sm:col-span-2 lg:col-span-6',
-  lg: 'sm:col-span-2 lg:col-span-8',
-  full: 'sm:col-span-2 lg:col-span-12',
-};
 
 /**
  * Configurable dashboard section.
@@ -95,15 +87,12 @@ export function DashboardSection() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-12">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {widgets.map((widget) => (
-            <div key={widget.id} className={SIZE_SPAN[widget.size]}>
+            <div key={widget.id}>
               <Card className="h-full">
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-base">{widget.title}</CardTitle>
-                    <code className="hidden text-[10px] text-muted-foreground md:block">{widget.endpoint}</code>
-                  </div>
+                  <CardTitle className="text-base">{widget.title}</CardTitle>
                   {widget.description && <CardDescription>{widget.description}</CardDescription>}
                 </CardHeader>
                 <CardContent>
