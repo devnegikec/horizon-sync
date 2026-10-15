@@ -1,4 +1,6 @@
 .qrv-page {
+  --qrv-primary: #6d28d9;
+  --qrv-accent: #f59e0b;
   --qrv-ink: #111827;
   --qrv-muted: #667085;
   --qrv-border: #e4e7ec;
@@ -67,7 +69,7 @@
 .qrv-brand__fallback {
   display: grid;
   place-items: center;
-  color: #6d28d9;
+  color: var(--qrv-primary);
   background: #f5f3ff;
 }
 .qrv-brand__fallback svg {
@@ -146,7 +148,7 @@
   border-color: #fedf89;
 }
 .qrv-status--action {
-  --qrv-tone: #6d28d9;
+  --qrv-tone: var(--qrv-primary);
   --qrv-soft: #f5f3ff;
   --qrv-tone-dark: #5b21b6;
   border-color: #ddd6fe;
@@ -171,7 +173,7 @@
 }
 .qrv-eyebrow {
   margin: 0 0 5px;
-  color: #6d28d9;
+  color: var(--qrv-primary);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -230,7 +232,7 @@
 .qrv-instruction > svg {
   flex: 0 0 auto;
   width: 24px;
-  color: #6d28d9;
+  color: var(--qrv-primary);
 }
 .qrv-instruction strong,
 .qrv-instruction span {
@@ -322,7 +324,7 @@
 }
 .qrv-button--primary {
   color: #fff;
-  background: #151327;
+  background: var(--qrv-primary);
 }
 
 .qrv-location-consent {
@@ -352,7 +354,7 @@
 }
 .qrv-location-consent .qrv-button {
   color: #fff;
-  background: #6d28d9;
+  background: var(--qrv-primary);
 }
 .qrv-location-note {
   display: flex;
@@ -492,7 +494,7 @@
 .qrv-contact-list a > svg {
   width: 18px;
   flex: 0 0 auto;
-  color: #6d28d9;
+  color: var(--qrv-primary);
 }
 .qrv-contact-list a > svg:last-child:not(:first-child) {
   width: 14px;
@@ -511,6 +513,105 @@
   color: var(--qrv-muted);
   font-size: 10px;
   font-weight: 500;
+}
+
+.qrv-engagement-card {
+  padding: 24px;
+}
+.qrv-engagement-card h2 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+.qrv-engagement-card > p:not(.qrv-eyebrow) {
+  margin: 8px 0 0;
+  color: var(--qrv-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.qrv-engagement-card__icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  margin-bottom: 16px;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--qrv-primary);
+  background: color-mix(in srgb, var(--qrv-primary) 10%, white);
+}
+.qrv-engagement-card__icon svg {
+  width: 20px;
+  height: 20px;
+}
+.qrv-engagement-card .qrv-button {
+  margin-top: 18px;
+}
+
+.qrv-social-list {
+  display: grid;
+  gap: 9px;
+  margin-top: 18px;
+}
+.qrv-social-list a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid #eaecf0;
+  border-radius: 10px;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
+}
+.qrv-social-list a:hover {
+  border-color: #c4b5fd;
+  background: #faf8ff;
+}
+.qrv-social-list a > svg:first-child {
+  width: 17px;
+  color: var(--qrv-primary);
+}
+.qrv-social-list a > svg:last-child {
+  width: 14px;
+  margin-left: auto;
+  color: #98a2b3;
+}
+
+.qrv-custom-cta-card {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: linear-gradient(110deg, color-mix(in srgb, var(--qrv-primary) 8%, white), #fff);
+}
+.qrv-custom-cta-card .qrv-engagement-card__icon {
+  margin-bottom: 12px;
+}
+.qrv-custom-cta-card .qrv-button {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+.qrv-button--secondary {
+  color: #fff;
+  background: var(--qrv-primary);
+}
+.qrv-button--outline {
+  border: 1px solid var(--qrv-primary);
+  color: var(--qrv-primary);
+  background: #fff;
+}
+.qrv-button--outline:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--qrv-primary) 7%, white);
+}
+.qrv-button--secondary svg,
+.qrv-button--outline svg,
+.qrv-button--primary svg {
+  width: 15px;
 }
 
 .qrv-footer {
@@ -534,7 +635,21 @@
 }
 .qrv-footer svg {
   width: 15px;
-  color: #6d28d9;
+  color: var(--qrv-primary);
+}
+.qrv-footer__details {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px 14px;
+}
+.qrv-footer a {
+  color: var(--qrv-primary);
+  text-decoration: none;
+}
+.qrv-footer a:hover {
+  text-decoration: underline;
 }
 
 .qrv-loading-card {
@@ -568,7 +683,7 @@
   height: 72px;
   margin: 0 auto;
   border: 4px solid #ede9fe;
-  border-top-color: #6d28d9;
+  border-top-color: var(--qrv-primary);
   border-radius: 50%;
   animation: qrv-rotate 900ms linear infinite;
 }
@@ -577,7 +692,7 @@
   height: 26px;
   margin-top: -49px;
   margin-bottom: 24px;
-  color: #6d28d9;
+  color: var(--qrv-primary);
 }
 .qrv-spin {
   animation: qrv-rotate 800ms linear infinite;
@@ -618,6 +733,11 @@
   }
   .qrv-content-grid {
     grid-template-columns: 1fr;
+  }
+  .qrv-custom-cta-card {
+    grid-column: auto;
+    align-items: flex-start;
+    flex-direction: column;
   }
   .qrv-banner {
     border-radius: 15px;

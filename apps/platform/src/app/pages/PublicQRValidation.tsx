@@ -2,24 +2,30 @@ import * as React from 'react';
 
 import axios, { AxiosError } from 'axios';
 import {
+  ArrowRight,
   AlertTriangle,
   Check,
   CheckCircle2,
   ExternalLink,
   Globe2,
+  Link2,
   LockKeyhole,
   Mail,
   MapPin,
+  MessageCircle,
   PackageCheck,
   Phone,
   RefreshCw,
   ScanLine,
   ShieldCheck,
+  Star,
   XCircle,
 } from 'lucide-react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
 import { environment } from '../../environments/environment';
+import { getPublicLandingPageBySku } from '../services/publicLandingPage.service';
+import type { PublicLandingPageConfig } from '../types/public-landing-page.types';
 import './PublicQRValidation.css';
 
 const API_BASE_URL = environment.apiCoreUrl;
@@ -48,6 +54,9 @@ interface VerificationResult {
   activation_method: string | null;
   industry: string | null;
   warranty_period_months: number | null;
+  batch_number: string | null;
+  manufacturing_date: string | null;
+  expiry_date: string | null;
   logo_url: string | null;
   product_image_url: string | null;
   banner_image_url: string | null;
@@ -108,11 +117,20 @@ const STATUS_PRESENTATION: Record<VerificationStatus, { tone: string; eyebrow: s
   },
 };
 
-function safeWebUrl(value: string | null): string | null {
+function safeWebUrl(value: string | null | undefined): string | null {
   if (!value) return null;
   try {
     const parsed = new URL(value);
     return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveAssetUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    return new URL(value, API_BASE_URL || window.location.origin).href;
   } catch {
     return null;
   }
@@ -170,13 +188,15 @@ function NetworkErrorView({ message, onRetry }: { message: string; onRetry: () =
   );
 }
 
-function BrandHeader({ result }: { result: VerificationResult }) {
+function BrandHeader({ result, config }: { result: VerificationResult; config: PublicLandingPageConfig | null }) {
+  const logoUrl = resolveAssetUrl(config?.logo_url !== undefined ? config.logo_url : result.logo_url);
+
   return (
     <header className="qrv-brand-header">
       <div className="qrv-shell qrv-brand-header__inner">
         <div className="qrv-brand">
-          {result.logo_url ? (
-            <img src={result.logo_url} alt={`${result.brand_name || 'Product'} logo`} />
+          {logoUrl ? (
+            <img src={logoUrl} alt={`${result.brand_name || 'Product'} logo`} />
           ) : (
             <span className="qrv-brand__fallback" aria-hidden="true">
               <PackageCheck />
@@ -323,18 +343,57 @@ function LocationConsent({ scanEventId }: { scanEventId: string }) {
   );
 }
 
-function ProductDetails({ result }: { result: VerificationResult }) {
-  const rows = [
+type ProductDetailVisibilityKey =
+  | 'show_gtin'
+  | 'show_batch'
+  | 'show_mfg_date'
+  | 'show_expiry_date'
+  | 'show_serial_number';
+
+function shouldShowProductDetail(
+  config: PublicLandingPageConfig | null,
+  key: ProductDetailVisibilityKey,
+): boolean {
+  const settings = config?.product_details;
+  if (!settings) return true;
+  if (key === 'show_serial_number') return settings[key] === true;
+  return settings[key] !== false;
+}
+
+function productDetailRows(
+  result: VerificationResult,
+  config: PublicLandingPageConfig | null,
+): Array<[string, string]> {
+  const rows: Array<[string, string | null | undefined]> = [
     ['Product', result.product_name],
     ['Variant', result.sku_name],
     ['SKU', result.sku_code],
-    ['GTIN', result.gtin],
-    ['Serial number', result.serial_number],
     ['Industry', result.industry],
     ['Warranty', result.warranty_period_months ? `${result.warranty_period_months} months` : null],
     ...Object.entries(result.variant_attributes || {}),
-  ].filter((entry): entry is [string, string] => Boolean(entry[1]));
+    ...(config?.product_details?.custom_fields || []).map((field) => [field.label, field.value] as [string, string]),
+  ];
+  const optionalRows: Array<[string, string | null, ProductDetailVisibilityKey]> = [
+    ['GTIN', result.gtin, 'show_gtin'],
+    ['Batch', result.batch_number, 'show_batch'],
+    ['Manufacturing date', result.manufacturing_date, 'show_mfg_date'],
+    ['Expiry date', result.expiry_date, 'show_expiry_date'],
+    ['Serial number', result.serial_number, 'show_serial_number'],
+  ];
+  optionalRows.forEach(([label, value, key]) => {
+    if (shouldShowProductDetail(config, key)) rows.push([label, value]);
+  });
+  return rows.filter((entry): entry is [string, string] => Boolean(entry[1]));
+}
+
+function isMonospaceProductDetail(label: string): boolean {
+  return ['GTIN', 'Serial number', 'SKU'].includes(label);
+}
+
+function ProductDetails({ result, config }: { result: VerificationResult; config: PublicLandingPageConfig | null }) {
+  const rows = productDetailRows(result, config);
   if (!result.product_name && rows.length === 0) return null;
+  const productImageUrl = resolveAssetUrl(result.product_image_url);
 
   return (
     <section className="qrv-card qrv-product-card">
@@ -344,13 +403,15 @@ function ProductDetails({ result }: { result: VerificationResult }) {
           <h2>{result.product_name || 'Verified product'}</h2>
           {result.generic_name && <p>{result.generic_name}</p>}
         </div>
-        {result.product_image_url && <img src={result.product_image_url} alt={result.product_name || 'Product'} />}
+        {productImageUrl && (
+          <img src={productImageUrl} alt={result.product_name || 'Product'} />
+        )}
       </div>
       <dl className="qrv-details-grid">
         {rows.map(([label, value]) => (
           <div key={label}>
             <dt>{label}</dt>
-            <dd className={label === 'GTIN' || label === 'Serial number' || label === 'SKU' ? 'qrv-mono' : undefined}>{value}</dd>
+            <dd className={isMonospaceProductDetail(label) ? 'qrv-mono' : undefined}>{value}</dd>
           </div>
         ))}
       </dl>
@@ -400,14 +461,135 @@ function ContactCard({ result }: { result: VerificationResult }) {
   );
 }
 
-function Footer() {
+function formatSocialLabel(platform?: string, label?: string): string {
+  if (label) return label;
+  if (!platform) return 'Official channel';
+  return platform.charAt(0).toUpperCase() + platform.slice(1);
+}
+
+function SocialLinksCard({ config, brandName }: { config: PublicLandingPageConfig | null; brandName: string | null }) {
+  const links = [...(config?.social_links || [])]
+    .filter((link) => link.enabled !== false)
+    .sort((left, right) => (left.sort_order || 0) - (right.sort_order || 0))
+    .map((link) => ({ ...link, href: safeWebUrl(link.url) }))
+    .filter((link): link is typeof link & { href: string } => Boolean(link.href));
+
+  if (links.length === 0) return null;
+
+  return (
+    <section className="qrv-card qrv-engagement-card qrv-social-card" aria-labelledby="qrv-social-links-title">
+      <p className="qrv-eyebrow">Stay connected</p>
+      <h2 id="qrv-social-links-title">Connect with {brandName || 'the brand'}</h2>
+      <div className="qrv-social-list">
+        {links.map((link) => (
+          <a key={`${link.label || link.platform || 'channel'}-${link.href}`} href={link.href} target="_blank" rel="noreferrer">
+            <Link2 aria-hidden="true" />
+            <span>{formatSocialLabel(link.platform, link.label)}</span>
+            <ExternalLink aria-hidden="true" />
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function WarrantyCard({ config }: { config: PublicLandingPageConfig | null }) {
+  const warranty = config?.warranty;
+  const ctaUrl = safeWebUrl(warranty?.cta_url);
+  if (!warranty?.enabled) return null;
+
+  return (
+    <section className="qrv-card qrv-engagement-card" aria-labelledby="qrv-warranty-title">
+      <div className="qrv-engagement-card__icon"><ShieldCheck aria-hidden="true" /></div>
+      <p className="qrv-eyebrow">Warranty</p>
+      <h2 id="qrv-warranty-title">{warranty.title || 'Product warranty'}</h2>
+      {warranty.description && <p>{warranty.description}</p>}
+      {ctaUrl && (
+        <a className="qrv-button qrv-button--secondary" href={ctaUrl} target="_blank" rel="noreferrer">
+          {warranty.cta_text || 'View warranty'} <ArrowRight aria-hidden="true" />
+        </a>
+      )}
+    </section>
+  );
+}
+
+function feedbackTitle(type?: 'feedback' | 'survey' | 'none', title?: string): string {
+  if (title) return title;
+  return type === 'survey' ? 'Share your feedback' : 'Tell us what you think';
+}
+
+function feedbackActionLabel(type?: 'feedback' | 'survey' | 'none'): string {
+  return type === 'survey' ? 'Take survey' : 'Send feedback';
+}
+
+function FeedbackCard({ config }: { config: PublicLandingPageConfig | null }) {
+  const feedback = config?.feedback;
+  const surveyUrl = safeWebUrl(feedback?.survey_url);
+  if (!feedback?.enabled || feedback.type === 'none') return null;
+
+  const title = feedbackTitle(feedback.type, feedback.title);
+  const actionLabel = feedbackActionLabel(feedback.type);
+
+  return (
+    <section className="qrv-card qrv-engagement-card" aria-labelledby="qrv-feedback-title">
+      <div className="qrv-engagement-card__icon"><MessageCircle aria-hidden="true" /></div>
+      <p className="qrv-eyebrow">Your experience matters</p>
+      <h2 id="qrv-feedback-title">{title}</h2>
+      {feedback.description && <p>{feedback.description}</p>}
+      {surveyUrl && (
+        <a className="qrv-button qrv-button--secondary" href={surveyUrl} target="_blank" rel="noreferrer">
+          {actionLabel} <ExternalLink aria-hidden="true" />
+        </a>
+      )}
+    </section>
+  );
+}
+
+function CustomCtaCard({ config }: { config: PublicLandingPageConfig | null }) {
+  const cta = config?.custom_cta;
+  const ctaUrl = safeWebUrl(cta?.button_url);
+  if (!cta?.enabled || !ctaUrl) return null;
+
+  const buttonStyle = cta.button_style === 'outline' || cta.button_style === 'secondary' ? cta.button_style : 'primary';
+
+  return (
+    <section className="qrv-card qrv-engagement-card qrv-custom-cta-card" aria-labelledby="qrv-custom-cta-title">
+      <div>
+        <div className="qrv-engagement-card__icon"><Star aria-hidden="true" /></div>
+        <p className="qrv-eyebrow">Recommended for you</p>
+        <h2 id="qrv-custom-cta-title">Continue your product journey</h2>
+      </div>
+      <a className={`qrv-button qrv-button--${buttonStyle}`} href={ctaUrl} target="_blank" rel="noreferrer">
+        {cta.button_text || 'Learn more'} <ArrowRight aria-hidden="true" />
+      </a>
+    </section>
+  );
+}
+
+function Footer({ config }: { config: PublicLandingPageConfig | null }) {
+  const footer = config?.footer;
+  const footerText = footer?.text || '© 2026 CipherCode. Secure product experiences.';
+  const showPoweredBy = footer?.show_powered_by !== false;
+  const links = (footer?.custom_links || [])
+    .map((link) => ({ ...link, href: safeWebUrl(link.url) }))
+    .filter((link): link is typeof link & { href: string } => Boolean(link.href));
+
   return (
     <footer className="qrv-footer">
       <div className="qrv-shell">
-        <span>
-          <ShieldCheck aria-hidden="true" /> Powered by <strong>CipherCode</strong>
+        {showPoweredBy ? (
+          <span>
+            <ShieldCheck aria-hidden="true" /> Powered by <strong>CipherCode</strong>
+          </span>
+        ) : <span />}
+        <span className="qrv-footer__details">
+          <span>{footerText}</span>
+          {links.map((link) => (
+            <a key={`${link.label}-${link.href}`} href={link.href} target="_blank" rel="noreferrer">
+              {link.label}
+            </a>
+          ))}
         </span>
-        <span>© 2026 CipherCode. Secure product experiences.</span>
       </div>
     </footer>
   );
@@ -490,34 +672,103 @@ function usePublicVerification(input: VerificationRequest | null, requestKey: st
   return { result, loading, submitting, networkError, verify };
 }
 
+function usePublicLandingPage(result: VerificationResult | null): PublicLandingPageConfig | null {
+  const [config, setConfig] = React.useState<PublicLandingPageConfig | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setConfig(null);
+
+    if (!result?.gtin || result.verification_status === 'invalid') {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void getPublicLandingPageBySku(result.gtin)
+      .then((nextConfig) => {
+        if (!cancelled) setConfig(nextConfig);
+      })
+      .catch(() => {
+        // A landing page is optional. The verification result remains the fallback.
+        if (!cancelled) setConfig(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [result?.gtin, result?.verification_status]);
+
+  return config;
+}
+
+function hasProductContent(result: VerificationResult, config: PublicLandingPageConfig | null): boolean {
+  return [
+    result.product_name,
+    result.contact_email,
+    result.contact_phone,
+    result.website_url,
+    config?.product_details?.custom_fields?.length,
+  ].some(Boolean);
+}
+
+function hasLandingSections(config: PublicLandingPageConfig | null): boolean {
+  return [
+    config?.social_links?.some((link) => link.enabled !== false),
+    config?.warranty?.enabled,
+    config?.feedback?.enabled,
+    config?.custom_cta?.enabled,
+  ].some(Boolean);
+}
+
+function publicPageStyle(config: PublicLandingPageConfig | null): React.CSSProperties {
+  return {
+    '--qrv-primary': config?.primary_color || '#6d28d9',
+    '--qrv-accent': config?.accent_color || '#f59e0b',
+  } as React.CSSProperties;
+}
+
+function publicBannerUrl(result: VerificationResult, config: PublicLandingPageConfig | null): string | null {
+  const banner = config?.banner_image_url !== undefined ? config.banner_image_url : result.banner_image_url;
+  return resolveAssetUrl(banner);
+}
+
 export function PublicQRValidation() {
   const { input, requestKey } = useQRRouteInput();
   const { result, loading, submitting, networkError, verify } = usePublicVerification(input, requestKey);
+  const landingPageConfig = usePublicLandingPage(result);
 
   if (loading) return <LoadingView />;
   if (networkError) return <NetworkErrorView message={networkError} onRetry={() => void verify()} />;
   if (!result) return null;
-  const hasProductContent = Boolean(result.product_name || result.contact_email || result.contact_phone || result.website_url);
+  const productContentVisible = hasProductContent(result, landingPageConfig);
+  const landingSectionsVisible = hasLandingSections(landingPageConfig);
+  const bannerUrl = publicBannerUrl(result, landingPageConfig);
+  const pageStyle = publicPageStyle(landingPageConfig);
 
   return (
-    <div className="qrv-page">
-      <BrandHeader result={result} />
+    <div className="qrv-page" style={pageStyle}>
+      <BrandHeader result={result} config={landingPageConfig} />
       <main className="qrv-shell qrv-main">
         <StatusPanel result={result} submitting={submitting} onSecureCode={(code) => void verify(code)} />
         {result.authentic && result.scan_event_id && <LocationConsent scanEventId={result.scan_event_id} />}
-        {result.banner_image_url && (
+        {bannerUrl && (
           <figure className="qrv-banner">
-            <img src={result.banner_image_url} alt={`${result.product_name || 'Product'} banner`} />
+            <img src={bannerUrl} alt={`${result.product_name || 'Product'} banner`} />
           </figure>
         )}
-        {hasProductContent && (
+        {(productContentVisible || landingSectionsVisible) && (
           <div className="qrv-content-grid">
-            <ProductDetails result={result} />
+            <ProductDetails result={result} config={landingPageConfig} />
             <ContactCard result={result} />
+            <SocialLinksCard config={landingPageConfig} brandName={result.brand_name} />
+            <WarrantyCard config={landingPageConfig} />
+            <FeedbackCard config={landingPageConfig} />
+            <CustomCtaCard config={landingPageConfig} />
           </div>
         )}
       </main>
-      <Footer />
+      <Footer config={landingPageConfig} />
     </div>
   );
 }

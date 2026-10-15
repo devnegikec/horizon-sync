@@ -31,6 +31,9 @@ const authenticResult = {
   activation_method: 'pre',
   industry: 'Consumer Goods',
   warranty_period_months: 18,
+  batch_number: 'BATCH-2026-01',
+  manufacturing_date: '2026-01-10',
+  expiry_date: '2027-01-10',
   logo_url: 'https://images.example/logo.png',
   product_image_url: 'https://images.example/product.png',
   banner_image_url: 'https://images.example/banner.png',
@@ -52,6 +55,7 @@ function renderPage(url = '/g/0123456789012/s/PRO-ABC12345/1770000000000?c=signe
 describe('PublicQRValidation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedAxios.get.mockResolvedValue({ data: { config: null } } as never);
   });
 
   it('renders the branded enterprise landing page for an authentic Dynamic QR', async () => {
@@ -62,6 +66,9 @@ describe('PublicQRValidation', () => {
     expect(await screen.findByRole('heading', { name: 'Authentic Product' })).toBeInTheDocument();
     expect(screen.getByText('Demo Brand')).toBeInTheDocument();
     expect(screen.getByText('DEMO-BLU-L')).toBeInTheDocument();
+    expect(screen.getByText('BATCH-2026-01')).toBeInTheDocument();
+    expect(screen.getByText('2026-01-10')).toBeInTheDocument();
+    expect(screen.getByText('2027-01-10')).toBeInTheDocument();
     expect(screen.getByText('support@example.com')).toBeInTheDocument();
     expect(screen.getByAltText('Demo Product banner')).toHaveAttribute('src', 'https://images.example/banner.png');
     expect(screen.getByText(/Powered by/i)).toBeInTheDocument();
@@ -75,6 +82,73 @@ describe('PublicQRValidation', () => {
       },
       { headers: { 'X-Scan-Event-Id': expect.any(String) } },
     );
+  });
+
+  it('applies the saved public landing-page configuration', async () => {
+    mockedAxios.post.mockResolvedValueOnce({ data: authenticResult });
+    mockedAxios.get.mockResolvedValueOnce({
+      data: {
+        config: {
+          logo_url: '/static/landing-pages/demo-logo.png',
+          banner_image_url: '/static/landing-pages/demo-banner.png',
+          primary_color: '#0f766e',
+          accent_color: '#f97316',
+          product_details: {
+            show_gtin: false,
+            show_batch: false,
+            show_mfg_date: false,
+            show_expiry_date: false,
+            show_serial_number: true,
+            custom_fields: [{ label: 'Material', value: 'Recycled aluminium' }],
+          },
+          footer: {
+            text: 'Demo Brand official verification',
+            show_powered_by: false,
+            custom_links: [{ label: 'Privacy', url: 'https://example.com/privacy' }],
+          },
+          social_links: [{ platform: 'instagram', url: 'https://instagram.com/demo-brand', enabled: true }],
+          warranty: {
+            enabled: true,
+            title: 'Extended warranty',
+            description: 'Protect your product for longer.',
+            cta_text: 'View coverage',
+            cta_url: 'https://example.com/warranty',
+          },
+          feedback: {
+            enabled: true,
+            type: 'survey',
+            title: 'Have thoughts?',
+            description: 'Tell us about your verification experience.',
+            survey_url: 'https://example.com/survey',
+          },
+          custom_cta: {
+            enabled: true,
+            button_text: 'Shop now',
+            button_url: 'https://example.com/shop',
+            button_style: 'outline',
+          },
+        },
+      },
+    } as never);
+
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'Authentic Product' });
+    await waitFor(() => expect(screen.getByAltText('Demo Brand logo')).toHaveAttribute('src', 'http://localhost/static/landing-pages/demo-logo.png'));
+    expect(screen.getByAltText('Demo Product banner')).toHaveAttribute('src', 'http://localhost/static/landing-pages/demo-banner.png');
+    expect(screen.queryByText('0123456789012')).not.toBeInTheDocument();
+    expect(screen.queryByText('BATCH-2026-01')).not.toBeInTheDocument();
+    expect(screen.queryByText('2026-01-10')).not.toBeInTheDocument();
+    expect(screen.queryByText('2027-01-10')).not.toBeInTheDocument();
+    expect(screen.getByText('Recycled aluminium')).toBeInTheDocument();
+    expect(screen.getByText('Demo Brand official verification')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', 'https://example.com/privacy');
+    expect(screen.getByRole('link', { name: 'Instagram' })).toHaveAttribute('href', 'https://instagram.com/demo-brand');
+    expect(screen.getByRole('heading', { name: 'Extended warranty' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Have thoughts?' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Shop now/i })).toHaveAttribute('href', 'https://example.com/shop');
+    expect(screen.queryByText(/Powered by/i)).not.toBeInTheDocument();
+    expect(mockedAxios.get).toHaveBeenCalledWith(expect.stringContaining('/api/v1/public/products/sku/0123456789012/landing-page'));
   });
 
   it('shows the protected-layer instruction for a Dual overt QR', async () => {
