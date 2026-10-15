@@ -36,6 +36,12 @@ export interface DashboardWidgetDef {
   description?: string;
   /** Documented backend path (see docs/DASHBOARD_DOC.md). Shown as a hint. */
   endpoint: string;
+  /**
+   * Server catalogue widget ids this frontend widget maps to (a widget may
+   * cover several, e.g. the KPI strip). Used to apply the org's saved
+   * Settings → Dashboard Layout enable/order overrides.
+   */
+  serverIds: string[];
   /** Optional permission code; the widget is hidden when the user lacks it. */
   permission?: string;
   size: WidgetSize;

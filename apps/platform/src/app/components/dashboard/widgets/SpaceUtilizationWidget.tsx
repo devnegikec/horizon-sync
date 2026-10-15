@@ -18,7 +18,9 @@ import { useApiData } from '../useApiData';
 import { formatInt, toNumber } from '../utils';
 
 function Gauge({ label, pct }: { label: string; pct: unknown }) {
-  const value = Math.max(0, Math.min(100, toNumber(pct) ?? 0));
+  const raw = toNumber(pct);
+  // Clamp only the arc; the label shows the true value so >100% stays visible.
+  const value = Math.max(0, Math.min(100, raw ?? 0));
   const data = [
     { name: 'used', value },
     { name: 'free', value: 100 - value },
@@ -35,7 +37,7 @@ function Gauge({ label, pct }: { label: string; pct: unknown }) {
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-2xl font-bold">{pct == null ? '—' : `${value.toFixed(1)}%`}</span>
+          <span className="text-2xl font-bold">{raw == null ? '—' : `${raw.toFixed(1)}%`}</span>
         </div>
       </div>
       <p className="mt-1 text-xs font-medium text-muted-foreground">{label}</p>

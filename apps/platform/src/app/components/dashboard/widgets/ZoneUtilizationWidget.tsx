@@ -21,23 +21,37 @@ interface TreeItem {
   children?: TreeItem[];
 }
 
-function toItem(node: CapacityNodeLike): TreeItem {
-  const occupied = toNumber(node.volume?.occupied_m3) ?? 0;
-  const capacity = toNumber(node.volume?.capacity_m3) ?? 0;
-  const size = occupied > 0 ? occupied : capacity > 0 ? capacity : 1;
-  const children = (node.children ?? []).map(toItem);
-  return children.length > 0 ? { name: node.code, size, children } : { name: node.code, size };
+/** Empty zones keep a sliver so they stay visible without implying occupancy. */
+const EMPTY_ZONE_SIZE = 0.01;
+
+/** Sum top-level zone occupied volume across every warehouse in scope. */
+function collectZoneTotals(trees: CapacityNodeLike[]): TreeItem[] {
+  const totals = new Map<string, number>();
+  trees.forEach((tree) => {
+    (tree.children ?? []).forEach((zone) => {
+      const occupied = toNumber(zone.volume?.occupied_m3) ?? 0;
+      totals.set(zone.code, (totals.get(zone.code) ?? 0) + occupied);
+    });
+  });
+  return [...totals.entries()].map(([name, size]) => ({ name, size: size > 0 ? size : EMPTY_ZONE_SIZE }));
 }
 
-/** Zone → aisle → bin rollup from `capacity/warehouses/{id}/tree` — widget #7. */
-export function ZoneUtilizationWidget({ refreshToken }: DashboardWidgetProps) {
+/** Occupied volume per top-level zone from `capacity/warehouses/{id}/tree` — widget #7. */
+export function ZoneUtilizationWidget({ filters, refreshToken }: DashboardWidgetProps) {
+  const scope = filters.warehouseId ?? 'all';
   const { data, loading, error } = useApiData(
-    'zone-utilization',
+    `zone-utilization:${scope}`,
     async (token) => {
       const warehouses = await fetchMyWarehouses(token);
-      if (warehouses.length === 0) return null;
-      const tree = await fetchCapacityTree(token, warehouses[0].id);
-      return { warehouseName: warehouses[0].name, items: (tree.children ?? []).map(toItem) };
+      const targets = filters.warehouseId
+        ? warehouses.filter((warehouse) => warehouse.id === filters.warehouseId)
+        : warehouses;
+      if (targets.length === 0) return null;
+      const trees = await Promise.all(targets.map((warehouse) => fetchCapacityTree(token, warehouse.id)));
+      return {
+        scopeLabel: targets.length === 1 ? targets[0].name : `All warehouses (${targets.length})`,
+        items: collectZoneTotals(trees),
+      };
     },
     refreshToken,
   );
@@ -50,7 +64,7 @@ export function ZoneUtilizationWidget({ refreshToken }: DashboardWidgetProps) {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">Occupied volume by zone · {data.warehouseName}</p>
+      <p className="text-xs text-muted-foreground">Occupied volume by zone · {data.scopeLabel}</p>
       <div className="h-[300px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <Treemap data={data.items} dataKey="size" aspectRatio={4 / 3} stroke="#fff" fill="#8b5cf6">

@@ -229,9 +229,13 @@ export function DashboardLayoutSettings({ organizationId, accessToken, canEdit }
 
   const handleSave = async (): Promise<void> => {
     if (saving) return;
+    // Snapshot what we send and advance only the baseline — adopting the
+    // response body would overwrite edits made while the request was pending.
+    const payload = current;
     setSaving(true);
     try {
-      applyLayout(await dashboardLayoutService.save(accessToken, organizationId, current));
+      await dashboardLayoutService.save(accessToken, organizationId, payload);
+      setSaved(payload);
       toast({ title: 'Dashboard layout saved' });
     } catch (e) {
       toast({

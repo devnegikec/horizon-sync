@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import { ChevronLeft, ChevronRight, LayoutDashboard, RefreshCw } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 import { cn } from '@horizon-sync/ui/lib';
@@ -10,10 +11,36 @@ import { usePermissions } from '../../hooks/usePermissions';
 
 import { DashboardFiltersContext } from './DashboardFiltersContext';
 import { dashboardWidgets } from './registry';
-import type { DashboardFilters, DashboardPeriod } from './types';
+import type { DashboardFilters, DashboardPeriod, DashboardWidgetDef, WidgetSize } from './types';
+import { useDashboardLayout, type DashboardLayoutLookup } from './useDashboardLayout';
 import { WidgetErrorBoundary } from './WidgetErrorBoundary';
 
 const PERIODS: DashboardPeriod[] = ['week', 'month', 'year'];
+
+/** Grid spans per widget size (grid is 2 columns at sm, 12 at lg). */
+const SIZE_SPAN: Record<WidgetSize, string> = {
+  sm: 'sm:col-span-1 lg:col-span-4',
+  md: 'sm:col-span-2 lg:col-span-6',
+  lg: 'sm:col-span-2 lg:col-span-8',
+  full: 'sm:col-span-2 lg:col-span-12',
+};
+
+/** Shift a date by whole months, clamping the day so it never overflows. */
+function addMonths(date: Date, months: number): void {
+  const day = date.getDate();
+  date.setDate(1);
+  date.setMonth(date.getMonth() + months);
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  date.setDate(Math.min(day, lastDay));
+}
+
+/** Earliest order the widget's server ids were given in the saved layout. */
+function widgetOrder(widget: DashboardWidgetDef, layout: DashboardLayoutLookup): number {
+  const orders = widget.serverIds
+    .map((id) => layout.orders.get(id))
+    .filter((order): order is number => order !== undefined);
+  return orders.length > 0 ? Math.min(...orders) : Number.MAX_SAFE_INTEGER;
+}
 
 /**
  * Configurable dashboard section.
@@ -32,7 +59,7 @@ export function DashboardSection() {
     setAnchorDate((prev) => {
       const next = new Date(prev);
       if (period === 'week') next.setDate(next.getDate() + direction * 7);
-      else if (period === 'month') next.setMonth(next.getMonth() + direction);
+      else if (period === 'month') addMonths(next, direction);
       else next.setFullYear(next.getFullYear() + direction);
       return next;
     });
@@ -40,10 +67,17 @@ export function DashboardSection() {
 
   const filters = React.useMemo<DashboardFilters>(() => ({ period, anchorDate }), [period, anchorDate]);
 
-  const widgets = React.useMemo(
-    () => dashboardWidgets.filter((widget) => !widget.permission || hasPermission(widget.permission)),
-    [hasPermission],
-  );
+  // Apply the organization's saved Settings → Dashboard Layout overrides.
+  const organizationId = useUserStore((s) => s.user?.organization_id);
+  const layout = useDashboardLayout(organizationId);
+
+  const widgets = React.useMemo(() => {
+    const permitted = dashboardWidgets.filter((widget) => !widget.permission || hasPermission(widget.permission));
+    if (!layout) return permitted;
+    return permitted
+      .filter((widget) => widget.serverIds.some((id) => layout.enabledIds.has(id)))
+      .sort((a, b) => widgetOrder(a, layout) - widgetOrder(b, layout));
+  }, [hasPermission, layout]);
 
   // Avoid a flash of an empty section while permissions are still loading,
   // and hide the section entirely when the user can see no widgets.
@@ -87,9 +121,9 @@ export function DashboardSection() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-12">
           {widgets.map((widget) => (
-            <div key={widget.id}>
+            <div key={widget.id} className={SIZE_SPAN[widget.size]}>
               <Card className="h-full">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">{widget.title}</CardTitle>
