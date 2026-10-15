@@ -3,6 +3,7 @@ import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { FileText, Plus, MoreHorizontal, Eye, Edit, Trash2, Loader2 } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import {
@@ -14,8 +15,9 @@ import {
 } from '@horizon-sync/ui/components/ui/dropdown-menu';
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
+import { getCurrencySymbol } from '../../types/currency.types';
 import type { StockEntry, StockEntryStatus } from '../../types/stock.types';
-import { formatDate, formatCurrency } from '../../utility';
+import { formatDate } from '../../utility';
 
 function getEntryTypeBadge(entryType: string) {
   switch (entryType) {
@@ -99,6 +101,9 @@ export function StockEntriesTable({
       },
     };
   }, [serverPagination]);
+
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
+  const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
 
   const columns: ColumnDef<StockEntry, unknown>[] = React.useMemo(
     () => [
@@ -184,7 +189,7 @@ export function StockEntriesTable({
         cell: ({ row }) => {
           const totalValue = row.original.total_value;
           return totalValue ? (
-            <div className="text-right font-medium">{formatCurrency(Number(totalValue))}</div>
+            <div className="text-right font-medium">{`${currencySymbol}${Number(totalValue)}`}</div>
           ) : (
             <div className="text-right text-muted-foreground">—</div>
           );
@@ -246,7 +251,7 @@ export function StockEntriesTable({
         enableSorting: false,
       },
     ],
-    [onView, onEdit, onDelete]
+    [onView, onEdit, onDelete, currencySymbol]
   );
 
   const renderViewOptions = (table: Table<StockEntry>) => {
