@@ -2,11 +2,11 @@ import * as React from 'react';
 
 import { Receipt } from 'lucide-react';
 
+import { BankAccountDetails } from '@horizon-sync/ui';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 
 import type { SalesOrder, ConvertToInvoiceRequest, ConvertToInvoiceItemRequest } from '../../types/sales-order.types';
 
-import { BankAccountDetails } from '@horizon-sync/ui';
 
 interface CreateInvoiceDialogProps {
   open: boolean;

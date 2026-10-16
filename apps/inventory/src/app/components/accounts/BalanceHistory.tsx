@@ -3,6 +3,8 @@ import * as React from 'react';
 import { Calendar, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
 import { Card, CardContent, CardHeader, CardTitle, Button } from '@horizon-sync/ui/components';
 import {
   Select,
@@ -14,8 +16,6 @@ import {
 
 import type { AccountBalance, AccountBalanceHistoryResponse } from '../../types/account.types';
 import { accountApi } from '../../utility/api/accounts';
-import { useCurrencyStore } from '@horizon-sync/store';
-import { getCurrencySymbol } from '@horizon-sync/ui';
 
 interface BalanceHistoryProps {
   accountId: string;

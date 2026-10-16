@@ -1,4 +1,5 @@
 import * as React from 'react';
+
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 
 import { useUserStore } from '@horizon-sync/store';
@@ -6,6 +7,7 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import type {
   AsnOrder,
+  AsnOrderClosePayload,
   AsnOrderCreate,
   AsnOrderUpdate,
   AsnOrderListResponse,
@@ -111,6 +113,7 @@ export function useAsnOrderManagement() {
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
   const [saving, setSaving] = React.useState(false);
+  const [closing, setClosing] = React.useState(false);
   const [recentlyCreatedId, setRecentlyCreatedId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -143,7 +146,14 @@ export function useAsnOrderManagement() {
     setSaving(true);
     try {
       if (id) {
-        await asnOrderApi.update(accessToken, id, data);
+        const update = data as AsnOrderUpdate;
+        if (update.status === 'closed') {
+          // Closing is a status transition. The dedicated endpoint rejects the
+          // close with 422 while unreceived transfer serials remain.
+          await asnOrderApi.updateStatus(accessToken, id, { status: 'closed' });
+        } else {
+          await asnOrderApi.update(accessToken, id, data);
+        }
         toast({ title: 'Success', description: 'ASN order updated successfully' });
       } else {
         const created = await asnOrderApi.create(accessToken, data) as { id?: string; asn_order_no?: string };
@@ -158,9 +168,14 @@ export function useAsnOrderManagement() {
       queryClient.invalidateQueries({ queryKey: ['asn-orders'] });
       refetch();
     } catch (err) {
+      const status = (err as { status?: number } | null)?.status;
+      const closing = (data as AsnOrderUpdate).status === 'closed';
       toast({
         title: 'Error',
-        description: getFriendlyErrorMessage(err),
+        description:
+          closing && status === 422
+            ? `${getFriendlyErrorMessage(err)} Resolve the unreceived serials (short-close in the Shortage Ledger) before closing.`
+            : getFriendlyErrorMessage(err),
         variant: 'destructive',
       });
       throw err;
@@ -179,6 +194,32 @@ export function useAsnOrderManagement() {
     }
   }), [page, pageSize, pagination?.total_items]);
 
+  /**
+   * Formally close an ASN, accepting any outstanding shortfall.
+   *
+   * Errors are deliberately NOT toasted here: the close dialog renders the
+   * documented states itself (`SHORTAGE_REASON_REQUIRED`,
+   * `ASN_CLOSE_APPROVAL_REQUIRED`, `ASN_ALREADY_CLOSED`, `ASN_NOT_CLOSABLE`), so
+   * the operator keeps the form and its context. The rejection is re-thrown for
+   * the dialog to branch on, and the list is only refreshed on success — a
+   * failed close must never look like it succeeded.
+   */
+  const closeOrder = React.useCallback(async (id: string, payload: AsnOrderClosePayload = {}) => {
+    if (!accessToken) throw new Error('Not authenticated');
+    setClosing(true);
+    try {
+      const closed = await asnOrderApi.close(accessToken, id, payload);
+      // Closing also writes off the ASN's open shortage balances, so anything
+      // keyed on shortages is stale afterwards.
+      queryClient.invalidateQueries({ queryKey: ['asn-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['short-balances'] });
+      refetch();
+      return closed;
+    } finally {
+      setClosing(false);
+    }
+  }, [accessToken, queryClient, refetch]);
+
   return {
     filters,
     setFilters,
@@ -193,6 +234,8 @@ export function useAsnOrderManagement() {
     pageSize,
     setPageSize,
     handleSave,
+    closeOrder,
+    closing,
     deleteMutation,
     serverPaginationConfig,
     saving,

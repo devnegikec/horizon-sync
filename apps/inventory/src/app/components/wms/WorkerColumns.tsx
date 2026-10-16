@@ -119,16 +119,14 @@ export function createWorkerColumns({
       cell: ({ row }) => {
         const code = row.original.barcode || row.original.qr_code;
         return code ? (
-          <Button
-            variant="ghost"
+          <Button variant="ghost"
             size="sm"
             className="gap-1.5 text-xs h-7 px-2"
             onClick={(e) => {
               e.stopPropagation();
               onPrintQR(row.original);
             }}
-            title="Print QR Code for mobile login"
-          >
+            title="Print QR Code for mobile login">
             <Printer className="h-3.5 w-3.5" />
             <code className="text-xs font-mono">{code}</code>
           </Button>

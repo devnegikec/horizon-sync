@@ -1,7 +1,8 @@
 import { http, HttpResponse } from "msw";
-import { products, distributionChannels, destinationChannels } from "../data/products";
+
 import { blocks } from "../data/blocks";
 import { organizations } from "../data/organizations";
+import { products, distributionChannels, destinationChannels } from "../data/products";
 import { resolveTenant, paginate } from "../utils";
 
 const BASE = "/api/v1";

@@ -1,9 +1,9 @@
-import { getFriendlyErrorMessage } from '../utility/api/core';
 import { useCallback, useState } from 'react';
 
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import type { Invoice } from '../types/invoice.types';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 import { convertInvoiceToPDFData } from '../utils/pdf/invoiceToPDF';
 
 import { usePDFGeneration } from './usePDFGeneration';

@@ -1,0 +1,105 @@
+name: Deploy UI to Railway (Stage)
+
+# Builds and deploys the single nginx image that serves all three UIs
+# (platform at /, inventory at /inventory/, admin at /admin/) to the
+# BW-staging project's `staging` environment.
+#
+# The actual `nx build` happens INSIDE the Railway Docker build (multi-stage),
+# so CI only uploads source — no Node build runs in Actions.
+#
+# Requires repo secret: RAILWAY_TOKEN_STAGE (a BW-staging *project* token).
+
+on:
+  push:
+    branches:
+      - stage
+    paths:
+      - "apps/**"
+      - "libs/**"
+      - "Dockerfile.railway"
+      - "nginx.railway.conf"
+      - ".dockerignore"
+      - "railway.toml"
+      - "package.json"
+      - "package-lock.json"
+      - "nx.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/deploy-stage.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: railway-stage-ui
+  cancel-in-progress: false
+
+env:
+  RAILWAY_PROJECT_ID: fd8e8c06-a0a1-4592-9d6e-9a63c6cfb090
+  RAILWAY_ENV: staging
+  RAILWAY_SERVICE: horizon-ui
+
+jobs:
+  deploy:
+    name: Deploy horizon-ui
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.com/install.sh | sh
+          echo "$HOME/.railway/bin" >> "$GITHUB_PATH"
+
+      # NOTE: the API URLs the UI calls are baked in at image-build time from the
+      # service variables NX_API_BASE_URL / NX_API_CORE_URL / NX_API_IDENTITY_URL.
+      # Changing a domain therefore requires a rebuild — this workflow does that.
+      - name: Deploy horizon-ui
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGE }}
+        run: |
+          railway up \
+            -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_ENV" -s "$RAILWAY_SERVICE" \
+            -m "stage: ${GITHUB_SHA::7} (horizon-ui)" -d
+
+      - name: Verify deployment reached SUCCESS
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGE }}
+        run: |
+          set -uo pipefail
+          ok=0
+          for i in $(seq 1 60); do
+            status=$(railway deployment list \
+              -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_ENV" -s "$RAILWAY_SERVICE" --json 2>/dev/null \
+              | python3 -c "import sys,json;d=json.load(sys.stdin);print((d[0] if isinstance(d,list) and d else {}).get('status',''))" \
+              2>/dev/null || echo "")
+            echo "attempt $i/60: ${status:-<no status>}"
+            case "$status" in
+              SUCCESS) ok=1; break ;;
+              FAILED|CRASHED|REMOVED) echo "::error::deployment is $status"; break ;;
+            esac
+            sleep 15
+          done
+          if [ "$ok" != "1" ]; then
+            echo "::error::$RAILWAY_SERVICE did not reach SUCCESS"
+            exit 1
+          fi
+          echo "✅ horizon-ui deployed successfully"
+
+      - name: Smoke test public entry points
+        # Skipped automatically until the public domain exists (Phase E).
+        continue-on-error: true
+        run: |
+          BASE="https://app.ciphercode.ai"
+          for path in / /healthz /inventory/remoteEntry.js /admin/; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$BASE$path" || echo 000)
+            echo "$BASE$path -> $code"
+          done
+
+      - name: Dump deploy logs on failure
+        if: failure()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGE }}
+        run: |
+          railway logs -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_ENV" -s "$RAILWAY_SERVICE" -b -n 80 || true
+          railway logs -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_ENV" -s "$RAILWAY_SERVICE" -d -n 80 || true

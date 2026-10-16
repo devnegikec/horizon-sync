@@ -1,4 +1,5 @@
 import { http, HttpResponse } from "msw";
+
 import { scanEvents, dashboardMetrics } from "../data/analytics";
 import { resolveTenant, paginate } from "../utils";
 

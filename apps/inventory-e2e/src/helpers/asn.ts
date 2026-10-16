@@ -161,7 +161,7 @@ export async function mockAsnApi(page: Page, orders: E2EAsnOrder[]): Promise<Asn
     });
   });
 
-  // The ASN dialog fetches both "all" and "assigned" warehouse lists when open.
+  // The ASN dialog only fetches the "assigned" warehouse list when open.
   await page.route('**/api/v1/warehouses**', async (route) => {
     await route.fulfill({
       status: 200,

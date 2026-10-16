@@ -1,6 +1,7 @@
-import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
 import { useUserStore } from '@horizon-sync/store';
+import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
 
+import { environment } from '../../environments/environment';
 import {
     AUTO_APPROVE_SINGLE_CREATE,
     AUTO_CREATE_SKU_ON_ITEM,
@@ -12,7 +13,6 @@ import {
     VARIANT_STRUCTURED_ENABLED,
     WMS_ENABLED,
 } from '../constants/feature-flags';
-import { environment } from '../../environments/environment';
 
 const FLAG_API_BASE_URL = `${environment.apiCoreUrl}/api/v1`;
 

@@ -1,14 +1,15 @@
 import * as React from 'react';
+import { useState } from 'react';
 
 import { type ColumnDef } from '@tanstack/react-table';
 import { Download, Loader2, AlertCircle, CheckCircle2, RefreshCw, Layers, QrCode } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Badge, Button, Card, CardContent, TableSkeleton } from '@horizon-sync/ui/components';
+import { DetailDialog } from '@horizon-sync/ui/components';
 import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
-import { DetailDialog } from '@horizon-sync/ui/components';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 
 import { environment } from '../../../environments/environment';
@@ -18,7 +19,6 @@ import { qrBlockService } from '../../features/qr-management/services/qrBlockSer
 import type { BlockStatus, ProductItem, QRBlock, QRType } from '../../features/qr-management/types/qrBlock.types';
 import { getApiErrorMessage } from '../../features/qr-management/utils/apiError';
 import { formatDate } from '../../utility/formatDate';
-import { useState } from 'react';
 
 
 /* ------------------------------------------------------------------ */
@@ -381,14 +381,12 @@ function BlockItemsTable({ blockId }: { blockId: string }) {
         accessorKey: 'qr_active',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Active" />,
         cell: ({ row }) => (
-          <Badge
-            variant="secondary"
+          <Badge variant="secondary"
             className={
               row.original.qr_active
                 ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                 : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-            }
-          >
+            }>
             {row.original.qr_active ? 'Active' : 'Inactive'}
           </Badge>
         ),
@@ -443,8 +441,7 @@ function BlockItemsTable({ blockId }: { blockId: string }) {
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable
-          columns={columns}
+        <DataTable columns={columns}
           data={items}
           config={{
             showSerialNumber: true,
@@ -462,8 +459,7 @@ function BlockItemsTable({ blockId }: { blockId: string }) {
             },
           }}
           fixedHeader
-          maxHeight="300px"
-        />
+          maxHeight="300px"/>
       </CardContent>
     </Card>
   );
@@ -529,16 +525,14 @@ function MasterPackAutoLink({ block, onLinked }: { block: QRBlock; onLinked: () 
       {message && <p className="text-xs text-green-600">{message}</p>}
       {error && <p className="text-xs text-destructive">{error}</p>}
 
-      <ConfirmationDialog
-        open={confirmOpen}
+      <ConfirmationDialog open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Re-run master pack aggregation?"
         description={`This will remove this block's existing parent links and re-aggregate its units into packs of ${Number(packSize) || '—'} items each.`}
         confirmLabel="Aggregate"
         variant="destructive"
         loading={linking}
-        onConfirm={performAutoLink}
-      />
+        onConfirm={performAutoLink}/>
     </div>
   );
 }
@@ -579,16 +573,14 @@ export function BlockDetailDialog({ blockId, open, onOpenChange, onRetry }: Bloc
   };
 
   return (
-    <DetailDialog
-      open={open}
+    <DetailDialog open={open}
       onOpenChange={onOpenChange}
       size="lg"
       contentClassName="max-w-4xl flex flex-col"
       style={{ height: 'min(85vh, 820px)' }}
       title={'Block Details'}
       loading={loading}
-      loadingMessage="Loading details..."
-    >
+      loadingMessage="Loading details...">
       {/* <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Block Details</DialogTitle>

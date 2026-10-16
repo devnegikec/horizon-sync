@@ -142,10 +142,10 @@ describe('CreateInvoiceDialog', () => {
     );
 
     const inputs = screen.getAllByRole('spinbutton');
-    
+
     // Product A should have qty_to_bill = 70 (available)
     expect(inputs[0]).toHaveValue(70);
-    
+
     // Product B should have qty_to_bill = 0 (fully billed)
     expect(inputs[1]).toHaveValue(0);
   });
@@ -168,7 +168,7 @@ describe('CreateInvoiceDialog', () => {
 
   it('should update invoice total when qty_to_bill changes', async () => {
     const user = userEvent.setup();
-    
+
     render(
       <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
@@ -179,7 +179,7 @@ describe('CreateInvoiceDialog', () => {
     );
 
     const inputs = screen.getAllByRole('spinbutton');
-    
+
     // Change Product A qty_to_bill to 50
     await user.clear(inputs[0]);
     await user.type(inputs[0], '50');
@@ -192,7 +192,7 @@ describe('CreateInvoiceDialog', () => {
 
   it('should show validation error when qty_to_bill exceeds available', async () => {
     const user = userEvent.setup();
-    
+
     render(
       <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
@@ -203,7 +203,7 @@ describe('CreateInvoiceDialog', () => {
     );
 
     const inputs = screen.getAllByRole('spinbutton');
-    
+
     // Try to bill more than available (70)
     await user.clear(inputs[0]);
     await user.type(inputs[0], '100');
@@ -215,7 +215,7 @@ describe('CreateInvoiceDialog', () => {
 
   it('should disable submit button when validation error exists', async () => {
     const user = userEvent.setup();
-    
+
     render(
       <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
@@ -242,7 +242,7 @@ describe('CreateInvoiceDialog', () => {
 
   it('should disable submit button when no items have positive quantity', async () => {
     const user = userEvent.setup();
-    
+
     render(
       <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
@@ -275,7 +275,7 @@ describe('CreateInvoiceDialog', () => {
     );
 
     const inputs = screen.getAllByRole('spinbutton');
-    
+
     // Product B has 0 available, should be disabled
     expect(inputs[1]).toBeDisabled();
   });
@@ -283,7 +283,7 @@ describe('CreateInvoiceDialog', () => {
   it('should call onCreateInvoice with correct data on submit', async () => {
     const user = userEvent.setup();
     mockOnCreateInvoice.mockResolvedValue(undefined);
-    
+
     render(
       <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
@@ -294,7 +294,7 @@ describe('CreateInvoiceDialog', () => {
     );
 
     const inputs = screen.getAllByRole('spinbutton');
-    
+
     // Set Product A qty_to_bill to 50
     await user.clear(inputs[0]);
     await user.type(inputs[0], '50');
@@ -317,7 +317,7 @@ describe('CreateInvoiceDialog', () => {
   it('should only include items with positive qty_to_bill in invoice', async () => {
     const user = userEvent.setup();
     mockOnCreateInvoice.mockResolvedValue(undefined);
-    
+
     render(
       <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
@@ -344,8 +344,8 @@ describe('CreateInvoiceDialog', () => {
 
   it('should show alert when trying to submit with validation errors', async () => {
     const user = userEvent.setup();
-    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
-    
+    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => { /* silence alert */ });
+
     render(
       <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
@@ -356,7 +356,7 @@ describe('CreateInvoiceDialog', () => {
     );
 
     const inputs = screen.getAllByRole('spinbutton');
-    
+
     // Enter invalid quantity
     await user.clear(inputs[0]);
     await user.type(inputs[0], '100');
@@ -375,8 +375,8 @@ describe('CreateInvoiceDialog', () => {
 
   it('should show alert when trying to submit without valid items', async () => {
     const user = userEvent.setup();
-    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
-    
+    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => { /* silence alert */ });
+
     render(
       <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
@@ -387,7 +387,7 @@ describe('CreateInvoiceDialog', () => {
     );
 
     const inputs = screen.getAllByRole('spinbutton');
-    
+
     // Set all quantities to zero
     await user.clear(inputs[0]);
     await user.type(inputs[0], '0');
@@ -420,7 +420,7 @@ describe('CreateInvoiceDialog', () => {
 
   it('should call onOpenChange when cancel button is clicked', async () => {
     const user = userEvent.setup();
-    
+
     render(
       <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
@@ -519,7 +519,7 @@ describe('CreateInvoiceDialog', () => {
 
   it('should handle decimal quantities correctly', async () => {
     const user = userEvent.setup();
-    
+
     render(
       <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
@@ -530,7 +530,7 @@ describe('CreateInvoiceDialog', () => {
     );
 
     const inputs = screen.getAllByRole('spinbutton');
-    
+
     // Enter decimal quantity
     await user.clear(inputs[0]);
     await user.type(inputs[0], '25.5');
@@ -545,7 +545,7 @@ describe('CreateInvoiceDialog', () => {
 
   it('should highlight row with validation error', async () => {
     const user = userEvent.setup();
-    
+
     render(
       <CreateInvoiceDialog open={true}
         onOpenChange={mockOnOpenChange}
@@ -556,7 +556,7 @@ describe('CreateInvoiceDialog', () => {
     );
 
     const inputs = screen.getAllByRole('spinbutton');
-    
+
     // Enter invalid quantity
     await user.clear(inputs[0]);
     await user.type(inputs[0], '100');

@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { type Table } from '@tanstack/react-table';
 import { Wallet, Plus, Download } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import {
   Card,
   CardContent,
@@ -16,9 +17,8 @@ import {
   SelectValue,
 } from '@horizon-sync/ui/components';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
-import { cn } from '@horizon-sync/ui/lib';
-import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks';
+import { cn } from '@horizon-sync/ui/lib';
 
 import { useAccountActions } from '../../hooks/useAccountActions';
 import { useAccounts } from '../../hooks/useAccounts';
@@ -81,22 +81,22 @@ export function AccountManagement() {
   } = useAccounts(1, 20, filters);
 
   const { toggleAccountStatus, deleteAccount } = useAccountActions();
-  const { 
-    isDefaultAccount, 
-    getDefaultAccountUsage, 
+  const {
+    isDefaultAccount,
+    getDefaultAccountUsage,
     loading: defaultAccountsLoading,
-    defaultAccounts 
+    defaultAccounts
   } = useDefaultAccounts();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<AccountListItem | null>(null);
   const [tableInstance, setTableInstance] = useState<Table<AccountListItem> | null>(null);
-  
+
   // Delete confirmation dialogs
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [defaultDeleteDialogOpen, setDefaultDeleteDialogOpen] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<AccountListItem | null>(null);
   const [confirmToggleAccount, setConfirmToggleAccount] = useState<AccountListItem | null>(null);
-  
+
   const userIsSystemAdmin = useMemo(() => {
     return isSystemAdmin(permissions?.permissions || []);
   }, [permissions]);
@@ -159,11 +159,11 @@ export function AccountManagement() {
 
   const handleDeleteAccount = (account: AccountListItem) => {
     setAccountToDelete(account);
-    
+
     // Check if this is a default account
     const accountIsDefault = isDefaultAccount(account.id);
     const accountUsage = getDefaultAccountUsage(account.id);
-    
+
     console.log('Delete account attempt:', {
       accountId: account.id,
       accountName: account.account_name,
@@ -173,7 +173,7 @@ export function AccountManagement() {
       defaultAccountsLoading,
       totalDefaultAccounts: defaultAccounts.length
     });
-    
+
     if (accountIsDefault) {
       // For default accounts, show the special dialog
       setDefaultDeleteDialogOpen(true);
@@ -185,7 +185,7 @@ export function AccountManagement() {
 
   const confirmDeleteAccount = async () => {
     if (!accountToDelete) return;
-    
+
     try {
       await deleteAccount(accountToDelete.id);
       toast({
@@ -212,7 +212,7 @@ export function AccountManagement() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Chart of Accounts</h1>
-          <p className="text-muted-foreground mt-1">Manage your organization's financial accounts</p>
+          <p className="text-muted-foreground mt-1">Manage your organization&apos;s financial accounts</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="gap-2">
@@ -310,32 +310,26 @@ export function AccountManagement() {
         onUpdated={refetch}/>
 
       {/* Delete Confirmation Dialogs */}
-      <DeleteConfirmationDialog 
-        open={deleteDialogOpen}
+      <DeleteConfirmationDialog open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={confirmDeleteAccount}
-        description={accountToDelete ? `Are you sure you want to delete account "${accountToDelete.account_name}" (${accountToDelete.account_code})? This action cannot be undone.` : ''}
-      />
+        description={accountToDelete ? `Are you sure you want to delete account "${accountToDelete.account_name}" (${accountToDelete.account_code})? This action cannot be undone.` : ''}/>
 
-      <DefaultAccountDeleteDialog 
-        open={defaultDeleteDialogOpen}
+      <DefaultAccountDeleteDialog open={defaultDeleteDialogOpen}
         onOpenChange={setDefaultDeleteDialogOpen}
         onConfirm={confirmDeleteAccount}
         account={accountToDelete}
         defaultAccountUsage={accountToDelete ? getDefaultAccountUsage(accountToDelete.id) : []}
-        isSystemAdmin={userIsSystemAdmin}
-      />
+        isSystemAdmin={userIsSystemAdmin}/>
 
       {/* Toggle Status Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmToggleAccount}
+      <ConfirmationDialog open={!!confirmToggleAccount}
         onOpenChange={(open) => { if (!open) setConfirmToggleAccount(null); }}
         title={confirmToggleAccount?.is_active ? 'Deactivate Account' : 'Activate Account'}
         description={confirmToggleAccount ? `Are you sure you want to ${confirmToggleAccount.is_active ? 'deactivate' : 'activate'} account "${confirmToggleAccount.account_name}"?` : ''}
         confirmLabel={confirmToggleAccount?.is_active ? 'Deactivate' : 'Activate'}
         variant={confirmToggleAccount?.is_active ? 'destructive' : 'default'}
-        onConfirm={executeToggleStatus}
-      />
+        onConfirm={executeToggleStatus}/>
     </div>
   );
 }

@@ -64,10 +64,10 @@ export function OnboardingWizard() {
         {/* Brand Logo */}
         <div className="flex items-center gap-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#3058EE] to-[#7D97F6]">
-            <span className="font-bold text-lg text-white">H</span>
+            <span className="font-bold text-lg text-white">C</span>
           </div>
           <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-[#3058EE] to-[#7D97F6] bg-clip-text text-transparent">
-            Horizon Sync
+            Ciphercode
           </span>
         </div>
 

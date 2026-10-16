@@ -1,13 +1,16 @@
 import * as React from 'react';
+
 import { Info, Plus, Trash2 } from 'lucide-react';
+
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Switch } from '@horizon-sync/ui/components/ui/switch';
 
+import type { CustomField } from '../../../types/landing-page.types';
+
 import { CollapsibleSection } from './CollapsibleSection';
 import type { SectionProps } from './types';
-import type { CustomField } from '../../../types/landing-page.types';
 
 const PRODUCT_TOGGLES = [
   ['show_gtin', 'GTIN'],
@@ -83,24 +86,18 @@ export function ProductDetailsSection({ config, setConfig }: SectionProps) {
         </div>
         {pd.custom_fields.map((field: CustomField, i: number) => (
           <div key={i} className="flex items-center gap-2">
-            <Input
-              value={field.label}
+            <Input value={field.label}
               onChange={(e) => updateCustomField(i, 'label', e.target.value)}
               placeholder="Label"
-              className="h-7 text-xs flex-1"
-            />
-            <Input
-              value={field.value}
+              className="h-7 text-xs flex-1"/>
+            <Input value={field.value}
               onChange={(e) => updateCustomField(i, 'value', e.target.value)}
               placeholder="Value"
-              className="h-7 text-xs flex-1"
-            />
-            <Button
-              variant="ghost"
+              className="h-7 text-xs flex-1"/>
+            <Button variant="ghost"
               size="icon"
               className="h-7 w-7 shrink-0"
-              onClick={() => removeCustomField(i)}
-            >
+              onClick={() => removeCustomField(i)}>
               <Trash2 className="h-3 w-3 text-destructive" />
             </Button>
           </div>

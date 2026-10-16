@@ -5,7 +5,8 @@ import { CheckCircle2, ClipboardList, Clock, FileText, Loader, PackageCheck, Tru
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { useOutboundOrders, usePackingSlips, usePickLists } from '../../hooks/useWMS';
+import { usePackingSlips, usePickLists } from '../../hooks/useWMS';
+import type { OutboundOrderCountsState } from '../../types/wms.types';
 import { formatQuantity } from '../../utility';
 
 interface OutboundStatsProps {
@@ -15,6 +16,12 @@ interface OutboundStatsProps {
      * any other tab (gate/dispatch/exceptions) keeps showing the previous stats.
      */
     activeTab: string;
+    /**
+     * Order status counts (plus the orders list's request state), supplied by
+     * `OutboundOrderList`'s list request so this component does not need a
+     * second call to the same endpoint.
+     */
+    ordersState?: OutboundOrderCountsState;
     /** Increment to force the active tab's counts to refetch (e.g. after import/generation). */
     refreshKey?: number;
 }
@@ -69,13 +76,11 @@ function StatCard({
     counts,
     colorIndex,
     loading,
-    error,
 }: {
     stat: StatDef;
     counts: Record<string, number> | null;
     colorIndex: number;
     loading: boolean;
-    error: boolean;
 }) {
     const Icon = stat.icon;
     const colors = STAT_COLORS[colorIndex] || STAT_COLORS[0];
@@ -88,10 +93,12 @@ function StatCard({
                         <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
                         {loading && !counts ? (
                             <div className="h-9 w-16 animate-pulse rounded-md bg-muted" />
+                        ) : counts ? (
+                            <p className="text-3xl font-bold tracking-tight">{formatQuantity(counts[stat.key] ?? 0)}</p>
                         ) : (
-                            <p className="text-3xl font-bold tracking-tight">
-                                {error && !counts ? '—' : formatQuantity(counts?.[stat.key] ?? 0)}
-                            </p>
+                            // No counts for this warehouse yet (still unmounted, or the
+                            // request failed) — '—' beats a misleading zero.
+                            <p className="text-3xl font-bold tracking-tight">—</p>
                         )}
                     </div>
                     <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl', colors.bg)}>
@@ -103,7 +110,7 @@ function StatCard({
     );
 }
 
-export function OutboundStats({ warehouseId, activeTab, refreshKey }: OutboundStatsProps) {
+export function OutboundStats({ warehouseId, activeTab, ordersState, refreshKey }: OutboundStatsProps) {
     // Remember the last stats tab so gate/dispatch/exceptions keep showing the
     // previous stats rather than clearing.
     const [statsTab, setStatsTab] = React.useState<StatsTab>('orders');
@@ -114,14 +121,8 @@ export function OutboundStats({ warehouseId, activeTab, refreshKey }: OutboundSt
         }
     }, [activeTab]);
 
-    // Only the active tab's counts are fetched — inactive tabs stay idle.
-    const orders = useOutboundOrders({
-        warehouse_id: warehouseId,
-        page: 1,
-        page_size: 1,
-        enabled: statsTab === 'orders',
-        refreshKey,
-    });
+    // Orders counts arrive via `ordersCounts` from the list request, so only the
+    // pick and packing counters are fetched here — and only for the active tab.
     const picks = usePickLists({
         warehouse_id: warehouseId,
         page: 1,
@@ -137,21 +138,25 @@ export function OutboundStats({ warehouseId, activeTab, refreshKey }: OutboundSt
         refreshKey,
     });
 
+    const fromList = statsTab === 'orders';
+    const active = statsTab === 'pick' ? picks : packing;
+    const counts = fromList
+        ? ((ordersState?.counts as Record<string, number> | undefined) ?? null)
+        : (active.statusCounts as unknown as Record<string, number> | null);
+    // The orders list reports its own request state; the pick/packing counters
+    // are fetched here, so their hook state applies.
+    const loading = fromList ? Boolean(ordersState?.loading) : active.loading;
+
     const stats = STATS_BY_TAB[statsTab];
-    const active =
-        statsTab === 'orders' ? orders : statsTab === 'pick' ? picks : packing;
 
     return (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat, i) => (
-                <StatCard
-                    key={stat.key}
+                <StatCard key={stat.key}
                     stat={stat}
-                    counts={active.statusCounts as unknown as Record<string, number> | null}
-                    loading={active.loading}
-                    error={!!active.error}
-                    colorIndex={i}
-                />
+                    counts={counts}
+                    loading={loading}
+                    colorIndex={i}/>
             ))}
         </div>
     );

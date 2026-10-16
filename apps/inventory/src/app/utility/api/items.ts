@@ -1,5 +1,6 @@
-import { apiRequest, buildPaginationParams } from './core';
 import type { UpdateItemPayload } from '../../types/items-api.types';
+
+import { apiRequest, buildPaginationParams } from './core';
 
 // Items API helpers
 export const itemApi = {

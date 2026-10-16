@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { type ColumnDef } from '@tanstack/react-table';
-import { Edit, Eye, MoreHorizontal, Trash2, Truck } from 'lucide-react';
+import { Edit, Eye, MoreHorizontal, PackageCheck, Trash2, Truck } from 'lucide-react';
 
 import { Badge, Button } from '@horizon-sync/ui/components';
 import { DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
@@ -15,12 +15,17 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 
 import type { AsnOrder, AsnOrderStatus, AsnOrderVehicleArrivalInfo } from '../../types/asn-order.types';
+import { canAttachVehicle, canCloseAsn } from '../../types/asn-order.types';
 import { formatDate } from '../../utility';
 
 export interface AsnOrderColumnsOptions {
   onView?: (order: AsnOrder) => void;
   onEdit?: (order: AsnOrder) => void;
   onDelete?: (order: AsnOrder) => void;
+  /** Close the ASN, accepting any outstanding shortfall. */
+  onCloseAsn?: (order: AsnOrder) => void;
+  /** Attach / link / unlink a vehicle arrival on the ASN. */
+  onManageVehicles?: (order: AsnOrder) => void;
   /** ID of the most recently created ASN order to highlight */
   recentlyCreatedId?: string | null;
 }
@@ -123,16 +128,24 @@ function AsnOrderActionsCell({
   onView,
   onEdit,
   onDelete,
+  onCloseAsn,
+  onManageVehicles,
 }: { order: AsnOrder } & AsnOrderColumnsOptions) {
   const isDraft = order.status === 'draft';
+  // A handler is only passed when the caller is allowed to act, so an absent
+  // callback hides the item instead of rendering a dead menu entry.
+  const closable = canCloseAsn(order) && !!onCloseAsn;
+  const vehicleEditable = canAttachVehicle(order.status) && !!onManageVehicles;
+  // Nothing to offer on an already cancelled/closed order, so skip the menu
+  // entirely rather than rendering an empty dropdown.
+  const hasMenuItems = isDraft || closable || vehicleEditable;
 
   return (
     <div className="flex items-center justify-end gap-2">
       <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => onView?.(order)}>
         <Eye className="h-3.5 w-3.5" />
-        View
       </Button>
-      {isDraft && (
+      {hasMenuItems && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -140,17 +153,64 @@ function AsnOrderActionsCell({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit?.(order)}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit Order
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onDelete?.(order)} className="text-destructive focus:text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
+            {isDraft && (
+              <DropdownMenuItem onClick={() => onEdit?.(order)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Order
+              </DropdownMenuItem>
+            )}
+            {vehicleEditable && (
+              <DropdownMenuItem onClick={() => onManageVehicles?.(order)}>
+                <Truck className="mr-2 h-4 w-4" />
+                Manage Vehicles
+              </DropdownMenuItem>
+            )}
+            {closable && (
+              <DropdownMenuItem onClick={() => onCloseAsn?.(order)}>
+                <PackageCheck className="mr-2 h-4 w-4" />
+                Close ASN
+              </DropdownMenuItem>
+            )}
+            {isDraft && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => onDelete?.(order)} className="text-destructive focus:text-destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A short-closed ASN keeps `status: 'closed'`, so the state is only visible via
+ * the `short_closed` flag — surface it next to the status badge.
+ */
+function AsnStatusCell({ order }: { order: AsnOrder }) {
+  const statusBadge = getStatusBadge(order.status);
+  return (
+    <div className="flex items-center gap-1.5">
+      <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
+      {order.short_closed && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="warning" className="px-1.5 text-[10px]">
+                Short
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Closed with an accepted shortfall
+              {order.short_closed_qty != null ? ` of ${order.short_closed_qty}` : ''}
+              {order.close_reason_code ? ` · ${order.close_reason_code}` : ''}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       )}
     </div>
   );
@@ -160,6 +220,8 @@ export function createAsnOrderColumns({
   onView,
   onEdit,
   onDelete,
+  onCloseAsn,
+  onManageVehicles,
   recentlyCreatedId,
 }: AsnOrderColumnsOptions): ColumnDef<AsnOrder, unknown>[] {
   return [
@@ -173,10 +235,7 @@ export function createAsnOrderColumns({
     {
       accessorKey: 'status',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-      cell: ({ row }) => {
-        const statusBadge = getStatusBadge(row.original.status);
-        return <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>;
-      },
+      cell: ({ row }) => <AsnStatusCell order={row.original} />,
     },
     {
       accessorKey: 'asn_type',
@@ -218,7 +277,14 @@ export function createAsnOrderColumns({
     {
       id: 'actions',
       header: () => <div className="text-right">Action</div>,
-      cell: ({ row }) => <AsnOrderActionsCell order={row.original} onView={onView} onEdit={onEdit} onDelete={onDelete} />,
+      cell: ({ row }) => (
+        <AsnOrderActionsCell order={row.original}
+          onView={onView}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onCloseAsn={onCloseAsn}
+          onManageVehicles={onManageVehicles} />
+      ),
       enableSorting: false,
     },
   ];

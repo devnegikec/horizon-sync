@@ -6,10 +6,10 @@ import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { useQuotationManagement } from '../../hooks/useQuotationManagement';
-import { ErrorBanner } from '../common';
 import { useQuotationPDFActions } from '../../hooks/useQuotationPDFActions';
 import type { Quotation } from '../../types/quotation.types';
 import { quotationApi } from '../../utility/api';
+import { ErrorBanner } from '../common';
 import { EmailComposer } from '../common';
 
 import { ConvertToSalesOrderDialog } from './ConvertToSalesOrderDialog';
@@ -208,15 +208,13 @@ export function QuotationManagement() {
         }}/>
 
       {/* Delete Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmAction}
+      <ConfirmationDialog open={!!confirmAction}
         onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
         title={confirmAction?.title || ''}
         description={confirmAction?.message || ''}
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={executeConfirmedAction}
-      />
+        onConfirm={executeConfirmedAction}/>
     </div>
   );
 }

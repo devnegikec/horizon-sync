@@ -2,10 +2,8 @@ import * as React from 'react';
 
 import { FileText, Loader2 } from 'lucide-react';
 
-import { Badge } from '@horizon-sync/ui/components';
-
-
 import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
+import { Badge } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
   Dialog,
@@ -18,12 +16,12 @@ import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
-import { useStockEntryMutations } from '../../hooks/useStock';
-import type { StockEntry, StockEntryFormState } from '../../types/stock.types';
-import { getCurrencySymbol } from '../../types/currency.types';
-import { stockEntryApi } from '../../utility/api/stock';
-import { itemApi } from '../../utility/api/items';
 import { environment } from '../../../environments/environment';
+import { useStockEntryMutations } from '../../hooks/useStock';
+import { getCurrencySymbol } from '../../types/currency.types';
+import type { StockEntry, StockEntryFormState } from '../../types/stock.types';
+import { itemApi } from '../../utility/api/items';
+import { stockEntryApi } from '../../utility/api/stock';
 import { parseStockEntryCsv, buildStockEntrySampleCsv } from '../../utility/stockEntryCsvParser';
 import type { BulkUploadResult } from '../shared/CsvImporter';
 import { CsvImporter } from '../shared/CsvImporter';
@@ -375,7 +373,10 @@ export function StockEntryDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <StockEntryHeader form={form} isEditing={isEditing} onFieldChange={handleFieldChange} disabled={viewMode}
+          <StockEntryHeader form={form}
+isEditing={isEditing}
+onFieldChange={handleFieldChange}
+disabled={viewMode}
             fromWarehouseName={viewMode && entry?.from_warehouse ? `${entry.from_warehouse.name} (${entry.from_warehouse.code})` : undefined}
             toWarehouseName={viewMode && entry?.to_warehouse ? `${entry.to_warehouse.name} (${entry.to_warehouse.code})` : undefined} />
 
@@ -425,8 +426,7 @@ export function StockEntryDialog({
               )}
             </div>
             {!csvPreviewActive && (
-              <StockEntryLineItemsTable
-                key={form.stock_entry_type === 'material_receipt' ? form.to_warehouse_id : form.from_warehouse_id}
+              <StockEntryLineItemsTable key={form.stock_entry_type === 'material_receipt' ? form.to_warehouse_id : form.from_warehouse_id}
                 items={lineItems}
                 onItemsChange={setLineItems}
                 disabled={viewMode}

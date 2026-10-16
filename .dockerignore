@@ -1,0 +1,17 @@
+# Keeps Docker build contexts small. Safe for BOTH the Railway build
+# (Dockerfile.railway, which builds from source) and the ECS build
+# (.deploy/deploy-frontend.sh, which COPYs a prebuilt dist/) — so `dist`
+# is intentionally NOT excluded here.
+node_modules
+**/node_modules
+.git
+.github
+.nx
+coverage
+test-results
+dist/**/*.map
+
+# Never bake local dev config into an image
+.env
+.env.*
+!.env.example

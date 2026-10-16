@@ -8,9 +8,9 @@ import { Textarea } from '@horizon-sync/ui/components/ui/textarea';
 
 import { UNIT_OF_MEASURE_OPTIONS } from '../../../constants/item-constants';
 import { ITEM_TYPE_OPTIONS, ITEM_STATUS_OPTIONS, VALUATION_METHOD_OPTIONS } from '../../../constants/item-type-constants';
+import { useBrands } from '../../../features/qr-management/hooks/useBrands';
 import type { ApiItemGroup } from '../../../types/item-groups.types';
 import type { ItemFormData } from '../../../utility/item-payload-builders';
-import { useBrands } from '../../../features/qr-management/hooks/useBrands';
 
 interface Step1BasicInventoryProps {
     formData: ItemFormData & { itemGroupName: string };

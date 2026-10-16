@@ -1,9 +1,17 @@
 import { Separator } from '@horizon-sync/ui/components';
 
-import type { AsnOrderLineItem } from '../../types/asn-order.types';
+interface FulfillmentItem {
+  id?: string;
+  item_id: string;
+  item_name?: string;
+  item_code?: string | null;
+  sku?: string | null;
+  qty: number;
+  delivered_qty?: number | string | null;
+}
 
 interface FulfillmentStatusTableProps {
-  items: AsnOrderLineItem[];
+  items: FulfillmentItem[];
 }
 
 export function FulfillmentStatusTable({ items }: FulfillmentStatusTableProps) {

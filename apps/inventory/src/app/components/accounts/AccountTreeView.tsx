@@ -50,7 +50,7 @@ function TreeNodeItem({
   onLoadChildren,
 }: TreeNodeItemProps) {
   const isExpanded = expandedNodes.has(node.id);
-  const hasChildren = lazyLoad 
+  const hasChildren = lazyLoad
     ? (node.hasChildren || (node.children && node.children.length > 0))
     : (node.children && node.children.length > 0);
   const isSelected = selectedAccountId === node.id;
@@ -82,7 +82,15 @@ function TreeNodeItem({
           !node.is_active && 'opacity-60'
         )}
         style={{ paddingLeft: `${depth * 24 + 12}px` }}
-        onClick={handleClick}>
+        role="button"
+        tabIndex={0}
+        onClick={handleClick}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            handleClick();
+          }
+        }}>
         {/* Expand/Collapse Icon */}
         <div className="flex-shrink-0 w-4 h-4">
           {loading ? (
@@ -166,7 +174,7 @@ export function AccountTreeView({ onAccountSelect, selectedAccountId, lazyLoad =
       setLoading(true);
       setError(null);
 
-      const url = lazyLoad 
+      const url = lazyLoad
         ? '/api/v1/chart-of-accounts/tree?lazy_load=true'
         : '/api/v1/chart-of-accounts/tree';
 
@@ -182,7 +190,7 @@ export function AccountTreeView({ onAccountSelect, selectedAccountId, lazyLoad =
       }
 
       const data = await response.json();
-      
+
       // Mark nodes with children info for lazy loading
       if (lazyLoad) {
         const processedData = data.map((node: TreeNode) => ({

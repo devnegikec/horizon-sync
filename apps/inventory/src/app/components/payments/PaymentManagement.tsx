@@ -263,15 +263,13 @@ export function PaymentManagement({
       )}
 
       {/* Confirm Payment Dialog */}
-      <ConfirmationDialog
-        open={!!confirmPaymentEntry}
+      <ConfirmationDialog open={!!confirmPaymentEntry}
         onOpenChange={(open) => { if (!open) setConfirmPaymentEntry(null); }}
         title="Confirm Payment"
         description={`Are you sure you want to confirm payment ${confirmPaymentEntry?.receipt_number || confirmPaymentEntry?.id || ''}?`}
         confirmLabel="Confirm"
         variant="default"
-        onConfirm={executeConfirmPayment}
-      />
+        onConfirm={executeConfirmPayment}/>
     </div>
   );
 }

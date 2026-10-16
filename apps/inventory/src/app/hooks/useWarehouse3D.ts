@@ -3,9 +3,11 @@ import * as React from 'react';
 import { useUserStore } from '@horizon-sync/store';
 
 import { environment } from '../../environments/environment';
-import { useWebSocket } from './useWebSocket';
-import { wms3dApi } from '../utility/api/wms3d';
 import type { FlatBin, LayoutResponse, StatusBin, StatusResponse } from '../types/wms3d.types';
+import { wms3dApi } from '../utility/api/wms3d';
+
+import { useWebSocket } from './useWebSocket';
+
 
 const STATUS_POLL_MS = 5000;
 

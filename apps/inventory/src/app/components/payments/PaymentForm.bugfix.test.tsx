@@ -17,14 +17,15 @@
  */
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as fc from 'fast-check';
 
-import { PaymentForm } from './PaymentForm';
 import type { CreatePaymentPayload, InvoiceForAllocation } from '../../types/payment.types';
 import { PaymentType, PaymentMode } from '../../types/payment.types';
+
+import { PaymentForm } from './PaymentForm';
 
 // Mock the API modules
 jest.mock('../../utility/api', () => ({
@@ -102,12 +103,10 @@ describe('PaymentForm - Bug Condition Exploration (Property-Based)', () => {
       fc.asyncProperty(bankTransferFormStateArbitrary, async (formState) => {
         const { unmount } = render(
           <QueryClientProvider client={queryClient}>
-            <PaymentForm
-              initialData={formState}
+            <PaymentForm initialData={formState}
               onSubmit={mockOnSubmit}
               onCancel={mockOnCancel}
-              mode="create"
-            />
+              mode="create"/>
           </QueryClientProvider>
         );
 
@@ -148,12 +147,10 @@ describe('PaymentForm - Bug Condition Exploration (Property-Based)', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <PaymentForm
-          initialData={formState}
+        <PaymentForm initialData={formState}
           onSubmit={mockOnSubmit}
           onCancel={mockOnCancel}
-          mode="create"
-        />
+          mode="create"/>
       </QueryClientProvider>
     );
 
@@ -205,12 +202,10 @@ describe('PaymentForm - Bug Condition Exploration (Property-Based)', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <PaymentForm
-          initialData={formState}
+        <PaymentForm initialData={formState}
           onSubmit={mockOnSubmit}
           onCancel={mockOnCancel}
-          mode="create"
-        />
+          mode="create"/>
       </QueryClientProvider>
     );
 
@@ -243,8 +238,7 @@ describe('PaymentForm - Bug Condition Exploration (Property-Based)', () => {
     
     render(
       <QueryClientProvider client={queryClient}>
-        <PaymentForm
-          initialData={{
+        <PaymentForm initialData={{
             payment_type: PaymentType.CUSTOMER_PAYMENT,
             party_id: '123e4567-e89b-12d3-a456-426614174000',
             amount: 100,
@@ -255,8 +249,7 @@ describe('PaymentForm - Bug Condition Exploration (Property-Based)', () => {
           }}
           onSubmit={mockOnSubmit}
           onCancel={mockOnCancel}
-          mode="create"
-        />
+          mode="create"/>
       </QueryClientProvider>
     );
 
@@ -366,12 +359,10 @@ describe('PaymentForm - Preservation Properties (Property-Based)', () => {
       fc.asyncProperty(cashPaymentStateArbitrary, async (formState) => {
         const { unmount } = render(
           <QueryClientProvider client={queryClient}>
-            <PaymentForm
-              initialData={formState}
+            <PaymentForm initialData={formState}
               onSubmit={mockOnSubmit}
               onCancel={mockOnCancel}
-              mode="create"
-            />
+              mode="create"/>
           </QueryClientProvider>
         );
 
@@ -419,12 +410,10 @@ describe('PaymentForm - Preservation Properties (Property-Based)', () => {
       fc.asyncProperty(checkPaymentStateArbitrary, async (formState) => {
         const { unmount } = render(
           <QueryClientProvider client={queryClient}>
-            <PaymentForm
-              initialData={formState}
+            <PaymentForm initialData={formState}
               onSubmit={mockOnSubmit}
               onCancel={mockOnCancel}
-              mode="create"
-            />
+              mode="create"/>
           </QueryClientProvider>
         );
 
@@ -467,12 +456,10 @@ describe('PaymentForm - Preservation Properties (Property-Based)', () => {
 
         const { unmount } = render(
           <QueryClientProvider client={queryClient}>
-            <PaymentForm
-              initialData={formState}
+            <PaymentForm initialData={formState}
               onSubmit={mockOnSubmit}
               onCancel={mockOnCancel}
-              mode="create"
-            />
+              mode="create"/>
           </QueryClientProvider>
         );
 
@@ -510,12 +497,10 @@ describe('PaymentForm - Preservation Properties (Property-Based)', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <PaymentForm
-          initialData={formState}
+        <PaymentForm initialData={formState}
           onSubmit={mockOnSubmit}
           onCancel={mockOnCancel}
-          mode="create"
-        />
+          mode="create"/>
       </QueryClientProvider>
     );
 
@@ -549,12 +534,10 @@ describe('PaymentForm - Preservation Properties (Property-Based)', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <PaymentForm
-          initialData={formState}
+        <PaymentForm initialData={formState}
           onSubmit={mockOnSubmit}
           onCancel={mockOnCancel}
-          mode="create"
-        />
+          mode="create"/>
       </QueryClientProvider>
     );
 
@@ -609,12 +592,10 @@ describe('PaymentForm - Preservation Properties (Property-Based)', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <PaymentForm
-          initialData={formState}
+        <PaymentForm initialData={formState}
           onSubmit={mockOnSubmit}
           onCancel={mockOnCancel}
-          mode="create"
-        />
+          mode="create"/>
       </QueryClientProvider>
     );
 
@@ -672,12 +653,10 @@ describe('PaymentForm - Preservation Properties (Property-Based)', () => {
 
         const { unmount } = render(
           <QueryClientProvider client={queryClient}>
-            <PaymentForm
-              initialData={incompleteFormState}
+            <PaymentForm initialData={incompleteFormState}
               onSubmit={mockOnSubmit}
               onCancel={mockOnCancel}
-              mode="create"
-            />
+              mode="create"/>
           </QueryClientProvider>
         );
 

@@ -101,15 +101,13 @@ export function LandedCostManagement() {
         voucherId={selectedVoucher?.id}/>
 
       {/* Delete Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmDeleteId}
+      <ConfirmationDialog open={!!confirmDeleteId}
         onOpenChange={(open) => { if (!open) setConfirmDeleteId(null); }}
         title="Delete Landed Cost Voucher"
         description="Are you sure you want to delete this landed cost voucher?"
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={executeDelete}
-      />
+        onConfirm={executeDelete}/>
     </div>
   );
 }

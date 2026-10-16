@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import {
   Dialog,
@@ -20,14 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@horizon-sync/ui/components/ui/select';
-import { useCurrencyStore } from '@horizon-sync/store';
 
 import { useItems } from '../../hooks/useItems';
 import { usePurchaseOrderActions } from '../../hooks/usePurchaseOrderActions';
 import { useRFQs } from '../../hooks/useRFQs';
 import { useSuppliers } from '../../hooks/useSuppliers';
-import type { PurchaseOrder, CreatePurchaseOrderPayload } from '../../types/purchase-order.types';
 import { getCurrencySymbol } from '../../types/currency.types';
+import type { PurchaseOrder, CreatePurchaseOrderPayload } from '../../types/purchase-order.types';
 
 interface PurchaseOrderDialogProps {
   open: boolean;

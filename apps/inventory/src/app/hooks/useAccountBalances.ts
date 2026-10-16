@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { getFriendlyErrorMessage } from '../utility/api/core';
+
 
 import { useUserStore } from '@horizon-sync/store';
 
 import type { AccountBalance } from '../types/account.types';
 import { accountApi } from '../utility/api/accounts';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 interface UseAccountBalancesOptions {
   accountIds: string[];

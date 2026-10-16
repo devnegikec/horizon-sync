@@ -1,10 +1,12 @@
 import * as React from 'react';
+
 import { Shield, Smartphone } from 'lucide-react';
 
-import { SocialIcon } from './SocialIcon';
-import { resolveImageUrl } from './image-url';
 import type { LandingPageConfig, CustomField, FooterLink } from '../../../types/landing-page.types';
 import { SOCIAL_PLATFORM_INFO } from '../../../types/landing-page.types';
+
+import { resolveImageUrl } from './image-url';
+import { SocialIcon } from './SocialIcon';
 
 interface MobilePreviewProps {
   config: LandingPageConfig;
@@ -35,11 +37,9 @@ export function MobilePreview({ config }: MobilePreviewProps) {
           {/* Banner */}
           {config.banner_image_url && (
             <div className="w-full h-36 overflow-hidden">
-              <img
-                src={resolveImageUrl(config.banner_image_url) ?? undefined}
+              <img src={resolveImageUrl(config.banner_image_url) ?? undefined}
                 alt="Banner"
-                className="w-full h-full object-cover"
-              />
+                className="w-full h-full object-cover"/>
             </div>
           )}
 
@@ -47,11 +47,9 @@ export function MobilePreview({ config }: MobilePreviewProps) {
           {config.logo_url && (
             <div className="flex justify-center -mt-10 relative z-10">
               <div className="w-20 h-20 rounded-xl border-4 border-white bg-white shadow-md overflow-hidden">
-                <img
-                  src={resolveImageUrl(config.logo_url) ?? undefined}
+                <img src={resolveImageUrl(config.logo_url) ?? undefined}
                   alt="Logo"
-                  className="w-full h-full object-contain p-1"
-                />
+                  className="w-full h-full object-contain p-1"/>
               </div>
             </div>
           )}
@@ -96,11 +94,9 @@ export function MobilePreview({ config }: MobilePreviewProps) {
                 {config.feedback.description && (
                   <p className="text-xs mt-1 opacity-90">{config.feedback.description}</p>
                 )}
-                <button
-                  type="button"
+                <button type="button"
                   className="mt-2 px-4 py-1.5 rounded-full bg-white text-sm font-medium hover:bg-white/90 transition-colors"
-                  style={{ color: primary }}
-                >
+                  style={{ color: primary }}>
                   {config.feedback.type === 'survey' ? 'Take Survey' : 'Give Feedback'}
                 </button>
               </div>
@@ -117,11 +113,9 @@ export function MobilePreview({ config }: MobilePreviewProps) {
                   <p className="text-xs text-gray-500 mt-1">{config.warranty.description}</p>
                 )}
                 {config.warranty.cta_text && (
-                  <button
-                    type="button"
+                  <button type="button"
                     className="mt-2 px-4 py-1.5 rounded-full text-sm font-medium text-white transition-colors hover:opacity-90"
-                    style={{ background: primary }}
-                  >
+                    style={{ background: primary }}>
                     {config.warranty.cta_text}
                   </button>
                 )}
@@ -131,8 +125,7 @@ export function MobilePreview({ config }: MobilePreviewProps) {
             {/* Custom CTA */}
             {config.custom_cta.enabled && config.custom_cta.button_text && (
               <div className="text-center">
-                <button
-                  type="button"
+                <button type="button"
                   className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors ${
                     CTA_STYLE_CLASSES[config.custom_cta.button_style] || CTA_STYLE_CLASSES.primary
                   }`}
@@ -140,8 +133,7 @@ export function MobilePreview({ config }: MobilePreviewProps) {
                     config.custom_cta.button_style !== 'secondary'
                       ? { background: primary }
                       : { borderColor: primary, color: primary }
-                  }
-                >
+                  }>
                   {config.custom_cta.button_text}
                 </button>
               </div>
@@ -153,13 +145,11 @@ export function MobilePreview({ config }: MobilePreviewProps) {
                 <p className="text-xs text-gray-400 mb-2">Follow Us</p>
                 <div className="flex justify-center gap-3">
                   {visibleSocials.map((link, i) => (
-                    <a
-                      key={i}
+                    <a key={i}
                       href={link.url || '#'}
                       className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:opacity-80"
                       style={{ background: primary, color: '#fff' }}
-                      title={SOCIAL_PLATFORM_INFO[link.platform]?.label}
-                    >
+                      title={SOCIAL_PLATFORM_INFO[link.platform]?.label}>
                       <SocialIcon platform={link.platform} size={16} />
                     </a>
                   ))}
@@ -178,11 +168,9 @@ export function MobilePreview({ config }: MobilePreviewProps) {
                 {config.footer.custom_links.map(
                   (link: FooterLink, i: number) =>
                     link.label && (
-                      <a
-                        key={i}
+                      <a key={i}
                         href={link.url || '#'}
-                        className="text-[10px] text-gray-500 hover:underline"
-                      >
+                        className="text-[10px] text-gray-500 hover:underline">
                         {link.label}
                       </a>
                     ),

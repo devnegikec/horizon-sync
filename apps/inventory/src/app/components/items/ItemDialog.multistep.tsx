@@ -4,8 +4,8 @@ import { useUserStore } from '@horizon-sync/store';
 import { useItemSubmission } from '../../hooks/useItemSubmission';
 import { useTaxTemplates } from '../../hooks/useTaxTemplates';
 import type { ApiItemGroup } from '../../types/item-groups.types';
-import type { ApiItem } from '../../types/items-api.types';
 import type { Item } from '../../types/item.types';
+import type { ApiItem } from '../../types/items-api.types';
 import type { ItemFormData } from '../../utility/item-payload-builders';
 
 import { ItemMultiStepDialog } from './multi-step/ItemMultiStepDialog';
@@ -84,6 +84,28 @@ function itemToFormData(item: Item): Partial<ItemFormData> {
     packagingWeightGrams: item.packagingDetails?.weightGrams != null
       ? String(item.packagingDetails.weightGrams)
       : '',
+    masterPackUnitName: item.packagingDetails?.masterPackUnitName ?? '',
+    masterPackLengthMm: item.packagingDetails?.masterPackLengthMm != null
+      ? String(item.packagingDetails.masterPackLengthMm)
+      : '',
+    masterPackWidthMm: item.packagingDetails?.masterPackWidthMm != null
+      ? String(item.packagingDetails.masterPackWidthMm)
+      : '',
+    masterPackHeightMm: item.packagingDetails?.masterPackHeightMm != null
+      ? String(item.packagingDetails.masterPackHeightMm)
+      : '',
+    masterPackWeightGrams: item.packagingDetails?.masterPackWeightGrams != null
+      ? String(item.packagingDetails.masterPackWeightGrams)
+      : '',
+    masterPackFillFactor: item.packagingDetails?.masterPackFillFactor != null
+      ? String(item.packagingDetails.masterPackFillFactor)
+      : '0.75',
+    masterPackVoidFillPct: item.packagingDetails?.masterPackVoidFillPct != null
+      ? String(item.packagingDetails.masterPackVoidFillPct)
+      : '0.10',
+    masterPackWallThicknessMm: item.packagingDetails?.masterPackWallThicknessMm != null
+      ? String(item.packagingDetails.masterPackWallThicknessMm)
+      : '3',
   };
 }
 

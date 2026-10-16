@@ -8,5 +8,13 @@
         "typescript",
         "javascriptreact",
         "typescriptreact"
-    ]
+    ],
+    "chat.tools.terminal.autoApprove": {
+        "git stash": true,
+        "/^git diff --stat && echo '=== eslint config scripts ===' && node -e \"const p=require\\('\\./package\\.json'\\); console\\.log\\(JSON\\.stringify\\(p\\.scripts,null,2\\)\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "npx nx": true
+    }
 }

@@ -162,15 +162,13 @@ export function AnalyticsTable({ events, loading, error, hasActiveFilters, serve
     return (
       <Card>
         <CardContent className="p-6">
-          <EmptyState
-            icon={<ScanLine className="h-12 w-12" />}
+          <EmptyState icon={<ScanLine className="h-12 w-12" />}
             title="No scan events yet"
             description={
               hasActiveFilters
                 ? 'Try adjusting your date range'
                 : 'QR scan events will appear here once consumers start scanning your product QR codes.'
-            }
-          />
+            }/>
         </CardContent>
       </Card>
     );
@@ -179,8 +177,7 @@ export function AnalyticsTable({ events, loading, error, hasActiveFilters, serve
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable
-          columns={columns}
+        <DataTable columns={columns}
           data={events}
           config={{
             showSerialNumber: true,
@@ -192,8 +189,7 @@ export function AnalyticsTable({ events, loading, error, hasActiveFilters, serve
             initialPageSize: serverPagination?.pageSize ?? 20,
             serverPagination: serverPaginationConfig,
           }}
-          maxHeight="auto"
-        />
+          maxHeight="auto"/>
       </CardContent>
     </Card>
   );

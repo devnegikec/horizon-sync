@@ -2,13 +2,13 @@ import * as React from 'react';
 
 import { Boxes, Warehouse, Weight } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
 import { useToast } from '@horizon-sync/ui/hooks';
-import { useUserStore } from '@horizon-sync/store';
 
-import { capacityApi } from '../../utility/api/wms';
 import type { BinState, CapacityTreeNode } from '../../types/wms.types';
+import { capacityApi } from '../../utility/api/wms';
 
 interface WarehouseCapacityCardProps {
     warehouseId: string;

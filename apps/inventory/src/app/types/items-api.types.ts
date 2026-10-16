@@ -19,6 +19,14 @@ export interface PackagingDetailsPayload {
   width_mm: number | null;
   height_mm: number | null;
   weight_grams: number | null;
+  master_pack_unit_name?: string | null;
+  master_pack_length_mm?: number | null;
+  master_pack_width_mm?: number | null;
+  master_pack_height_mm?: number | null;
+  master_pack_weight_grams?: number | null;
+  master_pack_fill_factor?: number;
+  master_pack_void_fill_pct?: number;
+  master_pack_wall_thickness_mm?: number;
 }
 
 /** API item shape from core service GET /items */

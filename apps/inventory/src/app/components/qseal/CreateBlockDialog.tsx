@@ -391,7 +391,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
     if (open) {
       reset();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [open]);
 
   // Submission maps credit and backend conflict errors to Product-facing notifications.
@@ -481,8 +481,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
   const batchError = getBatchError(selectedBatch, selectedProduct);
 
   return (
-    <DetailDialog
-      open={open}
+    <DetailDialog open={open}
       onOpenChange={onOpenChange}
       size="lg"
       contentClassName="max-w-4xl flex flex-col"

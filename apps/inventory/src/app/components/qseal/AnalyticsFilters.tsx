@@ -22,7 +22,13 @@ const PRESETS: { label: string; days: number }[] = [
 ];
 
 function toDateInputValue(value?: string) {
-  return value ? value.slice(0, 10) : '';
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  // Render the local calendar date so it round-trips with startOfDay/endOfDay,
+  // which parse the input as local time before converting to UTC.
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
 }
 
 function startOfDay(value: string) {

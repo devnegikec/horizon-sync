@@ -157,8 +157,9 @@ export function ReconciliationReport() {
         <CardContent>
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium mb-2 block">From Date</label>
+              <label className="text-sm font-medium mb-2 block" htmlFor="recon-filter-from-date">From Date</label>
               <input type="date"
+                id="recon-filter-from-date"
                 value={filters.date_from}
                 onChange={(e) =>
                   setFilters((prev) => ({ ...prev, date_from: e.target.value }))
@@ -167,8 +168,9 @@ export function ReconciliationReport() {
             </div>
 
             <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium mb-2 block">To Date</label>
+              <label className="text-sm font-medium mb-2 block" htmlFor="recon-filter-to-date">To Date</label>
               <input type="date"
+                id="recon-filter-to-date"
                 value={filters.date_to}
                 onChange={(e) =>
                   setFilters((prev) => ({ ...prev, date_to: e.target.value }))
@@ -177,7 +179,7 @@ export function ReconciliationReport() {
             </div>
 
             <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium mb-2 block">Payment Mode</label>
+              <label className="text-sm font-medium mb-2 block" htmlFor="recon-filter-payment-mode">Payment Mode</label>
               <Select value={filters.payment_mode || 'all'}
                 onValueChange={(value) =>
                   setFilters((prev) => ({
@@ -185,7 +187,7 @@ export function ReconciliationReport() {
                     payment_mode: value === 'all' ? undefined : value,
                   }))
                 }>
-                <SelectTrigger>
+                <SelectTrigger id="recon-filter-payment-mode">
                   <SelectValue placeholder="All Modes" />
                 </SelectTrigger>
                 <SelectContent>
@@ -198,7 +200,7 @@ export function ReconciliationReport() {
             </div>
 
             <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium mb-2 block">Status</label>
+              <label className="text-sm font-medium mb-2 block" htmlFor="recon-filter-status">Status</label>
               <Select value={filters.status || 'all'}
                 onValueChange={(value) =>
                   setFilters((prev) => ({
@@ -206,7 +208,7 @@ export function ReconciliationReport() {
                     status: value === 'all' ? undefined : value,
                   }))
                 }>
-                <SelectTrigger>
+                <SelectTrigger id="recon-filter-status">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>

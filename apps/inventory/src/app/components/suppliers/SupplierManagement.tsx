@@ -256,15 +256,13 @@ export function SupplierManagement() {
         onUpdated={refetch}/>
 
       {/* Delete Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmDeleteLink}
+      <ConfirmationDialog open={!!confirmDeleteLink}
         onOpenChange={(open) => { if (!open) setConfirmDeleteLink(null); }}
         title="Remove Supplier Link"
         description={confirmDeleteLink ? `Are you sure you want to remove the link between "${itemMap.get(confirmDeleteLink.item_id) || 'this item'}" and "${supplierMap.get(confirmDeleteLink.supplier_id) || 'this supplier'}"?` : ''}
         confirmLabel="Remove"
         variant="destructive"
-        onConfirm={executeDeleteLink}
-      />
+        onConfirm={executeDeleteLink}/>
     </div>
   );
 }

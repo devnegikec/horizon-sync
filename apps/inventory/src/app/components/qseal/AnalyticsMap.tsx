@@ -126,10 +126,8 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
         <MapContainer center={[20, 0]} zoom={2} scrollWheelZoom={true} className="w-full rounded-b-lg" style={{ height: 400, width: '100%' }}>
           <MapResizeHandler />
           <MapBoundsHandler points={points} />
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
 
           {points.map((p, i) => {
             if (p.latitude == null || p.longitude == null) return null;
@@ -137,8 +135,7 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
             const label = [p.city, p.state, p.country].filter(Boolean).join(', ') || 'Unknown';
 
             return (
-              <CircleMarker
-                key={i}
+              <CircleMarker key={i}
                 center={[p.latitude, p.longitude]}
                 radius={radius}
                 pathOptions={{
@@ -146,8 +143,7 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
                   fillOpacity: 0.55,
                   color: '#1E40AF',
                   weight: 1.5,
-                }}
-              >
+                }}>
                 <Popup>
                   <div style={{ fontFamily: 'sans-serif', fontSize: 13 }}>
                     <strong>{label}</strong>

@@ -3,20 +3,20 @@ import * as React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DollarSign, Package, Users, Truck, FileText, ShoppingCart, ClipboardList } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
+import { INVOICES_ENABLED } from '@horizon-sync/ui';
 import { ThemeProvider } from '@horizon-sync/ui/components/theme-provider';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Toaster } from '@horizon-sync/ui/components/ui/toaster';
+import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
 import { cn } from '@horizon-sync/ui/lib';
 
+import { environment } from '../../environments/environment';
 import { CustomerManagement } from '../components/customers';
 import { DeliveryNoteManagement } from '../components/delivery-notes';
 import { PickListManagement } from '../components/picklist';
 import { QuotationManagement } from '../components/quotations';
 import { SalesOrderManagement } from '../components/sales-orders';
-import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
-import { useUserStore } from '@horizon-sync/store';
-import { environment } from '../../environments/environment';
-import { INVOICES_ENABLED } from '@horizon-sync/ui';
 import type { Invoice } from '../types/invoice';
 
 // Lazy load invoice and payment management components for better performance

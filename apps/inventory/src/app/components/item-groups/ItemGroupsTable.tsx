@@ -9,8 +9,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { EmptyState } from '@horizon-sync/ui/components/ui/empty-state';
 
 import type { ItemGroupListItem } from '../../types/item-group.types';
-import { ErrorBanner } from '../common';
 import { formatDate } from '../../utility/formatDate';
+import { ErrorBanner } from '../common';
 
 export interface ItemGroupsTableProps {
   itemGroups: ItemGroupListItem[];

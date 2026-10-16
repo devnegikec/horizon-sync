@@ -12,7 +12,7 @@ import { ItemGroupManagement } from './components/item-groups';
 import { ItemManagement } from './components/items';
 import { StockManagement } from './components/stock';
 import { WarehouseManagement } from './components/warehouses';
-import { WMSManagement } from './components/wms/WMSManagement';
+import { WMSManagement } from './components/wms';
 import PublicQRValidation from './pages/PublicQRValidation';
 
 type ActiveView = 'items' | 'warehouses' | 'stock' | 'item-group';

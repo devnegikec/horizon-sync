@@ -11,14 +11,14 @@ const queryClient = new QueryClient({
 });
 
 export function WMSPage() {
+  // No page-padding wrapper here on purpose: the host `DashboardLayout` already
+  // renders page content inside a `p-6` container. Adding `container px-4 py-8`
+  // here double-padded WMS and made it look inset compared to sibling screens
+  // such as User Management.
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <div className="min-h-screen bg-background">
-          <main className="container px-4 py-8">
-            <WMSManagement />
-          </main>
-        </div>
+        <WMSManagement />
       </ThemeProvider>
     </QueryClientProvider>
   );

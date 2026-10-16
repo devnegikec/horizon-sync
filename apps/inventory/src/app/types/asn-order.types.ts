@@ -34,6 +34,8 @@ export interface AsnOrderLineItem {
     created_at: string;
     updated_at: string;
     extra_data?: Record<string, unknown>;
+    items_per_master_pack?: number | null;
+    no_of_cases?: number | null;
 }
 
 export interface WarehouseDetails {
@@ -71,7 +73,55 @@ export interface AsnOrderVehicleArrivalInfo {
     arrived_at: string;
 }
 
-export interface AsnOrder {
+/**
+ * Closure fields written by `POST /asn-orders/{id}/close`.
+ * See `docs/ASN_SHORT_DELIVERY_FRONTEND_INTEGRATION.md`.
+ */
+export interface AsnOrderClosureFields {
+    /** `true` when the ASN was closed accepting a shortfall. */
+    short_closed?: boolean;
+    /** Quantity accepted as a loss (`0` when nothing was short). */
+    short_closed_qty?: number | null;
+    close_reason_code?: string | null;
+    close_note?: string | null;
+    closed_by?: string | null;
+    closed_at?: string | null;
+}
+
+export interface AsnOrderClosePayload {
+    /**
+     * Required whenever a short quantity is outstanding. Loaded from
+     * `GET /inbound/exception-reasons?category=short` — never hardcoded.
+     */
+    reason_code?: string | null;
+    /** Optional explanation, max 1000 chars. */
+    note?: string | null;
+}
+
+/**
+ * Statuses `POST /asn-orders/{id}/close` accepts. Drafts, confirmed and
+ * already-closed/cancelled ASNs must be cancelled instead — the API answers
+ * `ASN_NOT_CLOSABLE` / `ASN_ALREADY_CLOSED`.
+ */
+export const ASN_CLOSABLE_STATUSES: readonly AsnOrderStatus[] = ['partially_delivered', 'delivered'];
+
+/**
+ * Terminal statuses. A closed or cancelled ASN is final, so it can no longer
+ * take a vehicle or be short-closed.
+ */
+export const ASN_TERMINAL_STATUSES: readonly AsnOrderStatus[] = ['closed', 'cancelled'];
+
+/** Whether the ASN still accepts a vehicle arrival (everything but terminal). */
+export function canAttachVehicle(status: AsnOrderStatus | string): boolean {
+    return !ASN_TERMINAL_STATUSES.includes(status as AsnOrderStatus);
+}
+
+/** Whether the ASN can be closed (with or without a shortfall). */
+export function canCloseAsn(order: Pick<AsnOrder, 'status' | 'short_closed'>): boolean {
+    return ASN_CLOSABLE_STATUSES.includes(order.status) && !order.short_closed;
+}
+
+export interface AsnOrder extends AsnOrderClosureFields {
     id: string;
     organization_id: string;
     asn_order_no: string;
@@ -95,6 +145,8 @@ export interface AsnOrder {
         received_serials: number;
         in_transit_serials: number;
     } | null;
+    /** `quantity_only` orders verify by quantity without capturing unit serials. */
+    serialization_mode?: string | null;
     remarks?: string | null;
     items: AsnOrderLineItem[];
     submitted_at?: string | null;
@@ -123,6 +175,8 @@ export interface AsnOrderListItem {
     from_warehouse?: AsnOrderWarehouseInfo | null;
     to_warehouse?: AsnOrderWarehouseInfo | null;
     vehicle_arrivals: AsnOrderVehicleArrivalInfo[];
+    /** Lets the list badge a short-closed order without a detail fetch. */
+    short_closed?: boolean;
     created_at: string;
 }
 
@@ -148,6 +202,7 @@ export interface AsnOrderItemCreate {
     qty: number;
     uom: string;
     sort_order: number;
+    extra_data?: Record<string, unknown>;
 }
 
 export interface AsnOrderCreate {
@@ -261,6 +316,38 @@ export interface AsnOrderEpcisEvent {
 export interface AsnOrderEpcisResponse {
     context: { schema: string; asn_number: string };
     events: AsnOrderEpcisEvent[];
+}
+
+// ============================================
+// TRANSFER SERIAL VERIFICATION
+// ============================================
+
+export type TransferSerialStatus = 'received' | 'in_transit' | 'missing' | 'unexpected';
+
+export interface TransferSerialLine {
+    serial_no: string;
+    sku?: string | null;
+    item_name?: string | null;
+    status: TransferSerialStatus;
+    received_at?: string | null;
+}
+
+export interface TransferCartonRollup {
+    carton_serial?: string | null;
+    expected?: number;
+    received?: number;
+}
+
+/** `GET /asn-orders/{id}/transfer-verification` response. */
+export interface AsnOrderTransferVerification {
+    asn_order_id: string;
+    asn_order_no: string;
+    dispatched_serials: number;
+    received_serials: number;
+    missing_serials: number;
+    unexpected_serials?: number;
+    cartons?: TransferCartonRollup[];
+    serials: TransferSerialLine[];
 }
 
 

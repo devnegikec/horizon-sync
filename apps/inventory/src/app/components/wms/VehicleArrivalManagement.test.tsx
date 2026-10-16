@@ -125,9 +125,8 @@ describe('VehicleArrivalManagement', () => {
   /*
   it('registers one vehicle arrival against multiple selected ASNs', async () => {
     const user = userEvent.setup();
-    render(<VehicleArrivalManagement warehouseId="warehouse-1" />);
+    render(<VehicleArrivalManagement warehouseId="warehouse-1" registerFormOpen />);
 
-    await user.click(screen.getByRole('button', { name: 'Register Arrival' }));
     await user.type(screen.getByLabelText('Vehicle Number *'), ' KA01MP3776 ');
     await user.type(screen.getByLabelText('Driver Name'), 'Ram Kumar');
     await user.type(screen.getByLabelText('Transporter'), 'TVK Transport');
@@ -179,9 +178,8 @@ describe('VehicleArrivalManagement', () => {
 
   it('requires a vehicle number before registering an arrival', async () => {
     const user = userEvent.setup();
-    render(<VehicleArrivalManagement warehouseId="warehouse-1" />);
+    render(<VehicleArrivalManagement warehouseId="warehouse-1" registerFormOpen />);
 
-    await user.click(screen.getByRole('button', { name: 'Register Arrival' }));
     await user.click(screen.getByRole('button', { name: 'Register Arrival' }));
 
     expect(register).not.toHaveBeenCalled();

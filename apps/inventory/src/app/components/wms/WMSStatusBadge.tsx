@@ -10,6 +10,14 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   putaway_in_progress: { label: 'Put-Away In Progress', className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-700 dark:text-white' },
   putaway_complete: { label: 'Put-Away Complete', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },
   rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-white' },
+  // Inbound exception
+  pending_approval: { label: 'Pending Approval', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-white' },
+  approved: { label: 'Approved', className: 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-white' },
+  released: { label: 'Released', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-white' },
+  // Return registration
+  ready: { label: 'Ready', className: 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-white' },
+  receiving: { label: 'Receiving', className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-700 dark:text-white' },
+  received: { label: 'Received', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-white' },
   // Pick list / put-away
   draft: { label: 'Draft', className: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white' },
   confirmed: { label: 'Confirm', className: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-700 dark:text-white' },
@@ -30,6 +38,9 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   // Gate
   open: { label: 'Open', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-white' },
   verified: { label: 'Verified', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },
+  // Vehicle arrival
+  arrived: { label: 'Arrived', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },
+  unloaded: { label: 'Unloaded', className: 'bg-amber-100 text-amber-800 dark:bg-amber-700 dark:text-white' },
   // Worker task
   assigned: { label: 'Assigned', className: 'bg-purple-100 text-purple-800 dark:bg-purple-700 dark:text-white' },
   // Scan result

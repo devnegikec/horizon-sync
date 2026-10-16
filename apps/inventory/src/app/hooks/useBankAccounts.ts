@@ -4,10 +4,12 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
+
 import { bankAccountApi, type BankAccount } from '../api/bank-accounts';
 import { getAccessToken } from '../utility/api/core';
-import { useUserStore } from '@horizon-sync/store';
 
 // Query keys for caching
 const BANK_ACCOUNT_KEYS = {

@@ -1,5 +1,7 @@
 import * as React from 'react';
+
 import { Globe, Trash2 } from 'lucide-react';
+
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import {
@@ -11,11 +13,12 @@ import {
 } from '@horizon-sync/ui/components/ui/select';
 import { Switch } from '@horizon-sync/ui/components/ui/switch';
 
+import type { SocialLink, SocialPlatform } from '../../../types/landing-page.types';
+import { SOCIAL_PLATFORM_INFO } from '../../../types/landing-page.types';
+
 import { CollapsibleSection } from './CollapsibleSection';
 import { SocialIcon } from './SocialIcon';
 import type { SectionProps } from './types';
-import type { SocialLink, SocialPlatform } from '../../../types/landing-page.types';
-import { SOCIAL_PLATFORM_INFO } from '../../../types/landing-page.types';
 
 /**
  * Social Media Links section: add/edit/remove social platform links.
@@ -66,18 +69,14 @@ export function SocialLinksSection({ config, setConfig }: SectionProps) {
             <SocialIcon platform={link.platform} size={14} />
             {SOCIAL_PLATFORM_INFO[link.platform]?.label ?? link.platform}
           </span>
-          <Input
-            value={link.url}
+          <Input value={link.url}
             onChange={(e) => updateLink(i, { url: e.target.value })}
             placeholder={SOCIAL_PLATFORM_INFO[link.platform]?.placeholder}
-            className="h-7 text-xs flex-1"
-          />
-          <Button
-            variant="ghost"
+            className="h-7 text-xs flex-1"/>
+          <Button variant="ghost"
             size="icon"
             className="h-7 w-7 shrink-0"
-            onClick={() => removeLink(i)}
-          >
+            onClick={() => removeLink(i)}>
             <Trash2 className="h-3 w-3 text-destructive" />
           </Button>
         </div>

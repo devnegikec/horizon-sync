@@ -19,7 +19,15 @@ export function App() {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.title || detail?.description) {
-        toast({ title: detail.title, description: detail.description, variant: detail.variant });
+        // Forward optional styling/timing so a remote's success (green) and
+        // error (red) toasts render identically in the host tree.
+        toast({
+          title: detail.title,
+          description: detail.description,
+          variant: detail.variant,
+          className: detail.className,
+          duration: detail.duration,
+        });
       }
     };
     window.addEventListener('app:toast', handler);

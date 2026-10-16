@@ -19,6 +19,10 @@ export interface AsnOrdersTableProps {
   onView?: (order: AsnOrder) => void;
   onEdit?: (order: AsnOrder) => void;
   onDelete?: (order: AsnOrder) => void;
+  /** Close the ASN, accepting any outstanding shortfall. */
+  onCloseAsn?: (order: AsnOrder) => void;
+  /** Attach / link / unlink a vehicle arrival on the ASN. */
+  onManageVehicles?: (order: AsnOrder) => void;
   onCreateOrder?: () => void;
   onTableReady?: (table: Table<AsnOrder>) => void;
   serverPagination?: {
@@ -66,6 +70,8 @@ export function AsnOrdersTable({
   onView,
   onEdit,
   onDelete,
+  onCloseAsn,
+  onManageVehicles,
   onCreateOrder,
   onTableReady,
   serverPagination,
@@ -85,8 +91,8 @@ export function AsnOrdersTable({
   }, [serverPagination]);
 
   const columns = React.useMemo(
-    () => createAsnOrderColumns({ onView, onEdit, onDelete, recentlyCreatedId }),
-    [onView, onEdit, onDelete, recentlyCreatedId]
+    () => createAsnOrderColumns({ onView, onEdit, onDelete, onCloseAsn, onManageVehicles, recentlyCreatedId }),
+    [onView, onEdit, onDelete, onCloseAsn, onManageVehicles, recentlyCreatedId]
   );
 
   const getRowClassName = React.useCallback((row: AsnOrder) => {

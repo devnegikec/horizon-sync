@@ -1,4 +1,5 @@
 import { http, HttpResponse } from "msw";
+
 import { warranties, warrantyPeriods } from "../data/warranty";
 import { resolveTenant, paginate } from "../utils";
 

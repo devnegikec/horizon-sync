@@ -3,6 +3,8 @@ import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { Wallet, Plus, MoreHorizontal, Edit, Power, PowerOff, Info, Loader2, Trash2 } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
+import { getCurrencySymbol } from '@horizon-sync/ui';
 import { TableSkeleton, Badge, Button, Card, CardContent } from '@horizon-sync/ui/components';
 import { DataTable } from '@horizon-sync/ui/components/data-table';
 import {
@@ -24,8 +26,6 @@ import { useAccountBalances } from '../../hooks/useAccountBalances';
 import type { AccountListItem } from '../../types/account.types';
 import { formatDate } from '../../utility/formatDate';
 import { ACCOUNT_TYPE_COLORS } from '../../utils/accountColors';
-import { useCurrencyStore } from '@horizon-sync/store';
-import { getCurrencySymbol } from '@horizon-sync/ui';
 
 export interface AccountsTableProps {
   accounts: AccountListItem[];
@@ -77,6 +77,10 @@ export function AccountsTable({
     accountIds,
     enabled: accountIds.length > 0,
   });
+
+  // Read the base currency here, not inside a table cell: hooks must not be
+  // called from cell renderers (one call per row breaks hook ordering).
+  const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
 
   const formatCurrency = (amount: number, currencyCode: string): string => {
     const symbol = getCurrencySymbol(currencyCode);
@@ -176,7 +180,7 @@ export function AccountsTable({
           // Credit accounts (LIABILITY, EQUITY, REVENUE): positive = blue (normal), negative = red (abnormal)
           let pillBgClass = '';
           let textColorClass = '';
-          
+
           if (isNegative) {
             pillBgClass = 'bg-red-50 dark:bg-red-900/20';
             textColorClass = 'text-red-600 dark:text-red-400';
@@ -187,7 +191,6 @@ export function AccountsTable({
             pillBgClass = 'bg-blue-50 dark:bg-blue-900/20';
             textColorClass = 'text-blue-600 dark:text-blue-400';
           }
-          const baseCurrency = useCurrencyStore((s) => s.baseCurrency);
           const currencySymbol = getCurrencySymbol(baseCurrency || 'USD');
           return (
             <TooltipProvider>
@@ -326,11 +329,10 @@ export function AccountsTable({
                   {onDelete && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={() => onDelete(account)}
+                      <DropdownMenuItem onClick={() => onDelete(account)}
                         className={
-                          isDefaultAccount(account.id) && !isSystemAdmin 
-                            ? "text-muted-foreground focus:text-muted-foreground cursor-help" 
+                          isDefaultAccount(account.id) && !isSystemAdmin
+                            ? "text-muted-foreground focus:text-muted-foreground cursor-help"
                             : "text-destructive focus:text-destructive"
                         }>
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -350,7 +352,7 @@ export function AccountsTable({
         enableSorting: false,
       },
     ],
-    [onEdit, onToggleStatus, onViewDetails, onDelete, balances, balancesLoading, actionLoading, isDefaultAccount, isSystemAdmin]
+    [onEdit, onToggleStatus, onViewDetails, onDelete, balances, balancesLoading, actionLoading, isDefaultAccount, isSystemAdmin, baseCurrency]
   );
 
   if (error) {

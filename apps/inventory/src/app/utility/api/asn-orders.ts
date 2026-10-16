@@ -1,9 +1,12 @@
-import type { AsnReceivingSummary } from '../../types/wms.types';
 import type {
+  AsnOrderClosePayload,
+  AsnOrderResponse,
   AsnOrderSerialsResponse,
   AsnOrder856Response,
   AsnOrderEpcisResponse,
+  AsnOrderTransferVerification,
 } from '../../types/asn-order.types';
+import type { AsnReceivingSummary } from '../../types/wms.types';
 
 import { apiRequest, buildPaginationParams } from './core';
 
@@ -45,6 +48,9 @@ export const asnOrderApi = {
   getSerials: (accessToken: string, id: string) =>
     apiRequest<AsnOrderSerialsResponse>(`/asn-orders/${id}/serials`, accessToken),
 
+  getTransferVerification: (accessToken: string, id: string) =>
+    apiRequest<AsnOrderTransferVerification>(`/asn-orders/${id}/transfer-verification`, accessToken),
+
   export856: (accessToken: string, id: string) =>
     apiRequest<AsnOrder856Response>(`/asn-orders/${id}/asn-856`, accessToken),
 
@@ -72,5 +78,22 @@ export const asnOrderApi = {
     apiRequest(`/asn-orders/${id}/status`, accessToken, {
       method: 'PUT',
       body: data,
+    }),
+
+  /**
+   * Formally close an ASN, accepting any outstanding shortfall.
+   *
+   * Always send a JSON object — `{}` closes a fully delivered ASN — so that
+   * clients setting `Content-Type: application/json` without a body don't
+   * misfire. Closing also writes off every open shortage balance on the ASN,
+   * so refetch dependent widgets afterwards.
+   */
+  close: (accessToken: string, id: string, data: AsnOrderClosePayload = {}) =>
+    apiRequest<AsnOrderResponse>(`/asn-orders/${id}/close`, accessToken, {
+      method: 'POST',
+      body: {
+        reason_code: data.reason_code ?? null,
+        note: data.note ?? null,
+      },
     }),
 };

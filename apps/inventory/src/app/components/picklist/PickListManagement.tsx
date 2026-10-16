@@ -6,13 +6,13 @@ import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { usePickListManagement } from '../../hooks/usePickListManagement';
-import { ErrorBanner } from '../common';
-import type { PickList } from '../../types/pick-list.types';
 import type { DeliveryNoteCreate, DeliveryNoteUpdate } from '../../types/delivery-note.types';
+import type { PickList } from '../../types/pick-list.types';
 import { pickListApi } from '../../utility/api/pick-lists';
 import { smartPickingApi } from '../../utility/api/smart-picking';
-
+import { ErrorBanner } from '../common';
 import { DeliveryNoteDialog } from '../delivery-notes/DeliveryNoteDialog';
+
 import { PickListDetailDialog } from './PickListDetailDialog';
 import { PickListDialog } from './PickListDialog';
 import { PickListManagementFilters } from './PickListManagementFilters';
@@ -155,15 +155,13 @@ export function PickListManagement() {
         onSaved={refetch}/>
 
       {/* Delete Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmAction}
+      <ConfirmationDialog open={!!confirmAction}
         onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
         title={confirmAction?.title || ''}
         description={confirmAction?.message || ''}
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={executeConfirmedAction}
-      />
+        onConfirm={executeConfirmedAction}/>
     </div>
   );
 }

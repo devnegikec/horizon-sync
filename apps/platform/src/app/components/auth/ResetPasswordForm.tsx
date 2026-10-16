@@ -128,7 +128,7 @@ export function ResetPasswordForm() {
             <img src={logo} alt="Logo" className="h-15 w-15 object-contain" />
           </div>
           <span className="font-bold text-4xl tracking-tight bg-gradient-to-r from-[#3058EE] to-[#7D97F6] bg-clip-text text-transparent">
-            Horizon Sync
+            Ciphercode
           </span>
         </div>
         <CardTitle className="text-2xl">Reset Password</CardTitle>

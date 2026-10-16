@@ -2,12 +2,12 @@ import * as React from 'react';
 
 import { Edit, FileText } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { Badge, Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Separator } from '@horizon-sync/ui/components';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@horizon-sync/ui/components/ui/table';
-import { useCurrencyStore } from '@horizon-sync/store';
 
-import type { RFQ, RFQListItem, RFQStatus } from '../../types/rfq.types';
 import { getCurrencySymbol } from '../../types/currency.types';
+import type { RFQ, RFQListItem, RFQStatus } from '../../types/rfq.types';
 import { formatDate } from '../../utility/formatDate';
 
 interface RFQDetailDialogProps {

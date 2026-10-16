@@ -29,6 +29,7 @@ export * from './ui/toaster';
 export * from './ui/tooltip';
 export * from './ui/currency-select';
 export * from './data-table';
+export * from './layout';
 export * from './organization';
 export * from './email';
 export * from './common';

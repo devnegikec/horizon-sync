@@ -60,7 +60,17 @@ export function LandedCostDetailDialog({ open, onClose, voucherId }: LandedCostD
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose} />
+        <div role="button"
+          aria-label="Close dialog"
+          tabIndex={-1}
+          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
+          onClick={onClose}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onClose();
+            }
+          }} />
 
         <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
           <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
@@ -93,11 +103,11 @@ export function LandedCostDetailDialog({ open, onClose, voucherId }: LandedCostD
                 {/* Header Information */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-500">Voucher No</label>
+                    <p className="block text-sm font-medium text-gray-500">Voucher No</p>
                     <p className="mt-1 text-sm text-gray-900">{voucher.voucher_no}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-500">Status</label>
+                    <p className="block text-sm font-medium text-gray-500">Status</p>
                     <span className={`mt-1 inline-flex px-2 text-xs leading-5 font-semibold rounded-full ${
                         STATUS_COLORS[voucher.status] || 'bg-gray-100 text-gray-800'
                       }`}>
@@ -105,12 +115,12 @@ export function LandedCostDetailDialog({ open, onClose, voucherId }: LandedCostD
                     </span>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-500">Posting Date</label>
+                    <p className="block text-sm font-medium text-gray-500">Posting Date</p>
                     <p className="mt-1 text-sm text-gray-900">{formatDate(voucher.posting_date)}</p>
                   </div>
                   {voucher.submitted_at && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-500">Submitted At</label>
+                      <p className="block text-sm font-medium text-gray-500">Submitted At</p>
                       <p className="mt-1 text-sm text-gray-900">{formatDateTime(voucher.submitted_at)}</p>
                     </div>
                   )}
@@ -119,7 +129,7 @@ export function LandedCostDetailDialog({ open, onClose, voucherId }: LandedCostD
                 {/* Remarks */}
                 {voucher.remarks && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-500">Remarks</label>
+                    <p className="block text-sm font-medium text-gray-500">Remarks</p>
                     <p className="mt-1 text-sm text-gray-900">{voucher.remarks}</p>
                   </div>
                 )}
@@ -129,11 +139,11 @@ export function LandedCostDetailDialog({ open, onClose, voucherId }: LandedCostD
                   <h4 className="text-sm font-medium text-gray-900 mb-2">Metadata</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <label className="block text-sm font-medium text-gray-500">Created At</label>
+                      <p className="block text-sm font-medium text-gray-500">Created At</p>
                       <p className="mt-1 text-sm text-gray-900">{formatDateTime(voucher.created_at)}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-500">Updated At</label>
+                      <p className="block text-sm font-medium text-gray-500">Updated At</p>
                       <p className="mt-1 text-sm text-gray-900">{formatDateTime(voucher.updated_at)}</p>
                     </div>
                   </div>

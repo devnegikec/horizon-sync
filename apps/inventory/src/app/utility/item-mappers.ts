@@ -12,6 +12,7 @@ function mapPackagingDetails(units: unknown): ItemPackagingDetails | null {
   const list = units as Array<Record<string, unknown>>;
   const base = list.find((u) => u?.is_base_unit === true) ?? list[0];
   if (!base) return null;
+  const master = list.find((u) => u?.is_base_unit === false);
   return {
     unitName: (base.unit_name as string) ?? 'Each',
     conversionFactor: Number(base.conversion_factor ?? 1) || 1,
@@ -20,6 +21,14 @@ function mapPackagingDetails(units: unknown): ItemPackagingDetails | null {
     widthMm: toNullableNumber(base.width_mm),
     heightMm: toNullableNumber(base.height_mm),
     weightGrams: toNullableNumber(base.weight_grams),
+    masterPackUnitName: (master?.unit_name as string | undefined) ?? null,
+    masterPackLengthMm: toNullableNumber(master?.length_mm),
+    masterPackWidthMm: toNullableNumber(master?.width_mm),
+    masterPackHeightMm: toNullableNumber(master?.height_mm),
+    masterPackWeightGrams: toNullableNumber(master?.weight_grams),
+    masterPackFillFactor: toNullableNumber(master?.master_pack_fill_factor),
+    masterPackVoidFillPct: toNullableNumber(master?.master_pack_void_fill_pct),
+    masterPackWallThicknessMm: toNullableNumber(master?.master_pack_wall_thickness_mm),
   };
 }
 

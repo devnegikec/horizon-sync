@@ -87,15 +87,13 @@ export function RFQManagement() {
       <RFQDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} rfq={editRFQ} onSave={handleSave} saving={saving} />
 
       {/* Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmAction}
+      <ConfirmationDialog open={!!confirmAction}
         onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
         title={confirmAction?.title || ''}
         description={confirmAction?.message || ''}
         confirmLabel={confirmAction?.type === 'delete' ? 'Delete' : confirmAction?.type === 'close' ? 'Close' : 'Send'}
         variant={confirmAction?.type === 'send' ? 'default' : 'destructive'}
-        onConfirm={executeConfirmedAction}
-      />
+        onConfirm={executeConfirmedAction}/>
     </div>
   );
 }

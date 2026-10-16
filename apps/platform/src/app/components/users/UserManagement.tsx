@@ -6,6 +6,7 @@ import { Check, ChevronsUpDown, Users, UserCheck, UserLockIcon, Shield, Download
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
+import { useUserStore } from '@horizon-sync/store';
 import {
   Card,
   CardContent,
@@ -23,10 +24,10 @@ import {
   DetailDialog,
   Input,
   Label,
+  ManagementContainer,
   UsersTable,
 } from '@horizon-sync/ui/components';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
-import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks';
 import { cn } from '@horizon-sync/ui/lib';
 
@@ -36,8 +37,8 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { RoleService } from '../../services/role.service';
 import { UserService } from '../../services/user.service';
 import type { User, UserFilters } from '../../types/user.types';
-
 import { InviteUserModal } from '../InviteUserModal';
+
 import { ManageRolesDialog } from './ManageRolesDialog';
 import { UserViewDialog } from './UserViewDialog';
 
@@ -138,8 +139,7 @@ function EditUserDialog({
   });
 
   return (
-    <DetailDialog
-      open={open}
+    <DetailDialog open={open}
       onOpenChange={onOpenChange}
       size="sm"
       title={
@@ -155,8 +155,7 @@ function EditUserDialog({
             {isSubmitting ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
-      }
-    >
+      }>
       <form id="edit-user-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="edit_first_name">First Name</Label>
@@ -193,26 +192,22 @@ function RoleFilterList({
     <div className="flex flex-col gap-1">
       {/* Search input */}
       <div className="relative">
-        <input
-          autoFocus
+        <input autoFocus
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search roles..."
-          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
-        />
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"/>
       </div>
 
       {/* Options list */}
       <div className="max-h-[220px] overflow-y-auto mt-1 space-y-0.5">
         {/* All Roles */}
-        <button
-          type="button"
+        <button type="button"
           onClick={() => onSelect('')}
           className={cn(
             'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground',
             !selected && 'bg-accent/50 font-medium'
-          )}
-        >
+          )}>
           <Check className={cn('h-3.5 w-3.5 shrink-0', !selected ? 'opacity-100' : 'opacity-0')} />
           All Roles
         </button>
@@ -222,15 +217,13 @@ function RoleFilterList({
         )}
 
         {filtered.map(role => (
-          <button
-            key={role}
+          <button key={role}
             type="button"
             onClick={() => onSelect(role)}
             className={cn(
               'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground text-left',
               selected === role && 'bg-accent/50 font-medium'
-            )}
-          >
+            )}>
             <Check className={cn('h-3.5 w-3.5 shrink-0', selected === role ? 'opacity-100' : 'opacity-0')} />
             <span className="truncate">{role}</span>
           </button>
@@ -549,7 +542,7 @@ export function UserManagement() {
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <ManagementContainer>
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -628,22 +621,19 @@ export function UserManagement() {
             {/* Role filter — searchable popover */}
             <Popover open={rolePopoverOpen} onOpenChange={setRolePopoverOpen}>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
+                <Button variant="outline"
                   role="combobox"
                   aria-expanded={rolePopoverOpen}
                   className={cn(
                     'w-[180px] justify-between font-normal',
                     filters.roleName && 'border-primary text-primary'
-                  )}
-                >
+                  )}>
                   <span className="truncate text-sm">
                     {filters.roleName || 'All Roles'}
                   </span>
                   <div className="flex items-center gap-1 ml-2 shrink-0">
                     {filters.roleName && (
-                      <span
-                        role="button"
+                      <span role="button"
                         tabIndex={0}
                         className="rounded-full hover:bg-muted p-0.5"
                         onClick={(e) => {
@@ -655,8 +645,7 @@ export function UserManagement() {
                             e.stopPropagation();
                             setFilters(prev => ({ ...prev, roleName: '' }));
                           }
-                        }}
-                      >
+                        }}>
                         <X className="h-3 w-3" />
                       </span>
                     )}
@@ -665,14 +654,12 @@ export function UserManagement() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[220px] p-2" align="start">
-                <RoleFilterList
-                  roles={orgRoles}
+                <RoleFilterList roles={orgRoles}
                   selected={filters.roleName}
                   onSelect={(role) => {
                     setFilters(prev => ({ ...prev, roleName: role }));
                     setRolePopoverOpen(false);
-                  }}
-                />
+                  }}/>
               </PopoverContent>
             </Popover>
           </div>
@@ -699,44 +686,36 @@ export function UserManagement() {
       {/* Invite User Modal */}
       <InviteUserModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} onSuccess={handleInviteSuccess} />
 
-      <EditUserDialog
-        user={selectedUser}
+      <EditUserDialog user={selectedUser}
         open={editDialogOpen}
         onOpenChange={(open) => {
           setEditDialogOpen(open);
           if (!open) setSelectedUser(null);
         }}
-        onSubmit={handleUpdateUser}
-      />
+        onSubmit={handleUpdateUser}/>
 
       {/* User View Dialog */}
-      <UserViewDialog
-        user={selectedUser}
+      <UserViewDialog user={selectedUser}
         isOpen={viewDialogOpen}
-        onClose={() => { setViewDialogOpen(false); setSelectedUser(null); }}
-      />
+        onClose={() => { setViewDialogOpen(false); setSelectedUser(null); }}/>
 
       {/* Deactivate User Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmDeactivateUser}
+      <ConfirmationDialog open={!!confirmDeactivateUser}
         onOpenChange={(open) => { if (!open) setConfirmDeactivateUser(null); }}
         title="Deactivate User"
         description={confirmDeactivateUser ? `Are you sure you want to deactivate "${confirmDeactivateUser.first_name} ${confirmDeactivateUser.last_name}"?` : ''}
         confirmLabel="Deactivate"
         variant="destructive"
         loading={isDeactivating}
-        onConfirm={executeDeactivateUser}
-      />
+        onConfirm={executeDeactivateUser}/>
 
       {/* Manage Roles Dialog */}
-      <ManageRolesDialog
-        user={selectedUser}
+      <ManageRolesDialog user={selectedUser}
         organizationId={user?.organization_id ?? null}
         isOpen={rolesDialogOpen}
         onClose={() => { setRolesDialogOpen(false); setSelectedUser(null); }}
         onSuccess={() => { refetch(); }}
-        accessToken={accessToken}
-      />
-    </div>
+        accessToken={accessToken}/>
+    </ManagementContainer>
   );
 }

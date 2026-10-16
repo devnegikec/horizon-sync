@@ -4,8 +4,8 @@ import * as React from 'react';
 import { useUserStore } from '@horizon-sync/store';
 
 import type { ItemGroup, ItemGroupListItem, ItemGroupListResponse, ItemGroupCreate, ItemGroupUpdate, ItemGroupFilters } from '../types/item-group.types';
-import { itemGroupApi } from '../utility/api/item-groups';
 import { getFriendlyErrorMessage } from '../utility/api/core';
+import { itemGroupApi } from '../utility/api/item-groups';
 
 interface UseItemGroupsResult {
   itemGroups: ItemGroupListItem[];

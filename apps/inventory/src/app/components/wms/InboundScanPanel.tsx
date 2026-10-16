@@ -10,8 +10,11 @@ import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useInboundSession } from '../../hooks/useWMS';
 import type { AsnOrderListItem, AsnOrderListResponse } from '../../types/asn-order.types';
-import type { AsnReceivingSummary, ScanResult, ScanSession, SessionSummary } from '../../types/wms.types';
+import type { AsnReceivingSummary, CartonScanSummary, ScanResult, ScanSession, SessionSummary } from '../../types/wms.types';
 import { asnOrderApi } from '../../utility/api/asn-orders';
+
+import { CartonSummary } from './CartonSummary';
+import { QuantityOnlyBanner } from './QuantityOnlyBanner';
 
 interface InboundScanPanelProps {
   warehouseId: string;
@@ -112,6 +115,7 @@ function formatQuantity(value: number) {
   return value.toLocaleString();
 }
 
+// eslint-disable-next-line complexity
 function LiveReconciliationPanel({ summary, loading, error }: { summary: AsnReceivingSummary | null; loading: boolean; error: string | null }) {
   if (loading && !summary) {
     return <div className="rounded-lg border p-4 text-sm text-muted-foreground">Loading live reconciliation…</div>;
@@ -123,27 +127,27 @@ function LiveReconciliationPanel({ summary, loading, error }: { summary: AsnRece
 
   const status = summary.ready_for_receipt_note
     ? {
-        label: 'Reconciled — Ready for Receipt Note',
-        className: 'border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300',
-        icon: <CircleCheck className="h-4 w-4" />,
-      }
+      label: 'Reconciled — Ready for Receipt Note',
+      className: 'border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300',
+      icon: <CircleCheck className="h-4 w-4" />,
+    }
     : summary.reconciliation_status === 'exception'
       ? {
-          label: 'Exception requires review',
-          className: 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300',
-          icon: <AlertTriangle className="h-4 w-4" />,
-        }
+        label: 'Exception requires review',
+        className: 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300',
+        icon: <AlertTriangle className="h-4 w-4" />,
+      }
       : summary.is_partial_receipt
         ? {
-            label: `Partial receipt — ${formatQuantity(summary.short_total_qty)} units remaining`,
-            className: 'border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300',
-            icon: <AlertTriangle className="h-4 w-4" />,
-          }
+          label: `Partial receipt — ${formatQuantity(summary.short_total_qty)} units remaining`,
+          className: 'border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300',
+          icon: <AlertTriangle className="h-4 w-4" />,
+        }
         : {
-            label: 'Scanning in progress',
-            className: 'border-muted bg-muted/40 text-muted-foreground',
-            icon: <ScanLine className="h-4 w-4" />,
-          };
+          label: 'Scanning in progress',
+          className: 'border-muted bg-muted/40 text-muted-foreground',
+          icon: <ScanLine className="h-4 w-4" />,
+        };
 
   const totals = [
     ['Expected', summary.expected_total_qty],
@@ -177,6 +181,22 @@ function LiveReconciliationPanel({ summary, loading, error }: { summary: AsnRece
           </div>
         ))}
       </div>
+
+      {summary.expected_serials !== undefined && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {([
+            ['Expected serials', summary.expected_serials ?? 0],
+            ['Received serials', summary.received_serials ?? 0],
+            ['Missing serials', summary.missing_serials ?? 0],
+            ['Unexpected serials', summary.unexpected_serials ?? 0],
+          ] as Array<[string, number]>).map(([label, value]) => (
+            <div key={label} className="rounded-md bg-muted/50 px-3 py-2">
+              <p className="text-xs text-muted-foreground">{label}</p>
+              <p className="text-lg font-semibold">{formatQuantity(value)}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-md border">
         <table className="min-w-[960px] w-full text-sm">
@@ -294,7 +314,7 @@ function InboundSessionStartForm({
         <Input id="dock-location"
           value={dockLocation}
           onChange={(event) => onDockLocationChange(event.target.value)}
-          placeholder="e.g. Dock A, Bay 3"/>
+          placeholder="e.g. Dock A, Bay 3" />
       </div>
       <div className="space-y-2">
         <Label htmlFor="inbound-asn">ASN for reconciliation (optional)</Label>
@@ -324,14 +344,17 @@ function InboundSessionStartForm({
   );
 }
 
+// eslint-disable-next-line complexity
 export function InboundScanPanel({ warehouseId, onSlipGenerated }: InboundScanPanelProps) {
-  const { session, loading, error, startSession, recordScan, endSession, getSummary } = useInboundSession();
+  const { session, loading, error, startSession, recordScan, scanCarton, endSession, getSummary } = useInboundSession();
   const { toast } = useToast();
   const accessToken = useUserStore((s) => s.accessToken);
   const [qrInput, setQrInput] = React.useState('');
   const [dockLocation, setDockLocation] = React.useState('');
   const [selectedAsnId, setSelectedAsnId] = React.useState('');
+  const [scanMode, setScanMode] = React.useState<'unit' | 'carton'>('unit');
   const [scans, setScans] = React.useState<ScanResult[]>([]);
+  const [cartonSummary, setCartonSummary] = React.useState<CartonScanSummary | null>(null);
   const [scanError, setScanError] = React.useState<string | null>(null);
   const [summary, setSummary] = React.useState<SessionSummary | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -351,14 +374,28 @@ export function InboundScanPanel({ warehouseId, onSlipGenerated }: InboundScanPa
     if (!qrInput.trim()) return;
     setScanError(null);
     try {
+      if (scanMode === 'carton') {
+        const result = await scanCarton(qrInput.trim());
+        setCartonSummary(result);
+        setQrInput('');
+        inputRef.current?.focus();
+        await reconciliation.refresh();
+        return;
+      }
       const result = await recordScan(qrInput.trim());
       setScans((prev) => [result, ...prev]);
+      setCartonSummary(null);
       setQrInput('');
       inputRef.current?.focus();
       await reconciliation.refresh();
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'Scan failed');
     }
+  };
+
+  const handleModeChange = (mode: 'unit' | 'carton') => {
+    setScanMode(mode);
+    setCartonSummary(null);
   };
 
   const handleEnd = async () => {
@@ -389,7 +426,7 @@ export function InboundScanPanel({ warehouseId, onSlipGenerated }: InboundScanPa
         asnError={asnError}
         sessionError={error}
         loading={loading}
-        onStart={handleStart}/>
+        onStart={handleStart} />
     );
   }
 
@@ -419,18 +456,33 @@ export function InboundScanPanel({ warehouseId, onSlipGenerated }: InboundScanPa
       </div>
 
       {/* Session summary preview */}
+      {session.serialization_mode === 'quantity_only' && <QuantityOnlyBanner />}
       {summary && <SessionSummaryPanel summary={summary} onClose={() => setSummary(null)} />}
       <LiveReconciliationPanel summary={reconciliation.summary} loading={reconciliation.loading} error={reconciliation.error} />
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1 rounded-md border p-0.5 text-xs font-medium">
+          <button type="button"
+            onClick={() => handleModeChange('unit')}
+            className={`rounded px-2.5 py-1 transition-colors ${scanMode === 'unit' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+            Unit
+          </button>
+          <button type="button"
+            onClick={() => handleModeChange('carton')}
+            className={`rounded px-2.5 py-1 transition-colors ${scanMode === 'carton' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+            Master Carton
+          </button>
+        </div>
+      </div>
       <div className="flex gap-2">
         <Input ref={inputRef}
           value={qrInput}
           onChange={(e) => setQrInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleScan()}
-          placeholder="Scan or paste QR code data..."
-          className="font-mono text-sm flex-1"/>
+          placeholder={scanMode === 'carton' ? 'Scan or paste master carton (parent) QR…' : 'Scan or paste QR code data...'}
+          className="font-mono text-sm flex-1" />
         <Button onClick={handleScan} className="gap-2 shrink-0">
           <ScanLine className="h-4 w-4" />
-          Scan
+          {scanMode === 'carton' ? 'Scan Carton' : 'Scan'}
         </Button>
       </div>
 
@@ -440,6 +492,8 @@ export function InboundScanPanel({ warehouseId, onSlipGenerated }: InboundScanPa
           {scanError}
         </div>
       )}
+
+      {cartonSummary && <CartonSummary summary={cartonSummary} />}
 
       {/* Scan log */}
       {scans.length > 0 && (

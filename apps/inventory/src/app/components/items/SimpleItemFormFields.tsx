@@ -318,7 +318,9 @@ export function SimpleItemFormFields({
           <div className="space-y-2">
             <Label htmlFor="packagingLengthMm">Length (mm)</Label>
             <Input id="packagingLengthMm"
-              type="number" step="0.1" min="0"
+              type="number"
+step="0.1"
+min="0"
               value={formData.packagingLengthMm}
               onChange={(e) => setFormData((prev) => ({ ...prev, packagingLengthMm: e.target.value }))}
               placeholder="0" />
@@ -327,7 +329,9 @@ export function SimpleItemFormFields({
           <div className="space-y-2">
             <Label htmlFor="packagingWidthMm">Width (mm)</Label>
             <Input id="packagingWidthMm"
-              type="number" step="0.1" min="0"
+              type="number"
+step="0.1"
+min="0"
               value={formData.packagingWidthMm}
               onChange={(e) => setFormData((prev) => ({ ...prev, packagingWidthMm: e.target.value }))}
               placeholder="0" />
@@ -336,7 +340,9 @@ export function SimpleItemFormFields({
           <div className="space-y-2">
             <Label htmlFor="packagingHeightMm">Height (mm)</Label>
             <Input id="packagingHeightMm"
-              type="number" step="0.1" min="0"
+              type="number"
+step="0.1"
+min="0"
               value={formData.packagingHeightMm}
               onChange={(e) => setFormData((prev) => ({ ...prev, packagingHeightMm: e.target.value }))}
               placeholder="0" />
@@ -345,10 +351,106 @@ export function SimpleItemFormFields({
           <div className="space-y-2">
             <Label htmlFor="packagingWeightGrams">Weight (g)</Label>
             <Input id="packagingWeightGrams"
-              type="number" step="0.1" min="0"
+              type="number"
+step="0.1"
+min="0"
               value={formData.packagingWeightGrams}
               onChange={(e) => setFormData((prev) => ({ ...prev, packagingWeightGrams: e.target.value }))}
               placeholder="0" />
+          </div>
+        </div>
+      </div>
+
+      {/* Master Carton */}
+      <div className="space-y-4">
+        <h3 className="text-base font-semibold border-b pb-2">Master Carton</h3>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="masterPackUnitName">Unit Name</Label>
+            <Input id="masterPackUnitName"
+              value={formData.masterPackUnitName}
+              onChange={(e) => setFormData((prev) => ({ ...prev, masterPackUnitName: e.target.value }))}
+              placeholder="Master Pack" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="masterPackLengthMm">Length (mm)</Label>
+            <Input id="masterPackLengthMm"
+              type="number"
+              step="0.1"
+              min="0"
+              value={formData.masterPackLengthMm}
+              onChange={(e) => setFormData((prev) => ({ ...prev, masterPackLengthMm: e.target.value }))}
+              placeholder="0" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="masterPackWidthMm">Width (mm)</Label>
+            <Input id="masterPackWidthMm"
+              type="number"
+              step="0.1"
+              min="0"
+              value={formData.masterPackWidthMm}
+              onChange={(e) => setFormData((prev) => ({ ...prev, masterPackWidthMm: e.target.value }))}
+              placeholder="0" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="masterPackHeightMm">Height (mm)</Label>
+            <Input id="masterPackHeightMm"
+              type="number"
+              step="0.1"
+              min="0"
+              value={formData.masterPackHeightMm}
+              onChange={(e) => setFormData((prev) => ({ ...prev, masterPackHeightMm: e.target.value }))}
+              placeholder="0" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="masterPackWeightGrams">Weight (g)</Label>
+            <Input id="masterPackWeightGrams"
+              type="number"
+              step="0.1"
+              min="0"
+              value={formData.masterPackWeightGrams}
+              onChange={(e) => setFormData((prev) => ({ ...prev, masterPackWeightGrams: e.target.value }))}
+              placeholder="0" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="masterPackFillFactor">Fill Factor</Label>
+            <Input id="masterPackFillFactor"
+              type="number"
+              step="0.01"
+              min="0"
+              max="1"
+              value={formData.masterPackFillFactor}
+              onChange={(e) => setFormData((prev) => ({ ...prev, masterPackFillFactor: e.target.value }))}
+              placeholder="0.75" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="masterPackVoidFillPct">Void Fill %</Label>
+            <Input id="masterPackVoidFillPct"
+              type="number"
+              step="0.01"
+              min="0"
+              max="1"
+              value={formData.masterPackVoidFillPct}
+              onChange={(e) => setFormData((prev) => ({ ...prev, masterPackVoidFillPct: e.target.value }))}
+              placeholder="0.10" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="masterPackWallThicknessMm">Wall Thickness (mm)</Label>
+            <Input id="masterPackWallThicknessMm"
+              type="number"
+              step="0.1"
+              min="0"
+              value={formData.masterPackWallThicknessMm}
+              onChange={(e) => setFormData((prev) => ({ ...prev, masterPackWallThicknessMm: e.target.value }))}
+              placeholder="3" />
           </div>
         </div>
       </div>

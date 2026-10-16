@@ -9,8 +9,8 @@ import type {
   SmartPickListResponse,
   DeliveryNoteFromPickListResponse,
 } from '../types/smart-picking.types';
-import { smartPickingApi } from '../utility/api/smart-picking';
 import { getFriendlyErrorMessage } from '../utility/api/core';
+import { smartPickingApi } from '../utility/api/smart-picking';
 
 export function useSuggestAllocation() {
   const accessToken = useUserStore((s) => s.accessToken);

@@ -1,7 +1,7 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import * as React from 'react';
 
 import '@testing-library/jest-dom';
-import * as React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { StockEntryDialog } from '../../../../app/components/stock/StockEntryDialog';
 import { useStockEntryMutations } from '../../../../app/hooks/useStock';
@@ -235,7 +235,7 @@ describe('StockEntryDialog', () => {
   it('should display error message on failure', async () => {
     const errorMessage = 'Failed to create entry';
     mockCreateEntry.mockRejectedValueOnce(new Error(errorMessage));
-    
+
     render(<StockEntryDialog {...defaultProps} />);
 
     const submitButton = screen.getByText('Create Entry');

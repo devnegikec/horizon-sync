@@ -18,6 +18,7 @@ import {
   Checkbox,
 } from '@horizon-sync/ui/components';
 
+import { useActiveBankAccounts } from '../../hooks/useBankAccounts';
 import { useOutstandingInvoicesForAllocation } from '../../hooks/useOutstandingInvoicesForAllocation';
 import { usePaymentValidation, type PaymentFormData } from '../../hooks/usePaymentValidation';
 import type { CustomerResponse } from '../../types/customer.types';
@@ -27,7 +28,6 @@ import { supplierApi } from '../../utility/api';
 import { customerApi } from '../../utility/api';
 import { getAccessToken } from '../../utility/api/core';
 import { toDateInputValue } from '../../utils/payment.utils';
-import { useActiveBankAccounts } from '../../hooks/useBankAccounts';
 
 interface PaymentFormProps {
   initialData?: Partial<CreatePaymentPayload>;

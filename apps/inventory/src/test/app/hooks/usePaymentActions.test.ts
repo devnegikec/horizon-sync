@@ -207,7 +207,7 @@ describe('usePaymentActions', () => {
       const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(() => null as any);
       const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation(() => null as any);
       const createObjectURLSpy = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:test');
-      const revokeObjectURLSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
+      const revokeObjectURLSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => { /* no-op */ });
 
       const { result } = renderHook(() => usePaymentActions());
 

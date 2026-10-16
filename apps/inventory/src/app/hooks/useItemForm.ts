@@ -76,6 +76,16 @@ const getInitialFormData = (): ItemFormData & { itemGroupName: string } => ({
   packagingWidthMm: '',
   packagingHeightMm: '',
   packagingWeightGrams: '',
+
+  // Master Carton
+  masterPackUnitName: '',
+  masterPackLengthMm: '',
+  masterPackWidthMm: '',
+  masterPackHeightMm: '',
+  masterPackWeightGrams: '',
+  masterPackFillFactor: '0.75',
+  masterPackVoidFillPct: '0.10',
+  masterPackWallThicknessMm: '3',
 });
 
 export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult {
@@ -149,6 +159,16 @@ export function useItemForm({ item, open }: UseItemFormProps): UseItemFormResult
         packagingWidthMm: item.packagingDetails?.widthMm?.toString() || '',
         packagingHeightMm: item.packagingDetails?.heightMm?.toString() || '',
         packagingWeightGrams: item.packagingDetails?.weightGrams?.toString() || '',
+
+        // Master Carton
+        masterPackUnitName: item.packagingDetails?.masterPackUnitName ?? '',
+        masterPackLengthMm: item.packagingDetails?.masterPackLengthMm?.toString() || '',
+        masterPackWidthMm: item.packagingDetails?.masterPackWidthMm?.toString() || '',
+        masterPackHeightMm: item.packagingDetails?.masterPackHeightMm?.toString() || '',
+        masterPackWeightGrams: item.packagingDetails?.masterPackWeightGrams?.toString() || '',
+        masterPackFillFactor: item.packagingDetails?.masterPackFillFactor?.toString() || '0.75',
+        masterPackVoidFillPct: item.packagingDetails?.masterPackVoidFillPct?.toString() || '0.10',
+        masterPackWallThicknessMm: item.packagingDetails?.masterPackWallThicknessMm?.toString() || '3',
       });
     } else {
       resetForm();

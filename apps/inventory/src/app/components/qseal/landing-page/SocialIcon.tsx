@@ -1,5 +1,7 @@
 import * as React from 'react';
+
 import { Globe, Link } from 'lucide-react';
+
 import type { SocialPlatform } from '../../../types/landing-page.types';
 
 interface SocialIconProps {

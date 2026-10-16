@@ -6,6 +6,14 @@ export interface ItemPackagingDetails {
   widthMm: number | null;
   heightMm: number | null;
   weightGrams: number | null;
+  masterPackUnitName?: string | null;
+  masterPackLengthMm?: number | null;
+  masterPackWidthMm?: number | null;
+  masterPackHeightMm?: number | null;
+  masterPackWeightGrams?: number | null;
+  masterPackFillFactor?: number | null;
+  masterPackVoidFillPct?: number | null;
+  masterPackWallThicknessMm?: number | null;
 }
 
 export interface Item {

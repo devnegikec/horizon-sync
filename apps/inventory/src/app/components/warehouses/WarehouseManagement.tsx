@@ -13,6 +13,7 @@ import {
   Store,
 } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Button, DataTableViewOptions, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
@@ -33,7 +34,6 @@ import {
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { useToast } from '@horizon-sync/ui/hooks';
-import { useUserStore } from '@horizon-sync/store';
 
 import { useWarehouses, useWarehouseMutations } from '../../hooks/useWarehouses';
 import type { Warehouse, WarehouseFilters } from '../../types/warehouse.types';
@@ -338,8 +338,7 @@ export function WarehouseManagement() {
       </div>
 
       {/* Warehouses Table */}
-      <WarehousesTable
-        warehouses={warehouses}
+      <WarehousesTable warehouses={warehouses}
         loading={loading}
         error={error}
         hasActiveFilters={!!filters.search || filters.warehouseType !== 'all' || filters.status !== 'all'}
@@ -349,41 +348,34 @@ export function WarehouseManagement() {
         onToggleStatus={handleToggleWarehouseStatus}
         onCreateWarehouse={handleCreateWarehouse}
         onTableReady={handleTableReady}
-        serverPagination={serverPaginationConfig}
-      />
+        serverPagination={serverPaginationConfig}/>
 
       {/* Dialogs */}
-      <WarehouseDialog
-        open={warehouseDialogOpen}
+      <WarehouseDialog open={warehouseDialogOpen}
         onOpenChange={setWarehouseDialogOpen}
         warehouse={selectedWarehouse}
         warehouses={warehouses}
         onCreated={() => { refetch(); window.dispatchEvent(new CustomEvent('warehouse:changed', { detail: { source: 'create' } })); }}
-        onUpdated={() => { refetch(); window.dispatchEvent(new CustomEvent('warehouse:changed', { detail: { source: 'update' } })); }}
-      />
+        onUpdated={() => { refetch(); window.dispatchEvent(new CustomEvent('warehouse:changed', { detail: { source: 'update' } })); }}/>
       <WarehouseDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} warehouse={selectedWarehouse} />
 
       {/* Delete Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmDeleteWarehouse}
+      <ConfirmationDialog open={!!confirmDeleteWarehouse}
         onOpenChange={(open) => { if (!open) setConfirmDeleteWarehouse(null); }}
         title="Delete Warehouse"
         description={`Are you sure you want to delete "${confirmDeleteWarehouse?.name}"?`}
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={executeDeleteWarehouse}
-      />
+        onConfirm={executeDeleteWarehouse}/>
 
       {/* Toggle Status Confirmation Dialog */}
-      <ConfirmationDialog
-        open={!!confirmToggleWarehouse}
+      <ConfirmationDialog open={!!confirmToggleWarehouse}
         onOpenChange={(open) => { if (!open) setConfirmToggleWarehouse(null); }}
         title={confirmToggleWarehouse?.is_active ? 'Deactivate Warehouse' : 'Activate Warehouse'}
         description={`Are you sure you want to ${confirmToggleWarehouse?.is_active ? 'deactivate' : 'activate'} "${confirmToggleWarehouse?.name}"?`}
         confirmLabel={confirmToggleWarehouse?.is_active ? 'Deactivate' : 'Activate'}
         variant={confirmToggleWarehouse?.is_active ? 'destructive' : 'default'}
-        onConfirm={executeToggleWarehouseStatus}
-      />
+        onConfirm={executeToggleWarehouseStatus}/>
 
       {/* Export Dialog */}
       <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
@@ -456,10 +448,8 @@ export function WarehouseManagement() {
             <div className="flex flex-col gap-2">
               <label htmlFor="wh-file-upload" className="text-sm font-medium">Select File</label>
               {!selectedFile ? (
-                <label
-                  htmlFor="wh-file-upload"
-                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
+                <label htmlFor="wh-file-upload"
+                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors">
                   <Upload className="h-8 w-8 text-muted-foreground mb-2" />
                   <span className="text-sm font-medium text-primary">Click to select file</span>
                   <span className="text-xs text-muted-foreground mt-1">CSV or Excel (.csv, .xlsx, .xls)</span>

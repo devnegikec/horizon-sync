@@ -422,7 +422,8 @@ export function ItemManagementHeader({ onCreateItem, onImportSuccess }: ItemMana
       </Dialog>
 
       {/* Import Dialog */}
-      <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+      <Dialog open={isImportDialogOpen}
+onOpenChange={(open) => {
         setIsImportDialogOpen(open);
         if (!open) { setSelectedFile(null); }
       }}>
@@ -440,13 +441,11 @@ export function ItemManagementHeader({ onCreateItem, onImportSuccess }: ItemMana
                 <p className="font-medium">Need a template?</p>
                 <p className="text-muted-foreground">Download the sample file to see the required format.</p>
               </div>
-              <Button
-                type="button"
+              <Button type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleDownloadSample}
-                className="shrink-0 ml-4 gap-1.5"
-              >
+                className="shrink-0 ml-4 gap-1.5">
                 <FileDown className="h-4 w-4" />
                 Sample CSV
               </Button>
@@ -457,10 +456,8 @@ export function ItemManagementHeader({ onCreateItem, onImportSuccess }: ItemMana
                 Select File
               </Label>
               {!selectedFile ? (
-                <label
-                  htmlFor="file-upload"
-                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
+                <label htmlFor="file-upload"
+                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors">
                   <Upload className="h-8 w-8 text-muted-foreground mb-2" />
                   <span className="text-sm font-medium text-primary">Click to select file</span>
                   <span className="text-xs text-muted-foreground mt-1">CSV or Excel (.csv, .xlsx, .xls)</span>
@@ -474,13 +471,11 @@ export function ItemManagementHeader({ onCreateItem, onImportSuccess }: ItemMana
                       {(selectedFile.size / 1024).toFixed(1)} KB
                     </p>
                   </div>
-                  <Button
-                    type="button"
+                  <Button type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => setSelectedFile(null)}
-                    disabled={isImporting}
-                  >
+                    disabled={isImporting}>
                     Change
                   </Button>
                 </div>

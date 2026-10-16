@@ -2,11 +2,11 @@ import * as React from 'react';
 
 import { Package, DollarSign } from 'lucide-react';
 
+import { useCurrencyStore } from '@horizon-sync/store';
 import { Badge, Separator } from '@horizon-sync/ui/components';
 
-import type { DeliveryNote, DeliveryNoteItem } from '../../types/delivery-note.types';
-import { useCurrencyStore } from '@horizon-sync/store';
 import { getCurrencySymbol } from '../../types/currency.types';
+import type { DeliveryNote, DeliveryNoteItem } from '../../types/delivery-note.types';
 
 function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return '—';

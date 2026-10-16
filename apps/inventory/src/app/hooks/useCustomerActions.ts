@@ -1,4 +1,3 @@
-import { getFriendlyErrorMessage } from '../utility/api/core';
 import * as React from 'react';
 
 import { useUserStore } from '@horizon-sync/store';
@@ -6,6 +5,7 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import type { Customer } from '../types/customer.types';
 import { customerApi } from '../utility/api';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 
 export function useCustomerActions() {
