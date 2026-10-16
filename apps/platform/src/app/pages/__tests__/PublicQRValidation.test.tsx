@@ -28,6 +28,8 @@ const authenticResult = {
   serial_number: 'PRO-ABC12345',
   qr_type: 'dynamic',
   qr_channel: null,
+  secure_verified_at: null,
+  one_time_verified_at: null,
   activation_method: 'pre',
   industry: 'Consumer Goods',
   warranty_period_months: 18,
@@ -82,6 +84,69 @@ describe('PublicQRValidation', () => {
       },
       { headers: { 'X-Scan-Event-Id': expect.any(String) } },
     );
+  });
+
+  it('renders the dedicated first-time enterprise state for an authentic One-Time QR', async () => {
+    mockedAxios.get.mockResolvedValueOnce({
+      data: {
+        config: {
+          banner_image_url: '/static/landing-pages/one-time-banner.png',
+          social_links: [{ platform: 'facebook', url: 'https://example.com/social', enabled: true }],
+          warranty: { enabled: true, title: 'One-Time warranty' },
+          feedback: { enabled: true, type: 'feedback', title: 'One-Time feedback' },
+          custom_cta: { enabled: true, button_text: 'One-Time CTA', button_url: 'https://example.com/cta' },
+        },
+      },
+    } as never);
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        ...authenticResult,
+        qr_type: 'one_time',
+        scan_event_id: 'one-time-event-id',
+        one_time_verified_at: '2026-10-13T15:20:00.000Z',
+        message: 'This product is genuine and verified.',
+      },
+    });
+
+    renderPage();
+
+    expect(await screen.findByRole('heading', { name: 'Product authentication successful' })).toBeInTheDocument();
+    expect(screen.getByText('First-time authentication complete')).toBeInTheDocument();
+    expect(screen.getByText('One-Time QR')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Product details' })).toBeInTheDocument();
+    expect(screen.getByText('PRO-ABC12345')).toBeInTheDocument();
+    expect(screen.getByText('This one-time QR code is now protected against reuse.')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Authentic Product' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Help protect genuine products')).not.toBeInTheDocument();
+    expect(screen.queryByAltText('Demo Product banner')).not.toBeInTheDocument();
+    expect(screen.queryByText('Need assistance?')).not.toBeInTheDocument();
+    expect(screen.queryByText('Stay connected')).not.toBeInTheDocument();
+    expect(screen.queryByText('One-Time warranty')).not.toBeInTheDocument();
+    expect(screen.queryByText('One-Time feedback')).not.toBeInTheDocument();
+    expect(screen.queryByText('One-Time CTA')).not.toBeInTheDocument();
+    expect(screen.queryByText('GTIN')).not.toBeInTheDocument();
+  });
+
+  it('renders the authenticated product state on a second One-Time QR scan', async () => {
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        ...authenticResult,
+        verification_status: 'already_used',
+        authentic: false,
+        qr_type: 'one_time',
+        one_time_verified_at: '2026-10-14T06:52:00.000Z',
+        message: 'This One-Time QR code has already been used.',
+      },
+    });
+
+    renderPage();
+
+    expect(await screen.findByRole('heading', { name: 'Product Authentication' })).toBeInTheDocument();
+    expect(screen.getByText(/This product was successfully authenticated on Oct 14, 2026/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Product Details:' })).toBeInTheDocument();
+    expect(screen.getByText('PRO-ABC12345')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Code Already Used' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Please enter the secure code')).not.toBeInTheDocument();
   });
 
   it('applies the saved public landing-page configuration', async () => {
@@ -183,6 +248,16 @@ describe('PublicQRValidation', () => {
 
   it('submits a protected code and renders the Secure Code result', async () => {
     const user = userEvent.setup();
+    mockedAxios.get.mockResolvedValue({
+      data: {
+        config: {
+          banner_image_url: '/static/landing-pages/secure-banner.png',
+          social_links: [{ platform: 'facebook', url: 'https://example.com/social', enabled: true }],
+          feedback: { enabled: true, type: 'feedback', title: 'Your experience matters' },
+          warranty: { enabled: true, title: 'Warranty' },
+        },
+      },
+    } as never);
     mockedAxios.post
       .mockResolvedValueOnce({
         data: {
@@ -196,12 +271,14 @@ describe('PublicQRValidation', () => {
         },
       })
       .mockResolvedValueOnce({
-        data: { ...authenticResult, qr_type: 'secure_code' },
+        data: { ...authenticResult, qr_type: 'secure_code', scan_event_id: 'secure-event-id' },
       });
 
     renderPage();
 
     const input = await screen.findByLabelText('Protected product code');
+    expect(screen.getByRole('heading', { name: 'Product Authentication' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Please enter the secure code' })).toBeInTheDocument();
     await user.type(input, 'a1b2c3d4e5f6');
     await user.click(screen.getByRole('button', { name: 'Verify code' }));
 
@@ -211,7 +288,32 @@ describe('PublicQRValidation', () => {
       expect.objectContaining({ secure_code: 'A1B2C3D4E5F6' }),
       expect.any(Object),
     );
-    expect(await screen.findByRole('heading', { name: 'Authentic Product' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'The product authentication has been successfully verified.' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Product Information' })).toBeInTheDocument();
+    expect(screen.getByText('Secure code verified successfully.')).toBeInTheDocument();
+    expect(screen.queryByText('Help protect genuine products')).not.toBeInTheDocument();
+    expect(screen.queryByText('Need assistance?')).not.toBeInTheDocument();
+    expect(screen.queryByText('Stay connected')).not.toBeInTheDocument();
+    expect(screen.queryByText('Warranty')).not.toBeInTheDocument();
+    expect(screen.queryByText('Your experience matters')).not.toBeInTheDocument();
+    expect(screen.queryByAltText('Demo Product banner')).not.toBeInTheDocument();
+  });
+
+  it('shows the previous Secure QR authentication without asking for the code again', async () => {
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        ...authenticResult,
+        qr_type: 'secure_code',
+        secure_verified_at: '2026-10-14T06:50:00.000Z',
+      },
+    });
+
+    renderPage();
+
+    expect(await screen.findByText('The product authentication has been successfully verified.')).toBeInTheDocument();
+    expect(screen.queryByText('Please enter the secure code')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /verify code/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/Authenticated Oct 14, 2026/i)).toBeInTheDocument();
   });
 
   it('uses the red failure state for an invalid QR', async () => {

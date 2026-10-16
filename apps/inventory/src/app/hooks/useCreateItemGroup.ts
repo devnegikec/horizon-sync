@@ -1,12 +1,9 @@
 import { useState } from 'react';
-import { getFriendlyErrorMessage } from '../utility/api/core';
 
 import { useUserStore } from '@horizon-sync/store';
 
-import { environment } from '../../environments/environment';
 import type { CreateItemGroupPayload, CreateItemGroupResponse } from '../types/item-group-creation.types';
-
-const ITEM_GROUPS_URL = `${environment.apiCoreUrl}/item-groups`;
+import { apiRequest, getFriendlyErrorMessage } from '../utility/api/core';
 
 interface UseCreateItemGroupResult {
   createItemGroup: (payload: CreateItemGroupPayload) => Promise<CreateItemGroupResponse>;
@@ -28,22 +25,10 @@ export function useCreateItemGroup(): UseCreateItemGroupResult {
     setError(null);
 
     try {
-      const response = await fetch(ITEM_GROUPS_URL, {
+      return await apiRequest<CreateItemGroupResponse>('/item-groups', accessToken, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(payload),
+        body: payload,
       });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
-      return result;
     } catch (err) {
       const errorMessage = getFriendlyErrorMessage(err);
       setError(errorMessage);
@@ -59,4 +44,3 @@ export function useCreateItemGroup(): UseCreateItemGroupResult {
     error,
   };
 }
-

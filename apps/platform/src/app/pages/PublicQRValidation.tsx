@@ -4,9 +4,12 @@ import axios, { AxiosError } from 'axios';
 import {
   ArrowRight,
   AlertTriangle,
+  CalendarClock,
   Check,
   CheckCircle2,
+  CircleHelp,
   ExternalLink,
+  Fingerprint,
   Globe2,
   Link2,
   LockKeyhole,
@@ -51,6 +54,8 @@ interface VerificationResult {
   serial_number: string | null;
   qr_type: QRType | null;
   qr_channel: QRChannel | null;
+  secure_verified_at: string | null;
+  one_time_verified_at: string | null;
   activation_method: string | null;
   industry: string | null;
   warranty_period_months: number | null;
@@ -63,6 +68,8 @@ interface VerificationResult {
   contact_email: string | null;
   contact_phone: string | null;
   website_url: string | null;
+  redirect_to_client?: boolean;
+  client_product_auth_url?: string | null;
   scan_event_id?: string | null;
 }
 
@@ -293,6 +300,340 @@ function StatusPanel({
         {needsSecureCode && <SecureCodeForm submitting={submitting} invalid={result.verification_status === 'invalid'} onSubmit={onSecureCode} />}
       </div>
     </section>
+  );
+}
+
+function formatOneTimeDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+  }).format(parsed);
+}
+
+function formatVerificationDateTime(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(parsed);
+}
+
+function OneTimeSuccessPanel({ result }: { result: VerificationResult }) {
+  const verifiedAtLabel = formatVerificationDateTime(result.one_time_verified_at) || 'Authentication time unavailable';
+  const details = [
+    ['Brand', result.brand_name],
+    ['Product', result.product_name],
+    ['Serial number', result.serial_number],
+    ['Manufactured', formatOneTimeDate(result.manufacturing_date)],
+    ['Batch', result.batch_number],
+  ].filter((entry): entry is [string, string] => Boolean(entry[1]));
+
+  return (
+    <section className="qrv-otqr-success" aria-live="polite">
+      <div className="qrv-otqr-success__bar">
+        <span>Product authentication</span>
+        <span className="qrv-otqr-success__badge">
+          <CheckCircle2 aria-hidden="true" /> One-Time QR
+        </span>
+      </div>
+
+      <div className="qrv-otqr-success__hero">
+        <div className="qrv-otqr-success__seal" aria-hidden="true">
+          <Check />
+        </div>
+        <p className="qrv-eyebrow">First-time authentication complete</p>
+        <h1>Product authentication successful</h1>
+        <p className="qrv-otqr-success__message">
+          This product passed QSeal verification and has been authenticated for the first time.
+        </p>
+        <div className="qrv-otqr-success__metadata">
+          <span><CalendarClock aria-hidden="true" /> Verified {verifiedAtLabel}</span>
+          <span><Fingerprint aria-hidden="true" /> Unique serial confirmed</span>
+        </div>
+      </div>
+
+      <div className="qrv-otqr-success__details">
+        <div className="qrv-otqr-success__details-heading">
+          <div>
+            <p className="qrv-eyebrow">Verified product</p>
+            <h2>Product details</h2>
+          </div>
+          <ShieldCheck aria-hidden="true" />
+        </div>
+        <dl>
+          {details.map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd className={label === 'Serial number' ? 'qrv-mono' : undefined}>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      <div className="qrv-otqr-success__notice">
+        <ShieldCheck aria-hidden="true" />
+        <span>This one-time QR code is now protected against reuse.</span>
+      </div>
+    </section>
+  );
+}
+
+function OneTimeRepeatPanel({ result }: { result: VerificationResult }) {
+  const authenticatedAtLabel = formatVerificationDateTime(result.one_time_verified_at);
+  const details = [
+    ['Brand', result.brand_name],
+    ['Name', result.product_name],
+    ['Sr. Number', result.serial_number],
+    ['MFD', formatOneTimeDate(result.manufacturing_date)],
+  ].filter((entry): entry is [string, string] => Boolean(entry[1]));
+
+  return (
+    <section className="qrv-otqr-repeat" aria-live="polite">
+      <div className="qrv-otqr-repeat__bar">Product authentication</div>
+      <div className="qrv-otqr-repeat__status">
+        <div className="qrv-otqr-repeat__seal" aria-hidden="true">
+          <Check />
+        </div>
+        <h1>Product Authentication</h1>
+        <p>
+          This product was successfully authenticated{authenticatedAtLabel ? ` on ${authenticatedAtLabel}` : '.'}
+        </p>
+      </div>
+      <div className="qrv-otqr-repeat__details">
+        <h2>Product Details:</h2>
+        <dl>
+          {details.map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}:</dt>
+              <dd className={label === 'Sr. Number' ? 'qrv-mono' : undefined}>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+  );
+}
+
+function SecureQRChallengePanel({
+  result,
+  submitting,
+  onSecureCode,
+}: {
+  result: VerificationResult;
+  submitting: boolean;
+  onSecureCode: (code: string) => void;
+}) {
+  const invalid = result.verification_status === 'invalid';
+
+  return (
+    <section className="qrv-secure-panel qrv-secure-panel--challenge" aria-live="polite">
+      <div className="qrv-secure-panel__header">
+        <p className="qrv-secure-panel__eyebrow">Product authentication</p>
+        <h1>Product Authentication</h1>
+        <p>Verify your product authenticity.</p>
+      </div>
+      <div className="qrv-secure-panel__icon" aria-hidden="true">
+        <CircleHelp />
+      </div>
+      <h2>Please enter the secure code</h2>
+      {invalid && <p className="qrv-secure-panel__error" role="alert">{result.message}</p>}
+      <SecureCodeForm submitting={submitting} invalid={invalid} onSubmit={onSecureCode} />
+      <p className="qrv-secure-panel__privacy">
+        Your secure code is checked privately and is never displayed after verification.
+      </p>
+    </section>
+  );
+}
+
+function SecureQRSuccessPanel({ result }: { result: VerificationResult }) {
+  const authenticatedAtLabel = formatVerificationDateTime(result.secure_verified_at);
+  const details = [
+    ['Brand', result.brand_name],
+    ['Product name', result.product_name],
+    ['Serial number', result.serial_number],
+    ['Manufacturing date', formatOneTimeDate(result.manufacturing_date)],
+  ].filter((entry): entry is [string, string] => Boolean(entry[1]));
+
+  return (
+    <section className="qrv-secure-panel qrv-secure-panel--success" aria-live="polite">
+      <div className="qrv-secure-panel__header">
+        <p className="qrv-secure-panel__eyebrow">Product authentication</p>
+        <h1>Product Authentication</h1>
+        <p>Verify your product authenticity.</p>
+      </div>
+      <div className="qrv-secure-panel__icon" aria-hidden="true">
+        <Check />
+      </div>
+      <h2>The product authentication has been successfully verified.</h2>
+      <p className="qrv-secure-panel__success-message">
+        This product was authenticated using its secure code.
+      </p>
+      <div className="qrv-secure-panel__timestamp">
+        <CalendarClock aria-hidden="true" />
+        {authenticatedAtLabel ? `Authenticated ${authenticatedAtLabel}` : 'Previously authenticated'}
+      </div>
+      <div className="qrv-secure-panel__information">
+        <div className="qrv-secure-panel__information-heading">
+          <h3>Product Information</h3>
+          <ShieldCheck aria-hidden="true" />
+        </div>
+        <dl>
+          {details.map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd className={label === 'Serial number' ? 'qrv-mono' : undefined}>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      <div className="qrv-secure-panel__notice">
+        <ShieldCheck aria-hidden="true" /> Secure code verified successfully.
+      </div>
+    </section>
+  );
+}
+
+function isFirstTimeOneTimeSuccess(result: VerificationResult): boolean {
+  return result.qr_type === 'one_time' && result.verification_status === 'authentic';
+}
+
+function isOneTimeRepeat(result: VerificationResult): boolean {
+  return result.qr_type === 'one_time' && result.verification_status === 'already_used';
+}
+
+function VerificationStatusView({
+  result,
+  submitting,
+  firstTimeOneTimeSuccess,
+  oneTimeRepeat,
+  secureQRChallenge,
+  secureQRSuccess,
+  onSecureCode,
+}: {
+  result: VerificationResult;
+  submitting: boolean;
+  firstTimeOneTimeSuccess: boolean;
+  oneTimeRepeat: boolean;
+  secureQRChallenge: boolean;
+  secureQRSuccess: boolean;
+  onSecureCode: (code: string) => void;
+}) {
+  if (firstTimeOneTimeSuccess) return <OneTimeSuccessPanel result={result} />;
+  if (oneTimeRepeat) return <OneTimeRepeatPanel result={result} />;
+  if (secureQRChallenge) return <SecureQRChallengePanel result={result} submitting={submitting} onSecureCode={onSecureCode} />;
+  if (secureQRSuccess) return <SecureQRSuccessPanel result={result} />;
+  return <StatusPanel result={result} submitting={submitting} onSecureCode={onSecureCode} />;
+}
+
+function StandardProductDetails({
+  result,
+  config,
+  hidden,
+}: {
+  result: VerificationResult;
+  config: PublicLandingPageConfig | null;
+  hidden: boolean;
+}) {
+  if (hidden) return null;
+  return <ProductDetails result={result} config={config} />;
+}
+
+function PublicPageExtras({
+  result,
+  landingPageConfig,
+  firstTimeOneTimeSuccess,
+  oneTimeQR,
+  secureQRChallenge,
+  secureQR,
+  productContentVisible,
+  landingSectionsVisible,
+  bannerUrl,
+}: {
+  result: VerificationResult;
+  landingPageConfig: PublicLandingPageConfig | null;
+  firstTimeOneTimeSuccess: boolean;
+  oneTimeQR: boolean;
+  secureQRChallenge: boolean;
+  secureQR: boolean;
+  productContentVisible: boolean;
+  landingSectionsVisible: boolean;
+  bannerUrl: string | null;
+}) {
+  if (secureQR || secureQRChallenge || oneTimeQR) return null;
+
+  return (
+    <>
+      {result.authentic && result.scan_event_id && <LocationConsent scanEventId={result.scan_event_id} />}
+      {bannerUrl && (
+        <figure className="qrv-banner">
+          <img src={bannerUrl} alt={`${result.product_name || 'Product'} banner`} />
+        </figure>
+      )}
+      {(productContentVisible || landingSectionsVisible) && (
+        <div className="qrv-content-grid">
+          <StandardProductDetails result={result} config={landingPageConfig} hidden={firstTimeOneTimeSuccess} />
+          <ContactCard result={result} />
+          <SocialLinksCard config={landingPageConfig} brandName={result.brand_name} />
+          <WarrantyCard config={landingPageConfig} />
+          <FeedbackCard config={landingPageConfig} />
+          <CustomCtaCard config={landingPageConfig} />
+        </div>
+      )}
+    </>
+  );
+}
+
+function PublicPageMain({
+  result,
+  landingPageConfig,
+  submitting,
+  verify,
+  firstTimeOneTimeSuccess,
+  oneTimeRepeat,
+  oneTimeQR,
+  secureQRChallenge,
+  secureQRSuccess,
+  secureQR,
+  productContentVisible,
+  landingSectionsVisible,
+  bannerUrl,
+}: {
+  result: VerificationResult;
+  landingPageConfig: PublicLandingPageConfig | null;
+  submitting: boolean;
+  verify: (secureCode?: string) => Promise<void>;
+  firstTimeOneTimeSuccess: boolean;
+  oneTimeRepeat: boolean;
+  oneTimeQR: boolean;
+  secureQRChallenge: boolean;
+  secureQRSuccess: boolean;
+  secureQR: boolean;
+  productContentVisible: boolean;
+  landingSectionsVisible: boolean;
+  bannerUrl: string | null;
+}) {
+  return (
+    <main className="qrv-shell qrv-main">
+      <VerificationStatusView result={result} submitting={submitting} firstTimeOneTimeSuccess={firstTimeOneTimeSuccess} oneTimeRepeat={oneTimeRepeat} secureQRChallenge={secureQRChallenge} secureQRSuccess={secureQRSuccess} onSecureCode={(code) => void verify(code)} />
+      <PublicPageExtras result={result}
+        landingPageConfig={landingPageConfig}
+        firstTimeOneTimeSuccess={firstTimeOneTimeSuccess}
+        oneTimeQR={oneTimeQR}
+        secureQRChallenge={secureQRChallenge}
+        secureQR={secureQR}
+        productContentVisible={productContentVisible}
+        landingSectionsVisible={landingSectionsVisible}
+        bannerUrl={bannerUrl} />
+    </main>
   );
 }
 
@@ -647,6 +988,10 @@ function usePublicVerification(input: VerificationRequest | null, requestKey: st
         const response = await axios.post<VerificationResult>(`${API_BASE_URL}/api/v1/public/qr/verify`, payload, {
           headers: { 'X-Scan-Event-Id': scanEventId.current },
         });
+        if (response.data.redirect_to_client && response.data.client_product_auth_url) {
+          window.location.replace(response.data.client_product_auth_url);
+          return;
+        }
         setResult(response.data);
       } catch (error: unknown) {
         setNetworkError(errorMessage(error));
@@ -741,33 +1086,33 @@ export function PublicQRValidation() {
   if (loading) return <LoadingView />;
   if (networkError) return <NetworkErrorView message={networkError} onRetry={() => void verify()} />;
   if (!result) return null;
+  const firstTimeOneTimeSuccess = isFirstTimeOneTimeSuccess(result);
+  const oneTimeQR = result.qr_type === 'one_time';
+  const oneTimeRepeat = isOneTimeRepeat(result);
+  const secureQR = result.qr_type === 'secure_code';
+  const secureQRChallenge = secureQR && result.challenge_type === 'secure_code' && !result.authentic;
+  const secureQRSuccess = secureQR && result.verification_status === 'authentic' && result.authentic;
   const productContentVisible = hasProductContent(result, landingPageConfig);
   const landingSectionsVisible = hasLandingSections(landingPageConfig);
   const bannerUrl = publicBannerUrl(result, landingPageConfig);
   const pageStyle = publicPageStyle(landingPageConfig);
 
   return (
-    <div className="qrv-page" style={pageStyle}>
+    <div className={`qrv-page${firstTimeOneTimeSuccess ? ' qrv-page--one-time' : ''}${secureQR ? ' qrv-page--secure-qr' : ''}`} style={pageStyle}>
       <BrandHeader result={result} config={landingPageConfig} />
-      <main className="qrv-shell qrv-main">
-        <StatusPanel result={result} submitting={submitting} onSecureCode={(code) => void verify(code)} />
-        {result.authentic && result.scan_event_id && <LocationConsent scanEventId={result.scan_event_id} />}
-        {bannerUrl && (
-          <figure className="qrv-banner">
-            <img src={bannerUrl} alt={`${result.product_name || 'Product'} banner`} />
-          </figure>
-        )}
-        {(productContentVisible || landingSectionsVisible) && (
-          <div className="qrv-content-grid">
-            <ProductDetails result={result} config={landingPageConfig} />
-            <ContactCard result={result} />
-            <SocialLinksCard config={landingPageConfig} brandName={result.brand_name} />
-            <WarrantyCard config={landingPageConfig} />
-            <FeedbackCard config={landingPageConfig} />
-            <CustomCtaCard config={landingPageConfig} />
-          </div>
-        )}
-      </main>
+      <PublicPageMain result={result}
+        landingPageConfig={landingPageConfig}
+        submitting={submitting}
+        verify={verify}
+        firstTimeOneTimeSuccess={firstTimeOneTimeSuccess}
+        oneTimeRepeat={oneTimeRepeat}
+        oneTimeQR={oneTimeQR}
+        secureQRChallenge={secureQRChallenge}
+        secureQRSuccess={secureQRSuccess}
+        secureQR={secureQR}
+        productContentVisible={productContentVisible}
+        landingSectionsVisible={landingSectionsVisible}
+        bannerUrl={bannerUrl} />
       <Footer config={landingPageConfig} />
     </div>
   );

@@ -3,6 +3,7 @@ import * as React from 'react';
 import { useUserStore } from '@horizon-sync/store';
 
 import { qrProductApi } from '../api/qr-products';
+import { notificationService } from '../services/notificationService';
 import type {
   QSealCreditInfo,
   QSealFilters,
@@ -125,10 +126,16 @@ export function useQSealManagement() {
         }
         await Promise.all(imageOperations);
 
+        notificationService.success(
+          selectedProduct
+            ? `Product "${savedProduct.name}" updated successfully.`
+            : `Product "${savedProduct.name}" created successfully.`,
+        );
         setProductDialogOpen(false);
         refetch();
       } catch (err) {
         console.error('Failed to save product:', err);
+        notificationService.error('Failed to save product. Please try again.');
         refetch();
       } finally {
         setSaving(false);
@@ -144,9 +151,13 @@ export function useQSealManagement() {
         await qrProductApi.update(accessToken, product.id, {
           is_active: !product.is_active,
         });
+        notificationService.success(
+          `Product "${product.name}" ${product.is_active ? 'deactivated' : 'activated'} successfully.`,
+        );
         refetch();
       } catch (err) {
         console.error('Failed to toggle product status:', err);
+        notificationService.error('Failed to update product status. Please try again.');
       }
     },
     [accessToken, refetch],
