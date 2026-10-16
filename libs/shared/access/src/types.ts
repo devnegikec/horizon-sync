@@ -29,7 +29,7 @@ export interface AccessResource {
 }
 
 export interface AccessRule {
-  /** Stable id, e.g. `wms_admin`. */
+  /** Stable id, e.g. `wms_manager`. */
   id: string;
   /** Display name, e.g. "WMS Admin". */
   label: string;

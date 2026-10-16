@@ -43,10 +43,10 @@ The access module centralises this into a single declarative config per module.
 | Concept | Meaning | Example |
 | --- | --- | --- |
 | **Module** | A product area | `wms` |
-| **Resource** | A thing a user interacts with inside the module | `asn`, `inbound`, `outbound`, `stock`, `exceptions`, `returns`, `manage`, `workers`, `devices`, `layout`, `location_qr` |
-| **Action** | A verb on a resource | `view`, `create`, `update`, `delete`, `manage` |
-| **Rule** | A named role/access profile that grants actions on resources | `wms_admin`, `wms_manager` |
-| **Grant** | `resource → actions` (or `'*'`) declared by a rule | `asn → ['view','create','update','delete']` |
+| **Resource** | A thing a user interacts with inside the module | `asn`, `receiving`, `putaway`, `exceptions`, `shortages`, `outbound`, `picking`, `packing`, `gate`, `dispatch`, `returns`, `stock`, `manage`, `workers`, `devices`, `layout`, `location_qr` |
+| **Action** | A verb on a resource | `view`, `create`, `update`, `delete`, `manage` — plus domain verbs (`approve`, `reject`, `dispose`, `execute`, `verify`, `arrive`, …) |
+| **Rule** | A named role/access profile that grants actions on resources | `org_owner`, `wms_manager`, `wms_supervisor`, `wms_operator` |
+| **Grant** | `resource → actions` (or `'*'`) declared by a rule | `asn → ['view','create','update','delete','arrive']` |
 
 A **rule** *matches* a user when any of its matchers fire:
 
@@ -80,27 +80,28 @@ export const wmsAccessConfig: ModuleAccessConfig = {
   ],
   rules: [
     {
-      id: 'wms_admin', label: 'WMS Admin', priority: 100,
-      roles: ['WMS Admin', 'WMS Administrator', 'WMS Supervisor'],
+      id: 'org_owner', label: 'Organization Owner', priority: 100,
+      roles: ['Organization Owner', 'Organization Admin', 'WMS Admin'],
       userTypes: ['system_admin', 'organization_admin'],
-      grants: { asn: '*', inbound: '*', /* ... every resource ... */ },
+      defaultGrant: '*',                       // every action on every resource
     },
     {
       id: 'wms_manager', label: 'WMS Manager', priority: 80,
       roles: ['WMS Manager'],
-      permissions: ['warehouse.*'],
-      grants: { asn: ['view','create','update','delete'], manage: ['view'] /* ... */ },
+      grants: { asn: ['view','create','update','delete','arrive'], /* ... */ },
     },
+    { id: 'wms_supervisor', label: 'WMS Supervisor', priority: 60, roles: ['WMS Supervisor'], grants: { /* ... */ } },
+    { id: 'wms_operator',   label: 'WMS Operator',   priority: 40, roles: ['WMS Operator'],   grants: { /* ... */ } },
   ],
 };
 ```
 
 > **Matcher precedence gotcha.** `hasPermission` treats a `resource.*` wildcard as granting
-> every action on that resource, so a WMS Manager (who holds `warehouse.*`) would also satisfy
-> a `warehouse.manage` matcher. To keep the two rules distinct, **Admin is matched by role
-> name / user type only**, while **Manager is matched by role name or the `warehouse.*`
-> wildcard**. Admin outranks Manager by `priority`, so an Admin who also holds `warehouse.*`
-> still resolves to `wms_admin`.
+> every action on that resource, and **every** seeded WMS role holds `warehouse.*`. So a
+> permission-code matcher cannot separate the tiers from one another — each rule therefore
+> matches on its **role name** (the owner additionally matches by user type). Priority breaks
+> ties: a user holding both `WMS Manager` and `WMS Supervisor` resolves to `wms_manager`.
+> The full four-role spec is `docs/WMS_ROLES_AND_PERMISSIONS.md`.
 
 ### 3.2 Hook
 
@@ -114,8 +115,8 @@ access.can('asn', 'create');         // can create an ASN?
 access.canAny('outbound', ['create', 'update']);
 access.actions('asn');               // Set<Action>
 access.rule;                         // the active rule (or null)
-access.is('wms_admin');              // active rule is exactly wms_admin
-access.hasRule('wms_manager');       // any (incl. lower-priority) matching rule
+access.is('wms_manager');            // active rule is exactly wms_manager
+access.hasRule('wms_supervisor');    // any (incl. lower-priority) matching rule
 access.isSuperAdmin;
 ```
 
@@ -142,29 +143,21 @@ access.isSuperAdmin;
 
 ---
 
-## 4. Rule matrix (WMS)
+## 4. WMS roles
 
-| Resource | WMS Admin (`priority 100`) | WMS Manager (`priority 80`) |
-| --- | --- | --- |
-| `asn` (Advance Stock Notice) | view·create·update·delete | view·create·update·delete |
-| `inbound` | view·create·update·delete | view·create·update·delete |
-| `outbound` | view·create·update·delete | view·create·update·delete |
-| `stock` | view·create·update·delete | view·create·update·delete |
-| `exceptions` (Inbound exception queue) | view·manage | view·manage |
-| `returns` | view·create·update·delete | view·create·update |
-| `manage` (Settings tab) | view·manage | view |
-| `workers` | view·create·update·delete·manage | view·create·update |
-| `devices` | view·create·update·delete·manage | view |
-| `layout` (Designer / Tree / 3D) | view·create·update·delete·manage | view |
-| `location_qr` | view·create·update·delete·manage | view |
+The four WMS rules — **Org Owner**, **WMS Manager**, **WMS Supervisor**, **WMS Operator**
+(ids `org_owner` / `wms_manager` / `wms_supervisor` / `wms_operator`) — and the full
+capability matrix across every resource/action are specified in
+**[`docs/WMS_ROLES_AND_PERMISSIONS.md`](./WMS_ROLES_AND_PERMISSIONS.md)**.
 
-Rationale: **Admin** owns warehouse setup/configuration across all warehouses.
-**Manager** has full *operational* control (ASN / Inbound / Outbound / Stock) on assigned
-warehouses, but only **read** access to configuration surfaces.
+Summary of the tiering:
 
-> Note — today `warehouse.*` implicitly grants `warehouse.manage`, so WMS Managers
-> currently see the Manage tab with edit access. The new rule set makes that
-> **explicit and narrower** (Managers: read-only Manage).
+| Rule | Priority | Scope | Can | Cannot |
+| --- | --- | --- | --- | --- |
+| `org_owner` | 100 | All warehouses | Everything, incl. warehouses, config, identity | — |
+| `wms_manager` | 80 | Assigned | Full ops + config + write-offs/adjustments | Create/delete warehouses |
+| `wms_supervisor` | 60 | Assigned | Execute everything + reversible approvals | Config, dispose/write-off, reconcile |
+| `wms_operator` | 40 | Assigned | Floor execution (dock, put-away, pick, pack, gate) | Planning, approvals, config |
 
 ---
 
@@ -179,7 +172,7 @@ libs/shared/access/
     components/Can.tsx           — <Can>
     components/Show.tsx          — <Show>
     components/AccessGuard.tsx   — <AccessGuard>
-    modules/wms.ts               — WMS resources + rules (Admin / Manager)
+    modules/wms.ts               — WMS resources + four rules (owner / manager / supervisor / operator)
     modules/registry.ts          — module registry (getModuleAccessConfig)
     index.ts                     — public barrel
     __tests__/…                  — engine + WMS rule tests (jest: `nx test access`)
@@ -193,12 +186,13 @@ Nx *buildable-imports-non-buildable* boundary rule.
 
 ## 6. Integration points (WMS)
 
-- `WMSManagement` — replace the ad-hoc `isAdmin || hasPermission('warehouse.manage')`
-  with `useAccess('wms')`; derive `canManage = access.can('manage', 'view')`.
-- `WMSNavigation` — keep the prop contract; the Manage tab now comes from `access.visible('manage')`.
-- `WMSContent` / `ManageContent` — gated by `access.can('manage','view')`.
+- `WMSManagement` — derives `canManage = access.can('manage', 'view')` (Manage tab is
+  Org Owner + WMS Manager only).
+- `WMSNavigation` — the Manage tab comes from `<Show module="wms" resource="manage">`.
+- `WMSContent` / `ManageManagement` — gated by `access.can('manage','view')` /
+  `access.can('layout','manage')`.
 - `WorkersManagementPanel` / `PickExceptionQueue` — replace raw `warehouse.manage` checks
-  with `access.can('workers', 'create')` / `access.can('exceptions', 'manage')` over time.
+  with `access.can('workers', 'manage')` / `access.can('pick_exceptions', 'manage')` over time.
 
 The module is generic: adding a `qseal` or `revenue` config + one registry line is all
 that's needed to bring another module under the same rules engine.
