@@ -8,6 +8,7 @@ import {
   Card,
   CardContent,
   EmptyState,
+  NoPermission,
   Select,
   SelectContent,
   SelectItem,
@@ -194,13 +195,7 @@ export function ReturnReceiptNoteQueue({ warehouseId, refreshKey }: ReturnReceip
   const columns = React.useMemo(() => createReturnReceiptNoteColumns({ onView: handleView }), [handleView]);
 
   if (!canView) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <p className="text-center text-sm text-muted-foreground">You do not have access to returns.</p>
-        </CardContent>
-      </Card>
-    );
+    return <NoPermission module="Return Notes" variant="card" />;
   }
 
   const filtered = status !== ALL_STATUSES;

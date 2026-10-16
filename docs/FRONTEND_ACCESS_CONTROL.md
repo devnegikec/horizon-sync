@@ -139,7 +139,27 @@ access.isSuperAdmin;
 ```
 
 `Can` / `Show` render `children` or the `fallback` (default `null`).
-`AccessGuard` defaults to an inline "Access Denied" panel (or redirect via `fallback`).
+`AccessGuard` defaults to the shared **`<NoPermission>`** component (or redirect via `fallback`).
+
+### 3.4 "No permission" surface
+
+`<NoPermission>` (from `@horizon-sync/ui/components`) is the single component for any
+"you can't see this" state, so denials look and read the same everywhere. It replaces the
+ad-hoc red text / one-off empty states.
+
+```tsx
+import { NoPermission } from '@horizon-sync/ui/components';
+
+<NoPermission />                                  // centred page block (route/module gate)
+<NoPermission module="Returns" variant="card" />  // inside a card (blocked tab/section)
+<NoPermission module="System Settings" variant="inline" action={<Button>Back</Button>} />
+```
+
+Props: `module?`, `title?` (default "No permission"), `description?`, `icon?`, `action?`,
+`variant?: 'page' | 'card' | 'inline'`, `className?`.
+
+Wired into: `AccessGuard` (default fallback), the platform `PermissionGuard` (route-level
+module gate), the admin `SystemSettingsPage`, and the WMS returns queue.
 
 ---
 
