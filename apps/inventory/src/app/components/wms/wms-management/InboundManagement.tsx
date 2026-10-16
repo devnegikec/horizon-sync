@@ -2,11 +2,10 @@ import * as React from 'react';
 
 import { AlertTriangle, ClipboardCheck, PackageCheck, PackageX, Plus, RefreshCw, RotateCcw, Truck, Warehouse, X } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
+import { useAccess } from '@horizon-sync/access';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 
 import type { InboundException, PutAwayStatusCounts, ReceivingSlipStatusCounts, ShortBalanceSummary } from '../../../types/wms.types';
-import { hasPermission } from '../../../utils/permissions';
 import { InboundExceptionQueue } from '../InboundExceptionQueue';
 import { InboundStats } from '../InboundStats';
 import { PutAwayView } from '../PutAwayView';
@@ -17,6 +16,49 @@ import { VehicleArrivalManagement } from '../VehicleArrivalManagement';
 
 import { SectionTab } from './SectionTab';
 import type { InboundSection, WMSContentProps } from './types';
+
+/** Panel-heading toggle for the Vehicle Arrivals / Returns register forms. */
+function SectionToggleButton({ open, label, onToggle }: { open: boolean; label: string; onToggle: () => void }) {
+  return (
+    <Button size="sm" className="gap-2" onClick={onToggle}>
+      {open ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+      {open ? 'Cancel' : label}
+    </Button>
+  );
+}
+
+interface SectionActionArgs {
+  section: InboundSection;
+  canRegisterArrival: boolean;
+  canRegisterReturns: boolean;
+  arrivalOpen: boolean;
+  returnOpen: boolean;
+  onToggleArrival: () => void;
+  onToggleReturn: () => void;
+}
+
+/**
+ * The heading action for the current section, or `undefined` when the section has
+ * none (or the user lacks the capability). Kept out of the component body so its
+ * branch count stays low.
+ */
+function resolveSectionAction({
+  section,
+  canRegisterArrival,
+  canRegisterReturns,
+  arrivalOpen,
+  returnOpen,
+  onToggleArrival,
+  onToggleReturn,
+}: SectionActionArgs): React.ReactNode {
+  if (section === 'vehicle' && canRegisterArrival) {
+    return <SectionToggleButton open={arrivalOpen} label="Register Arrival" onToggle={onToggleArrival} />;
+  }
+  if (section === 'returns' && canRegisterReturns) {
+    return <SectionToggleButton open={returnOpen} label="Register Return" onToggle={onToggleReturn} />;
+  }
+  return undefined;
+}
 
 export function InboundManagement({
   inboundSection,
@@ -30,12 +72,14 @@ export function InboundManagement({
   onShortageStatusFilterChange,
 }: WMSContentProps) {
   const [refreshKey, setRefreshKey] = React.useState(0);
-  // Returns is a newer module with its own permission codes, so its tab only
-  // appears once the caller has been granted `return.read`.
-  const userPermissions = useUserStore((s) => s.permissions.permissions);
-  const canViewReturns = hasPermission(userPermissions, 'return.read');
+  // Rule-based capabilities (see `@horizon-sync/access` + docs/WMS_ROLES_AND_PERMISSIONS.md).
+  const access = useAccess('wms');
+  // Returns is a newer module — its tabs only appear when the user can view returns.
+  const canViewReturns = access.can('returns', 'view');
   // Registering a return is gated further, and its button lives in the panel heading.
-  const canRegisterReturns = hasPermission(userPermissions, 'return.register');
+  const canRegisterReturns = access.can('returns', 'register');
+  // Registering a dock arrival is an `asn.arrive` action.
+  const canRegisterArrival = access.can('asn', 'arrive');
   // Both count sets are produced by the list requests in `ReceivingSlipList` /
   // `PutAwayView` so the stat cards don't fetch the same endpoints a second time.
   const [receivingCounts, setReceivingCounts] = React.useState<ReceivingSlipStatusCounts | null>(null);
@@ -108,18 +152,15 @@ export function InboundManagement({
   );
 
   const heading = inboundHeading(inboundSection);
-  const vehicleActions = inboundSection === 'vehicle' ? (
-    <Button size="sm" className="gap-2" onClick={() => setVehicleFormOpen((open) => !open)}>
-      {vehicleFormOpen ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-      {vehicleFormOpen ? 'Cancel' : 'Register Arrival'}
-    </Button>
-  ) : undefined;
-  const returnActions = inboundSection === 'returns' && canRegisterReturns ? (
-    <Button size="sm" className="gap-2" onClick={() => setReturnFormOpen((open) => !open)}>
-      {returnFormOpen ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-      {returnFormOpen ? 'Cancel' : 'Register Return'}
-    </Button>
-  ) : undefined;
+  const sectionAction = resolveSectionAction({
+    section: inboundSection,
+    canRegisterArrival,
+    canRegisterReturns,
+    arrivalOpen: vehicleFormOpen,
+    returnOpen: returnFormOpen,
+    onToggleArrival: () => setVehicleFormOpen((open) => !open),
+    onToggleReturn: () => setReturnFormOpen((open) => !open),
+  });
 
   return (
     <div className="space-y-4">
@@ -127,7 +168,7 @@ export function InboundManagement({
         <SectionHeading title={heading.title}
           subtitle={heading.subtitle}
           onRefresh={handleRefresh}
-          actions={vehicleActions ?? returnActions}/>
+          actions={sectionAction}/>
       )}
       <InboundStats activeSection={inboundSection}
         receivingCounts={receivingCounts}

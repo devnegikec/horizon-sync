@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import { Loader2, CheckCircle2, ShieldAlert, SkipForward, Search, MapPin } from 'lucide-react';
 
+import { useAccess } from '@horizon-sync/access';
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
@@ -18,7 +19,6 @@ import type {
   WarehouseLocation,
 } from '../../types/wms.types';
 import { layoutApi } from '../../utility/api/wms';
-import { hasPermission } from '../../utils/permissions';
 
 import { PutAwayExceptionDialog, type PutAwayExceptionTarget } from './PutAwayExceptionDialog';
 import { QRDetailDialog, type QRDetailColumn, type QRDetailRow } from './QRDetailDialog';
@@ -702,12 +702,10 @@ interface PutAwayDetailDialogProps {
 
 export function PutAwayDetailDialog({ listId, open, onOpenChange }: PutAwayDetailDialogProps) {
   const { list, loading, error, refetch, completeItem, skipItem, raiseException } = usePutAwayList(listId);
-  const permissions = useUserStore((state) => state.permissions.permissions);
-  // Either permission is enough: dock staff hold `inbound_exception.create`,
-  // while a warehouse manager holds `inbound_exception.dispose`. Gating on
-  // `create` alone would hide the control from the manager who is expected to
-  // use it.
-  const canException = hasPermission(permissions, 'inbound_exception.create') || hasPermission(permissions, 'inbound_exception.dispose');
+  const access = useAccess('wms');
+  // Raising a put-away exception is `exceptions.create`; disposing it is
+  // `exceptions.dispose` (manager only). Either keeps the control available.
+  const canException = access.can('exceptions', 'create') || access.can('exceptions', 'dispose');
 
   const [completeTarget, setCompleteTarget] = React.useState<PutAwayItem | null>(null);
   const [skipTarget, setSkipTarget] = React.useState<PutAwayItem | null>(null);

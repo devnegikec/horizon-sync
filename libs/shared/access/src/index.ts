@@ -37,5 +37,7 @@ export {
 
 export { useAccess, useCan, useVisible } from './hooks';
 
+export { renderWhen } from './render';
+
 export { AccessGuard, Can, Show } from './components';
 export type { AccessGuardProps, CanProps, ShowProps } from './components';
