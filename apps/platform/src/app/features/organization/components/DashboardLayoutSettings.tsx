@@ -306,7 +306,7 @@ export function DashboardLayoutSettings({ organizationId, accessToken, canEdit }
 
       <WidgetList widgets={widgets}
         groups={groups}
-        canEdit={canEditLayout}
+        canEdit={canEditLayout && !saving}
         onToggle={handleToggle}
         onMove={handleMove} />
 

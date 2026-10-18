@@ -2,12 +2,13 @@ import * as React from 'react';
 
 import { PackageOpen } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
+import { useAccess } from '@horizon-sync/access';
 import {
   Button,
   Card,
   CardContent,
   EmptyState,
+  NoPermission,
   Select,
   SelectContent,
   SelectItem,
@@ -19,7 +20,6 @@ import { DataTable } from '@horizon-sync/ui/components/data-table';
 
 import { useReturnReceiptNotes } from '../../../hooks/useWMS';
 import type { ReturnReceiptNoteSummary } from '../../../types/wms.types';
-import { hasPermission } from '../../../utils/permissions';
 
 import { createReturnReceiptNoteColumns } from './ReturnReceiptNoteColumns';
 import { ReturnReceiptNoteDetailDialog } from './ReturnReceiptNoteDetailDialog';
@@ -139,8 +139,7 @@ export interface ReturnReceiptNoteQueueProps {
  * button, so this component renders the filters and table only.
  */
 export function ReturnReceiptNoteQueue({ warehouseId, refreshKey }: ReturnReceiptNoteQueueProps) {
-  const permissions = useUserStore((state) => state.permissions.permissions);
-  const canView = hasPermission(permissions, 'return.read');
+  const canView = useAccess('wms').can('returns', 'view');
 
   const [status, setStatus] = React.useState<string>('pending_approval');
   const [page, setPage] = React.useState(1);
@@ -196,13 +195,7 @@ export function ReturnReceiptNoteQueue({ warehouseId, refreshKey }: ReturnReceip
   const columns = React.useMemo(() => createReturnReceiptNoteColumns({ onView: handleView }), [handleView]);
 
   if (!canView) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <p className="text-center text-sm text-muted-foreground">You do not have access to returns.</p>
-        </CardContent>
-      </Card>
-    );
+    return <NoPermission module="Return Notes" variant="card" />;
   }
 
   const filtered = status !== ALL_STATUSES;

@@ -3,6 +3,7 @@ import * as React from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
 import { PackageX, RefreshCw, TriangleAlert } from 'lucide-react';
 
+import { useAccess } from '@horizon-sync/access';
 import { useUserStore } from '@horizon-sync/store';
 import {
   Button,
@@ -31,7 +32,6 @@ import type {
 } from '../../../types/wms.types';
 import { toNormalizedApiError, type NormalizedApiError } from '../../../utility/api/core';
 import { inboundApi } from '../../../utility/api/wms';
-import { hasPermission } from '../../../utils/permissions';
 
 import { CloseShortageDialog } from './CloseShortageDialog';
 import { createShortageColumns } from './ShortageColumns';
@@ -262,9 +262,10 @@ export function ShortageLedger({
   onSummaryChange,
 }: ShortageLedgerProps) {
   const token = useUserStore((state) => state.accessToken);
-  const permissions = useUserStore((state) => state.permissions.permissions);
   const { toast } = useToast();
-  const canClose = hasPermission(permissions, 'inbound_exception.dispose');
+  // Closing the shortage ledger is a manager-level decision (same tier as
+  // exception disposal in the rules — see docs/WMS_ROLES_AND_PERMISSIONS.md).
+  const canClose = useAccess('wms').can('shortages', 'close');
 
   const [internalStatusFilter, setInternalStatusFilter] = React.useState(ALL_STATUSES);
   const statusFilter = statusFilterProp ?? internalStatusFilter;

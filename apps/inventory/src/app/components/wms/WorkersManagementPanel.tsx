@@ -3,6 +3,7 @@ import * as React from 'react';
 import { Plus, Printer, QrCode, RefreshCw, Trash2, UserCog, Download, Upload, ChevronDown, FileDown, Loader2, Eye } from 'lucide-react';
 import QRCode from 'qrcode';
 
+import { useAccess } from '@horizon-sync/access';
 import { useUserStore } from '@horizon-sync/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
@@ -45,7 +46,6 @@ interface WorkersManagementPanelProps {
 
 export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelProps) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const userPermissions = useUserStore((s) => s.permissions.permissions);
   const user = useUserStore((s) => s.user);
   const organization = useUserStore((s) => s.organization);
   const organizationId = organization?.id || user?.organization_id || '';
@@ -63,8 +63,8 @@ export function WorkersManagementPanel({ warehouseId }: WorkersManagementPanelPr
     });
   }, [organizationId]);
 
-  const canCreateWorkers = user?.user_type === 'system_admin' || user?.user_type === 'organization_admin' || userPermissions.includes('warehouse.manage') || userPermissions.includes('*.*');
-  const canPrintQR = canCreateWorkers || userPermissions.includes('warehouse.read');
+  const canCreateWorkers = useAccess('wms').can('workers', 'manage');
+  const canPrintQR = useAccess('wms').can('workers', 'view');
   const { toast } = useToast();
 
   /** Resolve barcode from either barcode or qr_code field */

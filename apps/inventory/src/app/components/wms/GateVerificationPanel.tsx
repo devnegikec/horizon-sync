@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import { ScanLine, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react';
 
+import { renderWhen, useAccess } from '@horizon-sync/access';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
@@ -14,8 +15,20 @@ interface GateVerificationPanelProps {
   onDispatchCreated?: (dispatchId: string) => void;
 }
 
+/** Start/verify stay disabled while a request is in flight or without `gate.verify`. */
+function verifyDisabled(loading: boolean, canVerify: boolean): boolean {
+  return loading || !canVerify;
+}
+
+/** The verification can be completed once every expected unit is scanned. */
+function verificationReady(progress: { all_verified?: boolean } | null, canVerify: boolean): boolean {
+  return Boolean(progress?.all_verified) && canVerify;
+}
+
 export function GateVerificationPanel({ pickListId, onDispatchCreated }: GateVerificationPanelProps) {
   const { toast } = useToast();
+  // Gate verification (and the dispatch it creates) is a `gate.verify` action.
+  const canVerifyGate = useAccess('wms').can('gate', 'verify');
   const { session, progress, loading, error, startSession, recordScan, verify } = useGateVerification();
   const [qrInput, setQrInput] = React.useState('');
   const [vehicleNumber, setVehicleNumber] = React.useState('');
@@ -77,7 +90,7 @@ export function GateVerificationPanel({ pickListId, onDispatchCreated }: GateVer
           </div>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button onClick={handleStart} disabled={loading} className="gap-2">
+        <Button onClick={handleStart} disabled={verifyDisabled(loading, canVerifyGate)} className="gap-2">
           <ShieldCheck className="h-4 w-4" />
           {loading ? 'Starting...' : 'Start Gate Verification'}
         </Button>
@@ -142,12 +155,12 @@ export function GateVerificationPanel({ pickListId, onDispatchCreated }: GateVer
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {/* Verify button */}
-      {progress?.all_verified && (
+      {renderWhen(verificationReady(progress, canVerifyGate), (
         <Button onClick={handleVerify} disabled={loading} className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white">
           <ShieldCheck className="h-4 w-4" />
           {loading ? 'Verifying...' : 'Complete Verification & Create Dispatch'}
         </Button>
-      )}
+      ))}
     </div>
   );
 }

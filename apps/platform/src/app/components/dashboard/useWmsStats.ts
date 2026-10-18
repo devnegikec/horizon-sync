@@ -23,13 +23,22 @@ export function useWmsStats(filters: DashboardFilters, refreshToken: number): As
   const anchorIso = filters.anchorDate.toISOString();
   const [state, setState] = React.useState<AsyncState<WmsStatsResponse>>({ data: null, loading: true, error: null });
 
+  // A filter change makes the previous response meaningless; a plain refresh
+  // keeps it on screen. Clearing only on filter changes avoids showing
+  // old-period numbers under the new selection.
+  const filterKey = `${period}|${anchorIso}|${warehouseId ?? ''}`;
+  const previousFilterKeyRef = React.useRef<string | null>(null);
+
   React.useEffect(() => {
     if (!accessToken) {
       setState({ data: null, loading: false, error: null });
       return;
     }
+    const filterChanged = previousFilterKeyRef.current !== null && previousFilterKeyRef.current !== filterKey;
+    previousFilterKeyRef.current = filterKey;
+
     let cancelled = false;
-    setState((prev) => ({ ...prev, loading: true, error: null }));
+    setState((prev) => ({ data: filterChanged ? null : prev.data, loading: true, error: null }));
     fetchWmsStats(accessToken, { period, date: anchorIso, warehouse_id: warehouseId })
       .then((data) => {
         if (!cancelled) setState({ data, loading: false, error: null });
@@ -46,7 +55,7 @@ export function useWmsStats(filters: DashboardFilters, refreshToken: number): As
     return () => {
       cancelled = true;
     };
-  }, [accessToken, period, anchorIso, warehouseId, refreshToken]);
+  }, [accessToken, period, anchorIso, warehouseId, refreshToken, filterKey]);
 
   return state;
 }
