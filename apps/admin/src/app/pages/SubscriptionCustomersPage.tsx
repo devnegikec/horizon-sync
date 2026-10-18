@@ -10,13 +10,13 @@ import { Input } from '@horizon-sync/ui/components/ui/input';
 
 import { AssignPlanDialog } from '../components/subscription/AssignPlanDialog';
 import { SubscriptionNav } from '../components/subscription/SubscriptionNav';
-import { SubscriptionStatusBadge, activationFeeLabel, formatDate } from '../components/subscription/SubscriptionUI';
+import { BillingReadOnlyNotice, SubscriptionStatusBadge, activationFeeLabel, formatDate } from '../components/subscription/SubscriptionUI';
 import { usePermissions } from '../hooks/usePermissions';
 import { AdminOrganizationService } from '../services/admin-organization.service';
 import { SubscriptionService } from '../services/subscription.service';
 import type { AdminOrgListItem } from '../types/organization.types';
-import { SYSTEM_ADMIN_PERMISSIONS } from '../types/permissions';
 import type { OrganizationSubscription } from '../types/subscription.types';
+import { BILLING_WRITE_PERMISSION_CODES } from '../utils/permissions';
 
 const PAGE_SIZE = 20;
 
@@ -38,6 +38,14 @@ function planText(subscription: OrganizationSubscription | null): string {
   if (!subscription?.plan) return '—';
   const version = subscription.plan_version;
   return `${subscription.plan.code}${version ? ` · v${version.version}` : ''}`;
+}
+
+function showReadOnly(permissionsLoading: boolean, canManage: boolean): boolean {
+  return !permissionsLoading && !canManage;
+}
+
+function isEmptyList(loading: boolean, error: string | null, count: number): boolean {
+  return !loading && !error && count === 0;
 }
 
 function orgName(organization: AdminOrgListItem): string {
@@ -108,8 +116,8 @@ function customerColumns(onManage: (row: CustomerRow) => void, onCreate: (row: C
 
 export function SubscriptionCustomersPage() {
   const navigate = useNavigate();
-  const { hasPermission } = usePermissions();
-  const canManage = hasPermission(SYSTEM_ADMIN_PERMISSIONS.BILLING_CREATE);
+  const { hasAnyPermission, loading: permissionsLoading } = usePermissions();
+  const canManage = hasAnyPermission(BILLING_WRITE_PERMISSION_CODES);
   const [rows, setRows] = React.useState<CustomerRow[]>([]);
   const [search, setSearch] = React.useState('');
   const [query, setQuery] = React.useState('');
@@ -200,6 +208,8 @@ export function SubscriptionCustomersPage() {
 
       <SubscriptionNav />
 
+      {showReadOnly(permissionsLoading, canManage) && <BillingReadOnlyNotice requiredPermission="system_admin.billing_create" />}
+
       <Card>
         <CardContent className="space-y-4 p-4">
           <div className="relative w-full max-w-sm">
@@ -234,7 +244,7 @@ export function SubscriptionCustomersPage() {
               }} />
           )}
 
-          {!loading && !error && rows.length === 0 && (
+          {isEmptyList(loading, error, rows.length) && (
             <p className="py-8 text-center text-sm text-muted-foreground">No organizations match this search.</p>
           )}
         </CardContent>

@@ -12,11 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 import { CreatePlanDialog } from '../components/subscription/CreatePlanDialog';
 import { SubscriptionNav } from '../components/subscription/SubscriptionNav';
-import { Money, cadenceLabel, formatDate, formatDecimal } from '../components/subscription/SubscriptionUI';
+import { BillingReadOnlyNotice, Money, cadenceLabel, formatDate, formatDecimal } from '../components/subscription/SubscriptionUI';
 import { usePermissions } from '../hooks/usePermissions';
 import { SubscriptionApiError, SubscriptionService } from '../services/subscription.service';
-import { SYSTEM_ADMIN_PERMISSIONS } from '../types/permissions';
 import type { BillingCadence, SubscriptionPlan } from '../types/subscription.types';
+import { BILLING_WRITE_PERMISSION_CODES } from '../utils/permissions';
 
 const PAGE_SIZE = 20;
 
@@ -131,8 +131,8 @@ function planColumns(onOpen: (plan: SubscriptionPlan) => void, onManage: (plan: 
 
 export function SubscriptionPlansPage() {
   const navigate = useNavigate();
-  const { hasPermission } = usePermissions();
-  const canCreate = hasPermission(SYSTEM_ADMIN_PERMISSIONS.BILLING_CREATE);
+  const { hasAnyPermission, loading: permissionsLoading } = usePermissions();
+  const canManage = hasAnyPermission(BILLING_WRITE_PERMISSION_CODES);
   const [filters, setFilters] = React.useState<PlanFilters>(INITIAL_FILTERS);
   const [search, setSearch] = React.useState('');
   const [page, setPage] = React.useState(1);
@@ -208,13 +208,11 @@ export function SubscriptionPlansPage() {
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Refresh
           </Button>
-          {canCreate && (
-            <Button size="sm" variant="outline" onClick={() => navigate('/subscriptions/customers')}>
-              <Plus className="mr-2 h-4 w-4" />
-              New subscription
-            </Button>
-          )}
-          {canCreate && (
+          <Button size="sm" variant="outline" onClick={() => navigate('/subscriptions/customers')}>
+            <Plus className="mr-2 h-4 w-4" />
+            New subscription
+          </Button>
+          {canManage && (
             <Button size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               New plan
@@ -224,6 +222,8 @@ export function SubscriptionPlansPage() {
       </div>
 
       <SubscriptionNav />
+
+      {!permissionsLoading && !canManage && <BillingReadOnlyNotice requiredPermission="system_admin.billing_create" />}
 
       <Card>
         <CardContent className="space-y-4 p-4">
@@ -303,7 +303,7 @@ export function SubscriptionPlansPage() {
             <div className="flex flex-col items-center gap-3 pb-6 text-center">
               <Layers className="h-8 w-8 text-muted-foreground/50" />
               <p className="text-sm text-muted-foreground">No plans match these filters.</p>
-              {canCreate && (
+              {canManage && (
                 <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   Create the first plan

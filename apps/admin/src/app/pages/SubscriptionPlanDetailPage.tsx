@@ -10,12 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/compo
 
 import { PlanVersionDialog } from '../components/subscription/PlanVersionDialog';
 import { PublishVersionDialog, RetireVersionDialog } from '../components/subscription/PublishVersionDialog';
-import { Money, PlanVersionStatusBadge, cadenceLabel, formatDate, formatDateTime, formatDecimal } from '../components/subscription/SubscriptionUI';
+import { BillingReadOnlyNotice, Money, PlanVersionStatusBadge, cadenceLabel, formatDate, formatDateTime, formatDecimal } from '../components/subscription/SubscriptionUI';
 import { useIdempotencyKey } from '../hooks/useIdempotencyKey';
 import { usePermissions } from '../hooks/usePermissions';
 import { SubscriptionApiError, SubscriptionService } from '../services/subscription.service';
-import { SYSTEM_ADMIN_PERMISSIONS } from '../types/permissions';
 import type { SubscriptionPlanDetail, SubscriptionPlanVersion } from '../types/subscription.types';
+import { BILLING_WRITE_PERMISSION_CODES } from '../utils/permissions';
 
 function DetailItem({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -215,8 +215,8 @@ function PlanVersions({ plan, versions, canManage, busyVersionId, onCreate, onEd
 export function SubscriptionPlanDetailPage() {
   const { planId = '' } = useParams();
   const navigate = useNavigate();
-  const { hasPermission } = usePermissions();
-  const canManage = hasPermission(SYSTEM_ADMIN_PERMISSIONS.BILLING_UPDATE);
+  const { hasAnyPermission, loading: permissionsLoading } = usePermissions();
+  const canManage = hasAnyPermission(BILLING_WRITE_PERMISSION_CODES);
   const keyFor = useIdempotencyKey();
   const [plan, setPlan] = React.useState<SubscriptionPlanDetail | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -300,6 +300,8 @@ export function SubscriptionPlanDetailPage() {
         canManage={canManage}
         onBack={() => navigate('/subscriptions/plans')}
         onCreate={openCreate} />
+
+      {!permissionsLoading && !canManage && <BillingReadOnlyNotice requiredPermission="system_admin.billing_update" />}
 
       <PlanSummaryCard plan={plan} />
 

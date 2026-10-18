@@ -23,6 +23,7 @@ import { SubscriptionActionDialog, type SubscriptionLifecycleAction } from '../c
 import {
   CreditQuantity,
   Money,
+  BillingReadOnlyNotice,
   SubscriptionStatusBadge,
   activationFeeLabel,
   cadenceLabel,
@@ -33,9 +34,9 @@ import {
 import { usePermissions } from '../hooks/usePermissions';
 import { AdminOrganizationService } from '../services/admin-organization.service';
 import { SubscriptionApiError, SubscriptionService } from '../services/subscription.service';
-import { SYSTEM_ADMIN_PERMISSIONS } from '../types/permissions';
 import type { QRCreditBalance, QRCreditLedgerItem } from '../types/qr-credit.types';
 import type { CreditBatch, OrganizationSubscription } from '../types/subscription.types';
+import { BILLING_WRITE_PERMISSION_CODES } from '../utils/permissions';
 
 function DetailItem({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -413,8 +414,8 @@ function SubscriptionDialogs({
 export function OrganizationSubscriptionPage() {
   const { orgId = '' } = useParams();
   const navigate = useNavigate();
-  const { hasPermission } = usePermissions();
-  const canManage = hasPermission(SYSTEM_ADMIN_PERMISSIONS.BILLING_UPDATE);
+  const { hasAnyPermission, loading: permissionsLoading } = usePermissions();
+  const canManage = hasAnyPermission(BILLING_WRITE_PERMISSION_CODES);
   const [reloadToken, setReloadToken] = React.useState(0);
   const { subscription, balance, batches, ledger, organizationLabel, loading, error } = useOrganizationSubscriptionData(orgId, reloadToken);
   const [assignOpen, setAssignOpen] = React.useState(false);
@@ -455,6 +456,8 @@ export function OrganizationSubscriptionPage() {
       </div>
 
       {error && <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error}</p>}
+
+      {!permissionsLoading && !canManage && <BillingReadOnlyNotice requiredPermission="system_admin.billing_update" />}
 
       <SubscriptionActions subscription={subscription}
         canManage={canManage}

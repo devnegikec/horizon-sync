@@ -184,6 +184,15 @@ export function Dash({ children }: { children?: React.ReactNode }) {
   return <span className={empty ? 'text-muted-foreground' : undefined}>{empty ? '—' : children}</span>;
 }
 
+/** Explains why write actions are absent instead of silently hiding them. */
+export function BillingReadOnlyNotice({ requiredPermission }: { requiredPermission: string }) {
+  return (
+    <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+      Read-only billing access. Creating or changing subscriptions requires <span className="font-mono">{requiredPermission}</span>.
+    </div>
+  );
+}
+
 // ─── Fixed-point helper (string math, no float arithmetic) ───────────────────
 
 /**

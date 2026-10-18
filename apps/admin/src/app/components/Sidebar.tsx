@@ -17,6 +17,7 @@ import {
   Layers,
   Coins,
   Scale,
+  UserCheck,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -69,6 +70,12 @@ const mainNavItems: NavItem[] = [
     title: 'Subscriptions',
     href: '/subscriptions/plans',
     icon: Layers,
+    requiredDomain: 'billing',
+  },
+  {
+    title: 'Subscription Customers',
+    href: '/subscriptions/customers',
+    icon: UserCheck,
     requiredDomain: 'billing',
   },
   {

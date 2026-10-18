@@ -11,9 +11,13 @@ and implements the screens in `docs/SUBSCRIPTION_ADMIN_UI_INTEGRATION.md`.
 | `/subscriptions`                     | Redirect → plan list                 | `AppRoutes.tsx`                               |
 | `/subscriptions/plans`               | Plan catalog                         | `pages/SubscriptionPlansPage.tsx`             |
 | `/subscriptions/plans/:planId`       | Plan detail + version timeline/editor | `pages/SubscriptionPlanDetailPage.tsx`        |
+| `/subscriptions/customers`           | Organization list + subscription status, **New subscription** | `pages/SubscriptionCustomersPage.tsx` |
 | `/subscriptions/customers/:orgId`    | Customer subscription, credits, ledger | `pages/OrganizationSubscriptionPage.tsx`     |
 | `/subscriptions/exposure`            | Cross-tenant credit exposure          | `pages/SubscriptionExposurePage.tsx`          |
 | `/subscriptions/reconciliation`      | Invoice/payment/batch findings        | `pages/SubscriptionReconciliationPage.tsx`    |
+
+A shared tab bar (`components/subscription/SubscriptionNav.tsx`) links Plans / Customers /
+Credit exposure / Reconciliation on every top-level subscription screen.
 
 Sidebar entries (`components/Sidebar.tsx`): **Subscriptions**, **Credit Exposure**,
 **Reconciliation** — all gated by `requiredDomain: 'billing'`.
@@ -37,6 +41,7 @@ apps/admin/src/app/
   types/subscription.types.ts
   components/subscription/
     SubscriptionUI.tsx               # Money / CreditQuantity / badges / dates / CSV
+    SubscriptionNav.tsx              # Plans / Customers / Exposure / Reconciliation tabs
     CreatePlanDialog.tsx
     PlanVersionDialog.tsx            # highly configurable version editor
     PublishVersionDialog.tsx         # publish + retire
@@ -46,6 +51,23 @@ apps/admin/src/app/
     SubscriptionActionDialog.tsx     # suspend / reinstate / close (reason required)
     CreditAdjustmentDialog.tsx
 ```
+
+## How to provision a new subscription
+
+A subscription cannot exist without a **published plan version**, so the flow is:
+
+1. **Plans → New plan** — create the plan container (code, name, currency, scope).
+2. **Plan detail → New version** — set cadence, fee, tax, included credits and ID weight; save the draft.
+3. **Approve** the draft, then **Publish** it (type the plan code to confirm).
+4. **Customers → New subscription** — pick an organization (searchable) and the published
+   version, set the billing anchor day/timezone and activation fee.
+5. On the customer screen, **Mark activation paid** with the verified provider reference to
+   move the subscription from `pending_activation_payment` to `active`.
+
+Entry points: the **New subscription** button on the Plans header, the **New subscription**
+button on the Customers screen (organization picker inside the dialog), and the inline
+**Create** action on any customer row that has no subscription yet. `AssignPlanDialog`
+accepts an optional `organizationId` — when omitted it renders the organization picker.
 
 ## Behavioural guarantees
 
