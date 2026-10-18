@@ -14,9 +14,14 @@ import {
   Shield,
   Ban,
   UserCog,
+  Layers,
+  Coins,
+  Scale,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
+import { useCurrencyStore } from '@horizon-sync/store';
+import { CurrencyIcon } from '@horizon-sync/ui';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import {
   Tooltip,
@@ -24,8 +29,6 @@ import {
   TooltipTrigger,
 } from '@horizon-sync/ui/components/ui/tooltip';
 import { cn } from '@horizon-sync/ui/lib';
-import { CurrencyIcon } from '@horizon-sync/ui';
-import { useCurrencyStore } from '@horizon-sync/store';
 
 import { usePermissions } from '../hooks/usePermissions';
 
@@ -60,6 +63,24 @@ const mainNavItems: NavItem[] = [
     title: 'Billing',
     href: '/billing',
     icon: DynamicCurrencyIcon,
+    requiredDomain: 'billing',
+  },
+  {
+    title: 'Subscriptions',
+    href: '/subscriptions/plans',
+    icon: Layers,
+    requiredDomain: 'billing',
+  },
+  {
+    title: 'Credit Exposure',
+    href: '/subscriptions/exposure',
+    icon: Coins,
+    requiredDomain: 'billing',
+  },
+  {
+    title: 'Reconciliation',
+    href: '/subscriptions/reconciliation',
+    icon: Scale,
     requiredDomain: 'billing',
   },
   {
