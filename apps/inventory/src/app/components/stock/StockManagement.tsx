@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Button, DataTableViewOptions, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
+import { Button, DataTableViewOptions, NoPermission, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import {
@@ -102,10 +102,12 @@ const ALL_TABS: ActiveTab[] = ['levels', 'movements', 'entries', 'reconciliation
 /**
  * Read permission required to view each tab.
  *
- * There are no dedicated `stock_level.*` / `stock_movement.*` /
- * `stock_reconciliation.*` codes in the WMS permission seed, so the stock
- * read tabs are gated by `stock_entry.read` — the stock-module read permission
- * every WMS role already carries. `asn_order.read` gates the ASN tab.
+ * NOTE: the stock service enforces *finer* read codes than the tab-level ones
+ * below (`stock_level.read` for stock levels, `stock_reconciliation.read` for
+ * reconciliations, …). The stock read tabs are still gated by `stock_entry.read`
+ * — the code every WMS role already carries — so a tab can be visible while its
+ * endpoint answers 403. That case renders `<NoPermission>` (see `tabBody`)
+ * rather than a raw error string. `asn_order.read` gates the ASN tab.
  */
 const TAB_PERMISSIONS: Partial<Record<ActiveTab, string[]>> = {
   levels: ['stock_entry.read'],
@@ -124,6 +126,22 @@ const CREATE_PERMISSIONS: Partial<Record<ActiveTab, string[]>> = {
   reconciliations: ['stock_entry.manage'],
   asn: ['asn_order.create'],
 };
+
+/**
+ * A 403 from the API means the user cannot see the requested resource. The
+ * friendly 403 message is "You do not have permission to perform this action."
+ */
+const PERMISSION_ERROR_PATTERN = /permission|forbidden|403|access denied/i;
+
+function isPermissionError(error: string | null): boolean {
+  if (!error) return false;
+  return PERMISSION_ERROR_PATTERN.test(error);
+}
+
+/** Tab body, or a `NoPermission` panel when the resource is forbidden. */
+function tabBody(error: string | null, resource: string, body: React.ReactNode): React.ReactNode {
+  return isPermissionError(error) ? <NoPermission module={resource} variant="card" /> : body;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Pure helper: build stats array per tab                             */
@@ -625,68 +643,78 @@ function TabPanels({
   return (
     <>
       <TabsContent value="levels" className="mt-4">
-        <StockLevelsTable stockLevels={levelsData.data}
-          loading={levelsData.loading}
-          error={levelsData.error}
-          hasActiveFilters={false}
-          serverPagination={{
-            pageIndex: levelsFilters.page - 1,
-            pageSize: levelsFilters.pageSize,
-            totalItems: levelsData.pagination?.total_items || 0,
-            onPaginationChange: onLevelsPagination,
-          }} />
+        {tabBody(levelsData.error, 'Stock Levels', (
+          <StockLevelsTable stockLevels={levelsData.data}
+            loading={levelsData.loading}
+            error={levelsData.error}
+            hasActiveFilters={false}
+            serverPagination={{
+              pageIndex: levelsFilters.page - 1,
+              pageSize: levelsFilters.pageSize,
+              totalItems: levelsData.pagination?.total_items || 0,
+              onPaginationChange: onLevelsPagination,
+            }} />
+        ))}
       </TabsContent>
       <TabsContent value="movements" className="mt-4">
-        <StockMovementsTable stockMovements={movementsData.data}
-          loading={movementsData.loading}
-          error={movementsData.error}
-          hasActiveFilters={false}
-          serverPagination={{
-            pageIndex: movementsFilters.page - 1,
-            pageSize: movementsFilters.pageSize,
-            totalItems: movementsData.pagination?.total_items || 0,
-            onPaginationChange: onMovementsPagination,
-          }} />
+        {tabBody(movementsData.error, 'Stock Movements', (
+          <StockMovementsTable stockMovements={movementsData.data}
+            loading={movementsData.loading}
+            error={movementsData.error}
+            hasActiveFilters={false}
+            serverPagination={{
+              pageIndex: movementsFilters.page - 1,
+              pageSize: movementsFilters.pageSize,
+              totalItems: movementsData.pagination?.total_items || 0,
+              onPaginationChange: onMovementsPagination,
+            }} />
+        ))}
       </TabsContent>
       <TabsContent value="entries" className="mt-4">
-        <StockEntriesTable stockEntries={entriesData.data}
-          loading={entriesData.loading}
-          error={entriesData.error}
-          hasActiveFilters={false}
-          onView={onViewEntry}
-          onEdit={onEditEntry}
-          onDelete={onDeleteEntry}
-          serverPagination={{
-            pageIndex: entriesFilters.page - 1,
-            pageSize: entriesFilters.pageSize,
-            totalItems: entriesData.pagination?.total_items || 0,
-            onPaginationChange: onEntriesPagination,
-          }} />
+        {tabBody(entriesData.error, 'Stock Entries', (
+          <StockEntriesTable stockEntries={entriesData.data}
+            loading={entriesData.loading}
+            error={entriesData.error}
+            hasActiveFilters={false}
+            onView={onViewEntry}
+            onEdit={onEditEntry}
+            onDelete={onDeleteEntry}
+            serverPagination={{
+              pageIndex: entriesFilters.page - 1,
+              pageSize: entriesFilters.pageSize,
+              totalItems: entriesData.pagination?.total_items || 0,
+              onPaginationChange: onEntriesPagination,
+            }} />
+        ))}
       </TabsContent>
       <TabsContent value="reconciliations" className="mt-4">
-        <StockReconciliationsTable stockReconciliations={reconciliationsData.data}
-          loading={reconciliationsData.loading}
-          error={reconciliationsData.error}
-          hasActiveFilters={false}
-          onView={onViewReconciliation}
-          serverPagination={{
-            pageIndex: reconciliationsFilters.page - 1,
-            pageSize: reconciliationsFilters.pageSize,
-            totalItems: reconciliationsData.pagination?.total_items || 0,
-            onPaginationChange: onReconciliationsPagination,
-          }} />
+        {tabBody(reconciliationsData.error, 'Stock Reconciliations', (
+          <StockReconciliationsTable stockReconciliations={reconciliationsData.data}
+            loading={reconciliationsData.loading}
+            error={reconciliationsData.error}
+            hasActiveFilters={false}
+            onView={onViewReconciliation}
+            serverPagination={{
+              pageIndex: reconciliationsFilters.page - 1,
+              pageSize: reconciliationsFilters.pageSize,
+              totalItems: reconciliationsData.pagination?.total_items || 0,
+              onPaginationChange: onReconciliationsPagination,
+            }} />
+        ))}
       </TabsContent>
       <TabsContent value="asn" className="mt-4">
-        <AsnOrdersTable asnOrders={asnData.asnOrders}
-          loading={asnData.loading}
-          error={asnData.error}
-          hasActiveFilters={false}
-          onView={onViewAsn}
-          onEdit={onEditAsn}
-          onDelete={onDeleteAsn}
-          onCreateOrder={onCreateAsn}
-          serverPagination={asnPagination}
-          recentlyCreatedId={asnData.recentlyCreatedId} />
+        {tabBody(asnData.error, 'Advance Stock Notice', (
+          <AsnOrdersTable asnOrders={asnData.asnOrders}
+            loading={asnData.loading}
+            error={asnData.error}
+            hasActiveFilters={false}
+            onView={onViewAsn}
+            onEdit={onEditAsn}
+            onDelete={onDeleteAsn}
+            onCreateOrder={onCreateAsn}
+            serverPagination={asnPagination}
+            recentlyCreatedId={asnData.recentlyCreatedId} />
+        ))}
       </TabsContent>
     </>
   );
@@ -1086,17 +1114,11 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
     movementsData.refetch();
   }, [entryActions, entriesData, levelsData, movementsData]);
 
-  // Edge case: the user has no stock read permission at all. Show a clear
-  // no-access state instead of an empty tab strip with stray content.
+  // Edge case: the user has no stock read permission at all. Show the shared
+  // no-permission surface instead of an empty tab strip with stray content.
   if (permissionsLoaded && visibleTabs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-center">
-        <Package className="h-10 w-10 text-muted-foreground" />
-        <p className="text-lg font-semibold">No access to stock</p>
-        <p className="text-sm text-muted-foreground">
-          You don&apos;t have permission to view stock levels, movements, entries or reconciliations.
-        </p>
-      </div>
+      <NoPermission module="Stock" />
     );
   }
 

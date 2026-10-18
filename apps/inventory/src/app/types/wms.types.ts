@@ -486,6 +486,7 @@ export interface FlagLineResponse {
 export interface ShortBalance {
   id: string;
   asn_order_id: string;
+  asn_order_no: string | null;
   asn_order_item_id: string;
   receiving_slip_id: string | null;
   item_id: string | null;

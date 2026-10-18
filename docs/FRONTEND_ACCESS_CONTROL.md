@@ -161,6 +161,23 @@ Props: `module?`, `title?` (default "No permission"), `description?`, `icon?`, `
 Wired into: `AccessGuard` (default fallback), the platform `PermissionGuard` (route-level
 module gate), the admin `SystemSettingsPage`, and the WMS returns queue.
 
+**Runtime 403 → `NoPermission`.** Some resources are only refused by the API (the client
+maps any 403 to *"You do not have permission to perform this action."*). Rather than render
+that string as red error text, detect it and swap in the component — e.g. `StockManagement`
+wraps each tab body:
+
+```tsx
+const PERMISSION_ERROR_PATTERN = /permission|forbidden|403|access denied/i;
+
+function tabBody(error: string | null, resource: string, body: React.ReactNode): React.ReactNode {
+  return isPermissionError(error) ? <NoPermission module={resource} variant="card" /> : body;
+}
+
+<TabsContent value="reconciliations">
+  {tabBody(reconciliationsData.error, 'Stock Reconciliations', <StockReconciliationsTable … />)}
+</TabsContent>
+```
+
 ---
 
 ## 4. WMS roles
