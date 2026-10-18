@@ -35,18 +35,18 @@ import { inboundApi } from '../../../utility/api/wms';
 
 import { CloseShortageDialog } from './CloseShortageDialog';
 import { createShortageColumns } from './ShortageColumns';
-import { ShortageHistoryDialog } from './ShortageHistoryDialog';
+import { ShortageDetailDialog } from './ShortageDetailDialog';
 
 const PAGE_SIZE = 20;
 
 /** Radix rejects an empty string as an item value, so "no filter" needs a sentinel. */
 const ALL_STATUSES = 'all';
 
-const STATUS_FILTERS: { value: string; label: string }[] = [
-  { value: ALL_STATUSES, label: 'All Statuses' },
-  { value: 'open', label: 'Open' },
-  { value: 'resolved', label: 'Resolved' },
-  { value: 'written_off', label: 'Written off' },
+const STATUS_FILTERS: { value: string; label: string; countKey: keyof ShortBalanceSummary }[] = [
+  { value: ALL_STATUSES, label: 'All Statuses', countKey: 'total' },
+  { value: 'open', label: 'Open', countKey: 'open_count' },
+  { value: 'resolved', label: 'Resolved', countKey: 'resolved_count' },
+  { value: 'written_off', label: 'Written off', countKey: 'written_off_count' },
 ];
 
 type ServerPagination = {
@@ -78,6 +78,7 @@ function readPage(res: PaginatedShortBalances, fallbackPage: number): LedgerPage
 
 function ShortageFilters({
   statusFilter,
+  summary,
   onStatusFilterChange,
   skuDraft,
   onSkuDraftChange,
@@ -86,6 +87,7 @@ function ShortageFilters({
   filterActive,
 }: {
   statusFilter: string;
+  summary: ShortBalanceSummary | null;
   onStatusFilterChange: (status: string) => void;
   skuDraft: string;
   onSkuDraftChange: (sku: string) => void;
@@ -102,7 +104,7 @@ function ShortageFilters({
         <SelectContent>
           {STATUS_FILTERS.map((filter) => (
             <SelectItem key={filter.value} value={filter.value}>
-              {filter.label}
+              {filter.label} ({summary?.[filter.countKey] ?? 0})
             </SelectItem>
           ))}
         </SelectContent>
@@ -280,7 +282,7 @@ export function ShortageLedger({
   const [sku, setSku] = React.useState(initialSku ?? '');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<NormalizedApiError | null>(null);
-  const [historyBalance, setHistoryBalance] = React.useState<ShortBalance | null>(null);
+  const [viewBalance, setViewBalance] = React.useState<ShortBalance | null>(null);
   const [closeBalance, setCloseBalance] = React.useState<ShortBalance | null>(null);
 
   const requestSeqRef = React.useRef(0);
@@ -351,10 +353,7 @@ export function ShortageLedger({
     };
   }, [pagination, load]);
 
-  const columns = React.useMemo(
-    () => createShortageColumns({ canClose, onHistory: setHistoryBalance, onClose: setCloseBalance }),
-    [canClose],
-  );
+  const columns = React.useMemo(() => createShortageColumns({ onView: setViewBalance }), []);
 
   const applySkuFilter = (event: React.FormEvent) => {
     event.preventDefault();
@@ -369,6 +368,7 @@ export function ShortageLedger({
 
   const handleClosed = async (updated: ShortBalance, outcome: CloseOutcome) => {
     setCloseBalance(null);
+    setViewBalance(null);
     toast({
       title: outcome === 'written_off' ? 'Shortage written off' : 'Shortage closed',
       description:
@@ -385,6 +385,7 @@ export function ShortageLedger({
   return (
     <div className="space-y-4">
       <ShortageFilters statusFilter={statusFilter}
+        summary={summary}
         onStatusFilterChange={setStatusFilter}
         skuDraft={skuDraft}
         onSkuDraftChange={setSkuDraft}
@@ -402,7 +403,13 @@ export function ShortageLedger({
         onRetry={() => void load(page)}
         onClearFilter={clearFilters} />
 
-      <ShortageHistoryDialog balance={historyBalance} onOpenChange={(open) => !open && setHistoryBalance(null)} />
+      <ShortageDetailDialog balance={viewBalance}
+        open={!!viewBalance}
+        onOpenChange={(open) => {
+          if (!open) setViewBalance(null);
+        }}
+        canClose={canClose}
+        onRequestClose={setCloseBalance} />
       <CloseShortageDialog balance={closeBalance}
         onOpenChange={(open) => !open && setCloseBalance(null)}
         onClosed={handleClosed}

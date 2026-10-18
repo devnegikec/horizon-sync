@@ -1,26 +1,26 @@
 import * as React from 'react';
 
 import { type ColumnDef } from '@tanstack/react-table';
+import { Eye } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components';
 import { DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
 
 import type { ShortBalance } from '../../../types/wms.types';
+import { WMSStatusBadge } from '../WMSStatusBadge';
 
-import { EMPTY, shortId, StatusPill } from './shortageShared';
+import { EMPTY, shortId } from './shortageShared';
 
 export interface ShortageColumnsOptions {
-  /** Closing a shortage needs `inbound_exception.dispose`. */
-  canClose: boolean;
-  onHistory: (balance: ShortBalance) => void;
-  onClose: (balance: ShortBalance) => void;
+  /** Opens the read-only shortage detail dialog (history + close-out). */
+  onView: (balance: ShortBalance) => void;
 }
 
-/** Server ids are UUIDs; the first block is enough to correlate rows in the UI. */
+/** Prefer the human-readable ASN number; fall back to a truncated id when it is missing. */
 function AsnCell({ balance }: { balance: ShortBalance }) {
   return (
     <span className="font-mono text-xs" title={balance.asn_order_id}>
-      {shortId(balance.asn_order_id)}
+      {balance.asn_order_no || shortId(balance.asn_order_id)}
     </span>
   );
 }
@@ -37,32 +37,17 @@ function CodeCell({ value }: { value: string | null }) {
   return <span className="text-xs text-muted-foreground">{value ?? EMPTY}</span>;
 }
 
-/** Only a residual quantity can be written off; a zero short is just closed. */
-function closeLabel(balance: ShortBalance): string {
-  return balance.short_qty > 0 ? 'Write off…' : 'Close…';
-}
-
-function ShortageActionsCell({
-  balance,
-  canClose,
-  onHistory,
-  onClose,
-}: { balance: ShortBalance } & ShortageColumnsOptions) {
+function ShortageViewCell({ balance, onView }: { balance: ShortBalance } & ShortageColumnsOptions) {
   return (
-    <div className="flex items-center justify-end gap-1">
-      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => onHistory(balance)}>
-        History
+    <div className="flex items-center justify-end gap-2">
+      <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => onView(balance)}>
+        <Eye className="h-3.5 w-3.5" />
       </Button>
-      {canClose && balance.status === 'open' && (
-        <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onClose(balance)}>
-          {closeLabel(balance)}
-        </Button>
-      )}
     </div>
   );
 }
 
-export function createShortageColumns({ canClose, onHistory, onClose }: ShortageColumnsOptions): ColumnDef<ShortBalance>[] {
+export function createShortageColumns({ onView }: ShortageColumnsOptions): ColumnDef<ShortBalance>[] {
   return [
     {
       accessorKey: 'asn_order_id',
@@ -92,7 +77,7 @@ export function createShortageColumns({ canClose, onHistory, onClose }: Shortage
     {
       accessorKey: 'status',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-      cell: ({ row }) => <StatusPill status={row.original.status} />,
+      cell: ({ row }) => <WMSStatusBadge status={row.original.status} />,
     },
     {
       accessorKey: 'reason_code',
@@ -106,13 +91,8 @@ export function createShortageColumns({ canClose, onHistory, onClose }: Shortage
     },
     {
       id: 'actions',
-      header: () => <div className="text-right">Actions</div>,
-      cell: ({ row }) => (
-        <ShortageActionsCell balance={row.original}
-          canClose={canClose}
-          onHistory={onHistory}
-          onClose={onClose}/>
-      ),
+      header: () => <div className="text-right">View</div>,
+      cell: ({ row }) => <ShortageViewCell balance={row.original} onView={onView} />,
       enableSorting: false,
     },
   ];
