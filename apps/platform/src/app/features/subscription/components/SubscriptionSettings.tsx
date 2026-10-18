@@ -11,6 +11,7 @@ import { useAuth, usePermissions } from '../../../hooks';
 import { useAccountBilling } from '../hooks/useAccountBilling';
 import type { AccountSubscription } from '../types';
 
+import { ActivateSubscriptionDialog } from './ActivateSubscriptionDialog';
 import { StatusPill } from './BillingFormat';
 import { BuyCreditsDialog } from './BuyCreditsDialog';
 import { ChangePlanDialog } from './ChangePlanDialog';
@@ -111,6 +112,7 @@ export function SubscriptionSettings() {
   const [buyOpen, setBuyOpen] = React.useState(false);
   const [changeOpen, setChangeOpen] = React.useState(false);
   const [setupOpen, setSetupOpen] = React.useState(false);
+  const [activateOpen, setActivateOpen] = React.useState(false);
 
   const canTopUp = hasAnyPermission(TOPUP_PERMISSIONS);
   const adminMode = hasAnyPermission(PLAN_PERMISSIONS);
@@ -156,7 +158,7 @@ export function SubscriptionSettings() {
         onBuy={() => setBuyOpen(true)}
         onChangePlan={() => setChangeOpen(true)} />
 
-      <StatusBanner subscription={subscription} />
+      <StatusBanner subscription={subscription} onActivate={() => setActivateOpen(true)} />
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList className="h-auto flex-wrap gap-1">
@@ -189,6 +191,11 @@ export function SubscriptionSettings() {
         subscription={subscription}
         adminMode={adminMode}
         onDone={reload} />
+
+      <ActivateSubscriptionDialog open={activateOpen}
+        onOpenChange={setActivateOpen}
+        subscription={subscription}
+        onActivated={reload} />
     </div>
   );
 }

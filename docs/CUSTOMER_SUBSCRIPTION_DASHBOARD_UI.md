@@ -85,6 +85,26 @@ reuse the same service used by the admin route, and return the created
 subscription. A public `GET /account/plans` (published versions only) is also
 needed so customers can choose a plan.
 
+## Activation payment (temporary — test mode)
+
+A subscription in `pending_activation_payment` shows an **Activate subscription**
+button in the overview banner. It opens `ActivateSubscriptionDialog`, which:
+
+- shows the plan and the activation fee from the API;
+- offers a simulated mock method (test card / bank transfer);
+- calls `DummyPaymentService.processActivationPayment()` — a 1.2s simulated
+  settlement that writes a record to `localStorage`
+  (`ciphercode:dummy-activation:<org_id>`) and returns a `DUMMY-…` reference.
+
+`useAccountBilling` overlays that record onto the API response, so the banner
+clears and the plan renders as `active` immediately. **No card is charged and no
+provider is contacted.** `clearDummyActivation(orgId)` in
+`services/dummy-payment.service.ts` resets the test state.
+
+Replace `DummyPaymentService` and the overlay in `useAccountBilling` once Core
+exposes a customer activation endpoint + verified provider webhook
+(`POST /api/v1/account/subscription/activate`).
+
 ## Changing the plan
 
 There is **no customer-facing plan-change endpoint** in the deployed API

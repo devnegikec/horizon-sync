@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { AlertTriangle, Coins, Info, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Coins, Info, ShieldAlert, ShieldCheck } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components/ui/card';
@@ -16,12 +16,20 @@ function cadenceCopy(cadence: string): string {
   return cadence;
 }
 
-export function StatusBanner({ subscription }: { subscription: AccountSubscription }) {
+export function StatusBanner({ subscription, onActivate }: { subscription: AccountSubscription; onActivate?: () => void }) {
   if (subscription.status === 'pending_activation_payment') {
     return (
       <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
-        <p>Activate your account to start generating IDs. Complete the activation payment to unlock issuance.</p>
+        <div className="flex flex-1 flex-wrap items-center justify-between gap-2">
+          <p>Activate your account to start generating IDs. Complete the activation payment to unlock issuance.</p>
+          {onActivate && (
+            <Button size="sm" onClick={onActivate}>
+              <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+              Activate subscription
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
