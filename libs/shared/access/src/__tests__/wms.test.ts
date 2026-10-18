@@ -145,4 +145,18 @@ describe('WMS permission-code fallback (no named rule)', () => {
     expect(access.can('receiving', 'approve')).toBe(false);
     expect(access.visible('manage')).toBe(false);
   });
+
+  it('maps write actions to their backend permission codes', () => {
+    const access = accessFor({
+      permissions: ['asn_order.create', 'stock_entry.update', 'pick_list.update'],
+    });
+    expect(access.can('asn', 'create')).toBe(true);
+    expect(access.can('receiving', 'update')).toBe(true);
+    expect(access.can('picking', 'execute')).toBe(true);
+    expect(access.can('packing', 'execute')).toBe(true);
+    // Unrelated actions stay denied.
+    expect(access.can('asn', 'delete')).toBe(false);
+    expect(access.can('receiving', 'approve')).toBe(false);
+    expect(access.can('picking', 'create')).toBe(false);
+  });
 });

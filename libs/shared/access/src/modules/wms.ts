@@ -25,7 +25,13 @@ const WMS_RESOURCES: readonly AccessResource[] = [
     key: 'warehouse',
     label: 'Warehouse',
     actions: ['view', 'create', 'update', 'delete', 'manage'],
-    actionPermissions: { view: ['warehouse.read'], manage: ['warehouse.manage'] },
+    actionPermissions: {
+      view: ['warehouse.read'],
+      create: ['warehouse.create'],
+      update: ['warehouse.update'],
+      delete: ['warehouse.delete'],
+      manage: ['warehouse.manage'],
+    },
   },
   {
     key: 'manage',
@@ -62,19 +68,37 @@ const WMS_RESOURCES: readonly AccessResource[] = [
     key: 'asn',
     label: 'Advance Stock Notice',
     actions: ['view', 'create', 'update', 'delete', 'arrive'],
-    actionPermissions: { view: ['asn_order.read'], arrive: ['asn_order.update'] },
+    actionPermissions: {
+      view: ['asn_order.read'],
+      create: ['asn_order.create'],
+      update: ['asn_order.update'],
+      delete: ['asn_order.delete'],
+      arrive: ['asn_order.update'],
+    },
   },
   {
     key: 'receiving',
     label: 'Receiving',
     actions: ['view', 'create', 'update', 'approve', 'reject'],
-    actionPermissions: { view: ['stock_entry.read'], create: ['stock_entry.create'] },
+    actionPermissions: {
+      view: ['stock_entry.read'],
+      create: ['stock_entry.create'],
+      update: ['stock_entry.update'],
+      // Approval is deliberately distinct from plain edits (see §3.3 of
+      // docs/WMS_ROLES_AND_PERMISSIONS.md).
+      approve: ['stock_entry.approve'],
+      reject: ['stock_entry.approve'],
+    },
   },
   {
     key: 'putaway',
     label: 'Put-Away',
     actions: ['view', 'create', 'execute'],
-    actionPermissions: { view: ['stock_entry.read'] },
+    actionPermissions: {
+      view: ['stock_entry.read'],
+      create: ['stock_entry.create'],
+      execute: ['stock_entry.update'],
+    },
   },
   {
     key: 'exceptions',
@@ -97,19 +121,27 @@ const WMS_RESOURCES: readonly AccessResource[] = [
     key: 'outbound',
     label: 'Outbound Orders',
     actions: ['view', 'create', 'delete'],
-    actionPermissions: { view: ['pick_list.read'], create: ['pick_list.create'] },
+    actionPermissions: {
+      view: ['pick_list.read'],
+      create: ['pick_list.create'],
+      delete: ['pick_list.delete'],
+    },
   },
   {
     key: 'picking',
     label: 'Picking',
     actions: ['view', 'create', 'execute'],
-    actionPermissions: { view: ['pick_list.read'], create: ['pick_list.create'] },
+    actionPermissions: {
+      view: ['pick_list.read'],
+      create: ['pick_list.create'],
+      execute: ['pick_list.update'],
+    },
   },
   {
     key: 'packing',
     label: 'Packing',
     actions: ['view', 'execute'],
-    actionPermissions: { view: ['pick_list.read'] },
+    actionPermissions: { view: ['pick_list.read'], execute: ['pick_list.update'] },
   },
   {
     key: 'gate',
@@ -121,13 +153,13 @@ const WMS_RESOURCES: readonly AccessResource[] = [
     key: 'dispatch',
     label: 'Dispatch',
     actions: ['view', 'create'],
-    actionPermissions: { view: ['pick_list.read'] },
+    actionPermissions: { view: ['pick_list.read'], create: ['pick_list.update'] },
   },
   {
     key: 'pick_exceptions',
     label: 'Pick Exceptions',
     actions: ['view', 'manage'],
-    actionPermissions: { view: ['pick_list.read'] },
+    actionPermissions: { view: ['pick_list.read'], manage: ['pick_list.manage'] },
   },
   // ── Returns ──
   {
@@ -139,6 +171,7 @@ const WMS_RESOURCES: readonly AccessResource[] = [
       register: ['return.register'],
       approve: ['return.approve'],
       dispose: ['return.dispose'],
+      putaway: ['return.putaway'],
     },
   },
   // ── Stock & reports ──
@@ -152,7 +185,7 @@ const WMS_RESOURCES: readonly AccessResource[] = [
     key: 'reports',
     label: 'Reports',
     actions: ['view', 'export'],
-    actionPermissions: { view: ['report.read'] },
+    actionPermissions: { view: ['report.read'], export: ['report.export'] },
   },
 ];
 

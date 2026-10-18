@@ -343,7 +343,15 @@ function CapacityCard({ warehouseName, node }: CapacityCardProps) {
   );
 }
 
-export function WMSDashboardHome() {
+export function WMSDashboardHome({
+  warehouseId: warehouseIdProp,
+  onWarehouseChange,
+}: {
+  /** Controlled warehouse scope (`'all'` = every warehouse). */
+  warehouseId?: string;
+  /** Notifies the parent so sibling sections can share the same scope. */
+  onWarehouseChange?: (warehouseId: string) => void;
+} = {}) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [period, setPeriod] = React.useState<'week' | 'month' | 'year'>('week');
   const [anchorDate, setAnchorDate] = React.useState(new Date());
@@ -353,10 +361,18 @@ export function WMSDashboardHome() {
   const [allActivity, setAllActivity] = React.useState<ActivityItem[]>([]);
   const [loadingAll, setLoadingAll] = React.useState(false);
 
-  // Warehouse selector
+  // Warehouse selector (controlled by the parent when it passes `warehouseId`)
   const [warehouses, setWarehouses] = React.useState<WarehouseOption[]>([]);
-  const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('all');
+  const [internalWarehouseId, setInternalWarehouseId] = React.useState<string>('all');
   const [warehousesLoading, setWarehousesLoading] = React.useState(false);
+  const selectedWarehouseId = warehouseIdProp ?? internalWarehouseId;
+  const setSelectedWarehouseId = React.useCallback(
+    (next: string) => {
+      setInternalWarehouseId(next);
+      onWarehouseChange?.(next);
+    },
+    [onWarehouseChange],
+  );
 
   // Warehouse capacity (per-warehouse rollup trees)
   const [capacityByWarehouse, setCapacityByWarehouse] = React.useState<Record<string, CapacityNode>>({});

@@ -97,8 +97,8 @@ Each row is an **action**; each column a role. Domain grouping is by WMS area.
 | View receiving slips | `stock_entry.read` | ✅ | ✅ | ✅ | ✅ |
 | Create receiving slip (dock scan) | `stock_entry.create` | ✅ | ✅ | ✅ | ✅ |
 | Write lines / edit slip detail | `warehouse.update` \| `wms.scan` | ✅ | ✅ | ✅ | ✅ |
-| **Approve receiving slip** | `stock_entry.update` | ✅ | ✅ | ✅ | ❌ |
-| Reject slip / reject item | `stock_entry.update` | ✅ | ✅ | ✅ | ❌ |
+| **Approve receiving slip** | `stock_entry.approve` | ✅ | ✅ | ✅ | ❌ |
+| Reject slip / reject item | `stock_entry.approve` | ✅ | ✅ | ✅ | ❌ |
 | Generate put-away list (auto/manual) | `stock_entry.create` | ✅ | ✅ | ✅ | ❌ |
 | Execute put-away (scan to bin) | `stock_entry.update` | ✅ | ✅ | ✅ | ✅ |
 | Raise put-away exception | `inbound_exception.create` | ✅ | ✅ | ✅ | ✅ |
@@ -166,6 +166,7 @@ report.read
 warehouse.layout.manage        # layout designer create/apply/delete
 warehouse.location_qr.manage   # generate/print location QR
 device.manage                  # device registry CRUD
+stock_entry.approve            # approve / reject a receiving slip (NOT plain edits)
 pick_list.verify               # gate verification step
 return.putaway                 # generate return put-away
 report.export                  # export/download reports
@@ -176,15 +177,20 @@ report.export                  # export/download reports
 | Role | Display name (seed) | Permission patterns |
 | --- | --- | --- |
 | `org_owner` | Organization Owner | `*.*` (or explicit full set) |
-| `wms_manager` | WMS Manager | `warehouse.*`, `pick_list.*`, `asn_order.*`, `stock_entry.*`, `inbound_exception.*`, `return.*`, `device.*`, `report.*`, `item.read`, `batch.read`, `serial.read` |
-| `wms_supervisor` | WMS Supervisor | `warehouse.read`, `asn_order.read/create/update`, `stock_entry.read/create/update`, `inbound_exception.read/create`, `pick_list.read/create/update/verify`, `return.read/register/approve/putaway`, `item.read`, `batch.read`, `serial.read` |
-| `wms_operator` | WMS Operator | `warehouse.read`, `asn_order.read`, `stock_entry.read/create/update`, `inbound_exception.read/create`, `pick_list.read/update/verify`, `return.read/register`, `wms.scan`, `item.read`, `batch.read`, `serial.read` |
+| `wms_manager` | WMS Manager | `warehouse.read`, `warehouse.update`, `warehouse.manage`, `warehouse.layout.manage`, `warehouse.location_qr.manage`, `pick_list.*`, `asn_order.*`, `stock_entry.*`, `inbound_exception.*`, `return.*`, `device.*`, `report.*`, `item.read`, `batch.read`, `serial.read` |
+| `wms_supervisor` | WMS Supervisor | `warehouse.read`, `asn_order.read/create/update`, `stock_entry.read/create/update/approve`, `inbound_exception.read/create`, `pick_list.read/create/update/verify`, `return.read/register/approve/putaway`, `item.read`, `batch.read`, `serial.read` |
+| `wms_operator` | WMS Operator | `warehouse.read`, `asn_order.read`, `stock_entry.read/create/update` ¹, `inbound_exception.read/create`, `pick_list.read/update/verify`, `return.read/register`, `wms.scan`, `item.read`, `batch.read`, `serial.read` |
 | `asn_coordinator` | ASN Coordinator | `asn_order.*`, `warehouse.read`, `stock_entry.read`, `pick_list.read`, `item.read` |
 | `returns_officer` | Returns Officer | `return.*`, `stock_entry.read/update`, `warehouse.read`, `item.read` |
 | `inventory_controller` | Inventory Controller | `stock_entry.read/create/update/manage`, `warehouse.read`, `item.read`, `batch.read`, `serial.read` |
 | `gate_officer` | Gate Officer | `pick_list.read/verify/update`, `warehouse.read` |
 | `wms_viewer` | WMS Viewer | *(all)*`.read` |
 | `device_admin` | Device Admin | `device.manage`, `warehouse.read`, `warehouse.manage` |
+
+> ¹ Operator `stock_entry.update` covers **put-away execution only**. Receiving
+> approval/rejection uses `stock_entry.approve`, which operators do not get —
+> the backend must gate approve/reject on that code (not on `stock_entry.update`)
+> for the matrix in §3.3 to hold.
 
 ---
 
