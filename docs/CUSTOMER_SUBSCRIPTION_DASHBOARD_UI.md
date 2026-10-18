@@ -51,6 +51,40 @@ Purchase is available only when the user holds `billing.topup`,
 `billing.manage` or `qr_product.manage` **and** the subscription reports
 `can_top_up = true` (hidden when suspended).
 
+## When the organization has no subscription
+
+`GET /account/subscription` returns **404** until an `organization_subscriptions`
+row exists. The UI treats that as a normal empty state (no error toast) and shows
+**No subscription yet** with two paths:
+
+- **Ops user signed in** (`system_admin.billing_create|billing_manage|*.*`):
+  *Set up subscription* opens a form that lists published plan versions and
+  creates the subscription with anchor day, billing timezone, activation fee and
+  the activation-required flag (via the existing admin endpoint).
+- **Organization admin** (no `system_admin.*` permissions): *Request activation*
+  opens a prefilled email to `billing@ciphercode.ai` containing the organization
+  ID, so operations can assign a plan and issue the activation invoice.
+
+**Backend gap:** the deployed Core API has no customer self-serve subscribe
+endpoint — `POST /admin/organizations/{org_id}/subscription` requires
+`system_admin.billing_create`, and `/account/*` only exposes reads plus top-ups.
+To make self-serve possible, Core should add:
+
+```http
+POST /api/v1/account/subscription
+Authorization: Bearer <org JWT>
+Idempotency-Key: <uuid>
+
+{ "plan_version_id": "…", "billing_anchor_day": 1,
+  "billing_timezone": "Africa/Lagos", "activation_fee": "2500.00",
+  "activation_fee_required": true }
+```
+
+Scope the organization from the JWT (never the body), require `billing.manage`,
+reuse the same service used by the admin route, and return the created
+subscription. A public `GET /account/plans` (published versions only) is also
+needed so customers can choose a plan.
+
 ## Changing the plan
 
 There is **no customer-facing plan-change endpoint** in the deployed API

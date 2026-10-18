@@ -17,6 +17,8 @@ function valueOf<T>(result: PromiseSettledResult<T>): T | null {
 function errorText(result: PromiseSettledResult<unknown>): string | null {
   if (result.status !== 'rejected') return null;
   const failure = result.reason as BillingApiError;
+  // 404 = no subscription assigned yet; that is an empty state, not an error.
+  if (failure?.status === 404) return null;
   return failure?.message ?? 'Could not load subscription details.';
 }
 

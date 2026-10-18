@@ -1,13 +1,13 @@
 import * as React from 'react';
 
-import { AlertTriangle, Coins, RefreshCw, Settings2 } from 'lucide-react';
+import { AlertTriangle, Coins, CreditCard, RefreshCw, Settings2 } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
 
-import { usePermissions } from '../../../hooks';
+import { useAuth, usePermissions } from '../../../hooks';
 import { useAccountBilling } from '../hooks/useAccountBilling';
 import type { AccountSubscription } from '../types';
 
@@ -17,9 +17,11 @@ import { ChangePlanDialog } from './ChangePlanDialog';
 import { CreditsPanel } from './CreditsPanel';
 import { InvoicesPanel } from './InvoicesPanel';
 import { CreditsWidget, PlanFacts, StatusBanner } from './PlanOverview';
+import { StartSubscriptionDialog } from './StartSubscriptionDialog';
 
 const TOPUP_PERMISSIONS = ['billing.topup', 'billing.manage', 'qr_product.manage', '*.*'];
 const PLAN_PERMISSIONS = ['system_admin.billing_update', 'system_admin.billing_manage', '*.*'];
+const SELF_SERVE_PERMISSIONS = ['system_admin.billing_create', 'system_admin.billing_manage', '*.*'];
 
 function LoadingState() {
   return (
@@ -30,18 +32,30 @@ function LoadingState() {
   );
 }
 
-function EmptySubscription({ onRetry }: { onRetry: () => void }) {
+function NoSubscriptionState({ canSelfServe, onSetup, onRetry }: { canSelfServe: boolean; onSetup: () => void; onRetry: () => void }) {
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-        <p className="text-sm font-medium">No subscription assigned</p>
-        <p className="max-w-md text-xs text-muted-foreground">
-          Your organization does not have a subscription yet. Contact Ciphercode operations to activate a plan.
-        </p>
-        <Button variant="outline" size="sm" onClick={onRetry}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Retry
-        </Button>
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+          <CreditCard className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-base font-semibold">No subscription yet</p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            {canSelfServe
+              ? 'Choose a published plan to start billing, credits and ID generation for this organization.'
+              : 'Your organization needs a plan before credits and ID generation can start. Request activation and operations will issue the activation invoice.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+          <Button size="sm" onClick={onSetup}>
+            {canSelfServe ? 'Set up subscription' : 'Request activation'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
@@ -91,13 +105,17 @@ function SubscriptionHeader({
 
 export function SubscriptionSettings() {
   const { hasAnyPermission } = usePermissions();
+  const { user } = useAuth();
   const { subscription, credits, loading, error, reload } = useAccountBilling();
   const [tab, setTab] = React.useState('overview');
   const [buyOpen, setBuyOpen] = React.useState(false);
   const [changeOpen, setChangeOpen] = React.useState(false);
+  const [setupOpen, setSetupOpen] = React.useState(false);
 
   const canTopUp = hasAnyPermission(TOPUP_PERMISSIONS);
   const adminMode = hasAnyPermission(PLAN_PERMISSIONS);
+  const canSelfServe = hasAnyPermission(SELF_SERVE_PERMISSIONS);
+  const organizationId = user?.organization_id ?? '';
 
   if (loading && !subscription) return <LoadingState />;
 
@@ -115,7 +133,20 @@ export function SubscriptionSettings() {
     );
   }
 
-  if (!subscription) return <EmptySubscription onRetry={reload} />;
+  if (!subscription) {
+    return (
+      <div className="space-y-6">
+        <NoSubscriptionState canSelfServe={canSelfServe}
+          onSetup={() => setSetupOpen(true)}
+          onRetry={reload} />
+        <StartSubscriptionDialog open={setupOpen}
+          onOpenChange={setSetupOpen}
+          organizationId={organizationId}
+          canSelfServe={canSelfServe}
+          onCreated={reload} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

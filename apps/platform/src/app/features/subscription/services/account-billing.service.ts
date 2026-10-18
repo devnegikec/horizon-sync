@@ -168,4 +168,22 @@ export const AccountBillingService = {
       body: JSON.stringify(payload),
     });
   },
+
+  createSubscription(
+    organizationId: string,
+    payload: {
+      plan_version_id: string;
+      billing_anchor_day: number;
+      billing_timezone: string;
+      activation_fee: string;
+      activation_fee_required: boolean;
+    },
+    idempotencyKey: string,
+  ) {
+    return request<unknown>(`/api/v1/admin/organizations/${organizationId}/subscription`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(payload),
+    });
+  },
 };
