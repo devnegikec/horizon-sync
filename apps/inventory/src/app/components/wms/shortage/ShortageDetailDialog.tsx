@@ -176,7 +176,14 @@ function useShortageHistory(balanceId: string | null, open: boolean) {
   React.useEffect(() => {
     setEvents([]);
     setError(null);
-    if (open && balanceId) void load();
+    // Invalidate any pending request so a late response cannot repopulate the
+    // table after the dialog closes or the row changes.
+    if (!open || !balanceId) {
+      requestSeqRef.current += 1;
+      setLoading(false);
+      return;
+    }
+    void load();
   }, [open, balanceId, load]);
 
   return { events, loading, error, reload: load };

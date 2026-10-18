@@ -38,9 +38,10 @@ function CodeCell({ value }: { value: string | null }) {
 }
 
 function ShortageViewCell({ balance, onView }: { balance: ShortBalance } & ShortageColumnsOptions) {
+  const label = `View shortage details for ${balance.sku}`;
   return (
     <div className="flex items-center justify-end gap-2">
-      <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => onView(balance)}>
+      <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" aria-label={label} onClick={() => onView(balance)}>
         <Eye className="h-3.5 w-3.5" />
       </Button>
     </div>
