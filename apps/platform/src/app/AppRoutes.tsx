@@ -3,13 +3,13 @@ import * as React from 'react';
 import { Route, Routes } from 'react-router-dom';
 
 import { DashboardLayout, DashboardHome, AuthGuard, PublicRoute } from './components';
+import { AppLoading } from './components/AppLoading';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PermissionGuard } from './components/PermissionGuard';
 import { PlaceholderPage } from './components/PlaceholderPage';
 import BankingRoutes from './features/banking/BankingRoutes';
-import { RegisterPage, LoginPage, AcceptInvitationPage, UserManagementPage, SubscriptionManagementPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage, ReportsPage } from './pages';
+import { RegisterPage, LoginPage, AcceptInvitationPage, UserManagementPage, SubscriptionPage, ForgotPasswordPage, ResetPasswordPage, OnBoarding, ProfilePage, RoleManagementPage, SettingsPage, ReportsPage } from './pages';
 import { PublicQRValidation } from './pages/PublicQRValidation';
-import { AppLoading } from './components/AppLoading';
 
 const Inventory = React.lazy(() => import('inventory/Module'));
 const RevenuePage = React.lazy(() => import('inventory/RevenuePage'));
@@ -61,67 +61,78 @@ function ProtectedRouteWrapper() {
           <Route path="/help" element={<HelpPlaceholder />} />
 
           {/* Identity management */}
-          <Route path="/users" element={
+          <Route path="/users"
+element={
             <PermissionGuard required={['user.read', 'user.manage', 'user.*', '*.*']}>
               <UserManagementPage />
             </PermissionGuard>
           } />
-          <Route path="/roles" element={
+          <Route path="/roles"
+element={
             <PermissionGuard required={['role.read', 'role.manage', 'role.*', '*.*']}>
               <RoleManagementPage />
             </PermissionGuard>
           } />
 
           {/* Sales & Orders */}
-          <Route path="/revenue" element={
+          <Route path="/revenue"
+element={
             <PermissionGuard required={['invoice.read', 'sales_order.read', 'invoice.*', 'sales_order.*', '*.*']}>
               <React.Suspense fallback={<AppLoading message="Loading revenue..." />}><RevenuePage /></React.Suspense>
             </PermissionGuard>
           } />
 
           {/* Procurement */}
-          <Route path="/sourcing" element={
+          <Route path="/sourcing"
+element={
             <PermissionGuard required={['purchase_order.read', 'supplier.read', 'purchase_order.*', 'supplier.*', '*.*']}>
               <SourcingPage />
             </PermissionGuard>
           } />
 
           {/* Inventory */}
-          <Route path="/inventory" element={
+          <Route path="/inventory"
+element={
             <PermissionGuard required={['item.read', 'item.*', '*.*']}>
               <React.Suspense fallback={<AppLoading message="Loading inventory..." />}><Inventory /></React.Suspense>
             </PermissionGuard>
           } />
-          <Route path="/wms" element={
+          <Route path="/wms"
+element={
             <PermissionGuard required={['warehouse.read', 'stock_entry.read', 'warehouse.*', '*.*']}>
               <React.Suspense fallback={<AppLoading message="Loading WMS..." />}><WMSPage /></React.Suspense>
             </PermissionGuard>
           } />
 
           {/* Accounting */}
-          <Route path="/books" element={
+          <Route path="/books"
+element={
             <PermissionGuard required={['chart_of_account.read', 'chart_of_account.*', '*.*']}>
               <BooksPage />
             </PermissionGuard>
           } />
-          <Route path="/payments" element={
+          <Route path="/payments"
+element={
             <PermissionGuard required={['payment.read', 'payment.*', '*.*']}>
               <PaymentsPage />
             </PermissionGuard>
           } />
-          <Route path="/tax-charges" element={
+          <Route path="/tax-charges"
+element={
             <PermissionGuard required={['chart_of_account.read', 'chart_of_account.*', '*.*']}>
               <React.Suspense fallback={<AppLoading message="Loading tax & charges..." />}><TaxChargesPage /></React.Suspense>
             </PermissionGuard>
           } />
 
           {/* Subscriptions & Settings — accessible to org admins / owners */}
-          <Route path="/subscriptions" element={
+          <Route path="/subscriptions"
+element={
             <PermissionGuard required={['subscription.read', 'subscription.*', 'org.read', 'org.*', '*.*']}>
-              <SubscriptionManagementPage />
+              <SubscriptionPage />
             </PermissionGuard>
           } />
-          <Route path="/settings/*" element={
+          <Route path="/settings/*"
+element={
             <PermissionGuard required={['org.read', 'org.*', '*.*']}>
               <SettingsPage />
             </PermissionGuard>
@@ -131,12 +142,14 @@ function ProtectedRouteWrapper() {
           <Route path="/qseal" element={<React.Suspense fallback={<AppLoading message="Loading QSeal..." />}><QSealPage /></React.Suspense>} />
 
           {/* Analytics & Reports */}
-          <Route path="/analytics" element={
+          <Route path="/analytics"
+element={
             <PermissionGuard required={['report.read', 'analytics.read', '*.*']}>
               <AnalyticsPlaceholder />
             </PermissionGuard>
           } />
-          <Route path="/reports" element={
+          <Route path="/reports"
+element={
             <PermissionGuard required={['report.read', 'report.*', '*.*']}>
               <ReportsPage />
             </PermissionGuard>

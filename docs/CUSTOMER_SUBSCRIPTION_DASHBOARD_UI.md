@@ -1,0 +1,105 @@
+# Customer Subscription Dashboard — Implementation Notes
+
+Customer-facing subscription/billing UI, built in **`apps/platform`** (the
+organization dashboard) against the deployed Core `/api/v1/account/*` endpoints.
+Implements `docs/SUBSCRIPTION_CUSTOMER_DASHBOARD_INTEGRATION.md`.
+
+## Entry points
+
+| Where | Route | Notes |
+| --- | --- | --- |
+| Sidebar → **Subscriptions** | `/subscriptions` | Now renders the real dashboard (`pages/subscription.tsx`); the legacy demo page is no longer routed. |
+| **Settings → Subscription & Credits** | `/settings?tab=subscription` | Same dashboard embedded as a settings tab for organization admins. |
+
+Both are inside the platform `PermissionGuard` (`subscription.read` / `org.read`
+/ `*.*`).
+
+## Screens
+
+`features/subscription/components/SubscriptionSettings.tsx` is the container:
+
+- **Header** — plan name, version, status pill, *Buy credits* and *Change plan* actions.
+- **Status banners** — `pending_activation_payment`, `overdue` (with grace date), `suspended`, `closed`.
+- **Overview tab** — plan facts (cadence, next invoice, renewal, credits per
+  period, ID weight, billing anchor/timezone, payment status, contract
+  effective date) + credits widget (available, ≈ IDs available, reserved, used
+  this period, expiry summary).
+- **Credits tab** — balance cards, expiry timeline + 30/60/90-day buckets,
+  paginated batch history, paginated ledger with a type filter.
+- **Invoices tab** — paginated invoice history with status filter; download
+  icon only when the API returns `download_url`.
+
+Amounts render from API decimal strings (digit grouping + truncation, no float
+math). `CreditQuantity` shows 2dp with the exact 6dp value in a tooltip.
+
+## Buying credits (top-up)
+
+`components/BuyCreditsDialog.tsx` implements the documented three-step flow:
+
+1. **Amount** — quick amounts (1k / 5k / 10k / 25k) or a custom value (up to 6dp).
+   `POST /account/topups/quotes { credits }` returns server-side price, tax,
+   total, quote expiry and credit expiry.
+2. **Quote review** — shows subtotal, tax, total, credit validity and quote
+   expiry before any payment.
+3. **Order** — `POST /account/topups/orders` with an `Idempotency-Key` derived per
+   quote (retry-safe). If `checkout_url` is present it opens in a new tab, then
+   the dialog polls `GET /account/topups/orders/{order_id}` every 2s for 60s and
+   only reports success on `status === "paid"`. The redirect alone never grants
+   credits.
+
+Purchase is available only when the user holds `billing.topup`,
+`billing.manage` or `qr_product.manage` **and** the subscription reports
+`can_top_up = true` (hidden when suspended).
+
+## Changing the plan
+
+There is **no customer-facing plan-change endpoint** in the deployed API
+(verified against `https://dev-core-api.ciphercode.ai/openapi.json`); plan
+mutation is ops-only (`PATCH /admin/organizations/{org_id}/subscription`
+requiring `system_admin.billing_update`). The UI therefore has two modes:
+
+- **Ops user signed in** (`system_admin.billing_update|billing_manage|*.*`):
+  the dialog loads published plans and schedules an effective-dated version
+  change with a required reason.
+- **Organization user** (`billing.manage` or any other role): the dialog shows
+  the current plan and a prefilled **Request plan change** email to
+  `billing@ciphercode.ai` — no fake write is attempted.
+
+## Permissions
+
+| Capability | Codes checked |
+| --- | --- |
+| Open the dashboard | `subscription.read` or `org.read` (route guard) |
+| Buy credits | `billing.topup`, `billing.manage`, `qr_product.manage`, `*.*` |
+| Real plan change (ops) | `system_admin.billing_update`, `system_admin.billing_manage`, `*.*` |
+
+API calls are organization-scoped by the JWT; the client never sends an
+`organization_id`.
+
+## Files
+
+```
+apps/platform/src/app/
+  features/subscription/
+    types.ts                                  # mirrors deployed account schemas
+    services/account-billing.service.ts       # typed client, Idempotency-Key, error codes
+    hooks/useAccountBilling.ts                # subscription + credits, 60s credit poll
+    components/
+      BillingFormat.tsx                       # Money / CreditQuantity / StatusPill / dates
+      SubscriptionSettings.tsx                # header, tabs, dialogs
+      PlanOverview.tsx                        # banners, plan facts, credits widget
+      CreditsPanel.tsx                        # balances, expiry, batches, ledger
+      InvoicesPanel.tsx                       # invoice history
+      BuyCreditsDialog.tsx                    # quote → order → poll
+      ChangePlanDialog.tsx                    # ops form or request guidance
+  pages/subscription.tsx                      # /subscriptions page wrapper
+  pages/settings.tsx                          # Subscription & Credits tab (+ ?tab= support)
+```
+
+## Known gaps
+
+- `GET /account/invoices/{id}/download` is not deployed; the download action is
+  rendered only when `download_url` is returned by the list API.
+- Customer plan changes require Ciphercode operations (no customer API).
+- `/admin/organizations/{id}/credits/batches` is not deployed; the customer
+  batches endpoint (`/account/credits/batches`) is used instead.

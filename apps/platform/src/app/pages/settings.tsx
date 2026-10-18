@@ -13,6 +13,7 @@ import { OrganizationSettings } from '../features/organization/components/Organi
 import { UomSettings } from '../features/organization/components/UomSettings';
 import { hasPermissionFromStore } from '../features/organization/utils/permissions';
 import { PickSettingsEditor } from '../features/pick-settings/components/PickSettingsEditor';
+import { SubscriptionSettings } from '../features/subscription/components/SubscriptionSettings';
 import { useAuth } from '../hooks';
 import { DEFAULT_ORGANIZATION_SETTINGS } from '../types/organization-settings.types';
 
@@ -30,7 +31,7 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, accessToken, isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = React.useState('organization');
+  const [activeTab, setActiveTab] = React.useState(() => new URLSearchParams(location.search).get('tab') ?? 'organization');
 
   // Requirement 6.1, 6.2: Check authentication and redirect to login if not authenticated
   React.useEffect(() => {
@@ -85,6 +86,7 @@ export function SettingsPage() {
         className="space-y-6">
         <TabsList className="h-auto flex-wrap gap-1">
           <TabsTrigger value="organization">Organization</TabsTrigger>
+          <TabsTrigger value="subscription">Subscription & Credits</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="dashboard-layout">Dashboard Layout</TabsTrigger>
           <TabsTrigger value="items-uom">Items & UOM</TabsTrigger>
@@ -97,6 +99,11 @@ export function SettingsPage() {
         <TabsContent value="organization" className="space-y-6">
           {/* Organization details + document address */}
           <OrganizationProfileSettings organizationId={organizationId} accessToken={accessToken} canEdit={canEdit} />
+        </TabsContent>
+
+        <TabsContent value="subscription" className="space-y-6">
+          {/* Plan, credits, invoices and top-ups for this organization */}
+          <SubscriptionSettings />
         </TabsContent>
 
         <TabsContent value="preferences" className="space-y-6">
