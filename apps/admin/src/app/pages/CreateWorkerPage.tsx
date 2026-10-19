@@ -108,32 +108,72 @@ export function CreateWorkerPage() {
       onError: (error: unknown) => {
         const err = error as Error & {
           status?: number;
-          data?: { detail?: string | { field: string; message: string }[] };
+          data?: {
+            error?: string;
+            message?: string;
+            details?: { field: string; message: string }[];
+            detail?: string | { field: string; message: string }[];
+          };
         };
         if (err.status === 409) {
-          const detail = err.data?.detail;
-          if (typeof detail === 'string') {
-            if (detail.toLowerCase().includes('email')) {
-              setError('email', { message: 'A user with this email already exists' });
-            } else if (detail.toLowerCase().includes('qr')) {
-              setError('qr_code', { message: 'This QR code is already in use. Try generating a new one.' });
+          // New identity-service contract: { error: CODE, message, timestamp }.
+          // Branch on the stable `error` code, never on message text.
+          const code = err.data?.error;
+          const serverMessage = err.data?.message;
+          if (code === 'EMAIL_TAKEN') {
+            setError('email', { message: serverMessage || 'A user with this email already exists' });
+          } else if (code === 'QR_CODE_TAKEN') {
+            setError('qr_code', { message: serverMessage || 'This QR code is already in use. Try generating a new one.' });
+          } else if (code === 'LOGIN_USERNAME_TAKEN') {
+            toast({
+              variant: 'destructive',
+              title: 'Error',
+              description: serverMessage || 'This username is already taken in this organization.',
+            });
+          } else {
+            // Legacy contract: { detail: "..." } — kept for backwards compatibility.
+            const detail = err.data?.detail;
+            if (typeof detail === 'string') {
+              if (detail.toLowerCase().includes('email')) {
+                setError('email', { message: 'A user with this email already exists' });
+              } else if (detail.toLowerCase().includes('qr')) {
+                setError('qr_code', { message: 'This QR code is already in use. Try generating a new one.' });
+              } else {
+                setError('email', { message: detail });
+              }
             } else {
-              setError('email', { message: detail });
+              setError('email', { message: serverMessage || 'A worker with this email already exists.' });
             }
           }
-        } else if (err.status === 422 && Array.isArray(err.data?.detail)) {
-          for (const fieldErr of err.data.detail) {
-            const fieldName = fieldErr.field as keyof WorkerCreateFormValues;
-            if (fieldName in workerCreateSchema.shape) {
-              setError(fieldName, { message: fieldErr.message });
+        } else if (err.status === 422) {
+          // Identity validation contract: { error: VALIDATION_ERROR, message, details: [...] }.
+          // Legacy FastAPI contract: { detail: [{ field, message }] }.
+          const fieldErrors = Array.isArray(err.data?.details)
+            ? err.data.details
+            : Array.isArray(err.data?.detail)
+              ? err.data.detail
+              : null;
+          if (fieldErrors) {
+            for (const fieldErr of fieldErrors) {
+              const fieldName = fieldErr.field as keyof WorkerCreateFormValues;
+              if (fieldName in workerCreateSchema.shape) {
+                setError(fieldName, { message: fieldErr.message });
+              }
             }
+          } else {
+            toast({
+              variant: 'destructive',
+              title: 'Error',
+              description: err.data?.message ?? 'The submitted data is invalid. Please check your input.',
+            });
           }
         } else {
           toast({
             variant: 'destructive',
             title: 'Error',
             description:
-              (err.data?.detail as string) ?? 'Failed to create worker',
+              err.data?.message ??
+              (typeof err.data?.detail === 'string' ? err.data.detail : 'Failed to create worker'),
           });
         }
       },

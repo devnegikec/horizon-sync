@@ -28,17 +28,27 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 interface InventoryNavigationProps {
   activeView: InventoryView;
   onViewChange: (view: InventoryView) => void;
+  /** Views the current user is permitted to see; forbidden views are hidden. */
+  visibleViews: InventoryView[];
 }
 
 /** Top-level Inventory view switcher (Items / Warehouses / Item Groups / Stock). */
-export function InventoryNavigation({ activeView, onViewChange }: InventoryNavigationProps) {
+export function InventoryNavigation({ activeView, onViewChange, visibleViews }: InventoryNavigationProps) {
   return (
     <div className="border-b">
       <nav className="flex items-center gap-1 pb-0 overflow-x-auto">
-        <NavItem icon={Package} label="Items" isActive={activeView === 'items'} onClick={() => onViewChange('items')} />
-        <NavItem icon={Warehouse} label="Warehouses" isActive={activeView === 'warehouses'} onClick={() => onViewChange('warehouses')} />
-        <NavItem icon={Layers} label="Item Groups" isActive={activeView === 'item_groups'} onClick={() => onViewChange('item_groups')} />
-        <NavItem icon={Boxes} label="Stock" isActive={activeView === 'stock'} onClick={() => onViewChange('stock')} />
+        {visibleViews.includes('items') && (
+          <NavItem icon={Package} label="Items" isActive={activeView === 'items'} onClick={() => onViewChange('items')} />
+        )}
+        {visibleViews.includes('warehouses') && (
+          <NavItem icon={Warehouse} label="Warehouses" isActive={activeView === 'warehouses'} onClick={() => onViewChange('warehouses')} />
+        )}
+        {visibleViews.includes('item_groups') && (
+          <NavItem icon={Layers} label="Item Groups" isActive={activeView === 'item_groups'} onClick={() => onViewChange('item_groups')} />
+        )}
+        {visibleViews.includes('stock') && (
+          <NavItem icon={Boxes} label="Stock" isActive={activeView === 'stock'} onClick={() => onViewChange('stock')} />
+        )}
       </nav>
     </div>
   );

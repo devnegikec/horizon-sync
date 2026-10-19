@@ -29,6 +29,20 @@ export type WmsPermission =
   | 'stock_entry.delete'
   | 'stock_entry.manage'
   | 'stock_entry.*'
+  // ── Stock Level ──
+  | 'stock_level.read'
+  | 'stock_level.create'
+  | 'stock_level.update'
+  | 'stock_level.delete'
+  | 'stock_level.manage'
+  | 'stock_level.*'
+  // ── Stock Reconciliation ──
+  | 'stock_reconciliation.read'
+  | 'stock_reconciliation.create'
+  | 'stock_reconciliation.update'
+  | 'stock_reconciliation.delete'
+  | 'stock_reconciliation.manage'
+  | 'stock_reconciliation.*'
   // ── Pick List (Outbound / Gate / Dispatch) ──
   | 'pick_list.read'
   | 'pick_list.create'
@@ -61,6 +75,8 @@ export const WMS_ROLE_PERMISSIONS = {
     'pick_list.*',
     'asn_order.*',
     'stock_entry.*',
+    'stock_level.*',
+    'stock_reconciliation.*',
     'item.read',
     'batch.read',
     'serial.read',
@@ -72,6 +88,8 @@ export const WMS_ROLE_PERMISSIONS = {
     'pick_list.*',
     'asn_order.*',
     'stock_entry.*',
+    'stock_level.*',
+    'stock_reconciliation.*',
     'item.read',
     'batch.read',
     'serial.read',
@@ -83,6 +101,8 @@ export const WMS_ROLE_PERMISSIONS = {
     'pick_list.read',
     'pick_list.update',
     'stock_entry.read',
+    'stock_level.read',
+    'stock_reconciliation.read',
     'item.read',
     'batch.read',
     'serial.read',
@@ -114,6 +134,18 @@ export const WMS_ROLE_PERMISSIONS = {
  *   ('warehouse.update',  'Update Warehouse',   'warehouse', 'update', 'wms', true),
  *   ('warehouse.delete',  'Delete Warehouse',   'warehouse', 'delete', 'wms', true),
  *   ('warehouse.manage',  'Manage Warehouse',   'warehouse', 'manage', 'wms', true),
+ *   -- stock_level
+ *   ('stock_level.read',    'Read Stock Level',    'stock_level', 'read',    'inventory', true),
+ *   ('stock_level.create',  'Create Stock Level',  'stock_level', 'create',  'inventory', true),
+ *   ('stock_level.update',  'Update Stock Level',  'stock_level', 'update',  'inventory', true),
+ *   ('stock_level.delete',  'Delete Stock Level',  'stock_level', 'delete',  'inventory', true),
+ *   ('stock_level.manage',  'Manage Stock Level',  'stock_level', 'manage',  'inventory', true),
+ *   -- stock_reconciliation
+ *   ('stock_reconciliation.read',    'Read Stock Reconciliation',    'stock_reconciliation', 'read',    'inventory', true),
+ *   ('stock_reconciliation.create',  'Create Stock Reconciliation',  'stock_reconciliation', 'create',  'inventory', true),
+ *   ('stock_reconciliation.update',  'Update Stock Reconciliation',  'stock_reconciliation', 'update',  'inventory', true),
+ *   ('stock_reconciliation.delete',  'Delete Stock Reconciliation',  'stock_reconciliation', 'delete',  'inventory', true),
+ *   ('stock_reconciliation.manage',  'Manage Stock Reconciliation',  'stock_reconciliation', 'manage',  'inventory', true),
  *   -- pick_list
  *   ('pick_list.read',   'Read Pick List',     'pick_list', 'read',   'wms', true),
  *   ('pick_list.create',  'Create Pick List',   'pick_list', 'create', 'wms', true),

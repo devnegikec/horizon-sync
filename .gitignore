@@ -58,3 +58,8 @@ vitest.config.*.timestamp*
 .vercel
 test-results
 
+# env files
+.env.dev
+.env.stage
+.env.local
+
