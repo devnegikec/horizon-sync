@@ -107,7 +107,7 @@ function SubscriptionHeader({
 export function SubscriptionSettings() {
   const { hasAnyPermission } = usePermissions();
   const { user } = useAuth();
-  const { subscription, credits, loading, error, reload } = useAccountBilling();
+  const { subscription, credits, localGrant, loading, error, reload } = useAccountBilling();
   const [tab, setTab] = React.useState('overview');
   const [buyOpen, setBuyOpen] = React.useState(false);
   const [changeOpen, setChangeOpen] = React.useState(false);
@@ -173,7 +173,7 @@ export function SubscriptionSettings() {
         </TabsContent>
 
         <TabsContent value="credits">
-          <CreditsPanel credits={credits} />
+          <CreditsPanel credits={credits} localGrant={localGrant} />
         </TabsContent>
 
         <TabsContent value="invoices">

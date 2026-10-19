@@ -19,7 +19,7 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { DummyPaymentService } from '../services/dummy-payment.service';
 import type { AccountSubscription } from '../types';
 
-import { Money } from './BillingFormat';
+import { Money, formatDecimal } from './BillingFormat';
 
 const METHODS = [
   { value: 'test_card', label: 'Test card (instant)' },
@@ -50,6 +50,9 @@ export function ActivateSubscriptionDialog({
   const [error, setError] = React.useState<string | null>(null);
 
   const currency = subscription.plan_version.currency ?? 'USD';
+  // Activation does not grant credits on the server; the test flow grants the
+  // plan's included credits (or a default) so the dashboard has a balance.
+  const grantCredits = Number(subscription.included_credits_per_period) > 0 ? subscription.included_credits_per_period : '1000';
 
   React.useEffect(() => {
     if (!open) return;
@@ -67,8 +70,12 @@ export function ActivateSubscriptionDialog({
         amount: subscription.activation_fee,
         currency,
         method,
+        credits: grantCredits,
       });
-      toast({ title: 'Payment successful', description: `Activation complete (test reference ${record.reference}).` });
+      toast({
+        title: 'Payment successful',
+        description: `Activation complete — ${formatDecimal(grantCredits, 2)} test credits added (ref ${record.reference}).`,
+      });
       onOpenChange(false);
       onActivated();
     } catch (err) {
@@ -105,6 +112,10 @@ export function ActivateSubscriptionDialog({
               <span className="font-medium">
                 <Money value={subscription.activation_fee} currency={currency} />
               </span>
+            </div>
+            <div className="flex justify-between border-t pt-2">
+              <span className="text-muted-foreground">Test credit grant</span>
+              <span className="font-medium tabular-nums">{formatDecimal(grantCredits, 2)}</span>
             </div>
           </div>
 

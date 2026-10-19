@@ -15,12 +15,31 @@ import {
 } from '@horizon-sync/ui/components/ui/table';
 
 import { AccountBillingService, BillingApiError } from '../services/account-billing.service';
+import type { DummyCreditGrant } from '../services/dummy-payment.service';
 import type { AccountCredits, CreditBatch, CreditLedgerEntry, ExpirationsResponse, Pagination } from '../types';
 
 import { CreditQuantity, StatusPill, formatDate, formatDateTime, formatDecimal } from './BillingFormat';
 
 const PAGE_SIZE = 20;
 const LEDGER_TYPES = ['all', 'consume', 'grant', 'reserve', 'release', 'expire', 'adjust_positive', 'adjust_negative', 'reversal'];
+const EMPTY_EXPIRATIONS: ExpirationsResponse = { buckets: { within_30_days: '0', within_60_days: '0', within_90_days: '0' }, timeline: [] };
+
+function withLocalTimeline(expirations: ExpirationsResponse | null, localGrant?: DummyCreditGrant | null): ExpirationsResponse {
+  const base = expirations ?? EMPTY_EXPIRATIONS;
+  if (!localGrant) return base;
+  return {
+    ...base,
+    timeline: [
+      {
+        batch_id: localGrant.batch.id,
+        expires_at: localGrant.batch.expires_at,
+        quantity: localGrant.batch.remaining,
+        source: localGrant.batch.source_type,
+      },
+      ...base.timeline.filter((item) => item.batch_id !== localGrant.batch.id),
+    ],
+  };
+}
 
 function BalanceCards({ credits }: { credits: AccountCredits | null }) {
   const cards = [
@@ -156,7 +175,7 @@ function Pager({ pagination, onPage }: { pagination: Pagination; onPage: (page: 
   );
 }
 
-export function CreditsPanel({ credits }: { credits: AccountCredits | null }) {
+export function CreditsPanel({ credits, localGrant }: { credits: AccountCredits | null; localGrant?: DummyCreditGrant | null }) {
   const [batches, setBatches] = React.useState<CreditBatch[]>([]);
   const [batchPagination, setBatchPagination] = React.useState<Pagination | null>(null);
   const [entries, setEntries] = React.useState<CreditLedgerEntry[]>([]);
@@ -210,6 +229,10 @@ export function CreditsPanel({ credits }: { credits: AccountCredits | null }) {
     };
   }, [ledgerType, ledgerPage]);
 
+  const visibleBatches = localGrant ? [localGrant.batch, ...batches.filter((batch) => batch.id !== localGrant.batch.id)] : batches;
+  const visibleEntries = localGrant ? [localGrant.entry, ...entries.filter((entry) => entry.id !== localGrant.entry.id)] : entries;
+  const timeline = withLocalTimeline(expirations, localGrant);
+
   return (
     <div className="space-y-6">
       <BalanceCards credits={credits} />
@@ -219,13 +242,11 @@ export function CreditsPanel({ credits }: { credits: AccountCredits | null }) {
           <CardTitle className="text-base">Expiry timeline</CardTitle>
         </CardHeader>
         <CardContent>
-          <ExpiryTimeline expirations={expirations} />
-          {expirations && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Within 30 days: {formatDecimal(expirations.buckets.within_30_days, 2)} · 60 days: {formatDecimal(expirations.buckets.within_60_days, 2)} · 90 days:{' '}
-              {formatDecimal(expirations.buckets.within_90_days, 2)}
-            </p>
-          )}
+          <ExpiryTimeline expirations={timeline} />
+          <p className="mt-3 text-xs text-muted-foreground">
+            Within 30 days: {formatDecimal(timeline.buckets.within_30_days, 2)} · 60 days: {formatDecimal(timeline.buckets.within_60_days, 2)} · 90 days:{' '}
+            {formatDecimal(timeline.buckets.within_90_days, 2)}
+          </p>
         </CardContent>
       </Card>
 
@@ -234,7 +255,8 @@ export function CreditsPanel({ credits }: { credits: AccountCredits | null }) {
           <CardTitle className="text-base">Credit batches</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 p-0 px-4 pb-4">
-          <BatchesTable items={batches} />
+          <BatchesTable items={visibleBatches} />
+          {localGrant && <p className="text-xs text-muted-foreground">Includes a simulated test grant from the dummy activation.</p>}
           {batchPagination && <Pager pagination={batchPagination} onPage={setBatchPage} />}
         </CardContent>
       </Card>
@@ -265,7 +287,7 @@ export function CreditsPanel({ credits }: { credits: AccountCredits | null }) {
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <LedgerTable entries={entries} />
+            <LedgerTable entries={visibleEntries} />
           )}
           {error && <p className="text-xs text-destructive">{error}</p>}
           {ledgerPagination && <Pager pagination={ledgerPagination} onPage={setLedgerPage} />}

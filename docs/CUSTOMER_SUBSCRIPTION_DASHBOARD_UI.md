@@ -101,6 +101,23 @@ clears and the plan renders as `active` immediately. **No card is charged and no
 provider is contacted.** `clearDummyActivation(orgId)` in
 `services/dummy-payment.service.ts` resets the test state.
 
+### Why credits stay at zero without the overlay
+
+`GET /account/credits` is unchanged by the local payment (the server still sees
+`pending_activation_payment`, and may reject the call). More importantly, by
+design **activation grants no credits** — credit batches are issued by a paid
+recurring invoice or a top-up. So the test activation also records a simulated
+grant of `included_credits_per_period` (fallback `1000`) with a 12-month expiry:
+
+- `buildDummyCredits()` supplies the `/account/credits` shape (available,
+estimated IDs, earliest expiry);
+- `buildDummyGrant()` supplies a synthetic batch (`source_type: promo`) and a
+`grant` ledger row;
+- `CreditsPanel` prepends both and adds the expiry to the timeline.
+
+Real server credits always win: the overlay only applies when the API returns
+`available` of zero (or the call fails).
+
 Replace `DummyPaymentService` and the overlay in `useAccountBilling` once Core
 exposes a customer activation endpoint + verified provider webhook
 (`POST /api/v1/account/subscription/activate`).

@@ -1,12 +1,14 @@
 import * as React from 'react';
 
 import { AccountBillingService, BillingApiError } from '../services/account-billing.service';
-import { getDummyActivation } from '../services/dummy-payment.service';
+import { buildDummyCredits, buildDummyGrant, getDummyActivation, type DummyCreditGrant } from '../services/dummy-payment.service';
 import type { AccountCredits, AccountSubscription } from '../types';
 
 interface AccountBillingState {
   subscription: AccountSubscription | null;
   credits: AccountCredits | null;
+  /** Simulated batch + ledger row shown while test-mode credits are active. */
+  localGrant: DummyCreditGrant | null;
   loading: boolean;
   error: string | null;
 }
@@ -35,9 +37,25 @@ function withLocalActivation(subscription: AccountSubscription | null): AccountS
   return { ...subscription, status: 'active', activated_at: activation.paid_at, payment_status: 'current' };
 }
 
+/**
+ * Real server credits always win. A test activation only supplies credits when
+ * the API has none (which is the normal state right after activation, because
+ * credits are granted by a paid invoice, not by activation itself).
+ */
+function resolveCredits(
+  apiCredits: AccountCredits | null,
+  subscription: AccountSubscription | null,
+): { credits: AccountCredits | null; localGrant: DummyCreditGrant | null } {
+  if (!subscription) return { credits: apiCredits, localGrant: null };
+  const activation = getDummyActivation(subscription.organization_id);
+  if (!activation) return { credits: apiCredits, localGrant: null };
+  if (apiCredits && Number(apiCredits.available) > 0) return { credits: apiCredits, localGrant: null };
+  return { credits: buildDummyCredits(activation, subscription.id_weight), localGrant: buildDummyGrant(activation) };
+}
+
 /** Loads the organization's subscription + credits (JWT-scoped) and refreshes credits every 60s while visible. */
 export function useAccountBilling() {
-  const [state, setState] = React.useState<AccountBillingState>({ subscription: null, credits: null, loading: true, error: null });
+  const [state, setState] = React.useState<AccountBillingState>({ subscription: null, credits: null, localGrant: null, loading: true, error: null });
   const [reloadToken, setReloadToken] = React.useState(0);
 
   React.useEffect(() => {
@@ -50,9 +68,12 @@ export function useAccountBilling() {
         AccountBillingService.getCredits(),
       ]);
       if (cancelled) return;
+      const subscriptionValue = withLocalActivation(valueOf(subscriptionResult));
+      const resolved = resolveCredits(valueOf(creditsResult), subscriptionValue);
       setState({
-        subscription: withLocalActivation(valueOf(subscriptionResult)),
-        credits: valueOf(creditsResult),
+        subscription: subscriptionValue,
+        credits: resolved.credits,
+        localGrant: resolved.localGrant,
         loading: false,
         error: errorText(subscriptionResult),
       });
@@ -68,7 +89,10 @@ export function useAccountBilling() {
     const interval = window.setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       AccountBillingService.getCredits()
-        .then((credits) => setState((current) => ({ ...current, credits })))
+        .then((credits) => setState((current) => {
+          const resolved = resolveCredits(credits, current.subscription);
+          return { ...current, credits: resolved.credits, localGrant: resolved.localGrant };
+        }))
         .catch(() => undefined);
     }, 60_000);
     return () => window.clearInterval(interval);
