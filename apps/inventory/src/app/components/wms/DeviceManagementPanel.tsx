@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import { Monitor, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
+import { renderWhen, useAccess } from '@horizon-sync/access';
 import { useUserStore } from '@horizon-sync/store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
@@ -21,6 +22,8 @@ interface DeviceManagementPanelProps {
 
 export function DeviceManagementPanel({ warehouseId }: DeviceManagementPanelProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  // Device registry CRUD is a configuration (`devices.manage`) action.
+  const canManageDevices = useAccess('wms').can('devices', 'manage');
   const { toast } = useToast();
   const [devices, setDevices] = React.useState<WMSDevice[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -113,7 +116,9 @@ export function DeviceManagementPanel({ warehouseId }: DeviceManagementPanelProp
         <Input placeholder="Search devices..." value={search} onChange={(e) => setSearch(e.target.value)} className="sm:w-80" />
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={fetchDevices}><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
-          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Add Device</Button>
+          {renderWhen(canManageDevices, (
+            <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Add Device</Button>
+          ))}
         </div>
       </div>
 
@@ -145,10 +150,12 @@ export function DeviceManagementPanel({ warehouseId }: DeviceManagementPanelProp
                   {d.serial_number && <span className="mr-3">SN: {d.serial_number}</span>}
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(d)}><RefreshCw className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Delete" onClick={() => handleDelete(d.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-              </div>
+              {renderWhen(canManageDevices, (
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(d)}><RefreshCw className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" title="Delete" onClick={() => handleDelete(d.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </div>
+              ))}
             </CardContent>
           </Card>
         ))}

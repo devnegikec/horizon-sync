@@ -41,6 +41,21 @@ const STATUS_BADGE: Record<BlockStatus, { label: string; className: string }> = 
   failed: { label: 'Failed', className: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' },
 };
 
+/**
+ * Whether a block has master-pack (parent) QR codes to download.
+ *
+ * The blocks LIST payload does not reliably include `master_pack_enabled` (it is
+ * only guaranteed on the block detail endpoint), so the MC QR action is hidden
+ * only when the API explicitly reports that no master pack exists — otherwise
+ * the button stays available for blocks we cannot classify.
+ */
+function hasMasterPackQr(block: QRBlock): boolean {
+  if (block.master_pack_enabled) return true;
+  if ((block.qseal_parent_count ?? 0) > 0) return true;
+  return block.master_pack_enabled !== false;
+}
+
+/** Child block ("IC QR") download — fetches a fresh signed URL each time. */
 function BlockDownloadButton({ block }: { block: QRBlock }) {
   const { download, loading, error } = useBlockDownload();
 
@@ -48,7 +63,7 @@ function BlockDownloadButton({ block }: { block: QRBlock }) {
     <div className="space-y-1">
       <Button variant="outline" size="sm" disabled={loading} onClick={() => download(block.id, `qr_${block.batch}.xlsx`)}>
         {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-        {loading ? 'Preparing…' : 'Download'}
+        {loading ? 'Preparing…' : 'IC'}
       </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
@@ -59,17 +74,29 @@ function BlockDownloadButton({ block }: { block: QRBlock }) {
 /*  Parent (Master Pack) download helper                              */
 /* ------------------------------------------------------------------ */
 
-function ParentBlockDownloadLink({ block }: { block: QRBlock }) {
+/** Master-pack / parent block ("MC QR") download. */
+function ParentBlockDownloadButton({ block }: { block: QRBlock }) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const handleDownload = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`${environment.apiCoreUrl}/api/v1/qseal/blocks/${block.id}/parents/download`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!res.ok) throw new Error('Failed to fetch parent labels');
+      if (!res.ok) {
+        if (res.status === 404) {
+          setError('No master pack QR codes for this block.');
+          return;
+        }
+        const body = await res.json().catch(() => ({}));
+        const detail = (body as { detail?: unknown }).detail;
+        setError(typeof detail === 'string' ? detail : 'Download failed');
+        return;
+      }
 
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -81,31 +108,32 @@ function ParentBlockDownloadLink({ block }: { block: QRBlock }) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      // Silently fail — the main download is the child block
+      setError('Download failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
+    <div className="space-y-1">
+      <Button variant="outline" size="sm" onClick={handleDownload} disabled={loading}>
+        {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Layers className="h-4 w-4 mr-2" />}
+        {loading ? 'Preparing…' : 'MC'}
+      </Button>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+/** Tracker variant of the MC QR download: labelled with the master-pack size. */
+function ParentBlockDownloadLink({ block }: { block: QRBlock }) {
+  return (
     <div className="space-y-1 pt-1 border-t">
       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         <Layers className="h-3.5 w-3.5" />
         Master Pack{block.qseal_parent_count ? ` (${block.qseal_parent_count})` : ''}
       </div>
-      <Button variant="outline" size="sm" onClick={handleDownload} disabled={loading}>
-        {loading ? (
-          <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Preparing…
-          </>
-        ) : (
-          <>
-            <Download className="h-4 w-4 mr-2" />
-            Download Parent Block
-          </>
-        )}
-      </Button>
+      <ParentBlockDownloadButton block={block} />
     </div>
   );
 }
@@ -301,12 +329,19 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
       },
       {
         id: 'download',
-        header: () => <span className="sr-only">Download</span>,
+        header: () => <span>QR Files</span>,
         enableSorting: false,
         cell: ({ row }) => {
           const b = row.original;
-          if (b.status !== 'completed' || !b.download_available) return null;
-          return <BlockDownloadButton block={b} />;
+          if (b.status !== 'completed') return null;
+          return (
+            <div className="flex gap-2">
+              <div>{b.download_available && <BlockDownloadButton block={b} />}</div>
+              {hasMasterPackQr(b) && (
+                <div><ParentBlockDownloadButton block={b} /></div>
+              )}
+            </div>
+          );
         },
       },
       {

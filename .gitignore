@@ -8,6 +8,8 @@ out-tsc
 # dependencies
 node_modules
 .codeant-pr-comments.json
+.env.local
+.env
 .deploy
 .codeant-pr-comments.json
 # IDEs and editors

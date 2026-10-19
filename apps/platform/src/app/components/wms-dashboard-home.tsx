@@ -31,10 +31,10 @@ import {
   Warehouse,
 } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { cn } from '@horizon-sync/ui/lib';
-import { useUserStore } from '@horizon-sync/store';
 
 import { environment } from '../../environments/environment';
 
@@ -302,10 +302,8 @@ function CapacityCard({ warehouseName, node }: CapacityCardProps) {
                 </span>
               </div>
               <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
-                  style={{ width: `${Math.max(0, Math.min(100, countPct ?? 0))}%` }}
-                />
+                <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400"
+                  style={{ width: `${Math.max(0, Math.min(100, countPct ?? 0))}%` }}/>
               </div>
             </div>
           )}
@@ -319,10 +317,8 @@ function CapacityCard({ warehouseName, node }: CapacityCardProps) {
                 </span>
               </div>
               <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
-                  style={{ width: `${Math.max(0, Math.min(100, volPct ?? 0))}%` }}
-                />
+                <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                  style={{ width: `${Math.max(0, Math.min(100, volPct ?? 0))}%` }}/>
               </div>
             </div>
           )}
@@ -336,10 +332,8 @@ function CapacityCard({ warehouseName, node }: CapacityCardProps) {
                 </span>
               </div>
               <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400"
-                  style={{ width: `${Math.max(0, Math.min(100, wtPct ?? 0))}%` }}
-                />
+                <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400"
+                  style={{ width: `${Math.max(0, Math.min(100, wtPct ?? 0))}%` }}/>
               </div>
             </div>
           )}
@@ -349,7 +343,15 @@ function CapacityCard({ warehouseName, node }: CapacityCardProps) {
   );
 }
 
-export function WMSDashboardHome() {
+export function WMSDashboardHome({
+  warehouseId: warehouseIdProp,
+  onWarehouseChange,
+}: {
+  /** Controlled warehouse scope (`'all'` = every warehouse). */
+  warehouseId?: string;
+  /** Notifies the parent so sibling sections can share the same scope. */
+  onWarehouseChange?: (warehouseId: string) => void;
+} = {}) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [period, setPeriod] = React.useState<'week' | 'month' | 'year'>('week');
   const [anchorDate, setAnchorDate] = React.useState(new Date());
@@ -359,10 +361,18 @@ export function WMSDashboardHome() {
   const [allActivity, setAllActivity] = React.useState<ActivityItem[]>([]);
   const [loadingAll, setLoadingAll] = React.useState(false);
 
-  // Warehouse selector
+  // Warehouse selector (controlled by the parent when it passes `warehouseId`)
   const [warehouses, setWarehouses] = React.useState<WarehouseOption[]>([]);
-  const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string>('all');
+  const [internalWarehouseId, setInternalWarehouseId] = React.useState<string>('all');
   const [warehousesLoading, setWarehousesLoading] = React.useState(false);
+  const selectedWarehouseId = warehouseIdProp ?? internalWarehouseId;
+  const setSelectedWarehouseId = React.useCallback(
+    (next: string) => {
+      setInternalWarehouseId(next);
+      onWarehouseChange?.(next);
+    },
+    [onWarehouseChange],
+  );
 
   // Warehouse capacity (per-warehouse rollup trees)
   const [capacityByWarehouse, setCapacityByWarehouse] = React.useState<Record<string, CapacityNode>>({});
@@ -578,12 +588,10 @@ export function WMSDashboardHome() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {/* Warehouse filter */}
-          <select
-            value={selectedWarehouseId}
+          <select value={selectedWarehouseId}
             onChange={(e) => setSelectedWarehouseId(e.target.value)}
             disabled={warehousesLoading}
-            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          >
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
             <option value="all">
               {warehousesLoading ? 'Loading...' : `All Warehouses (${warehouses.length})`}
             </option>
@@ -600,14 +608,12 @@ export function WMSDashboardHome() {
           </Button>
           <div className="flex border rounded-md overflow-hidden">
             {(['week', 'month', 'year'] as const).map((p) => (
-              <button
-                key={p}
+              <button key={p}
                 className={cn(
                   'px-3 py-1.5 text-sm capitalize transition-colors',
                   period === p ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'
                 )}
-                onClick={() => setPeriod(p)}
-              >
+                onClick={() => setPeriod(p)}>
                 {p}
               </button>
             ))}
@@ -620,38 +626,30 @@ export function WMSDashboardHome() {
 
       {/* Stats Grid — same style as Owner/Admin dashboard */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Stock Items"
+        <StatCard title="Total Stock Items"
           value={s.total_stock_items.toLocaleString()}
           change={`${s.assigned_warehouses} warehouses`}
           changeType="positive"
           icon={Package}
-          iconBg="bg-gradient-to-br from-violet-500 to-fuchsia-500"
-        />
-        <StatCard
-          title="Inbound This Period"
+          iconBg="bg-gradient-to-br from-violet-500 to-fuchsia-500"/>
+        <StatCard title="Inbound This Period"
           value={overview.inbound.total_qty.toLocaleString()}
           change={`+${overview.inbound.receiving_slips} receiving slips`}
           changeType="positive"
           icon={TrendingUp}
-          iconBg="bg-gradient-to-br from-emerald-500 to-emerald-600"
-        />
-        <StatCard
-          title="Outbound This Period"
+          iconBg="bg-gradient-to-br from-emerald-500 to-emerald-600"/>
+        <StatCard title="Outbound This Period"
           value={overview.outbound.total_qty.toLocaleString()}
           change={`${overview.outbound.dispatches} dispatches`}
           changeType="neutral"
           icon={Truck}
-          iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
-        />
-        <StatCard
-          title="Active Workers"
+          iconBg="bg-gradient-to-br from-blue-500 to-blue-600"/>
+        <StatCard title="Active Workers"
           value={s.active_workers.toString()}
           change={s.low_stock_count > 0 ? `${s.low_stock_count} low stock alerts` : 'All stock healthy'}
           changeType={s.low_stock_count > 0 ? 'negative' : 'positive'}
           icon={Users}
-          iconBg="bg-gradient-to-br from-orange-500 to-amber-500"
-        />
+          iconBg="bg-gradient-to-br from-orange-500 to-amber-500"/>
       </div>
 
       {/* Warehouse Capacity — per-warehouse volume/weight rollups */}
@@ -739,10 +737,8 @@ export function WMSDashboardHome() {
                           </div>
                         </div>
                         {/* Bar */}
-                        <div
-                          className="w-full bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-105 origin-bottom"
-                          style={{ height: `${Math.max(pct, 2)}%` }}
-                        />
+                        <div className="w-full bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-emerald-500/20 hover:scale-105 origin-bottom"
+                          style={{ height: `${Math.max(pct, 2)}%` }}/>
                       </div>
                     );
                   })}
@@ -819,10 +815,8 @@ export function WMSDashboardHome() {
                           </div>
                         </div>
                         {/* Bar */}
-                        <div
-                          className="w-full bg-gradient-to-t from-rose-500 to-orange-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-rose-500/20 hover:scale-105 origin-bottom"
-                          style={{ height: `${Math.max(pct, 2)}%` }}
-                        />
+                        <div className="w-full bg-gradient-to-t from-rose-500 to-orange-400 rounded-t-md transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-rose-500/20 hover:scale-105 origin-bottom"
+                          style={{ height: `${Math.max(pct, 2)}%` }}/>
                       </div>
                     );
                   })}
@@ -838,6 +832,23 @@ export function WMSDashboardHome() {
               )}
             </div>
           </div>
+        </div>
+      </div>
+
+
+
+      {/* Quick Actions — same style as Owner dashboard */}
+      <div className="rounded-xl border border-border bg-gradient-to-br from-violet-500/5 via-transparent to-fuchsia-500/5 p-6">
+        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {QuickActions.map((action) => (
+            <Button key={action.label}
+              variant="outline"
+              className="h-auto py-4 flex-col gap-2 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all">
+              <action.icon className="h-5 w-5 text-violet-500" />
+              <span>{action.label}</span>
+            </Button>
+          ))}
         </div>
       </div>
 
@@ -897,23 +908,6 @@ export function WMSDashboardHome() {
               </React.Fragment>
             );
           })}
-        </div>
-      </div>
-
-      {/* Quick Actions — same style as Owner dashboard */}
-      <div className="rounded-xl border border-border bg-gradient-to-br from-violet-500/5 via-transparent to-fuchsia-500/5 p-6">
-        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {QuickActions.map((action) => (
-            <Button
-              key={action.label}
-              variant="outline"
-              className="h-auto py-4 flex-col gap-2 hover:border-violet-500/50 hover:bg-violet-500/5 transition-all"
-            >
-              <action.icon className="h-5 w-5 text-violet-500" />
-              <span>{action.label}</span>
-            </Button>
-          ))}
         </div>
       </div>
     </div>

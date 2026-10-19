@@ -1,13 +1,14 @@
 import * as React from 'react';
 
-import { ArrowUpRight, ArrowDownRight, Package, Users, DollarSign, Activity, TrendingUp, Calendar } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Package, Users, Activity, TrendingUp, Calendar } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
+import { CurrencyIcon } from '@horizon-sync/ui';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Separator } from '@horizon-sync/ui/components/ui/separator';
 import { cn } from '@horizon-sync/ui/lib';
-import { CurrencyIcon } from '@horizon-sync/ui';
-import { useUserStore } from '@horizon-sync/store';
 
+import { DashboardSection } from './dashboard';
 import { WMSDashboardHome } from './wms-dashboard-home';
 
 // ── WMS role detection ────────────────────────────────────────────────────────
@@ -138,9 +139,17 @@ const recentActivity: RecentActivityItem[] = [
 
 export function DashboardHome() {
   const isWms = useIsWmsRole();
+  // Shared by the WMS dashboard's selector and the widgets below it, so both
+  // stay scoped to the same warehouse.
+  const [warehouseId, setWarehouseId] = React.useState('all');
 
   if (isWms) {
-    return <WMSDashboardHome />;
+    return (
+      <div className="space-y-8">
+        <WMSDashboardHome warehouseId={warehouseId} onWarehouseChange={setWarehouseId} />
+        <DashboardSection warehouseId={warehouseId === 'all' ? undefined : warehouseId} />
+      </div>
+    );
   }
 
   return (
@@ -173,10 +182,12 @@ export function DashboardHome() {
         ))}
       </div>
 
+      <DashboardSection />
+
       {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-7">
+      <div className="space-y-6">
         {/* Chart Area */}
-        <div className="lg:col-span-4 rounded-xl border border-border bg-card p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-lg font-semibold">Revenue Overview</h2>
@@ -211,7 +222,7 @@ export function DashboardHome() {
         </div>
 
         {/* Recent Activity */}
-        <div className="lg:col-span-3 rounded-xl border border-border bg-card p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-lg font-semibold">Recent Activity</h2>

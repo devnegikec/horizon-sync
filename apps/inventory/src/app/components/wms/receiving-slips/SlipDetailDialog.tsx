@@ -2,13 +2,12 @@ import * as React from 'react';
 
 import { AlertTriangle, Lock, XCircle } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
+import { useAccess } from '@horizon-sync/access';
 import { Button } from '@horizon-sync/ui/components';
 import { useToast } from '@horizon-sync/ui/hooks';
 
 import type { FlagLineResponse, ReceivingSlip, ReceivingSlipGroup, ReceivingSlipGroupItem, ReceivingSlipItem } from '../../../types/wms.types';
 import { toNormalizedApiError, type NormalizedApiError } from '../../../utility/api/core';
-import { hasPermission } from '../../../utils/permissions';
 import { QRDetailDialog, type QRDetailColumn, type QRDetailRow } from '../QRDetailDialog';
 import { WMSStatusBadge } from '../WMSStatusBadge';
 
@@ -358,7 +357,7 @@ interface SlipDetailDialogProps {
 
 export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onRejectItem, onLineFlagged }: SlipDetailDialogProps) {
   const { toast } = useToast();
-  const permissions = useUserStore((state) => state.permissions.permissions);
+  const access = useAccess('wms');
   const [flagTarget, setFlagTarget] = React.useState<ReceivingSlipGroupItem[] | null>(null);
   const [rejectTarget, setRejectTarget] = React.useState<ReceivingSlipGroupItem | null>(null);
   const [rejectBusy, setRejectBusy] = React.useState(false);
@@ -393,7 +392,7 @@ export function SlipDetailDialog({ slip, loading, error, open, onOpenChange, onR
 
   // Hiding the control up front is the documented answer to a 403; the API also
   // refuses line edits once the slip is approved or rejected.
-  const canWrite = hasPermission(permissions, 'warehouse.update') || hasPermission(permissions, 'wms.scan');
+  const canWrite = access.can('receiving', 'update');
   const flagBlocked = flagBlockedReason(slip, canWrite);
   const canFlag = flagBlocked === null;
 

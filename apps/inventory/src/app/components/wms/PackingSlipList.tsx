@@ -3,6 +3,7 @@ import * as React from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
 import { ChevronDown, ChevronRight, PackageCheck } from 'lucide-react';
 
+import { useAccess } from '@horizon-sync/access';
 import { useUserStore } from '@horizon-sync/store';
 import {
   Button,
@@ -308,6 +309,8 @@ function packingSlipUnits(slip: PackingSlip | null): number {
 
 export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  // Mark-loading and dispatch are `packing.execute` actions.
+  const canPack = useAccess('wms').can('packing', 'execute');
   const { toast } = useToast();
   const invalidateOrders = useInvalidateOutboundOrders();
   const [page, setPage] = React.useState(1);
@@ -439,6 +442,7 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
 
   const columns = createPackingSlipColumns({
     busyId,
+    canAct: canPack,
     onView: (slip) => openDetail(slip.id),
     onMarkLoading: (slip) => markLoading(slip.id),
     onDispatch: (slip) => dispatch(slip.id),

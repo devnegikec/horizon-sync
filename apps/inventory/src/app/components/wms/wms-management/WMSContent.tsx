@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import { AccessGuard } from '@horizon-sync/access';
+
 import { StockManagement } from '../../stock';
 import { AsnManagement } from '../AsnManagement';
 import { OutboundManagement } from '../OutboundManagement';
@@ -20,8 +22,12 @@ function StockContent({ selectedWarehouseId }: WMSContentProps) {
   return <StockManagement warehouseId={selectedWarehouseId || undefined} />;
 }
 
-function ManageContent({ canManage, ...props }: WMSContentProps) {
-  return canManage ? <ManageManagement canManage={canManage} {...props} /> : null;
+function ManageContent(props: WMSContentProps) {
+  return (
+    <AccessGuard module="wms" resource="manage" action="view" fallback={null}>
+      <ManageManagement {...props} />
+    </AccessGuard>
+  );
 }
 
 /** Renders the content for the active top-level WMS view. */

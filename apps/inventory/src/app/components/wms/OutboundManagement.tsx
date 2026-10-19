@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
+import { useAccess } from '@horizon-sync/access';
 import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@horizon-sync/ui/components/ui/dropdown-menu';
@@ -449,6 +450,8 @@ interface OutboundActionsProps {
  */
 function OutboundActions({ activeTab, warehouseId, onImportSuccess }: OutboundActionsProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  // Importing / creating outbound orders is an `outbound.create` action.
+  const canCreateOrder = useAccess('wms').can('outbound', 'create');
   const [exporting, setExporting] = React.useState(false);
   const [importOpen, setImportOpen] = React.useState(false);
   const [createOpen, setCreateOpen] = React.useState(false);
@@ -517,10 +520,12 @@ function OutboundActions({ activeTab, warehouseId, onImportSuccess }: OutboundAc
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Import Incoming Order
-          </DropdownMenuItem>
+          {canCreateOrder && (
+            <DropdownMenuItem onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import Incoming Order
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={handleExport} disabled={exporting}>
             {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
             Export Orders
@@ -528,10 +533,12 @@ function OutboundActions({ activeTab, warehouseId, onImportSuccess }: OutboundAc
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
-        <Plus className="h-3.5 w-3.5" />
-        New Order
-      </Button>
+      {canCreateOrder && (
+        <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
+          <Plus className="h-3.5 w-3.5" />
+          New Order
+        </Button>
+      )}
 
       <ImportDialog open={importOpen}
         onClose={() => setImportOpen(false)}

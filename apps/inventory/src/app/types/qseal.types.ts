@@ -110,6 +110,22 @@ export interface QSealPackagingDetailsPayload {
   width_mm: number | null;
   height_mm: number | null;
   weight_grams: number | null;
+
+  // Inner Carton (IC) pack
+  items_per_ic_pack?: number | null;
+  ic_pack_unit_name?: string | null;
+  ic_pack_length_mm?: number | null;
+  ic_pack_width_mm?: number | null;
+  ic_pack_height_mm?: number | null;
+  ic_pack_weight_grams?: number | null;
+
+  // Master Pack / Master Carton (MC)
+  items_per_master_pack?: number | null;
+  master_pack_unit_name?: string | null;
+  master_pack_length_mm?: number | null;
+  master_pack_width_mm?: number | null;
+  master_pack_height_mm?: number | null;
+  master_pack_weight_grams?: number | null;
 }
 
 export interface CreateQSealProductPayload {

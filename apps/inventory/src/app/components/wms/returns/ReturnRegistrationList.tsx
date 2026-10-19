@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { RotateCcw } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
+import { useAccess } from '@horizon-sync/access';
 import {
   Button,
   Card,
@@ -20,7 +20,6 @@ import { useToast } from '@horizon-sync/ui/hooks';
 
 import { useReturnRegistrations } from '../../../hooks/useWMS';
 import type { ReturnRegistrationDetail, ReturnRegistrationListItem } from '../../../types/wms.types';
-import { hasPermission } from '../../../utils/permissions';
 
 import { CancelReturnRegistrationDialog, type ReturnRegistrationTarget } from './CancelReturnRegistrationDialog';
 import { CreateReturnRegistrationDialog } from './CreateReturnRegistrationDialog';
@@ -170,8 +169,7 @@ export function ReturnRegistrationList({
   onCreateFormOpenChange,
 }: ReturnRegistrationListProps) {
   const { toast } = useToast();
-  const permissions = useUserStore((state) => state.permissions.permissions);
-  const canRegister = hasPermission(permissions, 'return.register');
+  const canRegister = useAccess('wms').can('returns', 'register');
 
   const [status, setStatus] = React.useState<string>(ALL_STATUSES);
   const [page, setPage] = React.useState(1);
