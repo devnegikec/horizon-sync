@@ -3,7 +3,6 @@ import * as React from 'react';
 import { Loader2, Layers } from 'lucide-react';
 
  
-import { useUserStore } from '@horizon-sync/store';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@horizon-sync/ui/components/ui/dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
@@ -29,7 +28,7 @@ interface ItemGroupDialogProps {
 const VALUATION_METHODS = [
   { value: 'fifo', label: 'FIFO' },
   { value: 'lifo', label: 'LIFO' },
-  { value: 'average', label: 'Moving Average' },
+  { value: 'moving_average', label: 'Moving Average' },
 ];
 
 const DEFAULT_FORM = {
@@ -53,6 +52,7 @@ interface FormFieldsProps {
   fieldErrors?: Record<string, string>;
 }
 
+// eslint-disable-next-line complexity
 function ItemGroupFormFields({ formData, set, isEditing, parentOptions, fieldErrors = {} }: FormFieldsProps) {
   return (
     <div className="grid gap-4 py-4">
