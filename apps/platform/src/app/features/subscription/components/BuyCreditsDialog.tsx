@@ -16,6 +16,7 @@ import { Label } from '@horizon-sync/ui/components/ui/label';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
 import { AccountBillingService, BillingApiError, createIdempotencyKey } from '../services/account-billing.service';
+import { openRazorpayCheckout, type RazorpayPaymentResult } from '../services/razorpay-checkout';
 import type { TopupOrder, TopupQuote } from '../types';
 
 import { Money, formatDate, formatDateTime, formatDecimal } from './BillingFormat';
@@ -24,6 +25,8 @@ const QUICK_AMOUNTS = ['1000', '5000', '10000', '25000'];
 const DECIMAL_PATTERN = /^\d+(\.\d{1,6})?$/;
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 60000;
+/** Payment provider used for top-ups (the backend creates the Razorpay order). */
+const PROVIDER = 'razorpay';
 
 interface BuyCreditsDialogProps {
   open: boolean;
@@ -201,6 +204,7 @@ export function BuyCreditsDialog({ open, onOpenChange, currency, onPaid }: BuyCr
 
   const startPolling = React.useCallback(
     (orderId: string) => {
+      if (pollRef.current !== null) window.clearInterval(pollRef.current);
       let elapsed = 0;
       setPolling(true);
       pollRef.current = window.setInterval(async () => {
@@ -214,6 +218,50 @@ export function BuyCreditsDialog({ open, onOpenChange, currency, onPaid }: BuyCr
       }, POLL_INTERVAL_MS);
     },
     [applyOrder, stopPolling],
+  );
+
+  /** Verifies the Checkout signature with the server, then falls back to polling. */
+  const verifyAndFinish = React.useCallback(
+    async (orderId: string, payment: RazorpayPaymentResult) => {
+      try {
+        const verified = await AccountBillingService.verifyTopupOrder(orderId, payment);
+        if (verified) {
+          applyOrder(verified);
+          if (verified.status === 'paid') return;
+        }
+      } catch {
+        // Verify endpoint may not be deployed yet — the webhook remains the source of truth.
+      }
+      startPolling(orderId);
+    },
+    [applyOrder, startPolling],
+  );
+
+  /** Opens the Razorpay Checkout modal for an order created by the backend. */
+  const startRazorpayCheckout = React.useCallback(
+    async (created: TopupOrder) => {
+      if (!created.razorpay) return;
+      const outcome = await openRazorpayCheckout({
+        key: created.razorpay.key_id,
+        amount: created.razorpay.amount,
+        currency: created.razorpay.currency,
+        name: created.razorpay.name ?? 'Ciphercode',
+        description: created.razorpay.description ?? 'QR credits top-up',
+        order_id: created.razorpay.order_id,
+        prefill: created.razorpay.prefill,
+        theme: { color: '#7c3aed' },
+      });
+      if (outcome.status === 'success') {
+        await verifyAndFinish(created.order_id, outcome.payment);
+        return;
+      }
+      if (outcome.status === 'failed') {
+        setError(outcome.message);
+        return;
+      }
+      setError('Payment window closed before completion.');
+    },
+    [verifyAndFinish],
   );
 
   const requestQuote = async () => {
@@ -241,8 +289,13 @@ export function BuyCreditsDialog({ open, onOpenChange, currency, onPaid }: BuyCr
       idempotencyRef.current = { quoteId: quote.quote_id, key: createIdempotencyKey() };
     }
     try {
-      const created = await AccountBillingService.createOrder(quote.quote_id, idempotencyRef.current.key);
+      const created = await AccountBillingService.createOrder(quote.quote_id, idempotencyRef.current.key, PROVIDER);
       setOrder(created);
+      if (created.razorpay) {
+        startPolling(created.order_id);
+        await startRazorpayCheckout(created);
+        return;
+      }
       if (created.checkout_url) window.open(created.checkout_url, '_blank', 'noopener,noreferrer');
       startPolling(created.order_id);
     } catch (err) {

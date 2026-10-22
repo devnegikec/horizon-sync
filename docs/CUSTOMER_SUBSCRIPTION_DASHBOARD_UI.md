@@ -122,6 +122,52 @@ Replace `DummyPaymentService` and the overlay in `useAccountBilling` once Core
 exposes a customer activation endpoint + verified provider webhook
 (`POST /api/v1/account/subscription/activate`).
 
+### Razorpay Checkout integration (frontend)
+
+> Backend contract, credentials and webhook rules: see
+> [`RAZORPAY_TOPUP_BACKEND_INTEGRATION.md`](./RAZORPAY_TOPUP_BACKEND_INTEGRATION.md).
+
+Order creation sends `provider: "razorpay"`. When the backend creates a Razorpay
+order it should include the public checkout options in the response:
+
+```json
+{
+  "order_id": "…",
+  "status": "pending",
+  "amount": "268.75",
+  "currency": "INR",
+  "credits": "5000.000000",
+  "provider": "razorpay",
+  "razorpay": {
+    "key_id": "rzp_test_…",
+    "order_id": "order_…",
+    "amount": 26875,
+    "currency": "INR"
+  }
+}
+```
+
+`BuyCreditsDialog` then:
+
+- loads `https://checkout.razorpay.com/v1/checkout.js` on demand
+  (`services/razorpay-checkout.ts`) and opens Checkout with the `order_id`;
+- on `handler` success calls `POST /api/v1/account/topups/orders/{id}/verify`
+  with `razorpay_payment_id|order_id|signature` (best effort — a 404 just falls
+  back to polling while the webhook grants);
+- on `payment.failed` / `ondismiss` shows an inline error and keeps the order
+  visible with **Refresh status**;
+- polls the order every 2s for 60s after creation, so a webhook-driven update is
+  picked up either way.
+
+`checkout_url` remains supported as a fallback (opened in a new tab), so payment
+links or hosted pages work without frontend changes.
+
+**Security:** only `key_id` reaches the browser. `key_secret` and the webhook
+secret stay on the server; signature verification and credit granting are
+server-only. If a CSP is introduced later, allow
+`script-src https://checkout.razorpay.com` and
+`frame-src https://api.razorpay.com https://checkout.razorpay.com`.
+
 ## Changing the plan
 
 There is **no customer-facing plan-change endpoint** in the deployed API
@@ -154,6 +200,8 @@ apps/platform/src/app/
   features/subscription/
     types.ts                                  # mirrors deployed account schemas
     services/account-billing.service.ts       # typed client, Idempotency-Key, error codes
+    services/razorpay-checkout.ts             # loads checkout.js and opens Checkout
+    services/dummy-payment.service.ts         # temporary activation simulation
     hooks/useAccountBilling.ts                # subscription + credits, 60s credit poll
     components/
       BillingFormat.tsx                       # Money / CreditQuantity / StatusPill / dates
