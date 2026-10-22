@@ -1,7 +1,7 @@
 /**
  * Notification Service
  * Centralized toast notification management
- * 
+ *
  * Note: This uses a simple implementation. For production, consider:
  * - Installing 'sonner' or 'react-hot-toast'
  * - Using a proper toast library with better UX
@@ -63,11 +63,22 @@ class NotificationService {
     };
 
     toast.className = `${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-start gap-2 animate-slide-in`;
-    toast.innerHTML = `
-      <span class="text-lg font-bold">${icons[type]}</span>
-      <span class="flex-1">${message}</span>
-      <button class="text-white hover:text-gray-200 font-bold" onclick="this.parentElement.remove()">×</button>
-    `;
+
+    // Build nodes with textContent so message/product names are never parsed as HTML.
+    const icon = document.createElement('span');
+    icon.className = 'text-lg font-bold';
+    icon.textContent = icons[type];
+
+    const body = document.createElement('span');
+    body.className = 'flex-1';
+    body.textContent = message;
+
+    const closeButton = document.createElement('button');
+    closeButton.className = 'text-white hover:text-gray-200 font-bold';
+    closeButton.textContent = '×';
+    closeButton.addEventListener('click', () => toast.remove());
+
+    toast.append(icon, body, closeButton);
 
     this.toastContainer.appendChild(toast);
 

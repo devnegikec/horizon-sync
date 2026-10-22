@@ -305,7 +305,9 @@ function StatusPanel({
 
 function formatOneTimeDate(value: string | null | undefined): string | null {
   if (!value) return null;
-  const parsed = new Date(value);
+  // Date-only values are parsed as UTC midnight; parse them as local midnight instead
+  // so viewers west of UTC do not see the previous calendar day.
+  const parsed = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value);
   if (Number.isNaN(parsed.getTime())) return value;
   return new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
@@ -988,8 +990,9 @@ function usePublicVerification(input: VerificationRequest | null, requestKey: st
         const response = await axios.post<VerificationResult>(`${API_BASE_URL}/api/v1/public/qr/verify`, payload, {
           headers: { 'X-Scan-Event-Id': scanEventId.current },
         });
-        if (response.data.redirect_to_client && response.data.client_product_auth_url) {
-          window.location.replace(response.data.client_product_auth_url);
+        const redirectUrl = safeWebUrl(response.data.client_product_auth_url);
+        if (response.data.redirect_to_client && redirectUrl) {
+          window.location.replace(redirectUrl);
           return;
         }
         setResult(response.data);
@@ -1024,25 +1027,36 @@ function usePublicLandingPage(result: VerificationResult | null): PublicLandingP
     let cancelled = false;
     setConfig(null);
 
-    if (!result?.gtin || result.verification_status === 'invalid') {
+    // The landing-page endpoint is keyed by SKU; fall back to the GTIN for
+    // products whose public configuration is stored against the barcode.
+    const identifiers = [result?.sku_code, result?.gtin].filter(
+      (identifier): identifier is string => Boolean(identifier),
+    );
+
+    if (identifiers.length === 0 || result?.verification_status === 'invalid') {
       return () => {
         cancelled = true;
       };
     }
 
-    void getPublicLandingPageBySku(result.gtin)
-      .then((nextConfig) => {
-        if (!cancelled) setConfig(nextConfig);
-      })
-      .catch(() => {
-        // A landing page is optional. The verification result remains the fallback.
-        if (!cancelled) setConfig(null);
-      });
+    void (async () => {
+      for (const identifier of identifiers) {
+        try {
+          const nextConfig = await getPublicLandingPageBySku(identifier);
+          if (!cancelled) setConfig(nextConfig);
+          return;
+        } catch {
+          // A landing page is optional. Try the next identifier, then fall back
+          // to the verification result.
+        }
+      }
+      if (!cancelled) setConfig(null);
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [result?.gtin, result?.verification_status]);
+  }, [result?.sku_code, result?.gtin, result?.verification_status]);
 
   return config;
 }

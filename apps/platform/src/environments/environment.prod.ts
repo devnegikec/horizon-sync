@@ -1,7 +1,10 @@
 const configuredCoreApiUrl = process.env.NX_API_CORE_URL;
 const browserOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8001';
 const isLoopbackCoreApi = Boolean(
-  configuredCoreApiUrl && /^https?:\/\/(localhost|127(?:\.\d{1,3}){3})(?::\d+)?(?:\/|$)/i.test(configuredCoreApiUrl),
+  configuredCoreApiUrl &&
+    /^https?:\/\/(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|\[::1?\])(?::\d+)?(?:\/|$)/i.test(
+      configuredCoreApiUrl,
+    ),
 );
 
 export const environment = {

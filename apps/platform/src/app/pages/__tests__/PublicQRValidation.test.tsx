@@ -213,7 +213,7 @@ describe('PublicQRValidation', () => {
     expect(screen.getByRole('heading', { name: 'Have thoughts?' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Shop now/i })).toHaveAttribute('href', 'https://example.com/shop');
     expect(screen.queryByText(/Powered by/i)).not.toBeInTheDocument();
-    expect(mockedAxios.get).toHaveBeenCalledWith(expect.stringContaining('/api/v1/public/products/sku/0123456789012/landing-page'));
+    expect(mockedAxios.get).toHaveBeenCalledWith(expect.stringContaining('/api/v1/public/products/sku/DEMO-BLU-L/landing-page'));
   });
 
   it('shows the protected-layer instruction for a Dual overt QR', async () => {
