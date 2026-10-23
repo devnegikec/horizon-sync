@@ -149,6 +149,25 @@ export interface TopupQuote {
   credit_expires_at: string;
 }
 
+/**
+ * Options the backend must return when the order was created with the Razorpay
+ * provider. `key_id` is public by design; the key secret never leaves the server.
+ */
+export interface RazorpayOrderOptions {
+  key_id: string;
+  order_id: string;
+  /** Amount in the smallest currency subunit (integer paise for INR). */
+  amount: number | string;
+  currency: string;
+  name?: string;
+  description?: string;
+  prefill?: {
+    name?: string;
+    email?: string;
+    contact?: string;
+  };
+}
+
 export interface TopupOrder {
   order_id: string;
   status: 'created' | 'pending' | 'paid' | 'failed' | 'cancelled';
@@ -156,4 +175,7 @@ export interface TopupOrder {
   amount: string;
   currency: string;
   credits: string;
+  provider?: string | null;
+  /** Present when the backend created a Razorpay order for this top-up. */
+  razorpay?: RazorpayOrderOptions | null;
 }

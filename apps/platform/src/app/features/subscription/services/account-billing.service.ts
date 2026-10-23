@@ -147,6 +147,20 @@ export const AccountBillingService = {
     return request<TopupOrder>(`/api/v1/account/topups/orders/${orderId}`);
   },
 
+  /**
+   * Optional fast-path used by the Razorpay Checkout handler. The server verifies
+   * the signature and re-fetches the payment; granting stays idempotent.
+   */
+  verifyTopupOrder(
+    orderId: string,
+    payment: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string },
+  ) {
+    return request<TopupOrder>(`/api/v1/account/topups/orders/${orderId}/verify`, {
+      method: 'POST',
+      body: JSON.stringify(payment),
+    });
+  },
+
   // ── Ops-only plan change (used when the signed-in user holds system_admin billing rights) ──
 
   listPlans() {
