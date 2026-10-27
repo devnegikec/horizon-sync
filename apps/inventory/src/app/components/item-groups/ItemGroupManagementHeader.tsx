@@ -161,7 +161,7 @@ export function ItemGroupManagementHeader({ onCreateGroup, onImportSuccess, item
     <>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Item Groups</h1>
+          <h2 className="text-2xl font-bold tracking-tight">Item Groups</h2>
           <p className="text-muted-foreground mt-1">Organize your inventory items into logical categories</p>
         </div>
         <div className="flex items-center gap-3">

@@ -1,5 +1,4 @@
-export { QSealManagement } from './QSealManagement';
-export { QSealHeader } from './QSealHeader';
+export { QSealManagement } from './qseal-management';
 export { QSealFilters } from './QSealFilters';
 export { QSealStats } from './QSealStats';
 export { QSealTable } from './QSealTable';

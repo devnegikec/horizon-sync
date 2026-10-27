@@ -2,6 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  /* App-shell height chain: lets `h-full` resolve to the viewport height.
+     Without this, the dashboard shell has no resolved height and the whole
+     document scrolls instead of the inner <main> scroll container. */
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  /* Prefer the dynamic viewport height where supported so mobile browser
+     toolbars don't introduce a stray page scrollbar. */
+  @supports (height: 100dvh) {
+    #root {
+      height: 100dvh;
+    }
+  }
+}
+
+/*
+  `.tes-main` is set on <html> in apps/platform/src/index.html.
+  Kill document/viewport scrolling — but ONLY while the dashboard shell is
+  mounted, so the inner <main> is the single scroll owner.
+  Public pages (login, register, invite, QR validation) have no `.app-shell`
+  and keep normal document scroll on short viewports.
+*/
+html.root-main:has(#root .app-shell) {
+  overflow: hidden;
+}
+
 /* Themed scrollbar */
 @layer base {
   * {

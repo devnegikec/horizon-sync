@@ -8,23 +8,12 @@ name: Deploy UI to Railway (Stage)
 # so CI only uploads source — no Node build runs in Actions.
 #
 # Requires repo secret: RAILWAY_TOKEN_STAGE (a BW-staging *project* token).
+# Trigger: ANY push/merge to `stage` (no path filter) + manual workflow_dispatch.
 
 on:
   push:
     branches:
       - stage
-    paths:
-      - "apps/**"
-      - "libs/**"
-      - "Dockerfile.railway"
-      - "nginx.railway.conf"
-      - ".dockerignore"
-      - "railway.toml"
-      - "package.json"
-      - "package-lock.json"
-      - "nx.json"
-      - "tsconfig.base.json"
-      - ".github/workflows/deploy-stage.yml"
   workflow_dispatch:
 
 concurrency:
@@ -33,7 +22,7 @@ concurrency:
 
 env:
   RAILWAY_PROJECT_ID: fd8e8c06-a0a1-4592-9d6e-9a63c6cfb090
-  RAILWAY_ENV: staging
+  RAILWAY_STAGE_ENV: staging
   RAILWAY_SERVICE: horizon-ui
 
 jobs:
@@ -59,7 +48,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGE }}
         run: |
           railway up \
-            -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_ENV" -s "$RAILWAY_SERVICE" \
+            -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_STAGE_ENV" -s "$RAILWAY_SERVICE" \
             -m "stage: ${GITHUB_SHA::7} (horizon-ui)" -d
 
       - name: Verify deployment reached SUCCESS
@@ -70,7 +59,7 @@ jobs:
           ok=0
           for i in $(seq 1 60); do
             status=$(railway deployment list \
-              -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_ENV" -s "$RAILWAY_SERVICE" --json 2>/dev/null \
+              -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_STAGE_ENV" -s "$RAILWAY_SERVICE" --json 2>/dev/null \
               | python3 -c "import sys,json;d=json.load(sys.stdin);print((d[0] if isinstance(d,list) and d else {}).get('status',''))" \
               2>/dev/null || echo "")
             echo "attempt $i/60: ${status:-<no status>}"
@@ -101,5 +90,5 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGE }}
         run: |
-          railway logs -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_ENV" -s "$RAILWAY_SERVICE" -b -n 80 || true
-          railway logs -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_ENV" -s "$RAILWAY_SERVICE" -d -n 80 || true
+          railway logs -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_STAGE_ENV" -s "$RAILWAY_SERVICE" -b -n 80 || true
+          railway logs -p "$RAILWAY_PROJECT_ID" -e "$RAILWAY_STAGE_ENV" -s "$RAILWAY_SERVICE" -d -n 80 || true

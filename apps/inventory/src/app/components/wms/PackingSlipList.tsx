@@ -3,6 +3,7 @@ import * as React from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
 import { ChevronDown, ChevronRight, PackageCheck } from 'lucide-react';
 
+import { useAccess } from '@horizon-sync/access';
 import { useUserStore } from '@horizon-sync/store';
 import {
   Button,
@@ -187,6 +188,8 @@ interface PackingSlipSection {
   label: string;
   /** Sections are keyed by pick-list when present, otherwise by order. */
   kind: 'pick_list' | 'order';
+  /** Invoice ref shown next to a pick-list label (1 pick-list → 1 invoice). */
+  invoiceRef?: string;
   groups: PackingSlipGroup[];
 }
 
@@ -203,11 +206,18 @@ function packingSlipSections(groups: PackingSlipGroup[]): PackingSlipSection[] {
       existing.groups.push(group);
       return;
     }
+    const kind = group.pick_list_id ? 'pick_list' : 'order';
     const label =
       group.pick_list_no ||
       group.order_no ||
       (key !== '__unassigned__' ? key.slice(0, 8) : 'Unassigned');
-    sections.set(key, { key, label, kind: group.pick_list_id ? 'pick_list' : 'order', groups: [group] });
+    sections.set(key, {
+      key,
+      label,
+      kind,
+      invoiceRef: kind === 'pick_list' ? group.invoice_ref || undefined : undefined,
+      groups: [group],
+    });
   });
   return [...sections.values()];
 }
@@ -242,6 +252,9 @@ function PackingSlipLineItemsTable({ slip }: { slip: PackingSlip }) {
                     <td colSpan={5} className="px-4 py-1.5 text-xs font-medium text-muted-foreground">
                       {section.kind === 'pick_list' ? 'Pick List' : 'Order'}{' '}
                       <span className="font-mono text-foreground">{section.label}</span>
+                      {section.kind === 'pick_list' && section.invoiceRef ? (
+                        <span> (Invoice Ref: <span className="font-mono text-foreground">{section.invoiceRef}</span>)</span>
+                      ) : null}
                     </td>
                   </tr>
                   {section.groups.map((group, groupIndex) => (
@@ -296,6 +309,8 @@ function packingSlipUnits(slip: PackingSlip | null): number {
 
 export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  // Mark-loading and dispatch are `packing.execute` actions.
+  const canPack = useAccess('wms').can('packing', 'execute');
   const { toast } = useToast();
   const invalidateOrders = useInvalidateOutboundOrders();
   const [page, setPage] = React.useState(1);
@@ -427,6 +442,7 @@ export function PackingSlipList({ warehouseId, refreshKey }: PackingSlipListProp
 
   const columns = createPackingSlipColumns({
     busyId,
+    canAct: canPack,
     onView: (slip) => openDetail(slip.id),
     onMarkLoading: (slip) => markLoading(slip.id),
     onDispatch: (slip) => dispatch(slip.id),

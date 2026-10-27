@@ -6,12 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/compo
 
 import { DataSyncSettings } from '../features/data-sync/components/DataSyncSettings';
 import { FeatureFlagsSettings } from '../features/feature-flags/components/FeatureFlagsSettings';
+import { DashboardLayoutSettings } from '../features/organization/components/DashboardLayoutSettings';
 import { ItemUomConversionsSettings } from '../features/organization/components/ItemUomConversionsSettings';
 import { OrganizationProfileSettings } from '../features/organization/components/OrganizationProfileSettings';
 import { OrganizationSettings } from '../features/organization/components/OrganizationSettings';
 import { UomSettings } from '../features/organization/components/UomSettings';
 import { hasPermissionFromStore } from '../features/organization/utils/permissions';
 import { PickSettingsEditor } from '../features/pick-settings/components/PickSettingsEditor';
+import { SubscriptionSettings } from '../features/subscription/components/SubscriptionSettings';
 import { useAuth } from '../hooks';
 import { DEFAULT_ORGANIZATION_SETTINGS } from '../types/organization-settings.types';
 
@@ -29,7 +31,7 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, accessToken, isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = React.useState('organization');
+  const [activeTab, setActiveTab] = React.useState(() => new URLSearchParams(location.search).get('tab') ?? 'organization');
 
   // Requirement 6.1, 6.2: Check authentication and redirect to login if not authenticated
   React.useEffect(() => {
@@ -84,7 +86,9 @@ export function SettingsPage() {
         className="space-y-6">
         <TabsList className="h-auto flex-wrap gap-1">
           <TabsTrigger value="organization">Organization</TabsTrigger>
+          <TabsTrigger value="subscription">Subscription & Credits</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
+          <TabsTrigger value="dashboard-layout">Dashboard Layout</TabsTrigger>
           <TabsTrigger value="items-uom">Items & UOM</TabsTrigger>
           <TabsTrigger value="feature-flags">Feature Flags</TabsTrigger>
           <TabsTrigger value="pick-settings">Pick Settings</TabsTrigger>
@@ -97,6 +101,11 @@ export function SettingsPage() {
           <OrganizationProfileSettings organizationId={organizationId} accessToken={accessToken} canEdit={canEdit} />
         </TabsContent>
 
+        <TabsContent value="subscription" className="space-y-6">
+          {/* Plan, credits, invoices and top-ups for this organization */}
+          <SubscriptionSettings />
+        </TabsContent>
+
         <TabsContent value="preferences" className="space-y-6">
           {/* Currencies and units of measure */}
           <OrganizationSettings organizationId={organizationId}
@@ -104,6 +113,13 @@ export function SettingsPage() {
             canEdit={canEdit}
             initialSettings={DEFAULT_ORGANIZATION_SETTINGS}
             onSettingsChange={() => undefined}/>
+        </TabsContent>
+
+        <TabsContent value="dashboard-layout" className="space-y-6">
+          {/* Which dashboard widgets are shown + their order (org extra_data) */}
+          <DashboardLayoutSettings organizationId={organizationId}
+            accessToken={accessToken}
+            canEdit={canEdit} />
         </TabsContent>
 
         <TabsContent value="items-uom" className="space-y-6">

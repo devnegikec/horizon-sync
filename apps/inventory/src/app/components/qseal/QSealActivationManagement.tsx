@@ -694,7 +694,7 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
     closeSettingsDialog();
   };
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Activation</h2>

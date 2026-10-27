@@ -3,15 +3,17 @@ import * as React from 'react';
 import { LayoutDashboard, Package, BarChart3, Settings, Users, FileText, HelpCircle, Zap, CreditCard, DollarSign, ShoppingCart, BookOpen, Shield, Receipt, Building2, QrCode, Warehouse } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
-import { Separator } from '@horizon-sync/ui/components/ui/separator';
+import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
+import { CurrencyIcon } from '@horizon-sync/ui';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
+import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
 import { cn } from '@horizon-sync/ui/lib';
 
-import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
-import { usePermissions } from '../hooks/usePermissions';
-import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
 import { environment } from '../../environments/environment';
-import { CurrencyIcon } from '@horizon-sync/ui';
+import { usePermissions } from '../hooks/usePermissions';
+
+
+
 
 /** Wrapper that reads baseCurrency from the store and passes it to CurrencyIcon */
 function DynamicCurrencyIcon({ className }: { className?: string }) {
@@ -152,7 +154,7 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
       isMobile && ['fixed inset-y-0 left-0 z-50 w-[260px]', open ? 'translate-x-0' : '-translate-x-full'],
     )}>
       {/* Logo Section */}
-      <div className="flex h-16 items-center gap-3 px-4 border-b border-border">
+      <div className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500">
           <Zap className="h-5 w-5 text-white" />
         </div>
@@ -167,7 +169,7 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
       </div>
 
       {/* Main Navigation */}
-      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 min-h-0 space-y-1 overflow-y-auto py-4 px-3">
         {filteredMainNavItems.map((item) => {
           const isActive = item.href === '/' ? location.pathname === '/' : location.pathname.startsWith(item.href);
           return (
@@ -181,10 +183,8 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
         })}
       </nav>
 
-      <Separator className="mx-3" />
-
       {/* Bottom Navigation */}
-      <div className="py-4 px-3 space-y-1">
+      <div className="mt-auto shrink-0 space-y-1 border-t border-border bg-card py-4 px-3">
         {filteredBottomNavItems.map((item) => {
           const isActive = location.pathname.startsWith(item.href);
           return (

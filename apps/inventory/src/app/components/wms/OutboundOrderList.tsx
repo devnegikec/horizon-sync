@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import { useAccess } from '@horizon-sync/access';
 import { useUserStore } from '@horizon-sync/store';
 import { useToast } from '@horizon-sync/ui/hooks';
 
@@ -36,6 +37,11 @@ interface OutboundOrderListProps {
 
 export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKey, onStatusCountsChange }: OutboundOrderListProps) {
   const accessToken = useUserStore((s) => s.accessToken);
+  // Rule-based capabilities — absent handlers hide the matching row action.
+  const access = useAccess('wms');
+  const canManageOrders = access.can('outbound', 'create');
+  const canPack = access.can('packing', 'execute');
+  const canCreatePickList = access.can('picking', 'create');
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [typeFilter, setTypeFilter] = React.useState('all');
@@ -167,12 +173,12 @@ export function OutboundOrderList({ warehouseId, onPickListsGenerated, refreshKe
         confirmingId,
         packingId,
         viewLoading,
-        onConfirm: handleConfirm,
-        onPack: handlePack,
-        onCreatePickList: setGenerateOrder,
+        onConfirm: canManageOrders ? handleConfirm : undefined,
+        onPack: canPack ? handlePack : undefined,
+        onCreatePickList: canCreatePickList ? setGenerateOrder : undefined,
         onView: handleView,
       }),
-    [confirmingId, packingId, viewLoading, handleConfirm, handlePack, handleView],
+    [confirmingId, packingId, viewLoading, canManageOrders, canPack, canCreatePickList, handleConfirm, handlePack, handleView],
   );
 
   return (

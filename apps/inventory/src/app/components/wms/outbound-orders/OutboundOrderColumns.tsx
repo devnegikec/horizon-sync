@@ -19,9 +19,12 @@ export interface OutboundOrderColumnsOptions {
   packingId: string | null;
   /** True while an order detail request is in flight. */
   viewLoading: boolean;
-  onConfirm: (order: OutboundOrderListItem) => void;
-  onPack: (order: OutboundOrderListItem) => void;
-  onCreatePickList: (order: OutboundOrderListItem) => void;
+  /** Absent when the caller may not confirm orders — the action is hidden. */
+  onConfirm?: (order: OutboundOrderListItem) => void;
+  /** Absent when the caller may not pack — the action is hidden. */
+  onPack?: (order: OutboundOrderListItem) => void;
+  /** Absent when the caller may not create pick lists — the action is hidden. */
+  onCreatePickList?: (order: OutboundOrderListItem) => void;
   onView: (order: OutboundOrderListItem) => void;
 }
 
@@ -166,16 +169,16 @@ function OrderActionsCell({
 }: { order: OutboundOrderListItem } & OutboundOrderColumnsOptions) {
   return (
     <div className="flex items-center justify-end gap-1.5">
-      {order.status === 'draft' && (
+      {order.status === 'draft' && onConfirm && (
         <ConfirmButton order={order} confirmingId={confirmingId} onConfirm={onConfirm} />
       )}
-      {order.status === 'confirmed' && (
+      {order.status === 'confirmed' && onCreatePickList && (
         <Button size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => onCreatePickList(order)}>
           <ClipboardList className="h-3.5 w-3.5" />
           Create Pick List
         </Button>
       )}
-      {order.status === 'completed' && (
+      {order.status === 'completed' && onPack && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -193,7 +196,6 @@ function OrderActionsCell({
       )}
       <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" disabled={viewLoading} onClick={() => onView(order)}>
         {viewLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
-        View
       </Button>
     </div>
   );

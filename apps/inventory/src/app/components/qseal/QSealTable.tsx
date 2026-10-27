@@ -271,6 +271,7 @@ export function QSealTable({
             return null;
           }}
           onRowClick={onView}
+          onTableReady={onTableReady}
           fixedHeader
           maxHeight="auto"/>
       </CardContent>

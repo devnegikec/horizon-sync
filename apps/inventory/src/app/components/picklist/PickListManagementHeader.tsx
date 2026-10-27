@@ -59,7 +59,7 @@ export function PickListManagementHeader({
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Pick Lists</h1>
+        <h2 className="text-2xl font-bold tracking-tight">Pick Lists</h2>
         <p className="text-muted-foreground mt-1">
           Manage warehouse pick lists for order fulfillment
         </p>

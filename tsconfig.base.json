@@ -26,6 +26,8 @@
       "@horizon-sync/store/*": ["libs/shared/store/src/*"],
       "@horizon-sync/utils": ["libs/shared/utils/src/index.ts"],
       "@horizon-sync/utils/*": ["libs/shared/utils/src/*"],
+      "@horizon-sync/access": ["libs/shared/access/src/index.ts"],
+      "@horizon-sync/access/*": ["libs/shared/access/src/*"],
       "@horizon-sync/search": ["apps/platform/src/app/features/search/index.ts"],
       "@/components/*": ["libs/shared/ui/src/components/*"],
       "@/lib/*": ["libs/shared/ui/src/lib/*"]

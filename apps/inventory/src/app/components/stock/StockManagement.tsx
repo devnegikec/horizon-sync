@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
-import { Button, DataTableViewOptions, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
+import { Button, DataTableViewOptions, NoPermission, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import {
@@ -54,7 +54,7 @@ import { useStockEntryMutations } from '../../hooks/useStock';
 import { useStockLevels } from '../../hooks/useStockLevels';
 import { useStockMovements } from '../../hooks/useStockMovements';
 import { useStockReconciliations } from '../../hooks/useStockReconciliations';
-import type { AsnOrder } from '../../types/asn-order.types';
+import type { AsnOrder, AsnOrderStatusCounts } from '../../types/asn-order.types';
 import type { PaginationInfo } from '../../types/quotation.types';
 import type {
   StockEntry,
@@ -69,6 +69,7 @@ import type {
 import { formatQuantity } from '../../utility';
 import { asnOrderApi } from '../../utility/api/asn-orders';
 import { stockEntryApi, stockLevelApi, stockMovementApi } from '../../utility/api/stock';
+import { hasAnyPermission } from '../../utils/permissions';
 import { AsnOrderDialog } from '../advance stock notice/AsnOrderDialog';
 import { AsnOrdersTable } from '../advance stock notice/AsnOrdersTable';
 import { ReconciliationWizard, ReconciliationDetailDialog } from '../reconciliation';
@@ -95,6 +96,52 @@ interface StatDef {
 }
 
 const DEFAULT_PAGINATION = { page: 1, pageSize: 20 };
+
+const ALL_TABS: ActiveTab[] = ['levels', 'movements', 'entries', 'reconciliations', 'asn'];
+
+/**
+ * Read permission required to view each tab.
+ *
+ * The backend gates each stock resource with its own permission code:
+ *   - Stock Levels    → `stock_level.read`
+ *   - Movements       → `stock_entry.read` (movements reuse stock-entry read)
+ *   - Stock Entries   → `stock_entry.read`
+ *   - Reconciliations → `stock_reconciliation.read`
+ *   - ASN             → `asn_order.read`
+ */
+const TAB_PERMISSIONS: Partial<Record<ActiveTab, string[]>> = {
+  levels: ['stock_level.read'],
+  movements: ['stock_entry.read'],
+  entries: ['stock_entry.read'],
+  reconciliations: ['stock_reconciliation.read'],
+  asn: ['asn_order.read'],
+};
+
+/**
+ * Write permission required for each "New" action. These are create actions,
+ * so they must never be shown to read-only users.
+ */
+const CREATE_PERMISSIONS: Partial<Record<ActiveTab, string[]>> = {
+  entries: ['stock_entry.create'],
+  reconciliations: ['stock_reconciliation.create'],
+  asn: ['asn_order.create'],
+};
+
+/**
+ * A 403 from the API means the user cannot see the requested resource. The
+ * friendly 403 message is "You do not have permission to perform this action."
+ */
+const PERMISSION_ERROR_PATTERN = /permission|forbidden|403|access denied/i;
+
+function isPermissionError(error: string | null): boolean {
+  if (!error) return false;
+  return PERMISSION_ERROR_PATTERN.test(error);
+}
+
+/** Tab body, or a `NoPermission` panel when the resource is forbidden. */
+function tabBody(error: string | null, resource: string, body: React.ReactNode): React.ReactNode {
+  return isPermissionError(error) ? <NoPermission module={resource} variant="card" /> : body;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Pure helper: build stats array per tab                             */
@@ -133,6 +180,15 @@ function buildReconciliationsStats(s: StockReconciliationStats | null | undefine
     { title: 'Pending', value: formatQuantity(s?.pending_count || 0), icon: AlertTriangle },
     { title: 'Completed', value: formatQuantity(s?.completed_count || 0), icon: ClipboardCheck },
     { title: 'Total Adjustments', value: formatQuantity(s?.total_adjustments || 0), icon: FileText },
+  ];
+}
+
+function buildAsnStats(s: AsnOrderStatusCounts | null | undefined): StatDef[] {
+  return [
+    { title: 'Total ASNs', value: formatQuantity(s?.total ?? 0), icon: FileText },
+    { title: 'Confirmed', value: formatQuantity(s?.confirmed ?? 0), icon: ClipboardCheck },
+    { title: 'Partially Delivered', value: formatQuantity(s?.partially_delivered ?? 0), icon: AlertTriangle },
+    { title: 'Delivered', value: formatQuantity(s?.delivered ?? 0), icon: Package },
   ];
 }
 
@@ -190,10 +246,14 @@ interface HeaderProps {
   onAsN: () => void;
   onReconciliation: () => void;
   activeTab: ActiveTab;
+  /** Tabs the current user may view, so the header hides forbidden New actions. */
+  visibleTabs: ActiveTab[];
+  /** Write permissions for each New action (read-only users get none). */
+  canCreate: { entries: boolean; reconciliations: boolean; asn: boolean };
   onImportSuccess?: () => void;
 }
 
-function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab, onImportSuccess }: HeaderProps) {
+function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab, visibleTabs, canCreate, onImportSuccess }: HeaderProps) {
   const accessToken = useUserStore((s) => s.accessToken);
   const [isExporting, setIsExporting] = React.useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
@@ -382,7 +442,7 @@ function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab,
     <>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Stock Management</h1>
+          <h2 className="text-2xl font-bold tracking-tight">Stock Management</h2>
           <p className="text-muted-foreground mt-1">
             Monitor stock levels, movements, and maintain accurate records
           </p>
@@ -417,18 +477,24 @@ function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab,
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={onNewEntry}>
-                <FileText className="mr-2 h-4 w-4" />
-                Stock Entry
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={onAsN}>
-                <FileText className="mr-2 h-4 w-4" />
-                Advance Stock Notice
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={onReconciliation}>
-                <ArrowRightLeft className="mr-2 h-4 w-4" />
-                Reconciliation
-              </DropdownMenuItem>
+              {visibleTabs.includes('entries') && canCreate.entries && (
+                <DropdownMenuItem onSelect={onNewEntry}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Stock Entry
+                </DropdownMenuItem>
+              )}
+              {visibleTabs.includes('asn') && canCreate.asn && (
+                <DropdownMenuItem onSelect={onAsN}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Advance Stock Notice
+                </DropdownMenuItem>
+              )}
+              {visibleTabs.includes('reconciliations') && canCreate.reconciliations && (
+                <DropdownMenuItem onSelect={onReconciliation}>
+                  <ArrowRightLeft className="mr-2 h-4 w-4" />
+                  Reconciliation
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -436,10 +502,10 @@ function StockManagementHeader({ onNewEntry, onAsN, onReconciliation, activeTab,
 
       {/* Stock Entry Import Dialog */}
       <Dialog open={isImportDialogOpen}
-onOpenChange={(open) => {
-        setIsImportDialogOpen(open);
-        if (!open) setSelectedFile(null);
-      }}>
+        onOpenChange={(open) => {
+          setIsImportDialogOpen(open);
+          if (!open) setSelectedFile(null);
+        }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Import Stock Entries</DialogTitle>
@@ -577,68 +643,78 @@ function TabPanels({
   return (
     <>
       <TabsContent value="levels" className="mt-4">
-        <StockLevelsTable stockLevels={levelsData.data}
-          loading={levelsData.loading}
-          error={levelsData.error}
-          hasActiveFilters={false}
-          serverPagination={{
-            pageIndex: levelsFilters.page - 1,
-            pageSize: levelsFilters.pageSize,
-            totalItems: levelsData.pagination?.total_items || 0,
-            onPaginationChange: onLevelsPagination,
-          }} />
+        {tabBody(levelsData.error, 'Stock Levels', (
+          <StockLevelsTable stockLevels={levelsData.data}
+            loading={levelsData.loading}
+            error={levelsData.error}
+            hasActiveFilters={false}
+            serverPagination={{
+              pageIndex: levelsFilters.page - 1,
+              pageSize: levelsFilters.pageSize,
+              totalItems: levelsData.pagination?.total_items || 0,
+              onPaginationChange: onLevelsPagination,
+            }} />
+        ))}
       </TabsContent>
       <TabsContent value="movements" className="mt-4">
-        <StockMovementsTable stockMovements={movementsData.data}
-          loading={movementsData.loading}
-          error={movementsData.error}
-          hasActiveFilters={false}
-          serverPagination={{
-            pageIndex: movementsFilters.page - 1,
-            pageSize: movementsFilters.pageSize,
-            totalItems: movementsData.pagination?.total_items || 0,
-            onPaginationChange: onMovementsPagination,
-          }} />
+        {tabBody(movementsData.error, 'Stock Movements', (
+          <StockMovementsTable stockMovements={movementsData.data}
+            loading={movementsData.loading}
+            error={movementsData.error}
+            hasActiveFilters={false}
+            serverPagination={{
+              pageIndex: movementsFilters.page - 1,
+              pageSize: movementsFilters.pageSize,
+              totalItems: movementsData.pagination?.total_items || 0,
+              onPaginationChange: onMovementsPagination,
+            }} />
+        ))}
       </TabsContent>
       <TabsContent value="entries" className="mt-4">
-        <StockEntriesTable stockEntries={entriesData.data}
-          loading={entriesData.loading}
-          error={entriesData.error}
-          hasActiveFilters={false}
-          onView={onViewEntry}
-          onEdit={onEditEntry}
-          onDelete={onDeleteEntry}
-          serverPagination={{
-            pageIndex: entriesFilters.page - 1,
-            pageSize: entriesFilters.pageSize,
-            totalItems: entriesData.pagination?.total_items || 0,
-            onPaginationChange: onEntriesPagination,
-          }} />
+        {tabBody(entriesData.error, 'Stock Entries', (
+          <StockEntriesTable stockEntries={entriesData.data}
+            loading={entriesData.loading}
+            error={entriesData.error}
+            hasActiveFilters={false}
+            onView={onViewEntry}
+            onEdit={onEditEntry}
+            onDelete={onDeleteEntry}
+            serverPagination={{
+              pageIndex: entriesFilters.page - 1,
+              pageSize: entriesFilters.pageSize,
+              totalItems: entriesData.pagination?.total_items || 0,
+              onPaginationChange: onEntriesPagination,
+            }} />
+        ))}
       </TabsContent>
       <TabsContent value="reconciliations" className="mt-4">
-        <StockReconciliationsTable stockReconciliations={reconciliationsData.data}
-          loading={reconciliationsData.loading}
-          error={reconciliationsData.error}
-          hasActiveFilters={false}
-          onView={onViewReconciliation}
-          serverPagination={{
-            pageIndex: reconciliationsFilters.page - 1,
-            pageSize: reconciliationsFilters.pageSize,
-            totalItems: reconciliationsData.pagination?.total_items || 0,
-            onPaginationChange: onReconciliationsPagination,
-          }} />
+        {tabBody(reconciliationsData.error, 'Stock Reconciliations', (
+          <StockReconciliationsTable stockReconciliations={reconciliationsData.data}
+            loading={reconciliationsData.loading}
+            error={reconciliationsData.error}
+            hasActiveFilters={false}
+            onView={onViewReconciliation}
+            serverPagination={{
+              pageIndex: reconciliationsFilters.page - 1,
+              pageSize: reconciliationsFilters.pageSize,
+              totalItems: reconciliationsData.pagination?.total_items || 0,
+              onPaginationChange: onReconciliationsPagination,
+            }} />
+        ))}
       </TabsContent>
       <TabsContent value="asn" className="mt-4">
-        <AsnOrdersTable asnOrders={asnData.asnOrders}
-          loading={asnData.loading}
-          error={asnData.error}
-          hasActiveFilters={false}
-          onView={onViewAsn}
-          onEdit={onEditAsn}
-          onDelete={onDeleteAsn}
-          onCreateOrder={onCreateAsn}
-          serverPagination={asnPagination}
-          recentlyCreatedId={asnData.recentlyCreatedId}/>
+        {tabBody(asnData.error, 'Advance Stock Notice', (
+          <AsnOrdersTable asnOrders={asnData.asnOrders}
+            loading={asnData.loading}
+            error={asnData.error}
+            hasActiveFilters={false}
+            onView={onViewAsn}
+            onEdit={onEditAsn}
+            onDelete={onDeleteAsn}
+            onCreateOrder={onCreateAsn}
+            serverPagination={asnPagination}
+            recentlyCreatedId={asnData.recentlyCreatedId} />
+        ))}
       </TabsContent>
     </>
   );
@@ -806,6 +882,8 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
 
   const entryActions = useStockEntryActions(entriesData.refetch);
   const accessToken = useUserStore((s) => s.accessToken);
+  const userPermissions = useUserStore((s) => s.permissions.permissions);
+  const permissionsLoaded = useUserStore((s) => s.permissions.lastFetched) !== null;
   const { toast } = useToast();
 
   /* ---------- warehouse selector ---------- */
@@ -879,6 +957,33 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
     setters[newTab]?.(reset);
   }, [setFilters]);
 
+  const visibleTabs = React.useMemo(() => {
+    // Until permissions have loaded, keep every tab visible so the screen never
+    // flashes empty; tabs are pruned as soon as permissions are known.
+    if (!permissionsLoaded) return ALL_TABS;
+    return ALL_TABS.filter((tab) => {
+      const required = TAB_PERMISSIONS[tab];
+      return !required || required.length === 0 || hasAnyPermission(userPermissions, required);
+    });
+  }, [permissionsLoaded, userPermissions]);
+
+  // If the active tab loses permission (or the first render landed on a
+  // forbidden tab), move to the first permitted tab instead of showing a 403.
+  React.useEffect(() => {
+    if (visibleTabs.length > 0 && !visibleTabs.includes(activeTab)) {
+      setActiveTab(visibleTabs[0]);
+    }
+  }, [activeTab, visibleTabs]);
+
+  const canCreate = React.useMemo(
+    () => ({
+      entries: hasAnyPermission(userPermissions, CREATE_PERMISSIONS.entries ?? []),
+      reconciliations: hasAnyPermission(userPermissions, CREATE_PERMISSIONS.reconciliations ?? []),
+      asn: hasAnyPermission(userPermissions, CREATE_PERMISSIONS.asn ?? []),
+    }),
+    [userPermissions],
+  );
+
   const makePaginationHandler = React.useCallback(
     (setter: React.Dispatch<React.SetStateAction<typeof DEFAULT_PAGINATION>>) =>
       (pageIndex: number, pageSize: number) => setter({ page: pageIndex + 1, pageSize }),
@@ -889,8 +994,9 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
     if (activeTab === 'levels') return buildLevelsStats(levelsData.stats);
     if (activeTab === 'movements') return buildMovementsStats(movementsData.stats);
     if (activeTab === 'entries') return buildEntriesStats(entriesData.stats);
+    if (activeTab === 'asn') return buildAsnStats(asnManagement.statusCounts);
     return buildReconciliationsStats(reconciliationsData.stats);
-  }, [activeTab, levelsData.stats, movementsData.stats, entriesData.stats, reconciliationsData.stats]);
+  }, [activeTab, levelsData.stats, movementsData.stats, entriesData.stats, reconciliationsData.stats, asnManagement.statusCounts]);
 
   const handleNewEntry = React.useCallback(() => {
     entryActions.clearSelected();
@@ -1008,13 +1114,23 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
     movementsData.refetch();
   }, [entryActions, entriesData, levelsData, movementsData]);
 
+  // Edge case: the user has no stock read permission at all. Show the shared
+  // no-permission surface instead of an empty tab strip with stray content.
+  if (permissionsLoaded && visibleTabs.length === 0) {
+    return (
+      <NoPermission module="Stock" />
+    );
+  }
+
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6">
       <StockManagementHeader onNewEntry={handleNewEntry}
         onAsN={handleNewAsN}
         onReconciliation={handleNewReconciliation}
         activeTab={activeTab}
-        onImportSuccess={entriesData.refetch}/>
+        visibleTabs={visibleTabs}
+        canCreate={canCreate}
+        onImportSuccess={entriesData.refetch} />
       <StatsGrid stats={activeStats} />
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1032,7 +1148,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
                       : 'Search by ASN order no...'
             }
             value={filters.search}
-            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))}/>
+            onSearch={(value) => setFilters((prev) => ({ ...prev, search: value }))} />
           {/* Warehouse selector */}
           <Popover open={warehouseOpen} onOpenChange={setWarehouseOpen}>
             <PopoverTrigger asChild>
@@ -1054,7 +1170,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
                   <Input placeholder="Search warehouses..."
                     value={warehouseSearch}
                     onChange={(e) => setWarehouseSearch(e.target.value)}
-                    className="mb-2"/>
+                    className="mb-2" />
                 )}
                 <div className="max-h-60 overflow-auto space-y-1">
                   {!isWarehouseLocked && (
@@ -1127,26 +1243,36 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
-          <TabsTrigger value="levels" className="gap-1.5">
-            Stock Levels
-            {activeTab === 'levels' && levelsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-          </TabsTrigger>
-          <TabsTrigger value="movements" className="gap-1.5">
-            Movements
-            {activeTab === 'movements' && movementsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-          </TabsTrigger>
-          <TabsTrigger value="entries" className="gap-1.5">
-            Stock Entries
-            {activeTab === 'entries' && entriesData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-          </TabsTrigger>
-          <TabsTrigger value="reconciliations" className="gap-1.5">
-            Reconciliations
-            {activeTab === 'reconciliations' && reconciliationsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-          </TabsTrigger>
-          <TabsTrigger value="asn" className="gap-1.5">
-            Advance Stock Notice
-            {activeTab === 'asn' && asnManagement.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-          </TabsTrigger>
+          {visibleTabs.includes('levels') && (
+            <TabsTrigger value="levels" className="gap-1.5">
+              Stock Levels
+              {activeTab === 'levels' && levelsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes('movements') && (
+            <TabsTrigger value="movements" className="gap-1.5">
+              Movements
+              {activeTab === 'movements' && movementsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes('entries') && (
+            <TabsTrigger value="entries" className="gap-1.5">
+              Stock Entries
+              {activeTab === 'entries' && entriesData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes('reconciliations') && (
+            <TabsTrigger value="reconciliations" className="gap-1.5">
+              Reconciliations
+              {activeTab === 'reconciliations' && reconciliationsData.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </TabsTrigger>
+          )}
+          {visibleTabs.includes('asn') && (
+            <TabsTrigger value="asn" className="gap-1.5">
+              Advance Stock Notice
+              {activeTab === 'asn' && asnManagement.loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabPanels levelsData={levelsData}
           levelsFilters={levelsFilters}
@@ -1212,7 +1338,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
         description={`Delete stock entry "${entryActions.confirmDeleteEntry?.stock_entry_no}"?`}
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={entryActions.executeDeleteEntry}/>
+        onConfirm={entryActions.executeDeleteEntry} />
 
       {/* Delete ASN Order Confirmation Dialog */}
       <ConfirmationDialog open={!!confirmDeleteAsnOrder}
@@ -1221,7 +1347,7 @@ export function StockManagement({ warehouseId }: { warehouseId?: string }) {
         description={`Delete ASN order "${confirmDeleteAsnOrder?.asn_order_no}"?`}
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={executeDeleteAsn}/>
+        onConfirm={executeDeleteAsn} />
     </div>
   );
 }

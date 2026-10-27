@@ -2,13 +2,12 @@ import * as React from 'react';
 
 import { Ban } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
+import { useAccess } from '@horizon-sync/access';
 import { Button } from '@horizon-sync/ui/components';
 
 import { useReturnRegistration } from '../../../hooks/useWMS';
 import type { ReturnRegistrationDetail, ReturnRegistrationLine } from '../../../types/wms.types';
 import { formatDate } from '../../../utility';
-import { hasPermission } from '../../../utils/permissions';
 import { QRDetailDialog, type QRDetailColumn, type QRDetailRow } from '../QRDetailDialog';
 import { WMSStatusBadge } from '../WMSStatusBadge';
 
@@ -125,8 +124,7 @@ export interface ReturnRegistrationDetailDialogProps {
 /** Expected vs received per line, with the classification the dock captured (§5.3). */
 export function ReturnRegistrationDetailDialog({ registrationId, open, onOpenChange, onCancel }: ReturnRegistrationDetailDialogProps) {
   const { registration, loading, error } = useReturnRegistration(registrationId);
-  const permissions = useUserStore((state) => state.permissions.permissions);
-  const canRegister = hasPermission(permissions, 'return.register');
+  const canRegister = useAccess('wms').can('returns', 'register');
 
   const rows = React.useMemo(() => registrationRows(registration), [registration]);
 

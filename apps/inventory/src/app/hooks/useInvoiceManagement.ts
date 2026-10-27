@@ -166,7 +166,7 @@ export function useInvoiceManagement() {
   });
 
   const handleView = React.useCallback(
-    async (invoice: Invoice) => {
+    async (invoice: Pick<Invoice, 'id'>) => {
       if (!accessToken) return;
       try {
         const fullInvoice = (await invoiceApi.get(accessToken, invoice.id)) as Invoice;

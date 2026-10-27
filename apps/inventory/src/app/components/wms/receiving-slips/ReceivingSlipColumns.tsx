@@ -12,9 +12,12 @@ import { WMSStatusBadge } from '../WMSStatusBadge';
 
 export interface ReceivingSlipColumnsOptions {
   onView: (slip: ReceivingSlip) => void;
-  onApprove: (slip: ReceivingSlip) => void;
-  onReject: (slip: ReceivingSlip) => void;
-  onPutAway: (slip: ReceivingSlip) => void;
+  /** Absent when the caller may not approve slips — the action is hidden. */
+  onApprove?: (slip: ReceivingSlip) => void;
+  /** Absent when the caller may not reject slips — the action is hidden. */
+  onReject?: (slip: ReceivingSlip) => void;
+  /** Absent when the caller may not generate put-away — the action is hidden. */
+  onPutAway?: (slip: ReceivingSlip) => void;
 }
 
 function SlipNumberCell({ slip }: { slip: ReceivingSlip }) {
@@ -36,21 +39,25 @@ function ReceivingSlipActionsCell({ slip, onView, onApprove, onReject, onPutAway
     <div className="flex items-center justify-end gap-2">
       {isPendingReview && (
         <>
-          <Button size="sm"
-            variant="outline"
-            className="h-7 border-green-200 px-2 text-xs text-green-600 hover:!bg-green-600 hover:!text-white"
-            onClick={() => onApprove(slip)}>
-            Approve
-          </Button>
-          <Button size="sm"
-            variant="outline"
-            className="h-7 border-destructive/20 px-2 text-xs text-red-600 hover:!bg-red-600 hover:!text-white"
-            onClick={() => onReject(slip)}>
-            Reject
-          </Button>
+          {onApprove && (
+            <Button size="sm"
+              variant="outline"
+              className="h-7 border-green-200 px-2 text-xs text-green-600 hover:!bg-green-600 hover:!text-white"
+              onClick={() => onApprove(slip)}>
+              Approve
+            </Button>
+          )}
+          {onReject && (
+            <Button size="sm"
+              variant="outline"
+              className="h-7 border-destructive/20 px-2 text-xs text-red-600 hover:!bg-red-600 hover:!text-white"
+              onClick={() => onReject(slip)}>
+              Reject
+            </Button>
+          )}
         </>
       )}
-      {isPendingPutAway && (
+      {isPendingPutAway && onPutAway && (
         <Button size="sm"
           variant="outline"
           className="h-7 border-blue-200 px-2 text-xs text-blue-600 hover:!bg-blue-600 hover:!text-white"
@@ -61,7 +68,6 @@ function ReceivingSlipActionsCell({ slip, onView, onApprove, onReject, onPutAway
       )}
       <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => onView(slip)}>
         <Eye className="h-3.5 w-3.5" />
-        View
       </Button>
     </div>
   );

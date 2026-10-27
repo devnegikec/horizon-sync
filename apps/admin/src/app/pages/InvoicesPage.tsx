@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+
 import {
     Search,
     Download,
@@ -28,17 +29,17 @@ import {
     TableHeader,
     TableRow,
 } from '@horizon-sync/ui/components';
-import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import type { InvoiceFormData } from '@horizon-sync/ui/components';
+import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 
+import { CreateInvoiceModal } from '../components/billing/CreateInvoiceModal';
+import { InvoiceDetailModal } from '../components/billing/InvoiceDetailModal';
 import { useInvoices } from '../hooks/useInvoices';
 import { usePermissions } from '../hooks/usePermissions';
 import { AdminInvoiceService } from '../services/admin-invoice.service';
 import { AdminOrganizationService } from '../services/admin-organization.service';
-import { CreateInvoiceModal } from '../components/billing/CreateInvoiceModal';
-import { InvoiceDetailModal } from '../components/billing/InvoiceDetailModal';
-import type { InvoiceCreateRequest } from '../types/billing.types';
 import type { Invoice, SubscriptionInvoiceResponse, AdminInvoiceFilters, AdminOrgListItem } from '../types';
+import type { InvoiceCreateRequest } from '../types/billing.types';
 import { SYSTEM_ADMIN_PERMISSIONS } from '../types/permissions';
 
 export function InvoicesPage() {
@@ -334,17 +335,13 @@ export function InvoicesPage() {
                     <div className="grid gap-4 md:grid-cols-6">
                         <div className="relative">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Search invoices..."
+                            <Input placeholder="Search invoices..."
                                 className="pl-8"
                                 value={filters.search || ''}
-                                onChange={(e) => handleFilterChange('search', e.target.value)}
-                            />
+                                onChange={(e) => handleFilterChange('search', e.target.value)}/>
                         </div>
-                        <Select
-                            value={filters.status || 'all'}
-                            onValueChange={(value) => handleFilterChange('status', value)}
-                        >
+                        <Select value={filters.status || 'all'}
+                            onValueChange={(value) => handleFilterChange('status', value)}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
@@ -357,10 +354,8 @@ export function InvoicesPage() {
                                 <SelectItem value="cancelled">Cancelled</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Select
-                            value={filters.organization_id || 'all'}
-                            onValueChange={(value) => handleFilterChange('organization_id', value)}
-                        >
+                        <Select value={filters.organization_id || 'all'}
+                            onValueChange={(value) => handleFilterChange('organization_id', value)}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Organization" />
                             </SelectTrigger>
@@ -373,18 +368,14 @@ export function InvoicesPage() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Input
-                            type="date"
+                        <Input type="date"
                             placeholder="From Date"
                             value={filters.date_from || ''}
-                            onChange={(e) => handleFilterChange('date_from', e.target.value)}
-                        />
-                        <Input
-                            type="date"
+                            onChange={(e) => handleFilterChange('date_from', e.target.value)}/>
+                        <Input type="date"
                             placeholder="To Date"
                             value={filters.date_to || ''}
-                            onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                        />
+                            onChange={(e) => handleFilterChange('date_to', e.target.value)}/>
                         <Button variant="outline">
                             <Download className="h-4 w-4 mr-2" />
                             Export
@@ -438,11 +429,9 @@ export function InvoicesPage() {
                                         <TableCell>{formatDate(invoice.posting_date || invoice.issue_date || invoice.created_at)}</TableCell>
                                         <TableCell>{invoice.due_date ? formatDate(invoice.due_date) : '-'}</TableCell>
                                         <TableCell className="text-right">
-                                            <Button
-                                                variant="ghost"
+                                            <Button variant="ghost"
                                                 size="sm"
-                                                onClick={() => setSelectedInvoice(invoice)}
-                                            >
+                                                onClick={() => setSelectedInvoice(invoice)}>
                                                 <Eye className="h-4 w-4" />
                                             </Button>
                                         </TableCell>
@@ -461,20 +450,16 @@ export function InvoicesPage() {
                         Showing page {pagination.page} of {pagination.total_pages} ({pagination.total_items} total)
                     </p>
                     <div className="flex space-x-2">
-                        <Button
-                            variant="outline"
+                        <Button variant="outline"
                             size="sm"
                             disabled={pagination.page === 1}
-                            onClick={() => handleFilterChange('page', pagination.page - 1)}
-                        >
+                            onClick={() => handleFilterChange('page', pagination.page - 1)}>
                             Previous
                         </Button>
-                        <Button
-                            variant="outline"
+                        <Button variant="outline"
                             size="sm"
                             disabled={pagination.page === pagination.total_pages}
-                            onClick={() => handleFilterChange('page', pagination.page + 1)}
-                        >
+                            onClick={() => handleFilterChange('page', pagination.page + 1)}>
                             Next
                         </Button>
                     </div>
@@ -483,20 +468,16 @@ export function InvoicesPage() {
 
             {/* Modals */}
             {showCreateModal && (
-                <CreateInvoiceModal
-                    isOpen={showCreateModal}
+                <CreateInvoiceModal isOpen={showCreateModal}
                     onClose={() => setShowCreateModal(false)}
-                    onSubmit={handleCreateInvoice}
-                />
+                    onSubmit={handleCreateInvoice}/>
             )}
 
             {selectedInvoice && (
-                <InvoiceDetailModal
-                    invoice={selectedInvoice}
+                <InvoiceDetailModal invoice={selectedInvoice}
                     isOpen={!!selectedInvoice}
                     onClose={() => setSelectedInvoice(null)}
-                    onAction={handleInvoiceAction}
-                />
+                    onAction={handleInvoiceAction}/>
             )}
         </div>
     );

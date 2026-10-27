@@ -3,6 +3,7 @@ import * as React from 'react';
 import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { AlertTriangle } from 'lucide-react';
 
+import { useAccess } from '@horizon-sync/access';
 import { useUserStore } from '@horizon-sync/store';
 import {
   Button,
@@ -26,7 +27,6 @@ import type {
   WMSPagination,
 } from '../../types/wms.types';
 import { inboundApi } from '../../utility/api/wms';
-import { hasPermission } from '../../utils/permissions';
 
 import {
   createInboundExceptionColumns,
@@ -276,8 +276,8 @@ export function InboundExceptionQueue({
   onShortClose: (exceptions: InboundException[]) => void;
 }) {
   const token = useUserStore((state) => state.accessToken);
-  const permissions = useUserStore((state) => state.permissions.permissions);
-  const canDispose = hasPermission(permissions, 'inbound_exception.dispose');
+  // Disposing (write-off / return / quarantine) is a manager-level decision.
+  const canDispose = useAccess('wms').can('exceptions', 'dispose');
 
   const [exceptions, setExceptions] = React.useState<InboundException[]>([]);
   const [pagination, setPagination] = React.useState<WMSPagination | null>(null);
