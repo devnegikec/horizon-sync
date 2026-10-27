@@ -17,6 +17,7 @@ import {
   QSealActivationManagement,
   ProductSettingsManagement,
 } from '../components/qseal';
+import type { QSealProductListItem } from '../types/qseal.types';
 import { hasPermission } from '../utils/permissions';
 
 const queryClient = new QueryClient({
@@ -45,11 +46,29 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 
 export function QSealPage() {
   const [activeView, setActiveView] = React.useState<ActiveView>('products');
+  const [blocksProductId, setBlocksProductId] = React.useState<string | undefined>();
+  const [analyticsProductId, setAnalyticsProductId] = React.useState<string | undefined>();
   const user = useUserStore((state) => state.user);
   const userPermissions = useUserStore((state) => state.permissions?.permissions || []);
   const canViewAnalytics = user?.user_type === 'system_admin'
     || user?.user_type === 'organization_admin'
     || hasPermission(userPermissions, 'qr_product.read');
+  const openProductBlocks = (product: QSealProductListItem) => {
+    setBlocksProductId(product.id);
+    setActiveView('blocks');
+  };
+  const openProductAnalytics = (product: QSealProductListItem) => {
+    setAnalyticsProductId(product.id);
+    setActiveView('analytics');
+  };
+  const openAllBlocks = () => {
+    setBlocksProductId(undefined);
+    setActiveView('blocks');
+  };
+  const openAllAnalytics = () => {
+    setAnalyticsProductId(undefined);
+    setActiveView('analytics');
+  };
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -76,11 +95,11 @@ export function QSealPage() {
           </header>
 
           <main className="container px-4 py-8">
-            {activeView === 'products' && <QSealManagement />}
-            {activeView === 'blocks' && <BlocksManagement />}
+            {activeView === 'products' && <QSealManagement onOpenBlocks={openProductBlocks} onOpenAnalytics={canViewAnalytics ? openProductAnalytics : undefined} onOpenAllBlocks={openAllBlocks} onOpenAllAnalytics={canViewAnalytics ? openAllAnalytics : undefined} />}
+            {activeView === 'blocks' && <BlocksManagement initialProductId={blocksProductId} />}
             {activeView === 'sku_customization' && <SkuCustomizationManagement />}
-            {activeView === 'analytics' && canViewAnalytics && <AnalyticsManagement />}
-            {activeView === 'activation' && <QSealActivationManagement />}
+            {activeView === 'analytics' && canViewAnalytics && <AnalyticsManagement initialProductId={analyticsProductId} />}
+            {activeView === 'activation' && <QSealActivationManagement onOpenBlocks={() => setActiveView('blocks')} onOpenMarketSettings={() => setActiveView('product_settings')} />}
             {activeView === 'aggregation' && <AggregationManagement />}
             {activeView === 'product_settings' && <ProductSettingsManagement />}
           </main>

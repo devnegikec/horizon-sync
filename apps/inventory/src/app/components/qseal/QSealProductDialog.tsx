@@ -1,11 +1,12 @@
 import * as React from 'react';
 
-import { Upload, Image, Link, Clock, MoreHorizontal, Info, Trash2, Package, QrCode, Tag } from 'lucide-react';
+import { Upload, Image, Link, Clock, MoreHorizontal, Info, Trash2, Package, QrCode, Tag, Pencil } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 
 import { DetailDialog, Badge } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Checkbox } from '@horizon-sync/ui/components/ui/checkbox';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Label } from '@horizon-sync/ui/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
@@ -132,10 +133,11 @@ function LabelWithTooltip({ htmlFor, label, required, hint }: { htmlFor?: string
 interface BrandSelectSectionProps {
   brandId: string;
   onBrandChange: (id: string) => void;
+  error?: string;
   disabled?: boolean;
 }
 
-function BrandSelectSection({ brandId, onBrandChange, disabled = false }: BrandSelectSectionProps) {
+function BrandSelectSection({ brandId, onBrandChange, error, disabled = false }: BrandSelectSectionProps) {
   const { data, loading } = useBrands();
   const brands = data?.brands ?? [];
 
@@ -159,6 +161,7 @@ function BrandSelectSection({ brandId, onBrandChange, disabled = false }: BrandS
             ))}
           </SelectContent>
         </Select>
+        {error && <p className="text-xs text-destructive">{error}</p>}
       </div>
     </div>
   );
@@ -289,7 +292,7 @@ function ProductImagesSection({
   return (
     <div className="space-y-3">
       <SectionHeader icon={Image} title="Product Images" />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <ImageDropZone label="Logo"
           hint="The logo will be displayed on authentication pages and certificates"
           sizeHint="Recommended size: 300x300px (PNG, JPG, WebP)"
@@ -318,21 +321,49 @@ interface ProductInfoSectionProps {
   shelfLifeSettings: QRProductSetting[];
   shelfLifeLoading: boolean;
   shelfLifeError: string | null;
+  nameServerError?: string;
+  onNameChange?: () => void;
 }
 
-function ProductInfoSection({ register, control, errors, shelfLifeSettings, shelfLifeLoading, shelfLifeError }: ProductInfoSectionProps) {
+function ProductInfoSection({
+  register,
+  control,
+  errors,
+  shelfLifeSettings,
+  shelfLifeLoading,
+  shelfLifeError,
+  nameServerError,
+  onNameChange,
+}: ProductInfoSectionProps) {
+  const nameField = register('name', { required: 'Product name is required' });
   return (
     <div className="space-y-3">
       <SectionHeader icon={Info} title="Product Information" />
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="space-y-1">
           <LabelWithTooltip htmlFor="name" label="Product Name" required hint="The official name of your product as it should appear to customers" />
-          <Input id="name" placeholder="Product name" {...register('name', { required: 'Product name is required' })} />
+          <Input id="name"
+            placeholder="Product name"
+            aria-invalid={Boolean(errors.name || nameServerError)}
+            {...nameField}
+            onChange={(event) => {
+              nameField.onChange(event);
+              onNameChange?.();
+            }} />
           {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          {nameServerError && !errors.name && <p className="text-xs text-destructive" role="alert">{nameServerError}</p>}
         </div>
         <div className="space-y-1">
-          <LabelWithTooltip htmlFor="gtin" label="GTIN" required hint="Global Trade Item Number (UPC, EAN, ISBN, etc.) - 12-14 digits" />
-          <Input id="gtin" placeholder="e.g. 012345678901" {...register('gtin', { required: 'GTIN is required' })} />
+          <LabelWithTooltip htmlFor="gtin" label="GTIN" required hint="Global Trade Item Number (UPC, EAN, ISBN, etc.) - 8-20 digits with a valid check digit" />
+          <Input id="gtin"
+            inputMode="numeric"
+            maxLength={20}
+            placeholder="e.g. 012345678901"
+            {...register('gtin', {
+            required: 'GTIN is required',
+            maxLength: { value: 20, message: 'GTIN cannot exceed 20 characters' },
+            validate: validateGtin,
+          })} />
           {errors.gtin && <p className="text-xs text-destructive">{errors.gtin.message}</p>}
         </div>
         <div className="space-y-1">
@@ -341,7 +372,7 @@ function ProductInfoSection({ register, control, errors, shelfLifeSettings, shel
           {errors.sku && <p className="text-xs text-destructive">{errors.sku.message}</p>}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <LabelWithTooltip htmlFor="industry" label="Industry" hint="Industry or sector this product belongs to" />
           <Input id="industry" placeholder="e.g. Pharmaceuticals" {...register('industry')} />
@@ -388,7 +419,7 @@ function PackagingDetailsSection({ register, errors }: PackagingDetailsSectionPr
   return (
     <div className="space-y-3">
       <SectionHeader icon={Package} title="Packaging Details" />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <LabelWithTooltip htmlFor="unit_name"
             label="Unit of Measure (UMO)"
@@ -413,7 +444,7 @@ function PackagingDetailsSection({ register, errors }: PackagingDetailsSectionPr
           {errors.conversion_factor && <p className="text-xs text-destructive">{errors.conversion_factor.message}</p>}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <LabelWithTooltip htmlFor="length_mm" label="Length (mm)" hint="Length of the product/package in millimeters" />
           <Input id="length_mm" type="number" min={0} placeholder="e.g. 100" {...register('length_mm')} />
@@ -423,7 +454,7 @@ function PackagingDetailsSection({ register, errors }: PackagingDetailsSectionPr
           <Input id="width_mm" type="number" min={0} placeholder="e.g. 50" {...register('width_mm')} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <LabelWithTooltip htmlFor="height_mm" label="Height (mm)" hint="Height of the product/package in millimeters" />
           <Input id="height_mm" type="number" min={0} placeholder="e.g. 30" {...register('height_mm')} />
@@ -442,31 +473,51 @@ function PackagingDetailsSection({ register, errors }: PackagingDetailsSectionPr
 interface ProductUrlsSectionProps {
   register: ReturnType<typeof useForm<FormValues>>['register'];
   errors: ReturnType<typeof useForm<FormValues>>['formState']['errors'];
+  redirectToClient: boolean;
 }
 
-function ProductUrlsSection({ register, errors }: ProductUrlsSectionProps) {
+function ProductUrlsSection({ register, errors, redirectToClient }: ProductUrlsSectionProps) {
+  const clientAuthUrlRules = {
+    validate: (value: string) => validateHttpUrl(value, redirectToClient, 'Product auth URL'),
+  };
   return (
     <div className="space-y-3">
       <SectionHeader icon={Link} title="Product URLs" />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <LabelWithTooltip htmlFor="landing_page"
             label="Landing Page"
             required
             hint="Main product page URL where customers can learn about this product" />
-          <Input id="landing_page" type="url" placeholder="https://..." {...register('landing_page', { required: 'Landing page is required' })} />
+          <Input id="landing_page"
+            type="url"
+            inputMode="url"
+            placeholder="https://..."
+            {...register('landing_page', {
+              required: 'Landing page is required',
+              validate: (value) => validateHttpUrl(value, true, 'Landing page'),
+            })} />
           {errors.landing_page && <p className="text-xs text-destructive">{errors.landing_page.message}</p>}
         </div>
         <div className="space-y-1">
           <LabelWithTooltip htmlFor="client_product_auth_url"
             label="Product Auth URL"
-            required
-            hint="URL where customers will be sent after QR scan" />
-          <Input id="client_product_auth_url"
-            type="url"
-            placeholder="https://..."
-            {...register('client_product_auth_url', { required: 'Product auth URL is required' })} />
-          {errors.client_product_auth_url && <p className="text-xs text-destructive">{errors.client_product_auth_url.message}</p>}
+            required={redirectToClient}
+            hint="Used when Redirect to Product URL after QR scan is enabled" />
+          {redirectToClient ? (
+            <>
+              <Input id="client_product_auth_url"
+                type="url"
+                inputMode="url"
+                placeholder="https://..."
+                {...register('client_product_auth_url', clientAuthUrlRules)} />
+              {errors.client_product_auth_url && <p className="text-xs text-destructive">{errors.client_product_auth_url.message}</p>}
+            </>
+          ) : (
+            <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+              Optional. Enable redirect below if scans should open a customer-facing URL.
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -503,7 +554,7 @@ function ActivationDetailsSection({
   return (
     <div className="space-y-3">
       <SectionHeader icon={Clock} title="Activation Details" />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <LabelWithTooltip label="Activation Method"
             required
@@ -573,7 +624,7 @@ function AdditionalDetailsSection({ register, redirectToClient, onRedirectChange
   return (
     <div className="space-y-3">
       <SectionHeader icon={MoreHorizontal} title="Additional Details" />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <LabelWithTooltip htmlFor="email" label="Contact Email" hint="Customer support email for this product" />
           <Input id="email" type="email" placeholder="support@example.com" {...register('email')} />
@@ -589,6 +640,9 @@ function AdditionalDetailsSection({ register, redirectToClient, onRedirectChange
           Redirect to Product URL after QR scan
         </Label>
       </div>
+      <p className="text-xs text-muted-foreground">
+        When enabled, scans open the Product Auth URL above. When disabled, scans stay on the standard verification experience.
+      </p>
     </div>
   );
 }
@@ -597,6 +651,37 @@ function AdditionalDetailsSection({ register, redirectToClient, onRedirectChange
 
 function emptyToNull(val: string): string | null {
   return val || null;
+}
+
+function validateHttpUrl(value: string, required: boolean, label: string): true | string {
+  const trimmed = value.trim();
+  if (!trimmed) return required ? `${label} is required` : true;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return true;
+    }
+  } catch {
+    // Return the same concise validation message below.
+  }
+
+  return `${label} must be a valid http:// or https:// URL`;
+}
+
+function validateGtin(value: string): true | string {
+  const normalized = value.trim();
+  if (!/^\d+$/.test(normalized)) return 'GTIN must contain digits only';
+  if (normalized.length < 8 || normalized.length > 20) return 'GTIN must contain 8–20 digits';
+
+  const body = normalized.slice(0, -1);
+  const checkDigit = Number(normalized.at(-1));
+  const total = [...body].reverse().reduce((sum, digit, index) => {
+    return sum + Number(digit) * (index % 2 === 0 ? 3 : 1);
+  }, 0);
+  const expectedCheckDigit = (10 - (total % 10)) % 10;
+
+  return checkDigit === expectedCheckDigit ? true : 'GTIN check digit is invalid';
 }
 
 function nullToEmpty(val: string | null | undefined): string {
@@ -628,7 +713,7 @@ function normalizeSerialNumberType(value: string | null | undefined): string {
 function buildPayload(data: FormValues): CreateQSealProductPayload {
   const n = emptyToNull;
   return {
-    name: data.name,
+    name: data.name.trim(),
     sku: n(data.sku),
     packaging_details: {
       unit_name: data.unit_name,
@@ -642,7 +727,7 @@ function buildPayload(data: FormValues): CreateQSealProductPayload {
     gtin: n(data.gtin),
     industry: n(data.industry),
     landing_page: n(data.landing_page),
-    client_product_auth_url: n(data.client_product_auth_url),
+    client_product_auth_url: data.redirect_to_client ? n(data.client_product_auth_url) : null,
     activation_method: data.activation_method,
     sr_number_type: n(data.sr_number_type),
     serial_prefix_setting_id: data.serial_prefix_setting_id,
@@ -725,9 +810,106 @@ interface QSealProductDialogProps {
   product?: QSealProduct | null;
   onSave: (data: CreateQSealProductPayload, imageChanges: QSealProductImageChanges) => void | Promise<void>;
   saving?: boolean;
+  saveError?: { field?: 'name'; message: string } | null;
+  onClearSaveError?: () => void;
 }
 
-export function QSealProductDialog({ open, onOpenChange, product, onSave, saving }: QSealProductDialogProps) {
+const PRODUCT_FORM_STEPS = ['Basics', 'Packaging', 'QR setup', 'Review'] as const;
+const PRODUCT_STEP_FIELDS: Array<Array<keyof FormValues>> = [
+  ['name', 'gtin', 'shelf_life_setting_id'],
+  ['unit_name', 'conversion_factor'],
+  ['landing_page', 'client_product_auth_url', 'serial_prefix_setting_id'],
+  [],
+];
+
+function ReviewField({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-md border bg-muted/20 p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 break-words text-sm font-medium">{value || '—'}</p>
+    </div>
+  );
+}
+
+function ReviewSection({
+  title,
+  step,
+  onEdit,
+  children,
+}: {
+  title: string;
+  step: number;
+  onEdit: (step: number) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-3 rounded-lg border p-3">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(step)}>
+          <Pencil className="mr-1.5 h-3.5 w-3.5" />
+          Edit
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
+    </section>
+  );
+}
+
+function ProductReviewSummary({
+  values,
+  shelfLifeSettings,
+  serialPrefixSettings,
+  onEditStep,
+}: {
+  values: FormValues;
+  shelfLifeSettings: QRProductSetting[];
+  serialPrefixSettings: QRProductSetting[];
+  onEditStep: (step: number) => void;
+}) {
+  const shelfLife = shelfLifeSettings.find((setting) => setting.id === values.shelf_life_setting_id)?.label;
+  const serialPrefix = serialPrefixSettings.find((setting) => setting.id === values.serial_prefix_setting_id);
+  const serialPrefixLabel = serialPrefix ? `${serialPrefix.value} — ${serialPrefix.label}` : values.serial_prefix_setting_id;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border bg-primary/5 p-4">
+        <p className="font-semibold">Review before saving</p>
+        <p className="mt-1 text-sm text-muted-foreground">Confirm the product identity, QR configuration, and customer-facing URLs.</p>
+      </div>
+      <div className="space-y-3">
+        <ReviewSection title="Product basics" step={0} onEdit={onEditStep}>
+        <ReviewField label="Product name" value={values.name} />
+        <ReviewField label="GTIN" value={values.gtin} />
+        <ReviewField label="SKU" value={values.sku} />
+        <ReviewField label="Industry" value={values.industry} />
+        <ReviewField label="Shelf life" value={shelfLife || values.shelf_life_setting_id} />
+        </ReviewSection>
+        <ReviewSection title="Packaging" step={1} onEdit={onEditStep}>
+        <ReviewField label="Unit of measure" value={`${values.unit_name} × ${values.conversion_factor}`} />
+        </ReviewSection>
+        <ReviewSection title="QR setup" step={2} onEdit={onEditStep}>
+        <ReviewField label="Activation method" value={values.activation_method === 'post' ? 'Post-Activated' : 'Pre-Activated'} />
+        <ReviewField label="Serial number type" value={values.sr_number_type} />
+        <ReviewField label="Serial prefix" value={serialPrefixLabel} />
+        <ReviewField label="Landing page" value={values.landing_page} />
+        {values.redirect_to_client && <ReviewField label="Product auth URL" value={values.client_product_auth_url} />}
+        <ReviewField label="Redirect after scan" value={values.redirect_to_client ? 'Yes' : 'No'} />
+        </ReviewSection>
+      </div>
+    </div>
+  );
+}
+
+export function QSealProductDialog({
+  open,
+  onOpenChange,
+  product,
+  onSave,
+  saving,
+  saveError,
+  onClearSaveError,
+}: QSealProductDialogProps) {
   const isEdit = !!product;
   const { settings, loading: shelfLifeLoading, error: shelfLifeError } = useQRProductSettings('shelf_life');
   const { settings: serialPrefixSettingsData, loading: serialPrefixLoading, error: serialPrefixError } = useQRProductSettings('serial_prefix');
@@ -735,10 +917,11 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
     register,
     control,
     handleSubmit,
+    trigger,
     setValue,
     watch,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<FormValues>({
     defaultValues: getFormDefaultValues(product),
   });
@@ -752,6 +935,9 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   const [bannerError, setBannerError] = React.useState<string | undefined>(undefined);
   const [logoRequiredError, setLogoRequiredError] = React.useState<string | undefined>(undefined);
   const [bannerRequiredError, setBannerRequiredError] = React.useState<string | undefined>(undefined);
+  const [brandRequiredError, setBrandRequiredError] = React.useState<string | undefined>(undefined);
+  const [currentStep, setCurrentStep] = React.useState(0);
+  const [discardDialogOpen, setDiscardDialogOpen] = React.useState(false);
 
   const brandId = watch('brand_id');
   const activationMethod = watch('activation_method');
@@ -760,6 +946,7 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   const redirectToClient = watch('redirect_to_client');
   const imageUrl = watch('image_url');
   const bannerImageUrl = watch('banner_image_url');
+  const formValues = watch();
   const currentShelfLifeSettingId = watch('shelf_life_setting_id');
   const shelfLifeSettings = React.useMemo(
     () => settings.filter((setting) => setting.is_active || setting.id === currentShelfLifeSettingId),
@@ -773,6 +960,7 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   React.useEffect(() => {
     if (open) {
       reset(product ? getInitialValues(product) : DEFAULT_VALUES);
+      setCurrentStep(0);
       setLogoFile(null);
       setBannerFile(null);
       setRemoveLogo(false);
@@ -783,8 +971,16 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
       setBannerError(undefined);
       setLogoRequiredError(undefined);
       setBannerRequiredError(undefined);
+      setBrandRequiredError(undefined);
+      setDiscardDialogOpen(false);
     }
   }, [open, product, reset]);
+
+  React.useEffect(() => {
+    if (saveError) {
+      setCurrentStep(saveError.field === 'name' ? 0 : PRODUCT_FORM_STEPS.length - 1);
+    }
+  }, [saveError]);
 
   React.useEffect(() => {
     return () => {
@@ -833,10 +1029,35 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
     });
   });
 
+  const hasUnsavedChanges = isDirty || Boolean(logoFile || bannerFile || removeLogo || removeBanner);
+  const requestClose = (nextOpen: boolean) => {
+    if (nextOpen) {
+      onOpenChange(true);
+      return;
+    }
+    if (saving) return;
+    if (hasUnsavedChanges) {
+      setDiscardDialogOpen(true);
+      return;
+    }
+    onOpenChange(false);
+  };
+
+  const discardChanges = () => {
+    setDiscardDialogOpen(false);
+    onOpenChange(false);
+  };
+
   const handleSubmitForm = (event: React.FormEvent) => {
     event.preventDefault();
 
     if (logoError || bannerError) return;
+
+    if (!isEdit && !brandId) {
+      setBrandRequiredError('Brand is required. Please select a brand.');
+      setCurrentStep(0);
+      return;
+    }
 
     if (!isEdit) {
       const logoRequired = getRequiredImageError(logoFile, removeLogo, imageUrl, 'Logo');
@@ -849,6 +1070,25 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
     }
 
     return submitValidForm(event);
+  };
+
+  const goToNextStep = async () => {
+    const fields = PRODUCT_STEP_FIELDS[currentStep];
+    const valid = fields.length ? await trigger(fields) : true;
+
+    if (currentStep === 0 && !isEdit) {
+      const brandRequired = brandId ? undefined : 'Brand is required. Please select a brand.';
+      setBrandRequiredError(brandRequired);
+      if (brandRequired) return;
+
+      const logoRequired = getRequiredImageError(logoFile, removeLogo, imageUrl, 'Logo');
+      const bannerRequired = getRequiredImageError(bannerFile, removeBanner, bannerImageUrl, 'Banner image');
+      setLogoRequiredError(logoRequired);
+      setBannerRequiredError(bannerRequired);
+      if (logoRequired || bannerRequired) return;
+    }
+
+    if (valid) setCurrentStep((step) => Math.min(step + 1, PRODUCT_FORM_STEPS.length - 1));
   };
 
   function ProductBadges({ product }: { product: QSealProduct | null }) {
@@ -876,8 +1116,9 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
   }
 
   return (
+    <>
     <DetailDialog open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={requestClose}
       // title={isEdit ? 'Edit QSeal Product' : 'Create New Product'}
       title={
 
@@ -887,7 +1128,7 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
               <QrCode className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="font-semibold">{isEdit ? `Edit QSeal Product: ` : 'Create New Product'}</p>
+              <p className="font-semibold">{isEdit ? 'Edit Product' : 'Create New Product'}</p>
               <div className="space-y-3">
                 {isEdit && product?.name && <p className="text-xs text-muted-foreground font-mono font-normal">{product.name}</p>}
               </div>
@@ -902,64 +1143,115 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
       style={{ height: 'min(85vh, 820px)' }}
       showCloseButton={false}
       footer={
-        <div className="flex items-center justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+        <div className="flex w-full flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">Step {currentStep + 1} of {PRODUCT_FORM_STEPS.length}</p>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" onClick={() => requestClose(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button type="submit" form="qseal-product-form" disabled={saving}>
-            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Product'}
-          </Button>
+          {currentStep > 0 && <Button type="button" variant="outline" onClick={() => setCurrentStep((step) => step - 1)} disabled={saving}>Back</Button>}
+          {currentStep < PRODUCT_FORM_STEPS.length - 1 ? (
+            <Button type="button" onClick={() => void goToNextStep()} disabled={saving}>Continue</Button>
+          ) : (
+            <Button type="submit" form="qseal-product-form" disabled={saving}>
+              {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Product'}
+            </Button>
+          )}
+          </div>
         </div>
       }>
       <form id="qseal-product-form" onSubmit={handleSubmitForm} noValidate>
-        <BrandSelectSection brandId={brandId} onBrandChange={(v) => setValue('brand_id', v)} disabled={isEdit} />
-        <Separator />
-        <ProductImagesSection imageUrl={getDisplayedImageUrl(logoPreview, imageUrl, removeLogo)}
-          bannerImageUrl={getDisplayedImageUrl(bannerPreview, bannerImageUrl, removeBanner)}
-          onImageSelect={handleLogoSelect}
-          onBannerSelect={handleBannerSelect}
-          logoError={logoError ?? logoRequiredError}
-          bannerError={bannerError ?? bannerRequiredError}
-          onImageRemove={() => {
-            setLogoFile(null);
-            setLogoPreview('');
-            setRemoveLogo(true);
-            setLogoError(undefined);
-          }}
-          onBannerRemove={() => {
-            setBannerFile(null);
-            setBannerPreview('');
-            setRemoveBanner(true);
-            setBannerError(undefined);
-          }} />
-        <Separator />
-        <ProductInfoSection register={register}
-          control={control}
-          errors={errors}
+        <div className="mb-6 grid grid-cols-4 gap-2" aria-label="Product creation progress">
+          {PRODUCT_FORM_STEPS.map((step, index) => (
+            <div key={step} className="space-y-2">
+              <div className={`h-1 rounded-full ${index <= currentStep ? 'bg-primary' : 'bg-muted'}`} />
+              <p className={`text-center text-xs ${index === currentStep ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>{step}</p>
+            </div>
+          ))}
+        </div>
+
+        {saveError && saveError.field !== 'name' && (
+          <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive" role="alert">
+            {saveError.message}
+          </div>
+        )}
+
+        {currentStep === 0 && <>
+          <BrandSelectSection brandId={brandId}
+            error={brandRequiredError}
+            onBrandChange={(v) => {
+              setValue('brand_id', v, { shouldDirty: true });
+              setBrandRequiredError(undefined);
+            }}
+            disabled={isEdit} />
+          <Separator />
+          <ProductImagesSection imageUrl={getDisplayedImageUrl(logoPreview, imageUrl, removeLogo)}
+            bannerImageUrl={getDisplayedImageUrl(bannerPreview, bannerImageUrl, removeBanner)}
+            onImageSelect={handleLogoSelect}
+            onBannerSelect={handleBannerSelect}
+            logoError={logoError ?? logoRequiredError}
+            bannerError={bannerError ?? bannerRequiredError}
+            onImageRemove={() => {
+              setLogoFile(null);
+              setLogoPreview('');
+              setRemoveLogo(true);
+              setLogoError(undefined);
+            }}
+            onBannerRemove={() => {
+              setBannerFile(null);
+              setBannerPreview('');
+              setRemoveBanner(true);
+              setBannerError(undefined);
+            }} />
+          <Separator />
+          <ProductInfoSection register={register}
+            control={control}
+            errors={errors}
+            shelfLifeSettings={shelfLifeSettings}
+            shelfLifeLoading={shelfLifeLoading}
+            shelfLifeError={shelfLifeError}
+            nameServerError={saveError?.field === 'name' ? saveError.message : undefined}
+            onNameChange={onClearSaveError} />
+        </>}
+
+        {currentStep === 1 && <PackagingDetailsSection register={register} errors={errors} />}
+
+        {currentStep === 2 && <>
+          <ProductUrlsSection register={register} errors={errors} redirectToClient={redirectToClient} />
+          <Separator />
+          <input type="hidden" {...register('serial_prefix_setting_id', { required: 'Serial prefix is required' })} />
+          <ActivationDetailsSection activationMethod={activationMethod}
+            srNumberType={srNumberType}
+            serialPrefixSettingId={serialPrefixSettingId}
+            serialPrefixSettings={serialPrefixSettings}
+            serialPrefixLoading={serialPrefixLoading}
+            serialPrefixError={serialPrefixError}
+            serialPrefixValidationError={errors.serial_prefix_setting_id?.message}
+            onActivationChange={(v) => setValue('activation_method', v, { shouldDirty: true })}
+            onSrNumberChange={(v) => setValue('sr_number_type', v, { shouldDirty: true })}
+            onSerialPrefixChange={(v) => setValue('serial_prefix_setting_id', v, { shouldValidate: true })} />
+          <Separator />
+          <AdditionalDetailsSection register={register}
+            redirectToClient={redirectToClient}
+            onRedirectChange={(checked) => setValue('redirect_to_client', checked, { shouldDirty: true })} />
+        </>}
+
+        {currentStep === 3 && <ProductReviewSummary
+          values={formValues}
           shelfLifeSettings={shelfLifeSettings}
-          shelfLifeLoading={shelfLifeLoading}
-          shelfLifeError={shelfLifeError} />
-        <Separator />
-        <PackagingDetailsSection register={register} errors={errors} />
-        <Separator />
-        <ProductUrlsSection register={register} errors={errors} />
-        <Separator />
-        <input type="hidden" {...register('serial_prefix_setting_id', { required: 'Serial prefix is required' })} />
-        <ActivationDetailsSection activationMethod={activationMethod}
-          srNumberType={srNumberType}
-          serialPrefixSettingId={serialPrefixSettingId}
           serialPrefixSettings={serialPrefixSettings}
-          serialPrefixLoading={serialPrefixLoading}
-          serialPrefixError={serialPrefixError}
-          serialPrefixValidationError={errors.serial_prefix_setting_id?.message}
-          onActivationChange={(v) => setValue('activation_method', v)}
-          onSrNumberChange={(v) => setValue('sr_number_type', v)}
-          onSerialPrefixChange={(v) => setValue('serial_prefix_setting_id', v, { shouldValidate: true })} />
-        <Separator />
-        <AdditionalDetailsSection register={register}
-          redirectToClient={redirectToClient}
-          onRedirectChange={(checked) => setValue('redirect_to_client', checked)} />
+          onEditStep={setCurrentStep} />}
       </form>
     </DetailDialog>
+    <ConfirmationDialog
+      open={discardDialogOpen}
+      onOpenChange={setDiscardDialogOpen}
+      title="Discard unsaved changes?"
+      description="Your changes to this product will be lost if you close the form."
+      confirmLabel="Discard changes"
+      variant="destructive"
+      onConfirm={discardChanges}
+    />
+    </>
   );
 }

@@ -11,6 +11,7 @@ const PAGE_SIZE = 20;
 export interface UseQSealProductsResult {
   products: QSealProductListItem[];
   pagination: QSealProductListResponse['pagination'] | null;
+  stats: QSealProductListResponse['stats'] | null;
   loading: boolean;
   error: string | null;
   refetch: () => void;
@@ -25,6 +26,7 @@ export function useQSealProducts(
   const accessToken = useUserStore((s) => s.accessToken);
   const [products, setProducts] = React.useState<QSealProductListItem[]>([]);
   const [pagination, setPagination] = React.useState<QSealProductListResponse['pagination'] | null>(null);
+  const [stats, setStats] = React.useState<QSealProductListResponse['stats'] | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [currentPage, setCurrentPage] = React.useState(initialPage);
@@ -33,6 +35,7 @@ export function useQSealProducts(
     if (!accessToken) {
       setProducts([]);
       setPagination(null);
+      setStats(null);
       setLoading(false);
       return;
     }
@@ -54,10 +57,12 @@ export function useQSealProducts(
 
       setProducts(data.products);
       setPagination(data.pagination);
+      setStats(data.stats || null);
     } catch (err) {
       setError(getFriendlyErrorMessage(err));
       setProducts([]);
       setPagination(null);
+      setStats(null);
     } finally {
       setLoading(false);
     }
@@ -70,6 +75,7 @@ export function useQSealProducts(
   return {
     products,
     pagination,
+    stats,
     loading,
     error,
     refetch: fetchProducts,

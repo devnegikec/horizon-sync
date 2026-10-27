@@ -26,8 +26,8 @@ export function QSealHeader({ onRefresh, onCreateProduct, isLoading = false, cre
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">QSeal Products</h1>
-        <p className="text-muted-foreground mt-1">Manage QR-enabled products, blocks, and activation tracking</p>
+        <h1 className="text-3xl font-bold tracking-tight">Products</h1>
+        <p className="text-muted-foreground mt-1">Create and manage your QR-enabled product catalog.</p>
       </div>
 
       <div className="flex items-center gap-3">

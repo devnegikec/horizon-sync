@@ -1,6 +1,5 @@
 import type {
   QSealActivationHistoryResponse,
-  QSealActivationSettings,
   QSealActivationSettingsInput,
   QSealActivationSettingsSaveResponse,
   QSealActivationSummary,
@@ -12,8 +11,6 @@ const activationPath = (productId: string) => `/qseal/products/${productId}/acti
 
 export const qsealActivationApi = {
   getSummary: (accessToken: string, productId: string) => apiRequest<QSealActivationSummary>(`${activationPath(productId)}/summary`, accessToken),
-  getCurrentSettings: (accessToken: string, productId: string) =>
-    apiRequest<QSealActivationSettings>(`${activationPath(productId)}/settings`, accessToken),
   saveSettings: (accessToken: string, productId: string, data: QSealActivationSettingsInput) =>
     apiRequest<QSealActivationSettingsSaveResponse>(`${activationPath(productId)}/settings`, accessToken, { method: 'POST', body: data }),
   getHistory: (accessToken: string, productId: string, page = 1, pageSize = 20) =>

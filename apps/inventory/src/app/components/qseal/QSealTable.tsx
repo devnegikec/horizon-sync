@@ -28,6 +28,8 @@ export interface QSealTableProps {
   error: string | null;
   hasActiveFilters: boolean;
   onView: (product: QSealProductListItem) => void;
+  onOpenBlocks?: (product: QSealProductListItem) => void;
+  onOpenAnalytics?: (product: QSealProductListItem) => void;
   onEdit: (product: QSealProductListItem) => void;
   onToggleStatus: (product: QSealProductListItem) => void;
   onCreateProduct: () => void;
@@ -46,6 +48,8 @@ export function QSealTable({
   error,
   hasActiveFilters,
   onView,
+  onOpenBlocks,
+  onOpenAnalytics,
   onEdit,
   onToggleStatus,
   onCreateProduct,
@@ -111,21 +115,44 @@ export function QSealTable({
         },
       },
       {
-        accessorKey: 'activation_method',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Activation Method" />,
+        id: 'qr_blocks',
+        header: () => <span>QR Blocks</span>,
+        enableSorting: false,
         cell: ({ row }) => {
-          const method = row.original.activation_method;
-          if (!method) return <span className="text-muted-foreground">—</span>;
-          const label = method === 'pre' ? 'Pre-Activated' : 'Post-Activated';
-          const color =
-            method === 'pre'
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400';
-          return (
-            <Badge variant="secondary" className={color}>
-              {label}
-            </Badge>
+          const product = row.original;
+          const blockCount = product.block_count ?? 0;
+          const qrCodeCount = product.qr_code_count ?? 0;
+          const content = (
+            <div className="text-left">
+              <p className="font-medium">{blockCount.toLocaleString()} {blockCount === 1 ? 'block' : 'blocks'}</p>
+              <p className="text-xs text-muted-foreground">{qrCodeCount.toLocaleString()} QR codes</p>
+            </div>
           );
+          return onOpenBlocks && blockCount > 0 ? (
+            <button type="button" className="rounded-md text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-ring" onClick={(event) => { event.stopPropagation(); onOpenBlocks(product); }} aria-label={`View QR blocks for ${product.name}`}>
+              {content}
+            </button>
+          ) : content;
+        },
+      },
+      {
+        id: 'last_scan',
+        header: () => <span>Last Scan</span>,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const product = row.original;
+          const scanCount = product.scan_count ?? 0;
+          const content = (
+            <div className="text-left">
+              <p className="font-medium">{product.last_scan_at ? formatDate(product.last_scan_at, 'DD-MMM-YY', { includeTime: true }) : 'Never scanned'}</p>
+              <p className="text-xs text-muted-foreground">{scanCount.toLocaleString()} {scanCount === 1 ? 'scan' : 'scans'}</p>
+            </div>
+          );
+          return onOpenAnalytics && scanCount > 0 ? (
+            <button type="button" className="rounded-md text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-ring" onClick={(event) => { event.stopPropagation(); onOpenAnalytics(product); }} aria-label={`View analytics for ${product.name}`}>
+              {content}
+            </button>
+          ) : content;
         },
       },
       {
@@ -144,21 +171,21 @@ export function QSealTable({
             <div className="text-right">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" onClick={(event) => event.stopPropagation()} aria-label={`Actions for ${p.name}`}>
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onView(p)}>
+                  <DropdownMenuItem onClick={(event) => { event.stopPropagation(); onView(p); }}>
                     <Eye className="mr-2 h-4 w-4" />
                     View Details
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onEdit(p)}>
+                  <DropdownMenuItem onClick={(event) => { event.stopPropagation(); onEdit(p); }}>
                     <Edit className="mr-2 h-4 w-4" />
                     Edit Product
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => onToggleStatus(p)}>
+                  <DropdownMenuItem onClick={(event) => { event.stopPropagation(); onToggleStatus(p); }}>
                     {isActive ? (
                       <>
                         <PowerOff className="mr-2 h-4 w-4" />
@@ -178,7 +205,7 @@ export function QSealTable({
         },
       },
     ],
-    [onView, onEdit, onToggleStatus],
+    [onView, onOpenBlocks, onOpenAnalytics, onEdit, onToggleStatus],
   );
 
   if (error) {
@@ -209,7 +236,7 @@ export function QSealTable({
       <Card>
         <CardContent className="p-6">
           <EmptyState icon={<QrCode className="h-12 w-12" />}
-            title="No QSeal products found"
+            title="No products found"
             description={hasActiveFilters ? 'Try adjusting your search or filters' : 'Get started by adding your first QSeal product'}
             action={
               !hasActiveFilters ? (
@@ -243,6 +270,7 @@ export function QSealTable({
             if (table !== tableInstance) setTableInstance(table);
             return null;
           }}
+          onRowClick={onView}
           fixedHeader
           maxHeight="auto"/>
       </CardContent>

@@ -1,3 +1,5 @@
+import * as React from 'react';
+
 import { CalendarDays, Search, SlidersHorizontal, X } from 'lucide-react';
 
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -40,6 +42,22 @@ function endOfDay(value: string) {
 }
 
 export function AnalyticsFilters({ filters, setFilters, productOptions = [], blockOptions = [] }: AnalyticsFiltersProps) {
+  const [serialInput, setSerialInput] = React.useState(filters.serial_number || '');
+
+  React.useEffect(() => {
+    setSerialInput(filters.serial_number || '');
+  }, [filters.serial_number]);
+
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setFilters((prev) => {
+        const serialNumber = serialInput.trim() || undefined;
+        return prev.serial_number === serialNumber ? prev : { ...prev, serial_number: serialNumber };
+      });
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [serialInput, setFilters]);
+
   const setDatePreset = (days: number) => {
     const to = new Date();
     const from = new Date();
@@ -54,6 +72,7 @@ export function AnalyticsFilters({ filters, setFilters, productOptions = [], blo
   })();
 
   const hasAdvancedFilters = Boolean(filters.product_id || filters.batch || filters.serial_number || (filters.risk_filter && filters.risk_filter !== 'all'));
+  const invalidDateRange = Boolean(filters.date_from && filters.date_to && Date.parse(filters.date_from) > Date.parse(filters.date_to));
   const batchOptions = Array.from(new Set(blockOptions.map((block) => block.batch).filter(Boolean)));
 
   const clearFilters = () => {
@@ -84,6 +103,8 @@ export function AnalyticsFilters({ filters, setFilters, productOptions = [], blo
             type="date"
             value={toDateInputValue(filters.date_from)}
             onChange={(event) => setFilters((prev) => ({ ...prev, date_from: event.target.value ? startOfDay(event.target.value) : undefined }))}
+            aria-label="Start date"
+            aria-invalid={invalidDateRange}
             className="h-8 w-[140px] text-xs"
           />
           <span>to</span>
@@ -91,14 +112,17 @@ export function AnalyticsFilters({ filters, setFilters, productOptions = [], blo
             type="date"
             value={toDateInputValue(filters.date_to)}
             onChange={(event) => setFilters((prev) => ({ ...prev, date_to: event.target.value ? endOfDay(event.target.value) : undefined }))}
+            aria-label="End date"
+            aria-invalid={invalidDateRange}
             className="h-8 w-[140px] text-xs"
           />
         </div>
       </div>
+      {invalidDateRange && <p className="text-sm text-destructive" role="alert">The start date must be before the end date.</p>}
 
       <div className="flex items-center gap-2 border-t pt-3 text-sm font-medium">
         <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-        <span>QSeal filters</span>
+        <span>Filter results</span>
         {hasAdvancedFilters && (
           <Button variant="ghost" size="sm" className="ml-auto h-7 gap-1 text-xs" onClick={clearFilters}>
             <X className="h-3 w-3" /> Clear
@@ -125,8 +149,9 @@ export function AnalyticsFilters({ filters, setFilters, productOptions = [], blo
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search serial number"
-            value={filters.serial_number || ''}
-            onChange={(event) => setFilters((prev) => ({ ...prev, serial_number: event.target.value || undefined }))}
+            value={serialInput}
+            onChange={(event) => setSerialInput(event.target.value)}
+            aria-label="Search serial number"
             className="h-9 pl-9"
           />
         </div>

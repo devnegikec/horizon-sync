@@ -86,6 +86,51 @@ describe('PublicQRValidation', () => {
     );
   });
 
+  it('requests browser location automatically without rendering a location card', async () => {
+    const originalGeolocation = Object.getOwnPropertyDescriptor(navigator, 'geolocation');
+    const getCurrentPosition = jest.fn((onSuccess: PositionCallback) => {
+      onSuccess({
+        coords: {
+          latitude: 28.6139,
+          longitude: 77.209,
+          accuracy: 25,
+        } as GeolocationCoordinates,
+        timestamp: Date.now(),
+      } as GeolocationPosition);
+    });
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition },
+    });
+    mockedAxios.post.mockResolvedValueOnce({
+      data: { ...authenticResult, scan_event_id: 'scan-event-id' },
+    });
+    mockedAxios.patch.mockResolvedValueOnce({ data: undefined } as never);
+
+    try {
+      renderPage();
+
+      expect(await screen.findByRole('heading', { name: 'Authentic Product' })).toBeInTheDocument();
+      await waitFor(() => expect(mockedAxios.patch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/public/qr/scans/scan-event-id/location'),
+        {
+          latitude: 28.6139,
+          longitude: 77.209,
+          accuracy_meters: 25,
+        },
+      ));
+      expect(getCurrentPosition).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('Help protect genuine products')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /share location/i })).not.toBeInTheDocument();
+    } finally {
+      if (originalGeolocation) {
+        Object.defineProperty(navigator, 'geolocation', originalGeolocation);
+      } else {
+        delete (navigator as Navigator & { geolocation?: Geolocation }).geolocation;
+      }
+    }
+  });
+
   it('renders the dedicated first-time enterprise state for an authentic One-Time QR', async () => {
     mockedAxios.get.mockResolvedValueOnce({
       data: {

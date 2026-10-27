@@ -14,7 +14,6 @@ import {
   Link2,
   LockKeyhole,
   Mail,
-  MapPin,
   MessageCircle,
   PackageCheck,
   Phone,
@@ -638,50 +637,30 @@ function PublicPageMain({
 }
 
 function LocationConsent({ scanEventId }: { scanEventId: string }) {
-  const [state, setState] = React.useState<'idle' | 'requesting' | 'shared' | 'denied'>('idle');
+  const requested = React.useRef(false);
 
-  const shareLocation = () => {
-    if (!navigator.geolocation) {
-      setState('denied');
-      return;
-    }
-    setState('requesting');
+  React.useEffect(() => {
+    if (requested.current || !navigator.geolocation) return;
+    requested.current = true;
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        void axios
-          .patch(`${API_BASE_URL}/api/v1/public/qr/scans/${scanEventId}/location`, {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy_meters: Math.round(position.coords.accuracy),
-          })
-          .then(() => setState('shared'))
-          .catch(() => setState('denied'));
+        void axios.patch(`${API_BASE_URL}/api/v1/public/qr/scans/${scanEventId}/location`, {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy_meters: Math.round(position.coords.accuracy),
+        }).catch(() => {
+          // The backend IP enrichment remains the fallback when GPS fails.
+        });
       },
-      () => setState('denied'),
+      () => {
+        // Permission denied or GPS unavailable: keep using backend IP enrichment.
+      },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
     );
-  };
+  }, [scanEventId]);
 
-  if (state === 'shared') {
-    return (
-      <p className="qrv-location-note">
-        <MapPin aria-hidden="true" /> Approximate location shared.
-      </p>
-    );
-  }
-  return (
-    <div className="qrv-location-consent">
-      <div>
-        <strong>Help protect genuine products</strong>
-        <span>Optionally share approximate location to detect counterfeit distribution. Verification works without it.</span>
-      </div>
-      <button className="qrv-button" type="button" onClick={shareLocation} disabled={state === 'requesting'}>
-        <MapPin aria-hidden="true" />
-        {state === 'requesting' ? 'Requesting…' : 'Share location'}
-      </button>
-      {state === 'denied' && <small>Location was not shared. You can continue normally.</small>}
-    </div>
-  );
+  return null;
 }
 
 type ProductDetailVisibilityKey =

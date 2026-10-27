@@ -4,6 +4,7 @@ import { useUserStore } from '@horizon-sync/store';
 
 import { qrProductApi } from '../api/qr-products';
 import { notificationService } from '../services/notificationService';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 import type {
   QSealCreditInfo,
   QSealFilters,
@@ -22,11 +23,12 @@ export function useQSealManagement() {
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
   const [selectedProduct, setSelectedProduct] = React.useState<QSealProduct | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [productSaveError, setProductSaveError] = React.useState<{ field?: 'name'; message: string } | null>(null);
 
   // Credit info — no dedicated endpoint yet, keep as placeholder
   const [creditInfo] = React.useState<QSealCreditInfo | undefined>(undefined);
 
-  const { products, pagination, loading, error, refetch, currentPage, setPage } = useQSealProducts(1, filters);
+  const { products, pagination, stats: productStats, loading, error, refetch, currentPage, setPage } = useQSealProducts(1, filters);
 
   // Reset to page 1 when filters change
   React.useEffect(() => {
@@ -35,15 +37,25 @@ export function useQSealManagement() {
 
   const handleCreateProduct = React.useCallback(() => {
     setSelectedProduct(null);
+    setProductSaveError(null);
     setProductDialogOpen(true);
   }, []);
 
   const handleEditProduct = React.useCallback(
     async (product: QSealProductListItem) => {
       if (!accessToken) return;
+      setProductSaveError(null);
+      setDetailDialogOpen(false);
       try {
         const full = await qrProductApi.getById(accessToken, product.id);
-        setSelectedProduct(full);
+        setSelectedProduct({
+          ...full,
+          block_count: product.block_count,
+          qr_code_count: product.qr_code_count,
+          scan_count: product.scan_count,
+          last_scan_at: product.last_scan_at,
+        });
+        setDetailDialogOpen(false);
         setProductDialogOpen(true);
       } catch {
         // Fallback: open dialog with list-level data mapped to QSealProduct shape
@@ -77,6 +89,7 @@ export function useQSealManagement() {
           created_at: product.created_at,
           updated_at: product.created_at,
         });
+        setDetailDialogOpen(false);
         setProductDialogOpen(true);
       }
     },
@@ -88,7 +101,13 @@ export function useQSealManagement() {
       if (!accessToken) return;
       try {
         const full = await qrProductApi.getById(accessToken, product.id);
-        setSelectedProduct(full);
+        setSelectedProduct({
+          ...full,
+          block_count: product.block_count,
+          qr_code_count: product.qr_code_count,
+          scan_count: product.scan_count,
+          last_scan_at: product.last_scan_at,
+        });
         setDetailDialogOpen(true);
       } catch {
         setSelectedProduct(null);
@@ -101,6 +120,7 @@ export function useQSealManagement() {
   const handleSaveProduct = React.useCallback(
     async (data: CreateQSealProductPayload, imageChanges: QSealProductImageChanges) => {
       if (!accessToken) return;
+      setProductSaveError(null);
       setSaving(true);
       try {
         let savedProduct: QSealProduct;
@@ -135,7 +155,13 @@ export function useQSealManagement() {
         refetch();
       } catch (err) {
         console.error('Failed to save product:', err);
-        notificationService.error('Failed to save product. Please try again.');
+        const message = getFriendlyErrorMessage(err);
+        const normalizedMessage = message.toLowerCase();
+        if (normalizedMessage.includes('product named') && normalizedMessage.includes('already exists')) {
+          setProductSaveError({ field: 'name', message });
+        } else {
+          notificationService.error(message);
+        }
         refetch();
       } finally {
         setSaving(false);
@@ -143,6 +169,10 @@ export function useQSealManagement() {
     },
     [accessToken, selectedProduct, refetch],
   );
+
+  const clearProductSaveError = React.useCallback(() => {
+    setProductSaveError(null);
+  }, []);
 
   const handleToggleStatus = React.useCallback(
     async (product: QSealProductListItem) => {
@@ -165,16 +195,15 @@ export function useQSealManagement() {
 
   // Stats computed from current page data + pagination totals
   const stats = React.useMemo(() => {
-    const total = pagination?.total_items ?? products.length;
-    const active = products.filter((p) => p.is_active).length;
+    const total = productStats?.total_products ?? pagination?.total_items ?? products.length;
+    const active = productStats?.active_products ?? products.filter((p) => p.is_active).length;
     return {
       total,
       active,
-      // These aren't available from the list endpoint — show 0 until analytics are integrated
-      totalQRCodes: 0,
-      totalScans: 0,
+      totalQRCodes: productStats?.qr_code_count ?? 0,
+      totalScans: productStats?.scan_count ?? 0,
     };
-  }, [products, pagination]);
+  }, [products, pagination, productStats]);
 
   const serverPaginationConfig = React.useMemo(() => {
     if (!pagination) return undefined;
@@ -202,6 +231,8 @@ export function useQSealManagement() {
     detailDialogOpen,
     setDetailDialogOpen,
     selectedProduct,
+    productSaveError,
+    clearProductSaveError,
     handleCreateProduct,
     handleEditProduct,
     handleViewProduct,

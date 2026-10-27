@@ -1,11 +1,12 @@
 import * as React from 'react';
 
-import { useUserStore } from '@horizon-sync/store';
-import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Download, Lightbulb, LockKeyhole, MapPin, Package, Repeat2, ShieldAlert, TrendingUp } from 'lucide-react';
+import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Clock3, Download, HelpCircle, History, Lightbulb, LockKeyhole, MapPin, Package, Repeat2, ShieldAlert, TrendingUp, XCircle, type LucideIcon } from 'lucide-react';
 
+import { useUserStore } from '@horizon-sync/store';
 import { Badge, Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@horizon-sync/ui/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@horizon-sync/ui/components/ui/tooltip';
 
 import { useAnalyticsManagement } from '../../hooks/useAnalyticsManagement';
 import type {
@@ -30,68 +31,167 @@ function EmptyPanel({ message }: { message: string }) {
   return <div className="flex min-h-32 items-center justify-center text-sm text-muted-foreground">{message}</div>;
 }
 
-function TrendChart({ items }: { items: QSealScanTrendItem[] }) {
-  if (!items.length) return <EmptyPanel message="No scan trend data for this period" />;
-  const max = Math.max(...items.map((item) => item.total_scans), 1);
-  const chartHeight = 160;
-  const chartWidth = 640;
-  const chartPadding = 10;
-  const xFor = (index: number) => chartPadding + (index * (chartWidth - chartPadding * 2)) / Math.max(items.length - 1, 1);
-  const yFor = (value: number) => chartHeight - chartPadding - (value / max) * (chartHeight - chartPadding * 2);
-  const linePoints = (valueFor: (item: QSealScanTrendItem) => number) => items.map((item, index) => `${xFor(index)},${yFor(valueFor(item))}`).join(' ');
+function locationSourceLabel(source: string | null | undefined): string | null {
+  if (!source) return null;
+  const normalized = source.trim().toLowerCase();
+  if (normalized === 'browser' || normalized === 'gps') return 'GPS';
+  if (normalized === 'ip' || normalized === 'ip_address') return 'IP estimate';
+  return source;
+}
+
+function SectionError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="space-y-3">
-      <div className="overflow-x-auto border-b border-l">
-        <svg aria-label="QSeal scan trends over time" role="img" viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="block h-44 w-full">
-          {[0.25, 0.5, 0.75].map((ratio) => (
-            <line key={ratio} x1={chartPadding} x2={chartWidth - chartPadding} y1={yFor(max * ratio)} y2={yFor(max * ratio)} stroke="hsl(var(--border))" strokeDasharray="3 4" />
-          ))}
-          <polyline points={linePoints((item) => item.total_scans)} fill="none" stroke="hsl(var(--primary))" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          <polyline points={linePoints((item) => item.valid_scans)} fill="none" stroke="hsl(160 70% 42%)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          <polyline points={linePoints((item) => item.invalid_scans)} fill="none" stroke="hsl(0 84% 60%)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          <polyline points={linePoints((item) => item.suspicious_scans)} fill="none" stroke="hsl(30 90% 50%)" strokeWidth="2.5" strokeDasharray="6 4" strokeLinecap="round" strokeLinejoin="round" />
-          {items.map((item, index) => (
-            <g key={item.date}>
-              <title>{`${item.date}: ${item.total_scans} scans (${item.valid_scans} valid, ${item.invalid_scans} invalid, ${item.suspicious_scans} suspicious)`}</title>
-              <circle cx={xFor(index)} cy={yFor(item.total_scans)} r="2.5" fill="hsl(var(--primary))" />
-              <circle cx={xFor(index)} cy={yFor(item.valid_scans)} r="2" fill="hsl(160 70% 42%)" />
-              {item.invalid_scans > 0 && <circle cx={xFor(index)} cy={yFor(item.invalid_scans)} r="2" fill="hsl(0 84% 60%)" />}
-            </g>
-          ))}
-        </svg>
-      </div>
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{items[0].date}</span>
-        <span>{items[items.length - 1].date}</span>
-      </div>
-      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-primary" /> Total scans</span>
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-emerald-500" /> Valid</span>
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-red-400" /> Invalid</span>
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-orange-500" /> Suspicious</span>
-      </div>
+    <div className="flex min-h-32 flex-col items-center justify-center gap-2 p-4 text-center">
+      <p className="text-sm text-destructive">Unable to load this section.</p>
+      <p className="text-xs text-muted-foreground">{message}</p>
+      <Button variant="outline" size="sm" onClick={onRetry}>Retry</Button>
     </div>
   );
 }
 
-function StatusBreakdown({ summary }: { summary: { valid_scans: number; invalid_scans: number } }) {
-  const total = summary.valid_scans + summary.invalid_scans;
-  if (!total) return <EmptyPanel message="No scan status data for this period" />;
-  const validWidth = (summary.valid_scans / total) * 100;
+const TREND_SERIES = [
+  { key: 'total_scans', label: 'Total', color: '#4f46e5', dash: undefined },
+  { key: 'valid_scans', label: 'Valid', color: '#10b981', dash: undefined },
+  { key: 'invalid_scans', label: 'Invalid', color: '#ef4444', dash: undefined },
+  { key: 'suspicious_scans', label: 'Suspicious', color: '#f59e0b', dash: '6 4' },
+] as const;
+
+type TrendSeriesKey = (typeof TREND_SERIES)[number]['key'];
+
+const DEFAULT_VISIBLE_TREND_SERIES: Record<TrendSeriesKey, boolean> = {
+  total_scans: true,
+  valid_scans: false,
+  invalid_scans: true,
+  suspicious_scans: true,
+};
+
+function formatTrendDate(value: string): string {
+  const date = new Date(value.includes('T') ? value : `${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
+}
+
+function formatTrendCount(value: number): string {
+  return value.toLocaleString();
+}
+
+function TrendChart({ items }: { items: QSealScanTrendItem[] }) {
+  const [visibleSeriesState, setVisibleSeries] = React.useState(DEFAULT_VISIBLE_TREND_SERIES);
+  const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
+
+  if (!items.length) return <EmptyPanel message="No scan trend data for this period" />;
+
+  const chartWidth = 900;
+  const chartHeight = 260;
+  const chartMargin = { top: 18, right: 18, bottom: 34, left: 48 };
+  const plotWidth = chartWidth - chartMargin.left - chartMargin.right;
+  const plotHeight = chartHeight - chartMargin.top - chartMargin.bottom;
+  const visibleSeries = TREND_SERIES.filter((series) => visibleSeriesState[series.key]);
+  const max = Math.max(
+    ...items.flatMap((item) => visibleSeries.map((series) => item[series.key])),
+    1,
+  );
+  const xFor = (index: number) => chartMargin.left + (index * plotWidth) / Math.max(items.length - 1, 1);
+  const yFor = (value: number) => chartMargin.top + plotHeight - (value / max) * plotHeight;
+  const linePoints = (key: TrendSeriesKey) => items.map((item, index) => `${xFor(index)},${yFor(item[key])}`).join(' ');
+  const tickStep = Math.max(1, Math.ceil(items.length / 6));
+  const xTicks = items
+    .map((item, index) => ({ item, index }))
+    .filter(({ index }) => index === 0 || index === items.length - 1 || index % tickStep === 0);
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
+    value: Math.round(max * ratio),
+    y: yFor(max * ratio),
+  }));
+  const selectedIndex = Math.min(activeIndex ?? items.length - 1, items.length - 1);
+  const selectedItem = items[selectedIndex];
+  const suspiciousAverage = items.reduce((sum, item) => sum + item.suspicious_scans, 0) / items.length;
+  const suspiciousSpikeThreshold = Math.max(suspiciousAverage * 1.5, 1);
+
+  const toggleSeries = (key: TrendSeriesKey) => {
+    setVisibleSeries((current) => {
+      const visibleCount = Object.values(current).filter(Boolean).length;
+      if (current[key] && visibleCount === 1) return current;
+      return { ...current, [key]: !current[key] };
+    });
+  };
+
   return (
-    <div className="space-y-5 py-2">
-      <div className="flex h-4 overflow-hidden rounded-full bg-muted">
-        <div className="bg-emerald-500" style={{ width: `${validWidth}%` }} />
-        <div className="bg-red-400" style={{ width: `${100 - validWidth}%` }} />
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2" aria-label="Trend series">
+        {TREND_SERIES.map((series) => (
+          <button key={series.key}
+            type="button"
+            aria-pressed={visibleSeriesState[series.key]}
+            onClick={() => toggleSeries(series.key)}
+            disabled={visibleSeriesState[series.key] && visibleSeries.length === 1}
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${visibleSeriesState[series.key] ? 'border-border bg-background text-foreground shadow-sm' : 'border-transparent bg-muted/60 text-muted-foreground'}`}>
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: series.color }} />
+            {series.label}
+          </button>
+        ))}
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-xs text-muted-foreground">Valid scans</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-600">{summary.valid_scans.toLocaleString()}</p>
+
+      <div className="overflow-x-auto rounded-lg border bg-background">
+        <div className="min-w-[680px] p-3">
+          <svg aria-label="Scan trends over time" role="img" viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="block h-64 w-full">
+            {yTicks.map((tick) => (
+              <g key={tick.value}>
+                <line x1={chartMargin.left} x2={chartWidth - chartMargin.right} y1={tick.y} y2={tick.y} stroke="hsl(var(--border))" strokeDasharray="3 4" />
+                <text x={chartMargin.left - 10} y={tick.y + 4} textAnchor="end" className="fill-muted-foreground text-[11px]">{formatTrendCount(tick.value)}</text>
+              </g>
+            ))}
+            {xTicks.map(({ item, index }) => (
+              <g key={item.date}>
+                <line x1={xFor(index)} x2={xFor(index)} y1={chartMargin.top} y2={chartHeight - chartMargin.bottom} stroke="hsl(var(--border))" strokeDasharray="2 5" opacity="0.35" />
+                <text x={xFor(index)} y={chartHeight - 10} textAnchor="middle" className="fill-muted-foreground text-[11px]">{formatTrendDate(item.date)}</text>
+              </g>
+            ))}
+            {TREND_SERIES.map((series) => visibleSeriesState[series.key] && (
+              <polyline key={series.key}
+                points={linePoints(series.key)}
+                fill="none"
+                stroke={series.color}
+                strokeWidth={series.key === 'total_scans' ? 3.5 : 2.5}
+                strokeDasharray={series.dash}
+                strokeLinecap="round"
+                strokeLinejoin="round" />
+            ))}
+            {visibleSeriesState.suspicious_scans && items.map((item, index) => item.suspicious_scans >= suspiciousSpikeThreshold && item.suspicious_scans > 0 && (
+              <circle key={`spike-${item.date}`} cx={xFor(index)} cy={yFor(item.suspicious_scans)} r="6" fill="none" stroke="#f59e0b" strokeWidth="2" opacity="0.8">
+                <title>{`${formatTrendDate(item.date)}: suspicious scan spike`}</title>
+              </circle>
+            ))}
+            {selectedItem && (
+              <line x1={xFor(selectedIndex)} x2={xFor(selectedIndex)} y1={chartMargin.top} y2={chartHeight - chartMargin.bottom} stroke="hsl(var(--foreground))" strokeDasharray="4 4" opacity="0.35" />
+            )}
+            {items.map((item, index) => (
+              <rect key={`hit-${item.date}`}
+                x={xFor(index) - plotWidth / Math.max(items.length * 2, 2)}
+                y={chartMargin.top}
+                width={plotWidth / Math.max(items.length, 1)}
+                height={plotHeight}
+                fill="transparent"
+                onMouseEnter={() => setActiveIndex(index)}
+                onFocus={() => setActiveIndex(index)}
+                tabIndex={0}
+                aria-label={`${formatTrendDate(item.date)}: ${formatTrendCount(item.total_scans)} total scans`} />
+            ))}
+          </svg>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Invalid scans</p>
-          <p className="mt-1 text-2xl font-semibold text-red-500">{summary.invalid_scans.toLocaleString()}</p>
+      </div>
+
+      <div className="rounded-lg border bg-muted/30 px-3 py-2" aria-live="polite">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="font-semibold text-foreground">{formatTrendDate(selectedItem.date)}</span>
+          <span className="text-muted-foreground">Scan breakdown</span>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
+          {TREND_SERIES.map((series) => (
+            <span key={series.key} className="flex items-center gap-1.5 text-muted-foreground">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: series.color }} />
+              {series.label}: <strong className="text-foreground">{formatTrendCount(selectedItem[series.key])}</strong>
+            </span>
+          ))}
         </div>
       </div>
     </div>
@@ -139,12 +239,12 @@ function InsightsCard({ summary, products, geography, trends, history, onOpenEve
     <Card>
       <CardHeader className="flex flex-row items-center gap-2 pb-2"><Lightbulb className="h-4 w-4 text-amber-500" /><CardTitle className="text-sm font-medium">Alerts & insights</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        {alerts.length ? <div className="grid gap-3 md:grid-cols-3">{alerts.map((alert) => { const Icon = alert.icon; return <div key={alert.title} className={`rounded-lg border p-4 ${alert.tone}`}><div className="mb-2 flex items-center gap-2 text-sm font-medium"><Icon className="h-4 w-4" />{alert.title}</div><p className="text-sm text-muted-foreground">{alert.message}</p>{alert.action && <Button variant="link" className="mt-2 h-auto gap-1 p-0 text-sm" onClick={() => onOpenEvents(alert.filters)}>{alert.action}<ArrowRight className="h-3.5 w-3.5" /></Button>}</div>; })}</div> : <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">No active QSeal alerts in the selected period.</div>}
+        {alerts.length ? <div className="grid gap-3 md:grid-cols-3">{alerts.map((alert) => { const Icon = alert.icon; return <div key={alert.title} className={`rounded-lg border p-4 ${alert.tone}`}><div className="mb-2 flex items-center gap-2 text-sm font-medium"><Icon className="h-4 w-4" />{alert.title}</div><p className="text-sm text-muted-foreground">{alert.message}</p>{alert.action && <Button variant="link" className="mt-2 h-auto gap-1 p-0 text-sm" onClick={() => onOpenEvents(alert.filters)}>{alert.action}<ArrowRight className="h-3.5 w-3.5" /></Button>}</div>; })}</div> : <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">No active alerts in the selected period.</div>}
         <div className="grid gap-4 md:grid-cols-4">
         <div className="rounded-lg bg-muted/40 p-4"><div className="mb-2 flex items-center gap-2 text-sm font-medium"><AlertTriangle className="h-4 w-4 text-red-500" /> Scan quality</div><p className="text-sm text-muted-foreground">{invalidMessage}</p></div>
         <div className="rounded-lg bg-muted/40 p-4"><div className="mb-2 flex items-center gap-2 text-sm font-medium"><Repeat2 className="h-4 w-4 text-amber-500" /> Repeat activity</div><p className="text-sm text-muted-foreground">{summary.repeat_scans.toLocaleString()} repeat scans across {summary.unique_serials.toLocaleString()} valid serials.</p></div>
         <div className="rounded-lg bg-muted/40 p-4"><div className="mb-2 flex items-center gap-2 text-sm font-medium"><Package className="h-4 w-4 text-blue-500" /> Leading product</div><p className="text-sm text-muted-foreground">{topProduct ? `${topProduct.product_name} has ${topProduct.total_scans.toLocaleString()} scans.` : 'No product scan data yet.'} {geography.length ? `${geography.length} locations captured.` : ''}</p>{topProduct?.product_id && <Button variant="link" className="mt-2 h-auto gap-1 p-0 text-sm" onClick={() => onOpenEvents({ product_id: topProduct.product_id || undefined, batch: topProduct.batch || undefined, risk_filter: undefined })}>View product events<ArrowRight className="h-3.5 w-3.5" /></Button>}</div>
-        <div className="rounded-lg bg-red-50 p-4 dark:bg-red-950/20"><div className="mb-2 flex items-center gap-2 text-sm font-medium"><ShieldAlert className="h-4 w-4 text-red-500" /> Suspicious activity</div><p className="text-sm text-muted-foreground">{summary.suspicious_scans.toLocaleString()} flagged scans ({summary.suspicious_rate.toFixed(1)}%). {topReason ? `Most common: ${SUSPICIOUS_REASON_LABELS[topReason[0]] || topReason[0]} (${topReason[1]} recent events).` : 'Review high-risk events first.'}</p>{summary.suspicious_scans > 0 && <Button variant="link" className="mt-2 h-auto gap-1 p-0 text-sm text-red-700 dark:text-red-300" onClick={() => onOpenEvents({ risk_filter: 'suspicious' })}>View suspicious events<ArrowRight className="h-3.5 w-3.5" /></Button>}</div>
+        <div className="rounded-lg bg-red-50 p-4 dark:bg-red-950/20"><div className="mb-2 flex items-center gap-2 text-sm font-medium"><ShieldAlert className="h-4 w-4 text-red-500" /> Why scans were flagged</div><p className="text-sm text-muted-foreground">{summary.suspicious_scans.toLocaleString()} flagged scans ({summary.suspicious_rate.toFixed(1)}%). {topReason ? `Most common: ${SUSPICIOUS_REASON_LABELS[topReason[0]] || topReason[0]} (${topReason[1]} recent events).` : 'Review high-risk events first.'}</p>{summary.suspicious_scans > 0 && <Button variant="link" className="mt-2 h-auto gap-1 p-0 text-sm text-red-700 dark:text-red-300" onClick={() => onOpenEvents({ risk_filter: 'suspicious' })}>View suspicious events<ArrowRight className="h-3.5 w-3.5" /></Button>}</div>
         </div>
       </CardContent>
     </Card>
@@ -182,12 +282,13 @@ function GeographyTable({ items }: { items: QSealGeographyAnalyticsItem[] }) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="border-b text-left text-muted-foreground">
-          <tr><th className="px-4 py-3 font-medium">Location</th><th className="px-4 py-3 font-medium">Total scans</th><th className="px-4 py-3 font-medium">Valid</th><th className="px-4 py-3 font-medium">Invalid</th></tr>
+          <tr><th className="px-4 py-3 font-medium">Location</th><th className="px-4 py-3 font-medium">Source</th><th className="px-4 py-3 font-medium">Total scans</th><th className="px-4 py-3 font-medium">Valid</th><th className="px-4 py-3 font-medium">Invalid</th></tr>
         </thead>
         <tbody className="divide-y">
           {items.map((item, index) => (
             <tr key={`${item.country}-${item.state}-${item.city}-${index}`} className="hover:bg-muted/30">
               <td className="px-4 py-3">{[item.city, item.state, item.country].filter(Boolean).join(', ') || 'Unknown location'}</td>
+              <td className="px-4 py-3 text-muted-foreground">{locationSourceLabel(item.location_source) || 'Unknown'}</td>
               <td className="px-4 py-3">{item.total_scans.toLocaleString()}</td>
               <td className="px-4 py-3 text-emerald-600">{item.valid_scans.toLocaleString()}</td>
               <td className="px-4 py-3 text-red-500">{item.invalid_scans.toLocaleString()}</td>
@@ -208,25 +309,113 @@ const SUSPICIOUS_REASON_LABELS: Record<string, string> = {
   high_volume_source: 'High-volume source',
 };
 
+interface VerificationStatusPresentation {
+  label: string;
+  icon: LucideIcon;
+  className: string;
+}
+
+const VERIFICATION_STATUS_PRESENTATIONS: Record<string, VerificationStatusPresentation> = {
+  authentic: {
+    label: 'Authentic',
+    icon: CheckCircle2,
+    className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300',
+  },
+  valid: {
+    label: 'Authentic',
+    icon: CheckCircle2,
+    className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300',
+  },
+  verified: {
+    label: 'Authentic',
+    icon: CheckCircle2,
+    className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300',
+  },
+  invalid: {
+    label: 'Authentication failed',
+    icon: XCircle,
+    className: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300',
+  },
+  authentication_failed: {
+    label: 'Authentication failed',
+    icon: XCircle,
+    className: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300',
+  },
+  verification_failed: {
+    label: 'Authentication failed',
+    icon: XCircle,
+    className: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300',
+  },
+  verification_required: {
+    label: 'Verification required',
+    icon: ShieldAlert,
+    className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',
+  },
+  not_activated: {
+    label: 'Not activated',
+    icon: Clock3,
+    className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300',
+  },
+  already_used: {
+    label: 'Already used',
+    icon: History,
+    className: 'bg-violet-100 text-violet-700 dark:bg-violet-900/20 dark:text-violet-300',
+  },
+  unknown: {
+    label: 'Unknown status',
+    icon: HelpCircle,
+    className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+  },
+};
+
+function verificationStatusPresentation(status: string | null): VerificationStatusPresentation {
+  const normalizedStatus = status?.trim().toLowerCase().replace(/[\s-]+/g, '_') || 'unknown';
+  return VERIFICATION_STATUS_PRESENTATIONS[normalizedStatus] || {
+    label: status || 'Unknown status',
+    icon: HelpCircle,
+    className: VERIFICATION_STATUS_PRESENTATIONS.unknown.className,
+  };
+}
+
+function VerificationStatusIcon({ status }: { status: string | null }) {
+  const presentation = verificationStatusPresentation(status);
+  const Icon = presentation.icon;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={`inline-flex h-8 w-8 cursor-help items-center justify-center rounded-full ${presentation.className}`}
+            role="img"
+            aria-label={presentation.label}
+            title={presentation.label}>
+            <Icon className="h-4 w-4" aria-hidden="true" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top">{presentation.label}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 function HistoryTable({ items, productNames, onReview, reviewingEventId, canReview }: { items: QSealAnalyticsHistoryItem[]; productNames: Map<string, string>; onReview: (eventId: string, status: QSealSuspiciousReviewStatus) => Promise<void>; reviewingEventId: string | null; canReview: boolean }) {
   if (!items.length) return <EmptyPanel message="No scan events for this period" />;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="border-b text-left text-muted-foreground">
-          <tr><th className="px-4 py-3 font-medium">Time</th><th className="px-4 py-3 font-medium">Serial</th><th className="px-4 py-3 font-medium">Product</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Risk</th><th className="px-4 py-3 font-medium">Location</th><th className="px-4 py-3 font-medium">Action</th></tr>
+          <tr><th className="px-4 py-3 font-medium">Time</th><th className="px-4 py-3 font-medium">Serial</th><th className="px-4 py-3 font-medium">Product</th><th className="px-4 py-3 text-center font-medium">Status</th><th className="px-4 py-3 font-medium">Risk</th><th className="px-4 py-3 font-medium">Location</th><th className="px-4 py-3 font-medium">Action</th></tr>
         </thead>
         <tbody className="divide-y">
           {items.map((item) => {
-            const status = item.verification_status || 'unknown';
             return (
               <tr key={item.id} className="hover:bg-muted/30">
                 <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(item.scan_timestamp, 'DD-MMM-YY', { includeTime: true })}</td>
                 <td className="px-4 py-3"><code className="rounded bg-muted px-2 py-1 text-xs">{item.serial_number || '—'}</code></td>
                 <td className="px-4 py-3">{item.product_id ? productNames.get(item.product_id) || 'Product' : '—'}</td>
-                <td className="px-4 py-3"><Badge className={status === 'valid' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{status}</Badge></td>
+                <td className="px-4 py-3 text-center"><VerificationStatusIcon status={item.verification_status} /></td>
                 <td className="px-4 py-3">{item.is_suspicious ? <div title={item.suspicious_reasons.map((reason) => SUSPICIOUS_REASON_LABELS[reason] || reason).join(', ')}><Badge className={item.risk_score >= 60 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}>{item.risk_score >= 60 ? 'High risk' : 'Suspicious'} · {item.risk_score}</Badge><p className="mt-1 max-w-48 text-xs text-muted-foreground">{item.suspicious_reasons.map((reason) => SUSPICIOUS_REASON_LABELS[reason] || reason).join(', ')}</p>{item.review_status !== 'new' && <Badge className="mt-1 bg-slate-100 text-slate-700">{item.review_status.replace('_', ' ')}</Badge>}</div> : <span className="text-muted-foreground">Normal</span>}</td>
-                <td className="px-4 py-3">{[item.city, item.state, item.country].filter(Boolean).join(', ') || 'Unknown'}</td>
+                <td className="px-4 py-3"><div>{[item.city, item.state, item.country].filter(Boolean).join(', ') || 'Unknown'}</div>{locationSourceLabel(item.location_source) && <div className="mt-1 text-xs text-muted-foreground">{locationSourceLabel(item.location_source)}{item.location_accuracy_meters != null ? ` · ±${item.location_accuracy_meters} m` : ''}</div>}</td>
                 <td className="px-4 py-3">{item.is_suspicious && item.review_status === 'new' && canReview ? <div className="flex gap-2"><Button size="sm" variant="outline" disabled={reviewingEventId === item.id} onClick={() => onReview(item.id, 'reviewed')}>Review</Button><Button size="sm" variant="ghost" disabled={reviewingEventId === item.id} onClick={() => onReview(item.id, 'dismissed')}>Dismiss</Button></div> : <span className="text-muted-foreground">—</span>}</td>
               </tr>
             );
@@ -237,10 +426,10 @@ function HistoryTable({ items, productNames, onReview, reviewingEventId, canRevi
   );
 }
 
-export function AnalyticsManagement() {
+export function AnalyticsManagement({ initialProductId }: { initialProductId?: string } = {}) {
   const {
-    filters, setFilters, summary, trends, products, geography, devices, history, reviewSuspicious, reviewingEventId, productOptions, blockOptions, historyPagination, historyLoading, historyPage, setHistoryPage, exportHistory, loading, error, analyticsEnabled, featureFlagLoading, refetch,
-  } = useAnalyticsManagement();
+    filters, setFilters, summary, previousSummary, previousPeriod, sectionErrors, trends, products, geography, devices, history, reviewSuspicious, reviewingEventId, productOptions, blockOptions, historyPagination, historyLoading, historyError, historyPage, setHistoryPage, exportHistory, loading, error, analyticsEnabled, featureFlagLoading, refetch,
+  } = useAnalyticsManagement(initialProductId);
   const [activeTab, setActiveTab] = React.useState('summary');
   const [exporting, setExporting] = React.useState(false);
   const [exportError, setExportError] = React.useState<string | null>(null);
@@ -257,7 +446,7 @@ export function AnalyticsManagement() {
   const productNames = React.useMemo(() => new Map(productOptions.map((product) => [product.id, product.name])), [productOptions]);
   const mapPoints = React.useMemo(
     () => geography.filter((item) => item.latitude != null && item.longitude != null).map((item) => ({
-      city: item.city, state: item.state, country: item.country, latitude: item.latitude as number, longitude: item.longitude as number, count: item.total_scans,
+      city: item.city, state: item.state, country: item.country, location_source: item.location_source, latitude: item.latitude as number, longitude: item.longitude as number, count: item.total_scans,
     })),
     [geography],
   );
@@ -268,11 +457,13 @@ export function AnalyticsManagement() {
     try {
       const events = await exportHistory();
       if (!events.length) return;
-      const columns = ['Time', 'Serial', 'Product ID', 'Batch', 'Status', 'Device', 'City', 'State', 'Country'];
+      const columns = ['Scan ID', 'Time', 'Serial', 'Product', 'Product ID', 'Batch', 'Status', 'Risk score', 'Suspicious', 'Suspicious reasons', 'Review status', 'QR type', 'Device', 'City', 'State', 'Country', 'Location source', 'Location accuracy (m)'];
       const escapeCsv = (value: unknown) => `"${String(value ?? '').split('"').join('""')}"`;
       const rows = events.map((event) => [
-        event.scan_timestamp, event.serial_number, event.product_id, event.batch, event.verification_status,
-        event.device_type, event.city, event.state, event.country,
+        event.id, event.scan_timestamp, event.serial_number, event.product_id ? productNames.get(event.product_id) || 'Unknown product' : '',
+        event.product_id, event.batch, event.verification_status, event.risk_score, event.is_suspicious ? 'Yes' : 'No',
+        event.suspicious_reasons.map((reason) => SUSPICIOUS_REASON_LABELS[reason] || reason).join('; '), event.review_status, event.qseal_type,
+        event.device_type, event.city, event.state, event.country, locationSourceLabel(event.location_source), event.location_accuracy_meters,
       ].map(escapeCsv).join(','));
       const blob = new Blob([[columns.map(escapeCsv).join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -303,7 +494,7 @@ export function AnalyticsManagement() {
     return (
       <div className="space-y-6">
         <AnalyticsHeader onRefresh={refetch} />
-        <Card><CardContent className="flex min-h-48 flex-col items-center justify-center gap-3 text-center"><LockKeyhole className="h-10 w-10 text-muted-foreground" /><h2 className="text-lg font-semibold">Analytics is not enabled</h2><p className="max-w-md text-sm text-muted-foreground">QSeal analytics is not enabled for this organization. Contact your administrator to enable the analytics module.</p>{error && <p className="text-xs text-destructive">{error}</p>}</CardContent></Card>
+        <Card><CardContent className="flex min-h-48 flex-col items-center justify-center gap-3 text-center"><LockKeyhole className="h-10 w-10 text-muted-foreground" /><h2 className="text-lg font-semibold">Analytics is not enabled</h2><p className="max-w-md text-sm text-muted-foreground">Analytics is not enabled for this organization. Contact your administrator to enable this feature.</p>{error && <p className="text-xs text-destructive">{error}</p>}</CardContent></Card>
       </div>
     );
   }
@@ -321,6 +512,7 @@ export function AnalyticsManagement() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <AnalyticsHeader onRefresh={refetch} isLoading={loading} />
       <AnalyticsFilters filters={filters} setFilters={setFilters} productOptions={productOptions} blockOptions={blockOptions} />
+      {error && summary && <Card className="border-destructive"><CardContent className="flex items-center justify-between gap-4 p-4 text-sm text-destructive"><span>{error}</span><Button variant="outline" size="sm" onClick={refetch}>Retry</Button></CardContent></Card>}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -329,27 +521,23 @@ export function AnalyticsManagement() {
         </TabsList>
 
         <TabsContent value="summary" className="mt-6 space-y-6">
-          <AnalyticsStats summary={summary} />
-          {loading && !summary ? <EmptyPanel message="Loading QSeal analytics…" /> : (
+          <AnalyticsStats summary={summary} previousSummary={previousSummary} previousPeriod={previousPeriod} />
+          {loading && !summary ? <EmptyPanel message="Loading insights…" /> : (
             <>
-              <div className="grid gap-6 lg:grid-cols-2">
-                <Card><CardHeader className="flex flex-row items-center gap-2 pb-2"><TrendingUp className="h-4 w-4 text-muted-foreground" /><CardTitle className="text-sm font-medium">Scan trends</CardTitle></CardHeader><CardContent><TrendChart items={trends} /></CardContent></Card>
-                <Card><CardHeader className="flex flex-row items-center gap-2 pb-2"><CheckCircle2 className="h-4 w-4 text-muted-foreground" /><CardTitle className="text-sm font-medium">Scan status</CardTitle></CardHeader><CardContent>{summary ? <StatusBreakdown summary={summary} /> : <EmptyPanel message="Loading…" />}</CardContent></Card>
-              </div>
-              <Card><CardHeader className="flex flex-row items-center justify-between gap-2 pb-2"><div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-muted-foreground" /><CardTitle className="text-sm font-medium">Recent QSeal scan events</CardTitle></div><Button variant="outline" size="sm" className="gap-2" onClick={handleExport} disabled={exporting || historyLoading || !historyPagination?.total_items}><Download className="h-4 w-4" />{exporting ? 'Exporting…' : 'Export CSV'}</Button></CardHeader>{exportError && <p className="px-6 text-sm text-destructive">{exportError}</p>}<CardContent className="p-0"><HistoryTable items={history} productNames={productNames} onReview={reviewSuspicious} reviewingEventId={reviewingEventId} canReview={canReview} /></CardContent><CardContent className="flex items-center justify-between gap-4 border-t py-3"><span className="text-xs text-muted-foreground">{historyPagination ? `Showing page ${historyPagination.page} of ${historyPagination.total_pages}` : 'No history loaded'}</span><div className="flex gap-2"><Button variant="outline" size="sm" disabled={historyPage <= 1 || historyLoading} onClick={() => setHistoryPage(historyPage - 1)}>Previous</Button><Button variant="outline" size="sm" disabled={!historyPagination?.has_next || historyLoading} onClick={() => setHistoryPage(historyPage + 1)}>Next</Button></div></CardContent></Card>
+              <Card><CardHeader className="flex flex-row items-center gap-2 pb-2"><TrendingUp className="h-4 w-4 text-muted-foreground" /><CardTitle className="text-sm font-medium">Scan trends</CardTitle></CardHeader><CardContent>{sectionErrors.trends ? <SectionError message={sectionErrors.trends} onRetry={refetch} /> : <TrendChart items={trends} />}</CardContent></Card>
+              <Card><CardHeader className="flex flex-row items-center justify-between gap-2 pb-2"><div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-muted-foreground" /><CardTitle className="text-sm font-medium">Recent scan events</CardTitle></div><Button variant="outline" size="sm" className="gap-2" onClick={handleExport} disabled={exporting || historyLoading || !historyPagination?.total_items}><Download className="h-4 w-4" />{exporting ? 'Exporting…' : 'Export CSV'}</Button></CardHeader>{exportError && <p className="px-6 text-sm text-destructive">{exportError}</p>}{historyError ? <SectionError message={historyError} onRetry={refetch} /> : <CardContent className="p-0"><HistoryTable items={history} productNames={productNames} onReview={reviewSuspicious} reviewingEventId={reviewingEventId} canReview={canReview} /></CardContent>}{!historyError && <CardContent className="flex items-center justify-between gap-4 border-t py-3"><span className="text-xs text-muted-foreground">{historyPagination ? `Showing page ${historyPagination.page} of ${historyPagination.total_pages}` : 'No history loaded'}</span><div className="flex gap-2"><Button variant="outline" size="sm" disabled={historyPage <= 1 || historyLoading} onClick={() => setHistoryPage(historyPage - 1)}>Previous</Button><Button variant="outline" size="sm" disabled={!historyPagination?.has_next || historyLoading} onClick={() => setHistoryPage(historyPage + 1)}>Next</Button></div></CardContent>}</Card>
             </>
           )}
         </TabsContent>
 
         <TabsContent value="details" className="mt-6 space-y-6">
           <InsightsCard summary={summary} products={products} geography={geography} trends={trends} history={history} onOpenEvents={openFilteredEvents} />
-          <Card><CardHeader className="flex flex-row items-center gap-2 pb-2"><Repeat2 className="h-4 w-4 text-muted-foreground" /><CardTitle className="text-sm font-medium">Repeat scans</CardTitle></CardHeader><CardContent className="flex min-h-32 items-center"><div><p className="text-3xl font-semibold">{summary?.repeat_scans.toLocaleString() ?? '—'}</p><p className="mt-1 text-sm text-muted-foreground">Repeat scans in the selected period</p></div></CardContent></Card>
-          <Card><CardHeader className="flex flex-row items-center gap-2 pb-2"><Package className="h-4 w-4 text-muted-foreground" /><CardTitle className="text-sm font-medium">Product-level analytics</CardTitle></CardHeader><CardContent className="p-0"><ProductTable items={products} /></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center gap-2 pb-2"><Package className="h-4 w-4 text-muted-foreground" /><CardTitle className="text-sm font-medium">Product-level analytics</CardTitle></CardHeader><CardContent className="p-0">{sectionErrors.products ? <SectionError message={sectionErrors.products} onRetry={refetch} /> : <ProductTable items={products} />}</CardContent></Card>
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card><CardHeader className="flex flex-row items-center gap-2 pb-2"><MapPin className="h-4 w-4 text-muted-foreground" /><CardTitle className="text-sm font-medium">Geographic distribution</CardTitle></CardHeader><CardContent className="p-0"><GeographyTable items={geography} /></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center gap-2 pb-2"><BarChart3 className="h-4 w-4 text-muted-foreground" /><CardTitle className="text-sm font-medium">Device totals</CardTitle></CardHeader><CardContent><DeviceBreakdown devices={devices} /></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center gap-2 pb-2"><MapPin className="h-4 w-4 text-muted-foreground" /><CardTitle className="text-sm font-medium">Geographic distribution</CardTitle></CardHeader><CardContent className="p-0">{sectionErrors.geography ? <SectionError message={sectionErrors.geography} onRetry={refetch} /> : <GeographyTable items={geography} />}</CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center gap-2 pb-2"><BarChart3 className="h-4 w-4 text-muted-foreground" /><CardTitle className="text-sm font-medium">Device totals</CardTitle></CardHeader><CardContent>{sectionErrors.devices ? <SectionError message={sectionErrors.devices} onRetry={refetch} /> : <DeviceBreakdown devices={devices} />}</CardContent></Card>
           </div>
-          <AnalyticsMap points={mapPoints} loading={loading} />
+          {!sectionErrors.geography && <AnalyticsMap points={mapPoints} loading={loading} />}
         </TabsContent>
       </Tabs>
     </div>
