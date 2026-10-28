@@ -4,7 +4,6 @@ import { useUserStore } from '@horizon-sync/store';
 
 import { qrProductApi } from '../api/qr-products';
 import { notificationService } from '../services/notificationService';
-import { getFriendlyErrorMessage } from '../utility/api/core';
 import type {
   QSealCreditInfo,
   QSealFilters,
@@ -13,6 +12,7 @@ import type {
   CreateQSealProductPayload,
   QSealProductImageChanges,
 } from '../types/qseal.types';
+import { getFriendlyErrorMessage } from '../utility/api/core';
 
 import { useQSealProducts } from './useQSealProducts';
 
@@ -200,8 +200,10 @@ export function useQSealManagement() {
     return {
       total,
       active,
-      totalQRCodes: productStats?.qr_code_count ?? 0,
-      totalScans: productStats?.scan_count ?? 0,
+      // Fall back to summing the loaded rows rather than showing zero when the
+      // API omits the optional `stats` block.
+      totalQRCodes: productStats?.qr_code_count ?? products.reduce((sum, p) => sum + (p.qr_code_count ?? 0), 0),
+      totalScans: productStats?.scan_count ?? products.reduce((sum, p) => sum + (p.scan_count ?? 0), 0),
     };
   }, [products, pagination, productStats]);
 

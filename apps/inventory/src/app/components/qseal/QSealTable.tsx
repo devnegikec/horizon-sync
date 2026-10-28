@@ -4,7 +4,7 @@ import { type ColumnDef, type Table } from '@tanstack/react-table';
 import { QrCode, Plus, MoreHorizontal, Eye, Edit, Power, PowerOff } from 'lucide-react';
 
 import { Badge, Button, Card, CardContent } from '@horizon-sync/ui/components';
-import { DataTable, DataTableColumnHeader } from '@horizon-sync/ui/components/data-table';
+import { DataTable, DataTableColumnHeader, DataTableViewOptions } from '@horizon-sync/ui/components/data-table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,12 +56,6 @@ export function QSealTable({
   onTableReady,
   serverPagination,
 }: QSealTableProps) {
-  const [tableInstance, setTableInstance] = React.useState<Table<QSealProductListItem> | null>(null);
-
-  React.useEffect(() => {
-    if (tableInstance && onTableReady) onTableReady(tableInstance);
-  }, [tableInstance, onTableReady]);
-
   const serverPaginationConfig = React.useMemo(() => {
     if (!serverPagination) return undefined;
     return {
@@ -266,10 +260,7 @@ export function QSealTable({
             initialPageSize: serverPagination?.pageSize ?? 20,
             serverPagination: serverPaginationConfig,
           }}
-          renderViewOptions={(table) => {
-            if (table !== tableInstance) setTableInstance(table);
-            return null;
-          }}
+          renderViewOptions={(table) => <DataTableViewOptions table={table} />}
           onRowClick={onView}
           onTableReady={onTableReady}
           fixedHeader

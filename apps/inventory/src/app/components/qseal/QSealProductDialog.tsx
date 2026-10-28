@@ -345,6 +345,7 @@ interface ProductInfoSectionProps {
   shelfLifeSettings: QRProductSetting[];
   shelfLifeLoading: boolean;
   shelfLifeError: string | null;
+  isEdit?: boolean;
   nameServerError?: string;
   onNameChange?: () => void;
 }
@@ -356,10 +357,14 @@ function ProductInfoSection({
   shelfLifeSettings,
   shelfLifeLoading,
   shelfLifeError,
+  isEdit,
   nameServerError,
   onNameChange,
 }: ProductInfoSectionProps) {
-  const nameField = register('name', { required: 'Product name is required' });
+  const nameField = register('name', {
+    required: 'Product name is required',
+    validate: validateProductName,
+  });
   return (
     <div className="space-y-3">
       <SectionHeader icon={Info} title="Product Information" />
@@ -378,16 +383,12 @@ function ProductInfoSection({
           {nameServerError && !errors.name && <p className="text-xs text-destructive" role="alert">{nameServerError}</p>}
         </div>
         <div className="space-y-1">
-          <LabelWithTooltip htmlFor="gtin" label="GTIN" required hint="Global Trade Item Number (UPC, EAN, ISBN, etc.) - 8-20 digits with a valid check digit" />
+          <LabelWithTooltip htmlFor="gtin" label="GTIN" required={!isEdit} hint="Global Trade Item Number (UPC, EAN, ISBN, etc.) - 8-20 digits with a valid check digit" />
           <Input id="gtin"
             inputMode="numeric"
             maxLength={20}
             placeholder="e.g. 012345678901"
-            {...register('gtin', {
-            required: 'GTIN is required',
-            maxLength: { value: 20, message: 'GTIN cannot exceed 20 characters' },
-            validate: validateGtin,
-          })} />
+            {...register('gtin', gtinRules(Boolean(isEdit)))} />
           {errors.gtin && <p className="text-xs text-destructive">{errors.gtin.message}</p>}
         </div>
         <div className="space-y-1">
@@ -795,6 +796,24 @@ function validateHttpUrl(value: string, required: boolean, label: string): true 
   }
 
   return `${label} must be a valid http:// or https:// URL`;
+}
+
+/** `required` alone accepts whitespace-only input, which is trimmed on submit. */
+function validateProductName(value: string | undefined): true | string {
+  return value && value.trim().length > 0 ? true : 'Product name is required';
+}
+
+/** GTIN is optional on edit (nullable for legacy products); validate only when provided. */
+function validateOptionalGtin(value: string | undefined): true | string {
+  return value?.trim() ? validateGtin(value) : true;
+}
+
+function gtinRules(isEdit: boolean) {
+  return {
+    required: isEdit ? false : 'GTIN is required',
+    maxLength: { value: 20, message: 'GTIN cannot exceed 20 characters' },
+    validate: validateOptionalGtin,
+  };
 }
 
 function validateGtin(value: string): true | string {
@@ -1364,6 +1383,7 @@ export function QSealProductDialog({
             shelfLifeSettings={shelfLifeSettings}
             shelfLifeLoading={shelfLifeLoading}
             shelfLifeError={shelfLifeError}
+            isEdit={isEdit}
             nameServerError={saveError?.field === 'name' ? saveError.message : undefined}
             onNameChange={onClearSaveError} />
         </>}
@@ -1396,22 +1416,19 @@ export function QSealProductDialog({
             onRedirectChange={(checked) => setValue('redirect_to_client', checked, { shouldDirty: true })} />
         </>}
 
-        {currentStep === 3 && <ProductReviewSummary
-          values={formValues}
+        {currentStep === 3 && <ProductReviewSummary values={formValues}
           shelfLifeSettings={shelfLifeSettings}
           serialPrefixSettings={serialPrefixSettings}
           onEditStep={setCurrentStep} />}
       </form>
     </DetailDialog>
-    <ConfirmationDialog
-      open={discardDialogOpen}
+    <ConfirmationDialog open={discardDialogOpen}
       onOpenChange={setDiscardDialogOpen}
       title="Discard unsaved changes?"
       description="Your changes to this product will be lost if you close the form."
       confirmLabel="Discard changes"
       variant="destructive"
-      onConfirm={discardChanges}
-    />
+      onConfirm={discardChanges}/>
     </>
   );
 }

@@ -85,20 +85,19 @@ function ProductSelector({
   return (
     <div className="space-y-3">
       <Label>Product</Label>
-      <Popover open={open} onOpenChange={(nextOpen) => {
+      <Popover open={open}
+onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
         if (!nextOpen) setSearch('');
       }}>
         <PopoverTrigger asChild>
-          <button
-            type="button"
+          <button type="button"
             role="combobox"
             aria-expanded={open}
             aria-controls="qseal-product-listbox"
             aria-label="Select product"
             disabled={loading}
-            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-          >
+            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
             <span className={cn('min-w-0 truncate', !selectedProduct && 'text-muted-foreground')}>
               {selectedProduct ? `${selectedProduct.name}${selectedProduct.sku ? ` (${selectedProduct.sku})` : ''}` : loading ? 'Loading products…' : 'Select a product'}
             </span>
@@ -108,19 +107,16 @@ function ProductSelector({
         <PopoverContent align="start" className="w-[320px] max-w-[calc(100vw-2rem)] p-0">
           <div className="flex items-center border-b px-3 py-2">
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-            <Input
-              ref={inputRef}
+            <Input ref={inputRef}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by name or SKU…"
               className="h-7 border-0 p-0 shadow-none focus-visible:ring-0"
-              aria-label="Search products"
-            />
+              aria-label="Search products"/>
           </div>
           <div id="qseal-product-listbox" role="listbox" className="max-h-60 overflow-y-auto p-1">
             {filteredProducts.map((product) => (
-              <button
-                key={product.id}
+              <button key={product.id}
                 type="button"
                 role="option"
                 aria-selected={value === product.id}
@@ -132,8 +128,7 @@ function ProductSelector({
                   onChange(product.id);
                   setSearch('');
                   setOpen(false);
-                }}
-              >
+                }}>
                 <Check className={cn('mr-2 h-4 w-4 shrink-0', value === product.id ? 'opacity-100' : 'opacity-0')} />
                 <span className="min-w-0 truncate">
                   {product.name}
@@ -290,21 +285,15 @@ function ActivationProgress({
           <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${percentage}%` }} />
         </div>
         <div className="grid gap-2 border-t pt-3 sm:grid-cols-3">
-          <ReadinessItem
-            label="QR blocks"
+          <ReadinessItem label="QR blocks"
             detail={summary.total_blocks ? `${summary.total_blocks.toLocaleString()} created` : 'Create blocks first'}
-            complete={summary.total_blocks > 0}
-          />
-          <ReadinessItem
-            label="Settings"
+            complete={summary.total_blocks > 0}/>
+          <ReadinessItem label="Settings"
             detail={configured ? 'Ready to use' : 'Configuration required'}
-            complete={configured}
-          />
-          <ReadinessItem
-            label="Activation"
+            complete={configured}/>
+          <ReadinessItem label="Activation"
             detail={summary.available_blocks ? `${summary.available_blocks.toLocaleString()} available` : 'No blocks available'}
-            complete={configured && summary.available_blocks === 0 && summary.total_blocks > 0}
-          />
+            complete={configured && summary.available_blocks === 0 && summary.total_blocks > 0}/>
         </div>
         {onAction && actionLabel && <div className="flex justify-end">
           <Button size="sm" onClick={onAction} className="gap-2">
@@ -591,7 +580,11 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
     try {
       await saveSettings({ ...input, batch_size: Number(input.batch_size), append_to_existing: appendToExisting });
       if (typeof window !== 'undefined' && input.manufacturing_unit.trim()) {
-        window.localStorage.setItem('qseal.last_manufacturing_unit', input.manufacturing_unit.trim());
+        try {
+          window.localStorage.setItem('qseal.last_manufacturing_unit', input.manufacturing_unit.trim());
+        } catch {
+          // Remembering the last unit is a convenience only; never fail the save for it.
+        }
       }
       setReviewDialogOpen(false);
       setSettingsDialogOpen(false);
@@ -758,13 +751,11 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
         <>
           <SummaryCards summary={summary} />
           <ActivationSteps summary={summary} configured={Boolean(settings)} />
-          <ActivationProgress
-            summary={summary}
+          <ActivationProgress summary={summary}
             configured={Boolean(settings)}
             actionLabel={activationAction?.label}
             onAction={activationAction?.onAction}
-            actionHint={activationAction?.hint}
-          />
+            actionHint={activationAction?.hint}/>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <div>
@@ -826,8 +817,7 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
               event.preventDefault();
               reviewSave(form);
             }}/>
-          <ActivationReviewDialog
-            open={reviewDialogOpen}
+          <ActivationReviewDialog open={reviewDialogOpen}
             onOpenChange={setReviewDialogOpen}
             form={pendingForm || form}
             summary={summary}
@@ -836,8 +826,7 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
             hasExistingSettings={Boolean(settings)}
             onConfirm={() => {
               if (pendingForm) void persistSettings(pendingForm);
-            }}
-          />
+            }}/>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <CardTitle>Previous settings</CardTitle>

@@ -304,12 +304,16 @@ function StatusPanel({
 
 function formatOneTimeDate(value: string | null | undefined): string | null {
   if (!value) return null;
-  const parsed = new Date(value);
+  // Date-only values (YYYY-MM-DD) are calendar dates, not instants: parse and
+  // format them in UTC so viewers west of UTC never see the previous day.
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const parsed = new Date(dateOnly ? `${value}T00:00:00Z` : value);
   if (Number.isNaN(parsed.getTime())) return value;
   return new Intl.DateTimeFormat(undefined, {
     year: 'numeric',
     month: 'short',
     day: '2-digit',
+    ...(dateOnly ? { timeZone: 'UTC' } : {}),
   }).format(parsed);
 }
 
@@ -999,17 +1003,21 @@ function usePublicVerification(input: VerificationRequest | null, requestKey: st
 function usePublicLandingPage(result: VerificationResult | null): PublicLandingPageConfig | null {
   const [config, setConfig] = React.useState<PublicLandingPageConfig | null>(null);
 
+  // The landing page endpoint is keyed by SKU, which is a different identifier
+  // from GTIN. Prefer the product SKU and only fall back to GTIN.
+  const landingPageKey = result?.sku_code || result?.gtin;
+
   React.useEffect(() => {
     let cancelled = false;
     setConfig(null);
 
-    if (!result?.gtin || result.verification_status === 'invalid') {
+    if (!landingPageKey || result?.verification_status === 'invalid') {
       return () => {
         cancelled = true;
       };
     }
 
-    void getPublicLandingPageBySku(result.gtin)
+    void getPublicLandingPageBySku(landingPageKey)
       .then((nextConfig) => {
         if (!cancelled) setConfig(nextConfig);
       })
@@ -1021,7 +1029,7 @@ function usePublicLandingPage(result: VerificationResult | null): PublicLandingP
     return () => {
       cancelled = true;
     };
-  }, [result?.gtin, result?.verification_status]);
+  }, [landingPageKey, result?.verification_status]);
 
   return config;
 }
@@ -1029,6 +1037,11 @@ function usePublicLandingPage(result: VerificationResult | null): PublicLandingP
 function hasProductContent(result: VerificationResult, config: PublicLandingPageConfig | null): boolean {
   return [
     result.product_name,
+    // ProductDetails also renders these identifier rows on their own, so keep the
+    // card visible when only they are present.
+    result.sku_code,
+    result.gtin,
+    result.serial_number,
     result.contact_email,
     result.contact_phone,
     result.website_url,

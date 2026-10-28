@@ -244,8 +244,10 @@ describe('PublicQRValidation', () => {
     renderPage();
 
     await screen.findByRole('heading', { name: 'Authentic Product' });
-    await waitFor(() => expect(screen.getByAltText('Demo Brand logo')).toHaveAttribute('src', 'http://localhost/static/landing-pages/demo-logo.png'));
-    expect(screen.getByAltText('Demo Product banner')).toHaveAttribute('src', 'http://localhost/static/landing-pages/demo-banner.png');
+    // Assets are resolved against the configured core API origin, which varies by
+    // environment, so only assert the configured path is used.
+    await waitFor(() => expect(screen.getByAltText('Demo Brand logo').getAttribute('src')).toMatch(/\/static\/landing-pages\/demo-logo\.png$/));
+    expect(screen.getByAltText('Demo Product banner').getAttribute('src')).toMatch(/\/static\/landing-pages\/demo-banner\.png$/);
     expect(screen.queryByText('0123456789012')).not.toBeInTheDocument();
     expect(screen.queryByText('BATCH-2026-01')).not.toBeInTheDocument();
     expect(screen.queryByText('2026-01-10')).not.toBeInTheDocument();
@@ -258,7 +260,8 @@ describe('PublicQRValidation', () => {
     expect(screen.getByRole('heading', { name: 'Have thoughts?' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Shop now/i })).toHaveAttribute('href', 'https://example.com/shop');
     expect(screen.queryByText(/Powered by/i)).not.toBeInTheDocument();
-    expect(mockedAxios.get).toHaveBeenCalledWith(expect.stringContaining('/api/v1/public/products/sku/0123456789012/landing-page'));
+    // The landing page endpoint is keyed by SKU, not GTIN.
+    expect(mockedAxios.get).toHaveBeenCalledWith(expect.stringContaining('/api/v1/public/products/sku/DEMO-BLU-L/landing-page'));
   });
 
   it('shows the protected-layer instruction for a Dual overt QR', async () => {

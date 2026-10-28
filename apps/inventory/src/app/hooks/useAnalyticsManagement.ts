@@ -202,7 +202,9 @@ export function useAnalyticsManagement(initialProductId?: string): UseAnalyticsM
       if (geographyError) nextErrors.geography = geographyError;
       if (devicesError) nextErrors.devices = devicesError;
       setSectionErrors(nextErrors);
-      if (summaryResult.status === 'fulfilled') setSummary(summaryResult.value);
+      // Drop the previous summary on failure so stale metrics from the old filters
+      // are never shown next to the error message.
+      setSummary(summaryResult.status === 'fulfilled' ? summaryResult.value : null);
       if (previousSummaryResult.status === 'fulfilled') setPreviousSummary(previousSummaryResult.value);
       if (trendResult.status === 'fulfilled') setTrends(trendResult.value);
       if (productResult.status === 'fulfilled') setProducts(productResult.value);

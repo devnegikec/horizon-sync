@@ -224,6 +224,10 @@ function DataTableBodyRows<TData>({
           tabIndex={onRowClick ? 0 : undefined}
           onClick={onRowClick ? () => onRowClick(row.original) : undefined}
           onKeyDown={onRowClick ? (event) => {
+            // Only activate the row when the row itself owns focus; key events from
+            // nested interactive elements (buttons, links, inputs) must bubble to
+            // their own handlers instead of opening the row.
+            if (event.target !== event.currentTarget) return;
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault();
               onRowClick(row.original);
