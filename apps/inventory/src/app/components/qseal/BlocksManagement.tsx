@@ -438,14 +438,19 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
 /*  Main export                                                        */
 /* ------------------------------------------------------------------ */
 
-export function BlocksManagement() {
+export function BlocksManagement({ initialProductId }: { initialProductId?: string } = {}) {
   const [createOpen, setCreateOpen] = React.useState(false);
   const [trackedBlockId, setTrackedBlockId] = React.useState<string | null>(null);
   const [detailBlockId, setDetailBlockId] = React.useState<string | null>(null);
   const [page, setPage] = React.useState(1);
   const [search, setSearch] = React.useState('');
-  const [filters, setFilters] = React.useState<QRBlockFilterValues>({});
+  const [filters, setFilters] = React.useState<QRBlockFilterValues>(() => initialProductId ? { product_id: initialProductId } : {});
   const { data, loading, error, refetch } = useAllQRBlocks({ page, filters });
+
+  React.useEffect(() => {
+    setFilters((current) => ({ ...current, product_id: initialProductId }));
+    setPage(1);
+  }, [initialProductId]);
 
   React.useEffect(() => {
     const timeout = window.setTimeout(() => {

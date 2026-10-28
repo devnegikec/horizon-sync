@@ -22,13 +22,16 @@ export function CurrencySelect({ value, onValueChange, disabled = false }: Curre
   const accessToken = useUserStore((s) => s.accessToken);
   const { currencies, baseCurrency, fetchCurrencies } = useCurrencyStore();
 
-  // Provide a sensible fallback when currencies haven't loaded yet
+  // Keep organization-specific currencies, but also offer standard ISO
+  // currencies so destinations such as India (INR) or Dubai (AED) are not
+  // limited by an incomplete organization seed.
   const availableCurrencies = React.useMemo(() => {
-    if (currencies.length === 0) {
-      const code = baseCurrency || 'USD';
-      return [resolveFallbackCurrency(code)];
+    const currenciesByCode = new Map(SUPPORTED_CURRENCIES.map((currency) => [currency.code, currency]));
+    currencies.forEach((currency) => currenciesByCode.set(currency.code, currency));
+    if (baseCurrency && !currenciesByCode.has(baseCurrency)) {
+      currenciesByCode.set(baseCurrency, resolveFallbackCurrency(baseCurrency));
     }
-    return currencies;
+    return Array.from(currenciesByCode.values()).sort((a, b) => a.code.localeCompare(b.code));
   }, [currencies, baseCurrency]);
 
   React.useEffect(() => {

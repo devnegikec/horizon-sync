@@ -23,6 +23,10 @@ export interface QSealProductListItem {
   serial_prefix_setting_id: string | null;
   serial_prefix: string | null;
   items_per_master_pack?: number | null;
+  block_count?: number;
+  qr_code_count?: number;
+  scan_count?: number;
+  last_scan_at?: string | null;
   created_at: string;
 }
 
@@ -58,6 +62,10 @@ export interface QSealProduct {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  block_count?: number;
+  qr_code_count?: number;
+  scan_count?: number;
+  last_scan_at?: string | null;
 }
 
 /** Helper to derive display status from is_active */
@@ -92,6 +100,12 @@ export interface QSealProductListResponse {
     total_pages: number;
     has_next: boolean;
     has_prev: boolean;
+  };
+  stats?: {
+    total_products: number;
+    active_products: number;
+    qr_code_count: number;
+    scan_count: number;
   };
 }
 
@@ -253,6 +267,7 @@ export interface QSealGeographyAnalyticsItem {
   city: string | null;
   latitude: number | null;
   longitude: number | null;
+  location_source?: string | null;
   total_scans: number;
   valid_scans: number;
   invalid_scans: number;
@@ -275,6 +290,8 @@ export interface QSealAnalyticsHistoryItem {
   city: string | null;
   state: string | null;
   country: string | null;
+  location_source?: string | null;
+  location_accuracy_meters?: number | null;
   street_address: string | null;
   product_id: string | null;
   block_id: string | null;
@@ -355,6 +372,7 @@ export interface AnalyticsGeoPoint {
   city: string | null;
   state: string | null;
   country: string | null;
+  location_source?: string | null;
   latitude: number;
   longitude: number;
   count: number;

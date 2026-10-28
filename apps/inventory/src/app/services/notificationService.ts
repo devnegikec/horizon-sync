@@ -30,13 +30,16 @@ class NotificationService {
     this.toastContainer.id = 'toast-container';
     this.toastContainer.style.cssText = `
       position: fixed;
-      top: 1rem;
-      right: 1rem;
+      top: 4.75rem;
+      right: 1.25rem;
       z-index: 9999;
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-      max-width: 400px;
+      width: min(360px, calc(100vw - 2rem));
+      max-width: calc(100vw - 2rem);
+      box-sizing: border-box;
+      pointer-events: none;
     `;
     document.body.appendChild(this.toastContainer);
   }
@@ -48,35 +51,63 @@ class NotificationService {
     const toast = document.createElement('div');
     const duration = options.duration || 4000;
 
-    const colors = {
-      success: 'bg-green-600',
-      error: 'bg-red-600',
-      warning: 'bg-yellow-600',
-      info: 'bg-blue-600',
+    const styles = {
+      success: { background: '#15803d', icon: '✓' },
+      error: { background: '#b91c1c', icon: '!' },
+      warning: { background: '#a16207', icon: '!' },
+      info: { background: '#1d4ed8', icon: 'i' },
     };
 
-    const icons = {
-      success: '✓',
-      error: '✗',
-      warning: '⚠',
-      info: 'ℹ',
-    };
-
-    toast.className = `${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-start gap-2 animate-slide-in`;
-    toast.innerHTML = `
-      <span class="text-lg font-bold">${icons[type]}</span>
-      <span class="flex-1">${message}</span>
-      <button class="text-white hover:text-gray-200 font-bold" onclick="this.parentElement.remove()">×</button>
+    const style = styles[type];
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+    toast.style.cssText = `
+      width: 100%;
+      box-sizing: border-box;
+      display: grid;
+      grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 0.65rem;
+      padding: 0.8rem 0.85rem;
+      border-radius: 0.75rem;
+      background: ${style.background};
+      color: #fff;
+      font: 500 0.875rem/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      box-shadow: 0 10px 24px rgb(0 0 0 / 18%);
+      overflow-wrap: anywhere;
+      pointer-events: auto;
+      animation: slide-in 0.25s ease-out;
     `;
+
+    const icon = document.createElement('span');
+    icon.textContent = style.icon;
+    icon.style.cssText = 'display:flex;align-items:center;justify-content:center;width:1.5rem;height:1.5rem;border:1px solid rgb(255 255 255 / 55%);border-radius:999px;font-weight:700;';
+
+    const messageElement = document.createElement('span');
+    messageElement.textContent = message;
+    messageElement.style.cssText = 'min-width:0;overflow-wrap:anywhere;';
+
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.setAttribute('aria-label', 'Dismiss notification');
+    closeButton.textContent = '×';
+    closeButton.style.cssText = 'border:0;background:transparent;color:inherit;cursor:pointer;font-size:1.25rem;line-height:1;padding:0 0.1rem;opacity:0.85;';
+
+    toast.append(icon, messageElement, closeButton);
 
     this.toastContainer.appendChild(toast);
 
-    setTimeout(() => {
+    let dismissTimer: ReturnType<typeof setTimeout> | undefined;
+    const dismiss = () => {
+      if (dismissTimer) clearTimeout(dismissTimer);
       toast.style.opacity = '0';
-      toast.style.transform = 'translateX(100%)';
-      toast.style.transition = 'all 0.3s ease-out';
-      setTimeout(() => toast.remove(), 300);
-    }, duration);
+      toast.style.transform = 'translateY(-6px)';
+      toast.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+      setTimeout(() => toast.remove(), 220);
+    };
+    closeButton.addEventListener('click', dismiss);
+
+    dismissTimer = setTimeout(dismiss, duration);
   }
 
   success(message: string, options?: ToastOptions) {

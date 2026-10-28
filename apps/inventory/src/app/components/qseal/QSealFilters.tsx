@@ -1,5 +1,6 @@
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
+import { Button } from '@horizon-sync/ui/components/ui/button';
 import { Input } from '@horizon-sync/ui/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components/ui/select';
 
@@ -11,6 +12,8 @@ interface QSealFiltersProps {
 }
 
 export function QSealFilters({ filters, setFilters }: QSealFiltersProps) {
+  const hasFilters = Boolean(filters.search || (filters.status && filters.status !== 'all'));
+
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center rounded-lg border bg-card p-4">
       <div className="relative flex-1 max-w-sm">
@@ -31,6 +34,12 @@ export function QSealFilters({ filters, setFilters }: QSealFiltersProps) {
           <SelectItem value="inactive">Inactive</SelectItem>
         </SelectContent>
       </Select>
+      {hasFilters && (
+        <Button type="button" variant="ghost" size="sm" className="gap-1" onClick={() => setFilters({ search: '', status: 'all' })}>
+          <X className="h-4 w-4" />
+          Clear filters
+        </Button>
+      )}
     </div>
   );
 }

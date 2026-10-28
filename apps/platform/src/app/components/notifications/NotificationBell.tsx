@@ -26,16 +26,21 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/compon
 import { useNotifications } from '../../hooks/useNotifications';
 import { NotificationItem } from '../../services/notification.service';
 
+// eslint-disable-next-line complexity
 function NotificationIcon({ type }: { type: string }) {
   switch (type) {
     case 'asn_created':
     case 'asn_confirmed':
+    case 'product_created':
+    case 'product_updated':
+    case 'product_activated':
       return <Package className="h-4 w-4 text-blue-500" />;
     case 'fulfillment_completed':
     case 'fulfillment_partially_completed':
     case 'fulfillment_initiated':
       return <Truck className="h-4 w-4 text-green-500" />;
     case 'asn_cancelled':
+    case 'product_deactivated':
       return <AlertTriangle className="h-4 w-4 text-red-500" />;
     default:
       return <Info className="h-4 w-4 text-muted-foreground" />;
@@ -76,8 +81,7 @@ function NotificationRow({
   };
 
   return (
-    <div
-      className={`relative flex items-start gap-3 px-3 py-2.5 cursor-pointer transition-colors hover:bg-muted/50 ${
+    <div className={`relative flex items-start gap-3 px-3 py-2.5 cursor-pointer transition-colors hover:bg-muted/50 ${
         !is_read ? 'bg-muted/20' : ''
       }`}
       onClick={handleClick}
@@ -88,8 +92,7 @@ function NotificationRow({
           e.preventDefault();
           handleClick();
         }
-      }}
-    >
+      }}>
       {!is_read && (
         <span className="absolute left-0 top-3 h-1.5 w-1.5 rounded-full bg-violet-500" />
       )}
@@ -104,14 +107,12 @@ function NotificationRow({
         <p className="text-[10px] text-muted-foreground mt-1">{timeAgo}</p>
       </div>
       {!is_read && (
-        <button
-          className="mt-1 shrink-0 rounded p-1 hover:bg-muted text-muted-foreground"
+        <button className="mt-1 shrink-0 rounded p-1 hover:bg-muted text-muted-foreground"
           title="Mark as read"
           onClick={(e) => {
             e.stopPropagation();
             onMarkRead(id);
-          }}
-        >
+          }}>
           <Check className="h-3.5 w-3.5" />
         </button>
       )}
@@ -158,10 +159,8 @@ export function NotificationBell() {
         <div className="flex items-center justify-between px-3 py-2 border-b">
           <DropdownMenuLabel className="p-0 font-semibold">Notifications</DropdownMenuLabel>
           {unreadCount > 0 && (
-            <button
-              onClick={handleMarkAll}
-              className="flex items-center gap-1 text-xs text-violet-500 hover:text-violet-600 font-medium"
-            >
+            <button onClick={handleMarkAll}
+              className="flex items-center gap-1 text-xs text-violet-500 hover:text-violet-600 font-medium">
               <CheckCheck className="h-3.5 w-3.5" />
               Mark all read
             </button>
@@ -177,11 +176,9 @@ export function NotificationBell() {
           )}
 
           {notifications.map((notification) => (
-            <NotificationRow
-              key={notification.id}
+            <NotificationRow key={notification.id}
               notification={notification}
-              onMarkRead={markAsRead}
-            />
+              onMarkRead={markAsRead}/>
           ))}
 
           {loading && (
@@ -191,13 +188,11 @@ export function NotificationBell() {
           )}
 
           {hasMore && !loading && (
-            <button
-              onClick={(e) => {
+            <button onClick={(e) => {
                 e.stopPropagation();
                 loadMore();
               }}
-              className="flex w-full items-center justify-center gap-1 py-2 text-xs text-muted-foreground hover:bg-muted/50 transition-colors"
-            >
+              className="flex w-full items-center justify-center gap-1 py-2 text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
               <ChevronDown className="h-3.5 w-3.5" />
               Load more
             </button>

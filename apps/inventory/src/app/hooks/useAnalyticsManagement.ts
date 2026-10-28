@@ -4,7 +4,6 @@ import { useUserStore } from '@horizon-sync/store';
 
 import { analyticsApi } from '../api/analytics';
 import { qrProductApi } from '../api/qr-products';
-import { featureFlagApi } from '../utility/api/feature-flags';
 import type {
   AnalyticsFilters,
   QSealAnalyticsHistoryItem,
@@ -19,17 +18,47 @@ import type {
   QSealSuspiciousReviewStatus,
 } from '../types/qseal.types';
 import { getFriendlyErrorMessage } from '../utility/api/core';
+import { featureFlagApi } from '../utility/api/feature-flags';
 
-function defaultDateRange(): Pick<AnalyticsFilters, 'date_from' | 'date_to'> {
+function defaultDateRange(productId?: string): Pick<AnalyticsFilters, 'date_from' | 'date_to' | 'product_id'> {
   const to = new Date();
   const from = new Date(Date.now() - 30 * 86400000);
-  return { date_from: from.toISOString(), date_to: to.toISOString() };
+  return { date_from: from.toISOString(), date_to: to.toISOString(), product_id: productId };
 }
+
+function previousPeriodFilters(filters: AnalyticsFilters): AnalyticsFilters | null {
+  if (!filters.date_from || !filters.date_to) return null;
+  const currentFrom = Date.parse(filters.date_from);
+  const currentTo = Date.parse(filters.date_to);
+  if (!Number.isFinite(currentFrom) || !Number.isFinite(currentTo) || currentTo < currentFrom) return null;
+
+  const duration = currentTo - currentFrom;
+  const previousTo = currentFrom - 1;
+  const previousFrom = previousTo - duration;
+  return {
+    ...filters,
+    date_from: new Date(previousFrom).toISOString(),
+    date_to: new Date(previousTo).toISOString(),
+  };
+}
+
+function hasInvalidDateRange(filters: AnalyticsFilters): boolean {
+  if (!filters.date_from || !filters.date_to) return false;
+  const from = Date.parse(filters.date_from);
+  const to = Date.parse(filters.date_to);
+  return !Number.isFinite(from) || !Number.isFinite(to) || from > to;
+}
+
+export type AnalyticsSection = 'summary' | 'trends' | 'products' | 'geography' | 'devices';
+export type AnalyticsSectionErrors = Partial<Record<AnalyticsSection, string>>;
 
 export interface UseAnalyticsManagementResult {
   filters: AnalyticsFilters;
   setFilters: React.Dispatch<React.SetStateAction<AnalyticsFilters>>;
   summary: QSealAnalyticsSummary | null;
+  previousSummary: QSealAnalyticsSummary | null;
+  previousPeriod: Pick<AnalyticsFilters, 'date_from' | 'date_to'> | null;
+  sectionErrors: AnalyticsSectionErrors;
   trends: QSealScanTrendItem[];
   products: QSealProductAnalyticsItem[];
   geography: QSealGeographyAnalyticsItem[];
@@ -41,6 +70,7 @@ export interface UseAnalyticsManagementResult {
   blockOptions: QSealBlockOption[];
   historyPagination: QSealAnalyticsHistoryResponse['pagination'] | null;
   historyLoading: boolean;
+  historyError: string | null;
   historyPage: number;
   setHistoryPage: (page: number) => void;
   exportHistory: () => Promise<QSealAnalyticsHistoryItem[]>;
@@ -51,10 +81,12 @@ export interface UseAnalyticsManagementResult {
   refetch: () => void;
 }
 
-export function useAnalyticsManagement(): UseAnalyticsManagementResult {
+export function useAnalyticsManagement(initialProductId?: string): UseAnalyticsManagementResult {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [filters, setFilters] = React.useState<AnalyticsFilters>(defaultDateRange());
+  const [filters, setFilters] = React.useState<AnalyticsFilters>(() => defaultDateRange(initialProductId));
   const [summary, setSummary] = React.useState<QSealAnalyticsSummary | null>(null);
+  const [previousSummary, setPreviousSummary] = React.useState<QSealAnalyticsSummary | null>(null);
+  const [sectionErrors, setSectionErrors] = React.useState<AnalyticsSectionErrors>({});
   const [trends, setTrends] = React.useState<QSealScanTrendItem[]>([]);
   const [products, setProducts] = React.useState<QSealProductAnalyticsItem[]>([]);
   const [geography, setGeography] = React.useState<QSealGeographyAnalyticsItem[]>([]);
@@ -65,11 +97,20 @@ export function useAnalyticsManagement(): UseAnalyticsManagementResult {
   const [historyPagination, setHistoryPagination] = React.useState<QSealAnalyticsHistoryResponse['pagination'] | null>(null);
   const [historyPage, setHistoryPage] = React.useState(1);
   const [historyLoading, setHistoryLoading] = React.useState(false);
+  const [historyError, setHistoryError] = React.useState<string | null>(null);
   const [reviewingEventId, setReviewingEventId] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [analyticsEnabled, setAnalyticsEnabled] = React.useState<boolean | null>(null);
   const [featureFlagLoading, setFeatureFlagLoading] = React.useState(true);
+  React.useEffect(() => {
+    if (!initialProductId) return;
+    setFilters((current) => current.product_id === initialProductId ? current : { ...current, product_id: initialProductId });
+  }, [initialProductId]);
+  const previousPeriod = React.useMemo(() => {
+    const range = previousPeriodFilters(filters);
+    return range ? { date_from: range.date_from, date_to: range.date_to } : null;
+  }, [filters]);
 
   // Request generations guard against stale responses overwriting newer state.
   const featureFlagRequestId = React.useRef(0);
@@ -126,9 +167,21 @@ export function useAnalyticsManagement(): UseAnalyticsManagementResult {
     const requestId = ++dashboardRequestId.current;
     setLoading(true);
     setError(null);
+    setPreviousSummary(null);
+    setSectionErrors({});
+    if (hasInvalidDateRange(filters)) {
+      setError('Choose a valid date range before loading analytics.');
+      setLoading(false);
+      return;
+    }
+    const comparisonFilters = previousPeriodFilters(filters);
     try {
-      const [summaryData, trendData, productData, geographyData, deviceData] = await Promise.all([
+      const previousSummaryPromise = comparisonFilters
+        ? analyticsApi.getQSealSummary(accessToken, comparisonFilters).catch(() => null)
+        : Promise.resolve(null);
+      const [summaryResult, previousSummaryResult, trendResult, productResult, geographyResult, deviceResult] = await Promise.allSettled([
         analyticsApi.getQSealSummary(accessToken, filters),
+        previousSummaryPromise,
         analyticsApi.getQSealTrends(accessToken, filters),
         analyticsApi.getQSealProducts(accessToken, { ...filters, limit: 100 }),
         analyticsApi.getQSealGeography(accessToken, { ...filters, limit: 500 }),
@@ -136,11 +189,28 @@ export function useAnalyticsManagement(): UseAnalyticsManagementResult {
       ]);
 
       if (requestId !== dashboardRequestId.current) return;
-      setSummary(summaryData);
-      setTrends(trendData);
-      setProducts(productData);
-      setGeography(geographyData);
-      setDevices(deviceData);
+      const nextErrors: AnalyticsSectionErrors = {};
+      const getError = (result: PromiseSettledResult<unknown>) => result.status === 'rejected' ? getFriendlyErrorMessage(result.reason) : null;
+      const summaryError = getError(summaryResult);
+      const trendsError = getError(trendResult);
+      const productsError = getError(productResult);
+      const geographyError = getError(geographyResult);
+      const devicesError = getError(deviceResult);
+      if (summaryError) nextErrors.summary = summaryError;
+      if (trendsError) nextErrors.trends = trendsError;
+      if (productsError) nextErrors.products = productsError;
+      if (geographyError) nextErrors.geography = geographyError;
+      if (devicesError) nextErrors.devices = devicesError;
+      setSectionErrors(nextErrors);
+      // Drop the previous summary on failure so stale metrics from the old filters
+      // are never shown next to the error message.
+      setSummary(summaryResult.status === 'fulfilled' ? summaryResult.value : null);
+      if (previousSummaryResult.status === 'fulfilled') setPreviousSummary(previousSummaryResult.value);
+      if (trendResult.status === 'fulfilled') setTrends(trendResult.value);
+      if (productResult.status === 'fulfilled') setProducts(productResult.value);
+      if (geographyResult.status === 'fulfilled') setGeography(geographyResult.value);
+      if (deviceResult.status === 'fulfilled') setDevices(deviceResult.value);
+      setError(summaryError);
     } catch (err) {
       if (requestId !== dashboardRequestId.current) return;
       setError(getFriendlyErrorMessage(err));
@@ -154,7 +224,13 @@ export function useAnalyticsManagement(): UseAnalyticsManagementResult {
   const fetchHistory = React.useCallback(async () => {
     if (!accessToken || analyticsEnabled !== true) return;
     const requestId = ++historyRequestId.current;
+    if (hasInvalidDateRange(filters)) {
+      setHistoryError('Choose a valid date range before loading scan events.');
+      setHistoryLoading(false);
+      return;
+    }
     setHistoryLoading(true);
+    setHistoryError(null);
     try {
       const response = await analyticsApi.getQSealHistory(accessToken, historyPage, 25, filters);
       if (requestId !== historyRequestId.current) return;
@@ -165,6 +241,7 @@ export function useAnalyticsManagement(): UseAnalyticsManagementResult {
       console.error('Failed to fetch QSeal scan history:', err);
       setHistory([]);
       setHistoryPagination(null);
+      setHistoryError(getFriendlyErrorMessage(err));
     } finally {
       if (requestId === historyRequestId.current) {
         setHistoryLoading(false);
@@ -232,6 +309,9 @@ export function useAnalyticsManagement(): UseAnalyticsManagementResult {
     filters,
     setFilters,
     summary,
+    previousSummary,
+    previousPeriod,
+    sectionErrors,
     trends,
     products,
     geography,
@@ -243,6 +323,7 @@ export function useAnalyticsManagement(): UseAnalyticsManagementResult {
     blockOptions,
     historyPagination,
     historyLoading,
+    historyError,
     historyPage,
     setHistoryPage,
     exportHistory,

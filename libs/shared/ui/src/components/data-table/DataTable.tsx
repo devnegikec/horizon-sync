@@ -25,6 +25,8 @@ export interface DataTableProps<TData, TValue> {
   renderFooter?: () => React.ReactNode;
   /** Optional function to derive a custom className for each row. */
   getRowClassName?: (row: TData) => string | undefined;
+  /** Optional row activation handler for detail-first tables. */
+  onRowClick?: (row: TData) => void;
   /**
    * Opt-in sub-rows: return the child rows of a row (or null/undefined when it
    * has none). Enables collapsible rows rendered indented underneath the parent.
@@ -75,6 +77,7 @@ export function DataTable<TData, TValue>({
   maxHeight = '600px',
   renderFooter,
   getRowClassName,
+  onRowClick,
   getSubRows,
   defaultExpanded = false,
   onTableReady,
@@ -125,6 +128,7 @@ export function DataTable<TData, TValue>({
             <DataTableBodyRows table={table}
               columnCount={columns.length}
               getRowClassName={getRowClassName}
+              onRowClick={onRowClick}
               subRowsEnabled={subRowsEnabled}
               expandableColumnId={expandableColumnId}/>
             {renderFooter ? <TableFooter className="border-t bg-transparent">{renderFooter()}</TableFooter> : null}
@@ -187,12 +191,14 @@ function DataTableBodyRows<TData>({
   table,
   columnCount,
   getRowClassName,
+  onRowClick,
   subRowsEnabled,
   expandableColumnId,
 }: {
   table: Table<TData>;
   columnCount: number;
   getRowClassName?: (row: TData) => string | undefined;
+  onRowClick?: (row: TData) => void;
   subRowsEnabled: boolean;
   expandableColumnId?: string;
 }) {
@@ -215,8 +221,21 @@ function DataTableBodyRows<TData>({
       {rows.map((row) => (
         <TableRow key={row.id}
           data-state={row.getIsSelected() && 'selected'}
+          tabIndex={onRowClick ? 0 : undefined}
+          onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+          onKeyDown={onRowClick ? (event) => {
+            // Only activate the row when the row itself owns focus; key events from
+            // nested interactive elements (buttons, links, inputs) must bubble to
+            // their own handlers instead of opening the row.
+            if (event.target !== event.currentTarget) return;
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onRowClick(row.original);
+            }
+          } : undefined}
           className={cn(
             getRowClassName ? getRowClassName(row.original) : undefined,
+            onRowClick && 'cursor-pointer hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring',
             // Sub-rows render as a compact, indented band under their parent.
             subRowsEnabled && row.depth > 0 && 'bg-muted/30 [&>td]:py-1.5',
           )}>

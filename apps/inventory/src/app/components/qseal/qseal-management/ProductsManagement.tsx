@@ -48,7 +48,7 @@ function ProductsHeading({ loading, onRefresh, onCreateProduct, bulkActions }: P
  * switcher) and owns the Products section heading, stats, filters, table and the
  * product dialogs.
  */
-export function ProductsManagement({ management }: QSealContentProps) {
+export function ProductsManagement({ management }: Pick<QSealContentProps, 'management'>) {
   const {
     filters,
     setFilters,
@@ -66,6 +66,8 @@ export function ProductsManagement({ management }: QSealContentProps) {
     handleViewProduct,
     handleSaveProduct,
     saving,
+    productSaveError,
+    clearProductSaveError,
     handleToggleStatus,
     serverPaginationConfig,
   } = management;
@@ -99,7 +101,9 @@ export function ProductsManagement({ management }: QSealContentProps) {
         onOpenChange={setProductDialogOpen}
         product={selectedProduct}
         onSave={handleSaveProduct}
-        saving={saving}/>
+        saving={saving}
+        saveError={productSaveError}
+        onClearSaveError={clearProductSaveError}/>
     </div>
   );
 }
