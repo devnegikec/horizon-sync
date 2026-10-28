@@ -484,7 +484,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
     <DetailDialog open={open}
       onOpenChange={onOpenChange}
       size="lg"
-      contentClassName="max-w-4xl flex flex-col"
+      contentClassName="max-w-4xl  max-h-[90vh] flex flex-col"
       title={
         <div className="flex items-center justify-between">
           <span>Generate QR Block</span>
