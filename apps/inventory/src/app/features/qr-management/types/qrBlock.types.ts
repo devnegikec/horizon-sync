@@ -1,10 +1,4 @@
-export type QRType =
-  | 'dynamic'
-  | 'static'
-  | 'dual'
-  | 'secure_code'
-  | 'one_time'
-  | 'post_activation';
+export type QRType = 'dynamic' | 'static' | 'dual' | 'secure_code' | 'one_time' | 'post_activation';
 export type SerialNumberType = 'R8DAN' | 'R6DAN' | 'R4DAN' | 'S8DN' | 'S10DN';
 export type BlockStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
 export type BlockActivationStatus = 'activated' | 'deactivated' | 'partially_activated';
@@ -92,6 +86,13 @@ export interface QRBlockListResponse {
     has_next: boolean;
     has_prev: boolean;
   };
+}
+
+export interface SerialCollisionCheckResponse {
+  checked_count: number;
+  collision_count: number;
+  collisions: string[];
+  available: boolean;
 }
 
 export interface ProductItem {

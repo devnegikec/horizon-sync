@@ -1,7 +1,7 @@
 import type { useQSealManagement } from '../../../hooks/useQSealManagement';
 
 /** Top-level QSeal views shown in `QSealNavigation`. */
-export type QSealView = 'products' | 'blocks' | 'sku_customization' | 'analytics' | 'activation' | 'aggregation' | 'product_settings';
+export type QSealView = 'products' | 'blocks' | 'analytics' | 'activation' | 'aggregation' | 'product_settings';
 
 /**
  * Products-managment state. The shell owns this hook so the QR-credit summary in

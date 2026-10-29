@@ -73,6 +73,8 @@ export interface UseAnalyticsManagementResult {
   historyError: string | null;
   historyPage: number;
   setHistoryPage: (page: number) => void;
+  historyPageSize: number;
+  setHistoryPageSize: (pageSize: number) => void;
   exportHistory: () => Promise<QSealAnalyticsHistoryItem[]>;
   loading: boolean;
   error: string | null;
@@ -96,6 +98,7 @@ export function useAnalyticsManagement(initialProductId?: string): UseAnalyticsM
   const [blockOptions, setBlockOptions] = React.useState<QSealBlockOption[]>([]);
   const [historyPagination, setHistoryPagination] = React.useState<QSealAnalyticsHistoryResponse['pagination'] | null>(null);
   const [historyPage, setHistoryPage] = React.useState(1);
+  const [historyPageSize, setHistoryPageSize] = React.useState(20);
   const [historyLoading, setHistoryLoading] = React.useState(false);
   const [historyError, setHistoryError] = React.useState<string | null>(null);
   const [reviewingEventId, setReviewingEventId] = React.useState<string | null>(null);
@@ -105,7 +108,7 @@ export function useAnalyticsManagement(initialProductId?: string): UseAnalyticsM
   const [featureFlagLoading, setFeatureFlagLoading] = React.useState(true);
   React.useEffect(() => {
     if (!initialProductId) return;
-    setFilters((current) => current.product_id === initialProductId ? current : { ...current, product_id: initialProductId });
+    setFilters((current) => (current.product_id === initialProductId ? current : { ...current, product_id: initialProductId }));
   }, [initialProductId]);
   const previousPeriod = React.useMemo(() => {
     const range = previousPeriodFilters(filters);
@@ -143,10 +146,7 @@ export function useAnalyticsManagement(initialProductId?: string): UseAnalyticsM
   const fetchProducts = React.useCallback(async () => {
     if (!accessToken) return;
     try {
-      const [productResponse, blockResponse] = await Promise.all([
-        qrProductApi.list(accessToken, 1, 100),
-        analyticsApi.getQSealBlocks(accessToken),
-      ]);
+      const [productResponse, blockResponse] = await Promise.all([qrProductApi.list(accessToken, 1, 100), analyticsApi.getQSealBlocks(accessToken)]);
       setProductOptions(productResponse.products || []);
       setBlockOptions(blockResponse);
     } catch {
@@ -190,7 +190,7 @@ export function useAnalyticsManagement(initialProductId?: string): UseAnalyticsM
 
       if (requestId !== dashboardRequestId.current) return;
       const nextErrors: AnalyticsSectionErrors = {};
-      const getError = (result: PromiseSettledResult<unknown>) => result.status === 'rejected' ? getFriendlyErrorMessage(result.reason) : null;
+      const getError = (result: PromiseSettledResult<unknown>) => (result.status === 'rejected' ? getFriendlyErrorMessage(result.reason) : null);
       const summaryError = getError(summaryResult);
       const trendsError = getError(trendResult);
       const productsError = getError(productResult);
@@ -232,7 +232,7 @@ export function useAnalyticsManagement(initialProductId?: string): UseAnalyticsM
     setHistoryLoading(true);
     setHistoryError(null);
     try {
-      const response = await analyticsApi.getQSealHistory(accessToken, historyPage, 25, filters);
+      const response = await analyticsApi.getQSealHistory(accessToken, historyPage, historyPageSize, filters);
       if (requestId !== historyRequestId.current) return;
       setHistory(response.events || []);
       setHistoryPagination(response.pagination);
@@ -247,23 +247,24 @@ export function useAnalyticsManagement(initialProductId?: string): UseAnalyticsM
         setHistoryLoading(false);
       }
     }
-  }, [accessToken, analyticsEnabled, filters, historyPage]);
+  }, [accessToken, analyticsEnabled, filters, historyPage, historyPageSize]);
 
-  const reviewSuspicious = React.useCallback(async (eventId: string, reviewStatus: QSealSuspiciousReviewStatus) => {
-    if (!accessToken) return;
-    setReviewingEventId(eventId);
-    setError(null);
-    try {
-      await analyticsApi.reviewQSealSuspicious(accessToken, eventId, reviewStatus);
-      setHistory((current) => current.map((event) => (
-        event.id === eventId ? { ...event, review_status: reviewStatus } : event
-      )));
-    } catch (err) {
-      setError(getFriendlyErrorMessage(err));
-    } finally {
-      setReviewingEventId(null);
-    }
-  }, [accessToken]);
+  const reviewSuspicious = React.useCallback(
+    async (eventId: string, reviewStatus: QSealSuspiciousReviewStatus) => {
+      if (!accessToken) return;
+      setReviewingEventId(eventId);
+      setError(null);
+      try {
+        await analyticsApi.reviewQSealSuspicious(accessToken, eventId, reviewStatus);
+        setHistory((current) => current.map((event) => (event.id === eventId ? { ...event, review_status: reviewStatus } : event)));
+      } catch (err) {
+        setError(getFriendlyErrorMessage(err));
+      } finally {
+        setReviewingEventId(null);
+      }
+    },
+    [accessToken],
+  );
 
   React.useEffect(() => {
     fetchProducts();
@@ -326,6 +327,8 @@ export function useAnalyticsManagement(initialProductId?: string): UseAnalyticsM
     historyError,
     historyPage,
     setHistoryPage,
+    historyPageSize,
+    setHistoryPageSize,
     exportHistory,
     loading,
     error,

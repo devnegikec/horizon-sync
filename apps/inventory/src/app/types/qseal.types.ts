@@ -60,6 +60,7 @@ export interface QSealProduct {
   packaging_details?: QSealPackagingDetailsPayload | null;
   extra_data: Record<string, unknown> | null;
   created_by: string | null;
+  created_by_name?: string | null;
   created_at: string;
   updated_at: string;
   block_count?: number;

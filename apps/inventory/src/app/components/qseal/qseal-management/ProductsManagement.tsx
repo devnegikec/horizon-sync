@@ -74,18 +74,29 @@ export function ProductsManagement({ management }: Pick<QSealContentProps, 'mana
 
   const hasActiveFilters = !!filters.search || (!!filters.status && filters.status !== 'all');
 
+  const handleDetailEdit = React.useCallback(() => {
+    if (selectedProduct) void handleEditProduct(selectedProduct);
+  }, [handleEditProduct, selectedProduct]);
+
+  const handleDetailToggleStatus = React.useCallback(() => {
+    if (selectedProduct) void handleToggleStatus(selectedProduct);
+  }, [handleToggleStatus, selectedProduct]);
+
   return (
     <div className="space-y-6">
-      <ProductsHeading loading={loading}
+      <ProductsHeading
+        loading={loading}
         onRefresh={management.refetch}
         onCreateProduct={handleCreateProduct}
-        bulkActions={<ProductsBulkActions filters={filters} onImported={management.refetch} />}/>
+        bulkActions={<ProductsBulkActions filters={filters} onImported={management.refetch} />}
+      />
 
       <QSealStats total={stats.total} active={stats.active} totalQRCodes={stats.totalQRCodes} totalScans={stats.totalScans} />
 
       <QSealFilters filters={filters} setFilters={setFilters} />
 
-      <QSealTable products={products}
+      <QSealTable
+        products={products}
         loading={loading}
         error={error}
         hasActiveFilters={hasActiveFilters}
@@ -93,17 +104,26 @@ export function ProductsManagement({ management }: Pick<QSealContentProps, 'mana
         onEdit={handleEditProduct}
         onToggleStatus={handleToggleStatus}
         onCreateProduct={handleCreateProduct}
-        serverPagination={serverPaginationConfig}/>
+        serverPagination={serverPaginationConfig}
+      />
 
-      <QSealDetailDialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen} product={selectedProduct} />
+      <QSealDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        product={selectedProduct}
+        onEdit={handleDetailEdit}
+        onToggleStatus={handleDetailToggleStatus}
+      />
 
-      <QSealProductDialog open={productDialogOpen}
+      <QSealProductDialog
+        open={productDialogOpen}
         onOpenChange={setProductDialogOpen}
         product={selectedProduct}
         onSave={handleSaveProduct}
         saving={saving}
         saveError={productSaveError}
-        onClearSaveError={clearProductSaveError}/>
+        onClearSaveError={clearProductSaveError}
+      />
     </div>
   );
 }
