@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { Plus, RefreshCw, RotateCcw } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
+import { useAccess } from '@horizon-sync/access';
 import { DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { useToast } from '@horizon-sync/ui/hooks/use-toast';
@@ -10,7 +10,6 @@ import { useToast } from '@horizon-sync/ui/hooks/use-toast';
 import { useAsnOrderManagement } from '../../hooks/useAsnOrderManagement';
 import { useMyWarehouses } from '../../hooks/useMyWarehouses';
 import type { AsnOrder } from '../../types/asn-order.types';
-import { hasPermission } from '../../utils/permissions';
 import { AsnOrderDialog } from '../advance stock notice/AsnOrderDialog';
 import { AsnOrdersTable } from '../advance stock notice/AsnOrdersTable';
 import { AsnStats } from '../advance stock notice/AsnStats';
@@ -19,6 +18,11 @@ import { CloseAsnOrderDialog } from '../advance stock notice/CloseAsnOrderDialog
 
 interface AsnManagementProps {
   warehouseId?: string;
+}
+
+/** `value` when `condition` is true, else `undefined`. Keeps branch count out of the component body. */
+function maybe<T>(condition: boolean, value: T): T | undefined {
+  return condition ? value : undefined;
 }
 
 /** True when any work-queue filter (source warehouse, ETA range, vehicle) is set. */
@@ -61,10 +65,14 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
   const { toast } = useToast();
   const management = useAsnOrderManagement();
   const { warehouses } = useMyWarehouses();
-  const userPermissions = useUserStore((s) => s.permissions.permissions);
-  // Closing is an `asn_order.update` action; without it the row menu hides the
-  // action entirely (and the API would answer 403 anyway).
-  const canCloseAsn = hasPermission(userPermissions, 'asn_order.update');
+  // Rule-based capabilities. Table handlers are only passed when the user may
+  // act, so unauthorized row-menu entries simply disappear (matching the API,
+  // which would answer 403 anyway).
+  const access = useAccess('wms');
+  const canCreateAsn = access.can('asn', 'create');
+  const canUpdateAsn = access.can('asn', 'update');
+  const canDeleteAsn = access.can('asn', 'delete');
+  const canArriveAsn = access.can('asn', 'arrive');
 
   // Sync warehouse filter from parent
   React.useEffect(() => {
@@ -148,10 +156,12 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
             <RefreshCw className={getRefreshIconClass(management.loading)} />
             Refresh
           </Button>
-          <Button onClick={handleCreate} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New ASN Order
-          </Button>
+          {maybe(canCreateAsn, (
+            <Button onClick={handleCreate} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New ASN Order
+            </Button>
+          ))}
         </div>
       </div>
 
@@ -218,11 +228,11 @@ export function AsnManagement({ warehouseId }: AsnManagementProps) {
         error={management.error}
         hasActiveFilters={!!management.filters.search || management.filters.status !== 'all' || !!management.filters.vehicle_no || !!management.filters.source_warehouse_id || !!management.filters.delivery_date_from || !!management.filters.delivery_date_to}
         onView={handleView}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onCloseAsn={canCloseAsn ? setCloseTarget : undefined}
-        onManageVehicles={setVehicleTarget}
-        onCreateOrder={handleCreate}
+        onEdit={maybe(canUpdateAsn, handleEdit)}
+        onDelete={maybe(canDeleteAsn, handleDelete)}
+        onCloseAsn={maybe(canUpdateAsn, setCloseTarget)}
+        onManageVehicles={maybe(canArriveAsn, setVehicleTarget)}
+        onCreateOrder={maybe(canCreateAsn, handleCreate)}
         serverPagination={management.serverPaginationConfig}
         recentlyCreatedId={management.recentlyCreatedId} />
 

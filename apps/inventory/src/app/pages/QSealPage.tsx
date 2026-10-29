@@ -11,10 +11,7 @@ const queryClient = new QueryClient({
 });
 
 export function QSealPage() {
-  // No page-padding wrapper here on purpose: the host `DashboardLayout` already
-  // renders page content inside a `p-6` container. Adding `container px-4 py-8`
-  // here double-padded QSeal and made it look inset compared to sibling screens
-  // such as User Management or WMS.
+  // The host DashboardLayout already provides page padding for this screen.
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>

@@ -15,6 +15,7 @@ import type { SettingType, QRProductSetting } from '../../types/qr-product-setti
 
 import { ActivationManagement } from './ActivationManagement';
 import { BrandManagement } from './BrandManagement';
+import { CurrencySelect } from '../common/CurrencySelect';
 import { LandingPageTab } from './LandingPageTab';
 import { QRCreditSummary } from './QRCreditSummary';
 
@@ -45,11 +46,13 @@ interface SettingFormData {
   label: string;
   description: string;
   sort_order: number;
+  currency: string;
 }
 
 interface SettingFormRowProps {
   valuePlaceholder: string;
   labelPlaceholder: string;
+  showCurrency: boolean;
   initial?: SettingFormData;
   saving: boolean;
   onSave: (data: SettingFormData) => void;
@@ -61,19 +64,21 @@ const EMPTY_SETTING_FORM: SettingFormData = {
   label: '',
   description: '',
   sort_order: 0,
+  currency: '',
 };
 
-function SettingFormRow({ valuePlaceholder, labelPlaceholder, initial, saving, onSave, onCancel }: SettingFormRowProps) {
+function SettingFormRow({ valuePlaceholder, labelPlaceholder, showCurrency, initial, saving, onSave, onCancel }: SettingFormRowProps) {
   const initialData = initial ?? EMPTY_SETTING_FORM;
   const [value, setValue] = React.useState(initialData.value);
   const [label, setLabel] = React.useState(initialData.label);
   const [description, setDescription] = React.useState(initialData.description);
   const [sortOrder, setSortOrder] = React.useState(initialData.sort_order);
-  const isValid = value.trim().length > 0 && label.trim().length > 0;
+  const [currency, setCurrency] = React.useState(initialData.currency);
+  const isValid = value.trim().length > 0 && label.trim().length > 0 && (!showCurrency || currency.length > 0);
 
   const handleSubmit = () => {
     if (!isValid) return;
-    onSave({ value: value.trim(), label: label.trim(), description: description.trim(), sort_order: sortOrder });
+    onSave({ value: value.trim(), label: label.trim(), description: description.trim(), sort_order: sortOrder, currency });
   };
 
   return (
@@ -89,6 +94,9 @@ function SettingFormRow({ valuePlaceholder, labelPlaceholder, initial, saving, o
       <TableCell>
         <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={labelPlaceholder} maxLength={150} className="h-8 text-sm" />
       </TableCell>
+      {showCurrency && <TableCell className="min-w-[190px]">
+        <CurrencySelect value={currency} onValueChange={setCurrency} disabled={saving} />
+      </TableCell>}
       <TableCell>
         <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional" className="h-8 text-sm" />
       </TableCell>
@@ -110,6 +118,11 @@ function SettingFormRow({ valuePlaceholder, labelPlaceholder, initial, saving, o
   );
 }
 
+function getSettingCurrency(setting: QRProductSetting): string {
+  const value = setting.extra_data?.currency_code ?? setting.extra_data?.currency;
+  return typeof value === 'string' ? value : '';
+}
+
 /* ------------------------------------------------------------------ */
 /*  Setting row (read-only)                                            */
 /* ------------------------------------------------------------------ */
@@ -120,17 +133,20 @@ function SettingRow({
   onEdit,
   onDelete,
   onToggleActive,
+  showCurrency,
 }: {
   setting: QRProductSetting;
   saving: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onToggleActive: () => void;
+  showCurrency: boolean;
 }) {
   return (
     <TableRow>
       <TableCell className="font-mono text-sm">{setting.value}</TableCell>
       <TableCell>{setting.label}</TableCell>
+      {showCurrency && <TableCell>{getSettingCurrency(setting) || '—'}</TableCell>}
       <TableCell className="text-muted-foreground text-sm">{setting.description || '—'}</TableCell>
       <TableCell>{setting.sort_order}</TableCell>
       <TableCell>
@@ -158,14 +174,28 @@ function SettingRow({
 
 function SettingTypeContent({ settingType, meta }: { settingType: SettingType; meta: TabMeta }) {
   const { settings, loading, error, saving, refetch, createSetting, updateSetting, deleteSetting } = useQRProductSettings(settingType);
+  const showCurrency = settingType === 'destination';
 
   const [addingNew, setAddingNew] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [confirmDeleteSetting, setConfirmDeleteSetting] = React.useState<QRProductSetting | null>(null);
 
+  const toPayload = (formData: SettingFormData, existing?: QRProductSetting) => ({
+    value: formData.value,
+    label: formData.label,
+    description: formData.description,
+    sort_order: formData.sort_order,
+    ...(showCurrency && {
+      extra_data: {
+        ...(existing?.extra_data || {}),
+        currency_code: formData.currency || null,
+      },
+    }),
+  });
+
   const handleCreate = async (formData: SettingFormData) => {
     try {
-      await createSetting({ setting_type: settingType, ...formData });
+      await createSetting({ setting_type: settingType, ...toPayload(formData) });
       setAddingNew(false);
     } catch {
       // error surfaced via hook state
@@ -174,7 +204,8 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
 
   const handleUpdate = async (id: string, formData: SettingFormData) => {
     try {
-      await updateSetting(id, formData);
+      const existing = settings.find((setting) => setting.id === id);
+      await updateSetting(id, toPayload(formData, existing));
       setEditingId(null);
     } catch {
       // error surfaced via hook state
@@ -207,7 +238,7 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
     if (loading && settings.length === 0) {
       return (
         <TableRow>
-          <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+          <TableCell colSpan={showCurrency ? 7 : 6} className="h-24 text-center text-muted-foreground">
             Loading...
           </TableCell>
         </TableRow>
@@ -216,7 +247,7 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
     if (settings.length === 0 && !addingNew) {
       return (
         <TableRow>
-          <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+          <TableCell colSpan={showCurrency ? 7 : 6} className="h-24 text-center text-muted-foreground">
             {'No ' + meta.label.toLowerCase() + ' configured yet. Click "Add" to create one.'}
           </TableCell>
         </TableRow>
@@ -227,7 +258,8 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
         <SettingFormRow key={setting.id}
           valuePlaceholder={meta.valuePlaceholder}
           labelPlaceholder={meta.labelPlaceholder}
-          initial={{ value: setting.value, label: setting.label, description: setting.description ?? '', sort_order: setting.sort_order }}
+          showCurrency={showCurrency}
+          initial={{ value: setting.value, label: setting.label, description: setting.description ?? '', sort_order: setting.sort_order, currency: showCurrency ? getSettingCurrency(setting) : '' }}
           saving={saving}
           onSave={(d) => handleUpdate(setting.id, d)}
           onCancel={() => setEditingId(null)}/>
@@ -240,7 +272,8 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
             setAddingNew(false);
           }}
           onDelete={() => handleDelete(setting)}
-          onToggleActive={() => handleToggleActive(setting)}/>
+          onToggleActive={() => handleToggleActive(setting)}
+          showCurrency={showCurrency}/>
       ),
     );
   };
@@ -273,6 +306,7 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
               <TableRow>
                 <TableHead className="w-[140px]">Value</TableHead>
                 <TableHead className="w-[200px]">Label</TableHead>
+                {showCurrency && <TableHead className="w-[190px]">Currency</TableHead>}
                 <TableHead>Description</TableHead>
                 <TableHead className="w-[80px]">Order</TableHead>
                 <TableHead className="w-[80px]">Status</TableHead>
@@ -283,6 +317,7 @@ function SettingTypeContent({ settingType, meta }: { settingType: SettingType; m
               {addingNew && (
                 <SettingFormRow valuePlaceholder={meta.valuePlaceholder}
                   labelPlaceholder={meta.labelPlaceholder}
+                  showCurrency={showCurrency}
                   saving={saving}
                   onSave={handleCreate}
                   onCancel={() => setAddingNew(false)}/>
@@ -346,7 +381,7 @@ export function ProductSettingsManagement() {
           </TabsTrigger>
           <TabsTrigger value="wms-activation">
             <Zap className="h-3.5 w-3.5 mr-1.5" />
-            WMS Activation
+            WMS Batch Activation
           </TabsTrigger>
         </TabsList>
         {SETTING_TABS.map((tab) => (

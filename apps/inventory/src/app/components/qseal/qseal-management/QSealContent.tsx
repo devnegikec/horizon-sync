@@ -16,13 +16,13 @@ function AnalyticsContent({ canViewAnalytics }: QSealContentProps) {
 }
 
 const qsealViewComponents: Record<QSealView, React.ComponentType<QSealContentProps>> = {
-  products: ProductsManagement,
-  blocks: BlocksManagement,
-  sku_customization: SkuCustomizationManagement,
+  products: ({ management }) => <ProductsManagement management={management} />,
+  blocks: () => <BlocksManagement />,
+  sku_customization: () => <SkuCustomizationManagement />,
   analytics: AnalyticsContent,
-  activation: QSealActivationManagement,
-  aggregation: AggregationManagement,
-  product_settings: ProductSettingsManagement,
+  activation: () => <QSealActivationManagement />,
+  aggregation: () => <AggregationManagement />,
+  product_settings: () => <ProductSettingsManagement />,
 };
 
 /** Renders the content for the active top-level QSeal view. */

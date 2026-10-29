@@ -2,6 +2,8 @@ import * as React from 'react';
 
 import { Box, Layers, MapPin, Monitor, QrCode, Users } from 'lucide-react';
 
+import { useAccess } from '@horizon-sync/access';
+
 import { DeviceManagementPanel } from '../DeviceManagementPanel';
 import { LocationQRPanel } from '../LocationQRPanel';
 import { LocationTreeView } from '../LocationTreeView';
@@ -12,8 +14,11 @@ import { WorkersManagementPanel } from '../WorkersManagementPanel';
 import { SectionTab } from './SectionTab';
 import type { ManageSection, WMSContentProps } from './types';
 
-export function ManageManagement({ manageSection, selectedWarehouseId, onManageSectionChange, canManage }: WMSContentProps) {
+export function ManageManagement({ manageSection, selectedWarehouseId, onManageSectionChange }: WMSContentProps) {
   const [treeKey, setTreeKey] = React.useState(0);
+  // Designing a layout requires the `layout.manage` action (WMS Admin only).
+  const access = useAccess('wms');
+  const canDesignLayout = access.can('layout', 'manage');
 
   /** Refresh the location tree after a layout is applied/updated/deleted. */
   const handleLayoutChanged = React.useCallback(() => {
@@ -31,7 +36,7 @@ export function ManageManagement({ manageSection, selectedWarehouseId, onManageS
         <div className="flex border-b">
           <SectionTab active={manageSection === 'workers'} icon={Users} label="Workers" onClick={() => onManageSectionChange('workers')} />
           <SectionTab active={manageSection === 'devices'} icon={Monitor} label="Devices" onClick={() => onManageSectionChange('devices')} />
-          {canManage && (
+          {canDesignLayout && (
             <SectionTab active={manageSection === 'designer'}
               icon={MapPin}
               label="Layout Designer"
@@ -47,7 +52,7 @@ export function ManageManagement({ manageSection, selectedWarehouseId, onManageS
         <div className="p-4">
           <ManageSectionContent section={manageSection}
             warehouseId={selectedWarehouseId}
-            canDesignLayout={canManage}
+            canDesignLayout={canDesignLayout}
             treeKey={treeKey}
             onLayoutChanged={handleLayoutChanged}/>
         </div>

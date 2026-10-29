@@ -1,10 +1,9 @@
 import * as React from 'react';
 
-import { useUserStore } from '@horizon-sync/store';
+import { useAccess } from '@horizon-sync/access';
 import { ManagementContainer } from '@horizon-sync/ui/components';
 
 import { useSelectedWarehouse } from '../../../hooks/useSelectedWarehouse';
-import { hasPermission } from '../../../utils/permissions';
 
 import type { InboundSection, ManageSection, WMSView } from './types';
 import { WMSContent } from './WMSContent';
@@ -29,10 +28,9 @@ export function WMSManagement() {
   // so it survives tab switches, route changes and reloads instead of snapping
   // back to the first assigned warehouse on every remount.
   const { warehouses, loading: warehousesLoading, warehouseId: selectedWarehouseId, setWarehouseId: setSelectedWarehouseId, refetch: refetchWarehouses } = useSelectedWarehouse();
-  const userPermissions = useUserStore((s) => s.permissions.permissions);
-  const userType = useUserStore((s) => s.user?.user_type);
-  const isAdmin = userType === 'system_admin' || userType === 'organization_admin';
-  const canManage = isAdmin || hasPermission(userPermissions, 'warehouse.manage');
+  // Rule-based access: `manage` view = the WMS Admin / WMS Manager rules.
+  const access = useAccess('wms');
+  const canManage = access.can('manage', 'view');
 
   // Redirect away from manage view if user lacks permission
   React.useEffect(() => {
@@ -67,9 +65,8 @@ export function WMSManagement() {
         warehousesLoading={warehousesLoading}
         selectedWarehouseId={selectedWarehouseId}
         onWarehouseChange={setSelectedWarehouseId}/>
-      <WMSNavigation activeView={activeView} canManage={canManage} onViewChange={setActiveView} />
+      <WMSNavigation activeView={activeView} onViewChange={setActiveView} />
       <WMSContent activeView={activeView}
-        canManage={canManage}
         inboundSection={inboundSection}
         manageSection={manageSection}
         receivingStatusFilter={receivingStatusFilter}

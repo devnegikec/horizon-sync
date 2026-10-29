@@ -1,5 +1,5 @@
 export { CloseShortageDialog } from './CloseShortageDialog';
 export type { CloseShortageDialogProps } from './CloseShortageDialog';
-export { ShortageHistoryDialog } from './ShortageHistoryDialog';
-export type { ShortageHistoryDialogProps } from './ShortageHistoryDialog';
+export { ShortageDetailDialog } from './ShortageDetailDialog';
+export type { ShortageDetailDialogProps } from './ShortageDetailDialog';
 export { ShortageLedger } from './ShortageLedger';

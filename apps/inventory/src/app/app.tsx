@@ -37,7 +37,6 @@ export function App() {
       <Routes>
         {/* Public QR verification routes — no auth required */}
         <Route path="/g/:gtin/s/:serial/:timestamp" element={<PublicQRValidation />} />
-        <Route path="/01/:gtin/21/:serial" element={<PublicQRValidation />} />
         {/* Main authenticated app */}
         <Route path="*" element={<RequireAuth><InventoryManagement /></RequireAuth>} />
       </Routes>

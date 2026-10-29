@@ -45,6 +45,62 @@ export interface RecentActivityItem {
   created_at: string | null;
 }
 
+/**
+ * Legacy stats payloads may omit `stats`, `stock_overview` or individual flow
+ * fields. Treating them as required crashed the KPI/flow widgets on
+ * `undefined`, so every field is normalized before the widgets see it.
+ */
+type WmsStatsPayload = Partial<Omit<WmsStatsResponse, 'stats' | 'stock_overview' | 'recent_activity'>> & {
+  stats?: Partial<WmsStatsResponse['stats']>;
+  stock_overview?: {
+    inbound?: Partial<WmsStatsResponse['stock_overview']['inbound']>;
+    outbound?: Partial<WmsStatsResponse['stock_overview']['outbound']>;
+  };
+  recent_activity?: RecentActivityItem[];
+};
+
+function normalizeCounters(stats: Partial<WmsStatsResponse['stats']>): WmsStatsResponse['stats'] {
+  return {
+    total_stock_items: stats.total_stock_items ?? 0,
+    assigned_warehouses: stats.assigned_warehouses ?? 0,
+    low_stock_count: stats.low_stock_count ?? 0,
+    out_of_stock_count: stats.out_of_stock_count ?? 0,
+    active_workers: stats.active_workers ?? 0,
+  };
+}
+
+function normalizeInbound(flow: Partial<WmsStatsResponse['stock_overview']['inbound']>): WmsStatsResponse['stock_overview']['inbound'] {
+  return {
+    total_qty: flow.total_qty ?? 0,
+    total_value: flow.total_value ?? 0,
+    receiving_slips: flow.receiving_slips ?? 0,
+    chart: flow.chart ?? [],
+  };
+}
+
+function normalizeOutbound(flow: Partial<WmsStatsResponse['stock_overview']['outbound']>): WmsStatsResponse['stock_overview']['outbound'] {
+  return {
+    total_qty: flow.total_qty ?? 0,
+    total_value: flow.total_value ?? 0,
+    dispatches: flow.dispatches ?? 0,
+    chart: flow.chart ?? [],
+  };
+}
+
+function normalizeWmsStats(payload: WmsStatsPayload): WmsStatsResponse {
+  return {
+    period: payload.period ?? '',
+    period_start: payload.period_start ?? '',
+    period_end: payload.period_end ?? '',
+    stats: normalizeCounters(payload.stats ?? {}),
+    stock_overview: {
+      inbound: normalizeInbound(payload.stock_overview?.inbound ?? {}),
+      outbound: normalizeOutbound(payload.stock_overview?.outbound ?? {}),
+    },
+    recent_activity: payload.recent_activity ?? [],
+  };
+}
+
 export interface WmsStatsParams {
   warehouse_id?: string;
   period?: string;
@@ -80,7 +136,7 @@ export function fetchWmsStats(token: string, params: WmsStatsParams = {}): Promi
     page: params.page,
     page_size: params.page_size,
   };
-  return apiGet<WmsStatsResponse>(token, '/wms-dashboard/stats', query);
+  return apiGet<WmsStatsPayload>(token, '/wms-dashboard/stats', query).then(normalizeWmsStats);
 }
 
 // ── Report / list endpoints (see docs/DASHBOARD_DOC.md) ──────────────────────

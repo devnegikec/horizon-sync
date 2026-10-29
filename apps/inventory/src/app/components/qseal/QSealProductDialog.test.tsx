@@ -120,7 +120,7 @@ function makeProduct(overrides: Partial<QSealProduct> = {}): QSealProduct {
     brand_id: '33333333-3333-4333-8333-333333333333',
     name: 'Existing Product',
     generic_name: null,
-    gtin: '012345678901',
+    gtin: '0123456789012',
     industry: null,
     qr_type: null,
     is_active: true,
@@ -153,7 +153,7 @@ describe('QSealProductDialog Shelf Life', () => {
       brand_id: '33333333-3333-4333-8333-333333333333',
       name: 'Existing Product',
       generic_name: null,
-      gtin: '012345678901',
+      gtin: '0123456789012',
       industry: null,
       qr_type: null,
       is_active: true,
@@ -188,6 +188,12 @@ describe('QSealProductDialog Shelf Life', () => {
 
     expect(screen.getByRole('combobox', { name: 'Shelf Life' })).toBeInTheDocument();
     expect(screen.queryByRole('spinbutton', { name: /Shelf Life/i })).not.toBeInTheDocument();
+  });
+
+  it('limits GTIN input to 20 characters', () => {
+    render(<QSealProductDialog open onOpenChange={jest.fn()} onSave={jest.fn()} />);
+
+    expect(screen.getByRole('textbox', { name: /GTIN/i })).toHaveAttribute('maxLength', '20');
   });
 
   // TODO: Disabled 2026-08-27 — intermittently exceeds the 10s Jest timeout. Re-enable in next development.
@@ -231,15 +237,31 @@ describe('QSealProductDialog Shelf Life', () => {
   }, 10000);
   */
 
-  it('removes Generic Name and requires both Product images on create', () => {
+  it('removes Generic Name and requires both Product images on create', async () => {
     const onSave = jest.fn();
+    const user = userEvent.setup();
     render(<QSealProductDialog open onOpenChange={jest.fn()} onSave={onSave} />);
 
     expect(screen.queryByLabelText(/Generic Name/i)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Create Product' }));
+    await user.click(screen.getByRole('combobox', { name: 'Brand' }));
+    await user.click(await screen.findByRole('option', { name: /Saved Brand/i }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
 
-    expect(screen.getByText('Logo is required. Please upload an image.')).toBeInTheDocument();
-    expect(screen.getByText('Banner image is required. Please upload an image.')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Logo is required. Please upload an image.')).toBeInTheDocument();
+      expect(screen.getByText('Banner image is required. Please upload an image.')).toBeInTheDocument();
+    });
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('requires a brand before continuing a new product', async () => {
+    const onSave = jest.fn();
+    const user = userEvent.setup();
+    render(<QSealProductDialog open onOpenChange={jest.fn()} onSave={onSave} />);
+
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() => expect(screen.getByText('Brand is required. Please select a brand.')).toBeInTheDocument());
     expect(onSave).not.toHaveBeenCalled();
   });
 
@@ -249,6 +271,9 @@ describe('QSealProductDialog Shelf Life', () => {
     render(<QSealProductDialog open onOpenChange={jest.fn()} product={makeProduct()} onSave={onSave} />);
 
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Brand' })).toHaveTextContent('Saved Brand'));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
     await user.click(screen.getByRole('button', { name: 'Save Changes' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -269,6 +294,9 @@ describe('QSealProductDialog Shelf Life', () => {
     );
 
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Brand' })).toHaveTextContent('Saved Brand'));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
     await user.click(screen.getByRole('button', { name: 'Save Changes' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
@@ -277,5 +305,56 @@ describe('QSealProductDialog Shelf Life', () => {
       expect.objectContaining({ logoFile: null, bannerFile: null }),
     );
     expect(screen.queryByText('Logo is required. Please upload an image.')).not.toBeInTheDocument();
+  });
+
+  it('validates the GTIN check digit before continuing', async () => {
+    const user = userEvent.setup();
+    render(<QSealProductDialog open onOpenChange={jest.fn()} product={makeProduct()} onSave={jest.fn()} />);
+
+    const gtin = screen.getByRole('textbox', { name: /GTIN/i });
+    await user.clear(gtin);
+    await user.type(gtin, '0123456789013');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() => expect(screen.getByText('GTIN check digit is invalid')).toBeInTheDocument());
+  });
+
+  it('only shows Product Auth URL when redirect is enabled', async () => {
+    const user = userEvent.setup();
+    render(<QSealProductDialog open onOpenChange={jest.fn()} product={makeProduct()} onSave={jest.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.queryByRole('textbox', { name: /Product Auth URL/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('Redirect to Product URL after QR scan'));
+    expect(screen.getByRole('textbox', { name: /Product Auth URL/i })).toBeInTheDocument();
+  });
+
+  it('asks before discarding unsaved changes', async () => {
+    const onOpenChange = jest.fn();
+    const user = userEvent.setup();
+    render(<QSealProductDialog open onOpenChange={onOpenChange} product={makeProduct()} onSave={jest.fn()} />);
+
+    await user.type(screen.getByRole('textbox', { name: /Product Name/i }), ' revised');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Discard changes' }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('provides edit links for each review section', async () => {
+    const user = userEvent.setup();
+    render(<QSealProductDialog open onOpenChange={jest.fn()} product={makeProduct()} onSave={jest.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    const editButtons = screen.getAllByRole('button', { name: 'Edit' });
+    expect(editButtons).toHaveLength(3);
+    await user.click(editButtons[1]);
+    expect(screen.getByText('Packaging Details')).toBeInTheDocument();
   });
 });

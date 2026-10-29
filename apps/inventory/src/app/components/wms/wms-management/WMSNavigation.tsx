@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import { ArrowDownToLine, ArrowUpFromLine, Boxes, Settings, Truck } from 'lucide-react';
 
+import { Show } from '@horizon-sync/access';
 import { Button } from '@horizon-sync/ui/components/ui/button';
 import { cn } from '@horizon-sync/ui/lib';
 
@@ -27,12 +28,11 @@ function NavItem({ icon: Icon, label, isActive, onClick }: NavItemProps) {
 
 interface WMSNavigationProps {
   activeView: WMSView;
-  canManage: boolean;
   onViewChange: (view: WMSView) => void;
 }
 
 /** Top-level WMS view switcher (Advance Stock Notice / Inbound / Outbound / Stock / Manage). */
-export function WMSNavigation({ activeView, canManage, onViewChange }: WMSNavigationProps) {
+export function WMSNavigation({ activeView, onViewChange }: WMSNavigationProps) {
   return (
     <div className="border-b">
       <nav className="flex items-center gap-1 pb-0 overflow-x-auto">
@@ -40,7 +40,9 @@ export function WMSNavigation({ activeView, canManage, onViewChange }: WMSNaviga
         <NavItem icon={ArrowDownToLine} label="Inbound" isActive={activeView === 'inbound'} onClick={() => onViewChange('inbound')} />
         <NavItem icon={ArrowUpFromLine} label="Outbound" isActive={activeView === 'outbound'} onClick={() => onViewChange('outbound')} />
         <NavItem icon={Boxes} label="Stock" isActive={activeView === 'stock'} onClick={() => onViewChange('stock')} />
-        {canManage && <NavItem icon={Settings} label="Manage" isActive={activeView === 'manage'} onClick={() => onViewChange('manage')} />}
+        <Show module="wms" resource="manage">
+          <NavItem icon={Settings} label="Manage" isActive={activeView === 'manage'} onClick={() => onViewChange('manage')} />
+        </Show>
       </nav>
     </div>
   );

@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { Download, PackageCheck, ShieldAlert } from 'lucide-react';
 
-import { useUserStore } from '@horizon-sync/store';
+import { useAccess } from '@horizon-sync/access';
 import { Button } from '@horizon-sync/ui/components';
 
 import { useReturnReceiptNote } from '../../../hooks/useWMS';
@@ -14,7 +14,6 @@ import type {
   ReturnReceiptNoteGroup,
 } from '../../../types/wms.types';
 import { toNormalizedApiError } from '../../../utility/api/core';
-import { hasPermission } from '../../../utils/permissions';
 import { QRDetailDialog, type QRDetailColumn, type QRDetailRow } from '../QRDetailDialog';
 import { WMSStatusBadge } from '../WMSStatusBadge';
 
@@ -232,9 +231,9 @@ export interface ReturnReceiptNoteDetailDialogProps {
  */
 export function ReturnReceiptNoteDetailDialog({ noteId, open, onOpenChange }: ReturnReceiptNoteDetailDialogProps) {
   const { note, loading, error, approveNote, rejectNote, disposeLine, generatePutAway, downloadSlip } = useReturnReceiptNote(noteId);
-  const permissions = useUserStore((state) => state.permissions.permissions);
-  const canApprove = hasPermission(permissions, 'return.approve');
-  const canDispose = hasPermission(permissions, 'return.dispose');
+  const access = useAccess('wms');
+  const canApprove = access.can('returns', 'approve');
+  const canDispose = access.can('returns', 'dispose');
 
   const [lineTarget, setLineTarget] = React.useState<ReturnNoteLine | null>(null);
   const [approveOpen, setApproveOpen] = React.useState(false);

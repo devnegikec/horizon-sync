@@ -3,6 +3,7 @@ import * as React from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
 import { PackageOpen } from 'lucide-react';
 
+import { useAccess } from '@horizon-sync/access';
 import {
   Button,
   Card,
@@ -184,6 +185,13 @@ export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onSta
   const [rejectTarget, setRejectTarget] = React.useState<ReceivingSlip | null>(null);
   const [actionLoading, setActionLoading] = React.useState(false);
 
+  // Rule-based capabilities. Handlers are only handed to the columns when the
+  // user may act, so unauthorized row actions are hidden entirely.
+  const access = useAccess('wms');
+  const canApproveSlips = access.can('receiving', 'approve');
+  const canRejectSlips = access.can('receiving', 'reject');
+  const canGeneratePutAway = access.can('putaway', 'create');
+
   const {
     data,
     statusCounts,
@@ -317,15 +325,15 @@ export function ReceivingSlipList({ warehouseId, statusFilter, refreshKey, onSta
     () =>
       createReceivingSlipColumns({
         onView: handleView,
-        onApprove: setConfirmApproveSlip,
-        onReject: setRejectTarget,
-        onPutAway: setConfirmPutAwaySlip,
+        onApprove: canApproveSlips ? setConfirmApproveSlip : undefined,
+        onReject: canRejectSlips ? setRejectTarget : undefined,
+        onPutAway: canGeneratePutAway ? setConfirmPutAwaySlip : undefined,
       }),
-    [handleView],
+    [handleView, canApproveSlips, canRejectSlips, canGeneratePutAway],
   );
 
   const isInitialLoading = loading && !data;
-  const canRejectItems = !!viewSlip && REJECT_ITEM_STATUSES.includes(viewSlip.status);
+  const canRejectItems = canRejectSlips && !!viewSlip && REJECT_ITEM_STATUSES.includes(viewSlip.status);
 
   return (
     <div className="space-y-4">

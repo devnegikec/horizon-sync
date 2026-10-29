@@ -7,7 +7,6 @@ export type InboundSection = 'receiving' | 'putaway' | 'vehicle' | 'exceptions' 
 /** Shared prop contract every `WMSView` content component receives. */
 export interface WMSContentProps {
   activeView: WMSView;
-  canManage: boolean;
   inboundSection: InboundSection;
   manageSection: ManageSection;
   receivingStatusFilter: string;

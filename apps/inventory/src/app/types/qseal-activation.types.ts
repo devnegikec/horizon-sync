@@ -11,6 +11,8 @@ export interface QSealActivationSettings {
   expiry_date: string;
   history: boolean;
   created_on: string;
+  created_by?: string | null;
+  created_by_name?: string | null;
 }
 
 export interface QSealActivationSummary {

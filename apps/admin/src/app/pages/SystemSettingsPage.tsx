@@ -1,15 +1,17 @@
-import { 
-  Shield, 
-  Building2, 
-  Activity, 
-  TrendingUp, 
-  Users, 
+import {
+  Shield,
+  Building2,
+  Activity,
+  TrendingUp,
+  Users,
   DollarSign,
   AlertCircle,
   CheckCircle2,
   Clock
 } from 'lucide-react';
 
+import { NoPermission } from '@horizon-sync/ui/components/common';
+import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -17,9 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@horizon-sync/ui/components/ui/card';
-import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Skeleton } from '@horizon-sync/ui/components/ui/skeleton';
-import { Alert, AlertDescription } from '@horizon-sync/ui/components/ui/alert';
 import { cn } from '@horizon-sync/ui/lib';
 
 import { MasterOrgSetup } from '../components/MasterOrgSetup';
@@ -137,7 +137,7 @@ function SystemHealthCard({ health }: { health: SystemHealth | null }) {
         <CardDescription>
           <div className="flex items-center gap-2">
             <span>Overall Status:</span>
-            <Badge 
+            <Badge
               variant={health.status === 'healthy' ? 'default' : 'destructive'}
               className={cn(
                 health.status === 'warning' && 'bg-yellow-100 text-yellow-800 border-yellow-200'
@@ -180,7 +180,7 @@ function SystemHealthCard({ health }: { health: SystemHealth | null }) {
 
 export function SystemSettingsPage() {
   const { canAccessSystemSettings, hasSystemAdminMaster, loading: permissionsLoading } = usePermissions();
-  
+
   // Use hooks for data fetching
   const { data: stats, isLoading: statsLoading } = useSystemStats();
   const { data: health, isLoading: healthLoading } = useSystemHealth();
@@ -217,13 +217,8 @@ export function SystemSettingsPage() {
             System administration and configuration management
           </p>
         </div>
-        
-        <Alert>
-          <Shield className="h-4 w-4" />
-          <AlertDescription>
-            You do not have permission to access system settings. Please contact your system administrator.
-          </AlertDescription>
-        </Alert>
+
+        <NoPermission module="System Settings" />
       </div>
     );
   }
@@ -286,7 +281,7 @@ export function SystemSettingsPage() {
       {/* System Health and Master Org Setup */}
       <div className="grid gap-6 md:grid-cols-3">
         <SystemHealthCard health={health || null} />
-        
+
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -305,7 +300,7 @@ export function SystemSettingsPage() {
               </div>
               <div className="space-y-2">
                 <div className="text-sm font-medium">System Status</div>
-                <Badge 
+                <Badge
                   variant={health?.status === 'healthy' ? 'default' : 'destructive'}
                   className={cn(
                     health?.status === 'warning' && 'bg-yellow-100 text-yellow-800 border-yellow-200'

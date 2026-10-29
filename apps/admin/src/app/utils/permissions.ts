@@ -18,6 +18,12 @@ export function hasPermission(userPermissions: Permission[], requiredPermission:
     return true;
   }
 
+  // `system_admin.<domain>_manage` covers read/create/update/delete for that domain.
+  const manageMatch = requiredPermission.match(/^(system_admin\.\w+)_(read|create|update|delete)$/);
+  if (manageMatch && userPermissions.includes(`${manageMatch[1]}_manage`)) {
+    return true;
+  }
+
   // Check for wildcard permissions
   for (const permission of userPermissions) {
     if (permission === '*.*') {
@@ -61,23 +67,23 @@ export const PERMISSIONS = {
   SYSTEM_ADMIN_ORGANIZATIONS: 'system_admin.organizations',
   SYSTEM_ADMIN_BILLING: 'system_admin.billing',
   SYSTEM_ADMIN_REPORTING: 'system_admin.reporting',
-  
+
   // General Admin Permissions
   ALL_PERMISSIONS: '*.*',
   ADMIN_ALL: 'admin.*',
-  
+
   // Organization Management
   ORG_CREATE: 'organization.create',
   ORG_UPDATE: 'organization.update',
   ORG_DELETE: 'organization.delete',
   ORG_VIEW: 'organization.read',
-  
+
   // User Management
   USER_CREATE: 'user.create',
   USER_UPDATE: 'user.update',
   USER_DELETE: 'user.delete',
   USER_VIEW: 'user.read',
-  
+
   // Settings and Configuration
   SETTINGS_VIEW: 'settings.read',
   SETTINGS_UPDATE: 'settings.update',
@@ -87,7 +93,7 @@ export const PERMISSIONS = {
  * Check if user has system admin master permission (full access)
  */
 export function hasSystemAdminMasterPermission(userPermissions: Permission[]): boolean {
-  return hasPermission(userPermissions, PERMISSIONS.SYSTEM_ADMIN_MASTER) || 
+  return hasPermission(userPermissions, PERMISSIONS.SYSTEM_ADMIN_MASTER) ||
          hasPermission(userPermissions, PERMISSIONS.ALL_PERMISSIONS);
 }
 
@@ -147,7 +153,28 @@ export function hasPermissionForDomain(userPermissions: Permission[], domain: st
     return false;
   }
 
-  return hasPermission(userPermissions, requiredPermission) ||
-         hasSystemAdminMasterPermission(userPermissions) ||
-         hasPermission(userPermissions, PERMISSIONS.ALL_PERMISSIONS);
+  if (hasPermission(userPermissions, requiredPermission) ||
+      hasSystemAdminMasterPermission(userPermissions) ||
+      hasPermission(userPermissions, PERMISSIONS.ALL_PERMISSIONS)) {
+    return true;
+  }
+
+  // Fine-grained grants such as `system_admin.billing_read` also unlock the domain.
+  return userPermissions.some((permission) => permission.startsWith(`${requiredPermission}_`));
+}
+
+/**
+ * Any of these grants write access to the subscription/billing admin screens:
+ * create, update, the domain `_manage` bundle, master, or the global wildcard.
+ */
+export const BILLING_WRITE_PERMISSION_CODES: Permission[] = [
+  PERMISSIONS.SYSTEM_ADMIN_BILLING + '_create',
+  PERMISSIONS.SYSTEM_ADMIN_BILLING + '_update',
+  PERMISSIONS.SYSTEM_ADMIN_BILLING + '_manage',
+  PERMISSIONS.SYSTEM_ADMIN_MASTER,
+  PERMISSIONS.ALL_PERMISSIONS,
+];
+
+export function hasBillingWriteAccess(userPermissions: Permission[]): boolean {
+  return hasAnyPermission(userPermissions, BILLING_WRITE_PERMISSION_CODES);
 }

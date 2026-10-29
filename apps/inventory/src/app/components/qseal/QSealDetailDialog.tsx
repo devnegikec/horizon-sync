@@ -1,4 +1,4 @@
-import { Clock, Image, Info, Link, MoreHorizontal, QrCode, Tag } from 'lucide-react';
+import { Clock, Image, Info, Layers, Link, MoreHorizontal, QrCode, ScanLine, Tag } from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components';
 import { DetailDialog } from '@horizon-sync/ui/components/ui/detail-dialog';
@@ -146,7 +146,7 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
 
         <div className="space-y-3">
           <SectionHeader icon={Image} title="Product Images" />
-          <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Logo</p>
               <ImagePreview src={product.image_url} alt="Logo" />
@@ -160,7 +160,7 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
 
         <div className="space-y-3">
           <SectionHeader icon={Info} title="Product Information" />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Product Name" value={product.name} />
             <Field label="GTIN" value={product.gtin} />
             <Field label="Industry" value={product.industry} />
@@ -169,8 +169,22 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
         </div>
 
         <div className="space-y-3">
+          <SectionHeader icon={Layers} title="QR Overview" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="QR Blocks" value={product.block_count == null ? '—' : product.block_count.toLocaleString()} />
+            <Field label="QR Codes" value={product.qr_code_count == null ? '—' : product.qr_code_count.toLocaleString()} />
+            <Field label="Total Scans" value={product.scan_count == null ? '—' : product.scan_count.toLocaleString()} />
+            <Field label="Last Scan" value={product.last_scan_at ? formatDate(product.last_scan_at, 'DD-MMM-YY', { includeTime: true }) : 'Never scanned'} />
+          </div>
+          <div className="flex items-center gap-2 rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+            <ScanLine className="h-4 w-4 shrink-0" />
+            QR metrics summarize all blocks belonging to this product.
+          </div>
+        </div>
+
+        <div className="space-y-3">
           <SectionHeader icon={Link} title="Product URLs" />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Landing Page" value={product.landing_page} />
             <Field label="Product Auth URL" value={product.client_product_auth_url} />
           </div>
@@ -178,7 +192,7 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
 
         <div className="space-y-3">
           <SectionHeader icon={Clock} title="Activation Details" />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Activation Method" value={activationLabel} />
             <Field label="Serial Number Type" value={srNumberLabel} />
             <Field label="Serial Prefix" value={serialPrefixLabel} />
@@ -187,7 +201,7 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
 
         <div className="space-y-3">
           <SectionHeader icon={MoreHorizontal} title="Additional Details" />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Contact Email" value={product.email} />
             <Field label="Contact Phone" value={product.phone_number} />
             {product.generic_name != null && <Field label="Generic Name" value={product.generic_name} />}

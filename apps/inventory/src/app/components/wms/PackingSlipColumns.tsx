@@ -14,12 +14,14 @@ import { WMSStatusBadge } from './WMSStatusBadge';
 export interface PackingSlipColumnsOptions {
   /** Id of the row currently running an action, if any. */
   busyId: string | null;
+  /** False when the caller may not pack/dispatch — those actions are hidden. */
+  canAct: boolean;
   onView: (slip: PackingSlipListItem) => void;
   onMarkLoading: (slip: PackingSlipListItem) => void;
   onDispatch: (slip: PackingSlipListItem) => void;
 }
 
-function PackingSlipActionsCell({ slip, busyId, onView, onMarkLoading, onDispatch }: { slip: PackingSlipListItem } & PackingSlipColumnsOptions) {
+function PackingSlipActionsCell({ slip, busyId, canAct, onView, onMarkLoading, onDispatch }: { slip: PackingSlipListItem } & PackingSlipColumnsOptions) {
   const busy = busyId === slip.id;
 
   return (
@@ -27,13 +29,13 @@ function PackingSlipActionsCell({ slip, busyId, onView, onMarkLoading, onDispatc
       <Button size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs" onClick={() => onView(slip)}>
         <Eye className="h-3.5 w-3.5" />
       </Button>
-      {slip.status === 'draft' && (
+      {canAct && slip.status === 'draft' && (
         <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" disabled={busy} onClick={() => onMarkLoading(slip)}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PackageCheck className="h-3.5 w-3.5" />}
           Mark Loading
         </Button>
       )}
-      {slip.status === 'loading' && (
+      {canAct && slip.status === 'loading' && (
         <Button size="sm" className="h-7 gap-1 px-2 text-xs" disabled={busy} onClick={() => onDispatch(slip)}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Truck className="h-3.5 w-3.5" />}
           Dispatch
@@ -43,7 +45,7 @@ function PackingSlipActionsCell({ slip, busyId, onView, onMarkLoading, onDispatc
   );
 }
 
-export function createPackingSlipColumns({ busyId, onView, onMarkLoading, onDispatch }: PackingSlipColumnsOptions): ColumnDef<PackingSlipListItem>[] {
+export function createPackingSlipColumns({ busyId, canAct, onView, onMarkLoading, onDispatch }: PackingSlipColumnsOptions): ColumnDef<PackingSlipListItem>[] {
   return [
     {
       accessorKey: 'packing_slip_no',
@@ -92,7 +94,7 @@ export function createPackingSlipColumns({ busyId, onView, onMarkLoading, onDisp
       id: 'actions',
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
-        <PackingSlipActionsCell slip={row.original} busyId={busyId} onView={onView} onMarkLoading={onMarkLoading} onDispatch={onDispatch} />
+        <PackingSlipActionsCell slip={row.original} busyId={busyId} canAct={canAct} onView={onView} onMarkLoading={onMarkLoading} onDispatch={onDispatch} />
       ),
       enableSorting: false,
     },

@@ -4,6 +4,7 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { CheckCircle2, UserRound, Loader2, ChevronDown, ChevronRight, Truck, PackageCheck, PackageOpen, type LucideIcon } from 'lucide-react';
 import QRCode from 'qrcode';
 
+import { useAccess } from '@horizon-sync/access';
 import { useUserStore } from '@horizon-sync/store';
 import {
   Button,
@@ -613,12 +614,15 @@ function PickListFooter({
   caps,
   handlers,
   hasWorker,
+  canAssign,
   onAssignClick,
   onClose,
 }: {
   caps: PickListCaps;
   handlers: PickListFooterHandlers;
   hasWorker: boolean;
+  /** False when the user lacks `picking.execute` — hides the assign action. */
+  canAssign: boolean;
   onAssignClick: () => void;
   onClose: () => void;
 }) {
@@ -634,10 +638,12 @@ function PickListFooter({
           </Button>
         );
       })}
-      <Button size="sm" variant="outline" className="gap-2" onClick={onAssignClick}>
-        <UserRound className="h-4 w-4" />
-        {hasWorker ? 'Re-assign Worker' : 'Assign Worker'}
-      </Button>
+      {canAssign && (
+        <Button size="sm" variant="outline" className="gap-2" onClick={onAssignClick}>
+          <UserRound className="h-4 w-4" />
+          {hasWorker ? 'Re-assign Worker' : 'Assign Worker'}
+        </Button>
+      )}
       <Button type="button" variant="outline" onClick={onClose}>
         Close
       </Button>
@@ -1005,7 +1011,9 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
   };
 
   const progress = pickList?.progress ?? null;
-  const caps = pickListCaps(pickList);
+  // Without `picking.execute` every lifecycle action is disabled/hidden.
+  const canExecutePick = useAccess('wms').can('picking', 'execute');
+  const caps = canExecutePick ? pickListCaps(pickList) : pickListCaps(null);
 
   return (
     <>
@@ -1027,6 +1035,7 @@ function PickListDetailDialog({ listId, open, onOpenChange, warehouseId }: PickL
               onCancel: () => setConfirmAction('cancel'),
             }}
             hasWorker={worker.id !== null}
+            canAssign={canExecutePick}
             onAssignClick={() => setAssignOpen(true)}
             onClose={() => onOpenChange(false)} />
         }>

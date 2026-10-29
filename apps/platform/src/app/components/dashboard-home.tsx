@@ -139,12 +139,15 @@ const recentActivity: RecentActivityItem[] = [
 
 export function DashboardHome() {
   const isWms = useIsWmsRole();
+  // Shared by the WMS dashboard's selector and the widgets below it, so both
+  // stay scoped to the same warehouse.
+  const [warehouseId, setWarehouseId] = React.useState('all');
 
   if (isWms) {
     return (
       <div className="space-y-8">
-        <WMSDashboardHome />
-        <DashboardSection />
+        <WMSDashboardHome warehouseId={warehouseId} onWarehouseChange={setWarehouseId} />
+        <DashboardSection warehouseId={warehouseId === 'all' ? undefined : warehouseId} />
       </div>
     );
   }

@@ -10,6 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@horizon-sync/ui/compo
 
 import type { AnalyticsGeoPoint } from '../../types/qseal.types';
 
+function locationSourceLabel(source?: string | null): string | null {
+  if (!source) return null;
+  const normalized = source.trim().toLowerCase();
+  if (normalized === 'browser' || normalized === 'gps') return 'GPS';
+  if (normalized === 'ip' || normalized === 'ip_address') return 'IP estimate';
+  return source;
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────
 
 /**
@@ -133,6 +141,7 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
             if (p.latitude == null || p.longitude == null) return null;
             const radius = Math.max(6, Math.min((p.count / maxCount) * 28, 24));
             const label = [p.city, p.state, p.country].filter(Boolean).join(', ') || 'Unknown';
+            const source = locationSourceLabel(p.location_source);
 
             return (
               <CircleMarker key={i}
@@ -149,6 +158,7 @@ export function AnalyticsMap({ points, loading }: AnalyticsMapProps) {
                     <strong>{label}</strong>
                     <br />
                     <b>{p.count.toLocaleString()} scans</b>
+                    {source && <><br /><span>Location source: {source}</span></>}
                   </div>
                 </Popup>
               </CircleMarker>

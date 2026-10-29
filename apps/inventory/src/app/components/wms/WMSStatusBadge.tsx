@@ -38,6 +38,9 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   // Gate
   open: { label: 'Open', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-white' },
   verified: { label: 'Verified', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },
+  // Shortage balance
+  resolved: { label: 'Resolved', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-700 dark:text-white' },
+  written_off: { label: 'Written off', className: 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-white' },
   // Vehicle arrival
   arrived: { label: 'Arrived', className: 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-white' },
   unloaded: { label: 'Unloaded', className: 'bg-amber-100 text-amber-800 dark:bg-amber-700 dark:text-white' },

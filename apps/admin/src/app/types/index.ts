@@ -79,6 +79,34 @@ export type {
   AdminWorkerDetailResponse,
 } from './worker.types';
 
+export type {
+  ActivationFeeStatus,
+  AdjustmentDirection,
+  BillingCadence,
+  ChangeSubscriptionPayload,
+  CreatePlanPayload,
+  CreateSubscriptionPayload,
+  CreditAdjustmentPayload,
+  CreditBatch,
+  CreditBatchListResponse,
+  CreditBatchSource,
+  CreditExposureItem,
+  CreditExposureResponse,
+  CreditExposureTotals,
+  OrganizationSubscription,
+  PlanVersionPayload,
+  PlanVersionStatus,
+  ReconciliationIssue,
+  ReconciliationResponse,
+  ReconciliationRow,
+  SubscriptionPlan,
+  SubscriptionPlanDetail,
+  SubscriptionPlanListFilters,
+  SubscriptionPlanListResponse,
+  SubscriptionPlanVersion,
+  SubscriptionStatus,
+} from './subscription.types';
+
 export type { PaginationMeta } from './common.types';
 
 export type {

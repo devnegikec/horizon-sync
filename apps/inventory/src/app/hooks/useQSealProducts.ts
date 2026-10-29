@@ -11,6 +11,7 @@ const PAGE_SIZE = 20;
 export interface UseQSealProductsResult {
   products: QSealProductListItem[];
   pagination: QSealProductListResponse['pagination'] | null;
+  stats: QSealProductListResponse['stats'] | null;
   loading: boolean;
   error: string | null;
   refetch: () => void;
@@ -25,14 +26,23 @@ export function useQSealProducts(
   const accessToken = useUserStore((s) => s.accessToken);
   const [products, setProducts] = React.useState<QSealProductListItem[]>([]);
   const [pagination, setPagination] = React.useState<QSealProductListResponse['pagination'] | null>(null);
+  const [stats, setStats] = React.useState<QSealProductListResponse['stats'] | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [currentPage, setCurrentPage] = React.useState(initialPage);
+  // Guards against an older (e.g. previous page or previous filter) response
+  // landing after a newer one and overwriting the visible rows.
+  const requestId = React.useRef(0);
+  const ifCurrent = React.useCallback((request: number, apply: () => void) => {
+    if (request === requestId.current) apply();
+  }, []);
 
   const fetchProducts = React.useCallback(async () => {
+    const request = ++requestId.current;
     if (!accessToken) {
       setProducts([]);
       setPagination(null);
+      setStats(null);
       setLoading(false);
       return;
     }
@@ -52,16 +62,22 @@ export function useQSealProducts(
         is_active: isActive,
       });
 
-      setProducts(data.products);
-      setPagination(data.pagination);
+      ifCurrent(request, () => {
+        setProducts(data.products);
+        setPagination(data.pagination);
+        setStats(data.stats || null);
+      });
     } catch (err) {
-      setError(getFriendlyErrorMessage(err));
-      setProducts([]);
-      setPagination(null);
+      ifCurrent(request, () => {
+        setError(getFriendlyErrorMessage(err));
+        setProducts([]);
+        setPagination(null);
+        setStats(null);
+      });
     } finally {
-      setLoading(false);
+      ifCurrent(request, () => setLoading(false));
     }
-  }, [accessToken, currentPage, filters?.search, filters?.status]);
+  }, [accessToken, currentPage, filters?.search, filters?.status, ifCurrent]);
 
   React.useEffect(() => {
     fetchProducts();
@@ -70,6 +86,7 @@ export function useQSealProducts(
   return {
     products,
     pagination,
+    stats,
     loading,
     error,
     refetch: fetchProducts,

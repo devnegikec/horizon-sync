@@ -49,7 +49,7 @@ function widgetOrder(widget: DashboardWidgetDef, layout: DashboardLayoutLookup):
  * to see, all sharing one point-in-time filter (period + anchor date). New
  * widgets are added by editing the registry — this component does not change.
  */
-export function DashboardSection() {
+export function DashboardSection({ warehouseId }: { warehouseId?: string }) {
   const { hasPermission, loading: permsLoading } = usePermissions();
   const [period, setPeriod] = React.useState<DashboardPeriod>('week');
   const [anchorDate, setAnchorDate] = React.useState<Date>(() => new Date());
@@ -65,7 +65,14 @@ export function DashboardSection() {
     });
   };
 
-  const filters = React.useMemo<DashboardFilters>(() => ({ period, anchorDate }), [period, anchorDate]);
+  const filters = React.useMemo<DashboardFilters>(
+    () => ({ period, anchorDate, warehouseId }),
+    [period, anchorDate, warehouseId],
+  );
+
+  // A widget that threw is allowed to retry whenever the section refreshes or
+  // its scope changes; otherwise the boundary would hide it forever.
+  const widgetResetKey = `${refreshToken}|${period}|${anchorDate.getTime()}|${warehouseId ?? 'all'}`;
 
   // Apply the organization's saved Settings → Dashboard Layout overrides.
   const organizationId = useUserStore((s) => s.user?.organization_id);
@@ -130,7 +137,7 @@ export function DashboardSection() {
                   {widget.description && <CardDescription>{widget.description}</CardDescription>}
                 </CardHeader>
                 <CardContent>
-                  <WidgetErrorBoundary title={widget.title}>
+                  <WidgetErrorBoundary title={widget.title} resetKey={widgetResetKey}>
                     <widget.Component filters={filters} refreshToken={refreshToken} size={widget.size} />
                   </WidgetErrorBoundary>
                 </CardContent>

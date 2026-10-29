@@ -2,13 +2,13 @@ import * as React from 'react';
 
 import { AlertTriangle, CheckCircle2, X } from 'lucide-react';
 
+import { useAccess } from '@horizon-sync/access';
 import { useUserStore } from '@horizon-sync/store';
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@horizon-sync/ui/components';
 
 import { useRefreshOnKey } from '../../hooks/useRefreshOnKey';
 import type { PickException, PickExceptionSeverity, PickExceptionStatus } from '../../types/pick-exception.types';
 import { pickExceptionApi } from '../../utility/api/pick-exceptions';
-import { hasPermission } from '../../utils/permissions';
 
 const SEVERITY_STYLES: Record<PickExceptionSeverity, string> = {
   info: 'bg-blue-500/10 text-blue-600',
@@ -47,8 +47,8 @@ function orUndefined(value?: string): string | undefined {
 
 export function PickExceptionQueue({ warehouseId, refreshKey }: { warehouseId?: string; refreshKey?: number }) {
   const token = useUserStore((state) => state.accessToken);
-  const permissions = useUserStore((state) => state.permissions.permissions);
-  const canManage = hasPermission(permissions, 'warehouse.manage');
+  // Resolving / approving pick exceptions is a supervisor+ action.
+  const canManage = useAccess('wms').can('pick_exceptions', 'manage');
 
   const [exceptions, setExceptions] = React.useState<PickException[]>([]);
   const [loading, setLoading] = React.useState(false);
