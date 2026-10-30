@@ -16,6 +16,11 @@ import { getFriendlyErrorMessage } from '../utility/api/core';
 
 import { useQSealProducts } from './useQSealProducts';
 
+function updateSelectedProductStatus(current: QSealProduct | null, productId: string, isActive: boolean) {
+  if (!current || current.id !== productId) return current;
+  return { ...current, is_active: isActive };
+}
+
 export function useQSealManagement() {
   const accessToken = useUserStore((s) => s.accessToken);
   const [filters, setFilters] = React.useState<QSealFilters>({});
@@ -23,7 +28,7 @@ export function useQSealManagement() {
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
   const [selectedProduct, setSelectedProduct] = React.useState<QSealProduct | null>(null);
   const [saving, setSaving] = React.useState(false);
-  const [productSaveError, setProductSaveError] = React.useState<{ field?: 'name'; message: string } | null>(null);
+  const [productSaveError, setProductSaveError] = React.useState<{ field?: 'sku'; message: string } | null>(null);
 
   // Credit info — no dedicated endpoint yet, keep as placeholder
   const [creditInfo] = React.useState<QSealCreditInfo | undefined>(undefined);
@@ -147,9 +152,7 @@ export function useQSealManagement() {
         await Promise.all(imageOperations);
 
         notificationService.success(
-          selectedProduct
-            ? `Product "${savedProduct.name}" updated successfully.`
-            : `Product "${savedProduct.name}" created successfully.`,
+          selectedProduct ? `Product "${savedProduct.name}" updated successfully.` : `Product "${savedProduct.name}" created successfully.`,
         );
         setProductDialogOpen(false);
         refetch();
@@ -157,8 +160,8 @@ export function useQSealManagement() {
         console.error('Failed to save product:', err);
         const message = getFriendlyErrorMessage(err);
         const normalizedMessage = message.toLowerCase();
-        if (normalizedMessage.includes('product named') && normalizedMessage.includes('already exists')) {
-          setProductSaveError({ field: 'name', message });
+        if (normalizedMessage.includes('sku') && (normalizedMessage.includes('already used') || normalizedMessage.includes('unique'))) {
+          setProductSaveError({ field: 'sku', message });
         } else {
           notificationService.error(message);
         }
@@ -181,9 +184,8 @@ export function useQSealManagement() {
         await qrProductApi.update(accessToken, product.id, {
           is_active: !product.is_active,
         });
-        notificationService.success(
-          `Product "${product.name}" ${product.is_active ? 'deactivated' : 'activated'} successfully.`,
-        );
+        setSelectedProduct((current) => updateSelectedProductStatus(current, product.id, !product.is_active));
+        notificationService.success(`Product "${product.name}" ${product.is_active ? 'deactivated' : 'activated'} successfully.`);
         refetch();
       } catch (err) {
         console.error('Failed to toggle product status:', err);

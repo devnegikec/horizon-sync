@@ -1,6 +1,19 @@
 import * as React from 'react';
 
-import { AlertCircle, ArrowRight, Check, CheckCircle2, ChevronDown, ChevronsUpDown, ClipboardCheck, Loader2, RefreshCw, Save, Search, Settings2 } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronsUpDown,
+  ClipboardCheck,
+  Loader2,
+  RefreshCw,
+  Save,
+  Search,
+  Settings2,
+} from 'lucide-react';
 
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Button } from '@horizon-sync/ui/components/ui/button';
@@ -85,21 +98,29 @@ function ProductSelector({
   return (
     <div className="space-y-3">
       <Label>Product</Label>
-      <Popover open={open}
-onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-        if (!nextOpen) setSearch('');
-      }}>
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (!nextOpen) setSearch('');
+        }}
+      >
         <PopoverTrigger asChild>
-          <button type="button"
+          <button
+            type="button"
             role="combobox"
             aria-expanded={open}
             aria-controls="qseal-product-listbox"
             aria-label="Select product"
             disabled={loading}
-            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
+            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          >
             <span className={cn('min-w-0 truncate', !selectedProduct && 'text-muted-foreground')}>
-              {selectedProduct ? `${selectedProduct.name}${selectedProduct.sku ? ` (${selectedProduct.sku})` : ''}` : loading ? 'Loading products…' : 'Select a product'}
+              {selectedProduct
+                ? `${selectedProduct.name}${selectedProduct.sku ? ` (${selectedProduct.sku})` : ''}`
+                : loading
+                  ? 'Loading products…'
+                  : 'Select a product'}
             </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </button>
@@ -107,16 +128,19 @@ onOpenChange={(nextOpen) => {
         <PopoverContent align="start" className="w-[320px] max-w-[calc(100vw-2rem)] p-0">
           <div className="flex items-center border-b px-3 py-2">
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-            <Input ref={inputRef}
+            <Input
+              ref={inputRef}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by name or SKU…"
               className="h-7 border-0 p-0 shadow-none focus-visible:ring-0"
-              aria-label="Search products"/>
+              aria-label="Search products"
+            />
           </div>
           <div id="qseal-product-listbox" role="listbox" className="max-h-60 overflow-y-auto p-1">
             {filteredProducts.map((product) => (
-              <button key={product.id}
+              <button
+                key={product.id}
                 type="button"
                 role="option"
                 aria-selected={value === product.id}
@@ -128,7 +152,8 @@ onOpenChange={(nextOpen) => {
                   onChange(product.id);
                   setSearch('');
                   setOpen(false);
-                }}>
+                }}
+              >
                 <Check className={cn('mr-2 h-4 w-4 shrink-0', value === product.id ? 'opacity-100' : 'opacity-0')} />
                 <span className="min-w-0 truncate">
                   {product.name}
@@ -169,9 +194,22 @@ function SummaryCards({ summary }: { summary: QSealActivationSummary }) {
 
 function ActivationSteps({ summary, configured }: { summary: QSealActivationSummary; configured: boolean }) {
   const steps = [
-    { label: 'QR blocks', detail: summary.total_blocks ? `${summary.total_blocks.toLocaleString()} created` : 'Create blocks', complete: summary.total_blocks > 0 },
+    {
+      label: 'QR blocks',
+      detail: summary.total_blocks ? `${summary.total_blocks.toLocaleString()} created` : 'Create blocks',
+      complete: summary.total_blocks > 0,
+    },
     { label: 'Settings', detail: configured ? 'Configured' : 'Configure details', complete: configured },
-    { label: 'Mobile activation', detail: summary.available_blocks === 0 && summary.total_blocks > 0 ? 'Complete' : configured && summary.available_blocks > 0 ? 'Ready in mobile app' : 'Configure details', complete: summary.total_blocks > 0 && configured && summary.available_blocks === 0 },
+    {
+      label: 'Mobile activation',
+      detail:
+        summary.available_blocks === 0 && summary.total_blocks > 0
+          ? 'Complete'
+          : configured && summary.available_blocks > 0
+            ? 'Ready in mobile app'
+            : 'Configure details',
+      complete: summary.total_blocks > 0 && configured && summary.available_blocks === 0,
+    },
   ];
 
   return (
@@ -181,10 +219,12 @@ function ActivationSteps({ summary, configured }: { summary: QSealActivationSumm
           {steps.map((step, index) => (
             <React.Fragment key={step.label}>
               <div className="flex items-center gap-3 sm:flex-1">
-                <span className={cn(
-                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold',
-                  step.complete ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-muted-foreground/30 text-muted-foreground',
-                )}>
+                <span
+                  className={cn(
+                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold',
+                    step.complete ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-muted-foreground/30 text-muted-foreground',
+                  )}
+                >
                   {step.complete ? <Check className="h-4 w-4" /> : index + 1}
                 </span>
                 <div className="min-w-0">
@@ -222,7 +262,9 @@ function ActivationImpact({ summary, batchSize }: { summary: QSealActivationSumm
   return (
     <div className="rounded-md border bg-muted/30 p-3 text-sm">
       <p className="font-medium">Activation impact preview</p>
-      <p className="mt-1 text-xs text-muted-foreground">Saving settings does not activate blocks. The mobile app uses these settings when operators activate scanned QR serials.</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Saving settings does not activate blocks. The mobile app uses these settings when operators activate scanned QR serials.
+      </p>
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <div>
           <p className="text-xs text-muted-foreground">Capacity</p>
@@ -255,20 +297,22 @@ function ActivationProgress({
   actionHint?: string;
 }) {
   const percentage = Math.min(100, Math.max(0, summary.activation_percentage));
-  const status = summary.total_blocks === 0
-    ? 'No QR blocks'
-    : !configured
-      ? 'Needs setup'
-      : summary.available_blocks === 0
-        ? 'Fully activated'
-        : summary.activated_blocks > 0
-          ? 'Partially activated'
-          : 'Ready for mobile activation';
-  const statusClass = status === 'Fully activated'
-    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-    : status === 'Needs setup'
-      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-      : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
+  const status =
+    summary.total_blocks === 0
+      ? 'No QR blocks'
+      : !configured
+        ? 'Needs setup'
+        : summary.available_blocks === 0
+          ? 'Fully activated'
+          : summary.activated_blocks > 0
+            ? 'Partially activated'
+            : 'Ready for mobile activation';
+  const statusClass =
+    status === 'Fully activated'
+      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+      : status === 'Needs setup'
+        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
 
   return (
     <Card>
@@ -278,29 +322,42 @@ function ActivationProgress({
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-end justify-between gap-3 text-sm">
-          <span className="text-muted-foreground">{summary.activated_blocks.toLocaleString()} of {summary.total_blocks.toLocaleString()} QR blocks activated</span>
+          <span className="text-muted-foreground">
+            {summary.activated_blocks.toLocaleString()} of {summary.total_blocks.toLocaleString()} QR blocks activated
+          </span>
           <span className="font-semibold">{percentage.toFixed(1)}%</span>
         </div>
-        <div className="h-3 overflow-hidden rounded-full bg-muted" aria-label={`${percentage.toFixed(1)}% activated`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage}>
+        <div
+          className="h-3 overflow-hidden rounded-full bg-muted"
+          aria-label={`${percentage.toFixed(1)}% activated`}
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percentage}
+        >
           <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${percentage}%` }} />
         </div>
         <div className="grid gap-2 border-t pt-3 sm:grid-cols-3">
-          <ReadinessItem label="QR blocks"
+          <ReadinessItem
+            label="QR blocks"
             detail={summary.total_blocks ? `${summary.total_blocks.toLocaleString()} created` : 'Create blocks first'}
-            complete={summary.total_blocks > 0}/>
-          <ReadinessItem label="Settings"
-            detail={configured ? 'Ready to use' : 'Configuration required'}
-            complete={configured}/>
-          <ReadinessItem label="Activation"
+            complete={summary.total_blocks > 0}
+          />
+          <ReadinessItem label="Settings" detail={configured ? 'Ready to use' : 'Configuration required'} complete={configured} />
+          <ReadinessItem
+            label="Activation"
             detail={summary.available_blocks ? `${summary.available_blocks.toLocaleString()} available` : 'No blocks available'}
-            complete={configured && summary.available_blocks === 0 && summary.total_blocks > 0}/>
+            complete={configured && summary.available_blocks === 0 && summary.total_blocks > 0}
+          />
         </div>
-        {onAction && actionLabel && <div className="flex justify-end">
-          <Button size="sm" onClick={onAction} className="gap-2">
-            {actionLabel}
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>}
+        {onAction && actionLabel && (
+          <div className="flex justify-end">
+            <Button size="sm" onClick={onAction} className="gap-2">
+              {actionLabel}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
         {!onAction && actionHint && <p className="text-right text-xs text-muted-foreground">{actionHint}</p>}
       </CardContent>
     </Card>
@@ -361,23 +418,48 @@ function ActivationSettingsDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="dispatch-batch">Dispatch batch *</Label>
-              <Input id="dispatch-batch" value={form.dispatch_batch} onChange={(e) => update('dispatch_batch', e.target.value)} placeholder="DB-001" aria-invalid={Boolean(fieldErrors.dispatch_batch)} />
+              <Input
+                id="dispatch-batch"
+                value={form.dispatch_batch}
+                onChange={(e) => update('dispatch_batch', e.target.value)}
+                placeholder="DB-001"
+                aria-invalid={Boolean(fieldErrors.dispatch_batch)}
+              />
               {fieldErrors.dispatch_batch && <p className="text-xs text-destructive">{fieldErrors.dispatch_batch}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="batch-size">Batch size *</Label>
-              <Input id="batch-size" type="number" min={1} value={form.batch_size} onChange={(e) => update('batch_size', Number(e.target.value))} aria-invalid={Boolean(fieldErrors.batch_size)} />
+              <Input
+                id="batch-size"
+                type="number"
+                min={1}
+                value={form.batch_size}
+                onChange={(e) => update('batch_size', Number(e.target.value))}
+                aria-invalid={Boolean(fieldErrors.batch_size)}
+              />
               <p className="text-xs text-muted-foreground">Available: {summary.available_blocks.toLocaleString()} blocks</p>
               {fieldErrors.batch_size && <p className="text-xs text-destructive">{fieldErrors.batch_size}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="manufacturing-date">Manufacturing date *</Label>
-              <Input id="manufacturing-date" type="date" value={form.manufacturing_date} onChange={(e) => update('manufacturing_date', e.target.value)} aria-invalid={Boolean(fieldErrors.manufacturing_date)} />
+              <Input
+                id="manufacturing-date"
+                type="date"
+                value={form.manufacturing_date}
+                onChange={(e) => update('manufacturing_date', e.target.value)}
+                aria-invalid={Boolean(fieldErrors.manufacturing_date)}
+              />
               {fieldErrors.manufacturing_date && <p className="text-xs text-destructive">{fieldErrors.manufacturing_date}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="manufacturing-unit">Manufacturing unit *</Label>
-              <Input id="manufacturing-unit" value={form.manufacturing_unit} onChange={(e) => update('manufacturing_unit', e.target.value)} placeholder="Plant-A" aria-invalid={Boolean(fieldErrors.manufacturing_unit)} />
+              <Input
+                id="manufacturing-unit"
+                value={form.manufacturing_unit}
+                onChange={(e) => update('manufacturing_unit', e.target.value)}
+                placeholder="Plant-A"
+                aria-invalid={Boolean(fieldErrors.manufacturing_unit)}
+              />
               {fieldErrors.manufacturing_unit && <p className="text-xs text-destructive">{fieldErrors.manufacturing_unit}</p>}
             </div>
             <div className="space-y-2">
@@ -406,14 +488,27 @@ function ActivationSettingsDialog({
               {!marketsLoading && !marketsError && !markets.length && (
                 <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs text-amber-700 dark:text-amber-300">
                   <p>No active destination markets are configured.</p>
-                  {onOpenMarketSettings && <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={onOpenMarketSettings}>Open Settings</Button>}
+                  {onOpenMarketSettings && (
+                    <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={onOpenMarketSettings}>
+                      Open Settings
+                    </Button>
+                  )}
                 </div>
               )}
               {fieldErrors.destination_market && <p className="text-xs text-destructive">{fieldErrors.destination_market}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="mrp">MRP {selectedMarket?.currency ? `(${selectedMarket.currency}) ` : ''}*</Label>
-              <Input id="mrp" type="number" min={0} step="0.01" value={form.mrp} onChange={(e) => update('mrp', e.target.value)} placeholder="499.00" aria-invalid={Boolean(fieldErrors.mrp)} />
+              <Input
+                id="mrp"
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.mrp}
+                onChange={(e) => update('mrp', e.target.value)}
+                placeholder="499.00"
+                aria-invalid={Boolean(fieldErrors.mrp)}
+              />
               {fieldErrors.mrp && <p className="text-xs text-destructive">{fieldErrors.mrp}</p>}
             </div>
           </div>
@@ -483,7 +578,8 @@ function ActivationReviewDialog({
             Review activation settings
           </DialogTitle>
           <DialogDescription>
-            Confirm these details before saving. The mobile app will use them when activating QR serials, and the server will calculate the final expiry date.
+            Confirm these details before saving. The mobile app will use them when activating QR serials, and the server will calculate the final
+            expiry date.
           </DialogDescription>
         </DialogHeader>
 
@@ -497,16 +593,36 @@ function ActivationReviewDialog({
             </p>
           </div>
           <div className="grid gap-3 text-sm sm:grid-cols-2">
-            <div><p className="text-muted-foreground">Manufacturing date</p><p className="font-medium">{formatDate(form.manufacturing_date)}</p></div>
-            <div><p className="text-muted-foreground">Manufacturing unit</p><p className="font-medium">{form.manufacturing_unit}</p></div>
-            <div><p className="text-muted-foreground">Batch size</p><p className="font-medium">{Number(form.batch_size).toLocaleString()} of {summary.available_blocks.toLocaleString()} available</p></div>
-            <div><p className="text-muted-foreground">MRP</p><p className="font-medium">{formatMrp(form.mrp, market?.currency)}</p></div>
+            <div>
+              <p className="text-muted-foreground">Manufacturing date</p>
+              <p className="font-medium">{formatDate(form.manufacturing_date)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Manufacturing unit</p>
+              <p className="font-medium">{form.manufacturing_unit}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Batch size</p>
+              <p className="font-medium">
+                {Number(form.batch_size).toLocaleString()} of {summary.available_blocks.toLocaleString()} available
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">MRP</p>
+              <p className="font-medium">{formatMrp(form.mrp, market?.currency)}</p>
+            </div>
           </div>
-          {hasExistingSettings && <p className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-700 dark:text-amber-300">Saving this update will archive the current settings version.</p>}
+          {hasExistingSettings && (
+            <p className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-700 dark:text-amber-300">
+              Saving this update will archive the current settings version.
+            </p>
+          )}
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={updating}>Back to edit</Button>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={updating}>
+            Back to edit
+          </Button>
           <Button type="button" onClick={onConfirm} disabled={updating}>
             <Save className="mr-2 h-4 w-4" />
             {updating ? 'Saving…' : 'Confirm and save'}
@@ -523,7 +639,8 @@ function ActivationReviewDialog({
 export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }: { onOpenBlocks?: () => void; onOpenMarketSettings?: () => void }) {
   const { products, loading: productsLoading, error: productsError } = useQSealProducts(1, { status: 'active' });
   const [productId, setProductId] = React.useState('');
-  const { summary, settings, history, markets, marketsLoading, marketsError, refetchMarkets, loading, saving, error, refetch, saveSettings } = useQSealActivation(productId || null);
+  const { summary, settings, history, markets, marketsLoading, marketsError, refetchMarkets, loading, saving, error, refetch, saveSettings } =
+    useQSealActivation(productId || null);
   const [form, setForm] = React.useState(createEmptyForm);
   const [confirmBatchUpdate, setConfirmBatchUpdate] = React.useState(false);
   const [pendingForm, setPendingForm] = React.useState<QSealActivationSettingsInput | null>(null);
@@ -567,7 +684,8 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
     const errors: Partial<Record<keyof QSealActivationSettingsInput, string>> = {};
     if (!form.dispatch_batch.trim()) errors.dispatch_batch = 'Dispatch batch is required.';
     if (!Number.isInteger(Number(form.batch_size)) || Number(form.batch_size) <= 0) errors.batch_size = 'Enter a positive whole number.';
-    if (summary && Number(form.batch_size) > summary.available_blocks && !settings) errors.batch_size = `Maximum ${summary.available_blocks.toLocaleString()} available blocks.`;
+    if (summary && Number(form.batch_size) > summary.available_blocks && !settings)
+      errors.batch_size = `Maximum ${summary.available_blocks.toLocaleString()} available blocks.`;
     if (!form.manufacturing_date) errors.manufacturing_date = 'Manufacturing date is required.';
     else if (form.manufacturing_date > todayInputValue()) errors.manufacturing_date = 'Manufacturing date cannot be in the future.';
     if (!form.manufacturing_unit.trim()) errors.manufacturing_unit = 'Manufacturing unit is required.';
@@ -590,7 +708,9 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
       setSettingsDialogOpen(false);
       setPendingForm(null);
       setShowFieldErrors(false);
-      setSaveSuccess(appendToExisting ? 'Activation settings updated and the previous version was archived.' : 'Activation settings saved successfully.');
+      setSaveSuccess(
+        appendToExisting ? 'Activation settings updated and the previous version was archived.' : 'Activation settings saved successfully.',
+      );
     } catch (err) {
       if (getActivationErrorCode(err) === 'BATCH_EXISTS' && !appendToExisting) {
         setPendingForm(input);
@@ -638,7 +758,17 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
   const previousSettings = history?.items.filter((item) => item.history) || [];
   const selectedProduct = products.find((product) => product.id === productId);
   const selectedMarket = markets.find((market) => market.name === form.destination_market);
-  const activationStatus = !summary ? null : summary.total_blocks === 0 ? 'No QR blocks' : !settings ? 'Needs setup' : summary.available_blocks === 0 ? 'Fully activated' : summary.activated_blocks > 0 ? 'Partially activated' : 'Ready for mobile activation';
+  const activationStatus = !summary
+    ? null
+    : summary.total_blocks === 0
+      ? 'No QR blocks'
+      : !settings
+        ? 'Needs setup'
+        : summary.available_blocks === 0
+          ? 'Fully activated'
+          : summary.activated_blocks > 0
+            ? 'Partially activated'
+            : 'Ready for mobile activation';
   const formIsDirty = React.useMemo(() => JSON.stringify(form) !== JSON.stringify(dialogInitialForm), [dialogInitialForm, form]);
   const closeSettingsDialog = (restoreForm = false) => {
     const nextForm = restoreForm ? dialogInitialForm : form;
@@ -698,6 +828,7 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
           Refresh
         </Button>
       </div>
+      {productId && !loading && summary && <SummaryCards summary={summary} />}
       <Card>
         <CardContent className="pt-6">
           <div className="grid gap-6 md:grid-cols-[minmax(0,320px)_1fr] md:items-end">
@@ -735,7 +866,9 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
         <Card>
           <CardContent className="py-12 text-center">
             <p className="font-medium">{products.length ? 'Select a product to view activation.' : 'No active products found.'}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{products.length ? 'Choose a product above to continue.' : 'Create and activate a product before configuring QR activation.'}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {products.length ? 'Choose a product above to continue.' : 'Create and activate a product before configuring QR activation.'}
+            </p>
           </CardContent>
         </Card>
       )}
@@ -749,13 +882,14 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
       )}
       {productId && !loading && summary && (
         <>
-          <SummaryCards summary={summary} />
           <ActivationSteps summary={summary} configured={Boolean(settings)} />
-          <ActivationProgress summary={summary}
+          <ActivationProgress
+            summary={summary}
             configured={Boolean(settings)}
             actionLabel={activationAction?.label}
             onAction={activationAction?.onAction}
-            actionHint={activationAction?.hint}/>
+            actionHint={activationAction?.hint}
+          />
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <div>
@@ -763,14 +897,32 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
                   <Settings2 className="h-5 w-5" />
                   Activation settings
                 </CardTitle>
-                <p className="mt-1 text-xs text-muted-foreground">{settings ? `Last updated ${formatDate(settings.created_on)} by ${formatCreatedBy(settings.created_by, settings.created_by_name)}` : 'Required before mobile activation.'}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {settings
+                    ? `Last updated ${formatDate(settings.created_on)} by ${formatCreatedBy(settings.created_by, settings.created_by_name)}`
+                    : 'Required before mobile activation.'}
+                </p>
               </div>
               <div className="flex items-center gap-2">
-                {activationStatus && <Badge className={activationStatus === 'Fully activated' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : activationStatus === 'Needs setup' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'}>{activationStatus}</Badge>}
-                {settings && <Button onClick={openSettingsDialog}>
+                {activationStatus && (
+                  <Badge
+                    className={
+                      activationStatus === 'Fully activated'
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                        : activationStatus === 'Needs setup'
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                    }
+                  >
+                    {activationStatus}
+                  </Badge>
+                )}
+                {settings && (
+                  <Button onClick={openSettingsDialog}>
                     <Settings2 className="mr-2 h-4 w-4" />
                     Edit settings
-                  </Button>}
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -799,7 +951,8 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
               )}
             </CardContent>
           </Card>
-          <ActivationSettingsDialog open={settingsDialogOpen}
+          <ActivationSettingsDialog
+            open={settingsDialogOpen}
             onOpenChange={handleSettingsDialogChange}
             form={form}
             summary={summary}
@@ -816,8 +969,10 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
             onSubmit={(event) => {
               event.preventDefault();
               reviewSave(form);
-            }}/>
-          <ActivationReviewDialog open={reviewDialogOpen}
+            }}
+          />
+          <ActivationReviewDialog
+            open={reviewDialogOpen}
             onOpenChange={setReviewDialogOpen}
             form={pendingForm || form}
             summary={summary}
@@ -826,20 +981,25 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
             hasExistingSettings={Boolean(settings)}
             onConfirm={() => {
               if (pendingForm) void persistSettings(pendingForm);
-            }}/>
+            }}
+          />
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <CardTitle>Previous settings</CardTitle>
-              {previousSettings.length > 0 && <Button variant="ghost" size="sm" className="gap-1" onClick={() => setShowPreviousSettings((current) => !current)}>
-                {showPreviousSettings ? 'Hide history' : `View history (${previousSettings.length})`}
-                <ChevronDown className={`h-4 w-4 transition-transform ${showPreviousSettings ? 'rotate-180' : ''}`} />
-              </Button>}
+              {previousSettings.length > 0 && (
+                <Button variant="ghost" size="sm" className="gap-1" onClick={() => setShowPreviousSettings((current) => !current)}>
+                  {showPreviousSettings ? 'Hide history' : `View history (${previousSettings.length})`}
+                  <ChevronDown className={`h-4 w-4 transition-transform ${showPreviousSettings ? 'rotate-180' : ''}`} />
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="p-0">
               {!previousSettings.length ? (
                 <p className="p-6 text-sm text-muted-foreground">No previous settings available.</p>
               ) : !showPreviousSettings ? (
-                <p className="p-6 text-sm text-muted-foreground">{previousSettings.length} archived version{previousSettings.length === 1 ? '' : 's'} available.</p>
+                <p className="p-6 text-sm text-muted-foreground">
+                  {previousSettings.length} archived version{previousSettings.length === 1 ? '' : 's'} available.
+                </p>
               ) : (
                 <div className="space-y-4 p-6">
                   {previousSettings.map((item, index) => (
@@ -860,10 +1020,22 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
                           <Badge variant="secondary">Previous version</Badge>
                         </div>
                         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                          <div><p className="text-muted-foreground">Batch size</p><p className="font-medium">{item.batch_size || '—'}</p></div>
-                          <div><p className="text-muted-foreground">Market</p><p className="font-medium">{item.destination_market || '—'}</p></div>
-                          <div><p className="text-muted-foreground">Expiry</p><p className="font-medium">{formatDate(item.expiry_date)}</p></div>
-                          <div><p className="text-muted-foreground">MRP</p><p className="font-medium">{formatMrp(item.mrp, item.currency)}</p></div>
+                          <div>
+                            <p className="text-muted-foreground">Batch size</p>
+                            <p className="font-medium">{item.batch_size || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Market</p>
+                            <p className="font-medium">{item.destination_market || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Expiry</p>
+                            <p className="font-medium">{formatDate(item.expiry_date)}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">MRP</p>
+                            <p className="font-medium">{formatMrp(item.mrp, item.currency)}</p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -874,14 +1046,17 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
           </Card>
         </>
       )}
-      <ConfirmationDialog open={confirmBatchUpdate}
+      <ConfirmationDialog
+        open={confirmBatchUpdate}
         onOpenChange={setConfirmBatchUpdate}
         title="Update existing dispatch batch?"
         description="This dispatch batch already has active settings. Confirming will archive the current settings and save the new values."
         confirmLabel="Update Batch"
         loading={saving}
-        onConfirm={() => void confirmUpdate()}/>
-      <ConfirmationDialog open={discardChangesOpen}
+        onConfirm={() => void confirmUpdate()}
+      />
+      <ConfirmationDialog
+        open={discardChangesOpen}
         onOpenChange={(open) => {
           setDiscardChangesOpen(open);
           if (!open) setDiscardChangesDestination(false);
@@ -896,7 +1071,8 @@ export function QSealActivationManagement({ onOpenBlocks, onOpenMarketSettings }
           setDiscardChangesDestination(false);
           closeSettingsDialog(true);
           if (shouldNavigate) onOpenMarketSettings?.();
-        }}/>
+        }}
+      />
     </div>
   );
 }

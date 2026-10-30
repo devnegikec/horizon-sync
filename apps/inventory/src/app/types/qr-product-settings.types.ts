@@ -10,6 +10,7 @@ export interface QRProductSetting {
   sort_order: number;
   is_active: boolean;
   extra_data: Record<string, unknown> | null;
+  usage_count?: number;
   created_at: string;
   updated_at: string;
 }

@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Check, ChevronsUpDown, Loader2, Layers, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronsUpDown, Loader2, Layers, Search } from 'lucide-react';
 
 import { useUserStore } from '@horizon-sync/store';
 import { Badge, Button, DetailDialog } from '@horizon-sync/ui/components';
@@ -14,12 +14,14 @@ import { batchApi } from '../../api/batches';
 import { qrProductApi } from '../../api/qr-products';
 import { useCreateBlock } from '../../features/qr-management/hooks/useCreateBlock';
 import { useQRCredits } from '../../features/qr-management/hooks/useQRCredits';
+import { qrBlockService } from '../../features/qr-management/services/qrBlockService';
 import type { QRBlockCreate, QRBlockFilterType, SerialNumberType } from '../../features/qr-management/types/qrBlock.types';
 import { getApiErrorMessage } from '../../features/qr-management/utils/apiError';
 import { useQRProductSettings } from '../../hooks/useQRProductSettings';
 import { notificationService } from '../../services/notificationService';
 import type { BatchListItem } from '../../types/batch.types';
 import type { QSealProductListItem } from '../../types/qseal.types';
+import { ConfirmationDialog } from '@horizon-sync/ui/components/ui/confirmation-dialog';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -39,6 +41,25 @@ const SR_TYPE_LABELS: Record<SerialNumberType, string> = {
   S8DN: 'S8DN — 8-digit sequential',
   S10DN: 'S10DN — 10-digit sequential',
 };
+
+const SEQUENTIAL_WIDTHS: Record<'S8DN' | 'S10DN', number> = {
+  S8DN: 8,
+  S10DN: 10,
+};
+
+const CREATION_STEPS = [
+  { number: 1, label: 'Block basics' },
+  { number: 2, label: 'QR configuration' },
+  { number: 3, label: 'Files & packing' },
+  { number: 4, label: 'Review & save' },
+] as const;
+
+type SerialCollisionState =
+  | { status: 'idle' }
+  | { status: 'checking' }
+  | { status: 'available'; checkedCount: number }
+  | { status: 'conflict'; collisions: string[]; collisionCount: number }
+  | { status: 'error'; message: string };
 
 function normalizeSerialNumberType(value: string | null): SerialNumberType | null {
   if (!value) return null;
@@ -112,6 +133,11 @@ function getBatchError(batch: BatchListItem | null, product: QSealProductListIte
   return batchAvailabilityError(batch);
 }
 
+function formatSequentialSerial(prefix: string, value: number, width: number): string {
+  const serial = String(value).padStart(width, '0');
+  return prefix ? `${prefix}-${serial}` : serial;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Searchable product select                                          */
 /* ------------------------------------------------------------------ */
@@ -177,11 +203,13 @@ function ProductSelect({ value, onChange }: ProductSelectProps) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button"
+        <button
+          type="button"
           role="combobox"
           aria-expanded={open}
           aria-controls="product-listbox"
-          className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
+          className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        >
           <span className={cn('truncate min-w-0', !value && 'text-muted-foreground')}>{value ? selectedName || value : 'Search products…'}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
@@ -189,11 +217,13 @@ function ProductSelect({ value, onChange }: ProductSelectProps) {
       <PopoverContent className="p-0 w-[340px]">
         <div className="flex items-center border-b px-3 py-2">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-          <Input ref={inputRef}
+          <Input
+            ref={inputRef}
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search by name or GTIN…"
-            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0" />
+            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0"
+          />
         </div>
         <div id="product-listbox" className="max-h-60 overflow-y-auto p-1">
           {loading && (
@@ -205,13 +235,15 @@ function ProductSelect({ value, onChange }: ProductSelectProps) {
           {!loading && products.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No products found.</p>}
           {!loading &&
             products.map((p) => (
-              <button key={p.id}
+              <button
+                key={p.id}
                 type="button"
                 className={cn(
                   'relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
                   value === p.id && 'bg-accent text-accent-foreground',
                 )}
-                onClick={() => handleSelect(p)}>
+                onClick={() => handleSelect(p)}
+              >
                 <Check className={cn('mr-2 h-4 w-4 shrink-0', value === p.id ? 'opacity-100' : 'opacity-0')} />
                 <div className="min-w-0 text-left">
                   <p className="font-medium break-words">{p.name}</p>
@@ -284,11 +316,13 @@ function BatchSelect({ value, onChange }: BatchSelectProps) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button"
+        <button
+          type="button"
           role="combobox"
           aria-expanded={open}
           aria-controls="batch-listbox"
-          className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
+          className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        >
           <span className={cn('truncate min-w-0', !value && 'text-muted-foreground')}>{value ? selectedLabel || value : 'Search batches…'}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </button>
@@ -296,11 +330,13 @@ function BatchSelect({ value, onChange }: BatchSelectProps) {
       <PopoverContent className="p-0 w-[340px]">
         <div className="flex items-center border-b px-3 py-2">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-          <Input ref={inputRef}
+          <Input
+            ref={inputRef}
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search by batch number…"
-            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0" />
+            className="h-7 border-0 p-0 shadow-none focus-visible:ring-0"
+          />
         </div>
         <div id="batch-listbox" className="max-h-60 overflow-y-auto p-1">
           {loading && (
@@ -312,13 +348,15 @@ function BatchSelect({ value, onChange }: BatchSelectProps) {
           {!loading && batches.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No batches found.</p>}
           {!loading &&
             batches.map((batch) => (
-              <button key={batch.id}
+              <button
+                key={batch.id}
                 type="button"
                 className={cn(
                   'relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
                   value === batch.batch_no && 'bg-accent text-accent-foreground',
                 )}
-                onClick={() => handleSelect(batch)}>
+                onClick={() => handleSelect(batch)}
+              >
                 <Check className={cn('mr-2 h-4 w-4 shrink-0', value === batch.batch_no ? 'opacity-100' : 'opacity-0')} />
                 <div className="min-w-0 text-left">
                   <p className="font-medium break-words">{batch.batch_no}</p>
@@ -367,6 +405,10 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
   const [includeQrImage, setIncludeQrImage] = React.useState(true);
   const [masterPackEnabled, setMasterPackEnabled] = React.useState(false);
   const [masterPackSize, setMasterPackSize] = React.useState(10);
+  const [step, setStep] = React.useState(1);
+  const [stepError, setStepError] = React.useState<string | null>(null);
+  const [serialCollision, setSerialCollision] = React.useState<SerialCollisionState>({ status: 'idle' });
+  const [discardConfirmOpen, setDiscardConfirmOpen] = React.useState(false);
   const masterPackWarnedFor = React.useRef<number | null>(null);
 
   const reset = () => {
@@ -382,6 +424,10 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
     setIncludeQrImage(true);
     setMasterPackEnabled(false);
     setMasterPackSize(10);
+    setStep(1);
+    setStepError(null);
+    setSerialCollision({ status: 'idle' });
+    setDiscardConfirmOpen(false);
     masterPackWarnedFor.current = null;
   };
 
@@ -391,13 +437,16 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
     if (open) {
       reset();
     }
-     
   }, [open]);
 
   // Submission maps credit and backend conflict errors to Product-facing notifications.
   // eslint-disable-next-line complexity
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (step !== CREATION_STEPS.length) {
+      return;
+    }
 
     // Check credits before submission
     if (credits !== null && credits < quantity) {
@@ -418,9 +467,9 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
         qr_image: includeQrImage,
         ...(masterPackEnabled && masterPackSize > 0
           ? {
-            master_pack_enabled: true,
-            master_pack_size: masterPackSize,
-          }
+              master_pack_enabled: true,
+              master_pack_size: masterPackSize,
+            }
           : {}),
       } satisfies QRBlockCreate);
 
@@ -459,12 +508,7 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
   const handleMasterPackSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const next = Math.max(1, Number(e.target.value));
     const configured = selectedProduct?.items_per_master_pack;
-    if (
-      configured != null &&
-      configured > 0 &&
-      next !== configured &&
-      masterPackWarnedFor.current !== configured
-    ) {
+    if (configured != null && configured > 0 && next !== configured && masterPackWarnedFor.current !== configured) {
       masterPackWarnedFor.current = configured;
       notificationService.masterPackOverridden();
     }
@@ -479,242 +523,581 @@ export function CreateBlockDialog({ open, onOpenChange, onCreated }: CreateBlock
   const isSequential = srType === 'S8DN' || srType === 'S10DN';
   const serialConfigurationReady = Boolean(srType && serialPrefix);
   const batchError = getBatchError(selectedBatch, selectedProduct);
+  const quantityError = !Number.isInteger(quantity) || quantity < 1 || quantity > 5000 ? 'Enter a quantity between 1 and 5,000.' : null;
+  const serialValidation = React.useMemo(() => {
+    if (!isSequential) return { error: null, preview: null as string | null };
+
+    const width = SEQUENTIAL_WIDTHS[srType as 'S8DN' | 'S10DN'];
+    const value = startingSerial.trim();
+    if (!value) return { error: 'Enter the first serial number for this sequential block.', preview: null };
+    if (!/^\d+$/.test(value)) return { error: 'Starting serial must contain digits only.', preview: null };
+    if (value.length > width) return { error: `Starting serial can contain at most ${width} digits.`, preview: null };
+
+    const start = Number(value);
+    const end = start + quantity - 1;
+    const maxValue = 10 ** width - 1;
+    if (!Number.isSafeInteger(start) || end > maxValue) {
+      return { error: `The range exceeds the ${width}-digit serial capacity.`, preview: null };
+    }
+
+    return {
+      error: null,
+      preview: `${formatSequentialSerial(serialPrefix, start, width)} → ${formatSequentialSerial(serialPrefix, end, width)}`,
+    };
+  }, [isSequential, quantity, serialPrefix, srType, startingSerial]);
+  const serialValidationError = serialValidation.error;
+
+  React.useEffect(() => {
+    if (!open || !isSequential || !productId || quantityError || serialValidationError) {
+      setSerialCollision({ status: 'idle' });
+      return;
+    }
+
+    let active = true;
+    setSerialCollision({ status: 'checking' });
+    const timeout = window.setTimeout(async () => {
+      try {
+        const result = await qrBlockService.checkSerialCollisions(productId, startingSerial.trim(), quantity);
+        if (!active) return;
+        if (result.available) {
+          setSerialCollision({ status: 'available', checkedCount: result.checked_count });
+        } else {
+          setSerialCollision({
+            status: 'conflict',
+            collisions: result.collisions,
+            collisionCount: result.collision_count,
+          });
+        }
+      } catch (err: unknown) {
+        if (active) setSerialCollision({ status: 'error', message: getApiErrorMessage(err, 'Serial availability could not be checked.') });
+      }
+    }, 450);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [isSequential, open, productId, quantity, quantityError, serialValidationError, startingSerial]);
+
+  const serialCollisionError =
+    serialCollision.status === 'conflict'
+      ? `${serialCollision.collisionCount.toLocaleString()} serial number${serialCollision.collisionCount === 1 ? '' : 's'} already exist${serialCollision.collisionCount === 1 ? 's' : ''}.`
+      : serialCollision.status === 'checking'
+        ? 'Checking whether this serial range is available…'
+        : null;
+  const channelLabel = channels.find((setting) => setting.id === channelSettingId)?.label ?? 'Not specified';
+  const destinationLabel = destinations.find((setting) => setting.id === destinationSettingId)?.label ?? 'Not specified';
+  const masterPackValid = !masterPackEnabled || (Number.isInteger(masterPackSize) && masterPackSize > 0 && masterPackSize <= quantity);
+  const formValid = Boolean(
+    productId &&
+      batch.trim() &&
+      serialConfigurationReady &&
+      !batchError &&
+      !quantityError &&
+      !serialValidationError &&
+      !serialCollisionError &&
+      masterPackValid &&
+      hasEnoughCredits &&
+      !creditsError,
+  );
+
+  const getStepError = (targetStep: number): string | null => {
+    if (targetStep === 1) {
+      if (!productId) return 'Select a product to continue.';
+      if (!serialConfigurationReady) return 'This product needs a serial prefix and serial number type before a block can be generated.';
+      if (!batch.trim()) return 'Select a batch to continue.';
+      if (batchError) return batchError;
+    }
+    if (targetStep === 2) {
+      if (quantityError) return quantityError;
+      if (serialValidationError) return serialValidationError;
+      if (serialCollisionError) return serialCollisionError;
+      if (!qrType) return 'Select a QR type to continue.';
+    }
+    if (targetStep === 3) {
+      if (!masterPackValid) return 'Master pack size must be between 1 and the block quantity.';
+      if (!hasEnoughCredits) return `You need ${quantity.toLocaleString()} credits to generate this block.`;
+      if (creditsError) return creditsError;
+    }
+    return null;
+  };
+
+  const handleNext = () => {
+    const validationError = getStepError(step);
+    if (validationError) {
+      setStepError(validationError);
+      return;
+    }
+    setStepError(null);
+    setStep((current) => Math.min(CREATION_STEPS.length, current + 1));
+  };
+
+  const handleBack = () => {
+    setStepError(null);
+    setStep((current) => Math.max(1, current - 1));
+  };
+
+  const isDirty = Boolean(
+    productId ||
+      batch.trim() ||
+      quantity !== 100 ||
+      qrType !== 'dynamic' ||
+      channelSettingId ||
+      destinationSettingId ||
+      startingSerial ||
+      !includeQrImage ||
+      masterPackEnabled,
+  );
+
+  const requestClose = (nextOpen: boolean) => {
+    if (nextOpen || loading || !isDirty) {
+      onOpenChange(nextOpen);
+      return;
+    }
+    setDiscardConfirmOpen(true);
+  };
+
+  const discardChanges = () => {
+    setDiscardConfirmOpen(false);
+    reset();
+    onOpenChange(false);
+  };
+
+  // Keep generation behind an explicit Step 4 action. The earlier steps only
+  // validate and advance; they can never submit the form themselves.
+  const handleSave = () => {
+    if (step !== CREATION_STEPS.length) return;
+    if (!formValid) {
+      setStepError(getStepError(3) || 'Complete the block configuration before saving.');
+      return;
+    }
+    const form = document.getElementById('qseal-block-form') as HTMLFormElement | null;
+    form?.requestSubmit();
+  };
 
   return (
-    <DetailDialog open={open}
-      onOpenChange={onOpenChange}
-      size="lg"
-      contentClassName="max-w-4xl  max-h-[90vh] flex flex-col"
-      title={
-        <div className="flex items-center justify-between">
-          <span>Generate QR Block</span>
-          {!creditsLoading && credits !== null && (
-            <Badge variant={showCreditWarning ? 'destructive' : 'secondary'} className="ml-2">
-              {credits.toLocaleString()} credits
-            </Badge>
-          )}
-        </div>
-      }
-      loading={loading}
-      loadingMessage="Loading Generate QR Block..."
-      showCloseButton={false}
-      footer={
-        <div className="flex items-center justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancel
-          </Button>
-          <Button type="submit"
-            form="qseal-block-form"
-            disabled={
-              loading ||
-              !batch.trim() ||
-              !productId ||
-              !serialConfigurationReady ||
-              !hasEnoughCredits ||
-              creditsLoading ||
-              Boolean(creditsError) ||
-              Boolean(batchError)
-            }>
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Submitting…
-              </>
-            ) : (
-              'Generate'
+    <>
+      <DetailDialog
+        open={open}
+        onOpenChange={requestClose}
+        size="lg"
+        contentClassName="max-w-4xl max-h-[90vh] flex flex-col"
+        title={
+          <div className="flex items-center justify-between">
+            <span>Generate QR Block</span>
+            {!creditsLoading && credits !== null && (
+              <Badge variant={showCreditWarning ? 'destructive' : 'secondary'} className="ml-2">
+                {credits.toLocaleString()} credits
+              </Badge>
             )}
-          </Button>
-        </div>
-      }>
-      <form id="qseal-block-form" onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1.5">
-          <Label>Product *</Label>
-          <ProductSelect value={productId}
-            onChange={(product) => {
-              setProductId(product.id);
-              setSelectedProduct(product);
-              setStartingSerial('');
-              // Auto-populate Items per Master Pack from the product's base
-              // packaging unit so master pack (cascade) generation is prefilled.
-              const itemsPerMasterPack = product.items_per_master_pack;
-              setMasterPackSize(
-                itemsPerMasterPack && itemsPerMasterPack > 0 ? itemsPerMasterPack : 10
-              );
-            }} />
-        </div>
-        {selectedProduct && (
-          <>
-            <div className="grid grid-cols-2 gap-4 rounded-md border bg-muted/30 p-3">
-              <div className="space-y-1">
-                <Label>Serial Prefix</Label>
-                <p className="text-sm font-medium">{serialPrefix || 'Not configured'}</p>
+          </div>
+        }
+        loading={loading}
+        loadingMessage="Loading Generate QR Block..."
+        showCloseButton={false}
+        footer={
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">{stepError && <p className="text-left text-xs text-destructive">{stepError}</p>}</div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button type="button" variant="outline" onClick={() => requestClose(false)} disabled={loading}>
+                Cancel
+              </Button>
+              {step > 1 && (
+                <Button type="button" variant="outline" onClick={handleBack} disabled={loading}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back
+                </Button>
+              )}
+              {step < CREATION_STEPS.length ? (
+                <Button type="button" onClick={handleNext} disabled={loading || creditsLoading}>
+                  Continue
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button type="button" onClick={handleSave} disabled={loading || !formValid || creditsLoading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting…
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Save
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        }
+      >
+        <form id="qseal-block-form" onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
+            <div className="flex items-center justify-between gap-2">
+              {CREATION_STEPS.map((creationStep) => (
+                <React.Fragment key={creationStep.number}>
+                  <button
+                    type="button"
+                    className={cn(
+                      'flex min-w-0 items-center gap-2 text-left text-xs',
+                      creationStep.number <= step ? 'text-primary' : 'text-muted-foreground',
+                    )}
+                    onClick={() => creationStep.number < step && setStep(creationStep.number)}
+                    disabled={creationStep.number >= step || loading}
+                  >
+                    <span
+                      className={cn(
+                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold',
+                        creationStep.number < step && 'border-primary bg-primary text-primary-foreground',
+                        creationStep.number === step && 'border-primary text-primary',
+                        creationStep.number > step && 'border-muted-foreground/30',
+                      )}
+                    >
+                      {creationStep.number < step ? <Check className="h-3.5 w-3.5" /> : creationStep.number}
+                    </span>
+                    <span className="hidden sm:inline">{creationStep.label}</span>
+                  </button>
+                  {creationStep.number < CREATION_STEPS.length && <span className="h-px flex-1 bg-border" />}
+                </React.Fragment>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Step {step} of {CREATION_STEPS.length} · {CREATION_STEPS[step - 1].label}
+            </p>
+          </div>
+
+          {step === 1 && (
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Product *</Label>
+                <ProductSelect
+                  value={productId}
+                  onChange={(product) => {
+                    setProductId(product.id);
+                    setSelectedProduct(product);
+                    setStartingSerial('');
+                    setStepError(null);
+                    const itemsPerMasterPack = product.items_per_master_pack;
+                    setMasterPackSize(itemsPerMasterPack && itemsPerMasterPack > 0 ? itemsPerMasterPack : 10);
+                  }}
+                />
+                {stepError && !productId && <p className="text-xs text-destructive">Select a product before continuing.</p>}
               </div>
-              <div className="space-y-1">
-                <Label>Sr. Number</Label>
-                <p className="text-sm font-medium">{srType ? SR_TYPE_LABELS[srType] : 'Not configured'}</p>
+              {selectedProduct && (
+                <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label>Serial Prefix</Label>
+                      <p className="text-sm font-medium">{serialPrefix || 'Not configured'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Serial format</Label>
+                      <p className="text-sm font-medium">{srType ? SR_TYPE_LABELS[srType] : 'Not configured'}</p>
+                    </div>
+                  </div>
+                  {!serialConfigurationReady && (
+                    <p className="text-xs text-destructive">
+                      Edit this product and configure its Serial Prefix and Serial Number Type before generating a block.
+                    </p>
+                  )}
+                  {stepError && productId && !serialConfigurationReady && (
+                    <p className="text-xs text-destructive">Serial configuration is required before continuing.</p>
+                  )}
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label>Batch *</Label>
+                <BatchSelect
+                  value={batch}
+                  onChange={(selected) => {
+                    setBatch(selected.batch_no);
+                    setSelectedBatch(selected);
+                    setStepError(null);
+                  }}
+                />
+                {batchError && <p className="text-xs text-destructive">{batchError}</p>}
+                {stepError && !batch.trim() && <p className="text-xs text-destructive">Select a batch before continuing.</p>}
+                <p className="text-xs text-muted-foreground">Choose the production batch that will own these QR codes.</p>
               </div>
             </div>
-            {!serialConfigurationReady && (
-              <p className="text-xs text-destructive">
-                Edit this product and configure its Serial Prefix and Serial Number Type before generating a block.
-              </p>
-            )}
-          </>
-        )}
-        <div className="space-y-1.5">
-          <Label>Batch *</Label>
-          <BatchSelect value={batch}
-            onChange={(selected) => {
-              setBatch(selected.batch_no);
-              setSelectedBatch(selected);
-            }} />
-          {batchError && <p className="text-xs text-destructive">{batchError}</p>}
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label>Distribution Channel</Label>
-            <Select value={channelSettingId || 'none'}
-              onValueChange={(value) => setChannelSettingId(value === 'none' ? '' : value)}
-              disabled={channelsLoading}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select channel" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Not specified</SelectItem>
-                {channels
-                  .filter((setting) => setting.is_active)
-                  .map((setting) => (
-                    <SelectItem key={setting.id} value={setting.id}>
-                      {setting.label}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Destination Market</Label>
-            <Select value={destinationSettingId || 'none'}
-              onValueChange={(value) => setDestinationSettingId(value === 'none' ? '' : value)}
-              disabled={destinationsLoading}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select destination" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Not specified</SelectItem>
-                {destinations
-                  .filter((setting) => setting.is_active)
-                  .map((setting) => (
-                    <SelectItem key={setting.id} value={setting.id}>
-                      {setting.label}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        {(channelsError || destinationsError) && <p className="text-xs text-destructive">{channelsError || destinationsError}</p>}
-        <div className="space-y-1.5">
-          <Label htmlFor="quantity">Quantity * (1–5,000)</Label>
-          <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} min={1} max={5000} required />
-          {!hasEnoughCredits && (
-            <p className="text-xs text-destructive">
-              Insufficient credits. You need {quantity.toLocaleString()} but only have {credits?.toLocaleString() || 0}.
-            </p>
           )}
-        </div>
-        <div className="space-y-1.5">
-          <Label>QR Type</Label>
-          <Select value={qrType} onValueChange={(v) => setQrType(v as QRBlockFilterType)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {(Object.keys(QR_TYPE_LABELS) as QRBlockFilterType[]).map((t) => (
-                <SelectItem key={t} value={t}>
-                  {QR_TYPE_LABELS[t]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {isSequential && (
-          <div className="space-y-1.5">
-            <Label htmlFor="startingSerial">Starting Serial *</Label>
-            <Input id="startingSerial"
-              value={startingSerial}
-              onChange={(e) => setStartingSerial(e.target.value)}
-              inputMode="numeric"
-              pattern="[0-9]+"
-              maxLength={srType === 'S8DN' ? 8 : 10}
-              placeholder={srType === 'S8DN' ? 'Up to 8 digits' : 'Up to 10 digits'}
-              required />
-          </div>
-        )}
-        <div className="flex items-center space-x-2">
-          <input type="checkbox"
-            id="includeQrImage"
-            checked={includeQrImage}
-            onChange={(e) => setIncludeQrImage(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-          <Label htmlFor="includeQrImage" className="text-sm font-normal cursor-pointer">
-            Include QR code images in Excel
-          </Label>
-        </div>
-        {includeQrImage && (
-          <p className="text-xs text-muted-foreground">
-            <span role="img" aria-label="Warning">
-              ⚠️
-            </span>{' '}
-            Including QR images will increase generation time and file size
-          </p>
-        )}
 
-        {/* Master Pack (Cascade) */}
-        <div className="border rounded-lg p-3 space-y-3">
-          <div className="flex items-center space-x-2">
-            <input type="checkbox"
-              id="masterPackEnabled"
-              checked={masterPackEnabled}
-              disabled={!selectedProduct}
-              onChange={(e) => setMasterPackEnabled(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50" />
-            <Label htmlFor="masterPackEnabled" className={cn('text-sm font-medium cursor-pointer flex items-center gap-1.5', !selectedProduct && 'cursor-not-allowed opacity-50')}>
-              <Layers className="h-4 w-4" />
-              Enable Master Pack (Cascade)
-            </Label>
-          </div>
-          {masterPackEnabled && (
-            <div className="pl-6 space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="masterPackSize">Items per Master Pack</Label>
-                <Input id="masterPackSize"
-                  type="number"
-                  value={masterPackSize}
-                  onChange={handleMasterPackSizeChange}
-                  min={1}
-                  max={quantity}
-                  required />
-                <p className="text-xs text-muted-foreground">Number of child QR codes grouped under each parent master pack</p>
-              </div>
-              {masterPackSize > 0 && masterPackParentCount > 0 && (
-                <div className="bg-muted/50 rounded-md p-3 text-sm">
-                  <p className="font-medium">Master Pack Summary</p>
-                  <ul className="mt-1 space-y-0.5 text-muted-foreground">
-                    <li>• {quantity.toLocaleString()} child QR codes</li>
-                    <li>
-                      • {masterPackParentCount.toLocaleString()} parent master pack QR codes ({quantity} ÷ {masterPackSize})
-                    </li>
-                    <li>• Parents will be cascaded (linked) to their children</li>
-                  </ul>
+          {step === 2 && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Distribution Channel</Label>
+                  <Select
+                    value={channelSettingId || 'none'}
+                    onValueChange={(value) => setChannelSettingId(value === 'none' ? '' : value)}
+                    disabled={channelsLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select channel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not specified</SelectItem>
+                      {channels
+                        .filter((setting) => setting.is_active)
+                        .map((setting) => (
+                          <SelectItem key={setting.id} value={setting.id}>
+                            {setting.label}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Destination Market</Label>
+                  <Select
+                    value={destinationSettingId || 'none'}
+                    onValueChange={(value) => setDestinationSettingId(value === 'none' ? '' : value)}
+                    disabled={destinationsLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select destination" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not specified</SelectItem>
+                      {destinations
+                        .filter((setting) => setting.is_active)
+                        .map((setting) => (
+                          <SelectItem key={setting.id} value={setting.id}>
+                            {setting.label}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {(channelsError || destinationsError) && <p className="text-xs text-destructive">{channelsError || destinationsError}</p>}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="quantity">Quantity * (1–5,000)</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => setQuantity(Number(e.target.value))}
+                    min={1}
+                    max={5000}
+                    required
+                  />
+                  {quantityError && <p className="text-xs text-destructive">{quantityError}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>QR Type</Label>
+                  <Select value={qrType} onValueChange={(v) => setQrType(v as QRBlockFilterType)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(QR_TYPE_LABELS) as QRBlockFilterType[]).map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {QR_TYPE_LABELS[t]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {isSequential && (
+                <div className="space-y-1.5 rounded-md border p-3">
+                  <Label htmlFor="startingSerial">Starting Serial *</Label>
+                  <Input
+                    id="startingSerial"
+                    value={startingSerial}
+                    onChange={(e) => setStartingSerial(e.target.value)}
+                    inputMode="numeric"
+                    pattern="[0-9]+"
+                    maxLength={srType === 'S8DN' ? 8 : 10}
+                    placeholder={srType === 'S8DN' ? 'Enter up to 8 digits' : 'Enter up to 10 digits'}
+                    required
+                  />
+                  {serialValidationError && <p className="text-xs text-destructive">{serialValidationError}</p>}
+                  {!serialValidationError && serialValidation.preview && (
+                    <p className="text-xs text-green-600">
+                      This block will generate: <span className="font-mono font-medium">{serialValidation.preview}</span>
+                    </p>
+                  )}
+                  {serialCollision.status === 'checking' && (
+                    <p className="text-xs text-muted-foreground">Checking this range against existing serials…</p>
+                  )}
+                  {serialCollision.status === 'available' && (
+                    <p className="text-xs text-green-600">All {serialCollision.checkedCount.toLocaleString()} serials in this range are available.</p>
+                  )}
+                  {serialCollision.status === 'conflict' && (
+                    <div className="space-y-1 text-xs text-destructive">
+                      <p>{serialCollisionError} Choose a different starting serial or quantity.</p>
+                      {serialCollision.collisions.length > 0 && (
+                        <p className="font-mono">
+                          Examples: {serialCollision.collisions.join(', ')}
+                          {serialCollision.collisionCount > serialCollision.collisions.length ? '…' : ''}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {serialCollision.status === 'error' && (
+                    <p className="text-xs text-muted-foreground">
+                      {serialCollision.message} The final generation check will still protect existing serials.
+                    </p>
+                  )}
+                </div>
+              )}
+              {!isSequential && (
+                <p className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
+                  Random serials will be generated automatically using the product’s configured {srType ? SR_TYPE_LABELS[srType] : 'serial format'}{' '}
+                  format.
+                </p>
               )}
             </div>
           )}
-        </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        {creditsError && <p className="text-sm text-destructive">{creditsError}</p>}
-      </form>
-    </DetailDialog>
+          {step === 3 && (
+            <div className="space-y-4">
+              <div className="space-y-2 rounded-lg border p-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="includeQrImage"
+                    checked={includeQrImage}
+                    onChange={(e) => setIncludeQrImage(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <Label htmlFor="includeQrImage" className="cursor-pointer text-sm font-medium">
+                    Include QR code images in Excel
+                  </Label>
+                </div>
+                {includeQrImage && <p className="text-xs text-muted-foreground">Including QR images increases generation time and file size.</p>}
+              </div>
+              <div className="space-y-3 rounded-lg border p-4">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="masterPackEnabled"
+                    checked={masterPackEnabled}
+                    disabled={!selectedProduct}
+                    onChange={(e) => setMasterPackEnabled(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  <Label
+                    htmlFor="masterPackEnabled"
+                    className={cn(
+                      'flex cursor-pointer items-center gap-1.5 text-sm font-medium',
+                      !selectedProduct && 'cursor-not-allowed opacity-50',
+                    )}
+                  >
+                    <Layers className="h-4 w-4" />
+                    Enable Master Pack (Cascade)
+                  </Label>
+                </div>
+                {masterPackEnabled && (
+                  <div className="space-y-3 pl-6">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="masterPackSize">Items per Master Pack</Label>
+                      <Input
+                        id="masterPackSize"
+                        type="number"
+                        value={masterPackSize}
+                        onChange={handleMasterPackSizeChange}
+                        min={1}
+                        max={quantity}
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">Child QR codes grouped under each parent master pack.</p>
+                      {!masterPackValid && <p className="text-xs text-destructive">Pack size must be between 1 and {quantity.toLocaleString()}.</p>}
+                    </div>
+                    {masterPackSize > 0 && masterPackParentCount > 0 && (
+                      <div className="rounded-md bg-muted/50 p-3 text-sm">
+                        <p className="font-medium">Master Pack Summary</p>
+                        <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                          <li>• {quantity.toLocaleString()} child QR codes</li>
+                          <li>• {masterPackParentCount.toLocaleString()} parent QR codes</li>
+                          <li>• Parents will be linked to their children</li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {!hasEnoughCredits && (
+                <p className="text-sm text-destructive">
+                  Insufficient credits. You need {quantity.toLocaleString()} but only have {credits?.toLocaleString() || 0}.
+                </p>
+              )}
+              {creditsError && <p className="text-sm text-destructive">{creditsError}</p>}
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <h3 className="font-semibold">Ready to generate</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Review the block configuration before reserving credits and starting generation.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-lg border p-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Product</p>
+                  <p className="font-medium break-words">{selectedProduct?.name || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Batch</p>
+                  <p className="font-medium">{batch || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">QR type</p>
+                  <p className="font-medium">{QR_TYPE_LABELS[qrType]}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Quantity</p>
+                  <p className="font-medium">{quantity.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Channel</p>
+                  <p className="font-medium">{channelLabel}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Destination</p>
+                  <p className="font-medium">{destinationLabel}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Serial format</p>
+                  <p className="font-medium">{srType ? SR_TYPE_LABELS[srType] : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">QR images</p>
+                  <p className="font-medium">{includeQrImage ? 'Included' : 'Not included'}</p>
+                </div>
+                {isSequential && (
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground">Serial range</p>
+                    <p className="font-mono font-medium">{serialValidation.preview || '—'}</p>
+                  </div>
+                )}
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">Master Pack</p>
+                  <p className="font-medium">
+                    {masterPackEnabled ? `${masterPackParentCount.toLocaleString()} parent QR codes · ${masterPackSize} items per pack` : 'Disabled'}
+                  </p>
+                </div>
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              {creditsError && <p className="text-sm text-destructive">{creditsError}</p>}
+            </div>
+          )}
+        </form>
+      </DetailDialog>
+      <ConfirmationDialog
+        open={discardConfirmOpen}
+        onOpenChange={setDiscardConfirmOpen}
+        title="Discard block configuration?"
+        description="Your block configuration will be lost if you close this dialog."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        variant="destructive"
+        onConfirm={discardChanges}
+      />
+    </>
   );
 }

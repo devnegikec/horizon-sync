@@ -26,12 +26,12 @@ import { CreateBlockDialog } from './CreateBlockDialog';
 /* ------------------------------------------------------------------ */
 
 const QR_TYPE_LABELS: Record<QRType, string> = {
-  dynamic: 'Dynamic — unique URL per item',
-  static: 'Static — one shared batch QR',
-  dual: 'Dual — covert + overt QR per item',
-  secure_code: 'SecureCode — 12-char secret per item',
-  one_time: 'OneTime — deactivates after first scan',
-  post_activation: 'Post-activation — activated after production',
+  dynamic: 'Dynamic',
+  static: 'Static',
+  dual: 'Dual',
+  secure_code: 'Secure Code',
+  one_time: 'One Time',
+  post_activation: 'Post Activation',
 };
 
 const STATUS_BADGE: Record<BlockStatus, { label: string; className: string }> = {
@@ -55,85 +55,82 @@ function hasMasterPackQr(block: QRBlock): boolean {
   return block.master_pack_enabled !== false;
 }
 
-/** Child block ("IC QR") download — fetches a fresh signed URL each time. */
-function BlockDownloadButton({ block }: { block: QRBlock }) {
+/** Download menu for child (IC) and optional master-pack (MC) files. */
+function BlockDownloadMenu({ block, hasParent }: { block: QRBlock; hasParent: boolean }) {
   const { download, loading, error } = useBlockDownload();
-
-  return (
-    <div className="space-y-1">
-      <Button variant="outline" size="sm" disabled={loading} onClick={() => download(block.id, `qr_${block.batch}.xlsx`)}>
-        {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-        {loading ? 'Preparing…' : 'IC'}
-      </Button>
-      {error && <p className="text-xs text-destructive">{error}</p>}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Parent (Master Pack) download helper                              */
-/* ------------------------------------------------------------------ */
-
-/** Master-pack / parent block ("MC QR") download. */
-function ParentBlockDownloadButton({ block }: { block: QRBlock }) {
   const accessToken = useUserStore((s) => s.accessToken);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [parentLoading, setParentLoading] = React.useState(false);
+  const [parentError, setParentError] = React.useState<string | null>(null);
 
-  const handleDownload = async () => {
-    setLoading(true);
-    setError(null);
+  const downloadParent = async () => {
+    setParentLoading(true);
+    setParentError(null);
     try {
       const res = await fetch(`${environment.apiCoreUrl}/api/v1/qseal/blocks/${block.id}/parents/download`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) {
         if (res.status === 404) {
-          setError('No master pack QR codes for this block.');
+          setParentError('No master-pack QR file is available for this block.');
           return;
         }
         const body = await res.json().catch(() => ({}));
         const detail = (body as { detail?: unknown }).detail;
-        setError(typeof detail === 'string' ? detail : 'Download failed');
+        setParentError(typeof detail === 'string' ? detail : 'Master-pack download failed.');
         return;
       }
-
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `parent_${block.batch}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `parent_${block.batch}.xlsx`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
     } catch {
-      setError('Download failed. Please try again.');
+      setParentError('Master-pack download failed. Please try again.');
     } finally {
-      setLoading(false);
+      setParentLoading(false);
     }
+  };
+
+  const downloadBoth = async () => {
+    await download(block.id, `qr_${block.batch}.xlsx`);
+    if (hasParent) await downloadParent();
   };
 
   return (
     <div className="space-y-1">
-      <Button variant="outline" size="sm" onClick={handleDownload} disabled={loading}>
-        {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Layers className="h-4 w-4 mr-2" />}
-        {loading ? 'Preparing…' : 'MC'}
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" disabled={loading || parentLoading}>
+            {loading || parentLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            {loading || parentLoading ? 'Preparing…' : 'Downloads'}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem disabled={!block.download_available || loading} onClick={() => void download(block.id, `qr_${block.batch}.xlsx`)}>
+            <Download className="mr-2 h-4 w-4" />
+            Download IC file
+            {!block.download_available && <span className="ml-2 text-xs text-muted-foreground">Not ready</span>}
+          </DropdownMenuItem>
+          {hasParent && (
+            <DropdownMenuItem disabled={parentLoading} onClick={() => void downloadParent()}>
+              <Layers className="mr-2 h-4 w-4" />
+              Download MC file
+            </DropdownMenuItem>
+          )}
+          {hasParent && (
+            <DropdownMenuItem disabled={loading || parentLoading || !block.download_available} onClick={() => void downloadBoth()}>
+              <Download className="mr-2 h-4 w-4" />
+              Download IC + MC
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
       {error && <p className="text-xs text-destructive">{error}</p>}
-    </div>
-  );
-}
-
-/** Tracker variant of the MC QR download: labelled with the master-pack size. */
-function ParentBlockDownloadLink({ block }: { block: QRBlock }) {
-  return (
-    <div className="space-y-1 pt-1 border-t">
-      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-        <Layers className="h-3.5 w-3.5" />
-        Master Pack{block.qseal_parent_count ? ` (${block.qseal_parent_count})` : ''}
-      </div>
-      <ParentBlockDownloadButton block={block} />
+      {parentError && <p className="text-xs text-destructive">{parentError}</p>}
     </div>
   );
 }
@@ -142,36 +139,76 @@ function ParentBlockDownloadLink({ block }: { block: QRBlock }) {
 /*  Block status tracker (inline banner after creation)               */
 /* ------------------------------------------------------------------ */
 
+function formatElapsed(milliseconds: number): string {
+  const seconds = Math.max(0, Math.floor(milliseconds / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (minutes < 60) return `${minutes}m ${remainingSeconds}s`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
 function BlockGenerationProgress({ block }: { block: QRBlock }) {
-  if (block.status === 'pending') {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Waiting for an available QR generation worker…
-      </div>
-    );
-  }
-  if (block.status !== 'in_progress') return null;
+  const [now, setNow] = React.useState(() => Date.now());
+
+  React.useEffect(() => {
+    if (!['pending', 'in_progress'].includes(block.status)) return;
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [block.status]);
+
+  if (!['pending', 'in_progress'].includes(block.status)) return null;
+
+  const generated = Math.min(block.generated_count ?? 0, block.quantity);
+  const progress = Math.min(100, Math.max(0, block.progress ?? (block.quantity ? (generated / block.quantity) * 100 : 0)));
+  const createdAt = new Date(block.created_at).getTime();
+  const elapsed = Number.isNaN(createdAt) ? 0 : Math.max(0, now - createdAt);
+  const estimatedRemaining = progress > 0 && progress < 100 ? elapsed * ((100 - progress) / progress) : null;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Generating {block.quantity.toLocaleString()} QR codes…
+        {block.status === 'pending'
+          ? `Queued for ${formatElapsed(elapsed)}`
+          : `Generating QR codes · ${generated.toLocaleString()} of ${block.quantity.toLocaleString()} complete`}
       </div>
-      <div className="flex items-center gap-3">
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${block.progress}%` }} />
+      {block.status === 'in_progress' && (
+        <div className="flex items-center gap-3">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+          </div>
+          <span className="text-xs font-medium">{Math.round(progress)}%</span>
         </div>
-        <span className="text-xs font-medium">{block.progress}%</span>
+      )}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span>Last updated: {formatDate(block.updated_at, 'DD-MMM-YY', { includeTime: true })}</span>
+        {block.status === 'in_progress' && <span>Elapsed: {formatElapsed(elapsed)}</span>}
+        {estimatedRemaining !== null ? (
+          <span>Estimated remaining: ~{formatElapsed(estimatedRemaining)}</span>
+        ) : block.status === 'in_progress' ? (
+          <span>Estimate available after progress starts</span>
+        ) : null}
       </div>
     </div>
   );
 }
 
-function BlockStatusTracker({ blockId, onDone, onTerminal }: { blockId: string; onDone: () => void; onTerminal: () => void }) {
+function BlockStatusTracker({
+  blockId,
+  onDone,
+  onTerminal,
+  onRetry,
+}: {
+  blockId: string;
+  onDone: () => void;
+  onTerminal: () => void;
+  onRetry?: (block: QRBlock) => Promise<void>;
+}) {
   const { block, loading } = useBlockStatus(blockId);
   const terminalNotified = React.useRef(false);
+  const [retrying, setRetrying] = React.useState(false);
+  const [retryError, setRetryError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!block || !['completed', 'failed'].includes(block.status) || terminalNotified.current) return;
@@ -207,19 +244,46 @@ function BlockStatusTracker({ blockId, onDone, onTerminal }: { blockId: string; 
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm text-green-600">
             <CheckCircle2 className="h-4 w-4" />
-            Generation complete
+            Generation complete · {block.generated_count.toLocaleString()} QR codes ready
           </div>
-          {block.download_available && <BlockDownloadButton block={block} />}
-
-          {/* Parent (Master Pack) download */}
-          {block.master_pack_enabled && <ParentBlockDownloadLink block={block} />}
+          {block.download_available && <BlockDownloadMenu block={block} hasParent={Boolean(block.master_pack_enabled)} />}
         </div>
       )}
 
       {block.status === 'failed' && (
-        <div className="flex items-center gap-2 text-sm text-destructive">
-          <AlertCircle className="h-4 w-4" />
-          Generation failed. Credits were not deducted.
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            Generation failed. Reserved credits were returned.
+          </div>
+          {block.error_message && <p className="text-xs text-destructive">{block.error_message}</p>}
+          {block.error_code && (
+            <p className="text-xs text-muted-foreground">
+              Error code: <span className="font-mono">{block.error_code}</span>
+            </p>
+          )}
+          {onRetry && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={retrying}
+              onClick={async () => {
+                setRetrying(true);
+                setRetryError(null);
+                try {
+                  await onRetry(block);
+                } catch (err) {
+                  setRetryError(err instanceof Error ? err.message : 'Retry failed. Please try again.');
+                } finally {
+                  setRetrying(false);
+                }
+              }}
+            >
+              {retrying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              {retrying ? 'Queueing retry…' : 'Retry generation'}
+            </Button>
+          )}
+          {retryError && <p className="text-xs text-destructive">{retryError}</p>}
         </div>
       )}
 
@@ -279,7 +343,6 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
               </div>
               <div>
                 <p className="font-medium">{b.batch}</p>
-                <p className="text-xs text-muted-foreground font-mono">{b.id.slice(0, 8)}…</p>
               </div>
             </div>
           );
@@ -296,12 +359,7 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
         cell: ({ row }) => {
           const t = row.original.qr_type;
           if (!t) return <span className="text-muted-foreground">—</span>;
-          return (
-            <div>
-              <span className="font-mono font-medium text-sm">{t}</span>
-              <p className="text-xs text-muted-foreground">{QR_TYPE_LABELS[t]?.split(' — ')[1]}</p>
-            </div>
-          );
+          return <span className="text-sm font-medium">{QR_TYPE_LABELS[t] ?? t}</span>;
         },
       },
       {
@@ -334,14 +392,7 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
         cell: ({ row }) => {
           const b = row.original;
           if (b.status !== 'completed') return null;
-          return (
-            <div className="flex gap-2">
-              <div>{b.download_available && <BlockDownloadButton block={b} />}</div>
-              {hasMasterPackQr(b) && (
-                <div><ParentBlockDownloadButton block={b} /></div>
-              )}
-            </div>
-          );
+          return <BlockDownloadMenu block={b} hasParent={hasMasterPackQr(b)} />;
         },
       },
       {
@@ -392,7 +443,8 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
     return (
       <Card>
         <CardContent className="p-6">
-          <EmptyState icon={<QrCode className="h-12 w-12" />}
+          <EmptyState
+            icon={<QrCode className="h-12 w-12" />}
             title={hasActiveFilters ? 'No Blocks match your filters' : 'No QR blocks found'}
             description={hasActiveFilters ? 'Change or reset the filters to see more Blocks.' : 'Generate a Block to create QR codes for a Product'}
             action={
@@ -402,7 +454,8 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
                   New Block
                 </Button>
               ) : undefined
-            }/>
+            }
+          />
         </CardContent>
       </Card>
     );
@@ -411,7 +464,8 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
   return (
     <Card>
       <CardContent className="p-0">
-        <DataTable columns={columns}
+        <DataTable
+          columns={columns}
           data={blocks}
           config={{
             showSerialNumber: true,
@@ -428,7 +482,8 @@ function BlocksTable({ blocks, loading, error, hasActiveFilters, onCreateBlock, 
             return null;
           }}
           fixedHeader
-          maxHeight="auto"/>
+          maxHeight="auto"
+        />
       </CardContent>
     </Card>
   );
@@ -444,7 +499,7 @@ export function BlocksManagement({ initialProductId }: { initialProductId?: stri
   const [detailBlockId, setDetailBlockId] = React.useState<string | null>(null);
   const [page, setPage] = React.useState(1);
   const [search, setSearch] = React.useState('');
-  const [filters, setFilters] = React.useState<QRBlockFilterValues>(() => initialProductId ? { product_id: initialProductId } : {});
+  const [filters, setFilters] = React.useState<QRBlockFilterValues>(() => (initialProductId ? { product_id: initialProductId } : {}));
   const { data, loading, error, refetch } = useAllQRBlocks({ page, filters });
 
   React.useEffect(() => {
@@ -509,32 +564,44 @@ export function BlocksManagement({ initialProductId }: { initialProductId?: stri
       <BlockFilters filters={filters} search={search} onSearchChange={setSearch} onChange={updateFilters} onReset={resetFilters} />
 
       {trackedBlockId && (
-        <BlockStatusTracker blockId={trackedBlockId}
+        <BlockStatusTracker
+          blockId={trackedBlockId}
           onTerminal={() => {
             refetch();
+          }}
+          onRetry={async (block) => {
+            const retried = await qrBlockService.retryBlock(block.id);
+            setTrackedBlockId(retried.id);
+            await refetch();
           }}
           onDone={() => {
             setTrackedBlockId(null);
             refetch();
-          }}/>
+          }}
+        />
       )}
 
-      <BlocksTable blocks={blocks}
+      <BlocksTable
+        blocks={blocks}
         loading={loading}
         error={error}
         hasActiveFilters={hasActiveFilters}
         onCreateBlock={() => setCreateOpen(true)}
         onViewBlock={(b) => setDetailBlockId(b.id)}
-        serverPagination={serverPaginationConfig}/>
+        serverPagination={serverPaginationConfig}
+      />
 
-      <CreateBlockDialog open={createOpen}
+      <CreateBlockDialog
+        open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={(id) => {
           setTrackedBlockId(id);
           refetch();
-        }}/>
+        }}
+      />
 
-      <BlockDetailDialog blockId={detailBlockId}
+      <BlockDetailDialog
+        blockId={detailBlockId}
         open={!!detailBlockId}
         onOpenChange={(open) => {
           if (!open) setDetailBlockId(null);
@@ -544,7 +611,8 @@ export function BlocksManagement({ initialProductId }: { initialProductId?: stri
           setDetailBlockId(null);
           setTrackedBlockId(retried.id);
           await refetch();
-        }}/>
+        }}
+      />
     </div>
   );
 }

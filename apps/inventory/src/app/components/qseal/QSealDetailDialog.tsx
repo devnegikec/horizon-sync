@@ -1,6 +1,10 @@
-import { Clock, Image, Info, Layers, Link, MoreHorizontal, QrCode, ScanLine, Tag } from 'lucide-react';
+import * as React from 'react';
 
+import { Box, CheckCircle2, Clock, Edit, Image, Info, Layers, Link, MoreHorizontal, Power, PowerOff, QrCode, ScanLine, Tag } from 'lucide-react';
+
+import { getUserDisplayName, useUserStore } from '@horizon-sync/store';
 import { Badge } from '@horizon-sync/ui/components';
+import { Button } from '@horizon-sync/ui/components/ui/button';
 import { DetailDialog } from '@horizon-sync/ui/components/ui/detail-dialog';
 
 import { useBrands } from '../../features/qr-management/hooks/useBrands';
@@ -42,6 +46,8 @@ interface QSealDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   product: QSealProduct | null;
+  onEdit?: () => void;
+  onToggleStatus?: () => void;
 }
 
 function SectionHeader({ icon: Icon, title }: { icon: React.ComponentType<{ className?: string }>; title: string }) {
@@ -59,6 +65,118 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="space-y-1">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-sm font-medium break-words">{isEmpty ? <span className="text-muted-foreground">—</span> : value}</p>
+    </div>
+  );
+}
+
+function MetricCard({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: React.ReactNode;
+  detail?: string;
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-3">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Icon className="h-4 w-4" />
+        <span className="text-xs">{label}</span>
+      </div>
+      <p className="mt-2 text-lg font-semibold">{value}</p>
+      {detail && <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>}
+    </div>
+  );
+}
+
+function formatDimensions(length?: number | null, width?: number | null, height?: number | null) {
+  if (length == null || width == null || height == null) return null;
+  return `${length} × ${width} × ${height} mm`;
+}
+
+function PackagingOverview({ product }: { product: QSealProduct }) {
+  const packaging = product.packaging_details;
+  if (!packaging) {
+    return (
+      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+        Packaging details have not been configured for this product.
+      </div>
+    );
+  }
+
+  const levels = [
+    {
+      label: 'Base unit',
+      unitName: packaging.unit_name,
+      quantity: packaging.conversion_factor,
+      dimensions: formatDimensions(packaging.length_mm, packaging.width_mm, packaging.height_mm),
+      weight: packaging.weight_grams,
+    },
+    {
+      label: 'Inner carton',
+      unitName: packaging.ic_pack_unit_name,
+      quantity: packaging.items_per_ic_pack,
+      dimensions: formatDimensions(packaging.ic_pack_length_mm, packaging.ic_pack_width_mm, packaging.ic_pack_height_mm),
+      weight: packaging.ic_pack_weight_grams,
+    },
+    {
+      label: 'Master carton',
+      unitName: packaging.master_pack_unit_name,
+      quantity: packaging.items_per_master_pack,
+      dimensions: formatDimensions(packaging.master_pack_length_mm, packaging.master_pack_width_mm, packaging.master_pack_height_mm),
+      weight: packaging.master_pack_weight_grams,
+    },
+  ].filter((level) => level.unitName || level.quantity != null);
+
+  return (
+    <div className="space-y-3">
+      {levels.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          Packaging details have not been configured for this product.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {levels.map((level) => (
+            <div key={level.label} className="flex items-start gap-3 rounded-lg border p-3">
+              <div className="mt-0.5 rounded-md bg-primary/10 p-2 text-primary">
+                <Box className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{level.label}</p>
+                <p className="text-sm text-muted-foreground">
+                  {level.quantity != null ? `${level.quantity} ` : ''}
+                  {level.unitName || 'items'}
+                </p>
+                {(level.dimensions || level.weight != null) && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {[level.dimensions, level.weight != null ? `${level.weight} g` : null].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActivityItem({ label, date, detail }: { label: string; date: string; detail?: string }) {
+  return (
+    <div className="relative flex gap-3 pb-4 last:pb-0">
+      <div className="relative z-10 mt-0.5 rounded-full bg-primary/10 p-1.5 text-primary">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground">
+          {date}
+          {detail ? ` · ${detail}` : ''}
+        </p>
+      </div>
     </div>
   );
 }
@@ -99,10 +217,11 @@ function ImagePreview({ src, alt }: { src: string | null; alt: string }) {
 }
 
 // eslint-disable-next-line complexity
-export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDialogProps) {
+export function QSealDetailDialog({ open, onOpenChange, product, onEdit, onToggleStatus }: QSealDetailDialogProps) {
   const { data: brandData } = useBrands();
   const { settings: shelfLifeSettings } = useQRProductSettings('shelf_life');
   const { settings: serialPrefixSettings } = useQRProductSettings('serial_prefix');
+  const currentUser = useUserStore((state) => state.user);
 
   if (!product) return null;
 
@@ -117,15 +236,42 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
     : (product.serial_prefix ?? product.serial_prefix_setting_id ?? '—');
   const activationLabel = ACTIVATION_LABELS[product.activation_method] ?? product.activation_method ?? '—';
   const srNumberLabel = SR_NUMBER_LABELS[product.sr_number_type ?? ''] ?? product.sr_number_type ?? '—';
+  const creatorLabel =
+    product.created_by_name ||
+    (product.created_by && product.created_by === currentUser?.id ? getUserDisplayName(currentUser) : null) ||
+    (product.created_by ? 'Organization user' : '—');
+  const statusLabel = product.is_active ? 'Active' : 'Inactive';
 
   return (
-    <DetailDialog open={open}
+    <DetailDialog
+      open={open}
       onOpenChange={onOpenChange}
       size="lg"
-      contentClassName="max-w-4xl flex flex-col"
-      style={{ height: 'min(85vh, 820px)' }}
+      contentClassName="left-auto right-0 top-0 h-[100dvh] max-h-[100dvh] w-full max-w-xl translate-x-0 translate-y-0 rounded-none p-0 flex flex-col gap-0 sm:rounded-l-xl"
+      showCloseButton={true}
+      footer={
+        <div className="flex w-full flex-col-reverse gap-2 border-t bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {onToggleStatus && (
+              <Button type="button" variant="outline" onClick={onToggleStatus}>
+                {product.is_active ? <PowerOff className="mr-2 h-4 w-4" /> : <Power className="mr-2 h-4 w-4" />}
+                {product.is_active ? 'Deactivate' : 'Activate'}
+              </Button>
+            )}
+            {onEdit && (
+              <Button type="button" onClick={onEdit}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Product
+              </Button>
+            )}
+          </div>
+        </div>
+      }
       title={
-        <div className="space-y-3">
+        <div className="space-y-3 border-b px-6 py-5 pr-14">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
               <QrCode className="h-5 w-5 text-primary" />
@@ -137,8 +283,21 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
           </div>
           <ProductBadges product={product} />
         </div>
-      }>
-      <div className="space-y-6">
+      }
+    >
+      <div className="space-y-6 p-1 sm:p-2">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <MetricCard icon={Layers} label="QR Blocks" value={product.block_count == null ? '—' : product.block_count.toLocaleString()} />
+          <MetricCard icon={QrCode} label="QR Codes" value={product.qr_code_count == null ? '—' : product.qr_code_count.toLocaleString()} />
+          <MetricCard icon={ScanLine} label="Scans" value={product.scan_count == null ? '—' : product.scan_count.toLocaleString()} />
+          <MetricCard
+            icon={Clock}
+            label="Status"
+            value={statusLabel}
+            detail={product.last_scan_at ? `Last scan ${formatDate(product.last_scan_at, 'DD-MMM-YY')}` : 'Never scanned'}
+          />
+        </div>
+
         <div className="space-y-3">
           <SectionHeader icon={Info} title="Brand" />
           <Field label="Brand" value={brandLabel} />
@@ -146,7 +305,7 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
 
         <div className="space-y-3">
           <SectionHeader icon={Image} title="Product Images" />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Logo</p>
               <ImagePreview src={product.image_url} alt="Logo" />
@@ -169,17 +328,8 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
         </div>
 
         <div className="space-y-3">
-          <SectionHeader icon={Layers} title="QR Overview" />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="QR Blocks" value={product.block_count == null ? '—' : product.block_count.toLocaleString()} />
-            <Field label="QR Codes" value={product.qr_code_count == null ? '—' : product.qr_code_count.toLocaleString()} />
-            <Field label="Total Scans" value={product.scan_count == null ? '—' : product.scan_count.toLocaleString()} />
-            <Field label="Last Scan" value={product.last_scan_at ? formatDate(product.last_scan_at, 'DD-MMM-YY', { includeTime: true }) : 'Never scanned'} />
-          </div>
-          <div className="flex items-center gap-2 rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-            <ScanLine className="h-4 w-4 shrink-0" />
-            QR metrics summarize all blocks belonging to this product.
-          </div>
+          <SectionHeader icon={Layers} title="Packaging Structure" />
+          <PackagingOverview product={product} />
         </div>
 
         <div className="space-y-3">
@@ -211,9 +361,17 @@ export function QSealDetailDialog({ open, onOpenChange, product }: QSealDetailDi
           <Field label="Redirect to Product URL after QR scan" value={product.redirect_to_client ? 'Yes' : 'No'} />
         </div>
 
-        <div className="divide-y">
-          <Field label="Created" value={formatDate(product.created_at, 'DD-MMM-YY')} />
-          <Field label="Last Updated" value={formatDate(product.updated_at, 'DD-MMM-YY')} />
+        <div className="space-y-3">
+          <SectionHeader icon={Clock} title="Activity" />
+          <div className="relative pl-1">
+            <div className="absolute bottom-1 left-[13px] top-1 w-px bg-border" />
+            <ActivityItem
+              label="Product created"
+              date={formatDate(product.created_at, 'DD-MMM-YY', { includeTime: true })}
+              detail={`Created by ${creatorLabel}`}
+            />
+            <ActivityItem label="Product last updated" date={formatDate(product.updated_at, 'DD-MMM-YY', { includeTime: true })} />
+          </div>
         </div>
       </div>
     </DetailDialog>

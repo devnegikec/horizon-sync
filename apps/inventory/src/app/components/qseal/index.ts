@@ -6,7 +6,6 @@ export { QSealProductDialog } from './QSealProductDialog';
 export { QSealDetailDialog } from './QSealDetailDialog';
 export { BlocksManagement } from './BlocksManagement';
 export { AggregationManagement } from './AggregationManagement';
-export { SkuCustomizationManagement } from './SkuCustomizationManagement';
 export { AnalyticsManagement } from './AnalyticsManagement';
 export { QSealActivationManagement } from './QSealActivationManagement';
 export { ActivationManagement } from './ActivationManagement';
