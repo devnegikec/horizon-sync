@@ -357,6 +357,7 @@ interface ProductInfoSectionProps {
   shelfLifeError: string | null;
   skuServerError?: string;
   onSkuChange?: () => void;
+  isEdit?: boolean;
 }
 
 function ProductInfoSection({
@@ -368,8 +369,11 @@ function ProductInfoSection({
   shelfLifeError,
   skuServerError,
   onSkuChange,
+  isEdit = false,
 }: ProductInfoSectionProps) {
-  const nameField = register('name', { required: 'Product name is required' });
+  const nameField = register('name', {
+    validate: (value) => value.trim().length > 0 || 'Product name is required',
+  });
   const skuField = register('sku');
   return (
     <div className="space-y-3">
@@ -381,13 +385,14 @@ function ProductInfoSection({
           {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
         </div>
         <div className="space-y-1">
-          <LabelWithTooltip htmlFor="gtin" label="GTIN" required hint="Global Trade Item Number — up to 20 characters" />
+          <LabelWithTooltip htmlFor="gtin" label="GTIN" required={!isEdit} hint="Global Trade Item Number — up to 20 characters" />
           <Input
             id="gtin"
             maxLength={20}
             placeholder="e.g. 012345678901"
             {...register('gtin', {
-              required: 'GTIN is required',
+              // GTIN is nullable on existing products, so only require it when creating.
+              ...(isEdit ? {} : { required: 'GTIN is required' }),
               maxLength: { value: 20, message: 'GTIN cannot exceed 20 characters' },
             })}
           />
@@ -1393,6 +1398,7 @@ export function QSealProductDialog({ open, onOpenChange, product, onSave, saving
                 shelfLifeError={shelfLifeError}
                 skuServerError={saveError?.field === 'sku' ? saveError.message : undefined}
                 onSkuChange={onClearSaveError}
+                isEdit={isEdit}
               />
             </>
           )}
