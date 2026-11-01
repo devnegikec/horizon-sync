@@ -2,11 +2,12 @@ import * as React from 'react';
 
 import { CheckCircle2, XCircle } from 'lucide-react';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@horizon-sync/ui/components/ui/avatar';
 import { Badge } from '@horizon-sync/ui/components/ui/badge';
 import { Card, CardContent } from '@horizon-sync/ui/components/ui/card';
 
-import { getStatusBadge, getUserInitials } from '../../utility/profile-utils';
+import { getStatusBadge } from '../../utility/profile-utils';
+
+import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 
 interface ProfileHeaderProps {
   user: {
@@ -24,18 +25,12 @@ interface ProfileHeaderProps {
 
 export function ProfileHeader({ user }: ProfileHeaderProps) {
   const statusBadge = getStatusBadge(user.status);
-  const userInitials = getUserInitials(user.first_name, user.last_name, user.email);
 
   return (
     <Card className="border-border">
       <CardContent className="p-6">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-          <Avatar className="h-24 w-24 ring-4 ring-background shadow-lg">
-            <AvatarImage src={user.avatar_url || ''} alt={user.display_name || user.email} />
-            <AvatarFallback className="bg-gradient-to-br from-[#3058EE] to-[#7D97F6] text-white text-2xl font-semibold">
-              {userInitials}
-            </AvatarFallback>
-          </Avatar>
+          <ProfileAvatarEditor user={user} />
           <div className="flex-1 space-y-2">
             <div className="flex items-center gap-3 flex-wrap">
               <h2 className="text-2xl font-bold">{user.display_name || `${user.first_name} ${user.last_name}`}</h2>
