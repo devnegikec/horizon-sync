@@ -111,14 +111,13 @@ describe('PublicQRValidation', () => {
       renderPage();
 
       expect(await screen.findByRole('heading', { name: 'Authentic Product' })).toBeInTheDocument();
-      await waitFor(() => expect(mockedAxios.patch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/public/qr/scans/scan-event-id/location'),
-        {
+      await waitFor(() =>
+        expect(mockedAxios.patch).toHaveBeenCalledWith(expect.stringContaining('/api/v1/public/qr/scans/scan-event-id/location'), {
           latitude: 28.6139,
           longitude: 77.209,
           accuracy_meters: 25,
-        },
-      ));
+        }),
+      );
       expect(getCurrentPosition).toHaveBeenCalledTimes(1);
       expect(screen.queryByText('Help protect genuine products')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /share location/i })).not.toBeInTheDocument();
@@ -155,12 +154,13 @@ describe('PublicQRValidation', () => {
 
     renderPage();
 
-    expect(await screen.findByRole('heading', { name: 'Product authentication successful' })).toBeInTheDocument();
-    expect(screen.getByText('First-time authentication complete')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'One-time scan completed' })).toBeInTheDocument();
+    expect(screen.getByText('First scan recorded')).toBeInTheDocument();
+    expect(screen.getAllByText('Demo Brand')).toHaveLength(1);
     expect(screen.getByText('One-Time QR')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Product details' })).toBeInTheDocument();
     expect(screen.getByText('PRO-ABC12345')).toBeInTheDocument();
-    expect(screen.getByText('This one-time QR code is now protected against reuse.')).toBeInTheDocument();
+    expect(screen.getByText('This one-time QR can no longer be used for another scan.')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Authentic Product' })).not.toBeInTheDocument();
     expect(screen.queryByText('Help protect genuine products')).not.toBeInTheDocument();
     expect(screen.queryByAltText('Demo Product banner')).not.toBeInTheDocument();
@@ -172,7 +172,7 @@ describe('PublicQRValidation', () => {
     expect(screen.queryByText('GTIN')).not.toBeInTheDocument();
   });
 
-  it('renders the authenticated product state on a second One-Time QR scan', async () => {
+  it('renders the already-used state on a second One-Time QR scan', async () => {
     mockedAxios.post.mockResolvedValueOnce({
       data: {
         ...authenticResult,
@@ -186,9 +186,11 @@ describe('PublicQRValidation', () => {
 
     renderPage();
 
-    expect(await screen.findByRole('heading', { name: 'Product Authentication' })).toBeInTheDocument();
-    expect(screen.getByText(/This product was successfully authenticated on Oct 14, 2026/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Product Details:' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Already scanned' })).toBeInTheDocument();
+    expect(screen.getByText(/This one-time QR has already been used/i)).toBeInTheDocument();
+    expect(screen.getByText(/The first scan was recorded on Oct 14, 2026/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Product details' })).toBeInTheDocument();
+    expect(screen.getAllByText('Demo Brand')).toHaveLength(1);
     expect(screen.getByText('PRO-ABC12345')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Code Already Used' })).not.toBeInTheDocument();
     expect(screen.queryByText('Please enter the secure code')).not.toBeInTheDocument();
@@ -324,9 +326,9 @@ describe('PublicQRValidation', () => {
 
     renderPage();
 
-    const input = await screen.findByLabelText('Protected product code');
-    expect(screen.getByRole('heading', { name: 'Product Authentication' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Please enter the secure code' })).toBeInTheDocument();
+    const input = await screen.findByLabelText('Secure code');
+    expect(screen.getByRole('heading', { name: 'Enter your secure code' })).toBeInTheDocument();
+    expect(screen.getByText('Use the code on the product label to complete verification.')).toBeInTheDocument();
     await user.type(input, 'a1b2c3d4e5f6');
     await user.click(screen.getByRole('button', { name: 'Verify code' }));
 
@@ -336,9 +338,11 @@ describe('PublicQRValidation', () => {
       expect.objectContaining({ secure_code: 'A1B2C3D4E5F6' }),
       expect.any(Object),
     );
-    expect(await screen.findByRole('heading', { name: 'The product authentication has been successfully verified.' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Product Information' })).toBeInTheDocument();
-    expect(screen.getByText('Secure code verified successfully.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Product verified' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Product details' })).toBeInTheDocument();
+    expect(screen.getByText('The secure code matched this product.')).toBeInTheDocument();
+    expect(screen.getAllByText('Demo Brand')).toHaveLength(1);
+    expect(screen.queryByText('Secure code verified successfully.')).not.toBeInTheDocument();
     expect(screen.queryByText('Help protect genuine products')).not.toBeInTheDocument();
     expect(screen.queryByText('Need assistance?')).not.toBeInTheDocument();
     expect(screen.queryByText('Stay connected')).not.toBeInTheDocument();
@@ -358,10 +362,48 @@ describe('PublicQRValidation', () => {
 
     renderPage();
 
-    expect(await screen.findByText('The product authentication has been successfully verified.')).toBeInTheDocument();
-    expect(screen.queryByText('Please enter the secure code')).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Product verified' })).toBeInTheDocument();
+    expect(screen.queryByText('Enter your secure code')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /verify code/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/Authenticated Oct 14, 2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/Verified Oct 14, 2026/i)).toBeInTheDocument();
+  });
+
+  it('disables secure-code entry during a temporary lockout', async () => {
+    const user = userEvent.setup();
+    mockedAxios.post
+      .mockResolvedValueOnce({
+        data: {
+          ...authenticResult,
+          verification_status: 'verification_required',
+          authentic: false,
+          requires_action: true,
+          challenge_type: 'secure_code',
+          qr_type: 'secure_code',
+          message: 'Enter the protected code to verify this product.',
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          ...authenticResult,
+          verification_status: 'invalid',
+          authentic: false,
+          requires_action: true,
+          challenge_type: 'secure_code',
+          qr_type: 'secure_code',
+          retry_after_seconds: 900,
+          message: 'Too many incorrect secure-code attempts. Try again in 15 minutes.',
+        },
+      });
+
+    renderPage();
+
+    const input = await screen.findByLabelText('Secure code');
+    await user.type(input, 'WRONG-CODE');
+    await user.click(screen.getByRole('button', { name: 'Verify code' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Try again in 15:00');
+    expect(screen.getByLabelText('Secure code')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Verify code' })).toBeDisabled();
   });
 
   it('uses the red failure state for an invalid QR', async () => {

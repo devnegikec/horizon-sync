@@ -287,10 +287,12 @@ describe('QSealProductDialog Shelf Life', () => {
     const onSave = jest.fn();
     const user = userEvent.setup();
     render(
-      <QSealProductDialog open
+      <QSealProductDialog
+        open
         onOpenChange={jest.fn()}
         product={makeProduct({ image_url: 'blob:http://localhost:4200/expired-logo' })}
-        onSave={onSave}/>,
+        onSave={onSave}
+      />,
     );
 
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Brand' })).toHaveTextContent('Saved Brand'));
@@ -307,7 +309,7 @@ describe('QSealProductDialog Shelf Life', () => {
     expect(screen.queryByText('Logo is required. Please upload an image.')).not.toBeInTheDocument();
   });
 
-  it('validates the GTIN check digit before continuing', async () => {
+  it('accepts GTIN values without format or check-digit validation', async () => {
     const user = userEvent.setup();
     render(<QSealProductDialog open onOpenChange={jest.fn()} product={makeProduct()} onSave={jest.fn()} />);
 
@@ -316,7 +318,7 @@ describe('QSealProductDialog Shelf Life', () => {
     await user.type(gtin, '0123456789013');
     await user.click(screen.getByRole('button', { name: 'Continue' }));
 
-    await waitFor(() => expect(screen.getByText('GTIN check digit is invalid')).toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('GTIN check digit is invalid')).not.toBeInTheDocument());
   });
 
   it('only shows Product Auth URL when redirect is enabled', async () => {

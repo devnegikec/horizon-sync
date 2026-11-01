@@ -5,7 +5,6 @@ import { AnalyticsManagement } from '../AnalyticsManagement';
 import { BlocksManagement } from '../BlocksManagement';
 import { ProductSettingsManagement } from '../ProductSettingsManagement';
 import { QSealActivationManagement } from '../QSealActivationManagement';
-import { SkuCustomizationManagement } from '../SkuCustomizationManagement';
 
 import { ProductsManagement } from './ProductsManagement';
 import type { QSealContentProps, QSealView } from './types';
@@ -18,7 +17,6 @@ function AnalyticsContent({ canViewAnalytics }: QSealContentProps) {
 const qsealViewComponents: Record<QSealView, React.ComponentType<QSealContentProps>> = {
   products: ({ management }) => <ProductsManagement management={management} />,
   blocks: () => <BlocksManagement />,
-  sku_customization: () => <SkuCustomizationManagement />,
   analytics: AnalyticsContent,
   activation: () => <QSealActivationManagement />,
   aggregation: () => <AggregationManagement />,

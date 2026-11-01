@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 import { useBrands } from '../../features/qr-management/hooks/useBrands';
 import { useCreateBrand } from '../../features/qr-management/hooks/useCreateBrand';
+import type { Brand } from '../../features/qr-management/types/brand.types';
 
 /* ------------------------------------------------------------------ */
 /*  Create brand dialog                                                */
@@ -21,23 +22,33 @@ interface CreateBrandDialogProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onCreated: () => void;
+  existingBrands: Brand[];
 }
 
-function CreateBrandDialog({ open, onOpenChange, onCreated }: CreateBrandDialogProps) {
+function CreateBrandDialog({ open, onOpenChange, onCreated, existingBrands }: CreateBrandDialogProps) {
   const { createBrand, loading, error } = useCreateBrand();
   const [name, setName] = React.useState('');
   const [shortCode, setShortCode] = React.useState('');
 
-  const reset = () => { setName(''); setShortCode(''); };
+  const duplicateName = existingBrands.some((brand) => brand.name.trim().toLowerCase() === name.trim().toLowerCase());
+  const duplicateShortCode = existingBrands.some((brand) => brand.short_code.trim().toLowerCase() === shortCode.trim().toLowerCase());
+  const formIsValid = !!name.trim() && !!shortCode.trim() && !duplicateName && !duplicateShortCode;
+
+  const reset = () => {
+    setName('');
+    setShortCode('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createBrand({ name, short_code: shortCode });
+      await createBrand({ name: name.trim(), short_code: shortCode.trim().toLowerCase() });
       reset();
       onOpenChange(false);
       onCreated();
-    } catch { /* error shown inline */ }
+    } catch {
+      /* error shown inline */
+    }
   };
 
   return (
@@ -49,12 +60,35 @@ function CreateBrandDialog({ open, onOpenChange, onCreated }: CreateBrandDialogP
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="brand-name">Brand Name *</Label>
-            <Input id="brand-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={256} placeholder="e.g. Acme Corp" required />
+            <Input
+              id="brand-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={20}
+              placeholder="e.g. Acme Corp"
+              required
+              aria-invalid={duplicateName || undefined}
+            />
+            <div className="flex items-center justify-between gap-2">
+              {duplicateName ? <p className="text-xs text-destructive">This brand name already exists.</p> : <span />}
+              <p className="text-xs text-muted-foreground">{name.length}/20</p>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="short-code">Short Code *</Label>
-            <Input id="short-code" value={shortCode} onChange={(e) => setShortCode(e.target.value)} maxLength={256} placeholder="e.g. acme" required />
-            <p className="text-xs text-muted-foreground">Used in QR URLs: https://{'{short_code}'}.domain/…</p>
+            <Input
+              id="short-code"
+              value={shortCode}
+              onChange={(e) => setShortCode(e.target.value)}
+              maxLength={8}
+              placeholder="e.g. acme"
+              required
+              aria-invalid={duplicateShortCode || undefined}
+            />
+            <div className="flex items-center justify-between gap-2">
+              {duplicateShortCode ? <p className="text-xs text-destructive">This brand short code already exists.</p> : <span />}
+              <p className="text-xs text-muted-foreground">{shortCode.length}/8</p>
+            </div>
           </div>
           <div className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground flex items-start gap-2">
             <KeyRound className="h-3.5 w-3.5 mt-0.5 shrink-0" />
@@ -62,9 +96,18 @@ function CreateBrandDialog({ open, onOpenChange, onCreated }: CreateBrandDialogP
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>
-            <Button type="submit" disabled={loading || !name.trim() || !shortCode.trim()}>
-              {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating…</> : 'Create Brand'}
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading || !formIsValid}>
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating…
+                </>
+              ) : (
+                'Create Brand'
+              )}
             </Button>
           </DialogFooter>
         </form>
@@ -91,9 +134,7 @@ export function BrandManagement() {
             <KeyRound className="h-5 w-5" />
             Brands & Signing Keys
           </h3>
-          <p className="text-sm text-muted-foreground">
-            Each brand has an auto-generated ECDSA P-256 key pair used to digitally sign QR codes.
-          </p>
+          <p className="text-sm text-muted-foreground">Each brand has an auto-generated ECDSA P-256 key pair used to digitally sign QR codes.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={loading}>
@@ -144,11 +185,11 @@ export function BrandManagement() {
                   <TableRow key={brand.id}>
                     <TableCell className="font-medium">{brand.name}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="font-mono">{brand.short_code}</Badge>
+                      <Badge variant="outline" className="font-mono">
+                        {brand.short_code}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(brand.created_at).toLocaleDateString()}
-                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{new Date(brand.created_at).toLocaleDateString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -157,7 +198,7 @@ export function BrandManagement() {
         </CardContent>
       </Card>
 
-      <CreateBrandDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={refetch} />
+      <CreateBrandDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={refetch} existingBrands={brands} />
     </div>
   );
 }
