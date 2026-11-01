@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { LayoutDashboard, Package, BarChart3, Settings, Users, FileText, HelpCircle, Zap, CreditCard, DollarSign, ShoppingCart, BookOpen, Shield, Receipt, Building2, QrCode, Warehouse } from 'lucide-react';
+import { LayoutDashboard, Package, BarChart3, Settings, Users, FileText, HelpCircle, CreditCard, DollarSign, ShoppingCart, BookOpen, Shield, Receipt, Building2, QrCode, Warehouse } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { useUserStore, useCurrencyStore } from '@horizon-sync/store';
@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/compon
 import { useFeatureVisibilities } from '@horizon-sync/ui/hooks';
 import { cn } from '@horizon-sync/ui/lib';
 
+import ciphercodeLogo from '../../assets/ciphercode_logo.png';
 import { environment } from '../../environments/environment';
 import { usePermissions } from '../hooks/usePermissions';
 
@@ -155,9 +156,7 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
     )}>
       {/* Logo Section */}
       <div className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500">
-          <Zap className="h-5 w-5 text-white" />
-        </div>
+        <img src={ciphercodeLogo} alt="Ciphercode" className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain" />
         {!collapsed && (
           <div className="flex flex-col">
             <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-violet-600 to-fuchsia-600 dark:from-violet-400 dark:to-fuchsia-400 bg-clip-text text-transparent">

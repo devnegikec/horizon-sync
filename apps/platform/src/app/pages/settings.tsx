@@ -8,6 +8,7 @@ import { DataSyncSettings } from '../features/data-sync/components/DataSyncSetti
 import { FeatureFlagsSettings } from '../features/feature-flags/components/FeatureFlagsSettings';
 import { DashboardLayoutSettings } from '../features/organization/components/DashboardLayoutSettings';
 import { ItemUomConversionsSettings } from '../features/organization/components/ItemUomConversionsSettings';
+import { OrganizationLogoSettings } from '../features/organization/components/OrganizationLogoSettings';
 import { OrganizationProfileSettings } from '../features/organization/components/OrganizationProfileSettings';
 import { OrganizationSettings } from '../features/organization/components/OrganizationSettings';
 import { UomSettings } from '../features/organization/components/UomSettings';
@@ -99,6 +100,8 @@ export function SettingsPage() {
         <TabsContent value="organization" className="space-y-6">
           {/* Organization details + document address */}
           <OrganizationProfileSettings organizationId={organizationId} accessToken={accessToken} canEdit={canEdit} />
+          {/* Organization logo used in the topbar */}
+          <OrganizationLogoSettings organizationId={organizationId} accessToken={accessToken} canEdit={canEdit} />
         </TabsContent>
 
         <TabsContent value="subscription" className="space-y-6">
