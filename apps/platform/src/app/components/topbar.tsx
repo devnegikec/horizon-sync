@@ -40,9 +40,6 @@ function OrganizationLogoBadge({ logoUrl, name }: { logoUrl: string; name: strin
         alt={name ? `${name} logo` : 'Organization logo'}
         title={name || 'Organization logo'}
         className="h-9 w-9 rounded-md border border-border bg-white object-contain p-0.5" />
-      {name && (
-        <span className="hidden max-w-[160px] truncate text-sm font-semibold text-foreground xl:inline">{name}</span>
-      )}
     </div>
   );
 }

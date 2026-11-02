@@ -38,12 +38,11 @@ const mainNavItems: NavItem[] = [
   { title: 'Books', href: '/books', icon: BookOpen, featureFlag: 'book_module_enabled' },
   { title: 'Tax & Charges', href: '/tax-charges', icon: Receipt, featureFlag: 'taxandcharges_module_enabled' },
   { title: 'Subscriptions', href: '/subscriptions', icon: CreditCard, featureFlag: 'subscriptions_module_enabled' },
-  { title: 'Analytics', href: '/analytics', icon: BarChart3, featureFlag: 'analytics_module_enabled' },
   { title: 'QSeal', href: '/qseal', icon: QrCode, featureFlag: 'qseal_module_enabled' },
   { title: 'WMS', href: '/wms', icon: Warehouse, featureFlag: 'wms_module_enabled' },
+  { title: 'Reports', href: '/reports', icon: FileText, featureFlag: 'reports_module_enabled' },
   { title: 'Users', href: '/users', icon: Users, featureFlag: 'users_module_enabled' },
   { title: 'Roles', href: '/roles', icon: Shield, featureFlag: 'roles_module_enabled' },
-  { title: 'Reports', href: '/reports', icon: FileText, featureFlag: 'reports_module_enabled' },
 ];
 
 const bottomNavItems: NavItem[] = [
@@ -159,7 +158,7 @@ export function Sidebar({ open = true, collapsed = false, isMobile = false, onCl
         <img src={ciphercodeLogo} alt="Ciphercode" className="h-9 w-9 shrink-0 rounded-lg bg-white object-contain" />
         {!collapsed && (
           <div className="flex flex-col">
-            <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-violet-600 to-fuchsia-600 dark:from-violet-400 dark:to-fuchsia-400 bg-clip-text text-transparent">
+            <span className="font-bold text-lg tracking-tight text-white">
               Ciphercode
             </span>
             <span className="text-[10px] uppercase tracking-widest text-muted-foreground -mt-0.5">Platform</span>
