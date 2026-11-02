@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@horizon-sync/ui/compon
 import { GlobalSearch } from '../features/search/components/GlobalSearch';
 import { useKeyboardShortcut } from '../features/search/hooks/useKeyboardShortcut';
 import { useAuth } from '../hooks';
+import { useOrganizationBranding } from '../hooks/useOrganizationBranding';
 
 import { NotificationBell } from './notifications/NotificationBell';
 
@@ -29,9 +30,70 @@ interface TopbarProps {
   onToggleSidebar: () => void;
 }
 
+/** Organization logo shown at the far right of the topbar, after the user profile. */
+function OrganizationLogoBadge({ logoUrl, name }: { logoUrl: string; name: string }) {
+  if (!logoUrl) return null;
+
+  return (
+    <div className="ml-1 flex items-center gap-2 border-l border-border pl-2">
+      <img src={logoUrl}
+        alt={name ? `${name} logo` : 'Organization logo'}
+        title={name || 'Organization logo'}
+        className="h-9 w-9 rounded-md border border-border bg-white object-contain p-0.5" />
+    </div>
+  );
+}
+
+interface UserMenuProps {
+  user: { email?: string; display_name?: string; avatar_url?: string | null } | null;
+  onOpenProfile: () => void;
+  onLogout: () => void;
+}
+
+/** Avatar dropdown for the signed-in user. */
+function UserMenu({ user, onOpenProfile, onLogout }: UserMenuProps) {
+  const email = user?.email ?? '';
+  const initials = email
+    ? email.split('@')[0].split('.').map((part) => part[0]).join('').toUpperCase().slice(0, 2)
+    : 'U';
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-transparent hover:ring-violet-500/20 transition-all">
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={user?.avatar_url || ''} alt={user?.display_name || 'User'} />
+            <AvatarFallback className="bg-gradient-to-br from-[#3058EE] to-[#7D97F6] text-white text-sm font-medium">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium">{email ? email.split('@')[0] : 'User'}</p>
+            <p className="text-xs text-muted-foreground">{email || 'user@example.com'}</p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onOpenProfile}>Profile</DropdownMenuItem>
+        <DropdownMenuItem>Billing</DropdownMenuItem>
+        <DropdownMenuItem>Team</DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer" onClick={onLogout}>
+          <LogOut className="mr-2 h-4 w-4" />
+          Log out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { name: organizationName, logoUrl: organizationLogoUrl } = useOrganizationBranding();
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
 
   const handleLogout = () => {
@@ -67,16 +129,6 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
     navigate(route);
   };
 
-  // Get user initials for avatar fallback
-  const userInitials = user?.email
-    ? user.email
-      .split('@')[0]
-      .split('.')
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-    : 'U';
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4 gap-4">
       {/* Left Section */}
@@ -114,36 +166,12 @@ export function Topbar({ sidebarCollapsed, onToggleSidebar }: TopbarProps) {
 
         <NotificationBell />
 
-        {/* User Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-transparent hover:ring-violet-500/20 transition-all">
-              <Avatar className="h-9 w-9">
-                <AvatarImage src="" alt="User" />
-                <AvatarFallback className="bg-gradient-to-br from-[#3058EE] to-[#7D97F6] text-white text-sm font-medium">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{user?.email?.split('@')[0] || 'User'}</p>
-                <p className="text-xs text-muted-foreground">{user?.email || 'user@example.com'}</p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/profile')}>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Billing</DropdownMenuItem>
-            <DropdownMenuItem>Team</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer" onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <UserMenu user={user}
+          onOpenProfile={() => navigate('/profile')}
+          onLogout={handleLogout} />
+
+        {/* Organization logo — right of the user profile */}
+        <OrganizationLogoBadge logoUrl={organizationLogoUrl} name={organizationName} />
       </div>
 
       {/* Global Search Modal */}
