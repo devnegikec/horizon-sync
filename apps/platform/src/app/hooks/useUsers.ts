@@ -1,21 +1,9 @@
 import * as React from 'react';
 
 import { environment } from '../../environments/environment';
-import { UserService } from '../services/user.service';
 import type { User, UsersResponse, UserFilters } from '../types/user.types';
 
 const USERS_URL = `${environment.apiBaseUrl}/api/v1/identity/users`;
-
-interface PendingInvitation {
-  id: string;
-  email: string;
-  first_name?: string | null;
-  last_name?: string | null;
-  role_name?: string | null;
-  extra_data?: Record<string, unknown> | null;
-  status: string;
-  created_at: string;
-}
 
 /** Map HTTP status codes to user-friendly error messages */
 function getFriendlyHttpError(status: number): string {
@@ -38,6 +26,67 @@ function getFriendlyNetworkError(message: string): string {
   return message;
 }
 
+/**
+ * Keep one row per user from the `/identity/users` payload.
+ *
+ * The endpoint is the only source for this list, but a repeated record (for
+ * example a role join or a re-invited email that now has two user rows) would
+ * render the same person twice. De-duplicating here guarantees the table shows
+ * each user once, in the order returned by the API.
+ */
+function dedupeUsers(users: User[]): User[] {
+  const seen = new Set<string>();
+  const unique: User[] = [];
+  const duplicates: string[] = [];
+
+  for (const user of users) {
+    const key = (user.id || user.email || '').trim().toLowerCase();
+    if (!key) continue;
+    if (seen.has(key)) {
+      duplicates.push(user.email || user.id);
+      continue;
+    }
+    seen.add(key);
+    unique.push(user);
+  }
+
+  if (duplicates.length > 0 && typeof console !== 'undefined') {
+    console.warn('[useUsers] /identity/users returned duplicate rows:', duplicates);
+  }
+
+  return unique;
+}
+
+/** Builds the single request URL for the users list — no other endpoints are called. */
+function buildUsersUrl(page: number, pageSize: number, filters?: UserFilters): string {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+
+  if (filters?.search) {
+    params.append('search', filters.search);
+  }
+  if (filters?.status && filters.status !== 'all') {
+    params.append('status', filters.status);
+  }
+
+  return `${USERS_URL}?${params}`;
+}
+
+/** Performs the users request and surfaces a friendly error on failure. */
+async function requestUsers(url: string, accessToken: string): Promise<UsersResponse> {
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!res.ok) {
+    throw new Error(getFriendlyHttpError(res.status));
+  }
+
+  return (await res.json()) as UsersResponse;
+}
+
 interface UseUsersResult {
   users: User[];
   pagination: UsersResponse['pagination'] | null;
@@ -56,8 +105,7 @@ export function useUsers(
   initialPage = 1,
   initialPageSize = 20,
   filters?: UserFilters,
-  accessToken?: string | null,
-  organizationId?: string | null
+  accessToken?: string | null
 ): UseUsersResult {
   const [users, setUsers] = React.useState<User[]>([]);
   const [pagination, setPagination] = React.useState<UsersResponse['pagination'] | null>(null);
@@ -82,80 +130,16 @@ export function useUsers(
     setError(null);
 
     try {
-      const params = new URLSearchParams({
-        page: String(currentPage),
-        page_size: String(currentPageSize),
-      });
+      const url = buildUsersUrl(currentPage, currentPageSize, filters);
+      const data = await requestUsers(url, accessToken);
 
-      // Add filters to API params if provided
-      if (filters?.search) {
-        params.append('search', filters.search);
-      }
-      if (filters?.status && filters.status !== 'all') {
-        params.append('status', filters.status);
-      }
-
-      const res = await fetch(`${USERS_URL}?${params}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!res.ok) {
-        throw new Error(getFriendlyHttpError(res.status));
-      }
-
-      const data = (await res.json()) as UsersResponse;
-      let invitationRows: User[] = [];
-      let invitationCount = 0;
-      const shouldLoadInvitations =
-        organizationId &&
-        (!filters?.status || filters.status === 'all' || filters.status === 'pending');
-
-      if (shouldLoadInvitations) {
-        const [pendingResponse, expiredResponse] = await Promise.all([
-          UserService.getInvitations(organizationId, accessToken, {
-            status: 'pending',
-            search: filters?.search ?? '',
-            skip: 0,
-            limit: 100,
-          }),
-          UserService.getInvitations(organizationId, accessToken, {
-            status: 'expired',
-            search: filters?.search ?? '',
-            skip: 0,
-            limit: 100,
-          }),
-        ]);
-
-        const allInvitations = [...(pendingResponse.data ?? []), ...(expiredResponse.data ?? [])];
-        invitationCount = (pendingResponse.total ?? 0) + (expiredResponse.total ?? 0);
-        invitationRows = allInvitations.map((invitation: PendingInvitation) => ({
-          id: invitation.id,
-          email: invitation.email,
-          first_name: invitation.first_name ?? '',
-          last_name: invitation.last_name ?? '',
-          display_name:
-            invitation.first_name || invitation.last_name
-              ? `${invitation.first_name ?? ''} ${invitation.last_name ?? ''}`.trim()
-              : invitation.email,
-          user_type: invitation.role_name || 'regular',
-          roles: invitation.role_name ? [invitation.role_name] : [],
-          status: invitation.status,
-          email_verified: false,
-          last_login_at: null,
-          created_at: invitation.created_at,
-          avatar_url: null,
-          phone: null,
-          mfa_enabled: false,
-          extra_data: invitation.extra_data,
-        }));
-      }
-
-      setUsers([...(data.users ?? []), ...invitationRows]);
+      // Single source of truth: `/identity/users?page=&page_size=`.
+      // No invitation merge, and repeats inside the payload are collapsed so the
+      // table can never render the same user twice.
+      setUsers(dedupeUsers(data.users ?? []));
       setPagination(data.pagination ?? null);
       setStatusCounts(data.status_counts ?? null);
-      setPendingInvitationCount(invitationCount);
+      setPendingInvitationCount(data.status_counts?.pending ?? 0);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load users';
       setError(getFriendlyNetworkError(message));
@@ -166,7 +150,7 @@ export function useUsers(
     } finally {
       setLoading(false);
     }
-  }, [accessToken, currentPage, currentPageSize, filters, organizationId]);
+  }, [accessToken, currentPage, currentPageSize, filters]);
 
   React.useEffect(() => {
     fetchUsers();
