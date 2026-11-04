@@ -26,6 +26,67 @@ function getFriendlyNetworkError(message: string): string {
   return message;
 }
 
+/**
+ * Keep one row per user from the `/identity/users` payload.
+ *
+ * The endpoint is the only source for this list, but a repeated record (for
+ * example a role join or a re-invited email that now has two user rows) would
+ * render the same person twice. De-duplicating here guarantees the table shows
+ * each user once, in the order returned by the API.
+ */
+function dedupeUsers(users: User[]): User[] {
+  const seen = new Set<string>();
+  const unique: User[] = [];
+  const duplicates: string[] = [];
+
+  for (const user of users) {
+    const key = (user.id || user.email || '').trim().toLowerCase();
+    if (!key) continue;
+    if (seen.has(key)) {
+      duplicates.push(user.email || user.id);
+      continue;
+    }
+    seen.add(key);
+    unique.push(user);
+  }
+
+  if (duplicates.length > 0 && typeof console !== 'undefined') {
+    console.warn('[useUsers] /identity/users returned duplicate rows:', duplicates);
+  }
+
+  return unique;
+}
+
+/** Builds the single request URL for the users list — no other endpoints are called. */
+function buildUsersUrl(page: number, pageSize: number, filters?: UserFilters): string {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+
+  if (filters?.search) {
+    params.append('search', filters.search);
+  }
+  if (filters?.status && filters.status !== 'all') {
+    params.append('status', filters.status);
+  }
+
+  return `${USERS_URL}?${params}`;
+}
+
+/** Performs the users request and surfaces a friendly error on failure. */
+async function requestUsers(url: string, accessToken: string): Promise<UsersResponse> {
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!res.ok) {
+    throw new Error(getFriendlyHttpError(res.status));
+  }
+
+  return (await res.json()) as UsersResponse;
+}
+
 interface UseUsersResult {
   users: User[];
   pagination: UsersResponse['pagination'] | null;
@@ -69,35 +130,13 @@ export function useUsers(
     setError(null);
 
     try {
-      const params = new URLSearchParams({
-        page: String(currentPage),
-        page_size: String(currentPageSize),
-      });
+      const url = buildUsersUrl(currentPage, currentPageSize, filters);
+      const data = await requestUsers(url, accessToken);
 
-      // Add filters to API params if provided
-      if (filters?.search) {
-        params.append('search', filters.search);
-      }
-      if (filters?.status && filters.status !== 'all') {
-        params.append('status', filters.status);
-      }
-
-      const res = await fetch(`${USERS_URL}?${params}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!res.ok) {
-        throw new Error(getFriendlyHttpError(res.status));
-      }
-
-      const data = (await res.json()) as UsersResponse;
-
-      // Render exactly what the users API returned — no client-side merging of
-      // invitation records (the API already includes pending/invited users,
-      // which previously caused each of them to appear twice).
-      setUsers(data.users ?? []);
+      // Single source of truth: `/identity/users?page=&page_size=`.
+      // No invitation merge, and repeats inside the payload are collapsed so the
+      // table can never render the same user twice.
+      setUsers(dedupeUsers(data.users ?? []));
       setPagination(data.pagination ?? null);
       setStatusCounts(data.status_counts ?? null);
       setPendingInvitationCount(data.status_counts?.pending ?? 0);
