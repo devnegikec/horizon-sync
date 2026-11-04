@@ -305,7 +305,7 @@ export function UserManagement() {
     setPageSize,
     currentPage,
     currentPageSize,
-  } = useUsers(1, 20, filters, accessToken, user?.organization_id);
+  } = useUsers(1, 20, filters, accessToken);
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);

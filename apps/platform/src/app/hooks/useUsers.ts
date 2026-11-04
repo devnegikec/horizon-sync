@@ -1,21 +1,9 @@
 import * as React from 'react';
 
 import { environment } from '../../environments/environment';
-import { UserService } from '../services/user.service';
 import type { User, UsersResponse, UserFilters } from '../types/user.types';
 
 const USERS_URL = `${environment.apiBaseUrl}/api/v1/identity/users`;
-
-interface PendingInvitation {
-  id: string;
-  email: string;
-  first_name?: string | null;
-  last_name?: string | null;
-  role_name?: string | null;
-  extra_data?: Record<string, unknown> | null;
-  status: string;
-  created_at: string;
-}
 
 /** Map HTTP status codes to user-friendly error messages */
 function getFriendlyHttpError(status: number): string {
@@ -56,8 +44,7 @@ export function useUsers(
   initialPage = 1,
   initialPageSize = 20,
   filters?: UserFilters,
-  accessToken?: string | null,
-  organizationId?: string | null
+  accessToken?: string | null
 ): UseUsersResult {
   const [users, setUsers] = React.useState<User[]>([]);
   const [pagination, setPagination] = React.useState<UsersResponse['pagination'] | null>(null);
@@ -106,56 +93,14 @@ export function useUsers(
       }
 
       const data = (await res.json()) as UsersResponse;
-      let invitationRows: User[] = [];
-      let invitationCount = 0;
-      const shouldLoadInvitations =
-        organizationId &&
-        (!filters?.status || filters.status === 'all' || filters.status === 'pending');
 
-      if (shouldLoadInvitations) {
-        const [pendingResponse, expiredResponse] = await Promise.all([
-          UserService.getInvitations(organizationId, accessToken, {
-            status: 'pending',
-            search: filters?.search ?? '',
-            skip: 0,
-            limit: 100,
-          }),
-          UserService.getInvitations(organizationId, accessToken, {
-            status: 'expired',
-            search: filters?.search ?? '',
-            skip: 0,
-            limit: 100,
-          }),
-        ]);
-
-        const allInvitations = [...(pendingResponse.data ?? []), ...(expiredResponse.data ?? [])];
-        invitationCount = (pendingResponse.total ?? 0) + (expiredResponse.total ?? 0);
-        invitationRows = allInvitations.map((invitation: PendingInvitation) => ({
-          id: invitation.id,
-          email: invitation.email,
-          first_name: invitation.first_name ?? '',
-          last_name: invitation.last_name ?? '',
-          display_name:
-            invitation.first_name || invitation.last_name
-              ? `${invitation.first_name ?? ''} ${invitation.last_name ?? ''}`.trim()
-              : invitation.email,
-          user_type: invitation.role_name || 'regular',
-          roles: invitation.role_name ? [invitation.role_name] : [],
-          status: invitation.status,
-          email_verified: false,
-          last_login_at: null,
-          created_at: invitation.created_at,
-          avatar_url: null,
-          phone: null,
-          mfa_enabled: false,
-          extra_data: invitation.extra_data,
-        }));
-      }
-
-      setUsers([...(data.users ?? []), ...invitationRows]);
+      // Render exactly what the users API returned — no client-side merging of
+      // invitation records (the API already includes pending/invited users,
+      // which previously caused each of them to appear twice).
+      setUsers(data.users ?? []);
       setPagination(data.pagination ?? null);
       setStatusCounts(data.status_counts ?? null);
-      setPendingInvitationCount(invitationCount);
+      setPendingInvitationCount(data.status_counts?.pending ?? 0);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load users';
       setError(getFriendlyNetworkError(message));
@@ -166,7 +111,7 @@ export function useUsers(
     } finally {
       setLoading(false);
     }
-  }, [accessToken, currentPage, currentPageSize, filters, organizationId]);
+  }, [accessToken, currentPage, currentPageSize, filters]);
 
   React.useEffect(() => {
     fetchUsers();
